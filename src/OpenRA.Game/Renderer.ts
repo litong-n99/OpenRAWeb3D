@@ -547,21 +547,33 @@ export class Renderer {
     // worldCamera.outputRenderTarget = rtt 会在场景渲染时自动将相机视角输出到 RTT。
   }
 
+  /**
+   * 将 worldRenderTarget 内容绘制到 UI 场景的全屏 quad 上。
+   *
+   * 坐标系与可见性分析（Babylon.js 9.x）：
+   *   - MeshBuilder.CreatePlane 默认创建在 XY 平面，法线朝 +Z
+   *   - uiCamera 位于 (0.5, 0.5, -10)，看向 (0.5, 0.5, 0)，视线沿 +Z 方向
+   *   - plane 默认法线朝 +Z，相机看到的是平面背面
+   *   - quad.rotation.x = Math.PI 将 plane 绕 X 轴旋转 180°，法线翻转为 -Z，
+   *     使其正面正对相机视线方向（从 -Z 看 +Z）
+   *   - 同时此旋转将 Y 轴翻转，纠正了 WebGL 纹理原点（左下角）与屏幕坐标（左上角）的差异
+   *   - backFaceCulling = false 作为防御性保险
+   *   - position.z = 1 位于目标点 z=0 后方，但在正交投影中不影响可见性
+   */
   private renderWorldToScreen(): void {
     if (!this.worldRenderTarget) return
 
-    // Bug-2: 缓存全屏 quad 与 material，避免每帧创建/销毁 GPU 资源
+    // 缓存全屏 quad 与 material，避免每帧创建/销毁 GPU 资源
     if (!this.worldScreenQuad) {
       const quad = MeshBuilder.CreatePlane('worldQuad', { size: 2 }, this.uiScene)
-      // Bug-4: Y 轴翻转 — WebGL 纹理原点在左下角，屏幕坐标在左上角
+      // 绕 X 轴旋转 180°：法线翻转为 -Z（正对相机）+ 翻转纹理 Y 轴
       quad.rotation.x = Math.PI
 
       const mat = new StandardMaterial('worldMat', this.uiScene)
       mat.diffuseTexture = this.worldRenderTarget
       mat.emissiveColor = new Color3(1, 1, 1)
       mat.disableLighting = true
-      // Bug-7: rotation.x = Math.PI 翻转后法线朝 -Z，相机从 -Z 看向 +Z，
-      // 默认 backFaceCulling = true 会导致背面被剔除。禁用背面剔除确保可见。
+      // 防御性：禁用背面剔除，确保 plane 在所有朝向下均可见
       mat.backFaceCulling = false
       quad.material = mat
       // Bug-10: uiCamera ortho 范围 [0,1]×[0,1]，视口中心在 (0.5, 0.5)。
@@ -599,6 +611,17 @@ export class Renderer {
     }
   }
 
+    /**
+   * 更新世界相机正交视口边界。
+   *
+   * 坐标系映射约定：
+   *   - worldCamera 位于 (0, 50, 0)，看向 (0, 0, 0)，视线沿 -Y
+   *   - 视平面为 XZ 平面（通过 orthoLeft/Right/Top/Bottom 控制）
+   *   - OpenRA 2D X → 3D X，OpenRA 2D Y → 3D Z
+   *   - 因此 orthoTop/orthoBottom 被赋予 OpenRA 的 Y 坐标
+   *   - WorldRenderer 中放置的内容必须在 XZ 平面上（Y=0 作为 Z 坐标）
+   *   - 此映射需在 WorldRenderer 集成时验证
+   */
   private updateWorldCameraViewport(topLeft: Vec2, worldSize: Size, downscale: number): void {
     if (this.worldCamera.mode !== Camera.ORTHOGRAPHIC_CAMERA) return
 
@@ -742,6 +765,13 @@ export class Renderer {
   // 工厂方法（兼容 OpenRA 资源创建 API）
   // -----------------------------------------------------------------------
 
+  /**
+   * 创建渲染目标纹理（替代 OpenRA 手动 FBO 创建）。
+   *
+   * **调用者负责管理返回的 RenderTargetTexture 的生命周期**，
+   * 包括在不再需要时调用 `.dispose()` 释放 GPU 内存。
+   * 此方法不进行缓存或复用——每次调用均创建新的 GPU 资源。
+   */
   createFrameBuffer(size: Size): RenderTargetTexture {
     return new RenderTargetTexture(
       'frameBuffer',
@@ -864,6 +894,8 @@ export class Renderer {
   // -----------------------------------------------------------------------
 
   dispose(): void {
+    // 先停止渲染循环，防止销毁过程中回调再次触发访问已释放资源
+    this.engine.stopRenderLoop()
     window.removeEventListener('resize', this.onResize)
     this.worldScreenQuad?.dispose()
     this.worldScreenMaterial?.dispose()
