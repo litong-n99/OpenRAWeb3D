@@ -61,7 +61,8 @@ OpenRA 采用多项目（Multi-Project）解决方案结构，以 Visual Studio 
 | 模块/目录 | 核心类/文件 | 职责描述 | 后续迁移章节 |
 |---|---|---|---|
 | `OpenRA.Game/` | `Game.cs`, `World.cs`, `Renderer.cs` | 引擎核心层，提供 Actor 管理、Trait 系统、渲染管线、网络同步、输入处理、地图加载、虚拟文件系统等基础能力 ^7^ ^8^| Ch2-Ch8 |
-| `OpenRA.Game/Graphics/` | `SpriteRenderer.cs`, `WorldRenderer.cs`, `Renderer.cs` | OpenGL 渲染管线的全部实现，包括批量精灵渲染、双缓冲 FBO、调色板纹理、后处理效果 ^9^ ^10^| Ch2 (渲染) |
+| `OpenRA.Game/Graphics/` | `SpriteRenderer.cs`, `WorldRenderer.cs` | OpenGL 渲染管线的全部实现，包括批量精灵渲染、双缓冲 FBO、调色板纹理、后处理效果 ^9^ ^10^| Ch2 (渲染) |
+| `OpenRA.Game/` | `Renderer.cs` | 主渲染管理类，协调所有渲染器实例与帧缓冲管理 ^8^| Ch2 (渲染) |
 | `OpenRA.Game/Network/` | `OrderManager.cs`, `Connection.cs`, `Order.cs` | 确定性帧同步的实现核心，管理指令收发、同步哈希验证与延迟隐藏 ^11^ ^12^| Ch6 (网络) |
 | `OpenRA.Game/FileSystem/` | `FileSystem.cs`, `MixFile.cs`, `ZipFile.cs` | 虚拟文件系统（VFS），支持 Folder/ZIP/MIX 等多格式包的层叠挂载 ^13^ ^14^| Ch7 (资源) |
 | `OpenRA.Game/Traits/` | `TraitsInterfaces.cs`, `TraitDictionary.cs` | Trait 系统的接口定义与高性能存储查询机制 ^15^ ^16^| Ch3 (世界) |
@@ -138,7 +139,7 @@ OpenRA 的渲染引擎是其架构中最底层也最核心的子系统，直接�
 
 #### 2.1.1 文件作用与架构定位
 
-`Renderer` 类位于 `OpenRA.Game/Graphics/Renderer.cs`，是整个引擎渲染系统的唯一入口点。^8^它承担五项核心职责：通过 `IPlatformWindow` 管理 SDL2 窗口生命周期；通过 `IGraphicsContext` 持有并操作 OpenGL 上下文；创建和维护双帧缓冲（`worldBuffer` 与 `screenBuffer`）；实例化并管理六个子渲染器（`WorldSpriteRenderer`、`WorldRgbaSpriteRenderer`、`WorldRgbaColorRenderer` 以及对应的 UI 版本）；以及维护一个裁剪状态栈 `scissorState` 用于嵌套裁剪区域。`Renderer` 不直接绘制任何图形，而是通过 `IBatchRenderer currentBatchRenderer` 委托当前的批量渲染器执行实际的 GPU 提交。
+`Renderer` 类位于 `OpenRA.Game/Renderer.cs`，是整个引擎渲染系统的唯一入口点。^8^它承担五项核心职责：通过 `IPlatformWindow` 管理 SDL2 窗口生命周期；通过 `IGraphicsContext` 持有并操作 OpenGL 上下文；创建和维护双帧缓冲（`worldBuffer` 与 `screenBuffer`）；实例化并管理六个子渲染器（`WorldSpriteRenderer`、`WorldRgbaSpriteRenderer`、`WorldRgbaColorRenderer` 以及对应的 UI 版本）；以及维护一个裁剪状态栈 `scissorState` 用于嵌套裁剪区域。`Renderer` 不直接绘制任何图形，而是通过 `IBatchRenderer currentBatchRenderer` 委托当前的批量渲染器执行实际的 GPU 提交。
 
 #### 2.1.2 关键方法与帧管理流程
 
@@ -202,7 +203,7 @@ OpenRA 手动计算 $Y+Z+ZOffset$ 排序键的做法在 Babylon.js 3D 环境中�
 
 #### 2.5.1 IShader 接口与 GLSL 着色器
 
-OpenRA 的着色器系统由接口 `IShader`（定义于 `OpenRA.Game/Graphics/Shader.cs`）与平台实现类 `Shader`（位于 `OpenRA.Platforms.Default/Shader.cs`）组成。^19^`IShader` 定义了统一操作：`SetBool()`、`SetVec()` 设置 uniform，`SetTexture()` 绑定纹理，`PrepareRender()` 在绘制前完成状态准备。`Shader` 实现负责加载 GLSL 源码、编译并链接 `GL_VERTEX_SHADER` 与 `GL_FRAGMENT_SHADER`，维护 `program` 对象与 uniform 位置缓存字典。^19^OpenRA 使用 4 组 GLSL 着色器文件：`glsl/combined.vert` 与 `glsl/combined.frag` 是主着色器对，处理精灵的顶点变换、调色板查找、ColorShift 和深度采样；`glsl/postprocess.vert` 与 `glsl/postprocess.frag` 用于后处理全屏效果。^19^`combined.frag` 的核心流程是：采样精灵纹理（`Texture0-Texture7` 之一）→ 通过 `dot(tex, vChannelMask)` 提取通道索引值 → 从 `Palette` 纹理中查找 RGBA 颜色 → 应用 `ColorShifts` 的 HSV 偏移 → 乘以 `vTint` 染色 → Alpha 测试丢弃透明像素。^9^#### 2.5.2 顶点格式 Vertex
+OpenRA 的着色器系统由接口 `IShader`（定义于 `OpenRA.Game/Graphics/PlatformInterfaces.cs`）与平台实现类 `Shader`（位于 `OpenRA.Platforms.Default/Shader.cs`）组成。^19^`IShader` 定义了统一操作：`SetBool()`、`SetVec()` 设置 uniform，`SetTexture()` 绑定纹理，`PrepareRender()` 在绘制前完成状态准备。`Shader` 实现负责加载 GLSL 源码、编译并链接 `GL_VERTEX_SHADER` 与 `GL_FRAGMENT_SHADER`，维护 `program` 对象与 uniform 位置缓存字典。^19^OpenRA 使用 4 组 GLSL 着色器文件：`glsl/combined.vert` 与 `glsl/combined.frag` 是主着色器对，处理精灵的顶点变换、调色板查找、ColorShift 和深度采样；`glsl/postprocess.vert` 与 `glsl/postprocess.frag` 用于后处理全屏效果。^19^`combined.frag` 的核心流程是：采样精灵纹理（`Texture0-Texture7` 之一）→ 通过 `dot(tex, vChannelMask)` 提取通道索引值 → 从 `Palette` 纹理中查找 RGBA 颜色 → 应用 `ColorShifts` 的 HSV 偏移 → 乘以 `vTint` 染色 → Alpha 测试丢弃透明像素。^9^#### 2.5.2 顶点格式 Vertex
 
 `Vertex` 结构定义于 `OpenRA.Game/Graphics/Vertex.cs`，使用 `[StructLayout(LayoutKind.Sequential)]` 确保 C# 内存布局与 GPU 顶点属性严格对齐，总大小 48 字节。^30^字段布局如下：位置 `X, Y, Z`（12 bytes, offset 0）；主/次纹理坐标 `S, T, U, V`（16 bytes, offset 12）；32-bit 属性掩码 `C`（4 bytes, offset 28），位编码 `[0:1]` 通道类型、`[2]` RGBA 标志、`[6:8]` 主 sampler 索引、`[9:11]` 次 sampler 索引、`[16:31]` 调色板纹理行索引；色调 `R, G, B`（12 bytes, offset 32）；透明度 `A`（4 bytes, offset 36）。^30^`CombinedShaderBindings` 类将此布局映射到 GLSL 属性：`aVertexPosition`（float3）、`aVertexTexCoord`（float4）、`aVertexAttributes`（uint）、`aVertexTint`（float4）。
 
@@ -246,13 +247,13 @@ public interface IRenderPostProcessPass {
 
 | 序号 | OpenRA 文件路径 | 类名 | 核心作用 | Babylon.js 对应方案 | 迁移复杂度 | 关键注意事项 |
 |:---:|:---|:---|:---|:---|:---:|:---|
-| 1 | `OpenRA.Game/Graphics/Renderer.cs` | `Renderer` | OpenGL 上下文管理、窗口创建、双 FBO 协调、帧循环控制 | `BABYLON.Engine` + `HTMLCanvasElement` | 中 | 移除所有直接 GL 调用；`Engine` 自动管理上下文与交换缓冲 ^8^ ^40^|
+| 1 | `OpenRA.Game/Renderer.cs` | `Renderer` | OpenGL 上下文管理、窗口创建、双 FBO 协调、帧循环控制 | `BABYLON.Engine` + `HTMLCanvasElement` | 中 | 移除所有直接 GL 调用；`Engine` 自动管理上下文与交换缓冲 ^8^ ^40^|
 | 2 | `OpenRA.Game/Graphics/WorldRenderer.cs` | `WorldRenderer` | 世界渲染流程管理、可渲染对象收集与排序、后处理触发 | `BABYLON.Scene` + 自定义 `renderLoop` | 高 | Z-sort 替换为 `renderingGroupId` + `transparentSortCompareFn`；调色板改用 `RawTexture` ^10^|
 | 3 | `OpenRA.Game/Graphics/SpriteRenderer.cs` | `SpriteRenderer` | 精灵批量渲染、8 纹理单元管理、正交投影参数设置 | `BABYLON.SpriteManager` / `BABYLON.ThinInstances` | 高 | 调色板索引需 `ShaderMaterial`；Billboard 模式保持 2D 视觉效果 ^9^ ^32^|
 | 4 | `OpenRA.Game/Graphics/RgbaColorRenderer.cs` | `RgbaColorRenderer` | 纯色几何图形绘制（线/矩形/多边形）、预乘 Alpha 处理 | `BABYLON.GUI` / `CreateLines` / `DynamicTexture` | 低 | GUI 适合 UI 元素，`LinesMesh` 适合调试图形；注意预乘 Alpha 材质配置 ^22^|
 | 5 | `OpenRA.Game/Graphics/RgbaSpriteRenderer.cs` | `RgbaSpriteRenderer` | RGBA 精灵轻量包装、自动跳过调色板查找 | `BABYLON.SpriteManager` + `StandardMaterial` | 低 | 直接使用 `diffuseTexture` + `hasAlpha`，无需自定义着色器 ^47^|
 | 6 | `OpenRA.Game/Graphics/Vertex.cs` | `Vertex` (struct) | 48 字节顶点格式定义、属性位编码 | `BABYLON.VertexData` + 多属性数组 | 中 | 位编码 `C` 可拆分为独立 attribute 简化着色器 ^30^|
-| 7 | `OpenRA.Game/Graphics/Shader.cs` | `IShader` / `Shader` | GLSL 着色器接口与 OpenGL 编译实现 | `BABYLON.ShaderMaterial` / `BABYLON.Effect` | 高 | GLSL 版本差异需 Babylon.js 自动适配；保留调色板查找逻辑 ^19^ ^34^|
+| 7 | `OpenRA.Game/Graphics/PlatformInterfaces.cs` | `IShader` | GLSL 着色器接口定义 | `BABYLON.ShaderMaterial` / `BABYLON.Effect` | 高 | GLSL 版本差异需 Babylon.js 自动适配；保留调色板查找逻辑 ^19^ ^34^|
 | 8 | `OpenRA.Game/Graphics/Util.cs` | `Util` (static) | 顶点生成、索引创建、图像复制、颜色工具 | Babylon 内置 + 自定义工具 | 低 | `FastCreateQuad` 替换为 `MeshBuilder.CreatePlane`；索引由 `VertexData` 自动管理 ^49^|
 | 9 | `OpenRA.Game/Graphics/PlatformInterfaces.cs` | `IGraphicsContext` | GPU 资源创建抽象（VB/IB/Texture/FBO/Shader） | `BABYLON.Engine`（内部管理） | 中 | 资源创建从显式接口调用变为隐式构造函数调用 ^18^|
 | 10 | `glsl/combined.vert` / `combined.frag` | — | 精灵顶点变换、调色板纹理查找、ColorShift、Alpha 测试 | 自定义 `ShaderMaterial` 顶点/片段着色器 | 高 | 保留核心调色板查找算法；适配 Babylon.js uniform 命名 ^9^ ^19^|
