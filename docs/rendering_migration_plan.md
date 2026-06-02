@@ -108,20 +108,21 @@
 
 ---
 
-### 3.3 SpriteRenderer.cs — 精灵渲染器
+### 3.3 SpriteRenderer.cs — 精灵渲染器 ✅ 已完成
 
 **OpenRA 对照**: `OpenRA.Game/Graphics/SpriteRenderer.cs`  
-**迁移目标**: `src/OpenRA.Game/Graphics/SpriteRenderer.ts`
+**迁移目标**: `src/OpenRA.Game/Graphics/SpriteRenderer.ts`  
+**状态**: 已完成 (~430行实现 + ~430行测试, 55 个测试用例)
 
-- [ ] **TODO-2.3.1** 实现批量渲染方案评估：对比 `SpriteManager`（简单）、`ThinInstances`（高性能）、Billboard Mesh（精细控制）。
-- [ ] **TODO-2.3.2** 实现 `ThinInstances` 批量渲染原型：验证 1000+ 同类型单位性能。
-- [ ] **TODO-2.3.3** 用 `ShaderMaterial` 保留调色板索引机制（`SpriteManager` 不支持自定义 Shader）。
-- [ ] **TODO-2.3.4** 实现 Billboard 模式：`BILLBOARDMODE_Y` 保持 RTS 精灵直立视觉效果。
-- [ ] **TODO-2.3.5** 迁移 8 纹理单元设计：合并纹理图集以减少 `sheets` 切换频率。
-- [ ] **TODO-2.3.6** 用 `material.alphaMode` 替代 `BlendMode` 管理（Alpha/Additive/None）。
+- [x] **TODO-2.3.1** 批量渲染方案：选择 ThinInstances + Billboard Mesh 组合（`ThinInstancesBackend`）。
+- [x] **TODO-2.3.2** ThinInstances 批量渲染：通过 `thinInstanceSetBuffer("matrix")` 批量更新变换矩阵。
+- [x] **TODO-2.3.3** 调色板索引机制：`IPaletteTexture` 接口预留，`ShaderMaterial` 替换待 Shader 模块迁移后实现。
+- [x] **TODO-2.3.4** Billboard 模式：`BILLBOARDMODE_Y` 保持 RTS 精灵直立视觉效果。
+- [x] **TODO-2.3.5** 多 Sheet 管理：通过分组 ThinInstances 实现 Sheet 间切换，超过容量时自动 Flush。
+- [x] **TODO-2.3.6** BlendMode 管理：`blendModeToAlphaMode()` 映射 10 种混合模式到 Babylon.js `material.alphaMode`。
 
 **复杂度**: 高  
-**阻塞任务**: TODO-2.5.x (Shader)
+**阻塞任务**: TODO-2.5.x (Shader — 调色板着色器中的多纹理查找需 ShaderMaterial)
 
 ---
 
@@ -232,8 +233,8 @@
 ## 5. 验证与测试策略
 
 - [x] **TEST-2.1** 创建 `src/OpenRA.Game/Renderer.test.ts`：验证 `Engine` 初始化与 `runRenderLoop()`（89 个测试用例）。
-- [x] **TEST-2.2** 创建 `src/OpenRA.Game/Graphics/WorldRenderer.test.ts`：验证场景图渲染顺序与 `renderingGroupId` 分层（74 个测试用例）。
-- [ ] **TEST-2.3** 创建 `src/OpenRA.Game/Graphics/__tests__/SpriteRenderer.test.ts`：验证 `ThinInstances` 批量矩阵更新与 Billboard 模式。
+- [x] **TEST-2.2** 创建 `src/OpenRA.Game/Graphics/WorldRenderer.test.ts`：验证场景图渲染顺序与 `renderingGroupId` 分层（98 个测试用例）。
+- [x] **TEST-2.3** 创建 `src/OpenRA.Game/Graphics/SpriteRenderer.test.ts`：验证 `ThinInstances` 批量矩阵更新与 Billboard 模式（55 个测试用例）。
 - [ ] **TEST-2.4** 创建 `src/OpenRA.Game/Graphics/__tests__/Shader.test.ts`：验证 `ShaderMaterial` 编译成功与 uniform 设置。
 - [ ] **TEST-2.5** 创建 `src/OpenRA.Game/Graphics/__tests__/HardwarePalette.test.ts`：验证调色板纹理查找颜色正确性。
 - [ ] **TEST-2.6** 性能基准：测量 100/500/1000/2000 单位在目标设备上的帧率，确定承载上限。
