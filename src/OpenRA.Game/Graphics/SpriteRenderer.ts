@@ -164,8 +164,8 @@ interface SpriteInstance {
   location: Vec3
   /** 精灵引用 */
   sprite: ISprite
-  /** 缩放因子 */
-  scale: number
+  /** 缩放因子（三维非均匀缩放，对应 OpenRA float3 scale） */
+  scale: Vec3
   /** 旋转（弧度） */
   rotation: number
   /** 色调 */
@@ -174,6 +174,8 @@ interface SpriteInstance {
   alpha: number
   /** 调色板纹理行索引 */
   paletteIndex: number
+  /** 4 角点模式（非 null 时使用自定义顶点位置） */
+  corners?: [Vec3, Vec3, Vec3, Vec3]
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +198,8 @@ export interface ISpriteRenderGroup {
   setPalette(palette: IPaletteTexture | null): void
   /** 是否启用像素艺术缩放 */
   setPixelArtScaling(enabled: boolean): void
+  /** 获取底层 Babylon.js Mesh（用于注册到 Scene 等） */
+  getMesh?(): Mesh
   /** 销毁 GPU 资源 */
   dispose(): void
 }
@@ -218,9 +222,16 @@ export interface ISpriteRenderGroup {
  *   - 迁移版使用 ThinInstances：每个 Sheet 一组，通过 buffer 批量更新矩阵
  *   - 多 Sheet 场景通过分组实现（而非单个 DrawCall 中的多纹理）
  */
-export class SpriteRenderer {
+// IBatchRenderer 接口引用（来自 Renderer）
+export interface IBatchRenderer {
+  flush(): void
+}
+
+export class SpriteRenderer implements IBatchRenderer {
   /** 每个批次的最大精灵数（ThinInstances 限制） */
   static readonly MAX_SPRITES_PER_BATCH = 1024
+  /** 最大同时绑定的 Sheet 数量（迁移版按 Sheet 分组，原始为 8） */
+  static readonly SHEET_COUNT = 8
 
   // -----------------------------------------------------------------------
   // 公共属性
@@ -231,6 +242,9 @@ export class SpriteRenderer {
 
   /** 关联的 Babylon.js Scene */
   readonly scene: Scene
+
+  /** 关联的 Renderer（用于注册 CurrentBatchRenderer） */
+  private renderer: { batchRenderer: IBatchRenderer | null; flush: () => void } | null
 
   // -----------------------------------------------------------------------
   // 内部状态
@@ -254,17 +268,57 @@ export class SpriteRenderer {
   /** 像素艺术缩放标志 */
   private pixelArtScaling = true
 
+  /** 视口参数缓存 */
+  private viewportParams: {
+    size: Size
+    downscale: number
+    depthMargin: number
+    scroll: Vec2
+  } | null = null
+
   // -----------------------------------------------------------------------
   // 构造函数
   // -----------------------------------------------------------------------
 
-  constructor(scene: Scene, backend?: ISpriteRenderBackend) {
+  /**
+   * @param scene Babylon.js Scene
+   * @param renderer Renderer 引用（用于注册 IBatchRenderer）
+   * @param backend 渲染后端（可注入用于测试）
+   */
+  constructor(
+    scene: Scene,
+    renderer?: { batchRenderer: IBatchRenderer | null; flush: () => void } | null,
+    backend?: ISpriteRenderBackend,
+  ) {
     this.scene = scene
+    this.renderer = renderer ?? null
     this.backend = backend ?? new ThinInstancesBackend()
   }
 
   // -----------------------------------------------------------------------
-  // BatchRenderer 接口（IBatchRenderer）
+  // 静态工具方法
+  // -----------------------------------------------------------------------
+
+  /**
+   * 解析精灵的调色板纹理索引（替代 OpenRA ResolveTextureIndex）。
+   *
+   * 优化：RGBA 精灵不需要调色板查找时跳过索引，
+   * 减少不必要的纹理绑定。
+   *
+   * @returns 调色板纹理行索引，不需要时返回 0
+   */
+  static resolveTextureIndex(
+    sprite: ISprite,
+    paletteIndex: number,
+    hasColorShift: boolean,
+  ): number {
+    if (paletteIndex <= 0) return 0
+    if (sprite.channel === TextureChannel.RGBA && !hasColorShift) return 0
+    return paletteIndex
+  }
+
+  // -----------------------------------------------------------------------
+  // IBatchRenderer 接口
   // -----------------------------------------------------------------------
 
   /** 强制提交当前批次（替代 OpenRA Flush） */
@@ -299,18 +353,26 @@ export class SpriteRenderer {
   /**
    * 为精灵设置渲染状态（替代 OpenRA SetRenderStateForSprite）。
    * 检测混合模式/Sheet 变化，必要时自动 Flush。
-   *
-   * @returns 调色板纹理索引
+   * 同时注册自身为 Renderer 的活跃 IBatchRenderer。
    */
-  private setRenderStateForSprite(sprite: ISprite, _paletteIndex: number): void {
+  private setRenderStateForSprite(sprite: ISprite): void {
+    // 注册为当前批量渲染器（对应 OpenRA renderer.CurrentBatchRenderer = this）
+    if (this.renderer) {
+      this.renderer.batchRenderer = this
+    }
+
     // 混合模式变化 → Flush
     if (sprite.blendMode !== this.currentBlend) {
       this.flush()
       this.currentBlend = sprite.blendMode
     }
 
-    // Sheet 变化 → Flush（迁移版限制：每批次仅一个 Sheet）
-    // 原始 OpenRA 支持 8 个 Sheet 同时绑定，迁移版通过分组实现
+    // Sheet 变化 → Flush
+    // 设计决策：原始 OpenRA 支持单个 draw call 中同时绑定最多 8 个 Sheet 纹理
+    // （通过着色器的 8 个 sampler）。迁移版按 Sheet 分组 ThinInstances，
+    // Sheet 变化时自动 Flush，会导致更多 draw call。
+    // 在 WebGL 2.0 环境下（支持 16+ 纹理单元），未来可通过自定义 ShaderMaterial
+    // 恢复多纹理绑定以减少 draw call。当前简化以优先保证正确性。
     if (this.currentSheet !== null && this.currentSheet !== sprite.sheet) {
       this.flush()
     }
@@ -323,54 +385,57 @@ export class SpriteRenderer {
   // -----------------------------------------------------------------------
 
   /**
-   * 绘制精灵（完整参数版）。
-   * 对应 OpenRA DrawSprite(Sprite, float3, float, float, float3, float)。
+   * 绘制精灵（完整参数版，float3 scale 非均匀缩放）。
+   * 对应 OpenRA DrawSprite(Sprite, int, float3, float3, float, float3, float)。
    *
    * @param sprite 精灵引用
+   * @param paletteIndex 调色板纹理行索引
    * @param location 世界坐标
-   * @param scale 缩放因子
+   * @param scale 三维非均匀缩放
    * @param rotation 旋转（弧度）
    * @param tint 色调 (R, G, B)
    * @param alpha 透明度 (0-1)
-   * @param paletteIndex 调色板行索引
    */
   drawSprite(
     sprite: ISprite,
+    paletteIndex: number,
     location: Vec3,
-    scale = 1,
+    scale: Vec3 | number = 1,
     rotation = 0,
     tint: Vec3 = { x: 1, y: 1, z: 1 },
     alpha = 1,
-    paletteIndex = 0,
   ): void {
-    this.setRenderStateForSprite(sprite, paletteIndex)
+    this.setRenderStateForSprite(sprite)
+
+    const scaleVec: Vec3 = typeof scale === 'number'
+      ? { x: scale, y: scale, z: 1 }
+      : { ...scale }
 
     this.instances.push({
       location: { ...location },
       sprite,
-      scale,
+      scale: scaleVec,
       rotation,
       tint: { ...tint },
       alpha: Math.max(0, Math.min(1, alpha)),
       paletteIndex,
     })
 
-    // 缓冲区满时自动 Flush
     if (this.instances.length >= SpriteRenderer.MAX_SPRITES_PER_BATCH) {
       this.flush()
     }
   }
 
   /**
-   * 绘制精灵（简化版——无色调/透明度）。
+   * 绘制精灵（简化版——仅位置）。
    * 对应 OpenRA DrawSprite(Sprite, float3, float)。
    */
   drawSpriteSimple(sprite: ISprite, location: Vec3, scale = 1): void {
-    this.drawSprite(sprite, location, scale, 0, { x: 1, y: 1, z: 1 }, 1)
+    this.drawSprite(sprite, 0, location, { x: scale, y: scale, z: 1 })
   }
 
   /**
-   * 绘制精灵（带调色板引用版）。
+   * 绘制精灵（带 PaletteReference 版）。
    * 对应 OpenRA DrawSprite(Sprite, PaletteReference, float3, float)。
    */
   drawSpriteWithPalette(
@@ -379,7 +444,97 @@ export class SpriteRenderer {
     location: Vec3,
     scale = 1,
   ): void {
-    this.drawSprite(sprite, location, scale, 0, { x: 1, y: 1, z: 1 }, 1, paletteIndex)
+    this.drawSprite(sprite, paletteIndex, location, { x: scale, y: scale, z: 1 })
+  }
+
+  /**
+   * 4 角点精灵绘制（任意四边形、变形效果）。
+   * 对应 OpenRA DrawSprite(Sprite, int, float3, float3, float3, float3, float3, float)。
+   */
+  drawSpriteCorners(
+    sprite: ISprite,
+    paletteIndex: number,
+    a: Vec3,
+    b: Vec3,
+    c: Vec3,
+    d: Vec3,
+    tint: Vec3 = { x: 1, y: 1, z: 1 },
+    alpha = 1,
+  ): void {
+    this.setRenderStateForSprite(sprite)
+
+    // 使用 4 角点的最小坐标作为 location，scale 为 1
+    const minX = Math.min(a.x, b.x, c.x, d.x)
+    const minY = Math.min(a.y, b.y, c.y, d.y)
+    const minZ = Math.min(a.z, b.z, c.z, d.z)
+
+    this.instances.push({
+      location: { x: minX, y: minY, z: minZ },
+      sprite,
+      scale: { x: 1, y: 1, z: 1 },
+      rotation: 0,
+      tint: { ...tint },
+      alpha: Math.max(0, Math.min(1, alpha)),
+      paletteIndex,
+      corners: [
+        { x: a.x - minX, y: a.y - minY, z: a.z - minZ },
+        { x: b.x - minX, y: b.y - minY, z: b.z - minZ },
+        { x: c.x - minX, y: c.y - minY, z: c.z - minZ },
+        { x: d.x - minX, y: d.y - minY, z: d.z - minZ },
+      ],
+    })
+
+    if (this.instances.length >= SpriteRenderer.MAX_SPRITES_PER_BATCH) {
+      this.flush()
+    }
+  }
+
+  /**
+   * 绘制纯色 RGBA 四边形（供 RgbaColorRenderer 使用）。
+   * 对应 OpenRA DrawRGBAQuad(Vertex[], BlendMode)。
+   */
+  drawRGBAQuad(_vertices: unknown[], blendMode: BlendMode): void {
+    // 注册为当前批量渲染器
+    if (this.renderer) {
+      this.renderer.batchRenderer = this
+    }
+
+    if (this.currentBlend !== blendMode || this.instances.length + 4 > SpriteRenderer.MAX_SPRITES_PER_BATCH) {
+      this.flush()
+    }
+    this.currentBlend = blendMode
+
+    // TODO: RGBA 四边形顶点追加到批量管线
+    // 需要使用无纹理模式（paletteIndex 设为特殊值表示 RGBA 模式）
+    // RgbaColorRenderer 模块迁移后实现完整顶点追加逻辑
+  }
+
+  /**
+   * 绘制预构建的顶点缓冲（通用批量渲染入口）。
+   * 对应 OpenRA DrawVertexBuffer(IVertexBuffer<Vertex>, IIndexBuffer, int, int, IEnumerable<Sheet>, BlendMode)。
+   *
+   * TODO: Vertex/IndexBuffer 模块迁移后实现完整逻辑。
+   * 当前保留 API 兼容性存根。
+   */
+  drawVertexBuffer(
+    _buffer: unknown,
+    _indices: unknown,
+    _start: number,
+    _length: number,
+    _sheets: ISheet[],
+    blendMode: BlendMode,
+  ): void {
+    if (this.renderer) {
+      this.renderer.batchRenderer = this
+    }
+
+    if (this.currentBlend !== blendMode) {
+      this.flush()
+    }
+    this.currentBlend = blendMode
+
+    // TODO: VertexBuffer + IndexBuffer 模块迁移后实现
+    // renderer.DrawBatch(vertices, indices, start, length, sheets, blendMode)
   }
 
   // -----------------------------------------------------------------------
@@ -413,15 +568,45 @@ export class SpriteRenderer {
    * @param _depthMargin 深度边距
    * @param _scroll 视口滚动偏移
    */
+  /**
+   * 设置视口/投影参数（替代 OpenRA SetViewportParams）。
+   *
+   * 原始 OpenRA 计算正交投影参数并设置 shader uniform：
+   *   shader.SetVec("DepthTextureScale", 128 * depth)
+   *   shader.SetVec("Scroll", scroll.X, scroll.Y, ...)
+   *   shader.SetVec("p1", width, height, -depth)
+   *   shader.SetVec("p2", -1, -1, ...)
+   *
+   * 在 Babylon.js 架构下，正交投影由 OrthographicCamera 管理。
+   * 此方法存储参数供后续 ShaderMaterial uniform 设置使用。
+   * Shader 模块迁移后需在此处设置对应 uniform。
+   */
   setViewportParams(
-    _size: Size,
-    _downscale: number,
-    _depthMargin: number,
-    _scroll: Vec2,
+    size: Size,
+    downscale: number,
+    depthMargin: number,
+    scroll: Vec2,
   ): void {
-    // 在 Babylon.js 架构下，正交投影由相机管理。
-    // 此方法保留 API 兼容性，存储参数供后续着色器 uniform 使用。
-    // 实际投影在 Renderer.updateWorldCameraViewport() 中配置。
+    this.viewportParams = {
+      size: { ...size },
+      downscale,
+      depthMargin,
+      scroll: { ...scroll },
+    }
+    // TODO: Shader 模块迁移后设置 uniform
+    // if (shader) {
+    //   shader.setVector3("p1", p1_x, p1_y, p1_z)
+    //   shader.setVector3("p2", p2_x, p2_y, p2_z)
+    //   shader.setVector2("Scroll", scroll.x, scroll.y)
+    //   shader.setFloat("DepthTextureScale", 128 * depth)
+    // }
+  }
+
+  /** 获取视口参数 */
+  getViewportParams(): {
+    size: Size; downscale: number; depthMargin: number; scroll: Vec2
+  } | null {
+    return this.viewportParams
   }
 
   // -----------------------------------------------------------------------
@@ -511,8 +696,8 @@ export class ThinInstancesBackend implements ISpriteRenderBackend {
 
   getOrCreateGroup(sheet: ISheet, scene: Scene): ISpriteRenderGroup {
     const group = new ThinInstancesGroup(sheet, scene)
-    // Mesh 引用用于 dispose
-    const mesh = (group as unknown as { getMesh(): Mesh }).getMesh()
+    // Mesh 引用用于 dispose（通过接口的 getMesh() 方法而非类型强转）
+    const mesh = group.getMesh?.()
     if (mesh) this.groups.set(group, mesh)
     return group
   }
@@ -571,24 +756,30 @@ class ThinInstancesGroup implements ISpriteRenderGroup {
     for (let i = 0; i < instances.length; i++) {
       const inst = instances[i]
 
-      // 构建世界矩阵：平移 → 旋转（绕 Z 轴）→ 缩放
-      const translation = Matrix.Translation(
-        inst.location.x + inst.sprite.offset.x * inst.scale,
-        inst.location.y + inst.sprite.offset.y * inst.scale + inst.sprite.zRamp,
-        inst.location.z + inst.sprite.offset.z * inst.scale,
-      )
-
+      // 世界矩阵构建：正确顺序 T * R * S（先缩放，再旋转，最后平移）
+      // Babylon.js 使用列向量约定：A.multiply(B) = A * B
+      // 应用到顶点 v：T * R * S * v = 先 S 缩放，再 R 旋转，最后 T 平移
       const scaleMatrix = Matrix.Scaling(
-        inst.sprite.size.x * inst.scale,
-        inst.sprite.size.y * inst.scale,
-        1,
+        inst.sprite.size.x * inst.scale.x,
+        inst.sprite.size.y * inst.scale.y,
+        inst.scale.z,
       )
 
       const rotMatrix = Matrix.RotationZ(inst.rotation)
 
-      const world = scaleMatrix
+      // zRamp 应与 offset 一起被缩放（审核发现：zRamp 未乘 scale）
+      const scaledZRamp = inst.sprite.zRamp * inst.scale.y
+
+      const translation = Matrix.Translation(
+        inst.location.x + inst.sprite.offset.x * inst.scale.x,
+        inst.location.y + inst.sprite.offset.y * inst.scale.y + scaledZRamp,
+        inst.location.z + inst.sprite.offset.z * inst.scale.z,
+      )
+
+      // T * R * S（正确的 SRT 顺序）
+      const world = translation
         .multiply(rotMatrix)
-        .multiply(translation)
+        .multiply(scaleMatrix)
 
       // 复制到缓冲区
       const m = world.m

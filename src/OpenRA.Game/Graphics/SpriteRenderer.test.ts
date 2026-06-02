@@ -225,7 +225,7 @@ describe('SpriteRenderer', () => {
     groups = new Map()
     backend = createMockBackend(groups)
     scene = {} as unknown as import('@babylonjs/core').Scene
-    sr = new SpriteRenderer(scene, backend)
+    sr = new SpriteRenderer(scene, null, backend)
     sheet = createMockSheet()
     sprite = createMockSprite({ sheet })
   })
@@ -251,7 +251,7 @@ describe('SpriteRenderer', () => {
     })
 
     it('uses ThinInstancesBackend by default when scene provided', () => {
-      const defaultSr = new SpriteRenderer(scene)
+      const defaultSr = new SpriteRenderer(scene, null)
       expect(defaultSr.batchSize).toBe(0)
       defaultSr.dispose()
     })
@@ -262,44 +262,44 @@ describe('SpriteRenderer', () => {
   // ========================================================================
   describe('drawSprite', () => {
     it('accumulates instances without immediate flush', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       expect(sr.batchSize).toBe(1)
     })
 
     it('accumulates multiple draw calls', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
-      sr.drawSprite(sprite, { x: 1, y: 0, z: 0 })
-      sr.drawSprite(sprite, { x: 2, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 1, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 2, y: 0, z: 0 })
       expect(sr.batchSize).toBe(3)
     })
 
     it('supports scale parameter', () => {
-      sr.drawSprite(sprite, { x: 5, y: 0, z: 0 }, 2)
+      sr.drawSprite(sprite, 0, { x: 5, y: 0, z: 0 }, 2)
       sr.flush()
       // 验证 backend 被调用
       expect(backend.getOrCreateGroup).toHaveBeenCalled()
     })
 
     it('supports rotation parameter', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 }, 1, Math.PI / 4)
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 }, 1, Math.PI / 4)
       sr.flush()
       expect(backend.getOrCreateGroup).toHaveBeenCalled()
     })
 
     it('supports tint parameter', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 }, 1, 0, { x: 0.5, y: 1, z: 0.5 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 }, 1, 0, { x: 0.5, y: 1, z: 0.5 })
       sr.flush()
       expect(backend.getOrCreateGroup).toHaveBeenCalled()
     })
 
     it('supports alpha parameter', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 }, 1, 0, { x: 1, y: 1, z: 1 }, 0.5)
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 }, 1, 0, { x: 1, y: 1, z: 1 }, 0.5)
       sr.flush()
       expect(backend.getOrCreateGroup).toHaveBeenCalled()
     })
 
     it('clamps alpha to [0, 1]', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 }, 1, 0, { x: 1, y: 1, z: 1 }, 2.5)
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 }, 1, 0, { x: 1, y: 1, z: 1 }, 2.5)
       // alpha 被 clamp 为 1.0
       sr.flush()
       expect(backend.getOrCreateGroup).toHaveBeenCalled()
@@ -331,10 +331,10 @@ describe('SpriteRenderer', () => {
   // ========================================================================
   describe('auto-flush on blend mode change', () => {
     it('flushes when sprite blend mode differs', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 }) // Alpha
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 }) // Alpha
 
       const additive = createMockSprite({ sheet, blendMode: BlendMode.Additive })
-      sr.drawSprite(additive, { x: 1, y: 0, z: 0 })
+      sr.drawSprite(additive, 0, { x: 1, y: 0, z: 0 })
 
       // 第一批 (Alpha) 已 flush，第二批 (Additive) 在缓冲区中
       expect(sr.batchSize).toBe(1)
@@ -342,8 +342,8 @@ describe('SpriteRenderer', () => {
     })
 
     it('does not flush when same blend mode', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
-      sr.drawSprite(sprite, { x: 1, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 1, y: 0, z: 0 })
       expect(sr.batchSize).toBe(2)
     })
   })
@@ -356,8 +356,8 @@ describe('SpriteRenderer', () => {
       const sheet2 = createMockSheet({ size: { width: 256, height: 256 } })
       const sprite2 = createMockSprite({ sheet: sheet2 })
 
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
-      sr.drawSprite(sprite2, { x: 1, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite2, 0, { x: 1, y: 0, z: 0 })
 
       // 第一批 (sheet1) 已 flush，第二批 (sheet2) 在缓冲区中
       expect(sr.batchSize).toBe(1)
@@ -371,7 +371,7 @@ describe('SpriteRenderer', () => {
     it('flushes when reaching MAX_SPRITES_PER_BATCH', () => {
       const limit = SpriteRenderer.MAX_SPRITES_PER_BATCH
       for (let i = 0; i < limit; i++) {
-        sr.drawSprite(sprite, { x: i, y: 0, z: 0 })
+        sr.drawSprite(sprite, 0, { x: i, y: 0, z: 0 })
       }
       // 到达上限时自动 flush
       expect(sr.batchSize).toBe(0)
@@ -380,7 +380,7 @@ describe('SpriteRenderer', () => {
     it('does not flush below limit', () => {
       const limit = SpriteRenderer.MAX_SPRITES_PER_BATCH
       for (let i = 0; i < limit - 1; i++) {
-        sr.drawSprite(sprite, { x: i, y: 0, z: 0 })
+        sr.drawSprite(sprite, 0, { x: i, y: 0, z: 0 })
       }
       expect(sr.batchSize).toBe(limit - 1)
     })
@@ -391,8 +391,8 @@ describe('SpriteRenderer', () => {
   // ========================================================================
   describe('flush', () => {
     it('clears batch after flush', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
-      sr.drawSprite(sprite, { x: 1, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 1, y: 0, z: 0 })
       sr.flush()
       expect(sr.batchSize).toBe(0)
     })
@@ -403,7 +403,7 @@ describe('SpriteRenderer', () => {
     })
 
     it('submits instances to backend groups', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 }, 1, 0, { x: 1, y: 1, z: 1 }, 1)
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 }, 1, 0, { x: 1, y: 1, z: 1 }, 1)
       sr.flush()
 
       const group = groups.get(sheet)
@@ -415,8 +415,8 @@ describe('SpriteRenderer', () => {
       const sheet2 = createMockSheet({ size: { width: 256, height: 256 } })
       const sprite2 = createMockSprite({ sheet: sheet2 })
 
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
-      sr.drawSprite(sprite2, { x: 1, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite2, 0, { x: 1, y: 0, z: 0 })
       sr.flush()
 
       // 两个 sheet 分别创建了 group
@@ -424,13 +424,13 @@ describe('SpriteRenderer', () => {
     })
 
     it('resets currentSheet after flush', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.flush()
 
       // flush 后可以接受新 sheet 而不触发额外的 flush
       const sheet2 = createMockSheet({ size: { width: 256, height: 256 } })
       const sprite2 = createMockSprite({ sheet: sheet2 })
-      sr.drawSprite(sprite2, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite2, 0, { x: 0, y: 0, z: 0 })
       expect(sr.batchSize).toBe(1)
     })
   })
@@ -440,7 +440,7 @@ describe('SpriteRenderer', () => {
   // ========================================================================
   describe('setPalette', () => {
     it('flushes before setting palette', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       const palette: IPaletteTexture = {
         texture: {} as unknown as IPaletteTexture['texture'],
         height: 256,
@@ -456,7 +456,7 @@ describe('SpriteRenderer', () => {
         height: 256,
       }
       sr.setPalette(palette)
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.flush()
 
       const group = groups.get(sheet)
@@ -505,14 +505,14 @@ describe('SpriteRenderer', () => {
     })
 
     it('flushes before changing scaling mode', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.enablePixelArtScaling(false)
       expect(sr.batchSize).toBe(0)
     })
 
     it('passes scaling mode to groups on flush', () => {
       sr.enablePixelArtScaling(true)
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.flush()
 
       const group = groups.get(sheet)
@@ -529,7 +529,7 @@ describe('SpriteRenderer', () => {
     })
 
     it('flushes before changing depth preview', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.setDepthPreview(true, 0, 100)
       expect(sr.batchSize).toBe(0)
     })
@@ -543,18 +543,18 @@ describe('SpriteRenderer', () => {
       const sheet2 = createMockSheet({ size: { width: 256, height: 256 } })
       const sprite2 = createMockSprite({ sheet: sheet2 })
 
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.flush()
-      sr.drawSprite(sprite2, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite2, 0, { x: 0, y: 0, z: 0 })
       sr.flush()
 
       expect(groups.size).toBe(2)
     })
 
     it('reuses group for same sheet', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.flush()
-      sr.drawSprite(sprite, { x: 1, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 1, y: 0, z: 0 })
       sr.flush()
 
       // 同一个 sheet 应该只创建一个 group
@@ -567,13 +567,13 @@ describe('SpriteRenderer', () => {
   // ========================================================================
   describe('dispose', () => {
     it('flushes pending batch before dispose', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.dispose()
       expect(sr.batchSize).toBe(0)
     })
 
     it('disposes all groups', () => {
-      sr.drawSprite(sprite, { x: 0, y: 0, z: 0 })
+      sr.drawSprite(sprite, 0, { x: 0, y: 0, z: 0 })
       sr.flush()
       const group = groups.get(sheet)
       sr.dispose()
