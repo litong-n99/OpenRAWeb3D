@@ -96,7 +96,7 @@ vi.mock('@babylonjs/core', () => {
       CreatePlane: vi.fn().mockImplementation(() => ({
         dispose: vi.fn(),
         material: null,
-        position: { z: 0 },
+        position: { x: 0, y: 0, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
         scaling: { x: 1, y: 1, z: 1 },
       })),
@@ -106,6 +106,7 @@ vi.mock('@babylonjs/core', () => {
       this.diffuseTexture = null
       this.emissiveColor = null
       this.disableLighting = false
+      this.backFaceCulling = true
     }),
     Texture: { BILINEAR_SAMPLINGMODE: 2 },
     Color4: Color4Mock,
@@ -638,6 +639,27 @@ describe('Renderer', () => {
       renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
       renderer.beginUI()
       expect(MeshBuilder.CreatePlane).toHaveBeenCalledTimes(callCount)
+    })
+
+    // Bug-7: 禁用背面剔除
+    it('sets backFaceCulling = false on world quad material', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+
+      const mat = vi.mocked(StandardMaterial).mock.results.at(-1)?.value
+      expect(mat).toBeDefined()
+      expect(mat.backFaceCulling).toBe(false)
+    })
+
+    // Bug-10: quad 位置对齐 uiCamera 视口中心 (0.5, 0.5)
+    it('positions world quad at viewport center (0.5, 0.5)', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+
+      const quad = vi.mocked(MeshBuilder.CreatePlane).mock.results.at(-1)?.value
+      expect(quad).toBeDefined()
+      expect(quad.position.x).toBe(0.5)
+      expect(quad.position.y).toBe(0.5)
     })
   })
 

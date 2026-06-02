@@ -564,16 +564,18 @@ export class Renderer {
       // 默认 backFaceCulling = true 会导致背面被剔除。禁用背面剔除确保可见。
       mat.backFaceCulling = false
       quad.material = mat
+      // Bug-10: uiCamera ortho 范围 [0,1]×[0,1]，视口中心在 (0.5, 0.5)。
+      // CreatePlane 默认中心在 (0,0)，需位移到视口中心才能全屏显示。
+      quad.position.x = 0.5
+      quad.position.y = 0.5
       quad.position.z = 1
 
       this.worldScreenQuad = quad
       this.worldScreenMaterial = mat
-    } else {
-      // RTT 重建后仅需更新 texture 引用
-      if (this.worldScreenMaterial) {
-        this.worldScreenMaterial.diffuseTexture = this.worldRenderTarget
-      }
     }
+    // 注意：无需 else 分支更新 texture 引用 — ensureWorldRenderTarget 在重建
+    // RTT 时已销毁 worldScreenQuad/worldScreenMaterial（设为 null），下次
+    // renderWorldToScreen 必然进入 if 分支重建。缓存重建由 ensureWorldRenderTarget 负责。
 
     // Diff-5: 根据 worldRenderTarget 与屏幕分辨率的宽高比调整 quad scaling，
     // 避免画面拉伸。原始 OpenRA 中通过 bufferScale 精确控制 world→screen 映射。
