@@ -535,15 +535,13 @@ describe('Renderer', () => {
       expect(renderer.getRenderBufferSnapshot()).toBe(worldRT)
     })
 
-    it('returns screenRenderTarget when in UI state', () => {
+    it('returns worldRenderTarget when in UI state', () => {
       renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
       renderer.beginUI()
-      // screenRenderTarget 可能为 null（如果分辨率未触发重建）
-      // 此时应回退到 worldRenderTarget
+      // Bug-6 修复后：无论 World 还是 UI 阶段，始终返回 worldRenderTarget
       const snapshot = renderer.getRenderBufferSnapshot()
-      const screenRT = (renderer as unknown as { screenRenderTarget: unknown }).screenRenderTarget
       const worldRT = (renderer as unknown as { worldRenderTarget: unknown }).worldRenderTarget
-      expect(snapshot === screenRT || snapshot === worldRT).toBe(true)
+      expect(snapshot).toBe(worldRT)
     })
 
     it('returns null when nothing is initialized', () => {

@@ -365,15 +365,19 @@ export class Renderer {
 
   /**
    * 每帧开始时调用（替代 OpenRA BeginFrame）
-   * 原始代码中负责：Context.Clear()、screenBuffer 重建、SpriteRenderer.SetViewportParams。
+   * 原始代码中负责：Context.Clear()、screenBuffer 重建、screenSprite 重建、
+   * SpriteRenderer.SetViewportParams。
+   *
    * 在 Babylon.js 架构下：
-   *   - 缓冲清除由 Engine.runRenderLoop 自动处理
+   *   - 缓冲清除由 scene.render() 自动处理
    *   - screenBuffer（screenRenderTarget）已移除，uiScene 直接渲染到 backbuffer
-   *   - SpriteRenderer 迁移后将在此处设置 viewport 参数
-   * 当前保留为 API 兼容性空壳。
+   *   - SpriteRenderer / 子渲染器迁移后将在此处设置 viewport 参数
+   *
+   * Diff-6: 当前为 API 兼容性空壳。子渲染器迁移后需在此处根据 resolution 和
+   * windowScale 的变化更新子渲染器的视口参数（等效于原始 SetViewportParams）。
    */
   beginFrame(): void {
-    // TODO: SpriteRenderer 迁移后添加 SetViewportParams 等初始化逻辑
+    // TODO: 子渲染器迁移后添加 SetViewportParams 等初始化逻辑
   }
 
   /**
@@ -556,6 +560,9 @@ export class Renderer {
       mat.diffuseTexture = this.worldRenderTarget
       mat.emissiveColor = new Color3(1, 1, 1)
       mat.disableLighting = true
+      // Bug-7: rotation.x = Math.PI 翻转后法线朝 -Z，相机从 -Z 看向 +Z，
+      // 默认 backFaceCulling = true 会导致背面被剔除。禁用背面剔除确保可见。
+      mat.backFaceCulling = false
       quad.material = mat
       quad.position.z = 1
 
@@ -722,13 +729,10 @@ export class Renderer {
 
   /**
    * 获取当前渲染缓冲快照。
-   * 在 Babylon.js 架构下返回当前活跃 RenderTargetTexture 的引用。
+   * 在 Babylon.js 架构下返回 worldRenderTarget 引用。
    * 调用者通常应在 world 渲染完成后（beginUI 之后）使用，此时 RTT 内容已稳定。
    */
   getRenderBufferSnapshot(): RenderTargetTexture | null {
-    if (this.renderType === RenderType.World) {
-      return this.worldRenderTarget
-    }
     return this.worldRenderTarget
   }
 
@@ -813,9 +817,10 @@ export class Renderer {
   saveScreenshot(): Promise<string> {
     return new Promise((resolve) => {
       this.engine.onEndFrameObservable.addOnce(() => {
+        // 使用 uiCamera 截图以包含 world quad + UI（与原始 screenBuffer 截图语义一致）
         Tools.CreateScreenshotUsingRenderTarget(
           this.engine,
-          this.worldCamera,
+          this.uiCamera,
           { width: this.resolution.width, height: this.resolution.height },
           resolve,
         )
