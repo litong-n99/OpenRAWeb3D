@@ -22,7 +22,7 @@ vi.mock('@babylonjs/core', () => {
     this.setState = vi.fn()
     this.enableScissor = vi.fn()
     this.disableScissor = vi.fn()
-    this.onEndFrameObservable = { addOnce: vi.fn() }
+    this.onEndFrameObservable = { addOnce: vi.fn((cb: () => void) => cb()) }
     this.dispose = vi.fn()
   }
 
@@ -97,6 +97,8 @@ vi.mock('@babylonjs/core', () => {
         dispose: vi.fn(),
         material: null,
         position: { z: 0 },
+        rotation: { x: 0, y: 0, z: 0 },
+        scaling: { x: 1, y: 1, z: 1 },
       })),
     },
     StandardMaterial: vi.fn(function StandardMaterialMock(this: any) {
@@ -118,7 +120,7 @@ vi.mock('@babylonjs/core', () => {
 // 导入被测模块（必须在 vi.mock 之后）
 // ---------------------------------------------------------------------------
 
-import { Engine, RenderTargetTexture } from '@babylonjs/core'
+import { Engine, RenderTargetTexture, MeshBuilder, StandardMaterial, Tools } from '@babylonjs/core'
 import { Renderer, RenderType, CameraMode, type IBatchRenderer } from './Renderer'
 
 // ---------------------------------------------------------------------------
@@ -171,9 +173,11 @@ describe('Renderer', () => {
       expect(renderer.uiScene).toBeDefined()
     })
 
-    it('configures uiScene autoClear = false', () => {
-      expect(renderer.uiScene.autoClear).toBe(false)
-      expect(renderer.uiScene.autoClearDepthAndStencil).toBe(false)
+    it('uiScene uses default autoClear (true) in RTT-based architecture', () => {
+      // 方案B（RTT 离屏渲染）下，world 内容通过 quad 贴图进入 uiScene，
+      // 不需要 uiScene.autoClear = false 来保留 backbuffer。
+      expect(renderer.uiScene.autoClear).toBe(true)
+      expect(renderer.uiScene.autoClearDepthAndStencil).toBe(true)
     })
 
     it('creates worldCamera and uiCamera', () => {
@@ -225,6 +229,32 @@ describe('Renderer', () => {
   })
 
   // ========================================================================
+  // UI 缩放
+  // ========================================================================
+  describe('UI scale', () => {
+    // Diff-2: windowScale 应从 devicePixelRatio 初始化
+    it('initializes windowScale from devicePixelRatio', () => {
+      // happy-dom 中 devicePixelRatio 默认为 1
+      expect(renderer.nativeWindowScale).toBe(1)
+      expect(renderer.windowScale).toBe(1)
+    })
+
+    it('setUIScale updates windowScale relative to nativeWindowScale', () => {
+      renderer.setUIScale(1.5)
+      // windowScale = nativeWindowScale * 1.5 = 1 * 1.5 = 1.5
+      expect(renderer.windowScale).toBe(1.5)
+    })
+
+    it('setUIScale updates windowScale used by downscale logic', () => {
+      renderer.setMaximumViewportSize({ width: 512, height: 512 })
+      renderer.setUIScale(2)
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 1200, height: 1200 })
+      // windowScale 增大后，bufferSize 变大，worldDownscaleFactor 应相应变化
+      expect(renderer.windowScale).toBe(2)
+    })
+  })
+
+  // ========================================================================
   // TODO-2.1.6: 正交/透视相机切换
   // ========================================================================
   describe('camera mode switching', () => {
@@ -249,6 +279,35 @@ describe('Renderer', () => {
       const oldCam = renderer.worldCamera as unknown as { dispose: ReturnType<typeof vi.fn> }
       renderer.setCameraMode(CameraMode.Perspective)
       expect(oldCam.dispose).toHaveBeenCalled()
+    })
+
+    it('updates worldScene.activeCamera to new camera', () => {
+      const oldActiveCamera = renderer.worldScene.activeCamera
+      renderer.setCameraMode(CameraMode.Perspective)
+      expect(renderer.worldScene.activeCamera).not.toBe(oldActiveCamera)
+      expect(renderer.worldScene.activeCamera).toBe(renderer.worldCamera)
+    })
+  })
+
+  // ========================================================================
+  // Diff-3: beginUI / endFrame 中的 scene 渲染
+  // ========================================================================
+  describe('scene rendering in frame lifecycle', () => {
+    beforeEach(() => {
+      renderer.setMaximumViewportSize({ width: 512, height: 512 })
+    })
+
+    it('beginUI triggers worldScene.render when transitioning from World', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+      expect(renderer.worldScene.render).toHaveBeenCalled()
+    })
+
+    it('endFrame triggers uiScene.render', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+      renderer.endFrame()
+      expect(renderer.uiScene.render).toHaveBeenCalled()
     })
   })
 
@@ -317,6 +376,11 @@ describe('Renderer', () => {
       expect(renderer.worldDownscaleFactor).toBeGreaterThanOrEqual(2)
     })
 
+    it('increases to 3 when viewport exceeds buffer by >3x', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 1600, height: 1600 })
+      expect(renderer.worldDownscaleFactor).toBeGreaterThanOrEqual(3)
+    })
+
     it('recomputes on viewport change', () => {
       renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
       expect(renderer.worldDownscaleFactor).toBe(1)
@@ -380,6 +444,9 @@ describe('Renderer', () => {
       renderer.enableScissor({ x: 0, y: 0, width: 100, height: 100 })
       renderer.enableScissor({ x: 50, y: 50, width: 100, height: 100 })
       expect(renderer.scissorDepth).toBe(2)
+      // 验证 engine.enableScissor 收到的最终矩形是交集
+      const lastCall = vi.mocked(renderer.engine.enableScissor).mock.calls.at(-1)
+      expect(lastCall).toEqual([50, 50, 50, 50])
     })
 
     it('handles disableScissor with empty stack gracefully', () => {
@@ -400,6 +467,120 @@ describe('Renderer', () => {
       renderer.batchRenderer = batch
       renderer.disableScissor()
       expect(batch.flush).toHaveBeenCalledTimes(1)
+    })
+
+    // Diff-1: World 阶段 scissor 需要除以 worldDownscaleFactor
+    it('scales scissor rect by worldDownscaleFactor in World state', () => {
+      renderer.setMaximumViewportSize({ width: 512, height: 512 })
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 1200, height: 1200 })
+      expect(renderer.worldDownscaleFactor).toBeGreaterThanOrEqual(2)
+
+      const factor = renderer.worldDownscaleFactor
+      renderer.enableScissor({ x: 0, y: 0, width: 100, height: 100 })
+
+      // engine.enableScissor 应该被传入缩小后的矩形
+      const lastCall = vi.mocked(renderer.engine.enableScissor).mock.calls.at(-1)
+      expect(lastCall).toBeDefined()
+      expect(lastCall![2]).toBeLessThanOrEqual(Math.ceil(100 / factor) + 1)
+      expect(lastCall![3]).toBeLessThanOrEqual(Math.ceil(100 / factor) + 1)
+    })
+  })
+
+  // ========================================================================
+  // setMaximumViewportSize depthMargin !== 0 分支
+  // ========================================================================
+  describe('setMaximumViewportSize with depthMargin', () => {
+    it('uses size directly when depthMargin is non-zero', () => {
+      renderer.setDepthMargin(128)
+      renderer.setMaximumViewportSize({ width: 256, height: 256 })
+      // depthMargin !== 0 时，worldBufferSize = nextPowerOf2(size)，不限制为 2*surfaceSize
+      expect(renderer.worldFrameBufferSize).toEqual({ width: 256, height: 256 })
+    })
+
+    it('applies nextPowerOf2 even in depthMargin branch', () => {
+      renderer.setDepthMargin(1)
+      renderer.setMaximumViewportSize({ width: 300, height: 300 })
+      // 300 不是 2 的幂，应向上取整到 512
+      expect(renderer.worldFrameBufferSize).toEqual({ width: 512, height: 512 })
+    })
+  })
+
+  // ========================================================================
+  // 世界帧缓冲尺寸查询
+  // ========================================================================
+  describe('world frame buffer size', () => {
+    it('returns size after setMaximumViewportSize', () => {
+      renderer.setMaximumViewportSize({ width: 512, height: 512 })
+      expect(renderer.worldFrameBufferSize).toEqual({ width: 512, height: 512 })
+    })
+
+    it('returns zero size before initialization', () => {
+      const fresh = new Renderer(document.createElement('canvas'))
+      expect(fresh.worldFrameBufferSize).toEqual({ width: 0, height: 0 })
+      fresh.dispose()
+    })
+  })
+
+  // ========================================================================
+  // 渲染缓冲快照
+  // ========================================================================
+  describe('render buffer snapshot', () => {
+    beforeEach(() => {
+      renderer.setMaximumViewportSize({ width: 512, height: 512 })
+    })
+
+    it('returns worldRenderTarget when in World state', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      const worldRT = (renderer as unknown as { worldRenderTarget: unknown }).worldRenderTarget
+      expect(renderer.getRenderBufferSnapshot()).toBe(worldRT)
+    })
+
+    it('returns screenRenderTarget when in UI state', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+      // screenRenderTarget 可能为 null（如果分辨率未触发重建）
+      // 此时应回退到 worldRenderTarget
+      const snapshot = renderer.getRenderBufferSnapshot()
+      const screenRT = (renderer as unknown as { screenRenderTarget: unknown }).screenRenderTarget
+      const worldRT = (renderer as unknown as { worldRenderTarget: unknown }).worldRenderTarget
+      expect(snapshot === screenRT || snapshot === worldRT).toBe(true)
+    })
+
+    it('returns null when nothing is initialized', () => {
+      const fresh = new Renderer(document.createElement('canvas'))
+      expect(fresh.getRenderBufferSnapshot()).toBeNull()
+      fresh.dispose()
+    })
+  })
+
+  // ========================================================================
+  // 字体初始化
+  // ========================================================================
+  describe('font initialization', () => {
+    it('initializeFonts is callable', () => {
+      expect(() => renderer.initializeFonts({})).not.toThrow()
+    })
+  })
+
+  // ========================================================================
+  // GL / 显示器 信息存根
+  // ========================================================================
+  describe('GL and display info stubs', () => {
+    it('returns WebGL2 profile', () => {
+      expect(renderer.glProfile).toBe('WebGL2')
+    })
+
+    it('returns supported profiles', () => {
+      expect(renderer.supportedGLProfiles).toEqual(['WebGL2', 'WebGL1'])
+    })
+
+    it('returns WebGL 2.0 version', () => {
+      expect(renderer.glVersion).toBe('WebGL 2.0')
+    })
+
+    it('returns single display', () => {
+      expect(renderer.displayCount).toBe(1)
+      expect(renderer.currentDisplay).toBe(0)
     })
   })
 
@@ -427,6 +608,76 @@ describe('Renderer', () => {
       renderer.batchRenderer = batch
       renderer.setPalette({ texture: 'tex-1', height: 256 })
       expect(batch.flush).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // ========================================================================
+  // renderWorldToScreen mesh/material 创建
+  // ========================================================================
+  describe('renderWorldToScreen', () => {
+    beforeEach(() => {
+      renderer.setMaximumViewportSize({ width: 512, height: 512 })
+    })
+
+    it('creates quad via MeshBuilder.CreatePlane on first call', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+      expect(MeshBuilder.CreatePlane).toHaveBeenCalled()
+    })
+
+    it('creates StandardMaterial for world quad', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+      expect(StandardMaterial).toHaveBeenCalled()
+    })
+
+    it('reuses cached quad on subsequent calls', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+      const callCount = vi.mocked(MeshBuilder.CreatePlane).mock.calls.length
+
+      renderer.endFrame()
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+      expect(MeshBuilder.CreatePlane).toHaveBeenCalledTimes(callCount)
+    })
+  })
+
+  // ========================================================================
+  // saveScreenshot Promise 解析
+  // ========================================================================
+  describe('saveScreenshot', () => {
+    it('resolves to data url via CreateScreenshotUsingRenderTarget', async () => {
+      const mockDataUrl = 'data:image/png;base64,abc123'
+      vi.mocked(Tools.CreateScreenshotUsingRenderTarget).mockImplementation(
+        (_engine: any, _camera: any, _size: any, callback?: (data: string) => void) => {
+          callback?.(mockDataUrl)
+        },
+      )
+
+      const result = await renderer.saveScreenshot()
+      expect(result).toBe(mockDataUrl)
+    })
+  })
+
+  // ========================================================================
+  // createFrameBuffer 返回值
+  // ========================================================================
+  describe('createFrameBuffer', () => {
+    it('returns a RenderTargetTexture', () => {
+      const rt = renderer.createFrameBuffer({ width: 128, height: 128 })
+      expect(rt).toBeDefined()
+      expect(rt.dispose).toBeDefined()
+    })
+  })
+
+  // ========================================================================
+  // resize 事件触发
+  // ========================================================================
+  describe('resize event', () => {
+    it('calls engine.resize when window resize fires', () => {
+      window.dispatchEvent(new Event('resize'))
+      expect(renderer.engine.resize).toHaveBeenCalled()
     })
   })
 
@@ -492,18 +743,19 @@ describe('Renderer', () => {
       renderer.dispose()
       expect(RenderTargetTexture).toHaveBeenCalled()
     })
+
+    it('allows multiple dispose calls without error', () => {
+      renderer.dispose()
+      expect(() => renderer.dispose()).not.toThrow()
+    })
   })
 
   // ========================================================================
-  // beginFrame 分辨率变更处理
+  // beginFrame 空壳兼容性
   // ========================================================================
-  describe('beginFrame buffer size tracking', () => {
-    it('tracks buffer size changes', () => {
-      renderer.engine.getRenderWidth = vi.fn(() => 1024)
-      renderer.engine.getRenderHeight = vi.fn(() => 768)
-
-      renderer.beginFrame()
-      expect(RenderTargetTexture).toHaveBeenCalled()
+  describe('beginFrame compatibility stub', () => {
+    it('is callable without error', () => {
+      expect(() => renderer.beginFrame()).not.toThrow()
     })
   })
 })

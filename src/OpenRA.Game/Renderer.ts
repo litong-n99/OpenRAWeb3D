@@ -21,6 +21,7 @@ import {
   Texture,
   Tools,
   Color3,
+  Mesh,
 } from '@babylonjs/core'
 
 // ---------------------------------------------------------------------------
@@ -140,21 +141,30 @@ export class Renderer {
   private cameraMode: CameraMode = CameraMode.Orthographic
 
   // -----------------------------------------------------------------------
-  // 离屏渲染目标（替代 OpenRA 双 FBO）
+  // 离屏渲染目标（替代 OpenRA worldBuffer）
   // -----------------------------------------------------------------------
   private worldRenderTarget: RenderTargetTexture | null = null
   private worldRenderTargetSize: Size = { width: 0, height: 0 }
-  private screenRenderTarget: RenderTargetTexture | null = null
+
+  // -----------------------------------------------------------------------
+  // 全屏 quad 缓存（避免每帧创建/销毁 GPU 资源）
+  // -----------------------------------------------------------------------
+  private worldScreenQuad: Mesh | null = null
+  private worldScreenMaterial: StandardMaterial | null = null
 
   /** 世界渲染降采样因子（OpenRA WorldDownscaleFactor） */
   worldDownscaleFactor = 1
+
+  /** 世界帧缓冲尺寸（OpenRA WorldFrameBufferSize） */
+  get worldFrameBufferSize(): Size {
+    return { ...this.worldRenderTargetSize }
+  }
 
   // -----------------------------------------------------------------------
   // 分辨率与缩放
   // -----------------------------------------------------------------------
   private lastWorldViewportSize: Size = { width: 0, height: 0 }
   private lastViewportLocation: Vec2 = { x: 0, y: 0 }
-  private lastBufferSize: Size = { width: -1, height: -1 }
   private lastWorldViewport: Rect = { x: 0, y: 0, width: 0, height: 0 }
 
   /** 窗口有效分辨率 */
@@ -173,9 +183,9 @@ export class Renderer {
     }
   }
 
-  /** 窗口缩放因子 */
-  windowScale = 1
-  nativeWindowScale = 1
+  /** 窗口缩放因子（来自 devicePixelRatio，响应 HiDPI） */
+  windowScale: number
+  nativeWindowScale: number
 
   // -----------------------------------------------------------------------
   // 渲染状态
@@ -227,6 +237,11 @@ export class Renderer {
   // -----------------------------------------------------------------------
   fonts: Map<string, unknown> = new Map()
 
+  initializeFonts(_modData: unknown): void {
+    // TODO: 字体系统迁移后实现
+    // 当前保留 API 兼容性存根
+  }
+
   // -----------------------------------------------------------------------
   // 构造函数
   // -----------------------------------------------------------------------
@@ -242,16 +257,25 @@ export class Renderer {
     this.engine = createEngine(canvas, true)
 
     // 双场景架构: worldScene 渲染游戏世界, uiScene 渲染 UI 覆盖层
+    // 架构说明：采用方案B（RTT 离屏渲染）
+    //   1. worldScene 通过 worldCamera.outputRenderTarget 渲染到 worldRenderTarget
+    //   2. worldRenderTarget 通过全屏 quad 贴图进入 uiScene
+    //   3. uiScene 渲染到 backbuffer
+    // 因此 uiScene 需要正常清除（autoClear 保持默认 true），world 内容通过 quad 带入。
     this.worldScene = createScene(this.engine)
     this.uiScene = createScene(this.engine)
-
-    // uiScene 不清除 backbuffer，保留 worldScene 的渲染结果
-    this.uiScene.autoClear = false
-    this.uiScene.autoClearDepthAndStencil = false
 
     // 创建相机
     this.worldCamera = this.createWorldCamera(CameraMode.Orthographic)
     this.uiCamera = this.createUICamera()
+
+    // 绑定场景活跃相机（Bug-1: 构造函数中必须设置 activeCamera）
+    this.worldScene.activeCamera = this.worldCamera
+    this.uiScene.activeCamera = this.uiCamera
+
+    // Diff-2: 从浏览器读取原生缩放因子
+    this.nativeWindowScale = window.devicePixelRatio || 1
+    this.windowScale = this.nativeWindowScale
 
     // 绑定 resize 事件
     window.addEventListener('resize', this.onResize)
@@ -328,28 +352,28 @@ export class Renderer {
   }
 
   // -----------------------------------------------------------------------
+  // UI 缩放
+  // -----------------------------------------------------------------------
+  setUIScale(scale: number): void {
+    // Diff-2: windowScale = nativeWindowScale * UI 缩放系数
+    this.windowScale = this.nativeWindowScale * scale
+  }
+
+  // -----------------------------------------------------------------------
   // 帧管理流程
   // -----------------------------------------------------------------------
 
   /**
    * 每帧开始时调用（替代 OpenRA BeginFrame）
-   * Babylon.js Engine.runRenderLoop() 内部已自动处理缓冲清除与深度重置，
-   * 此方法主要处理分辨率变更时的缓冲区重建。
+   * 原始代码中负责：Context.Clear()、screenBuffer 重建、SpriteRenderer.SetViewportParams。
+   * 在 Babylon.js 架构下：
+   *   - 缓冲清除由 Engine.runRenderLoop 自动处理
+   *   - screenBuffer（screenRenderTarget）已移除，uiScene 直接渲染到 backbuffer
+   *   - SpriteRenderer 迁移后将在此处设置 viewport 参数
+   * 当前保留为 API 兼容性空壳。
    */
   beginFrame(): void {
-    const surfaceSize = this.resolution
-    const scale = this.windowScale
-
-    const bufferSize: Size = {
-      width: Math.ceil(surfaceSize.width / scale),
-      height: Math.ceil(surfaceSize.height / scale),
-    }
-
-    if (bufferSize.width !== this.lastBufferSize.width || bufferSize.height !== this.lastBufferSize.height) {
-      // 重建 screen render target（如果需要）
-      this.ensureScreenRenderTarget(surfaceSize)
-      this.lastBufferSize = bufferSize
-    }
+    // TODO: SpriteRenderer 迁移后添加 SetViewportParams 等初始化逻辑
   }
 
   /**
@@ -361,11 +385,14 @@ export class Renderer {
     if (this.depthMargin === 0) {
       const surfaceSize = this.resolution
       worldBufferSize = {
-        width: Math.min(size.width, 2 * surfaceSize.width),
-        height: Math.min(size.height, 2 * surfaceSize.height),
+        width: nextPowerOf2(Math.min(size.width, 2 * surfaceSize.width)),
+        height: nextPowerOf2(Math.min(size.height, 2 * surfaceSize.height)),
       }
     } else {
-      worldBufferSize = { ...size }
+      worldBufferSize = {
+        width: nextPowerOf2(size.width),
+        height: nextPowerOf2(size.height),
+      }
     }
 
     // 仅在尺寸变化时重建
@@ -393,6 +420,7 @@ export class Renderer {
       throw new Error('beginWorld called before setMaximumViewportSize has been set')
     }
 
+    // Diff-4: 保留 viewportLocation 的浮点精度用于子像素平滑滚动
     const centerLocation = {
       x: Math.round(viewportLocation.x),
       y: Math.round(viewportLocation.y),
@@ -427,9 +455,10 @@ export class Renderer {
       rect.width !== this.lastWorldViewport.width ||
       rect.height !== this.lastWorldViewport.height
     ) {
+      // Diff-4: 使用原始浮点 viewportLocation 计算相机边界，保留子像素精度
       const topLeft = {
-        x: centerLocation.x - Math.floor(viewportSize.width / 2),
-        y: centerLocation.y - Math.floor(viewportSize.height / 2),
+        x: viewportLocation.x - viewportSize.width / 2,
+        y: viewportLocation.y - viewportSize.height / 2,
       }
       this.updateWorldCameraViewport(topLeft, this.worldRenderTargetSize, this.worldDownscaleFactor)
       this.lastWorldViewport = rect
@@ -449,10 +478,13 @@ export class Renderer {
       // 完成世界渲染
       this.flush()
 
+      // Diff-3: 在解除 RTT 绑定前，先将 worldScene 渲染到 worldRenderTarget
+      this.worldScene.render()
+
       // 解除 worldCamera 的 RTT 绑定，使其不再影响后续渲染
       this.worldCamera.outputRenderTarget = null
 
-      // 将 worldRenderTarget 内容通过全屏 quad 绘制到屏幕
+      // 将 worldRenderTarget 内容通过全屏 quad 绘制到 UI 场景
       this.renderWorldToScreen()
     } else {
       // 世界渲染被跳过
@@ -472,8 +504,12 @@ export class Renderer {
 
     this.flush()
 
-    // 渲染 screen compositor 到 backbuffer（如果需要）
-    // Babylon.js Engine 已自动管理 backbuffer 交换
+    // Diff-3: 渲染 UI 场景到 backbuffer
+    // 在原始 OpenRA 中，screenBuffer 先被绑定，然后 UI 渲染到其中，
+    // 最后 EndFrame 将 screenSprite 绘制到 backbuffer。
+    // 在 Babylon.js 架构下，uiScene 直接渲染到 backbuffer，此调用替代了
+    // 原始的 screen compositor + Present() 流程。
+    this.uiScene.render()
 
     this.renderType = RenderType.None
   }
@@ -484,6 +520,11 @@ export class Renderer {
 
   private ensureWorldRenderTarget(size: Size): void {
     this.worldRenderTarget?.dispose()
+    // Bug-2: RTT 重建时同步销毁缓存的 quad/material，确保下次 renderWorldToScreen 重建
+    this.worldScreenQuad?.dispose()
+    this.worldScreenMaterial?.dispose()
+    this.worldScreenQuad = null
+    this.worldScreenMaterial = null
 
     const rtName = 'worldRenderTarget'
     this.worldRenderTarget = new RenderTargetTexture(
@@ -497,41 +538,56 @@ export class Renderer {
         format: Engine.TEXTUREFORMAT_RGBA,
       },
     )
-    this.worldRenderTarget.renderList = []
-    this.worldScene.customRenderTargets.push(this.worldRenderTarget)
-  }
-
-  private ensureScreenRenderTarget(size: Size): void {
-    this.screenRenderTarget?.dispose()
-    this.screenRenderTarget = new RenderTargetTexture(
-      'screenRenderTarget',
-      { width: size.width, height: size.height },
-      this.uiScene,
-      {
-        generateMipMaps: false,
-        generateDepthBuffer: true,
-      },
-    )
+    // Bug-3: 不再设置空 renderList 或推入 customRenderTargets。
+    // 使用 camera.outputRenderTarget 机制驱动离屏渲染，
+    // worldCamera.outputRenderTarget = rtt 会在场景渲染时自动将相机视角输出到 RTT。
   }
 
   private renderWorldToScreen(): void {
     if (!this.worldRenderTarget) return
 
-    // 创建一次性全屏 quad 将 worldRenderTarget 绘制到屏幕
-    // 在实际完整实现中，此 quad 应被缓存以避免每帧重建
-    const quad = MeshBuilder.CreatePlane('worldQuad', { size: 2 }, this.uiScene)
-    const mat = new StandardMaterial('worldMat', this.uiScene)
-    mat.diffuseTexture = this.worldRenderTarget
-    mat.emissiveColor = new Color3(1, 1, 1)
-    mat.disableLighting = true
-    quad.material = mat
-    quad.position.z = 1
+    // Bug-2: 缓存全屏 quad 与 material，避免每帧创建/销毁 GPU 资源
+    if (!this.worldScreenQuad) {
+      const quad = MeshBuilder.CreatePlane('worldQuad', { size: 2 }, this.uiScene)
+      // Bug-4: Y 轴翻转 — WebGL 纹理原点在左下角，屏幕坐标在左上角
+      quad.rotation.x = Math.PI
 
-    // 一帧后销毁此临时 quad（在实际生产代码中应使用持久化 mesh）
-    this.uiScene.onAfterRenderObservable.addOnce(() => {
-      quad.dispose()
-      mat.dispose()
-    })
+      const mat = new StandardMaterial('worldMat', this.uiScene)
+      mat.diffuseTexture = this.worldRenderTarget
+      mat.emissiveColor = new Color3(1, 1, 1)
+      mat.disableLighting = true
+      quad.material = mat
+      quad.position.z = 1
+
+      this.worldScreenQuad = quad
+      this.worldScreenMaterial = mat
+    } else {
+      // RTT 重建后仅需更新 texture 引用
+      if (this.worldScreenMaterial) {
+        this.worldScreenMaterial.diffuseTexture = this.worldRenderTarget
+      }
+    }
+
+    // Diff-5: 根据 worldRenderTarget 与屏幕分辨率的宽高比调整 quad scaling，
+    // 避免画面拉伸。原始 OpenRA 中通过 bufferScale 精确控制 world→screen 映射。
+    const quad = this.worldScreenQuad
+    if (quad) {
+      const res = this.resolution
+      const worldW = this.worldRenderTargetSize.width
+      const worldH = this.worldRenderTargetSize.height
+      const screenAspect = res.width / res.height
+      const worldAspect = worldW / worldH
+
+      if (worldAspect > screenAspect) {
+        // world 更宽，以宽度为基准，高度缩放
+        quad.scaling.x = 1
+        quad.scaling.y = screenAspect / worldAspect
+      } else {
+        // world 更高，以高度为基准，宽度缩放
+        quad.scaling.x = worldAspect / screenAspect
+        quad.scaling.y = 1
+      }
+    }
   }
 
   private updateWorldCameraViewport(topLeft: Vec2, worldSize: Size, downscale: number): void {
@@ -589,10 +645,17 @@ export class Renderer {
 
     this.flush()
 
-    // Babylon.js 中 RenderTargetTexture 不直接支持裁剪测试，
-    // 世界渲染阶段的裁剪通过 Engine 级别的 scissor 实现。
-    // 注意：在 World 渲染阶段，scissor 作用于当前绑定的 FBO。
-    this.engine.enableScissor(r.x, r.y, r.width, r.height)
+    // Diff-1: World 阶段的 scissor 需要根据 downscale 因子缩放
+    const scissorRect = this.renderType === RenderType.World
+      ? {
+          x: Math.floor(r.x / this.worldDownscaleFactor),
+          y: Math.floor(r.y / this.worldDownscaleFactor),
+          width: Math.ceil(r.width / this.worldDownscaleFactor),
+          height: Math.ceil(r.height / this.worldDownscaleFactor),
+        }
+      : r
+
+    this.engine.enableScissor(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
 
     this.scissorState.push(r)
   }
@@ -602,8 +665,17 @@ export class Renderer {
     this.flush()
 
     if (this.scissorState.length > 0) {
-      const rect = this.scissorState[this.scissorState.length - 1]
-      this.engine.enableScissor(rect.x, rect.y, rect.width, rect.height)
+      const r = this.scissorState[this.scissorState.length - 1]
+      // Diff-1: World 阶段的 scissor 恢复时同样需要 downscale
+      const scissorRect = this.renderType === RenderType.World
+        ? {
+            x: Math.floor(r.x / this.worldDownscaleFactor),
+            y: Math.floor(r.y / this.worldDownscaleFactor),
+            width: Math.ceil(r.width / this.worldDownscaleFactor),
+            height: Math.ceil(r.height / this.worldDownscaleFactor),
+          }
+        : r
+      this.engine.enableScissor(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
     } else {
       this.engine.disableScissor()
     }
@@ -642,6 +714,22 @@ export class Renderer {
       throw new Error(`disableAntialiasingFilter called with renderType = ${this.renderType}, expected UI`)
     }
     this.flush()
+  }
+
+  // -----------------------------------------------------------------------
+  // 渲染缓冲快照（小地图等功能依赖）
+  // -----------------------------------------------------------------------
+
+  /**
+   * 获取当前渲染缓冲快照。
+   * 在 Babylon.js 架构下返回当前活跃 RenderTargetTexture 的引用。
+   * 调用者通常应在 world 渲染完成后（beginUI 之后）使用，此时 RTT 内容已稳定。
+   */
+  getRenderBufferSnapshot(): RenderTargetTexture | null {
+    if (this.renderType === RenderType.World) {
+      return this.worldRenderTarget
+    }
+    return this.worldRenderTarget
   }
 
   // -----------------------------------------------------------------------
@@ -692,6 +780,30 @@ export class Renderer {
   tryOpenUrl(url: string): boolean {
     window.open(url, '_blank')
     return true
+  }
+
+  // -----------------------------------------------------------------------
+  // GL / 显示器 信息（Web 环境存根）
+  // -----------------------------------------------------------------------
+
+  get glProfile(): string {
+    return 'WebGL2'
+  }
+
+  get supportedGLProfiles(): string[] {
+    return ['WebGL2', 'WebGL1']
+  }
+
+  get glVersion(): string {
+    return 'WebGL 2.0'
+  }
+
+  get displayCount(): number {
+    return 1
+  }
+
+  get currentDisplay(): number {
+    return 0
   }
 
   // -----------------------------------------------------------------------
@@ -746,8 +858,9 @@ export class Renderer {
 
   dispose(): void {
     window.removeEventListener('resize', this.onResize)
+    this.worldScreenQuad?.dispose()
+    this.worldScreenMaterial?.dispose()
     this.worldRenderTarget?.dispose()
-    this.screenRenderTarget?.dispose()
     this.worldCamera.dispose()
     this.uiCamera.dispose()
     this.worldScene.dispose()
@@ -759,6 +872,17 @@ export class Renderer {
 // ---------------------------------------------------------------------------
 // 工具函数
 // ---------------------------------------------------------------------------
+
+/** 计算不小于 n 的最小 2 的幂（Bug-5） */
+function nextPowerOf2(n: number): number {
+  if (n <= 1) return 1
+  // 对于已经是 2 的幂的数，不递增（与 OpenRA Size.NextPowerOf2 行为一致）
+  let p = 1
+  while (p < n) {
+    p <<= 1
+  }
+  return p
+}
 
 function intersectRect(a: Rect, b: Rect): Rect {
   const x1 = Math.max(a.x, b.x)
