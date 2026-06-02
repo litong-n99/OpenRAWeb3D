@@ -91,6 +91,8 @@ vi.mock('@babylonjs/core', () => {
     RenderTargetTexture: vi.fn(function RenderTargetTextureMock(this: any) {
       this.dispose = vi.fn()
       this.renderList = []
+      this.updateSamplingMode = vi.fn()
+      this.samplingMode = 2 // BILINEAR default
     }),
     MeshBuilder: {
       CreatePlane: vi.fn().mockImplementation(() => ({
@@ -108,7 +110,10 @@ vi.mock('@babylonjs/core', () => {
       this.disableLighting = false
       this.backFaceCulling = true
     }),
-    Texture: { BILINEAR_SAMPLINGMODE: 2 },
+    Texture: {
+      BILINEAR_SAMPLINGMODE: 2,
+      NEAREST_SAMPLINGMODE: 1,
+    },
     Color4: Color4Mock,
     Tools: {
       CreateScreenshotUsingRenderTarget: vi.fn(),
@@ -196,6 +201,23 @@ describe('Renderer', () => {
 
     it('exposes nativeResolution from canvas size', () => {
       expect(renderer.nativeResolution).toEqual({ width: 800, height: 600 })
+    })
+
+    it('accepts custom RendererDeps for test injection', () => {
+      const canvas = document.createElement('canvas')
+      const customEngine = { dispose: vi.fn(), runRenderLoop: vi.fn(), stopRenderLoop: vi.fn(), getRenderWidth: () => 800, getRenderHeight: () => 600, resize: vi.fn(), getDeltaTime: () => 16.67, setState: vi.fn(), enableScissor: vi.fn(), disableScissor: vi.fn(), onEndFrameObservable: { addOnce: vi.fn() } }
+      const customScene = { render: vi.fn(), dispose: vi.fn(), autoClear: true, autoClearDepthAndStencil: true, customRenderTargets: [], onAfterRenderObservable: { addOnce: vi.fn() }, activeCamera: null }
+      const deps = {
+        createEngine: vi.fn().mockReturnValue(customEngine),
+        createScene: vi.fn().mockReturnValue(customScene),
+      }
+      const custom = new Renderer(canvas, deps)
+      expect(deps.createEngine).toHaveBeenCalledTimes(1)
+      expect(deps.createScene).toHaveBeenCalledTimes(2) // worldScene + uiScene
+      expect(custom.engine).toBe(customEngine)
+      expect(custom.worldScene).toBe(customScene)
+      expect(custom.uiScene).toBe(customScene)
+      custom.dispose()
     })
   })
 
@@ -661,6 +683,23 @@ describe('Renderer', () => {
       expect(quad.position.x).toBe(0.5)
       expect(quad.position.y).toBe(0.5)
     })
+
+    // Diff-5: 全屏 quad 宽高比缩放（避免画面拉伸）
+    it('adjusts quad scaling when world aspect differs from screen aspect', () => {
+      // Screen: 800x600 (aspect 4:3 = 1.333)
+      // RTT: 512x512 (aspect 1:1)
+      // worldAspect (1.0) < screenAspect (1.333)
+      // → quad.scaling.x = 0.75, quad.scaling.y = 1
+      renderer.setMaximumViewportSize({ width: 512, height: 512 })
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+
+      const quad = vi.mocked(MeshBuilder.CreatePlane).mock.results.at(-1)?.value
+      expect(quad).toBeDefined()
+      // 方形 RTT (1:1) 在宽屏 (4:3) 上应缩小宽度
+      expect(quad.scaling.x).toBeLessThan(1) // worldAspect / screenAspect = 1 / 1.333
+      expect(quad.scaling.y).toBe(1)
+    })
   })
 
   // ========================================================================
@@ -721,10 +760,44 @@ describe('Renderer', () => {
       expect(spy).toHaveBeenCalledWith('https://example.com', '_blank')
       spy.mockRestore()
     })
+
+    // 已修复：验证退化行为不抛异常
+    it('setVSyncEnabled is no-op but does not throw', () => {
+      expect(() => renderer.setVSyncEnabled(true)).not.toThrow()
+      expect(() => renderer.setVSyncEnabled(false)).not.toThrow()
+    })
+
+    // 已修复：验证剪贴板退化行为
+    it('getClipboardText returns empty string (Web platform limitation)', () => {
+      expect(renderer.getClipboardText()).toBe('')
+    })
+
+    it('setClipboardText resolves to true on success', async () => {
+      // happy-dom 中 navigator.clipboard 默认可用
+      const result = await renderer.setClipboardText('test')
+      expect(result).toBe(true)
+    })
   })
 
   // ========================================================================
-  // 抗锯齿滤镜 API 状态检查
+  // 深度缓冲 API 兼容性（已验证：空壳不抛异常）
+  // ========================================================================
+  describe('depth buffer API compatibility', () => {
+    it('enableDepthBuffer is callable without error', () => {
+      expect(() => renderer.enableDepthBuffer()).not.toThrow()
+    })
+
+    it('disableDepthBuffer is callable without error', () => {
+      expect(() => renderer.disableDepthBuffer()).not.toThrow()
+    })
+
+    it('clearDepthBuffer is callable without error', () => {
+      expect(() => renderer.clearDepthBuffer()).not.toThrow()
+    })
+  })
+
+  // ========================================================================
+  // 抗锯齿滤镜 API 状态检查 + 采样模式切换
   // ========================================================================
   describe('antialiasing filter', () => {
     beforeEach(() => {
@@ -745,6 +818,27 @@ describe('Renderer', () => {
       renderer.endFrame()
       expect(() => renderer.enableAntialiasingFilter()).toThrow('enableAntialiasingFilter called with renderType = None')
     })
+
+    // 已修复：enableAntialiasingFilter 应实际切换采样模式为 BILINEAR
+    it('enableAntialiasingFilter switches worldRenderTarget to BILINEAR sampling', () => {
+      renderer.enableAntialiasingFilter()
+      const worldRT = (renderer as unknown as { worldRenderTarget: { updateSamplingMode: ReturnType<typeof vi.fn> } }).worldRenderTarget
+      expect(worldRT).toBeDefined()
+      expect(worldRT!.updateSamplingMode).toHaveBeenCalledWith(2) // BILINEAR_SAMPLINGMODE
+    })
+
+    // 已修复：disableAntialiasingFilter 应实际切换采样模式为 NEAREST（像素艺术）
+    it('disableAntialiasingFilter switches worldRenderTarget to NEAREST sampling', () => {
+      renderer.disableAntialiasingFilter()
+      const worldRT = (renderer as unknown as { worldRenderTarget: { updateSamplingMode: ReturnType<typeof vi.fn> } }).worldRenderTarget
+      expect(worldRT).toBeDefined()
+      expect(worldRT!.updateSamplingMode).toHaveBeenCalledWith(1) // NEAREST_SAMPLINGMODE
+    })
+
+    // 注意：RTT 默认采样模式（NEAREST vs BILINEAR）由 ensureWorldRenderTarget 在创建时根据
+    // pixelArtScaling 标志设置。由于 mock RenderTargetTexture 不模拟构造函数参数传递，
+    // 默认采样模式的验证通过 enableAntialiasingFilter/disableAntialiasingFilter
+    // 调用 updateSamplingMode 的测试间接覆盖。
   })
 
   // ========================================================================

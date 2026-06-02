@@ -81,6 +81,32 @@ export interface Rect {
 }
 
 // ---------------------------------------------------------------------------
+// 视口参数（供 SpriteRenderer 迁移后使用）
+// ---------------------------------------------------------------------------
+
+export interface ViewportParams {
+  /** 降采样因子，对应 OpenRA WorldDownscaleFactor */
+  downscale: number
+  /** 视口宽度（逻辑像素） */
+  width: number
+  /** 视口高度（逻辑像素） */
+  height: number
+  /** 深度边距 */
+  depthMargin: number
+  /** 窗口缩放因子 */
+  windowScale: number
+}
+
+// ---------------------------------------------------------------------------
+// 调色板接口（HardwarePalette 迁移前的类型占位）
+// ---------------------------------------------------------------------------
+
+export interface IPalette {
+  texture: unknown // TODO: HardwarePalette 迁移后替换为具体类型
+  height: number
+}
+
+// ---------------------------------------------------------------------------
 // 渲染器依赖注入接口（用于测试 mock）
 // ---------------------------------------------------------------------------
 
@@ -193,6 +219,24 @@ export class Renderer {
   private renderType: RenderType = RenderType.None
   private currentBatchRenderer: IBatchRenderer | null = null
   private depthMargin = 0
+
+  /**
+   * 像素艺术缩放标志（默认启用，保持 OpenRA 像素艺术视觉风格）。
+   * - true  → NEAREST 采样（锐利像素艺术）
+   * - false → BILINEAR 采样（平滑抗锯齿）
+   *
+   * 对应 OpenRA 的 SpriteRenderer.EnablePixelArtScaling()。
+   * 在 beginUI 的 world→screen 合成阶段应临时启用。
+   */
+  private pixelArtScaling = true
+
+  /** 当前帧视口参数（供 SpriteRenderer 迁移后使用） */
+  private currentViewportParams: ViewportParams | null = null
+
+  /** 获取当前帧视口参数（供子渲染器读取） */
+  get viewportParams(): ViewportParams | null {
+    return this.currentViewportParams
+  }
 
   /** 当前渲染阶段 */
   get currentRenderType(): RenderType {
@@ -365,19 +409,38 @@ export class Renderer {
 
   /**
    * 每帧开始时调用（替代 OpenRA BeginFrame）
-   * 原始代码中负责：Context.Clear()、screenBuffer 重建、screenSprite 重建、
-   * SpriteRenderer.SetViewportParams。
    *
-   * 在 Babylon.js 架构下：
-   *   - 缓冲清除由 scene.render() 自动处理
-   *   - screenBuffer（screenRenderTarget）已移除，uiScene 直接渲染到 backbuffer
-   *   - SpriteRenderer / 子渲染器迁移后将在此处设置 viewport 参数
+   * 原始 OpenRA BeginFrame 职责与 Babylon.js 映射：
+   *   1. Context.Clear()           → Babylon.js scene.render() 自动清除
+   *   2. 创建/重建 screenBuffer    → 已移除（uiScene 直接渲染到 backbuffer）
+   *   3. 创建/重建 screenSprite    → 已替换为 renderWorldToScreen() 的全屏 quad
+   *   4. SpriteRenderer.SetViewportParams() → 子渲染器迁移后将在此处设置
+   *   5. HiDPI 缩放计算            → 已在 beginWorld() 中通过 worldDownscaleFactor 处理
    *
-   * Diff-6: 当前为 API 兼容性空壳。子渲染器迁移后需在此处根据 resolution 和
-   * windowScale 的变化更新子渲染器的视口参数（等效于原始 SetViewportParams）。
+   * Diff-6: 当前阶段主要作为 API 兼容性占位。
+   * 子渲染器迁移后需在此处：
+   *   - 根据 resolution / windowScale 计算 ViewportParams
+   *   - 调用 spriteRenderer.setViewportParams(params)
+   *   - 设置 worldCamera 的正交投影参数
+   *
+   * @param _viewportParams 视口参数（可选，供 SpriteRenderer 迁移后使用）
    */
-  beginFrame(): void {
-    // TODO: 子渲染器迁移后添加 SetViewportParams 等初始化逻辑
+  beginFrame(_viewportParams?: Partial<ViewportParams>): void {
+    if (_viewportParams) {
+      this.currentViewportParams = {
+        downscale: _viewportParams.downscale ?? 1,
+        width: _viewportParams.width ?? this.resolution.width,
+        height: _viewportParams.height ?? this.resolution.height,
+        depthMargin: _viewportParams.depthMargin ?? this.depthMargin,
+        windowScale: _viewportParams.windowScale ?? this.windowScale,
+      }
+    }
+    // 子渲染器迁移后：
+    //   this.spriteRenderer?.setViewportParams(
+    //     this.resolution, this.windowScale,
+    //     this.currentViewportParams?.downscale ?? 1,
+    //     this.currentViewportParams?.depthMargin ?? 0,
+    //   )
   }
 
   /**
@@ -530,6 +593,12 @@ export class Renderer {
     this.worldScreenQuad = null
     this.worldScreenMaterial = null
 
+    // 默认使用 NEAREST 采样以保持像素艺术锐利度。
+    // enableAntialiasingFilter() / disableAntialiasingFilter() 可在运行时切换。
+    const samplingMode = this.pixelArtScaling
+      ? Texture.NEAREST_SAMPLINGMODE
+      : Texture.BILINEAR_SAMPLINGMODE
+
     const rtName = 'worldRenderTarget'
     this.worldRenderTarget = new RenderTargetTexture(
       rtName,
@@ -538,7 +607,7 @@ export class Renderer {
       {
         generateMipMaps: false,
         generateDepthBuffer: true,
-        samplingMode: Texture.BILINEAR_SAMPLINGMODE,
+        samplingMode,
         format: Engine.TEXTUREFORMAT_RGBA,
       },
     )
@@ -637,7 +706,7 @@ export class Renderer {
   // -----------------------------------------------------------------------
   // 调色板管理
   // -----------------------------------------------------------------------
-  setPalette(palette: { texture: unknown; height: number }): void {
+  setPalette(palette: IPalette): void {
     if (this.currentPaletteTexture === palette.texture && this.currentPaletteHeight === palette.height) {
       return
     }
@@ -714,38 +783,73 @@ export class Renderer {
   }
 
   // -----------------------------------------------------------------------
-  // 深度缓冲
+  // 深度缓冲（OpenRA API 兼容性封装）
+  //
+  // 原始 OpenRA 通过 Context.EnableDepthBuffer() / Context.DisableDepthBuffer()
+  // / Context.ClearDepthBuffer() 实际操作 OpenGL 深度状态。
+  //
+  // 在 Babylon.js 架构下：
+  //   - scene.autoClearDepthAndStencil (默认 true) 每帧自动清除深度缓冲
+  //   - 深度测试由 material.needDepthPrePass / mesh.renderingGroupId 按材质控制
+  //   - 全局深度状态切换不再需要（Babylon.js 内部管理）
+  //
+  // 这些方法保留 flush() 以确保批次一致性，但不操作底层深度状态。
+  // 如需精确控制特定渲染阶段的深度写入，请使用 material 级别的配置。
   // -----------------------------------------------------------------------
   enableDepthBuffer(): void {
     this.flush()
-    // Babylon.js Scene 自动管理深度测试，此处保留 API 兼容性
+    // Babylon.js Scene 自动管理深度测试：深度写入由 material 级别控制
+    // 默认情况下 scene.autoClearDepthAndStencil = true 保证每帧深度缓冲正确清除
   }
 
   disableDepthBuffer(): void {
     this.flush()
+    // 如需禁用深度写入，推荐在对应的 material 上设置 disableDepthWrite = true
   }
 
   clearDepthBuffer(): void {
     this.flush()
-    // Engine.runRenderLoop 每帧自动清除深度缓冲
+    // Engine.runRenderLoop 每帧自动清除深度缓冲（scene.autoClearDepthAndStencil 默认为 true）
+    // 如需在帧中立即清除深度缓冲，使用 scene 级别的深度清除机制
   }
 
   // -----------------------------------------------------------------------
   // 抗锯齿/像素艺术缩放滤镜
   // -----------------------------------------------------------------------
+  /**
+   * 启用抗锯齿滤镜（OpenRA EnablePixelArtScaling(false) 的等效）。
+   *
+   * 将 world→screen 合成纹理的采样模式切换为 BILINEAR，
+   * 使放大后的图像平滑而非锐利。
+   *
+   * OpenRA 对照：SpriteRenderer.EnablePixelArtScaling(false)
+   */
   enableAntialiasingFilter(): void {
     if (this.renderType !== RenderType.UI) {
       throw new Error(`enableAntialiasingFilter called with renderType = ${this.renderType}, expected UI`)
     }
     this.flush()
-    // TODO: 通过 Texture 的 samplingMode 控制
+    this.pixelArtScaling = false
+    // 更新 RTT 采样模式为双线性（平滑）
+    this.worldRenderTarget?.updateSamplingMode(Texture.BILINEAR_SAMPLINGMODE)
   }
 
+  /**
+   * 禁用抗锯齿滤镜（OpenRA EnablePixelArtScaling(true) 的等效）。
+   *
+   * 将 world→screen 合成纹理的采样模式切换为 NEAREST，
+   * 保持像素艺术的锐利边缘。这是 OpenRA 的默认视觉风格。
+   *
+   * OpenRA 对照：SpriteRenderer.EnablePixelArtScaling(true)
+   */
   disableAntialiasingFilter(): void {
     if (this.renderType !== RenderType.UI) {
       throw new Error(`disableAntialiasingFilter called with renderType = ${this.renderType}, expected UI`)
     }
     this.flush()
+    this.pixelArtScaling = true
+    // 更新 RTT 采样模式为最近邻（锐利像素艺术）
+    this.worldRenderTarget?.updateSamplingMode(Texture.NEAREST_SAMPLINGMODE)
   }
 
   // -----------------------------------------------------------------------
@@ -794,16 +898,51 @@ export class Renderer {
     document.exitPointerLock()
   }
 
+  /**
+   * 设置 VSync（垂直同步）开关。
+   *
+   * **平台限制（Web 环境）**：浏览器自行控制 VSync 行为，JavaScript 无法手动启用/禁用。
+   * `requestAnimationFrame` 的回调速率由浏览器调度器决定，始终与显示器刷新率同步。
+   * 因此此方法在 Web 平台为空操作，仅保留 API 兼容性。
+   *
+   * 原始 OpenRA：通过 Window.Context.SetVSyncEnabled() 实际控制 SDL2/OpenGL 的 swap interval。
+   *
+   * @param enabled 原始语义：true = 启用 VSync（与显示器刷新率同步），false = 禁用（不限制帧率）
+   */
   setVSyncEnabled(enabled: boolean): void {
     // Web 环境中 VSync 由浏览器控制，此处保留 API 兼容性
     void enabled
   }
 
+  /**
+   * 获取剪贴板文本内容。
+   *
+   * **功能退化（Web 平台限制）**：
+   * Web 平台的 `navigator.clipboard.readText()` 是异步 API 且需要用户授予剪贴板读取权限，
+   * 无法像原始 OpenRA（`Window.GetClipboardText()`）那样同步返回剪贴板内容。
+   * 因此此方法始终返回空字符串以保留 API 兼容性。
+   *
+   * **推荐替代方案**：调用方应迁移到异步版本的剪贴板读取，例如通过浏览器的
+   * `navigator.clipboard.readText()` 并在 paste 事件中处理。
+   *
+   * 原始 OpenRA：通过 SDL2 Window.GetClipboardText() 同步获取剪贴板文本。
+   *
+   * @returns 始终返回空字符串（Web 平台限制）
+   */
   getClipboardText(): string {
     // 异步 API 无法同步返回，返回空字符串保留兼容性
     return ''
   }
 
+  /**
+   * 设置剪贴板文本内容。
+   *
+   * 使用 Web 平台的 `navigator.clipboard.writeText()` 异步 API。
+   * 与原始 OpenRA 的同步 `Window.SetClipboardText()` 不同，此方法返回 Promise。
+   *
+   * @param text 要写入剪贴板的文本
+   * @returns Promise<true> 成功；Promise<false> 失败（权限拒绝或浏览器不支持）
+   */
   async setClipboardText(text: string): Promise<boolean> {
     try {
       await navigator.clipboard.writeText(text)
@@ -844,8 +983,33 @@ export class Renderer {
 
   // -----------------------------------------------------------------------
   // 截图
+  //
+  // **API 语义差异（Web 平台限制）**：
+  //   原始 OpenRA：SaveScreenshot() 从 screenBuffer.Texture 读取原始像素数据，
+  //   提取屏幕矩形区域，编码为 PNG 后同步保存到本地文件路径。
+  //   迁移版：使用 Babylon.js 内置的 Tools.CreateScreenshotUsingRenderTarget()
+  //   通过 uiCamera 渲染一帧，异步返回 data URL (Promise<string>)。
+  //
+  //   关键差异：
+  //     - 原始：同步写入磁盘文件
+  //     - 迁移：异步返回 `data:image/png;base64,...` 格式的 data URL
+  //     - 原始：从 screenBuffer 截图，迁移：从 uiCamera 渲染截图
+  //   调用方需要处理 Promise 返回值和 data URL 格式。
+  //
+  //   如需保存到本地文件，可在返回的 data URL 上使用：
+  //     const link = document.createElement('a')
+  //     link.download = 'screenshot.png'
+  //     link.href = dataUrl
+  //     link.click()
   // -----------------------------------------------------------------------
 
+  /**
+   * 截取当前画面并返回 data URL。
+   *
+   * 使用 uiCamera 截图以包含 world quad + UI（与原始 screenBuffer 截图语义一致）。
+   *
+   * @returns Promise，解析为 `data:image/png;base64,...` 格式的 data URL
+   */
   saveScreenshot(): Promise<string> {
     return new Promise((resolve) => {
       this.engine.onEndFrameObservable.addOnce(() => {
