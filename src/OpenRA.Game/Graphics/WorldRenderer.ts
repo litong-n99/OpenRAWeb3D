@@ -262,6 +262,12 @@ export interface IActor {
   readonly disposed: boolean
   /** 收集 Actor 的渲染对象 */
   render(wr: WorldRenderer): IRenderable[]
+  /**
+   * 获取 Actor 上指定类型的所有 Trait 实现。
+   * 对应 OpenRA Actor.TraitsImplementing<T>()。
+   * TODO: Trait 系统迁移后实现
+   */
+  traitsImplementing?<T>(): T[]
 }
 
 export interface IEffect {

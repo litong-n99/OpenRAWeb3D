@@ -120,6 +120,7 @@ function createMockActor(overrides: Partial<IActor> = {}): IActor {
     isInWorld: true,
     disposed: false,
     render: vi.fn().mockReturnValue([]),
+    traitsImplementing: <T>() => [] as T[],
     ...overrides,
   }
 }
@@ -504,6 +505,138 @@ describe('WorldRenderer', () => {
   })
 
   // ========================================================================
+  // generateOverlayRenderables
+  // ========================================================================
+  describe('generateOverlayRenderables', () => {
+    it('collects from OrderGenerator.renderAboveShroud', () => {
+      const orderGen = {
+        render: vi.fn().mockReturnValue([]),
+        renderAboveShroud: vi.fn().mockReturnValue([createMockRenderable({ x: 0, y: 0, z: 0 })]),
+        renderAnnotations: vi.fn().mockReturnValue([]),
+      }
+      world = createMockWorld({ orderGenerator: orderGen })
+      wr = new WorldRenderer(renderer, world)
+      wr.generateOverlayRenderables()
+      expect(orderGen.renderAboveShroud).toHaveBeenCalledWith(wr, world)
+      expect(wr.preparedOverlayRenderablesCount).toBeGreaterThanOrEqual(1)
+    })
+
+    it('OrderGenerator.renderAboveShroud not called when null', () => {
+      world = createMockWorld({ orderGenerator: null })
+      wr = new WorldRenderer(renderer, world)
+      expect(() => wr.generateOverlayRenderables()).not.toThrow()
+      expect(wr.preparedOverlayRenderablesCount).toBe(0)
+    })
+
+    it('calls applyToActorsWithTrait for IRenderAboveShroud', () => {
+      const applyFn = vi.fn()
+      world = createMockWorld({ applyToActorsWithTrait: applyFn })
+      wr = new WorldRenderer(renderer, world)
+      wr.generateOverlayRenderables()
+      expect(applyFn).toHaveBeenCalled()
+    })
+
+    it('IRenderAboveShroud callback filters disposed actor', () => {
+      // 通过 applyToActorsWithTrait 的回调测试过滤逻辑
+      let capturedCallback: ((actor: IActor, trait: unknown) => void) | null = null
+      world = createMockWorld({
+        applyToActorsWithTrait: vi.fn().mockImplementation((cb: (a: IActor, t: unknown) => void) => {
+          capturedCallback = cb
+        }),
+      })
+      wr = new WorldRenderer(renderer, world)
+      wr.generateOverlayRenderables()
+
+      // 模拟回调：disposed actor 应被跳过
+      const disposedActor = createMockActor({ disposed: true, isInWorld: true })
+      const trait = { renderAboveShroud: vi.fn().mockReturnValue([]) }
+      expect(() => capturedCallback!(disposedActor, trait)).not.toThrow()
+      expect(trait.renderAboveShroud).not.toHaveBeenCalled()
+    })
+
+    it('IRenderAboveShroud callback filters actor not in world', () => {
+      let capturedCallback: ((actor: IActor, trait: unknown) => void) | null = null
+      world = createMockWorld({
+        applyToActorsWithTrait: vi.fn().mockImplementation((cb: (a: IActor, t: unknown) => void) => {
+          capturedCallback = cb
+        }),
+      })
+      wr = new WorldRenderer(renderer, world)
+      wr.generateOverlayRenderables()
+
+      const notInWorldActor = createMockActor({ isInWorld: false, disposed: false })
+      const trait = { renderAboveShroud: vi.fn().mockReturnValue([]) }
+      expect(() => capturedCallback!(notInWorldActor, trait)).not.toThrow()
+      expect(trait.renderAboveShroud).not.toHaveBeenCalled()
+    })
+  })
+
+  // ========================================================================
+  // generateAnnotationRenderables
+  // ========================================================================
+  describe('generateAnnotationRenderables', () => {
+    it('collects from OrderGenerator.renderAnnotations', () => {
+      const orderGen = {
+        render: vi.fn().mockReturnValue([]),
+        renderAboveShroud: vi.fn().mockReturnValue([]),
+        renderAnnotations: vi.fn().mockReturnValue([createMockRenderable({ x: 0, y: 0, z: 0 })]),
+      }
+      world = createMockWorld({ orderGenerator: orderGen })
+      wr = new WorldRenderer(renderer, world)
+      wr.generateAnnotationRenderables()
+      expect(orderGen.renderAnnotations).toHaveBeenCalledWith(wr, world)
+      expect(wr.preparedAnnotationRenderablesCount).toBeGreaterThanOrEqual(1)
+    })
+
+    it('OrderGenerator.renderAnnotations not called when null', () => {
+      world = createMockWorld({ orderGenerator: null })
+      wr = new WorldRenderer(renderer, world)
+      expect(() => wr.generateAnnotationRenderables()).not.toThrow()
+      expect(wr.preparedAnnotationRenderablesCount).toBe(0)
+    })
+
+    it('calls applyToActorsWithTrait for IRenderAnnotations', () => {
+      const applyFn = vi.fn()
+      world = createMockWorld({ applyToActorsWithTrait: applyFn })
+      wr = new WorldRenderer(renderer, world)
+      wr.generateAnnotationRenderables()
+      expect(applyFn).toHaveBeenCalled()
+    })
+
+    it('IRenderAnnotations callback filters disposed actor', () => {
+      let capturedCallback: ((actor: IActor, trait: unknown) => void) | null = null
+      world = createMockWorld({
+        applyToActorsWithTrait: vi.fn().mockImplementation((cb: (a: IActor, t: unknown) => void) => {
+          capturedCallback = cb
+        }),
+      })
+      wr = new WorldRenderer(renderer, world)
+      wr.generateAnnotationRenderables()
+
+      const disposedActor = createMockActor({ disposed: true, isInWorld: true })
+      const trait = { renderAnnotations: vi.fn().mockReturnValue([]) }
+      expect(() => capturedCallback!(disposedActor, trait)).not.toThrow()
+      expect(trait.renderAnnotations).not.toHaveBeenCalled()
+    })
+
+    it('IRenderAnnotations callback filters actor not in world', () => {
+      let capturedCallback: ((actor: IActor, trait: unknown) => void) | null = null
+      world = createMockWorld({
+        applyToActorsWithTrait: vi.fn().mockImplementation((cb: (a: IActor, t: unknown) => void) => {
+          capturedCallback = cb
+        }),
+      })
+      wr = new WorldRenderer(renderer, world)
+      wr.generateAnnotationRenderables()
+
+      const notInWorldActor = createMockActor({ isInWorld: false, disposed: false })
+      const trait = { renderAnnotations: vi.fn().mockReturnValue([]) }
+      expect(() => capturedCallback!(notInWorldActor, trait)).not.toThrow()
+      expect(trait.renderAnnotations).not.toHaveBeenCalled()
+    })
+  })
+
+  // ========================================================================
   // draw / drawAnnotations
   // ========================================================================
   describe('draw and drawAnnotations', () => {
@@ -517,8 +650,118 @@ describe('WorldRenderer', () => {
       expect(() => wr.draw()).not.toThrow()
     })
 
+    // 已修复：draw() 调用 renderer.enableScissor 并传入 viewport bounds
+    it('draw calls enableScissor with viewport scissor bounds', () => {
+      wr.viewport = createMockViewport({
+        getScissorBounds: vi.fn().mockReturnValue({ x: 10, y: 20, width: 800, height: 600 }),
+      })
+      wr.draw()
+      expect(wr.viewport.getScissorBounds).toHaveBeenCalled()
+      expect(renderer.enableScissor).toHaveBeenCalledWith({ x: 10, y: 20, width: 800, height: 600 })
+    })
+
+    // 已修复：terrainRenderer 存在时调用 renderTerrain
+    it('draw calls terrainRenderer.renderTerrain when available', () => {
+      const mockTerrain: import('./WorldRenderer').IRenderTerrain = {
+        renderTerrain: vi.fn(),
+      }
+      wr.terrainRenderer = mockTerrain
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(mockTerrain.renderTerrain).toHaveBeenCalledWith(wr, wr.viewport)
+    })
+
+    // 已修复：preparedRenderables 的 render() 被逐个调用
+    it('draw renders all preparedRenderables', () => {
+      const mockRender = vi.fn()
+      const mockDebugGeo = vi.fn()
+      const mockBounds = vi.fn().mockReturnValue({ x: 0, y: 0, width: 1, height: 1 })
+      // 直接向 preparedRenderables 注入 finalized renderable
+      ;(wr as unknown as { preparedRenderables: { render: (wr: unknown) => void }[] }).preparedRenderables.push({
+        render: mockRender,
+        renderDebugGeometry: mockDebugGeo,
+        screenBounds: mockBounds,
+      } as unknown as { render: (wr: unknown) => void })
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(mockRender).toHaveBeenCalledWith(wr)
+    })
+
+    // 已修复：AfterActors 后处理在 renderables 之后触发
+    it('draw triggers AfterActors post-processing after renderables', () => {
+      const pass = createMockPostProcessPass(PostProcessPassType.AfterActors, true)
+      wr.addPostProcessPass(pass)
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(pass.draw).toHaveBeenCalledWith(wr)
+    })
+
+    // 已修复：AfterWorld 后处理触发
+    it('draw triggers AfterWorld post-processing', () => {
+      const pass = createMockPostProcessPass(PostProcessPassType.AfterWorld, true)
+      wr.addPostProcessPass(pass)
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(pass.draw).toHaveBeenCalledWith(wr)
+    })
+
+    // 已修复：AfterShroud 后处理在覆盖层之后触发
+    it('draw triggers AfterShroud post-processing after overlays', () => {
+      const pass = createMockPostProcessPass(PostProcessPassType.AfterShroud, true)
+      wr.addPostProcessPass(pass)
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(pass.draw).toHaveBeenCalledWith(wr)
+    })
+
+    // 已修复：draw 过滤掉不匹配类型的后处理
+    it('draw skips post-processing passes of wrong type', () => {
+      // AfterAnnotations pass 不应该在 draw() 中被触发（只在 drawAnnotations 中触发）
+      const pass = createMockPostProcessPass(PostProcessPassType.AfterAnnotations, true)
+      wr.addPostProcessPass(pass)
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(pass.draw).not.toHaveBeenCalled()
+    })
+
+    // 已修复：draw 跳过禁用的后处理
+    it('draw skips disabled post-processing passes', () => {
+      const pass = createMockPostProcessPass(PostProcessPassType.AfterActors, false)
+      wr.addPostProcessPass(pass)
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(pass.draw).not.toHaveBeenCalled()
+    })
+
+    // 已修复：draw 结束时调用 flush
+    it('draw calls flush at the end', () => {
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(renderer.flush).toHaveBeenCalled()
+    })
+
+    // 已修复：editor 世界类型传入正确的 isWorld 参数
+    it('draw passes isWorld=false for Editor world type to getScissorBounds', () => {
+      world = createMockWorld({ type: 'Editor' as const })
+      wr = new WorldRenderer(renderer, world)
+      wr.viewport = createMockViewport({
+        getScissorBounds: vi.fn().mockReturnValue({ x: 0, y: 0, width: 1024, height: 768 }),
+      })
+      wr.draw()
+      // Editor 类型下 isWorld = false
+      expect(wr.viewport.getScissorBounds).toHaveBeenCalledWith(false)
+    })
+
+    // 已修复：debugVis 的 updateDepthBuffer 在 draw 开始被调用
+    it('draw calls debugVis.updateDepthBuffer when available', () => {
+      const mockDebug = { renderGeometry: false, screenMap: false, updateDepthBuffer: vi.fn() }
+      ;(wr as unknown as { debugVis: typeof mockDebug }).debugVis = mockDebug
+      wr.viewport = createMockViewport()
+      wr.draw()
+      expect(mockDebug.updateDepthBuffer).toHaveBeenCalled()
+    })
+
     it('drawAnnotations clears renderable buffers', () => {
-      // 先收集一些渲染对象
       const renderable = createMockRenderable({ x: 0, y: 0, z: 0 })
       world = createMockWorld({ unpartitionedEffects: [createMockEffect([renderable])] })
       wr = new WorldRenderer(renderer, world)
@@ -527,7 +770,6 @@ describe('WorldRenderer', () => {
 
       expect(wr.preparedRenderablesCount).toBeGreaterThan(0)
 
-      // 添加后处理通道以覆盖 applyPostProcessing 路径
       const pass = createMockPostProcessPass(PostProcessPassType.AfterAnnotations)
       wr.addPostProcessPass(pass)
 
@@ -535,6 +777,41 @@ describe('WorldRenderer', () => {
       expect(wr.preparedRenderablesCount).toBe(0)
       expect(wr.preparedOverlayRenderablesCount).toBe(0)
       expect(wr.preparedAnnotationRenderablesCount).toBe(0)
+    })
+
+    // 已修复：drawAnnotations 调用 enableAntialiasingFilter/disableAntialiasingFilter
+    it('drawAnnotations toggles antialiasing filter around annotation rendering', () => {
+      wr.drawAnnotations()
+      expect(renderer.enableAntialiasingFilter).toHaveBeenCalled()
+      expect(renderer.disableAntialiasingFilter).toHaveBeenCalled()
+      // enable 在 disable 之前
+      const enableIdx = vi.mocked(renderer.enableAntialiasingFilter).mock.invocationCallOrder[0]
+      const disableIdx = vi.mocked(renderer.disableAntialiasingFilter).mock.invocationCallOrder[0]
+      expect(enableIdx).toBeLessThan(disableIdx!)
+    })
+
+    // 已修复：debugVis.RenderGeometry 时渲染所有调试几何
+    it('drawAnnotations renders debug geometry when debugVis.RenderGeometry is true', () => {
+      const mockRender = vi.fn()
+      const mockDebugGeo = vi.fn()
+      const mockBounds = vi.fn().mockReturnValue({ x: 0, y: 0, width: 1, height: 1 })
+      const mockDebug = { renderGeometry: true, screenMap: false, updateDepthBuffer: vi.fn() }
+      ;(wr as unknown as { debugVis: typeof mockDebug }).debugVis = mockDebug
+      ;(wr as unknown as { preparedRenderables: { render: (wr: unknown) => void; renderDebugGeometry: (wr: unknown) => void; screenBounds: (wr: unknown) => void }[] }).preparedRenderables.push({
+        render: mockRender,
+        renderDebugGeometry: mockDebugGeo,
+        screenBounds: mockBounds,
+      } as unknown as { render: (wr: unknown) => void; renderDebugGeometry: (wr: unknown) => void; screenBounds: (wr: unknown) => void })
+      wr.drawAnnotations()
+      expect(mockDebugGeo).toHaveBeenCalledWith(wr)
+    })
+
+    // 已修复：drawAnnotations 结束时调用 flush
+    it('drawAnnotations calls flush at the end', () => {
+      const pass = createMockPostProcessPass(PostProcessPassType.AfterAnnotations)
+      wr.addPostProcessPass(pass)
+      wr.drawAnnotations()
+      expect(renderer.flush).toHaveBeenCalled()
     })
   })
 
