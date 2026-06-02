@@ -48,6 +48,11 @@ export interface IBatchRenderer {
 // ---------------------------------------------------------------------------
 
 export interface IRenderer {
+  /** 帧开始通知（替代 OpenRA IRenderer.BeginFrame） */
+  beginFrame?(): void
+  /** 帧结束通知（替代 OpenRA IRenderer.EndFrame） */
+  endFrame?(): void
+  /** 设置调色板（替代 OpenRA IRenderer.SetPalette） */
   setPalette(palette: unknown): void
 }
 

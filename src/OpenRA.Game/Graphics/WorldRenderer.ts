@@ -14,7 +14,7 @@ import {
   DefaultRenderingPipeline,
   type Camera,
 } from '@babylonjs/core'
-import type { Renderer } from '../Renderer'
+import type { Renderer, IRenderer as IRendererBase } from '../Renderer'
 
 // ---------------------------------------------------------------------------
 // 坐标原语（对应 OpenRA WPos / WVec / int2 / float2 / float3）
@@ -278,11 +278,33 @@ export interface IOrderGenerator {
 export interface IScreenMap {
   renderableActorsInBox(topLeft: Vec2, bottomRight: Vec2): IActor[]
   renderableEffectsInBox(topLeft: Vec2, bottomRight: Vec2): IEffect[]
+  /**
+   * 获取渲染包围盒（调试用，对应原始 ScreenMap.RenderBounds）。
+   * TODO: ScreenMap 迁移后实现
+   */
+  renderBounds?(renderPlayer: unknown): Rect[]
+  /**
+   * 获取鼠标检测包围盒（调试用，对应原始 ScreenMap.MouseBounds）。
+   * TODO: ScreenMap 迁移后实现
+   */
+  mouseBounds?(renderPlayer: unknown): { vertices: Vec2[] }[]
 }
 
 export interface ISelection {
   readonly actors: IActor[]
 }
+
+export interface IPlayer {
+  readonly internalName: string
+  readonly color: { r: number; g: number; b: number; a: number }
+  readonly playerActor: IActor
+}
+
+/**
+ * Trait 回调类型：接收 Actor 和 Trait 实例，无返回值。
+ * 对应 OpenRA World.ApplyToActorsWithTrait<T>(action) 的 action 参数。
+ */
+export type TraitAction<T> = (actor: IActor, trait: T) => void
 
 export interface IWorld {
   /** 地图瓦片尺寸 */
@@ -293,8 +315,12 @@ export interface IWorld {
   readonly type: WorldType
   /** 是否已释放 */
   readonly disposed: boolean
+  /** 渲染玩家 */
+  readonly renderPlayer: IPlayer | null
   /** 本地玩家 */
-  readonly renderPlayer: unknown | null
+  readonly localPlayer: IPlayer | null
+  /** 所有玩家 */
+  readonly players: IPlayer[]
   /** 世界 Actor */
   readonly worldActor: IWorldActor
   /** 空间索引 */
@@ -307,8 +333,27 @@ export interface IWorld {
   readonly orderGenerator: IOrderGenerator | null
   /** 选择集 */
   readonly selection: ISelection
+  /**
+   * 对所有拥有指定 Trait 的 Actor 执行操作。
+   * 对应 OpenRA World.ApplyToActorsWithTrait<T>(action)。
+   * TODO: Trait 系统迁移后实现
+   */
+  applyToActorsWithTrait?<T>(action: TraitAction<T>): void
   /** 释放 */
   dispose(): void
+}
+
+// ---------------------------------------------------------------------------
+// 调试可视化接口（对应 OpenRA DebugVisualizations）
+// ---------------------------------------------------------------------------
+
+export interface IDebugVisualizations {
+  /** 是否渲染调试几何 */
+  readonly renderGeometry: boolean
+  /** 是否显示 ScreenMap */
+  readonly screenMap: boolean
+  /** 更新深度缓冲可视化 */
+  updateDepthBuffer(): void
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +398,19 @@ export class WorldRenderer {
 
   /** 视口（初始化为默认值，World 迁移后由真实 Viewport 替换） */
   viewport: IViewport
+
+  // -----------------------------------------------------------------------
+  // 子渲染器与 Trait 实例（替代 OpenRA 从 WorldActor 获取的字段）
+  // -----------------------------------------------------------------------
+
+  /** 地形渲染器（从 WorldActor 的 IRenderTerrain trait 获取） */
+  terrainRenderer: IRenderTerrain | null = null
+
+  /** 子渲染器列表（从 WorldActor 的 IRenderer trait 获取） */
+  private renderers: IRendererBase[] = []
+
+  /** 调试可视化（从 WorldActor 的 DebugVisualizations trait 获取） */
+  private debugVis: IDebugVisualizations | null = null
 
   // -----------------------------------------------------------------------
   // 调色板管理
@@ -427,7 +485,36 @@ export class WorldRenderer {
     // 配置 Y-sort（对应 RenderableZPositionComparisonKey）
     this.configureYSort()
 
-    this.enableDepthBuffer = false // 默认关闭；World 迁移后从 MapGrid 读取
+    // -------------------------------------------------------------------
+    // 从 WorldActor 获取 Trait 实例（替代 OpenRA 构造函数的 trait 查询）
+    // 这些字段需要 World + Trait 系统迁移完成后才能正确填充。
+    // -------------------------------------------------------------------
+
+    // TerrainLighting = world.WorldActor.TraitOrDefault<ITerrainLighting>()
+    this.terrainLighting = world.worldActor.traitOrDefault<ITerrainLighting>() ?? null
+
+    // terrainRenderer = world.WorldActor.TraitOrDefault<IRenderTerrain>()
+    this.terrainRenderer = world.worldActor.traitOrDefault<IRenderTerrain>() ?? null
+
+    // renderers = world.WorldActor.TraitsImplementing<IRenderer>().ToArray()
+    this.renderers = world.worldActor.traitsImplementing<IRendererBase>()
+
+    // debugVis = Exts.Lazy(world.WorldActor.TraitOrDefault<DebugVisualizations>)
+    this.debugVis = world.worldActor.traitOrDefault<IDebugVisualizations>() ?? null
+
+    // postProcessPasses = world.WorldActor.TraitsImplementing<IRenderPostProcessPass>().ToArray()
+    this.postProcessPasses = world.worldActor.traitsImplementing<IPostProcessPass>()
+
+    // enableDepthBuffer = mapGrid.EnableDepthBuffer
+    // TODO: 从 MapGrid trait 读取；MapGrid 迁移后实现
+    this.enableDepthBuffer = false
+
+    // -------------------------------------------------------------------
+    // Trait 驱动的初始化（需要在 Trait 系统迁移后实现）
+    // TODO: foreach (ILoadsPalettes pal) pal.LoadPalettes(this)
+    // TODO: palette.Initialize()
+    // TODO: Player.SetupRelationshipColors(world.Players, world.LocalPlayer, this, true)
+    // -------------------------------------------------------------------
 
     // 初始化默认视口
     this.viewport = {
@@ -486,8 +573,9 @@ export class WorldRenderer {
    * 通知所有子渲染器进入新帧。
    */
   beginFrame(): void {
-    // 子渲染器（SpriteRenderer 等）迁移后在此通知
-    // foreach (var r in renderers) r.BeginFrame();
+    for (const r of this.renderers) {
+      r.beginFrame?.()
+    }
   }
 
   /**
@@ -495,8 +583,9 @@ export class WorldRenderer {
    * 通知所有子渲染器结束当前帧。
    */
   endFrame(): void {
-    // 子渲染器（SpriteRenderer 等）迁移后在此通知
-    // foreach (var r in renderers) r.EndFrame();
+    for (const r of this.renderers) {
+      r.endFrame?.()
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -521,13 +610,21 @@ export class WorldRenderer {
   // 调色板管理
   // -----------------------------------------------------------------------
 
-  /** 创建调色板引用 */
+  /**
+   * 创建调色板引用。
+   *
+   * **重要警告**：返回的 IPaletteReference.hardwarePalette 当前是空操作占位对象。
+   * 所有方法（addPalette、setColorShift 等）均为静默空操作，
+   * 直到 HardwarePalette 模块迁移完成并注入真实实现。
+   * 调用方不应依赖 hardwarePalette 的行为产生任何副作用。
+   */
   private createPaletteReference(name: string): IPaletteReference {
     const index = this.paletteRefs.size
     return {
       name,
       index,
       palette: { name, index, colors: new Uint8Array(256 * 4), allowModifiers: false },
+      // HACK: hardwarePalette 占位对象 — HardwarePalette 迁移后替换为真实实例
       hardwarePalette: {
         height: 0,
         addPalette: () => {},
@@ -636,25 +733,41 @@ export class WorldRenderer {
    * transparentSortCompareFn 自动完成视口筛选和排序。
    * 此方法保留用于需要 CPU 端干预的特殊逻辑。
    */
+  /**
+   * 生成普通渲染对象列表（替代 OpenRA GenerateRenderables）。
+   *
+   * 收集屏幕上所有 Actor、世界 Actor、玩家 Actor、指令生成器、
+   * 特效的 IRenderable，按 Y-sort 稳定排序后转换为 IFinalizedRenderable。
+   */
   generateRenderables(): void {
     if (this.world.worldActor.disposed) return
 
     const buffer: IRenderable[] = []
 
-    // 屏幕上的 Actor 渲染对象
+    // 1. 屏幕上的 Actor 渲染对象
     for (const actor of this.onScreenActors) {
       buffer.push(...actor.render(this))
     }
 
-    // 世界 Actor 的渲染对象
+    // 2. 世界 Actor 的渲染对象
     buffer.push(...this.world.worldActor.render(this))
 
-    // 未分区特效
+    // 3. 渲染玩家的 PlayerActor 渲染对象
+    if (this.world.renderPlayer) {
+      buffer.push(...this.world.renderPlayer.playerActor.render(this))
+    }
+
+    // 4. 指令生成器的渲染对象（放置预览、拖拽框等）
+    if (this.world.orderGenerator) {
+      buffer.push(...this.world.orderGenerator.render(this, this.world))
+    }
+
+    // 5. 未分区特效
     for (const effect of this.world.unpartitionedEffects) {
       buffer.push(...effect.render(this))
     }
 
-    // 屏幕范围内的已分区特效
+    // 6. 屏幕范围内的已分区特效
     for (const effect of this.world.screenMap.renderableEffectsInBox(
       this.viewport.topLeft,
       this.viewport.bottomRight,
@@ -664,6 +777,11 @@ export class WorldRenderer {
 
     // 稳定排序（使用稳定的排序算法避免闪烁伪影）
     // 创建 (sortKey, index, renderable) 三元组，按 sortKey 排序，相同 key 保序
+    //
+    // 性能说明：OpenRA 原始代码通过复用 renderablesBuffer 和
+    // renderablesKeysBuffer 数组避免分配（PERF 注释标注）。
+    // 迁移版使用 .map() 创建 indexed 数组会在每帧触发 GC。
+    // 后续可优化为在 WorldRenderer 级别维护可复用缓冲区。
     const indexed = buffer.map((r, i) => ({
       key: renderableZPositionComparisonKey(r),
       index: i,
@@ -684,19 +802,93 @@ export class WorldRenderer {
   /**
    * 生成覆盖层渲染对象（替代 OpenRA GenerateOverlayRenderables）。
    *
-   * TODO: IRenderAboveShroud / IRenderAboveShroudWhenSelected trait 迁移后实现
+   * 原始代码从 4 个来源收集：
+   *   1. IRenderAboveShroud trait 的 Actor
+   *   2. 选中 Actor 的 IRenderAboveShroudWhenSelected trait
+   *   3. IEffectAboveShroud 特效
+   *   4. OrderGenerator.RenderAboveShroud()
+   *
+   * TODO: trait 系统（IRenderAboveShroud, IRenderAboveShroudWhenSelected,
+   *       IEffectAboveShroud）迁移后实现完整收集逻辑。
    */
   generateOverlayRenderables(): void {
-    // TODO: trait 系统迁移后实现
+    // 1. IRenderAboveShroud actors
+    this.world.applyToActorsWithTrait?.<{
+      spatiallyPartitionable?: boolean
+      renderAboveShroud(actor: IActor, wr: WorldRenderer): IRenderable[]
+    }>((actor, trait) => {
+      if (!actor.isInWorld || actor.disposed) return
+      if (trait.spatiallyPartitionable && !this.onScreenActors.has(actor)) return
+
+      for (const r of trait.renderAboveShroud(actor, this)) {
+        this.preparedOverlayRenderables.push(r.prepareRender(this))
+      }
+    })
+
+    // 2. 选中 Actor 的 IRenderAboveShroudWhenSelected
+    for (const a of this.world.selection.actors) {
+      if (!a.isInWorld || a.disposed) continue
+      // TODO: a.traitsImplementing<IRenderAboveShroudWhenSelected>()
+      //   → trait.RenderAboveShroud(a, this)
+    }
+
+    // 3. IEffectAboveShroud 特效
+    // TODO: foreach (e in World.Effects) if (e is IEffectAboveShroud ea)
+    //   → ea.RenderAboveShroud(this)
+    void this.world.effects // 占位，trait 系统迁移后替换
+
+    // 4. OrderGenerator.RenderAboveShroud
+    if (this.world.orderGenerator) {
+      for (const r of this.world.orderGenerator.renderAboveShroud(this, this.world)) {
+        this.preparedOverlayRenderables.push(r.prepareRender(this))
+      }
+    }
   }
 
   /**
    * 生成注释渲染对象（替代 OpenRA GenerateAnnotationRenderables）。
    *
-   * TODO: IRenderAnnotations / IRenderAnnotationsWhenSelected trait 迁移后实现
+   * 原始代码从 4 个来源收集：
+   *   1. IRenderAnnotations trait 的 Actor
+   *   2. 选中 Actor 的 IRenderAnnotationsWhenSelected trait
+   *   3. IEffectAnnotation 特效
+   *   4. OrderGenerator.RenderAnnotations()
+   *
+   * TODO: trait 系统（IRenderAnnotations, IRenderAnnotationsWhenSelected,
+   *       IEffectAnnotation）迁移后实现完整收集逻辑。
    */
   generateAnnotationRenderables(): void {
-    // TODO: trait 系统迁移后实现
+    // 1. IRenderAnnotations actors
+    this.world.applyToActorsWithTrait?.<{
+      spatiallyPartitionable?: boolean
+      renderAnnotations(actor: IActor, wr: WorldRenderer): IRenderable[]
+    }>((actor, trait) => {
+      if (!actor.isInWorld || actor.disposed) return
+      if (trait.spatiallyPartitionable && !this.onScreenActors.has(actor)) return
+
+      for (const r of trait.renderAnnotations(actor, this)) {
+        this.preparedAnnotationRenderables.push(r.prepareRender(this))
+      }
+    })
+
+    // 2. 选中 Actor 的 IRenderAnnotationsWhenSelected
+    for (const a of this.world.selection.actors) {
+      if (!a.isInWorld || a.disposed) continue
+      // TODO: a.traitsImplementing<IRenderAnnotationsWhenSelected>()
+      //   → trait.RenderAnnotations(a, this)
+    }
+
+    // 3. IEffectAnnotation 特效
+    // TODO: foreach (e in World.Effects) if (e is IEffectAnnotation ea)
+    //   → ea.RenderAnnotation(this)
+    void this.world.effects // 占位，trait 系统迁移后替换
+
+    // 4. OrderGenerator.RenderAnnotations
+    if (this.world.orderGenerator) {
+      for (const r of this.world.orderGenerator.renderAnnotations(this, this.world)) {
+        this.preparedAnnotationRenderables.push(r.prepareRender(this))
+      }
+    }
   }
 
   /**
@@ -729,41 +921,152 @@ export class WorldRenderer {
   /**
    * 执行世界渲染（替代 OpenRA Draw 六阶段流程）。
    *
-   * 在 Babylon.js 架构下，渲染由 scene.render() 自动处理：
-   *   1. 地形（renderingGroupId = 0）
-   *   2. 普通对象（renderingGroupId = 1），按 Y-sort 排序
-   *   3. 覆盖层（renderingGroupId = 2）
-   *   4. 注释（renderingGroupId = 3）
+   * 原始 OpenRA Draw() 有 17 步渲染序列。在 Babylon.js 架构下，
+   * GPU 端渲染由 scene.render() 自动处理，以下方法编排渲染阶段：
    *
-   * 后处理在场景渲染后通过 DefaultRenderingPipeline 自动应用。
+   *   debugVis?.UpdateDepthBuffer → EnableScissor → EnableDepthBuffer →
+   *   terrainRenderer.RenderTerrain → Flush →
+   *   遍历 preparedRenderables → ClearDepthBuffer →
+   *   AfterActors 后处理 → IRenderAboveWorld actors → ClearDepthBuffer →
+   *   AfterWorld 后处理 → IRenderShroud actors → DisableDepthBuffer →
+   *   DisableScissor → 遍历 preparedOverlayRenderables →
+   *   AfterShroud 后处理 → Flush
+   *
+   * Babylon.js 等价映射：
+   *   - 地形 (renderingGroupId=0) → scene.render() 自动渲染
+   *   - Actor (renderingGroupId=1) → scene.render() + Y-sort
+   *   - 后处理 → DefaultRenderingPipeline + custom PostProcess
+   *   - 覆盖层 (renderingGroupId=2) → scene.render()
    */
   draw(): void {
     if (this.world.worldActor.disposed) return
 
-    // 在 Babylon.js 架构下，实际渲染由 Renderer 的帧循环中
-    // worldScene.render() 执行，此方法主要负责：
-    //   1. 验证世界未释放
-    //   2. 提供 API 兼容性（调用方代码无需修改）
-    //
-    // 原始六阶段流程在 Babylon.js 中的等价映射：
-    //   1. terrainRenderer.RenderTerrain → Mesh + renderingGroupId=0
-    //   2. preparedRenderables[i].Render  → Mesh + renderingGroupId=1 + Y-sort
-    //   3. AfterActors post-processing     → DefaultRenderingPipeline
-    //   4. RenderAboveWorld               → renderingGroupId=1
-    //   5. RenderShroud                   → renderingGroupId=2
-    //   6. AfterShroud post-processing    → DefaultRenderingPipeline
+    // 阶段 1: 深度缓冲可视化更新
+    this.debugVis?.updateDepthBuffer()
+
+    // 阶段 2: 裁剪与深度设置
+    const bounds = this.viewport.getScissorBounds(this.world.type !== WorldType.Editor)
+    this.renderer.enableScissor(bounds)
+
+    if (this.enableDepthBuffer) {
+      this.renderer.enableDepthBuffer()
+    }
+
+    // 阶段 3: 地形渲染
+    if (this.terrainRenderer) {
+      this.terrainRenderer.renderTerrain(this, this.viewport)
+    }
+    this.renderer.flush()
+
+    // 阶段 4: 普通渲染对象（Actor、特效）
+    for (const r of this.preparedRenderables) {
+      r.render(this)
+    }
+
+    if (this.enableDepthBuffer) {
+      this.renderer.clearDepthBuffer()
+    }
+
+    // 阶段 5: AfterActors 后处理
+    this.applyPostProcessing(PostProcessPassType.AfterActors)
+
+    // 阶段 6: IRenderAboveWorld actors（渲染在世界之上的内容）
+    this.world.applyToActorsWithTrait?.<{ renderAboveWorld(actor: IActor, wr: WorldRenderer): void }>(
+      (actor, trait) => {
+        if (actor.isInWorld && !actor.disposed) {
+          trait.renderAboveWorld(actor, this)
+        }
+      },
+    )
+
+    if (this.enableDepthBuffer) {
+      this.renderer.clearDepthBuffer()
+    }
+
+    // 阶段 7: AfterWorld 后处理
+    this.applyPostProcessing(PostProcessPassType.AfterWorld)
+
+    // 阶段 8: IRenderShroud（战争迷雾渲染）
+    this.world.applyToActorsWithTrait?.<{ renderShroud(wr: WorldRenderer): void }>(
+      (_actor, trait) => {
+        trait.renderShroud(this)
+      },
+    )
+
+    if (this.enableDepthBuffer) {
+      this.renderer.disableDepthBuffer()
+    }
+
+    this.renderer.disableScissor()
+
+    // 阶段 9: 覆盖层渲染（按类型分组以保持与 OpenRA 一致）
+    const grouped = new Map<string, IFinalizedRenderable[]>()
+    for (const r of this.preparedOverlayRenderables) {
+      const key = r.constructor?.name ?? 'unknown'
+      if (!grouped.has(key)) grouped.set(key, [])
+      grouped.get(key)!.push(r)
+    }
+    for (const group of grouped.values()) {
+      for (const r of group) {
+        r.render(this)
+      }
+    }
+
+    // 阶段 10: AfterShroud 后处理
+    this.applyPostProcessing(PostProcessPassType.AfterShroud)
+
+    this.renderer.flush()
   }
 
   /**
    * 绘制注释（替代 OpenRA DrawAnnotations）。
+   *
+   * 原始流程:
+   *   EnableAntialiasingFilter → 渲染注释 → DisableAntialiasingFilter →
+   *   (如果 debugVis.RenderGeometry) 渲染所有调试几何 →
+   *   (如果 debugVis.ScreenMap) 绘制 ScreenMap 边界框 →
+   *   AfterAnnotations 后处理 → Flush → 清空缓存
    */
   drawAnnotations(): void {
-    // 渲染调试几何（renderingGroupId = 3 的 mesh 自动由 scene.render() 处理）
+    // 阶段 1: 渲染注释（启用抗锯齿滤镜）
+    this.renderer.enableAntialiasingFilter()
+    for (const r of this.preparedAnnotationRenderables) {
+      r.render(this)
+    }
+    this.renderer.disableAntialiasingFilter()
 
-    // 应用 AfterAnnotations 后处理
+    // 阶段 2: 调试几何（当 debugVis.RenderGeometry 启用时）
+    if (this.debugVis?.renderGeometry) {
+      // 渲染所有类型的调试几何
+      for (const r of this.preparedRenderables) {
+        r.renderDebugGeometry(this)
+      }
+      for (const r of this.preparedOverlayRenderables) {
+        r.renderDebugGeometry(this)
+      }
+      for (const r of this.preparedAnnotationRenderables) {
+        r.renderDebugGeometry(this)
+      }
+    }
+
+    // 阶段 3: ScreenMap 调试渲染（当 debugVis.ScreenMap 启用时）
+    if (this.debugVis?.screenMap && this.world.screenMap.renderBounds) {
+      // TODO: 绘制 ScreenMap 的 RenderBounds 和 MouseBounds
+      // 需要 RgbaColorRenderer 模块迁移后才能实现彩色线段/多边形绘制
+      //
+      // foreach (var r in World.ScreenMap.RenderBounds(World.RenderPlayer))
+      //   Game.Renderer.RgbaColorRenderer.DrawRect(tl, br, 1, Color.MediumSpringGreen)
+      //
+      // foreach (var b in World.ScreenMap.MouseBounds(World.RenderPlayer))
+      //   Game.Renderer.RgbaColorRenderer.DrawPolygon(points, 1, Color.OrangeRed)
+    }
+
+    // 阶段 4: AfterAnnotations 后处理
     this.applyPostProcessing(PostProcessPassType.AfterAnnotations)
 
-    // 清空渲染对象缓存（释放引用）
+    this.renderer.flush()
+
+    // 清空所有渲染对象缓存（释放引用）
     this.clearRenderableBuffers()
   }
 
