@@ -24,6 +24,9 @@ import {
   Mesh,
 } from '@babylonjs/core'
 
+import { FrameBuffer } from '../OpenRA.Platforms.Default/FrameBuffer'
+import type { IFrameBuffer, Color } from '../OpenRA.Game/Graphics/PlatformInterfaces'
+
 // ---------------------------------------------------------------------------
 // 渲染阶段（erasableSyntaxOnly 兼容：const 对象 + 类型别名）
 // ---------------------------------------------------------------------------
@@ -875,20 +878,23 @@ export class Renderer {
   // -----------------------------------------------------------------------
 
   /**
-   * 创建渲染目标纹理（替代 OpenRA 手动 FBO 创建）。
+   * 创建帧缓冲对象（替代 OpenRA Context.CreateFrameBuffer）。
    *
-   * **调用者负责管理返回的 RenderTargetTexture 的生命周期**，
+   * OpenRA 对照: Renderer.CreateFrameBuffer(Size s)
+   *
+   * 与原始 OpenRA 的关键差异:
+   * - 原始：调用 Context.CreateFrameBuffer → 新 GL FBO + 新纹理 + FrameBuffer 包装
+   * - 迁移：直接创建 FrameBuffer 实例，内部自动管理 RenderTargetTexture
+   *
+   * **调用者负责管理返回的 FrameBuffer 的生命周期**，
    * 包括在不再需要时调用 `.dispose()` 释放 GPU 内存。
-   * 此方法不进行缓存或复用——每次调用均创建新的 GPU 资源。
+   *
+   * @param size — 帧缓冲尺寸（像素）。WebGL 2.0 支持 NPOT。
+   * @param clearColor — 可选清除颜色 (RGBA 0-255)，默认 (0,0,0,0)。
+   * @returns FrameBuffer 实例（实现 IFrameBuffer 接口）
    */
-  createFrameBuffer(size: Size): RenderTargetTexture {
-    return new RenderTargetTexture(
-      'frameBuffer',
-      { width: size.width, height: size.height },
-      this.worldScene,
-      false,
-      true,
-    )
+  createFrameBuffer(size: Size, clearColor?: Color): IFrameBuffer {
+    return new FrameBuffer(size, this.engine, clearColor)
   }
 
   // -----------------------------------------------------------------------

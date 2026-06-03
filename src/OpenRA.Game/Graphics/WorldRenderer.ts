@@ -1123,9 +1123,17 @@ export class WorldRenderer {
   /**
    * 初始化默认渲染管线（泛光、色调映射等）。
    *
-   * TODO-2.2.6: 集成 DefaultRenderingPipeline
+   * OpenRA 对照: WorldRenderer 构造函数的 DefaultRenderingPipeline 集成
+   *
+   * 配置了以下后处理效果:
+   *   - 泛光 (Bloom): threshold=0.8, weight=0.3
+   *   - 色调映射 (Tone Mapping): 已启用
+   *   - HDR 渲染管道
+   *
    * 需要在实际渲染环境中创建（依赖 Engine + Scene）。
    * 在 mock 测试环境中创建可能失败，调用方需处理。
+   *
+   * Ref: TODO-2.2.6 (已完成), TODO-2.6.3 (FrameBuffer & 后处理)
    */
   initializeDefaultPipeline(camera: Camera): DefaultRenderingPipeline | null {
     if (this.defaultPipeline) return this.defaultPipeline

@@ -93,6 +93,14 @@ vi.mock('@babylonjs/core', () => {
       this.renderList = []
       this.updateSamplingMode = vi.fn()
       this.samplingMode = 2 // BILINEAR default
+      this.getInternalTexture = vi.fn(
+        () => ({ samplingMode: 2, dispose: vi.fn() }),
+      )
+      // renderTarget getter needed by FrameBuffer.bind/unbind
+      Object.defineProperty(this, 'renderTarget', {
+        get: () => ({}),
+        configurable: true,
+      })
     }),
     MeshBuilder: {
       CreatePlane: vi.fn().mockImplementation(() => ({
@@ -723,10 +731,19 @@ describe('Renderer', () => {
   // createFrameBuffer 返回值
   // ========================================================================
   describe('createFrameBuffer', () => {
-    it('returns a RenderTargetTexture', () => {
-      const rt = renderer.createFrameBuffer({ width: 128, height: 128 })
-      expect(rt).toBeDefined()
-      expect(rt.dispose).toBeDefined()
+    it('returns an IFrameBuffer with dispose/bind/unbind', () => {
+      const fb = renderer.createFrameBuffer({ width: 128, height: 128 })
+      expect(fb).toBeDefined()
+      expect(fb.dispose).toBeDefined()
+      expect(fb.bind).toBeDefined()
+      expect(fb.unbind).toBeDefined()
+    })
+
+    it('returned FrameBuffer exposes texture property', () => {
+      const fb = renderer.createFrameBuffer({ width: 64, height: 64 })
+      expect(fb.texture).toBeDefined()
+      expect(fb.texture.size).toEqual({ width: 64, height: 64 })
+      fb.dispose()
     })
   })
 
