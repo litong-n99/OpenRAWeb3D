@@ -453,7 +453,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 ```
 
 6. Submit to **Reviewer** (cc **Manager**)
-7. Maximum 3 review rounds — if still not approved, Manager will arbitrate
+7. Maximum 5 review rounds — if still not approved, Manager will arbitrate
 
 **Important**: If you believe a review finding is incorrect, explain WHY in the "Items NOT Changed" section with technical reasoning. Do not simply ignore findings.
 
