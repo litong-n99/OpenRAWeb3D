@@ -243,8 +243,8 @@ When the Developer re-submits after fixes:
 
 ### Review Round Limits
 - **Round 1**: Full 5-dimension review
-- **Round 2**: Review only changed items + justifications
-- **Round 3**: Final round — if still not approved, escalate to Manager with detailed explanation
+- **Round 2-4**: Review only changed items + justifications
+- **Round 5**: Final round — if still not approved, escalate to Manager with detailed explanation
 
 ---
 
@@ -284,4 +284,4 @@ Attach the Actionable Fix List PLUS the full review report.
 - Cross-reference findings with the migration docs whenever possible
 - If a test file exists but lacks coverage for a feature you flag as "MISSED", note that tests should be added
 - **Do not re-review already-approved code** in re-review rounds — focus on changed items only
-- **Respect the 3-round limit** — escalate to Manager rather than infinite loop
+- **Respect the 5-round limit** — escalate to Manager rather than infinite loop

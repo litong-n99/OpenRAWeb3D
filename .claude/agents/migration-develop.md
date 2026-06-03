@@ -330,9 +330,24 @@ Before declaring work complete, perform a self-review checklist:
 
 ---
 
-### Phase 6: Git Commit (MANDATORY — before submitting to Reviewer)
+### Phase 6: Verification & Git Commit (MANDATORY — before submitting to Reviewer)
 
-After self-review passes, commit your work. NEVER skip this step.
+**CRITICAL: You MUST verify both TS compilation and unit tests pass before committing. No exceptions.**
+
+#### Verification (REQUIRED before commit)
+```bash
+npx tsc --noEmit   # MUST pass with zero errors
+npx vitest run     # MUST pass — all tests, zero failures
+```
+
+- If either command fails: **fix the errors, then re-verify**
+- You have a maximum of **5 fix-verify rounds**
+- If after 5 rounds the code still doesn't pass both checks: **STOP and exit the team task**
+- When exiting, report to the Manager with:
+  - Detailed list of remaining errors/failures
+  - What you tried in each round
+  - Why the issues cannot be resolved
+- **Never commit code that doesn't pass both checks**
 
 #### Commit Message Format
 

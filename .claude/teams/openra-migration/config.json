@@ -1,0 +1,89 @@
+{
+  "name": "openra-migration",
+  "description": "OpenRA → Babylon.js Web 3D migration team. Migrating RgbaColorRenderer.cs this session.",
+  "createdAt": 1780463311735,
+  "leadAgentId": "team-lead@openra-migration",
+  "leadSessionId": "eb255314-2c04-43e9-a79e-e9a6f5521270",
+  "members": [
+    {
+      "agentId": "team-lead@openra-migration",
+      "name": "team-lead",
+      "agentType": "team-lead",
+      "model": "deepseek-v4-pro",
+      "joinedAt": 1780463311735,
+      "tmuxPaneId": "",
+      "cwd": "/workspaces/OpenRAWeb3D",
+      "subscriptions": []
+    },
+    {
+      "agentId": "manager@openra-migration",
+      "name": "manager",
+      "color": "blue",
+      "joinedAt": 1780463322630,
+      "tmuxPaneId": "in-process",
+      "subscriptions": [],
+      "agentType": "migration-manager",
+      "model": "deepseek-v4-pro",
+      "prompt": "## Task: Coordinate RgbaColorRenderer Migration\n\nThe team is starting migration of `OpenRA.Game/Graphics/RgbaColorRenderer.cs` → `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts`.\n\n### Current State\n- OpenRA source: 256 lines, 10 public methods\n- Current stub: 4 lines (TODO placeholder)\n- Test file: does NOT exist yet\n- Dependencies: `Vertex` (stub), `Util.PremultiplyAlpha` (stub), `SpriteRenderer` (✅ completed)\n\n### Your Job\n1. Wait for the **Architect** to produce a Work Requirement Document for RgbaColorRenderer\n2. Review the Work Requirement — ensure it's specific, has clear API mappings, addresses the dependency problem (Vertex/Util are stubs)\n3. Once approved, route it to **Developer**\n4. Enforce all handoff report formats throughout the pipeline\n5. Track the task through all stages: Architect → Developer → Reviewer → Docs Manager\n\nStart by reading the migration-manager agent spec if you need to review your workflow rules, then message the Architect to begin work on the Work Requirement Document.",
+      "planModeRequired": false,
+      "cwd": "/workspaces/OpenRAWeb3D",
+      "backendType": "in-process"
+    },
+    {
+      "agentId": "architect@openra-migration",
+      "name": "architect",
+      "color": "green",
+      "joinedAt": 1780463335121,
+      "tmuxPaneId": "in-process",
+      "subscriptions": [],
+      "agentType": "migration-architect",
+      "model": "deepseek-v4-pro",
+      "prompt": "## Task: Write Work Requirement Document for RgbaColorRenderer\n\nCreate a Work Requirement Document for migrating `OpenRA.Game/Graphics/RgbaColorRenderer.cs` → `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts`.\n\n### Key Facts\n- **OpenRA source**: 256 lines, `OpenRA/OpenRA.Game/Graphics/RgbaColorRenderer.cs`\n- **Current stub**: `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts` (4 lines)\n- **Migration plan ref**: TODO-2.4.1 through TODO-2.4.5 in `docs/rendering_migration_plan.md`\n- **Complexity rating**: 低 (Low)\n\n### Public Methods to Migrate (from OpenRA source):\n1. `DrawLine(start, end, width, startColor, endColor, blendMode)` — gradient line\n2. `DrawLine(start, end, width, color, blendMode)` — solid line\n3. `DrawLine(points, width, color, connectSegments, blendMode)` — polyline\n4. `DrawPolygon(vertices[], width, color, blendMode)` — float3 overload\n5. `DrawPolygon(vertices[], width, color, blendMode)` — float2 overload\n6. `DrawRect(tl, br, width, color, blendMode)` — rectangle outline\n7. `FillRect(tl, br, color, blendMode)` — filled rectangle\n8. `FillRect(a, b, c, d, color, blendMode)` — filled quad (single color)\n9. `FillRect(a, b, c, d, tlColor, trColor, brColor, blColor, blendMode)` — filled quad (per-vertex color)\n10. `FillEllipse(tl, br, color, blendMode)` — filled ellipse approximation\n\n### Dependency Problem\nThe RgbaColorRenderer depends on:\n- `Vertex` struct → **still a stub** (4 lines)\n- `Util.PremultiplyAlpha()` → **still a stub** (4 lines)\n- `SpriteRenderer.DrawRGBAQuad()` → **already completed** ✅\n\nYou MUST address this: should Vertex and Util be migrated first? Or can RgbaColorRenderer be implemented with a minimal internal Vertex type and inline PremultiplyAlpha, deferring the full migration?\n\n### Your Job\n1. Read `docs/rendering_migration_plan.md` section 3.4 for the TODO requirements\n2. Read the OpenRA source at `OpenRA/OpenRA.Game/Graphics/RgbaColorRenderer.cs`\n3. Read the current stub at `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts`\n4. Read the already-completed SpriteRenderer.ts to understand the `DrawRGBAQuad` interface\n5. Check the Vertex stub and explain your dependency strategy\n6. Write the Work Requirement Document following the format in the migration-architect agent spec\n7. Include specific Babylon.js API mappings (Babylon.js `LinesMesh`, `CreateLines`, `MeshBuilder`, GUI, etc.)\n8. Submit the Work Requirement to the Manager for approval",
+      "planModeRequired": false,
+      "cwd": "/workspaces/OpenRAWeb3D",
+      "backendType": "in-process"
+    },
+    {
+      "agentId": "developer@openra-migration",
+      "name": "developer",
+      "color": "yellow",
+      "joinedAt": 1780463344158,
+      "tmuxPaneId": "in-process",
+      "subscriptions": [],
+      "agentType": "migration-develop",
+      "model": "deepseek-v4-pro",
+      "prompt": "## Task: Prepare for RgbaColorRenderer Migration\n\nYou will be migrating `OpenRA.Game/Graphics/RgbaColorRenderer.cs` → `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts`.\n\n### Preparation (do this while waiting for Architect's Work Requirement):\n\n1. **Read the OpenRA source**: `OpenRA/OpenRA.Game/Graphics/RgbaColorRenderer.cs` (256 lines)\n   - Understand ALL 10 public methods\n   - Understand the private helpers: `IntersectionOf`, `DrawDisconnectedLine`, `DrawConnectedLine`, `VertexWithColor`\n   - Note how it uses `SpriteRenderer.DrawRGBAQuad()` as its rendering backend\n\n2. **Read the completed SpriteRenderer**: `src/OpenRA.Game/Graphics/SpriteRenderer.ts`\n   - Focus on the `DrawRGBAQuad` method signature and behavior\n   - Understand BlendMode types available\n\n3. **Check dependency stubs**:\n   - `src/OpenRA.Game/Graphics/Vertex.ts` — understand what's missing\n   - `src/OpenRA.Game/Graphics/Util.ts` — understand `PremultiplyAlpha` status\n\n4. **Read the migration plan**: `docs/rendering_migration_plan.md` section 3.4 (TODO-2.4.1 through TODO-2.4.5)\n\n5. **Research Babylon.js APIs** you'll likely use:\n   - `BABYLON.MeshBuilder.CreateLines` / `LinesMesh` — for line rendering\n   - `BABYLON.MeshBuilder.CreatePlane` / `CreateGround` — for filled rects\n   - `BABYLON.GUI` — for UI overlays (Rectangle, Line, Ellipse)\n   - `BABYLON.VertexData` — for custom vertex construction\n\n### Deliverable\nWhen the Architect sends the Work Requirement Document, begin implementation following the full development workflow (Phases 1-6) in your agent spec. Wait for the Work Requirement before writing any code.",
+      "planModeRequired": false,
+      "cwd": "/workspaces/OpenRAWeb3D",
+      "backendType": "in-process"
+    },
+    {
+      "agentId": "reviewer@openra-migration",
+      "name": "reviewer",
+      "color": "purple",
+      "joinedAt": 1780463353087,
+      "tmuxPaneId": "in-process",
+      "subscriptions": [],
+      "agentType": "migration-review",
+      "model": "deepseek-v4-pro",
+      "prompt": "## Task: Prepare for RgbaColorRenderer Review\n\nYou will be reviewing the migration of RgbaColorRenderer when the Developer finishes.\n\n### Preparation (do this while waiting):\n\n1. **Read the OpenRA source**: `OpenRA/OpenRA.Game/Graphics/RgbaColorRenderer.cs` (256 lines)\n   - Enumerate ALL 10 public methods: the 3 DrawLine overloads, 2 DrawPolygon overloads, DrawRect, 3 FillRect overloads, FillEllipse\n   - Understand the private helpers: `IntersectionOf`, `DrawDisconnectedLine`, `DrawConnectedLine`, `VertexWithColor`\n   - Note all edge cases: parallel lines in IntersectionOf, empty point lists, single-segment polylines, closed vs open loops\n   - Understand the static `Offset` constant (0.5, 0.5, 0) for pixel center alignment\n\n2. **Read the migration plan**: `docs/rendering_migration_plan.md` section 3.4 (TODO-2.4.1-2.4.5)\n   - Note the specific Babylon.js mappings expected: `BABYLON.GUI` / `CreateLines`\n   - Note the key concerns: premultiplied alpha, Z-fighting, high-frequency updates\n\n3. **Read the completed SpriteRenderer**: `src/OpenRA.Game/Graphics/SpriteRenderer.ts`\n   - Focus on `DrawRGBAQuad` — its interface is what RgbaColorRenderer depends on\n\n4. **Prepare your review checklist**:\n   - What would constitute BLOCKER issues for this file?\n   - What OpenRA behaviors are critical to preserve (pixel center offset, premultiplied alpha, line intersection corner calculation)?\n   - What Babylon.js-specific pitfalls should you watch for?\n\n### Deliverable\nWhen the Developer submits their Completion Report, immediately begin the 5-dimension review. Be thorough — the connected line segment corner intersection math is complex and needs careful verification.",
+      "planModeRequired": false,
+      "cwd": "/workspaces/OpenRAWeb3D",
+      "backendType": "in-process"
+    },
+    {
+      "agentId": "docs-manager@openra-migration",
+      "name": "docs-manager",
+      "color": "orange",
+      "joinedAt": 1780463359527,
+      "tmuxPaneId": "in-process",
+      "subscriptions": [],
+      "agentType": "migration-docs",
+      "model": "deepseek-v4-pro",
+      "prompt": "## Task: Prepare for RgbaColorRenderer Documentation\n\nYou will finalize documentation after the RgbaColorRenderer migration passes review.\n\n### Preparation (do this while waiting):\n\n1. **Read the current migration plan section**: `docs/rendering_migration_plan.md` section 3.4 — understand the 5 TODO items (TODO-2.4.1 through TODO-2.4.5) that need to be updated\n\n2. **Read the current progress tracker**: `docs/migration_progress.md` — note current stats\n\n3. **Read the README**: `README.md` — check if RgbaColorRenderer completion will trigger any README updates\n\n4. **Check the current stub**: `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts` — note its current state for the before/after record\n\n5. **Prepare the doc update plan**:\n   - `docs/rendering_migration_plan.md`: mark all TODO-2.4.x as completed, update status\n   - `docs/migration_progress.md`: update completion stats\n   - `README.md`: assess if updates needed (probably not for a single file)\n   - Plan the commit message\n\n### Deliverable\nWhen the Reviewer returns APPROVED and the Manager routes the task to you, immediately update all docs and commit following the commit conventions in your agent spec.",
+      "planModeRequired": false,
+      "cwd": "/workspaces/OpenRAWeb3D",
+      "backendType": "in-process"
+    }
+  ]
+}
