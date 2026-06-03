@@ -212,12 +212,12 @@ Conversion chain: `CPos` -> `MPos` -> `WPos`. All game logic uses `WPos`; map an
 
 #### 3.1.4 Phase A Acceptance Criteria
 
-- [ ] **AC-3.A.1** `WPos <-> MPos <-> CPos` round-trip conversions are lossless (verify at extreme map coordinates)
-- [ ] **AC-3.A.2** `WAngle.sin()/cos()` lookup table results match across Chrome, Firefox, Safari (determinism test)
-- [ ] **AC-3.A.3** `LongBitSet` correctly handles 64 players with O(1) AND operation
-- [ ] **AC-3.A.4** `PriorityQueue` handles 10000 items with dequeue in O(log n)
-- [ ] **AC-3.A.5** 17 test files covering all coordinate types and primitives
-- [ ] **AC-3.A.6** No per-frame allocation of coordinate types in hot paths (use pooling)
+- [x] **AC-3.A.1** `WPos <-> MPos <-> CPos` round-trip conversions are lossless (verify at extreme map coordinates)
+- [x] **AC-3.A.2** `WAngle.sin()/cos()` lookup table results match across Chrome, Firefox, Safari (determinism test)
+- [x] **AC-3.A.3** `LongBitSet` correctly handles 64 players with O(1) AND operation
+- [x] **AC-3.A.4** `PriorityQueue` handles 10000 items with dequeue in O(log n)
+- [x] **AC-3.A.5** 17 test files covering all coordinate types and primitives
+- [x] **AC-3.A.6** No per-frame allocation of coordinate types in hot paths (use pooling)
 
 **Estimated Effort**: ~2,500 lines implementation + ~1,800 lines test (2 developer-weeks)
 
