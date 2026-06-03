@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Implementation Phase (7/36 migrated, 7/31 in-scope)
+> **Chapter Status**: Chapter 3 -- Implementation Phase (18/36 migrated, 17/31 in-scope)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -170,10 +170,10 @@ Conversion chain: `CPos` -> `MPos` -> `WPos`. All game logic uses `WPos`; map an
 
 ### 3.1 Phase A: Coordinate System and Primitives
 
-**Status**: Pending (0/17)
+**Status**: ✅ Completed (17/17) -- 2026-06-04
 **Complexity**: Low-Medium
 **Blocked by**: Nothing (foundation layer, no internal deps)
-**Blocks**: Everything else in Chapter 3
+**Blocks**: Everything else in Chapter 3 (Phase B ready to start)
 
 **Description**: OpenRA uses a sophisticated multi-layer coordinate system. Three coordinate spaces exist: **MPos** (Map position -- integer grid with sub-cell), **CPos** (Cell position -- clamped to map bounds), and **WPos** (World position -- high-precision 3D with 1024 units/cell). These must be migrated BEFORE any actor or world code, along with the primitive data structures they depend on.
 
@@ -195,20 +195,20 @@ Conversion chain: `CPos` -> `MPos` -> `WPos`. All game logic uses `WPos`; map an
 
 #### 3.1.2 Map Coordinate Types
 
-- [ ] **TODO-3.A.6** `src/OpenRA.Game/MPos.ts` -- Map position (integer `U, V` grid coordinates with sub-cell). Implement `MPos <-> CPos` and `MPos <-> WPos` conversions. (94 lines C#)
-- [ ] **TODO-3.A.7** `src/OpenRA.Game/CPos.ts` -- Cell position (`X, Y, Layer` -- integer cell coordinates, clamped to map bounds). Implement `CPos <-> MPos` and `CPos <-> WPos` conversions. Support 8-directional cell offsets for RTS movement. (148 lines C#)
-- [ ] **TODO-3.A.8** `src/OpenRA.Game/CVec.ts` -- Cell vector (integer cell offsets). Direction constants for 8 cardinal/diagonal RTS movement directions (up, down, left, right, diagonals). (147 lines C#)
+- [x] **TODO-3.A.6** `src/OpenRA.Game/MPos.ts` ✅ -- Map position (integer `U, V` grid coordinates with sub-cell). Implement `MPos <-> CPos` and `MPos <-> WPos` conversions. (94 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.7** `src/OpenRA.Game/CPos.ts` ✅ -- Cell position (`X, Y, Layer` -- integer cell coordinates, clamped to map bounds). Implement `CPos <-> MPos` and `CPos <-> WPos` conversions. Support 8-directional cell offsets for RTS movement. (148 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.8** `src/OpenRA.Game/CVec.ts` ✅ -- Cell vector (integer cell offsets). Direction constants for 8 cardinal/diagonal RTS movement directions (up, down, left, right, diagonals). (147 lines C#, migrated with full test coverage)
 
 #### 3.1.3 Primitives
 
-- [ ] **TODO-3.A.9** `src/OpenRA.Game/Traits/Target.ts` -- Target abstraction representing "where/what to attack/move to." Supports `WPos` target, `Actor` target, and `Invalid` target types. Methods: `isValid`, `centerPosition`, `actor`. Used by Activity system extensively. (295 lines C#)
-- [ ] **TODO-3.A.10** `src/OpenRA.Game/Primitives/BitSet.ts` -- Efficient bit-packed boolean set for conditions and flags. Implement bitwise AND/OR/XOR/NOT operations. Used by condition system and player masks. (171 lines C#)
-- [ ] **TODO-3.A.11** `src/OpenRA.Game/Primitives/LongBitSet.ts` -- 64-bit bit set for PlayerMask (up to 64 players in multiplayer). Used extensively in diplomacy for O(1) relationship queries via bitwise AND. (189 lines C#)
-- [ ] **TODO-3.A.12** `src/OpenRA.Game/Primitives/TypeDictionary.ts` -- Container storing objects keyed by type (for TraitInfo storage). Maps to `Map<string, unknown>` with typed accessors. Provides `get<T>(key): T`, `has(key): boolean`, `add(value)`. (183 lines C#)
-- [ ] **TODO-3.A.13** `src/OpenRA.Game/Primitives/SpatiallyPartitioned.ts` -- Generic spatial partitioning structure. Used by ScreenMap for efficient spatial queries. Implement grid-based spatial hash with add/remove/query operations. (169 lines C#)
-- [ ] **TODO-3.A.14** `src/OpenRA.Game/Primitives/PriorityQueue.ts` -- Min-heap priority queue implementation. Used in pathfinding and tick scheduling. `enqueue(item, priority)`, `dequeue(): T`, `peek(): T`. (159 lines C#)
-- [ ] **TODO-3.A.15** `src/OpenRA.Game/Primitives/Cache.ts` + `CachedTransform.ts` -- Lazy-computed cached values with invalidation. `Cache<K, V>` with `get(key, factory)`. `CachedTransform<TIn, TOut>` for memoized transformations. (50 + 41 lines C#)
-- [ ] **TODO-3.A.16** `src/OpenRA.Game/Primitives/ActionQueue.ts` -- Deferred action queue for frame-end task execution. `add(action, delayTicks)`, `performActions()`. Used for safe actor disposal and delayed effects. (93 lines C#)
+- [x] **TODO-3.A.9** `src/OpenRA.Game/Traits/Target.ts` ✅ -- Target abstraction representing "where/what to attack/move to." Supports `WPos` target, `Actor` target, and `Invalid` target types. Methods: `isValid`, `centerPosition`, `actor`. Used by Activity system extensively. (295 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.10** `src/OpenRA.Game/Primitives/BitSet.ts` ✅ -- Efficient bit-packed boolean set for conditions and flags. Implement bitwise AND/OR/XOR/NOT operations. Used by condition system and player masks. (171 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.11** `src/OpenRA.Game/Primitives/LongBitSet.ts` ✅ -- 64-bit bit set for PlayerMask (up to 64 players in multiplayer). Used extensively in diplomacy for O(1) relationship queries via bitwise AND. (189 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.12** `src/OpenRA.Game/Primitives/TypeDictionary.ts` ✅ -- Container storing objects keyed by type (for TraitInfo storage). Maps to `Map<string, unknown>` with typed accessors. Provides `get<T>(key): T`, `has(key): boolean`, `add(value)`. (183 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.13** `src/OpenRA.Game/Primitives/SpatiallyPartitioned.ts` ✅ -- Generic spatial partitioning structure. Used by ScreenMap for efficient spatial queries. Implement grid-based spatial hash with add/remove/query operations. (169 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.14** `src/OpenRA.Game/Primitives/PriorityQueue.ts` ✅ -- Min-heap priority queue implementation. Used in pathfinding and tick scheduling. `enqueue(item, priority)`, `dequeue(): T`, `peek(): T`. (159 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.15** `src/OpenRA.Game/Primitives/Cache.ts` + `CachedTransform.ts` ✅ -- Lazy-computed cached values with invalidation. `Cache<K, V>` with `get(key, factory)`. `CachedTransform<TIn, TOut>` for memoized transformations. (50 + 41 lines C#, migrated with full test coverage)
+- [x] **TODO-3.A.16** `src/OpenRA.Game/Primitives/ActionQueue.ts` ✅ -- Deferred action queue for frame-end task execution. `add(action, delayTicks)`, `performActions()`. Used for safe actor disposal and delayed effects. (93 lines C#, migrated with full test coverage)
 
 #### 3.1.4 Phase A Acceptance Criteria
 
