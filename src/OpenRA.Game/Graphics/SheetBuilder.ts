@@ -36,6 +36,28 @@ interface Int2 {
 }
 
 // ---------------------------------------------------------------------------
+// SheetOverflowException — 图集空间不足异常
+//
+// 对应 OpenRA SheetOverflowException (SheetBuilder.cs)
+//
+// 当所有通道的所有 Sheet 都无法容纳新精灵时抛出。
+// 调用方可捕获此异常并分配新的 Sheet 或调整图集大小。
+// ---------------------------------------------------------------------------
+
+/**
+ * 当图集空间不足以容纳请求的精灵分配时抛出。
+ *
+ * 对应 OpenRA SheetOverflowException。
+ * 在 Allocate() 内部抛出，调用方可在 SheetBuilder 外部捕获。
+ */
+export class SheetOverflowException extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'SheetOverflowException'
+  }
+}
+
+// ---------------------------------------------------------------------------
 // FrameTypeToSheetType — 将精灵帧类型转换为图集类型
 //
 // 对应 OpenRA SheetBuilder.FrameTypeToSheetType (SheetBuilder.cs:51-66)

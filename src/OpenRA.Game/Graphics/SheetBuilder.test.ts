@@ -8,7 +8,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { Sheet, SheetType } from './Sheet'
 import { Sprite, TextureChannel } from './Sprite'
-import { SheetBuilder, frameTypeToSheetType } from './SheetBuilder'
+import {
+  SheetBuilder, frameTypeToSheetType, SheetOverflowException,
+} from './SheetBuilder'
 import { SpriteFrameType } from './Util'
 
 // ---------------------------------------------------------------------------
@@ -340,5 +342,26 @@ describe('dispose', () => {
     sb.allocate(makeSize(16, 16))
     sb.dispose()
     expect(() => sb.dispose()).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// SheetOverflowException
+// ---------------------------------------------------------------------------
+
+describe('SheetOverflowException', () => {
+  it('is an Error instance', () => {
+    const ex = new SheetOverflowException('out of space')
+    expect(ex).toBeInstanceOf(Error)
+  })
+
+  it('has name set to SheetOverflowException', () => {
+    const ex = new SheetOverflowException('overflow')
+    expect(ex.name).toBe('SheetOverflowException')
+  })
+
+  it('stores the message', () => {
+    const ex = new SheetOverflowException('atlas full')
+    expect(ex.message).toBe('atlas full')
   })
 })

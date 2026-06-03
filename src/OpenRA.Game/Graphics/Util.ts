@@ -394,100 +394,165 @@ function copyIntoRgba(
 ): void {
   // 快速路径: Bgra32 → 目标（格式完全匹配，使用 Uint32Array 批量复制）
   // 对应 OpenRA: if (srcType == SpriteFrameType.Bgra32) { ... fast path ... }
+  //
+  // BUG-M03 fix: Uint32Array requires 4-byte aligned byteOffset.
+  // If dest/src buffers are not 4-byte aligned, constructing Uint32Array throws RangeError.
+  // Check alignment first; fall back to slow path if misaligned.
   if (srcType === SpriteFrameType.Bgra32) {
-    const dest32 = new Uint32Array(dest.buffer, dest.byteOffset, dest.byteLength / 4)
-    const src32 = new Uint32Array(src.buffer, src.byteOffset, src.byteLength / 4)
-    let si = 0
-    let di = y * stride + x
+    const destAligned = dest.byteOffset % 4 === 0
+    const srcAligned = src.byteOffset % 4 === 0
 
-    for (let h = 0; h < height; h++) {
-      // 批量复制整行（对应 Span.CopyTo）
-      for (let w = 0; w < width; w++) {
-        dest32[di] = src32[si]
-        si++
-        di++
-      }
-      di += stride - width
-    }
+    if (destAligned && srcAligned) {
+      const dest32 = new Uint32Array(dest.buffer, dest.byteOffset, dest.byteLength / 4)
+      const src32 = new Uint32Array(src.buffer, src.byteOffset, src.byteLength / 4)
+      let si = 0
+      let di = y * stride + x
 
-    // 若未预乘，对复制后的数据执行预乘 Alpha
-    if (!premultiplied) {
-      di = y * stride + x
       for (let h = 0; h < height; h++) {
+        // 批量复制整行（对应 Span.CopyTo）
         for (let w = 0; w < width; w++) {
-          const pixel = dest32[di]
-          const a = (pixel >>> 24) & 0xff
-          if (a !== 255) {
-            const b = (pixel) & 0xff
-            const g = (pixel >>> 8) & 0xff
-            const r = (pixel >>> 16) & 0xff
-            const f = a / 255
-            dest32[di] =
-              (a << 24) |
-              ((Math.round(r * f) & 0xff) << 16) |
-              ((Math.round(g * f) & 0xff) << 8) |
-              (Math.round(b * f) & 0xff)
-          }
+          dest32[di] = src32[si]
+          si++
           di++
         }
         di += stride - width
       }
-    }
 
-    return
+      // 若未预乘，对复制后的数据执行预乘 Alpha
+      if (!premultiplied) {
+        di = y * stride + x
+        for (let h = 0; h < height; h++) {
+          for (let w = 0; w < width; w++) {
+            const pixel = dest32[di]
+            const a = (pixel >>> 24) & 0xff
+            if (a !== 255) {
+              const b = (pixel) & 0xff
+              const g = (pixel >>> 8) & 0xff
+              const r = (pixel >>> 16) & 0xff
+              const f = a / 255
+              dest32[di] =
+                (a << 24) |
+                ((Math.round(r * f) & 0xff) << 16) |
+                ((Math.round(g * f) & 0xff) << 8) |
+                (Math.round(b * f) & 0xff)
+            }
+            di++
+          }
+          di += stride - width
+        }
+      }
+
+      return
+    }
+    // NOTE: If misaligned, fall through to slow path below.
+    // This is rare — TypedArray byteOffset is typically 4-byte aligned.
   }
 
   // 慢速路径: 逐像素转换（对应 OpenRA switch 分支）
+  // Also handles misaligned Bgra32 buffers that couldn't use the Uint32Array fast path.
   let si = 0
   let di = y * stride + x
-  const dest32 = new Uint32Array(dest.buffer, dest.byteOffset, dest.byteLength / 4)
+  // BUG-M03 fix: alignment check for slow-path dest32 too.
+  // Fall back to byte-level access if dest buffer is misaligned.
+  const destAligned = dest.byteOffset % 4 === 0
+  if (destAligned) {
+    const dest32 = new Uint32Array(dest.buffer, dest.byteOffset, dest.byteLength / 4)
 
-  for (let h = 0; h < height; h++) {
-    for (let w = 0; w < width; w++) {
-      let r: number, g: number, b: number, a: number
+    for (let h = 0; h < height; h++) {
+      for (let w = 0; w < width; w++) {
+        let r: number, g: number, b: number, a: number
 
-      switch (srcType) {
-        case SpriteFrameType.Bgr24:
-          b = src[si++]
-          g = src[si++]
-          r = src[si++]
-          a = 255
-          break
+        switch (srcType) {
+          case SpriteFrameType.Bgr24:
+            b = src[si++]
+            g = src[si++]
+            r = src[si++]
+            a = 255
+            break
 
-        case SpriteFrameType.Rgba32:
-          r = src[si++]
-          g = src[si++]
-          b = src[si++]
-          a = src[si++]
-          break
+          case SpriteFrameType.Rgba32:
+            r = src[si++]
+            g = src[si++]
+            b = src[si++]
+            a = src[si++]
+            break
 
-        case SpriteFrameType.Rgb24:
-          r = src[si++]
-          g = src[si++]
-          b = src[si++]
-          a = 255
-          break
+          case SpriteFrameType.Rgb24:
+            r = src[si++]
+            g = src[si++]
+            b = src[si++]
+            a = 255
+            break
 
-        default:
-          throw new Error(`Unknown SpriteFrameType ${srcType}`)
+          default:
+            throw new Error(`Unknown SpriteFrameType ${srcType}`)
+        }
+
+        // 预乘 Alpha（若需要）
+        if (!premultiplied && a !== 255) {
+          const f = a / 255
+          r = Math.round(r * f)
+          g = Math.round(g * f)
+          b = Math.round(b * f)
+        }
+
+        // 存储为 BGRA 格式（目标缓冲区格式）
+        // 对应 OpenRA d[di++] = c.ToArgb()（Color.ToArgb 返回 BGRA uint）
+        dest32[di++] =
+          ((a & 0xff) << 24) |
+          ((r & 0xff) << 16) |
+          ((g & 0xff) << 8) |
+          (b & 0xff)
       }
-
-      // 预乘 Alpha（若需要）
-      if (!premultiplied && a !== 255) {
-        const f = a / 255
-        r = Math.round(r * f)
-        g = Math.round(g * f)
-        b = Math.round(b * f)
-      }
-
-      // 存储为 BGRA 格式（目标缓冲区格式）
-      // 对应 OpenRA d[di++] = c.ToArgb()（Color.ToArgb 返回 BGRA uint）
-      dest32[di++] =
-        ((a & 0xff) << 24) |
-        ((r & 0xff) << 16) |
-        ((g & 0xff) << 8) |
-        (b & 0xff)
+      di += stride - width
     }
-    di += stride - width
+  } else {
+    // Extremely rare: dest buffer not 4-byte aligned.
+    // Write BGRA bytes directly (slower but safe).
+    for (let h = 0; h < height; h++) {
+      for (let w = 0; w < width; w++) {
+        let r: number, g: number, b: number, a: number
+
+        switch (srcType) {
+          case SpriteFrameType.Bgr24:
+            b = src[si++]
+            g = src[si++]
+            r = src[si++]
+            a = 255
+            break
+
+          case SpriteFrameType.Rgba32:
+            r = src[si++]
+            g = src[si++]
+            b = src[si++]
+            a = src[si++]
+            break
+
+          case SpriteFrameType.Rgb24:
+            r = src[si++]
+            g = src[si++]
+            b = src[si++]
+            a = 255
+            break
+
+          default:
+            throw new Error(`Unknown SpriteFrameType ${srcType}`)
+        }
+
+        if (!premultiplied && a !== 255) {
+          const f = a / 255
+          r = Math.round(r * f)
+          g = Math.round(g * f)
+          b = Math.round(b * f)
+        }
+
+        // BGRA byte order
+        const base = (y + h) * stride * 4 + (x + w) * 4
+        dest[base] = b
+        dest[base + 1] = g
+        dest[base + 2] = r
+        dest[base + 3] = a
+      }
+    }
   }
 }

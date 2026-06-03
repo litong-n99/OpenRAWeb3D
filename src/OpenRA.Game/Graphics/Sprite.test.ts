@@ -177,6 +177,7 @@ describe('empty sprite', () => {
     const sheet = makeSheet(128, 128)
     const sprite = new Sprite(sheet, { x: 0, y: 0, width: 0, height: 0 }, TextureChannel.RGBA)
 
+    expect(sprite.channel).toBe(TextureChannel.RGBA)
     expect(sprite.size.x).toBe(0)
     expect(sprite.size.y).toBe(0)
     expect(sprite.size.z).toBe(0)

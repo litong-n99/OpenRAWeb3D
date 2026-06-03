@@ -389,6 +389,113 @@ describe('fastCopyIntoChannel', () => {
     expect(b).toBeLessThan(100)     // Should be ~50
   })
 
+  // -----------------------------------------------------------------------
+  // 慢速路径: Bgr24, Rgba32, Rgb24
+  // -----------------------------------------------------------------------
+
+  it('copies Bgr24 data (3 bytes/pixel, no alpha) into RGBA dest', () => {
+    // Bgr24 is 3 bytes per pixel: B, G, R (no alpha byte)
+    const dest = new Uint8Array(4 * 2 * 2) // 2x2 RGBA
+    const src = new Uint8Array([
+      10, 20, 30,  // BGR pixel 1
+      40, 50, 60,  // BGR pixel 2
+      70, 80, 90,  // BGR pixel 3
+      100, 110, 120, // BGR pixel 4
+    ])
+
+    fastCopyIntoChannel(
+      dest, 2,    // stride=2
+      0, 0,       // x=0, y=0
+      2, 2,       // 2x2 copy
+      src,
+      SpriteFrameType.Bgr24,
+      4 /* RGBA */,
+      true, // premultiplied (no-op for alpha=255)
+    )
+
+    // Bgr24 → stored as BGRA uint: [B, G, R, A=255]
+    // dest Uint32 LE: bytes [B, G, R, A]
+    expect(dest[0]).toBe(10)   // B (was src[0])
+    expect(dest[1]).toBe(20)   // G (was src[1])
+    expect(dest[2]).toBe(30)   // R (was src[2])
+    expect(dest[3]).toBe(255)  // A=255 (implicit, no alpha in source)
+  })
+
+  it('copies Rgba32 data (RGBA byte order) into BGRA dest', () => {
+    // Rgba32 is 4 bytes per pixel: R, G, B, A (PNG byte order)
+    const dest = new Uint8Array(4 * 2 * 1) // 2x1 RGBA
+    const src = new Uint8Array([
+      30, 20, 10, 255,  // RGBA pixel 1: R=30, G=20, B=10, A=255
+      60, 50, 40, 128,  // RGBA pixel 2: R=60, G=50, B=40, A=128
+    ])
+
+    fastCopyIntoChannel(
+      dest, 2,    // stride=2
+      0, 0,       // x=0, y=0
+      2, 1,       // 2x1 copy
+      src,
+      SpriteFrameType.Rgba32,
+      4 /* RGBA */,
+      true, // premultiplied
+    )
+
+    // Rgba32 → stored as BGRA uint: bytes [B, G, R, A]
+    expect(dest[0]).toBe(10)   // B (was src[2])
+    expect(dest[1]).toBe(20)   // G (was src[1])
+    expect(dest[2]).toBe(30)   // R (was src[0])
+    expect(dest[3]).toBe(255)  // A (was src[3])
+  })
+
+  it('copies Rgb24 data (RGB byte order, no alpha) into BGRA dest', () => {
+    // Rgb24 is 3 bytes per pixel: R, G, B (no alpha byte)
+    const dest = new Uint8Array(4 * 2 * 2) // 2x2 RGBA
+    const src = new Uint8Array([
+      30, 20, 10,  // RGB pixel 1
+      60, 50, 40,  // RGB pixel 2
+      90, 80, 70,  // RGB pixel 3
+      120, 110, 100, // RGB pixel 4
+    ])
+
+    fastCopyIntoChannel(
+      dest, 2,    // stride=2
+      0, 0,       // x=0, y=0
+      2, 2,       // 2x2 copy
+      src,
+      SpriteFrameType.Rgb24,
+      4 /* RGBA */,
+      true,
+    )
+
+    // Rgb24 → stored as BGRA uint: bytes [B, G, R, A=255]
+    expect(dest[0]).toBe(10)   // B (was src[2])
+    expect(dest[1]).toBe(20)   // G (was src[1])
+    expect(dest[2]).toBe(30)   // R (was src[0])
+    expect(dest[3]).toBe(255)  // A=255 (implicit)
+  })
+
+  it('Rgba32 slow path premultiplies alpha when premultiplied=false', () => {
+    const dest = new Uint8Array(4 * 1 * 1)
+    // Rgba32: R=100, G=0, B=0, A=128
+    const src = new Uint8Array([100, 0, 0, 128])
+
+    fastCopyIntoChannel(
+      dest, 1,    // stride=1
+      0, 0,       // x=0, y=0
+      1, 1,       // 1x1
+      src,
+      SpriteFrameType.Rgba32,
+      4 /* RGBA */,
+      false, // NOT premultiplied
+    )
+
+    // After premultiply: R=100*128/255≈50, B=0*128/255=0 → stored as BGRA: [B≈0, G=0, R≈50, A=128]
+    expect(dest[0]).toBe(0)            // B (premultiplied: 0)
+    expect(dest[1]).toBe(0)            // G (premultiplied: 0)
+    expect(dest[2]).toBeGreaterThan(0) // R (premultiplied: ~50)
+    expect(dest[2]).toBeLessThan(100)
+    expect(dest[3]).toBe(128)          // A unchanged
+  })
+
   it('throws for unknown SpriteFrameType', () => {
     const dest = new Uint8Array(16)
     const src = new Uint8Array([1, 2, 3])

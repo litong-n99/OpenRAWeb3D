@@ -144,9 +144,12 @@ export class Sprite {
     // 处理空精灵（size 为 0 时 bounds 为空矩形）
     if (bounds.width === 0 || bounds.height === 0) {
       this.bounds = { x: 0, y: 0, width: 0, height: 0 }
-      this.channel = (typeof zRampOrChannel !== 'number'
-        ? zRampOrChannel
-        : channelOrUndefined!) as TextureChannel
+      // BUG-B01 fix: typeof zRampOrChannel !== 'number' is always false
+      // since both zRamp and TextureChannel values are numbers.
+      // Correct discrimination: channelOrUndefined is only set in full-version calls.
+      this.channel = (channelOrUndefined !== undefined
+        ? channelOrUndefined
+        : zRampOrChannel) as TextureChannel
       this.zRamp = 0
       this.offset = { x: 0, y: 0, z: 0 }
       this.blendMode = blendMode
