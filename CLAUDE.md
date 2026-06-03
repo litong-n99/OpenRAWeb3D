@@ -4,12 +4,13 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 2 -- Rendering Engine (COMPLETE)
-**Progress**: 27/27 rendering files complete (100%)
+**Phase**: Chapter 2 (Rendering Engine) -- COMPLETE | Chapter 3 (Actor System) -- PLANNING
+**Progress**: 27/27 rendering files complete (100%), Chapter 3 migration plan created
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
 |--------|--------|
+| **Rendering Engine (27 files)** | COMPLETE (100%) |
 | Renderer (main renderer) | Completed, reviewed |
 | WorldRenderer (world scene) | Completed, reviewed |
 | SpriteRenderer (batch sprites) | Completed |
@@ -18,9 +19,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | FrameBuffer & Post-Processing (10 files) | Completed, reviewed |
 | Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
 | Platform Abstraction (11 files) | Completed, reviewed |
-| RgbaSpriteRenderer (RGBA sprite batches) | Completed |
-| Model shaders (model.vert/frag) | NOP stubs (fully documented) |
-| Game logic, networking, audio, mod system | Not yet started |
+| **Actor System (15 planned)** | PLANNING (0%) |
+| Game logic, networking, audio, mod system | Not yet started
 
 ## Directory Layout
 
@@ -53,6 +53,10 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       PaletteReference.ts   ← migrated (91 lines, 89 test lines)
       Util.ts               ← migrated (558 lines, 511 test lines)
       *.ts                  ← 16 remaining stubs (beyond Chapter 2 scope)
+    Traits/                 ← Chapter 3: Trait interfaces and components (empty, planned)
+    Activities/             ← Chapter 3: Activity state machine (empty, planned)
+    GameRules/              ← Chapter 3: ActorInfo, WeaponInfo config (empty, planned)
+    Orders/                 ← Chapter 3: Order generation (empty, planned)
   OpenRA.Platforms.Default/ ← Platform abstraction (6 migrated, 7 NOP, 5 stubs)
       Shader.ts             ← migrated (417 lines, 572 test lines)
       FrameBuffer.ts        ← migrated (415 lines, 649 test lines)
@@ -78,6 +82,7 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
 docs/
   openra_migration.agent.final.converted.md   ← Comprehensive architecture analysis (~199KB)
   rendering_migration_plan.md                 ← Chapter 2 rendering plan with TODO checklist
+  actor_system_migration_plan.md              ← Chapter 3 actor system plan with TODO checklist
   migration_progress.md                       ← Overall progress tracker with dependency graph
 ```
 
@@ -116,6 +121,23 @@ docs/
 | `TerrainSpriteLayer` (large terrain grid) | Single large-plane `Mesh` + `updateVerticesData()` dirty-row update |
 | `PaletteReference` (weak palette link) | TypeScript class with getter + setter (no `internal` keyword) |
 | `RenderPostProcessPassVertex` (postprocess vertex) | Babylon.js `PostProcess` auto-generates fullscreen quad |
+
+## Chapter 3 Paradigm Mappings (Actor System)
+
+| OpenRA (C# / Reflection) | Babylon.js / TypeScript |
+|---------------------------|-------------------------|
+| `World` (game world container) | `BABYLON.Scene` + `GameWorldManager` |
+| `Actor` (lightweight trait container) | `GameActor extends TransformNode` |
+| `TraitDictionary` (generic type-keyed storage) | `Map<string, Component[]>` + type guard functions |
+| `Trait<T>()` (compiler-enforced type lookup) | `getComponent<T>(name: string): T \| undefined` (runtime assertion) |
+| `ITick` / `ITickRender` (logic vs render split) | Custom `ITick` + `scene.onBeforeRenderObservable` |
+| `Activity` (coroutine-linked state machine) | Custom `Activity` abstract class + `ActivityRunner` |
+| `Condition System` (token-based trait toggles) | `ConditionManager` with reference-counted tokens |
+| `WeaponInfo` (YAML weapon config) | `WeaponConfig` with JSON Schema validation |
+| `Player` (PlayerActor pattern) | `Player` class + component-based PlayerActor |
+| `Requires<T>` (compile-time dependency) | Build-time JSON Schema validation + topological sort |
+| `ScreenMap` (2D screen coordinate hash) | `scene.pick()` raycasting + GPU picker |
+| `Relationships` (diplomacy bitmask) | `PlayerMask` bitmask + `RelationshipWith()` bitwise check |
 
 ## Agent Team Structure
 
@@ -195,7 +217,8 @@ npx tsc --noEmit
 
 | Document | Description |
 |----------|-------------|
-| [docs/rendering_migration_plan.md](docs/rendering_migration_plan.md) | Chapter 2 rendering engine migration plan with TODO checklist and file mapping table (27 migration items, 26 unique files) |
+| [docs/rendering_migration_plan.md](docs/rendering_migration_plan.md) | Chapter 2 rendering engine migration plan with TODO checklist and file mapping table (27 migration items, 100% complete) |
+| [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md) | Chapter 3 actor system migration plan with TODO checklist (8 core + 7 supporting files, 15 total) |
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |

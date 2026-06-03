@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
-> **Last updated**: 2026-06-03
-> **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE
-> **Overall status**: Chapter 2 complete (27/27 = 100%), ready for Chapter 3
+> **Last updated**: 2026-06-04
+> **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — PLANNING
+> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3 migration plan created, ready for implementation
 
 ---
 
@@ -10,15 +10,14 @@
 
 | Metric | Count |
 |--------|-------|
-| **Total files in rendering migration plan** | 27 |
-| **Completed (full implementation + tests)** | 24 |
-| **Completed without tests (implemented, no test file)** | 2 |
-| **NOP stubs (intentional omissions, documented)** | 1 |
-| **Deferred (low priority, documented)** | 0 |
-| **Remaining modules beyond rendering** | Not yet planned |
-| **Overall rendering completion** | 100% (27/27) |
+| **Chapter 2 rendering files** | 27 (100% complete) |
+| **Chapter 3 core files (planned)** | 8 core + 7 supporting = 15 |
+| **Chapter 3 status** | Migration plan written, pending implementation |
+| **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
+| **Remaining chapters** | Chapters 4-8+ (networking, audio, file system, mod system, UI, map) |
+| **Overall project completion** | Chapter 2/8+ (rendering engine done, actor system planned) |
 
-> **Note**: All 27 migration plan items are now accounted for: 24 fully implemented with tests, 2 implemented without tests, 1 NOP stub. Plus 4 additional files (Util, Palette, PaletteReference, Color), 9 NOP stubs (7 SDL2 platform + 2 model shaders), and 2 extra platform wrappers (VertexBuffer, StaticIndexBuffer) go beyond the original 27-item plan. Chapter 2 is complete.
+> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (8 core files + 7 supporting files with ~40 TODO items). The plan follows the same format as `docs/rendering_migration_plan.md`.
 
 ---
 
@@ -213,6 +212,77 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 | `OpenRA.Game/Graphics/` | ~16 files | Placeholder stubs (AnimationWithOffset, ChromeProvider, CursorSequence, etc.) |
 | `OpenRA.Platforms.Default/` | ~5 files | Audio/font stubs (DummySoundEngine, OpenAlSoundEngine, FreeTypeFont, etc.) |
 | `OpenRA.Game/Traits/`, `Activities/`, `Network/`, etc. | Empty dirs | Future chapters |
+
+---
+
+## Chapter 3: Game World & Actor System Progress
+
+> **Migration Plan**: [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md)
+> **Created**: 2026-06-04
+> **Status**: PLANNING (0/15 files migrated)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed | 0 | 0% |
+| In Progress | 0 | 0% |
+| Pending | 15 | 100% |
+| **Total** | **15** | **100%** |
+
+### Core Files (8 from Architecture Analysis Table 4-1)
+
+| # | File | Target | Complexity | Lines (C#) | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| 1 | `World.cs` | `src/OpenRA.Game/World.ts` | High | 650 | Pending |
+| 2 | `Actor.cs` | `src/OpenRA.Game/Actor.ts` | High | 650 | Pending |
+| 3 | `TraitsInterfaces.cs` | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` | Medium | 664 | Pending |
+| 4 | `TraitDictionary.cs` | `src/OpenRA.Game/TraitDictionary.ts` | Medium | 329 | Pending |
+| 5 | `ActorInfo.cs` | `src/OpenRA.Game/GameRules/ActorInfo.ts` | Medium | 201 | Pending |
+| 6 | `Activity.cs` | `src/OpenRA.Game/Activities/Activity.ts` | High | 296 | Pending |
+| 7 | `WeaponInfo.cs` | `src/OpenRA.Game/GameRules/WeaponInfo.ts` | Medium | 268 | Pending |
+| 8 | `Player.cs` | `src/OpenRA.Game/Player.ts` | Low | 337 | Pending |
+
+### Supporting Files (7)
+
+| # | File | Target | Complexity | Status |
+|:---:|:---|:---|:---:|:---:|
+| S1 | `CallFunc.cs` | `src/OpenRA.Game/Activities/CallFunc.ts` | Low | Pending |
+| S2 | `Target.cs` | `src/OpenRA.Game/Traits/Target.ts` | Low | Pending |
+| S3 | `Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | Low | Pending |
+| S4 | `ScreenMap.cs` | `src/OpenRA.Game/Traits/World/ScreenMap.ts` | Medium | Pending |
+| S5 | `Shroud.cs` | `src/OpenRA.Game/Traits/Player/Shroud.ts` | Medium | Pending |
+| S6 | `FrozenActorLayer.cs` | `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts` | Medium | Pending |
+| S7 | `IOrderGenerator.cs` | `src/OpenRA.Game/Orders/IOrderGenerator.ts` | Low | Pending |
+
+### Chapter 3 Dependency Graph
+
+```
+Phase 3A (Foundation):   TraitsInterfaces → TraitDictionary
+Phase 3B (Data Models):  ActorInfo, WeaponInfo, Ruleset
+Phase 3C (Core Actor):   Actor, Target, Player
+Phase 3D (World):        World, ScreenMap
+Phase 3E (Activity):     Activity, CallFunc
+Phase 3F (Game Traits):  Shroud, FrozenActorLayer, IOrderGenerator
+```
+
+### Chapter 3 Dependencies on Chapter 2
+
+- Renderer.ts (Engine.runRenderLoop(), canvas, WebGL context)
+- WorldRenderer.ts (BABYLON.Scene, renderingGroupId, camera)
+- Shader system (ShaderMaterial for custom rendering Traits)
+- Sprite & Texture system (for rendering actor visuals)
+
+### Phase Strategy
+
+| Phase | Files | Est. Days | Depends On |
+|-------|-------|:---------:|-----------|
+| 3A: Foundation | TraitsInterfaces, TraitDictionary | 2-3 | Chapter 2 |
+| 3B: Data Models | ActorInfo, WeaponInfo, Ruleset | 2-3 | 3A |
+| 3C: Core Actor | Actor, Target, Player | 3-4 | 3A, 3B |
+| 3D: World | World, ScreenMap | 2-3 | 3C |
+| 3E: Activity | Activity, CallFunc | 2-3 | 3C |
+| 3F: Game Traits | Shroud, FrozenActorLayer, IOrderGenerator | 2-3 | 3C, 3D |
+
+**Total estimated**: 13-19 developer-days
 
 ---
 
