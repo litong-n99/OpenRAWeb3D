@@ -130,8 +130,8 @@
 
 **OpenRA 对照**: `OpenRA.Game/Graphics/RgbaColorRenderer.cs`  
 **迁移目标**: `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts`  
-**状态**: 已完成 (1012行实现 + 858行测试, 51 个测试用例)  
-**审核**: 已通过代码审核（2 轮审核，修复了 2 个 BLOCKER + 2 个 MAJOR 问题）
+**状态**: 已完成 (1012行实现 + 858行测试, 68 个测试用例)  
+**审核**: 已通过代码审核（3 轮审核，修复了 2 个 BLOCKER + 3 个 MAJOR + 3 个 MINOR 问题）
 
 - [x] **TODO-2.4.1** UI 元素映射：`Rectangle`/`Line`/`Ellipse` GUI 控件对应 `FillRect`/`DrawLine`/`FillEllipse`。
 - [x] **TODO-2.4.2** 调试图形映射：`BABYLON.CreateLines` / `LinesMesh` 对应路径点、碰撞框绘制。

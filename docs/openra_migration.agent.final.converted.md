@@ -199,6 +199,20 @@ OpenRA 手动计算 $Y+Z+ZOffset$ 排序键的做法在 Babylon.js 3D 环境中�
 
 2D 平面图形在 3D 场景中面临深度冲突（Z-fighting）问题。调试线条应设置 `linesMesh.renderingGroupId` 为最高层（如 3），并启用 `disableDepthWrite = true` 确保始终可见。`RgbaColorRenderer` 的预乘 Alpha 处理在 Babylon.js 中需显式配置材质：`material.alphaMode = BABYLON.Engine.ALPHA_PREMULTIPLIED`，否则半透明颜色混合结果会出现亮边或暗边偏差。对于需要频繁更新的动态图形（如实时血条），优先使用 Babylon GUI 而非每帧重建 `LinesMesh`，因为 GUI 系统针对高频更新做了批处理优化。
 
+#### 2.4.5 实际迁移方案与架构决策差异
+
+实际迁移（2026-06-03）采用了与原计划不同的方案。原计划推荐分场景使用 `BABYLON.GUI` / `CreateLines` / `DynamicTexture` 三种策略，但实际实现统一采用了**自定义 `ShaderMaterial` + 动态 `Mesh`** 方案。这一架构决策的原因：
+
+- **每顶点颜色支持**：`BABYLON.GUI` 和 `CreateLines` 不支持渐变线段（起点/终点不同颜色），而 OpenRA 的 `DrawLine(startColor, endColor)` 需要每顶点独立颜色属性。
+- **3D Z 排序需求**：UI 元素和调试图形需要参与场景深度测试，`BABYLON.GUI` 渲染在独立的屏幕空间层，无法与 3D 场景正确排序。
+- **统一批处理模型**：所有几何图形（线段、矩形、多边形、椭圆）通过同一套顶点 buffer 提交，避免多种渲染策略的切换开销和材质状态不一致。
+
+**核心范式映射**：CPU 顶点计算 + 内联类型 → Babylon.js 动态 Mesh + ShaderMaterial。
+- OpenRA 侧：`RgbaColorRenderer` 在 CPU 端计算四边形顶点（角点偏移、椭圆离散化），通过 `SpriteRenderer.DrawRGBAQuad()` 提交。
+- Babylon.js 侧：预分配 4-vertex 动态 Mesh，每帧通过 `mesh.updateVerticesData()` 更新顶点位置和颜色，`ShaderMaterial` 在 GPU 端完成预乘 Alpha 和光栅化。
+
+**实现统计**：10 个公共方法（`DrawLine` 3 个重载、`DrawRect`、`FillRect` 3 个变体、`FillEllipse` 2 个变体、`drawPolygon`、`drawPolygon2D`、`clear`）、3 个私有辅助方法（`drawLineInternal`、`drawDisconnectedLine`、`drawConnectedLine`）、3 个内联类型（`RgbaVertex`、`RgbaColorRendererOptions`、`GradientConfig`）。
+
 ### 2.5 Shader / 材质系统
 
 #### 2.5.1 IShader 接口与 GLSL 着色器

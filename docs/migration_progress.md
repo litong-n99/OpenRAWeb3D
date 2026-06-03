@@ -35,7 +35,7 @@
 | 1 | `src/OpenRA.Game/Renderer.ts` | 1106 | 782 | 89 | Yes |
 | 2 | `src/OpenRA.Game/Graphics/WorldRenderer.ts` | 1306 | 1104 | 74 | Yes |
 | 3 | `src/OpenRA.Game/Graphics/SpriteRenderer.ts` | 835 | 642 | 55 | Pending |
-| 4 | `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts` | 1012 | 858 | 51 | Yes |
+| 4 | `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts` | 1012 | 858 | 68 | Yes |
 
 #### Pending (Stubs Created)
 
@@ -108,7 +108,7 @@
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
-| 2026-06-03 | RgbaColorRenderer.ts | migration-develop | migration-review | 2 review rounds, 51 test cases, GUI/lines |
+| 2026-06-03 | RgbaColorRenderer.ts | migration-develop | migration-review | 3 review rounds, 68 test cases, dynamic Mesh + ShaderMaterial |
 | 2026-06-03 | SpriteRenderer.ts | migration-develop | Pending | 55 test cases, ThinInstances backend |
 | ~2026-06-02 | WorldRenderer.ts | migration-develop | migration-review | Reviewed, fixes applied |
 | ~2026-06-01 | Renderer.ts | migration-develop | migration-review | Reviewed, 89 tests |
