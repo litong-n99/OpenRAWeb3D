@@ -119,6 +119,23 @@ export class Shader implements IShader {
   private disposed = false
 
   /**
+   * 预分配的 Vector2/Vector3 实例，避免 setVec 中的 per-frame 分配。
+   *
+   * Babylon.js ShaderMaterial.setVector2/setVector3 内部只读取 x/y/z 值并
+   * 立即写入 uniform buffer，随后不再引用传入的 Vector 对象。
+   * 因此可以安全地在每次 setVec 调用中复用并变异这些预分配实例。
+   */
+  private readonly _vec2 = new Vector2(0, 0)
+  private readonly _vec3 = new Vector3(0, 0, 0)
+
+  /**
+   * 预分配的 number[] 数组（最大 4 分量），
+   * 用于 setVec 数组重载的 Float32Array → number[] 转换，
+   * 避免 per-frame Array.from() 分配。
+   */
+  private readonly _vecArray = new Array<number>(4)
+
+  /**
    * 构造 Shader 实例。
    *
    * 对应 OpenRA public Shader(IShaderBindings bindings)。
@@ -232,13 +249,18 @@ export class Shader implements IShader {
     this.ensureNotDisposed()
 
     if (typeof xOrVec === 'number') {
-      // 标量重载
+      // 标量重载：复用预分配的 Vector2/Vector3 实例
       if (y === undefined) {
         this.material.setFloat(name, xOrVec)
       } else if (z === undefined) {
-        this.material.setVector2(name, new Vector2(xOrVec, y))
+        this._vec2.x = xOrVec
+        this._vec2.y = y
+        this.material.setVector2(name, this._vec2)
       } else {
-        this.material.setVector3(name, new Vector3(xOrVec, y, z))
+        this._vec3.x = xOrVec
+        this._vec3.y = y
+        this._vec3.z = z
+        this.material.setVector3(name, this._vec3)
       }
     } else {
       // 数组重载 — 对应 OpenRA SetVec(name, ReadOnlyMemory<float>, length)
@@ -249,8 +271,11 @@ export class Shader implements IShader {
           `(对应 OpenRA: InvalidDataException "Invalid vector length")`,
         )
       }
-      // ShaderMaterial.setFloats 期望 number[]；转换 Float32Array
-      this.material.setFloats(name, Array.from(xOrVec))
+      // 仅复制 length 个值到预分配数组（而非整个 Float32Array）
+      for (let i = 0; i < vecLength; i++) {
+        this._vecArray[i] = xOrVec[i]
+      }
+      this.material.setFloats(name, this._vecArray)
     }
   }
 

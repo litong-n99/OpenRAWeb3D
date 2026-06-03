@@ -16,6 +16,7 @@ import {
   TextureChannel,
   CombinedShaderBindings,
   createVertex,
+  createVertexSimple,
   packVertexAttributes,
   unpackChannelType,
   unpackDepthType,
@@ -117,6 +118,47 @@ describe('createVertex', () => {
     expect(v.x).toBe(1)
     expect(v.r).toBe(1)
     expect(v.a).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// createVertexSimple (default white tint)
+// ---------------------------------------------------------------------------
+
+describe('createVertexSimple', () => {
+  it('creates vertex with default white tint (1,1,1,1)', () => {
+    const v = createVertexSimple(10, 20, 30, 0.5, 0.8, 0, 0, 0x00010000)
+    expect(v.x).toBe(10)
+    expect(v.y).toBe(20)
+    expect(v.z).toBe(30)
+    expect(v.s).toBe(0.5)
+    expect(v.t).toBe(0.8)
+    expect(v.u).toBe(0)
+    expect(v.v).toBe(0)
+    expect(v.c).toBe(0x00010000)
+    // Default white tint
+    expect(v.r).toBe(1)
+    expect(v.g).toBe(1)
+    expect(v.b).toBe(1)
+    expect(v.a).toBe(1)
+  })
+
+  it('matches OpenRA Vertex(float3, ...) constructor default tint', () => {
+    // OpenRA: new Vertex(xyz, s, t, u, v, c) → tint=Ones, a=1f
+    const v = createVertexSimple(0, 0, 0, 0, 0, 0, 0, 0)
+    expect(v.r).toBe(1)
+    expect(v.g).toBe(1)
+    expect(v.b).toBe(1)
+    expect(v.a).toBe(1)
+  })
+
+  it('works with verticesToArrays', () => {
+    const v = createVertexSimple(1, 2, 3, 0.1, 0.2, 0.3, 0.4, 0x42)
+    const result = verticesToArrays([v])
+    expect(result.tints[0]).toBe(1) // r=1
+    expect(result.tints[1]).toBe(1) // g=1
+    expect(result.tints[2]).toBe(1) // b=1
+    expect(result.tints[3]).toBe(1) // a=1
   })
 })
 

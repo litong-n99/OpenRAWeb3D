@@ -16,9 +16,8 @@ precision highp float;
 // - 自定义 uniform 通过 ShaderMaterial.setFloat/setVector3 设置
 // ---------------------------------------------------------------------------
 
-// Babylon.js 自动注入的矩阵
+// Babylon.js 自动注入的矩阵（worldViewProjection 替代 Scroll/p1/p2 手动投影）
 uniform mat4 worldViewProjection;
-uniform mat4 world;
 
 // 自定义 uniform（通过 ShaderMaterial API 设置）
 uniform float PaletteRows;

@@ -305,10 +305,27 @@ describe('Shader.setVec', () => {
   })
 
   describe('array overload (N-component)', () => {
-    it('calls setFloats with converted Float32Array', () => {
+    it('calls setFloats with pre-allocated array (only length values copied)', () => {
       const vec = new Float32Array([1, 2, 3, 4])
       shader.setVec('someArray', vec, 4)
-      expect(mockSetFloats).toHaveBeenCalledWith('someArray', [1, 2, 3, 4])
+      expect(mockSetFloats).toHaveBeenCalledTimes(1)
+      // Pre-allocated array has length 4; verify content
+      const callArg = mockSetFloats.mock.calls[0]
+      expect(callArg[0]).toBe('someArray')
+      const passedArray = callArg[1] as number[]
+      expect(passedArray[0]).toBe(1)
+      expect(passedArray[1]).toBe(2)
+      expect(passedArray[2]).toBe(3)
+      expect(passedArray[3]).toBe(4)
+    })
+
+    it('respects length parameter (only copies length values)', () => {
+      const vec = new Float32Array([10, 20, 30, 40])
+      shader.setVec('vec2', vec, 2)
+      expect(mockSetFloats).toHaveBeenCalledTimes(1)
+      const passedArray = mockSetFloats.mock.calls[0][1] as number[]
+      expect(passedArray[0]).toBe(10)
+      expect(passedArray[1]).toBe(20)
     })
 
     it('throws for length > 4', () => {
@@ -324,7 +341,9 @@ describe('Shader.setVec', () => {
     it('handles length 1 array', () => {
       const vec = new Float32Array([42])
       shader.setVec('single', vec, 1)
-      expect(mockSetFloats).toHaveBeenCalledWith('single', [42])
+      expect(mockSetFloats).toHaveBeenCalledTimes(1)
+      const passedArray = mockSetFloats.mock.calls[0][1] as number[]
+      expect(passedArray[0]).toBe(42)
     })
   })
 })
@@ -496,7 +515,7 @@ describe('Shader full lifecycle', () => {
   it('completes create → set uniforms → set texture → set matrix → bind → prepareRender → dispose', () => {
     const shader = new Shader(createTestBindings(), mockScene)
 
-    // Set various uniforms
+    // Set various uniforms (pre-allocated Vector2/Vector3/array internally reused)
     shader.setBool('EnableDepthPreview', true)
     shader.setVec('PaletteRows', 16)
     shader.setVec('DepthPreviewParams', 0.5, 0.8)

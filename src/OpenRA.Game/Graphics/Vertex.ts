@@ -125,6 +125,20 @@ export interface Vertex {
 // 对应 OpenRA Vertex 构造函数的多个重载。
 // ---------------------------------------------------------------------------
 
+/** 创建 Vertex（默认白色色调版，简化的构造器）。
+ *
+ * 对应 OpenRA Vertex(in float3 xyz, float s, float t, float u, float v, uint c)
+ *   → 内部调用 Vertex(xyz.X, xyz.Y, xyz.Z, s, t, u, v, c, float3.Ones, 1f)
+ * 即默认色调为白色不透明 (r=1, g=1, b=1, a=1)。
+ */
+export function createVertexSimple(
+  x: number, y: number, z: number,
+  s: number, t: number, u: number, v: number,
+  c: number,
+): Vertex {
+  return { x, y, z, s, t, u, v, c, r: 1, g: 1, b: 1, a: 1 }
+}
+
 /** 创建 Vertex（完整参数版）。
  *
  * 对应 OpenRA Vertex(float x, float y, float z, float s, float t,

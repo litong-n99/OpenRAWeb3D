@@ -1,5 +1,5 @@
 #version 300 es
-precision mediump float;
+precision highp float;
 
 // ---------------------------------------------------------------------------
 // combined.frag — OpenRA 精灵片段着色器的 WebGL 2.0 (GLSL ES 3.0) 迁移
@@ -288,9 +288,17 @@ void main()
     if (!(EnablePixelArtScaling && isPaletted))
     {
         vec4 x = Sample(vChannelSampler, coords);
-        vec2 p = vec2(dot(x, vChannelMask), vTexPalette);
         if (isPaletted)
-            c = texture(Palette, p);
+        {
+            // 量化调色板索引以避免浮点精度导致颜色错位：
+            // 纹理值在 [0,1] 范围，乘以 255.0 并舍入恢复整数索引，
+            // 再除以 255.0 得到精确的调色板纹理 UV 坐标。
+            // Palette 纹理使用 NEAREST 采样（256 列 x N 行），
+            // 每个列对应一个调色板条目，量化确保查找正确列。
+            float index = dot(x, vChannelMask);
+            float quantized = floor(index * 255.0 + 0.5) / 255.0;
+            c = texture(Palette, vec2(quantized, vTexPalette));
+        }
         else if (isColor)
             c = vTexCoord;
         else
