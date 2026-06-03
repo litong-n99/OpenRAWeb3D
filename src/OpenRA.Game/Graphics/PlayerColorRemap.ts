@@ -23,7 +23,7 @@
  */
 
 import type { IPaletteRemap } from './Palette'
-import { toLinear, fromLinear, rgbToHsv } from '../Primitives/Color'
+import { toLinear, fromLinear, rgbToHsv, hsvToRgb } from '../Primitives/Color'
 
 // ---------------------------------------------------------------------------
 // Color 局部类型（与 PlatformInterfaces.Color 兼容）
@@ -140,8 +140,7 @@ export class PlayerColorRemap implements IPaletteRemap {
 
     // 步骤 4: 构造新的 HSV → RGB 颜色
     // 对应 OpenRA: (r, g, b) = Color.HsvToRgb(hue, saturation, value * this.value);
-    // 内联 hsvToRgb 计算
-    const newRgb = this._hsvToRgb(
+    const newRgb = hsvToRgb(
       this._hue, this._saturation, value * this._value,
     )
 
@@ -152,42 +151,4 @@ export class PlayerColorRemap implements IPaletteRemap {
     )
   }
 
-  // -----------------------------------------------------------------------
-  // 内部 HSV→RGB 转换（内联实现以匹配 OpenRA 的 Color.HsvToRgb）
-  //
-  // 对应 OpenRA Color.HsvToRgb (Color.cs:109-121)
-  // -----------------------------------------------------------------------
-
-  /**
-   * 将 HSV 色彩空间值转换为线性 RGB。
-   *
-   * 与 Color.ts 中的 hsvToRgb 函数完全一致的实现。
-   * 作为私有方法内联以保持类自包含（匹配 OpenRA 直接调用 Color.HsvToRgb）。
-   *
-   * @param h — 色调 (0-1)
-   * @param s — 饱和度 (0-1)
-   * @param v — 亮度 (0-1)
-   * @returns 线性 RGB 分量
-   */
-  private _hsvToRgb(
-    h: number, s: number, v: number,
-  ): { r: number; g: number; b: number } {
-    const px = Math.abs(h * 6 - 3)
-    const py = Math.abs(((h + 2 / 3) % 1) * 6 - 3)
-    const pz = Math.abs(((h + 1 / 3) % 1) * 6 - 3)
-
-    const r = v * this._lerp(1, this._clamp(px - 1, 0, 1), s)
-    const g = v * this._lerp(1, this._clamp(py - 1, 0, 1), s)
-    const b = v * this._lerp(1, this._clamp(pz - 1, 0, 1), s)
-
-    return { r, g, b }
-  }
-
-  private _lerp(a: number, b: number, t: number): number {
-    return a + (b - a) * t
-  }
-
-  private _clamp(x: number, min: number, max: number): number {
-    return x < min ? min : x > max ? max : x
-  }
 }

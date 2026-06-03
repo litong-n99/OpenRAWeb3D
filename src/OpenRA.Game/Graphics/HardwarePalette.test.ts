@@ -331,6 +331,94 @@ describe('HardwarePalette', () => {
 
       expect(() => hp.applyModifiers([])).not.toThrow()
     })
+
+    it('warns and skips when scene is not set', () => {
+      const noSceneHp = new HardwarePalette()
+      const p = createTestPalette(100, 100, 100)
+      noSceneHp.addPalette('noScenePal', p, true)
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      expect(() => noSceneHp.applyModifiers([])).not.toThrow()
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Scene is not set'),
+      )
+
+      warnSpy.mockRestore()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // dispose
+  // -----------------------------------------------------------------------
+
+  // -----------------------------------------------------------------------
+  // BGRA→RGBA byte swap (BUG-B01 fix verification)
+  // -----------------------------------------------------------------------
+
+  describe('BGRA to RGBA swap on upload', () => {
+    it('swaps bytes when uploading palette texture data', () => {
+      // Create a palette where R != B to detect the swap
+      // ARGB = 0xFF FF00 0000 → in little-endian bytes: [0x00, 0x00, 0xFF, 0xFF] = [B=0, G=0, R=255, A=255]
+      // After swapRB: [0xFF, 0x00, 0x00, 0xFF] = [R=255, G=0, B=0, A=255]
+      const colors = new Uint32Array(PALETTE_SIZE)
+      for (let i = 0; i < PALETTE_SIZE; i++) {
+        // R=255, G=0, B=0, A=255
+        colors[i] = ((255 << 24) | (255 << 16) | 0 | 0) >>> 0
+      }
+      const specialPalette = ImmutablePalette.fromColors(colors)
+      hp.addPalette('swapTest', specialPalette, false)
+      hp.initialize()
+
+      // Get the mock update function from the created texture
+      const tex = hp.getTexture()!
+      const updateSpy = (tex as any).update as ReturnType<typeof vi.fn>
+
+      // The first call to update should have the swapped buffer
+      expect(updateSpy).toHaveBeenCalled()
+      const uploaded = updateSpy.mock.calls[0]?.[0] as Uint8Array
+      expect(uploaded).toBeInstanceOf(Uint8Array)
+
+      // Palette data for row 1 starts at byte offset 256*4 = 1024
+      // (row 0 is reserved and empty)
+      const ROW_OFFSET = PALETTE_SIZE * 4 // 1024
+      // Pixel 0 of row 1: original BGRA bytes [0,0,255,255] → RGBA [255,0,0,255]
+      // Byte 0 of pixel = R (was 0 = B before swap, now 255 = R)
+      expect(uploaded[ROW_OFFSET + 0]).toBe(255)
+      // Byte 2 of pixel = B (was 255 = R before swap, now 0 = B)
+      expect(uploaded[ROW_OFFSET + 2]).toBe(0)
+      // Byte 1 of pixel = G (unchanged)
+      expect(uploaded[ROW_OFFSET + 1]).toBe(0)
+      // Byte 3 of pixel = A (unchanged)
+      expect(uploaded[ROW_OFFSET + 3]).toBe(255)
+    })
+
+    it('does not mutate uploaded data (deep copy protects CPU buffer)', () => {
+      const colors = new Uint32Array(PALETTE_SIZE)
+      for (let i = 0; i < PALETTE_SIZE; i++) {
+        colors[i] = ((255 << 24) | (255 << 16) | 0 | 0) >>> 0 // R=255, G=0, B=0
+      }
+      const specialPalette = ImmutablePalette.fromColors(colors)
+      hp.addPalette('noMutate', specialPalette, false)
+      hp.initialize()
+
+      // After upload, the uploaded data should be RGBA (swapped)
+      const tex = hp.getTexture()!
+      const _updateSpy = (tex as any).update as ReturnType<typeof vi.fn>
+      const uploaded = _updateSpy.mock.calls[0]?.[0] as Uint8Array
+
+      // Row 1 starts at offset 1024
+      const ROW_OFFSET = PALETTE_SIZE * 4
+      // RGBA: byte[0]=R=255, byte[2]=B=0
+      expect(uploaded[ROW_OFFSET + 0]).toBe(255)  // R in RGBA
+      expect(uploaded[ROW_OFFSET + 2]).toBe(0)    // B in RGBA
+
+      // Row 0 (reserved) should still be all zeros (unchanged by swap)
+      expect(uploaded[0]).toBe(0)
+      expect(uploaded[1]).toBe(0)
+      expect(uploaded[2]).toBe(0)
+      expect(uploaded[3]).toBe(0)
+    })
   })
 
   // -----------------------------------------------------------------------

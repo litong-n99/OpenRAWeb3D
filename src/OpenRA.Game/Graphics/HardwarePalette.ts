@@ -29,6 +29,28 @@ import type { IPalette } from './Palette'
 import { PaletteReference } from './PaletteReference'
 
 // ---------------------------------------------------------------------------
+// BGRA→RGBA 字节交换（上传时使用）
+//
+// 调色板 CPU 缓冲区为 ARGB uint32（小端字节序 = BGRA），
+// WebGL 纹理为 RGBA 顺序，因此在调用 RawTexture.update() 前需交换 R↔B。
+// 与 Sheet.ts 中的 swapRB 函数完全一致。
+// ---------------------------------------------------------------------------
+
+/**
+ * 原地交换 Uint8Array 中每 4 字节组的第 0 和第 2 字节（BGRA → RGBA）。
+ *
+ * @param data — BGRA 像素数据（将被原地修改为 RGBA）
+ */
+function swapRB(data: Uint8Array): void {
+  for (let i = 0; i + 3 < data.length; i += 4) {
+    const b = data[i]
+    const r = data[i + 2]
+    data[i] = r       // R → offset 0 (RGBA)
+    data[i + 2] = b   // B → offset 2 (RGBA)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 常量
 // ---------------------------------------------------------------------------
 
@@ -430,6 +452,18 @@ export class HardwarePalette {
    * @param paletteMods — 调色板修改器列表
    */
   applyModifiers(paletteMods: Iterable<IPaletteModifier>): void {
+    // 防护：Scene 未设置时无法上传到 GPU，丢弃修改
+    // OpenRA 中 HardwarePalette 构造时渲染上下文已可用，此情况不会发生。
+    // 迁移版延迟创建纹理，Scene 可稍后设置。若未设置则跳过以避免部分状态：
+    // 修改器改变可变调色板后若无法上传，最终会被重置导致静默丢失。
+    if (!this._scene) {
+      console.warn(
+        'HardwarePalette.applyModifiers(): Scene is not set. ' +
+        'Call setScene() before applying modifiers. Skipping.',
+      )
+      return
+    }
+
     // 步骤 1: 应用所有修改器
     for (const mod of paletteMods) {
       mod.adjustPalette(this._mutablePalettes)
@@ -532,7 +566,12 @@ export class HardwarePalette {
     this._ensureTexture()
 
     if (this._texture && this._buffer.length > 0) {
-      this._texture.update(this._buffer)
+      // BGRA→RGBA 字节交换（与 Sheet.ts 完全一致）
+      // 调色板 CPU 缓冲区为 ARGB uint32 → 小端字节序 [B,G,R,A]
+      // RawTexture 使用 RGBA 内部格式，需交换 R↔B
+      const rgbaCopy = new Uint8Array(this._buffer)
+      swapRB(rgbaCopy)
+      this._texture.update(rgbaCopy)
     }
 
     if (this._colorShiftsTexture && this._colorShiftBuffer.length > 0) {
