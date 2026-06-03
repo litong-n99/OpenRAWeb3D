@@ -193,6 +193,61 @@ Keep `README.md` updated with:
 
 ---
 
+---
+
+## Git Commit (MANDATORY — after all doc updates)
+
+After updating all documentation, you MUST commit. NEVER skip this step.
+
+### Commit Message Format
+
+```
+docs: update migration status for ClassName
+
+- rendering_migration_plan.md: mark TODO-2.X.Y as completed
+- migration_progress.md: update stats (N/N complete, X%)
+- [other files changed if any]
+
+Ref: TODO-2.X.Y
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+```
+
+### Commit Rules
+- **Commit after ALL doc updates are complete** — one atomic commit
+- **Verify docs are internally consistent** before committing:
+  - All file paths in docs match actual files
+  - All stats (line counts, test counts) are accurate
+  - Cross-references between docs are valid
+- **Use `git add` for specific files**, not `git add -A`
+- **NEVER commit `OpenRA/` files** — absolute prohibition
+
+---
+
+## Handoff: Finalization Report
+
+After all doc updates and commit, produce this **Finalization Report** to the **Manager**:
+
+```
+## Finalization: [ClassName]
+
+### Documentation Updated
+- [x] `docs/rendering_migration_plan.md`: TODO-2.X.Y marked completed
+- [x] `docs/migration_progress.md`: stats updated (now N/N = X%)
+- [x] `README.md`: [updated / no changes needed]
+- [x] `docs/openra_migration.agent.final.converted.md`: [new mappings added / no changes needed]
+
+### Verification
+- [x] All doc file paths verified against actual `src/` files
+- [x] Line counts and test case counts verified
+- [x] Cross-references between docs are valid
+- [x] Committed: `git log -1` shows commit [hash]
+
+### Newly Unblocked Files
+- [File names that now have all dependencies satisfied]
+```
+
+---
+
 ## Important Rules
 
 1. **NEVER modify files in `OpenRA/`** — readonly reference
@@ -203,3 +258,5 @@ Keep `README.md` updated with:
 6. **Be precise**: Use exact file paths, line counts, and test case counts
 7. **Chinese + English**: Use Chinese for OpenRA-specific concepts and descriptions; English for code identifiers and technical terms
 8. **Date all updates**: Every status change should include the date
+9. **Commit after every finalized task** — doc updates without commits are incomplete
+10. **Atomic doc commits** — one commit per finalized file, don't batch multiple tasks

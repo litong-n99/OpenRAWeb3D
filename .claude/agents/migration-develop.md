@@ -330,9 +330,37 @@ Before declaring work complete, perform a self-review checklist:
 
 ---
 
-## Deliverable Format
+### Phase 6: Git Commit (MANDATORY — before submitting to Reviewer)
 
-When you finish implementing a migration task, produce this summary:
+After self-review passes, commit your work. NEVER skip this step.
+
+#### Commit Message Format
+
+```
+feat(module): migrate ClassName from OpenRA path
+
+- Migrated N public methods, N properties
+- Paradigm: [key OpenRA → Babylon.js mapping]
+- Unit tests: N test cases
+- E2E tests: N scenarios (or "not applicable")
+
+Reviewed-by: migration-review
+Ref: TODO-2.X.Y
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+```
+
+#### Commit Rules
+- **Commit before submitting to Reviewer** — never submit uncommitted work
+- **Verify before commit**: `npx tsc --noEmit` AND `npx vitest run` must pass
+- **Atomic commits**: one commit per migrated file (implementation + test + e2e in one commit)
+- **NEVER commit `OpenRA/` files** — absolute prohibition
+- **Use `git add` for specific files**, not `git add -A` or `git add .`
+
+---
+
+## Handoff: Completion Report
+
+When you finish implementing and committing, produce this **Completion Report** to both the **Manager** and **Reviewer**:
 
 ```
 ## Migration Complete: [ClassName] ([file-path])
@@ -363,7 +391,56 @@ When you finish implementing a migration task, produce this summary:
 - [x] `npx vitest run` passes
 - [x] All public APIs have JSDoc
 - [x] All disposables have cleanup
+- [x] Committed: `git log -1` shows commit [hash]
 ```
+
+---
+
+## Review-Reject Loop
+
+If the **Reviewer** returns a **NEEDS FIXES** verdict, you must:
+
+1. Read the review findings carefully — understand every issue
+2. Address ALL **BLOCKER** and **MAJOR** items
+3. For **MINOR** items: fix them or prepare justification for why not
+4. Produce a **Re-Submission Report**:
+
+```
+## Re-Submission: [ClassName] — Review Round N
+
+### Items Fixed
+| Review Item | Severity | Action Taken | File:Line |
+|-------------|----------|-------------|-----------|
+| [Item description] | BLOCKER | [What was changed] | [file]:[line] |
+| [Item description] | MAJOR | [What was changed] | [file]:[line] |
+| [Item description] | MINOR | [What was changed] | [file]:[line] |
+
+### Items NOT Changed (with justification)
+| Review Item | Severity | Reason for No Change |
+|-------------|----------|---------------------|
+| [Item description] | MINOR | [Detailed reason why the current approach is correct or change is not worth the risk] |
+
+### Re-Verification
+- [x] `npx tsc --noEmit` passes
+- [x] `npx vitest run` passes
+- [x] All review items addressed or justified
+```
+
+5. Commit fixes with message:
+```
+fix(module): address review findings for ClassName (round N)
+
+- [List of fixes]
+
+Reviewed-by: migration-review
+Ref: TODO-2.X.Y
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+```
+
+6. Submit to **Reviewer** (cc **Manager**)
+7. Maximum 3 review rounds — if still not approved, Manager will arbitrate
+
+**Important**: If you believe a review finding is incorrect, explain WHY in the "Items NOT Changed" section with technical reasoning. Do not simply ignore findings.
 
 ---
 
