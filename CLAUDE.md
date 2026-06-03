@@ -89,14 +89,14 @@ The project uses five specialized agents defined in `.claude/agents/`:
 | **migration-develop** | `migration-develop.md` | TypeScript/Babylon.js implementation with unit tests |
 | **migration-review** | `migration-review.md` | Code review across 5 dimensions: docs compliance, feature completeness, efficiency, bugs, format |
 | **migration-docs** | `migration-docs.md` | Documentation maintenance, progress tracking, task coordination, commit |
-| **migration-manager** | `migration-manager.md` | Task orchestration, routing between agents, pipeline management |
+| **migration-manager** | `migration-manager.md` | [MERGED] Now handled by Team Lead directly |
 
 ### Agent Communication
 
-Agents communicate via `SendMessage` tool calls. The Team Lead / Manager coordinates task flow:
+Agents communicate via `SendMessage` tool calls. **Team Lead handles all coordination** (merged with manager role):
 
 ```
-Architect → Developer → Reviewer → Docs Manager → Manager (routing)
+Architect → Developer → Reviewer → Docs Manager → Team Lead (routing)
 ```
 
 ### Agent Rules

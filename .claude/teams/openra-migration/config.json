@@ -9,25 +9,11 @@
       "agentId": "team-lead@openra-migration",
       "name": "team-lead",
       "agentType": "team-lead",
-      "model": "deepseek-v4-pro",
+      "model": "deepseek-v4-flash",
       "joinedAt": 1780463311735,
       "tmuxPaneId": "",
       "cwd": "/workspaces/OpenRAWeb3D",
       "subscriptions": []
-    },
-    {
-      "agentId": "manager@openra-migration",
-      "name": "manager",
-      "color": "blue",
-      "joinedAt": 1780463322630,
-      "tmuxPaneId": "in-process",
-      "subscriptions": [],
-      "agentType": "migration-manager",
-      "model": "deepseek-v4-pro",
-      "prompt": "## Task: Coordinate RgbaColorRenderer Migration\n\nThe team is starting migration of `OpenRA.Game/Graphics/RgbaColorRenderer.cs` → `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts`.\n\n### Current State\n- OpenRA source: 256 lines, 10 public methods\n- Current stub: 4 lines (TODO placeholder)\n- Test file: does NOT exist yet\n- Dependencies: `Vertex` (stub), `Util.PremultiplyAlpha` (stub), `SpriteRenderer` (✅ completed)\n\n### Your Job\n1. Wait for the **Architect** to produce a Work Requirement Document for RgbaColorRenderer\n2. Review the Work Requirement — ensure it's specific, has clear API mappings, addresses the dependency problem (Vertex/Util are stubs)\n3. Once approved, route it to **Developer**\n4. Enforce all handoff report formats throughout the pipeline\n5. Track the task through all stages: Architect → Developer → Reviewer → Docs Manager\n\nStart by reading the migration-manager agent spec if you need to review your workflow rules, then message the Architect to begin work on the Work Requirement Document.",
-      "planModeRequired": false,
-      "cwd": "/workspaces/OpenRAWeb3D",
-      "backendType": "in-process"
     },
     {
       "agentId": "architect@openra-migration",
