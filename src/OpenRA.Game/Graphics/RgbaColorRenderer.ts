@@ -7,9 +7,26 @@
  * - Vertex 结构体 48 字节 → RgbaVertex 接口（位置 + 归一化颜色）
  * - 手动 GL 顶点上传 → Mesh.updateVerticesData()
  * - 逐线段 DrawRGBAQuad 调用 → 内部 quad 累积 + 一次性 flush
+ *
+ * ## 架构分歧说明（对照迁移计划 TODO-2.4.1）
+ *
+ * 迁移计划（TODO-2.4.1）建议对 UI 元素使用 BABYLON.GUI，对调试图形使用
+ * CreateLines/LinesMesh。本实现改为使用动态 Mesh + ShaderMaterial + 逐顶点颜色，
+ * 原因如下：
+ *
+ * 1. BABYLON.GUI 仅在 2D 屏幕空间中操作；RgbaColorRenderer 需要 3D 世界空间
+ *    Z 坐标用于深度排序（参见 FillRect/DrawLine 的 Z 参数）。
+ * 2. CreateLines/LinesMesh 不支持逐顶点颜色或可变线宽 — 这是
+ *    DrawLine(startColor, endColor, width) 所需的。
+ * 3. 动态 Mesh 提供了渲染带颜色的粗线段（四边形展开）、渐变填充矩形
+ *    和多边形填充所需的灵活性。
+ *
+ * 未来优化（TODO-2.5.4）：通过 SpriteRenderer 的 ThinInstances 批量管线
+ * 路由以降低 draw call 数量。
  */
 
 import {
+  Engine,
   Mesh,
   VertexData,
   ShaderMaterial,
@@ -21,6 +38,8 @@ import {
   type Vec2,
   type Vec3,
 } from './SpriteRenderer'
+
+import type { SpriteRenderer } from './SpriteRenderer'
 
 // ---------------------------------------------------------------------------
 // 内部类型定义
@@ -215,10 +234,13 @@ export class RgbaColorRenderer {
   // ---------------------------------------------------------------------------
 
   /**
-   * @param scene — Babylon.js Scene（用于创建 Mesh 和 ShaderMaterial）
+   * @param parent — SpriteRenderer 父渲染器（对应 OpenRA 构造函数参数）
+   *                 内部仅使用 parent.scene 获取 Babylon.js Scene 引用
+   *
+   * OpenRA 对照: RgbaColorRenderer(SpriteRenderer parent)
    */
-  constructor(scene: Scene) {
-    this.scene = scene
+  constructor(parent: SpriteRenderer) {
+    this.scene = parent.scene
   }
 
   // ---------------------------------------------------------------------------
@@ -247,8 +269,8 @@ export class RgbaColorRenderer {
   /**
    * 绘制不连接的线段序列（对应 OpenRA DrawDisconnectedLine）。
    *
-   * 将点序列 {p0, p1, p2, p3, ...} 分解为独立线段：
-   * p0→p1, p2→p3, ...（每对单独一条线段）
+   * 将点序列 {p0, p1, p2, ...} 绘制为连续但不斜接的线段：
+   * p0→p1, p1→p2, p2→p3, ...（无斜接连接，仅使用 drawLineInternal 绘制每条独立线段）
    *
    * OpenRA 对照: RgbaColorRenderer.DrawDisconnectedLine(IEnumerable<float3>, float, Color, BlendMode)
    */
@@ -581,6 +603,9 @@ export class RgbaColorRenderer {
   /**
    * 绘制闭合多边形轮廓（float2 顶点数组，z 默认为 0）。
    *
+   * NOTE: 内部调用 `.map()` 将 float2 转为 float3，会分配新数组和 N 个临时对象。
+   * 对于大量顶点的多边形，考虑直接使用 drawPolygon(float3[]) 避免转换开销。
+   *
    * OpenRA 对照: RgbaColorRenderer.DrawPolygon(float2[], float, Color, BlendMode)
    *
    * @param vertices — 多边形顶点（2D 坐标）
@@ -879,6 +904,10 @@ export class RgbaColorRenderer {
         },
       )
       // 预乘 Alpha 混合（对应 TODO-2.4.3）
+      // NOTE: ALPHA_PREMULTIPLIED 始终使用，因为所有顶点颜色均在 CPU 端
+      // 完成预乘。高级混合模式（Additive、Subtractive、Multiply）需要
+      // 额外的 ShaderMaterial 实例配合预乘感知的混合状态。参见 TODO-2.5.4。
+      this.material.alphaMode = Engine.ALPHA_PREMULTIPLIED
       this.material.setFloat('alpha', 1)
       // 调试图形：禁用深度写入 + 最高渲染组，避免 Z-fighting（对应 TODO-2.4.4）
       this.material.disableDepthWrite = true

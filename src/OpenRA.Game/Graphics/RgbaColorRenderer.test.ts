@@ -13,6 +13,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@babylonjs/core', () => {
   return {
+    Engine: {
+      ALPHA_PREMULTIPLIED: 7,
+    },
     Mesh: vi.fn(function (this: any) {
       this.renderingGroupId = 0
       this.isPickable = true
@@ -43,7 +46,7 @@ import {
   intersectionOf,
   type RgbaColor,
 } from './RgbaColorRenderer'
-import { Mesh, VertexData, ShaderMaterial } from '@babylonjs/core'
+import { Engine, Mesh, VertexData, ShaderMaterial } from '@babylonjs/core'
 import { BlendMode } from './SpriteRenderer'
 
 // ---------------------------------------------------------------------------
@@ -197,12 +200,12 @@ describe('intersectionOf', () => {
 
 describe('RgbaColorRenderer', () => {
   let renderer: RgbaColorRenderer
-  let scene: any
+  let parent: { scene: any }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    scene = mockScene()
-    renderer = new RgbaColorRenderer(scene)
+    parent = { scene: mockScene() }
+    renderer = new RgbaColorRenderer(parent as any)
   })
 
   afterEach(() => {
@@ -313,6 +316,14 @@ describe('RgbaColorRenderer', () => {
       const mat = renderer.getMaterial()
       // disableDepthWrite 在 ShaderMaterial 基类 Material 中定义，用于调试图形
       expect((mat as any).disableDepthWrite).toBe(true)
+    })
+
+    it('sets material.alphaMode to ALPHA_PREMULTIPLIED', () => {
+      renderer.fillRect(vec3(0, 0), vec3(10, 10), rgba(255, 0, 0))
+      renderer.flush()
+
+      const mat = renderer.getMaterial()
+      expect((mat as any).alphaMode).toBe(Engine.ALPHA_PREMULTIPLIED)
     })
 
     it('reuses Mesh and Material on subsequent flushes', () => {
