@@ -156,6 +156,18 @@ describe('VertexBuffer', () => {
         .toThrow('must be positive')
     })
 
+    it('拒绝非 4 字节对齐的 stride（WebGL 要求）', () => {
+      const data = new Float32Array(10)
+      // stride 必须是 4 的倍数
+      expect(() => new VertexBuffer(data, 6, attrs, engine))
+        .toThrow('must be a multiple of 4')
+      expect(() => new VertexBuffer(data, 18, attrs, engine))
+        .toThrow('must be a multiple of 4')
+      // 但 4 的倍数应该没问题
+      expect(() => new VertexBuffer(data, 16, attrs, engine))
+        .not.toThrow()
+    })
+
     it('拒绝空数据', () => {
       expect(() => new VertexBuffer(new Float32Array(0), stride, attrs, engine))
         .toThrow('must not be empty')

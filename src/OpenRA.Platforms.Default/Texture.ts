@@ -170,7 +170,8 @@ export class Texture implements ITexture, ITextureInternal {
 
     if (babylonTexture) {
       // 包装已存在的纹理（FrameBuffer 使用场景）
-      // 应用当前的采样模式以保持一致性
+      // NOTE: 假设包装的纹理为 RGBA BYTE 格式。若包装浮点纹理，
+      // 调用方应确保不在同一 Texture 实例上混用 setData 和 setFloatData。
       this._texture = babylonTexture
       this.applySamplingMode()
     } else {
@@ -225,8 +226,10 @@ export class Texture implements ITexture, ITextureInternal {
       )
     }
 
-    // 如果尺寸变化，重建纹理（RawTexture.update() 不支持调整尺寸）
-    if (width !== this._size.width || height !== this._size.height) {
+    // 如果尺寸变化或类型不匹配（例如之前调用过 setFloatData），
+    // 重建纹理。RawTexture.update() 不支持调整尺寸或更改数据类型。
+    if (width !== this._size.width || height !== this._size.height ||
+        this._texType !== Constants.TEXTURETYPE_UNSIGNED_BYTE) {
       this.recreateTexture(width, height)
     }
 
@@ -370,6 +373,7 @@ export class Texture implements ITexture, ITextureInternal {
     // 对应 OpenRA: glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, w, h, 0, GL_BGRA, GL_UNSIGNED_BYTE, IntPtr.Zero)
     // 通过重新创建 data=null 的 RawTexture 实现等效行为
     this._size = { width, height }
+    this._texType = Constants.TEXTURETYPE_UNSIGNED_BYTE
     const oldTexture = this._texture
 
     this._texture = new RawTexture(
@@ -383,6 +387,9 @@ export class Texture implements ITexture, ITextureInternal {
       scaleFilterToSamplingMode(this._scaleFilter),
       Constants.TEXTURETYPE_UNSIGNED_BYTE,
     )
+
+    // 确保新纹理的采样模式与当前 _scaleFilter 一致
+    this.applySamplingMode()
 
     // 释放旧纹理的 GPU 资源
     oldTexture.dispose()
@@ -444,6 +451,7 @@ export class Texture implements ITexture, ITextureInternal {
    */
   private recreateTexture(width: number, height: number): void {
     this._size = { width, height }
+    this._texType = Constants.TEXTURETYPE_UNSIGNED_BYTE
     const oldTexture = this._texture
 
     this._texture = new RawTexture(
@@ -457,6 +465,10 @@ export class Texture implements ITexture, ITextureInternal {
       scaleFilterToSamplingMode(this._scaleFilter),
       Constants.TEXTURETYPE_UNSIGNED_BYTE,
     )
+
+    // 确保新纹理的采样模式与当前 _scaleFilter 一致
+    // （构造时已设置，此处为防御性调用）
+    this.applySamplingMode()
 
     oldTexture.dispose()
   }
@@ -486,6 +498,9 @@ export class Texture implements ITexture, ITextureInternal {
       scaleFilterToSamplingMode(this._scaleFilter),
       type,
     )
+
+    // 确保新纹理的采样模式与当前 _scaleFilter 一致
+    this.applySamplingMode()
 
     oldTexture.dispose()
   }

@@ -106,6 +106,7 @@ export class StaticIndexBuffer implements IIndexBuffer {
    * 索引数量。
    */
   get count(): number {
+    this.ensureNotDisposed()
     return this._data.length
   }
 

@@ -118,6 +118,15 @@ export class VertexBuffer implements IVertexBuffer<number> {
         '(对应 OpenRA: 无效的顶点大小)',
       )
     }
+    // WebGL 要求顶点属性跨距为 4 字节的整数倍（32 位对齐）。
+    // 对应 OpenRA: Marshal.SizeOf<T>() 自然产生对齐的字节大小。
+    if (stride % 4 !== 0) {
+      throw new Error(
+        `VertexBuffer stride (${stride}) must be a multiple of 4 ` +
+        '(WebGL vertex attribute alignment requirement). ' +
+        '(对应 OpenRA: 非对齐的顶点结构不合法)',
+      )
+    }
     if (data.length === 0) {
       throw new Error(
         'VertexBuffer data must not be empty. ' +
@@ -131,11 +140,9 @@ export class VertexBuffer implements IVertexBuffer<number> {
     this._dynamic = dynamic
     this._data = new Float32Array(data)
 
-    // 计算顶点数量: 每个顶点占用 stride 字节 = stride/4 个 float
+    // 计算顶点数量: 每个顶点占用 stride 字节 = stride/4 个 float。
+    // stride % 4 === 0 保证 floatsPerVertex 为整数，除法结果精确。
     const floatsPerVertex = stride / 4
-    this._vertexCount = Math.floor(data.length / floatsPerVertex)
-
-    // 验证数据长度是完整顶点数的整数倍
     if (data.length % floatsPerVertex !== 0) {
       console.warn(
         `VertexBuffer data length (${data.length}) is not a multiple of ` +
@@ -143,6 +150,7 @@ export class VertexBuffer implements IVertexBuffer<number> {
         'trailing floats will be ignored.',
       )
     }
+    this._vertexCount = Math.floor(data.length / floatsPerVertex)
 
     // 对应 OpenRA: glGenBuffers + glBindBuffer + glBufferData(GL_DYNAMIC_DRAW)
     // Babylon.js Buffer 构造自动创建 WebGLBuffer 并上传数据

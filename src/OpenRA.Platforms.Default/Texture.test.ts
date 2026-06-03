@@ -342,6 +342,27 @@ describe('Texture', () => {
       expect(tex.size).toEqual({ width: 4, height: 4 })
     })
 
+    it('从 setFloatData 切换到 setData 时重置纹理类型', () => {
+      // BLOCKER fix: _texType 必须在 recreateTexture 中重置为 UNSIGNED_BYTE
+      const tex = new Texture(4, 4, TextureScaleFilter.Linear, engine)
+
+      // 先上传浮点数据
+      tex.setFloatData(new Float32Array(64), 4, 4)
+      MockRawTexture.mockClear()
+      mockRawTextureDispose.mockClear()
+
+      // 再上传普通 RGBA 数据（相同尺寸）
+      tex.setData(createTestData(4, 4), 4, 4)
+
+      // 应该重建纹理（因为类型从 FLOAT 切换到 UNSIGNED_BYTE 需要重建）
+      expect(MockRawTexture).toHaveBeenCalledTimes(1)
+      // 新纹理应使用 UNSIGNED_BYTE
+      const lastCall = MockRawTexture.mock.calls[
+        MockRawTexture.mock.calls.length - 1
+      ]
+      expect(lastCall[8]).toBe(0) // TEXTURETYPE_UNSIGNED_BYTE
+    })
+
     it('已销毁时抛出异常', () => {
       const tex = new Texture(4, 4, TextureScaleFilter.Linear, engine)
       tex.dispose()
@@ -520,9 +541,12 @@ describe('Texture', () => {
       const lastCall = MockRawTexture.mock.calls[
         MockRawTexture.mock.calls.length - 1
       ]
+      // RawTexture constructor arg order:
+      // 0:data, 1:width, 2:height, 3:format, 4:sceneOrEngine,
+      // 5:generateMipMaps, 6:invertY, 7:samplingMode, 8:type
       expect(lastCall[1]).toBe(128) // width
       expect(lastCall[2]).toBe(128) // height
-      expect(lastCall[6]).toBe(1)   // samplingMode: NEAREST
+      expect(lastCall[7]).toBe(1)   // samplingMode: NEAREST
     })
   })
 })
