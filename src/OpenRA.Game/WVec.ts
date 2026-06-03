@@ -14,37 +14,7 @@
 import { WAngle } from './WAngle'
 import { WRot } from './WRot'
 import { Int32Matrix4x4 } from './Int32Matrix4x4'
-
-// ---------------------------------------------------------------------------
-// Helper: integer square root (ISqrt), floor mode
-// ---------------------------------------------------------------------------
-
-/**
- * Integer square root (floor mode).
- *
- * OpenRA 对照: Exts.ISqrt(int, ISqrtRoundMode.Floor)
- */
-function isqrt(n: number): number {
-  if (n < 0) throw new Error(`ISqrt: negative number ${n}`)
-  let divisor = 1 << 30
-  let root = 0
-  let remainder = n
-
-  while (divisor > n) {
-    divisor >>>= 2
-  }
-
-  while (divisor !== 0) {
-    if (root + divisor <= remainder) {
-      remainder -= root + divisor
-      root += 2 * divisor
-    }
-    root >>>= 1
-    divisor >>>= 2
-  }
-
-  return root
-}
+import { isqrt } from './Exts'
 
 // ---------------------------------------------------------------------------
 // WVec
@@ -357,19 +327,6 @@ export class WVec {
   //     return new WVec(WDist.fromPDF(r, samples).length,
   //                     WDist.fromPDF(r, samples).length, 0);
   //   }
-
-  // -----------------------------------------------------------------------
-  // Integer square root (public access for WDist compatibility)
-  // -----------------------------------------------------------------------
-
-  /**
-   * Integer square root (floor mode).
-   *
-   * OpenRA 对照: Exts.ISqrt(int, ISqrtRoundMode.Floor)
-   */
-  static isqrt(n: number): number {
-    return isqrt(n)
-  }
 
   // -----------------------------------------------------------------------
   // Standard overrides

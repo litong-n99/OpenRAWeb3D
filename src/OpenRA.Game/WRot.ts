@@ -15,37 +15,7 @@ import { Quaternion } from '@babylonjs/core'
 import type { WVec } from './WVec'
 import { WAngle } from './WAngle'
 import { Int32Matrix4x4 } from './Int32Matrix4x4'
-
-// ---------------------------------------------------------------------------
-// Helper: integer square root (ISqrt), floor mode
-// ---------------------------------------------------------------------------
-
-/**
- * Integer square root.
- *
- * OpenRA 对照: Exts.ISqrt(int, ISqrtRoundMode.Floor)
- */
-function isqrt(n: number): number {
-  if (n < 0) throw new Error(`ISqrt: negative number ${n}`)
-  let divisor = 1 << 30
-  let root = 0
-  let remainder = n
-
-  while (divisor > n) {
-    divisor >>>= 2
-  }
-
-  while (divisor !== 0) {
-    if (root + divisor <= remainder) {
-      remainder -= root + divisor
-      root += 2 * divisor
-    }
-    root >>>= 1
-    divisor >>>= 2
-  }
-
-  return root
-}
+import { isqrt } from './Exts'
 
 // ---------------------------------------------------------------------------
 // Internal — Euler → Quaternion computation
@@ -329,6 +299,11 @@ export class WRot {
    * Negate a rotation.
    *
    * OpenRA 对照: WRot.operator-(WRot)
+   *
+   * NOTE: Negates the quaternion x/y/z while preserving w (scalar component).
+   * Euler angles are recomputed via QuaternionToEuler, which may introduce
+   * a 1-2 unit difference vs the direct Euler negation used in C#. This is
+   * within acceptable precision for integer-math rotations.
    */
   static negate(a: WRot): WRot {
     return WRot._fromQuaternion(-a.x, -a.y, -a.z, a.w)

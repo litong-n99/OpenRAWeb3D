@@ -269,40 +269,6 @@ describe('WVec.lerpQuadratic', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ISqrt
-// ---------------------------------------------------------------------------
-
-describe('WVec.isqrt', () => {
-  it('isqrt(0) = 0', () => {
-    expect(WVec.isqrt(0)).toBe(0)
-  })
-
-  it('isqrt(1) = 1', () => {
-    expect(WVec.isqrt(1)).toBe(1)
-  })
-
-  it('isqrt(4) = 2', () => {
-    expect(WVec.isqrt(4)).toBe(2)
-  })
-
-  it('isqrt(100) = 10', () => {
-    expect(WVec.isqrt(100)).toBe(10)
-  })
-
-  it('isqrt(2) = 1 (floor)', () => {
-    expect(WVec.isqrt(2)).toBe(1)
-  })
-
-  it('isqrt(1024*1024) = 1024', () => {
-    expect(WVec.isqrt(1024 * 1024)).toBe(1024)
-  })
-
-  it('throws for negative input', () => {
-    expect(() => WVec.isqrt(-1)).toThrow()
-  })
-})
-
-// ---------------------------------------------------------------------------
 // Standard methods
 // ---------------------------------------------------------------------------
 

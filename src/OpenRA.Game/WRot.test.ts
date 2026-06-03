@@ -14,14 +14,19 @@ import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('@babylonjs/core', () => {
   return {
-    Quaternion: vi.fn(
-      (x: number, y: number, z: number, w: number) => ({
-        x,
-        y,
-        z,
-        w,
-      }),
-    ),
+    // Regular function (not arrow) so `new Quaternion()` works
+    Quaternion: vi.fn(function (
+      this: Record<string, number>,
+      x: number,
+      y: number,
+      z: number,
+      w: number,
+    ) {
+      this.x = x
+      this.y = y
+      this.z = z
+      this.w = w
+    }),
   }
 })
 
