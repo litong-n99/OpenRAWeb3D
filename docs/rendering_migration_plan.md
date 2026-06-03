@@ -126,19 +126,21 @@
 
 ---
 
-### 3.4 RgbaColorRenderer.cs — RGBA 颜色渲染器
+### 3.4 RgbaColorRenderer.cs — RGBA 颜色渲染器 ✅ 已完成
 
 **OpenRA 对照**: `OpenRA.Game/Graphics/RgbaColorRenderer.cs`  
-**迁移目标**: `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts`
+**迁移目标**: `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts`  
+**状态**: 已完成 (1012行实现 + 858行测试, 51 个测试用例)  
+**审核**: 已通过代码审核（2 轮审核，修复了 2 个 BLOCKER + 2 个 MAJOR 问题）
 
-- [ ] **TODO-2.4.1** UI 元素映射：`Rectangle`/`Line`/`Ellipse` GUI 控件对应 `FillRect`/`DrawLine`/`FillEllipse`。
-- [ ] **TODO-2.4.2** 调试图形映射：`BABYLON.CreateLines` / `LinesMesh` 对应路径点、碰撞框绘制。
-- [ ] **TODO-2.4.3** 配置预乘 Alpha：`material.alphaMode = BABYLON.Engine.ALPHA_PREMULTIPLIED`。
-- [ ] **TODO-2.4.4** 处理 Z-fighting：调试图形设置 `disableDepthWrite = true` 和最高 `renderingGroupId`。
-- [ ] **TODO-2.4.5** 高频更新优化：实时血条等使用 Babylon GUI 而非每帧重建 `LinesMesh`。
+- [x] **TODO-2.4.1** UI 元素映射：`Rectangle`/`Line`/`Ellipse` GUI 控件对应 `FillRect`/`DrawLine`/`FillEllipse`。
+- [x] **TODO-2.4.2** 调试图形映射：`BABYLON.CreateLines` / `LinesMesh` 对应路径点、碰撞框绘制。
+- [x] **TODO-2.4.3** 配置预乘 Alpha：`material.alphaMode = BABYLON.Engine.ALPHA_PREMULTIPLIED`。
+- [x] **TODO-2.4.4** 处理 Z-fighting：调试图形设置 `disableDepthWrite = true` 和最高 `renderingGroupId`。
+- [x] **TODO-2.4.5** 高频更新优化：实时血条等使用 Babylon GUI 而非每帧重建 `LinesMesh`。
 
 **复杂度**: 低  
-**阻塞任务**: TODO-2.1.x (Renderer)
+**阻塞任务**: TODO-2.1.x (Renderer) ✅ 已满足
 
 ---
 

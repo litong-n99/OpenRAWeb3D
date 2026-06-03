@@ -5,7 +5,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 ## Status
 
 **Phase**: Chapter 2 -- Rendering Engine  
-**Progress**: 3/26 rendering files complete (12%)  
+**Progress**: 4/26 rendering files complete (15%)  
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -13,7 +13,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Renderer (main renderer) | Completed |
 | WorldRenderer (world scene) | Completed |
 | SpriteRenderer (batch sprites) | Completed |
-| Remaining rendering modules (23 files) | Stubs / pending |
+| RgbaColorRenderer (RGBA color renderer) | Completed |
+| Remaining rendering modules (22 files) | Stubs / pending |
 | Game logic, networking, audio, mod system | Not yet started |
 
 ## Architecture Overview

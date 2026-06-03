@@ -11,10 +11,10 @@
 | Metric | Count |
 |--------|-------|
 | **Total files in rendering migration plan** | 26 |
-| **Completed (full implementation + tests)** | 3 |
-| **Stubs (placeholder files created)** | 23 |
+| **Completed (full implementation + tests)** | 4 |
+| **Stubs (placeholder files created)** | 22 |
 | **Remaining modules beyond rendering** | Not yet planned |
-| **Overall rendering completion** | 12% (3/26) |
+| **Overall rendering completion** | 15% (4/26) |
 
 ---
 
@@ -22,9 +22,9 @@
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 3 | 12% |
+| Completed | 4 | 15% |
 | In Progress | 0 | 0% |
-| Pending (stubs exist) | 23 | 88% |
+| Pending (stubs exist) | 22 | 85% |
 
 ### Detailed File Status
 
@@ -35,12 +35,12 @@
 | 1 | `src/OpenRA.Game/Renderer.ts` | 1106 | 782 | 89 | Yes |
 | 2 | `src/OpenRA.Game/Graphics/WorldRenderer.ts` | 1306 | 1104 | 74 | Yes |
 | 3 | `src/OpenRA.Game/Graphics/SpriteRenderer.ts` | 835 | 642 | 55 | Pending |
+| 4 | `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts` | 1012 | 858 | 51 | Yes |
 
 #### Pending (Stubs Created)
 
 | # | File | Migration Plan Reference | Complexity |
 |:---:|:---|:---|:---:|
-| 4 | `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts` | TODO-2.4.x | Low |
 | 5 | `src/OpenRA.Game/Graphics/RgbaSpriteRenderer.ts` | TODO-2.4.x | Low |
 | 6 | `src/OpenRA.Game/Graphics/Vertex.ts` | TODO-2.5.4 | Medium |
 | 7 | `src/OpenRA.Game/Graphics/PlatformInterfaces.ts` | TODO-2.5.1, TODO-2.8.1 | High/Medium |
@@ -108,6 +108,7 @@
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-03 | RgbaColorRenderer.ts | migration-develop | migration-review | 2 review rounds, 51 test cases, GUI/lines |
 | 2026-06-03 | SpriteRenderer.ts | migration-develop | Pending | 55 test cases, ThinInstances backend |
 | ~2026-06-02 | WorldRenderer.ts | migration-develop | migration-review | Reviewed, fixes applied |
 | ~2026-06-01 | Renderer.ts | migration-develop | migration-review | Reviewed, 89 tests |
@@ -118,12 +119,11 @@
 
 ### Currently Unblocked (Dependencies Satisfied)
 
-Since Renderer.ts, WorldRenderer.ts, and SpriteRenderer.ts are complete, the following are unblocked and ready for development:
+Since Renderer.ts, WorldRenderer.ts, SpriteRenderer.ts, and RgbaColorRenderer.ts are complete, the following are unblocked and ready for development:
 
-1. **RgbaColorRenderer.ts** (Low) — depends on Renderer
-2. **RgbaSpriteRenderer.ts** (Low) — depends on Renderer, Sprite-style API
-3. **Vertex.ts** (Medium) — independent, needed by Shader system
-4. **Util.ts** (Low) — independent, needed by many files
+1. **RgbaSpriteRenderer.ts** (Low) — depends on Renderer, Sprite-style API
+2. **Vertex.ts** (Medium) — independent, needed by Shader system
+3. **Util.ts** (Low) — independent, needed by many files
 
 ### Blocked (Waiting on Dependencies)
 
