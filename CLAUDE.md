@@ -5,7 +5,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 ## Project Status
 
 **Phase**: Chapter 2 -- Rendering Engine
-**Progress**: 4/26 rendering files complete (15%)
+**Progress**: 10/27 rendering files complete (37%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -14,7 +14,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | WorldRenderer (world scene) | Completed, reviewed |
 | SpriteRenderer (batch sprites) | Completed |
 | RgbaColorRenderer (RGBA color renderer) | Completed, reviewed |
-| Remaining rendering modules (22 files) | Stubs / pending |
+| Remaining rendering modules (17 files) | Stubs / pending |
 | Game logic, networking, audio, mod system | Not yet started |
 
 ## Directory Layout
@@ -45,7 +45,8 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
     migration-develop.md     ← Developer agent spec
     migration-review.md      ← Code review agent spec
     migration-docs.md        ← Documentation manager agent spec
-    migration-manager.md     ← Task manager agent spec
+  teams/
+    openra-migration/        ← Reusable team configuration template
 
 docs/
   openra_migration.agent.final.converted.md   ← Comprehensive architecture analysis (~199KB)
@@ -81,7 +82,7 @@ docs/
 
 ## Agent Team Structure
 
-The project uses five specialized agents defined in `.claude/agents/`:
+The project uses four specialized agents defined in `.claude/agents/`:
 
 | Agent | Spec File | Role |
 |-------|-----------|------|
@@ -89,7 +90,6 @@ The project uses five specialized agents defined in `.claude/agents/`:
 | **migration-develop** | `migration-develop.md` | TypeScript/Babylon.js implementation with unit tests |
 | **migration-review** | `migration-review.md` | Code review across 5 dimensions: docs compliance, feature completeness, efficiency, bugs, format |
 | **migration-docs** | `migration-docs.md` | Documentation maintenance, progress tracking, task coordination, commit |
-| **migration-manager** | `migration-manager.md` | [MERGED] Now handled by Team Lead directly |
 
 ### Agent Communication
 
@@ -101,7 +101,7 @@ Architect → Developer → Reviewer → Docs Manager → Team Lead (routing)
 
 ### Agent Rules
 
-**Team Lead and Manager must NOT modify code files.** They cannot directly edit any source files (`.ts` / `.test.ts` / `.json` / `.css` / `.html`). They can only:
+**Team Lead must NOT modify code files.** The Team Lead cannot directly edit any source files (`.ts` / `.test.ts` / `.json` / `.css` / `.html`). They can only:
 
 - Read files to understand project state
 - Send tasks to sub-agents via `SendMessage`
@@ -114,7 +114,7 @@ Sub-agents (Architect, Developer, Reviewer, Docs Manager) have full read/write a
 
 ### Migration Pipeline (per file)
 
-1. **Manager** assigns task to Architect (if design needed) or Developer
+1. **Team Lead** assigns task to Architect (if design needed) or Developer
 2. **Architect** (if needed): analyzes OpenRA source, writes design spec, updates migration plan
 3. **Developer**: reads OpenRA source + migration docs, implements TypeScript + unit tests, self-reviews
 4. **Reviewer**: reviews across 5 dimensions (docs compliance, feature completeness, efficiency, bugs, format), assigns severity (BLOCKER/MAJOR/MINOR/INFO)
