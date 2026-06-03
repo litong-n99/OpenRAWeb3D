@@ -274,8 +274,8 @@ describe('VertexBuffer', () => {
       vb.setData(newData, 0, 5, 5)
 
       const stored = vb.getData()
-      expect(stored[5]).toBe(0.8)  // 缓冲区位置 5 已更新
-      expect(stored[0]).toBe(0)    // 缓冲区位置 0 未更改（原始数据 0*0.1=0）
+      expect(stored[5]).toBeCloseTo(0.8, 5)  // 缓冲区位置 5 已更新
+      expect(stored[0]).toBe(0)              // 缓冲区位置 0 未更改（原始数据 0*0.1=0）
 
       expect(mockBufferUpdateDirectly).toHaveBeenCalled()
     })
@@ -414,7 +414,7 @@ describe('VertexBuffer', () => {
       const update = new Float32Array([0.1, 0.2, 0.3, 0.4, 0.5])
       vb.setData(update, 0, 5, 5)
       const stored = vb.getData()
-      expect(stored[5]).toBe(0.1)
+      expect(stored[5]).toBeCloseTo(0.1, 5)
 
       // bind 为 no-op
       expect(() => vb.bind()).not.toThrow()

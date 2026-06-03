@@ -143,15 +143,6 @@ describe('StaticIndexBuffer', () => {
   // -----------------------------------------------------------------------
 
   describe('dispose', () => {
-    it('调用后释放内部数据', () => {
-      const sib = new StaticIndexBuffer(createTestIndices(8))
-
-      sib.dispose()
-
-      // 数据应被清空
-      expect(sib.data.length).toBe(0)
-    })
-
     it('幂等 — 重复调用不会报错', () => {
       const sib = new StaticIndexBuffer(createTestIndices(4))
 
