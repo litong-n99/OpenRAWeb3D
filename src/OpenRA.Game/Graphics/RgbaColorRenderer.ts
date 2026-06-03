@@ -223,7 +223,13 @@ export class RgbaColorRenderer {
   /** ShaderMaterial 用于逐顶点颜色 */
   private material: ShaderMaterial | null = null
 
-  /** 当前混合模式（记录最后一个 quad 的 blendMode，用于 flush 时设置材质） */
+  /**
+   * 最近一次提交的混合模式（仅用于外部内省，不影响材质混合状态）。
+   *
+   * NOTE: ShaderMaterial 始终使用 ALPHA_PREMULTIPLIED。单个材质无法支持
+   * 逐四边形混合模式切换。在混合模式变化时自动 flush（为每组创建独立
+   * 的 Mesh+Material）的工作已推迟到 TODO-2.5.4。
+   */
   private currentBlend: BlendMode = BlendMode.Alpha
 
   /** 是否已释放 */
@@ -255,7 +261,9 @@ export class RgbaColorRenderer {
    */
   private submitQuad(blendMode: BlendMode): void {
     this.currentBlend = blendMode
-    // 浅拷贝即可——RgbaVertex 全是原始值类型（number）
+    // NOTE: spread 运算符为每次调用分配 4 个新 RgbaVertex 对象。
+    // 对于高频渲染场景，考虑直接写入预分配的 Float32Array 缓冲区。
+    // 优化工作已推迟到 TODO-2.5.4。
     this.quads.push({ ...this.vertices[0] })
     this.quads.push({ ...this.vertices[1] })
     this.quads.push({ ...this.vertices[2] })
@@ -417,7 +425,14 @@ export class RgbaColorRenderer {
    *
    * 其中 corner = width/2 * (-delta.y, delta.x) 为与线段方向垂直的半宽向量。
    *
+   * NOTE: use3DCorner 控制 corner.z 的计算：
+   * - true（渐变线段）: corner.z = dz * hw，对应 OpenRA 的 float3 corner
+   * - false（纯色线段）: corner.z = 0，对应 OpenRA 的 float2 corner
+   * 纯色线段在 2D 平面上延伸时，Z 方向不应产生偏移。
+   *
    * OpenRA 对照: RgbaColorRenderer.DrawLine(float3, float3, float, Color, Color, BlendMode)
+   *
+   * @param use3DCorner — 是否使用 3D corner（渐变线段为 true，纯色线段为 false）
    */
   private drawLineInternal(
     start: Vec3,
@@ -426,6 +441,7 @@ export class RgbaColorRenderer {
     startColor: RgbaColor,
     endColor: RgbaColor,
     blendMode: BlendMode,
+    use3DCorner = false,
   ): void {
     const delta = subtract(end, start)
     const length = Math.sqrt(delta.x * delta.x + delta.y * delta.y)
@@ -439,7 +455,10 @@ export class RgbaColorRenderer {
     const dz = delta.z * invLen
 
     const hw = width / 2
-    const corner: Vec3 = { x: -dy * hw, y: dx * hw, z: dz * hw }
+    // 纯色线段（use3DCorner=false）使用 float2 corner（Z=0），匹配 OpenRA 的
+    // DrawLine(float3, float3, float, Color, BlendMode) 重载
+    const cz = use3DCorner ? dz * hw : 0
+    const corner: Vec3 = { x: -dy * hw, y: dx * hw, z: cz }
 
     const sc = premultiplyAlpha(startColor)
     const inv255 = 1 / 255
@@ -518,7 +537,7 @@ export class RgbaColorRenderer {
     blendMode: BlendMode = BlendMode.Alpha,
   ): void {
     if (this.disposed) return
-    this.drawLineInternal(start, end, width, startColor, endColor, blendMode)
+    this.drawLineInternal(start, end, width, startColor, endColor, blendMode, true)
   }
 
   /**
@@ -701,6 +720,9 @@ export class RgbaColorRenderer {
     blendMode: BlendMode = BlendMode.Alpha,
   ): void {
     if (this.disposed) return
+    // 手动内联 premultiplyAlpha + normalize：所有顶点共享同一颜色，
+    // 预乘一次即可，避免 4 次 premultiplyAlpha 调用。
+    // fillRectGradient 使用 vertexWithColor() 因为每个角点颜色不同。
     const pc = premultiplyAlpha(color)
     const inv255 = 1 / 255
     const cr = pc.r * inv255
@@ -810,6 +832,10 @@ export class RgbaColorRenderer {
     const zRange = br.z - tl.z
     const yRange = br.y - tl.y
 
+    // NOTE: 使用 Math.ceil/Math.floor 进行整数对齐的扫描线循环，
+    // 而非 OpenRA 的浮点循环（for var y = tl.Y; y <= br.Y; y++）。
+    // 整数对齐更符合像素渲染语义（扫描线应对齐到像素行边界），
+    // 但在非整数坐标输入时可能跳过边缘的部分填充扫描线。
     const startY = Math.ceil(tl.y)
     const endY = Math.floor(br.y)
 
