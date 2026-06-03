@@ -196,7 +196,11 @@ export class HardwarePalette {
    * @returns 调色板 RawTexture，若 Scene 未设置则返回 null
    */
   getTexture(): RawTexture | null {
-    this._ensureTexture()
+    try {
+      this._ensureTexture()
+    } catch {
+      return null
+    }
     return this._texture
   }
 
@@ -210,7 +214,11 @@ export class HardwarePalette {
    * @returns 颜色偏移 RawTexture，若 Scene 未设置则返回 null
    */
   getColorShiftsTexture(): RawTexture | null {
-    this._ensureTexture()
+    try {
+      this._ensureTexture()
+    } catch {
+      return null
+    }
     return this._colorShiftsTexture
   }
 
@@ -452,16 +460,14 @@ export class HardwarePalette {
    * @param paletteMods — 调色板修改器列表
    */
   applyModifiers(paletteMods: Iterable<IPaletteModifier>): void {
-    // 防护：Scene 未设置时无法上传到 GPU，丢弃修改
+    // 防护：Scene 未设置时无法上传到 GPU，提前抛出避免部分状态
+    // (修改器已改变可变调色板但无法上传 → 重置后静默丢失)
     // OpenRA 中 HardwarePalette 构造时渲染上下文已可用，此情况不会发生。
-    // 迁移版延迟创建纹理，Scene 可稍后设置。若未设置则跳过以避免部分状态：
-    // 修改器改变可变调色板后若无法上传，最终会被重置导致静默丢失。
     if (!this._scene) {
-      console.warn(
+      throw new Error(
         'HardwarePalette.applyModifiers(): Scene is not set. ' +
-        'Call setScene() before applying modifiers. Skipping.',
+        'Call setScene() before applying modifiers.',
       )
-      return
     }
 
     // 步骤 1: 应用所有修改器
@@ -583,11 +589,17 @@ export class HardwarePalette {
   /**
    * 确保 GPU 纹理已创建（延迟构造）。
    *
-   * 仅在 Scene 可用时才创建纹理。
-   * 若尚未设置 Scene，静默跳过（将在 initialize() 时创建）。
+   * Scene 必须已设置；否则抛出 Error（因为无法创建 WebGL 纹理）。
+   * getTexture() / getColorShiftsTexture() 会捕获此异常并返回 null。
+   *
+   * @throws Error 如果 Scene 未设置
    */
   private _ensureTexture(): void {
-    if (!this._scene) return
+    if (!this._scene) {
+      throw new Error(
+        'HardwarePalette: Scene is not set. Call setScene() before accessing GPU textures.',
+      )
+    }
 
     if (!this._texture) {
       // 创建调色板纹理（256×Height RGBA 8-bit，NEAREST 采样，无 mipmap）
@@ -595,9 +607,14 @@ export class HardwarePalette {
       //              Texture.SetData(buffer, Palette.Size, Height)
       //
       // 使用 CreateRGBATexture 工厂方法（匹配 Sheet.ts 的模式）
-      const initData = this._buffer.length > 0
+      // NOTE: 调色板 CPU 缓冲区为 BGRA 字节序（ARGB uint32 小端），
+      //       RawTexture 使用 RGBA 内部格式，需对初始数据执行 R↔B 交换
+      const rawData = this._buffer.length > 0
         ? this._buffer
         : new Uint8Array(PALETTE_SIZE * this.height * 4)
+
+      const initData = new Uint8Array(rawData)
+      swapRB(initData)
 
       this._texture = RawTexture.CreateRGBATexture(
         initData,

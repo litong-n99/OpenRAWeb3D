@@ -332,19 +332,14 @@ describe('HardwarePalette', () => {
       expect(() => hp.applyModifiers([])).not.toThrow()
     })
 
-    it('warns and skips when scene is not set', () => {
+    it('throws when scene is not set', () => {
       const noSceneHp = new HardwarePalette()
       const p = createTestPalette(100, 100, 100)
       noSceneHp.addPalette('noScenePal', p, true)
 
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-      expect(() => noSceneHp.applyModifiers([])).not.toThrow()
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Scene is not set'),
+      expect(() => noSceneHp.applyModifiers([])).toThrow(
+        /Scene is not set/,
       )
-
-      warnSpy.mockRestore()
     })
   })
 
