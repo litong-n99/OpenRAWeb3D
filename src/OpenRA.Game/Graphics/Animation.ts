@@ -234,6 +234,23 @@ export class Animation {
   }
 
   // -----------------------------------------------------------------------
+  // 播放模式: Play — 便捷方法（正向播放一次）
+  //
+  // 对应 OpenRA Animation.Play (Animation.cs:131-134)
+  // -----------------------------------------------------------------------
+
+  /**
+   * 正向播放序列一次（便捷方法，委托给 playThen）。
+   *
+   * OpenRA 对照: Play(string sequenceName)
+   *
+   * @param sequenceName — 序列名称
+   */
+  play(sequenceName: string): void {
+    this.playThen(sequenceName)
+  }
+
+  // -----------------------------------------------------------------------
   // 播放模式 1: PlayRepeating — 正向循环播放
   //
   // OpenRA 对照: Animation.PlayRepeating (Animation.cs:136-149)
@@ -470,7 +487,7 @@ export class Animation {
 
     if (this.name !== newImage) {
       this.name = newImage
-      if (!this.replaceAnim(this.currentSequence!.name)) {
+      if (this.currentSequence && !this.replaceAnim(this.currentSequence.name)) {
         this.replaceAnim(newAnimIfMissing)
       }
     }

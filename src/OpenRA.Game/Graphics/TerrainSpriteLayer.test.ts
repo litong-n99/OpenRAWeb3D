@@ -201,6 +201,96 @@ describe('Dirty row tracking', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Vertex position centering (BUG-C01 regression)
+// ---------------------------------------------------------------------------
+
+describe('Vertex position centering (BUG-C01 regression)', () => {
+  it('applies -0.5*size centering offset to vertex positions', () => {
+    const map = createMockMap(4, 4)
+    const vb = createMockVertexBuffer()
+    const ib = createMockIndexBuffer()
+    const empty = createEmptySprite()
+
+    // Use screen3DPosition that returns a known non-zero position
+    const wr = createMockWorldRenderer()
+    wr.screen3DPosition = vi.fn(() => ({ x: 100, y: 200, z: 0 }))
+
+    const layer = new TerrainSpriteLayer(wr, map, empty, vb, ib)
+
+    // Create a sprite with size 64x64 and zero offset
+    const sheet = new Sheet(SheetType.Indexed, { width: 128, height: 128 })
+    const sprite = new Sprite(sheet, { x: 0, y: 0, width: 64, height: 64 }, 0)
+
+    // Update cell at (0, 1)
+    layer.updateSprite({ u: 0, v: 1 }, sprite, null)
+
+    // Draw to flush dirty rows
+    const viewport: ITerrainViewport = {
+      visibleCells: { firstRow: 0, lastRow: 3, firstCol: 0, lastCol: 3 },
+    }
+    layer.draw(viewport)
+
+    // Inspect vertex data written to buffer
+    expect(vb.setData).toHaveBeenCalled()
+    const setDataCalls = (vb.setData as ReturnType<typeof vi.fn>).mock.calls[0]
+    const vertices = setDataCalls[0] as Array<{ x: number; y: number; z: number }>
+
+    // Cell (0,1): vertexRowStride = 16, cell vertexOffset = 16*1 + 4*0 = 16
+    // TL corner is at vertices[16]
+    // With fix: x = 100 + 1 * ((0 ?? 0) - 32) = 68
+    // Without fix: x = 100 + 1 * 0 = 100
+    const cellVertexOffset = 16 // row 1, col 0
+    expect(vertices[cellVertexOffset]!.x).toBe(68)
+
+    layer.dispose()
+    sheet.dispose()
+  })
+
+  it('centering works with non-zero sprite offset', () => {
+    const map = createMockMap(4, 4)
+    const vb = createMockVertexBuffer()
+    const ib = createMockIndexBuffer()
+    const empty = createEmptySprite()
+
+    const wr = createMockWorldRenderer()
+    wr.screen3DPosition = vi.fn(() => ({ x: 10, y: 20, z: 0 }))
+
+    const layer = new TerrainSpriteLayer(wr, map, empty, vb, ib)
+
+    const sheet = new Sheet(SheetType.Indexed, { width: 128, height: 128 })
+    // Sprite with non-zero offset
+    const sprite = new Sprite(
+      sheet,
+      { x: 0, y: 0, width: 32, height: 64 },
+      0,
+      { x: 5, y: 10, z: 0 },  // offset
+      undefined,               // channel
+    )
+
+    layer.updateSprite({ u: 0, v: 0 }, sprite, null)
+
+    const viewport: ITerrainViewport = {
+      visibleCells: { firstRow: 0, lastRow: 0, firstCol: 0, lastCol: 0 },
+    }
+    layer.draw(viewport)
+
+    expect(vb.setData).toHaveBeenCalled()
+    const setDataCalls = (vb.setData as ReturnType<typeof vi.fn>).mock.calls[0]
+    const vertices = setDataCalls[0] as Array<{ x: number; y: number; z: number }>
+
+    // Cell (0,0): vertexOffset = 0
+    // offset = (5, 10), size = (32, 64)
+    // x = 10 + 1 * ((5 ?? 0) - 16) = 10 - 11 = -1
+    // y = 20 + 1 * ((10 ?? 0) - 32) = 20 - 22 = -2
+    expect(vertices[0]!.x).toBe(-1)
+    expect(vertices[0]!.y).toBe(-2)
+
+    layer.dispose()
+    sheet.dispose()
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Clear
 // ---------------------------------------------------------------------------
 

@@ -127,6 +127,42 @@ describe('PlayRepeating', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Play (convenience method)
+// ---------------------------------------------------------------------------
+
+describe('Play (convenience method)', () => {
+  let seqSet: ISequenceSet
+
+  beforeEach(() => {
+    const seq = createMockSequence(4, 40)
+    seqSet = createMockSequenceSet({ idle: seq })
+  })
+
+  it('delegates to playThen (plays once, stops at last frame)', () => {
+    const anim = new Animation(seqSet, 'actor')
+    anim.play('idle')
+
+    expect(anim.currentSequence).not.toBeNull()
+
+    // Tick through all frames
+    anim.tick() // frame=1
+    anim.tick() // frame=2
+    anim.tick() // frame=3 (last)
+    expect(anim.currentFrame).toBe(3)
+
+    // One more tick should not advance past last frame
+    anim.tick()
+    expect(anim.currentFrame).toBe(3)
+  })
+
+  it('starts at frame 0', () => {
+    const anim = new Animation(seqSet, 'actor')
+    anim.play('idle')
+    expect(anim.currentFrame).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // PlayThen
 // ---------------------------------------------------------------------------
 

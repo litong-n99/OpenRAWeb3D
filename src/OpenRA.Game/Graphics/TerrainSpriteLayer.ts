@@ -409,9 +409,9 @@ export class TerrainSpriteLayer {
 
     // 使用 Util.fastCreateQuad 写入 4 个顶点
     const position: Vec3 = {
-      x: xyz.x + scale * (effSprite.offset?.x ?? 0 - 0.5 * effSprite.size.x),
-      y: xyz.y + scale * (effSprite.offset?.y ?? 0 - 0.5 * effSprite.size.y),
-      z: xyz.z + scale * (effSprite.offset?.z ?? 0 - 0.5 * effSprite.size.z),
+      x: xyz.x + scale * ((effSprite.offset?.x ?? 0) - 0.5 * effSprite.size.x),
+      y: xyz.y + scale * ((effSprite.offset?.y ?? 0) - 0.5 * effSprite.size.y),
+      z: xyz.z + scale * ((effSprite.offset?.z ?? 0) - 0.5 * effSprite.size.z),
     }
 
     fastCreateQuad(
