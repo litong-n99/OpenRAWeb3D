@@ -17,18 +17,31 @@
  * 此着色器无需迁移，因为:
  * 1. Babylon.js StandardMaterial 在 WebGL 2.0 下原生处理漫反射纹理采样、
  *    Alpha 混合/测试与 sRGB 色彩空间转换。
+ *    - 替代: StandardMaterial.diffuseTexture 替代 DiffuseTexture 采样器
+ *    - 替代: StandardMaterial.alphaMode + alphaCutOff 替代手动 discard
  * 2. 法线贴图与光照计算由 PBRMaterial 管线完整支持
  *    （normalTexture + metallicTexture + roughnessTexture）。
- * 3. 调色板-法线并行纹理查找是 OpenRA 特有的索引颜色优化，
- *    在 Babylon.js 的真彩色纹理管线中无对应需求。
+ *    - 替代: PBRMaterial.normalTexture 替代第二纹理层法线查找
+ *    - 替代: Scene 灯光系统替代手动 AmbientLight/DiffuseLight
+ * 3. 【调色板限制】调色板-法线并行纹理查找是 OpenRA 特有的索引颜色优化。
+ *    原始 model.frag 通过 Palette 纹理查找将索引颜色转换为真彩色，
+ *    并通过第二 Palette 行查找法线向量。Babylon.js 的真彩色纹理管线
+ *    不依赖 256 色调色板，因此不支持此双纹理查找模式。
+ *    如需调色板索引颜色支持，请使用 combined.frag 迁移版的自定义
+ *    ShaderMaterial（参见 src/OpenRA.Platforms.Default/Shader.ts）。
  * 4. 浏览器环境下 WebGL 2.0 自动处理 Gamma/sRGB 转换，
  *    无需手动片段着色器编写。
  *
  * 保留此文件以维持与 OpenRA 的目录结构一致性。
  *
  * @nop — 无需迁移。功能由 BABYLON.StandardMaterial / PBRMaterial 提供。
+ *   - 漫反射纹理: StandardMaterial.diffuseTexture 代替 DiffuseTexture 采样器
+ *   - 调色板查找: StandardMaterial 使用真彩色纹理，不支持索引颜色查找
+ *   - 法线贴图: PBRMaterial.normalTexture 代替第二纹理层法线解码
+ *   - 光照: BABYLON.DirectionalLight / HemisphericLight 代替手动 uniform
+ *   - Alpha 测试: StandardMaterial.alphaCutOff 代替手动 discard
  * @see src/OpenRA.Game/Graphics/ShaderBindings.ts — 纹理采样器绑定
- * @see src/OpenRA.Platforms.Default/Shader.ts — ShaderMaterial 封装
+ * @see src/OpenRA.Platforms.Default/Shader.ts — 自定义 ShaderMaterial（调色板）
  */
 
 // 无代码 —— 模型片段着色由 BABYLON.StandardMaterial / PBRMaterial 内部管理。

@@ -21,6 +21,9 @@
  * 保留此文件以维持与 OpenRA 的目录结构一致性。
  *
  * @nop — 无需迁移。功能由 BABYLON.StandardMaterial / PBRMaterial 提供。
+ *   - 顶点变换: worldViewProjection 矩阵由 Babylon.js 引擎自动注入
+ *   - 纹理坐标: BABYLON.VertexBuffer.UVKind 代替 aVertexTexCoord
+ *   - 元数据解码: 通道/法线掩码无 Babylon.js 等效项（PBR 路径不支持）
  * @see src/OpenRA.Game/Graphics/ShaderBindings.ts — 顶点属性绑定布局
  * @see src/OpenRA.Game/Graphics/PlatformInterfaces.ts — ShaderMaterial 接口
  */
