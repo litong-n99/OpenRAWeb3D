@@ -5,7 +5,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 ## Project Status
 
 **Phase**: Chapter 2 -- Rendering Engine
-**Progress**: 20/27 rendering files complete (74%)
+**Progress**: 25/27 rendering files complete (93%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -17,7 +17,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Shader / Material System (6 files) | Completed, reviewed |
 | FrameBuffer & Post-Processing (10 files) | Completed, reviewed |
 | Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
-| Remaining rendering modules (6 files in plan) | Stubs / pending |
+| Platform Abstraction (11 files) | Completed, reviewed |
+| Remaining rendering modules (1 file + 2 shaders) | Stubs / pending |
 | Game logic, networking, audio, mod system | Not yet started |
 
 ## Directory Layout
@@ -49,8 +50,15 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       Palette.ts            ← migrated (477 lines, 381 test lines)
       PaletteReference.ts   ← migrated (91 lines, 89 test lines)
       Util.ts               ← migrated (558 lines, 511 test lines)
-      *.ts                  ← 19 remaining stubs
-  OpenRA.Platforms.Default/ ← Platform abstraction (2 migrated, 16 stubs)
+      *.ts                  ← 17 remaining stubs
+  OpenRA.Platforms.Default/ ← Platform abstraction (6 migrated, 7 NOP, 5 stubs)
+      Shader.ts             ← migrated (417 lines, 572 test lines)
+      FrameBuffer.ts        ← migrated (415 lines, 649 test lines)
+      Texture.ts            ← migrated (526 lines, 61 shared tests)
+      VertexBuffer.ts       ← migrated (375 lines, 61 shared tests)
+      StaticIndexBuffer.ts  ← migrated (174 lines, 61 shared tests)
+      ITextureInternal.ts   ← migrated (49 lines)
+      Sdl2*.ts (4 files)    ← NOP stubs (browser API replacement)
   glsl/                     ← Migrated GLSL shaders (WebGL 2.0 / GLSL ES 3.0)
   assets/                   ← Static assets
   utils/                    ← Shared utilities

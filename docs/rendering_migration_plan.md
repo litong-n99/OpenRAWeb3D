@@ -211,17 +211,39 @@
 
 ---
 
-### 3.8 平台抽象层
+### 3.8 平台抽象层 ✅ 已完成
 
 **OpenRA 对照**: `OpenRA.Game/Graphics/PlatformInterfaces.cs`, `OpenRA.Platforms.Default/*`  
-**迁移目标**: `src/OpenRA.Game/Graphics/PlatformInterfaces.ts`, `src/OpenRA.Platforms.Default/*.ts`
+**迁移目标**: `src/OpenRA.Game/Graphics/PlatformInterfaces.ts`, `src/OpenRA.Platforms.Default/*.ts`  
+**状态**: 已完成 (核心包装器: 1068行实现 + 61个测试用例; 7个 NOP 存根; 1个接口文件)  
+**审核**: 已通过代码审核 (3 轮)
 
-- [ ] **TODO-2.8.1** `IGraphicsContext` → `BABYLON.Engine`：资源创建从显式接口调用变为隐式构造函数调用。
-- [ ] **TODO-2.8.2** `OpenRA.Platforms.Default/Shader.ts` → `ShaderMaterial` 构造函数。
-- [ ] **TODO-2.8.3** `OpenRA.Platforms.Default/Texture.ts` → `Texture` / `RawTexture` 构造函数。
-- [x] **TODO-2.8.4** `OpenRA.Platforms.Default/FrameBuffer.ts` → `RenderTargetTexture` 构造函数。
-- [ ] **TODO-2.8.5** `OpenRA.Platforms.Default/VertexBuffer.ts` / `StaticIndexBuffer.ts` → `VertexBuffer` / `IndexBuffer`。
-- [ ] **TODO-2.8.6** 移除 `Sdl2GraphicsContext.ts`、`Sdl2PlatformWindow.ts` 等 SDL2 特定平台代码，替换为浏览器原生 API。
+#### 核心包装器 (Core Wrappers)
+
+- [x] **TODO-2.8.1** `IGraphicsContext` → `BABYLON.Engine`：资源创建从显式接口调用变为隐式构造函数调用。`PlatformInterfaces.ts` (407行) 已完整实现 IGraphicsContext / IShader / IVertexBuffer / ITexture / IFrameBuffer 等接口。
+- [x] **TODO-2.8.2** `OpenRA.Platforms.Default/Shader.ts` → `ShaderMaterial` 构造函数。(417行实现 + 572行测试, ✅ 已审核)
+- [x] **TODO-2.8.3** `OpenRA.Platforms.Default/Texture.ts` → `Texture` / `RawTexture` 构造函数。(526行实现 + 测试, ✅ 已审核)
+- [x] **TODO-2.8.4** `OpenRA.Platforms.Default/FrameBuffer.ts` → `RenderTargetTexture` 构造函数。(415行实现 + 649行测试, ✅ 已审核)
+- [x] **TODO-2.8.5** `OpenRA.Platforms.Default/VertexBuffer.ts` (375行) / `StaticIndexBuffer.ts` (174行) → `VertexBuffer` / `IndexBuffer`。共 61 个测试用例。
+- [x] **TODO-2.8.6** 移除 `Sdl2GraphicsContext.ts`、`Sdl2PlatformWindow.ts`、`Sdl2Input.ts`、`Sdl2HardwareCursor.ts` 等 SDL2 特定平台代码，替换为浏览器原生 API。SDl2 相关文件转为 NOP 存根（保留文件以维持目录结构一致性，包含 @nop 标记和详细文档说明）。
+
+#### NOP 存根 (Intentional Omissions)
+
+以下 7 个文件为 **NOP 存根**（不迁移代码，仅保留文件头部文档说明为何不需要迁移）:
+
+| 文件 | 行数 | NOP 原因 |
+|------|:----:|----------|
+| `Sdl2GraphicsContext.ts` | 29 | Babylon.js Engine 自动创建 WebGL 2.0 上下文 |
+| `Sdl2PlatformWindow.ts` | 27 | HTMLCanvasElement + Fullscreen API 替代 |
+| `Sdl2Input.ts` | 29 | DeviceSourceManager + Observable 替代 |
+| `Sdl2HardwareCursor.ts` | 28 | CSS `cursor: url(...)` 替代 |
+| `DefaultPlatform.ts` | 26 | 浏览器平台检测替代 |
+| `ThreadAffine.ts` | 19 | Web Worker 无共享内存模型替代 |
+| `OpenGL.ts` | 26 | Babylon.js 薄抽象层替代 |
+
+#### 接口文件
+
+- `ITextureInternal.ts` (49行, 无测试) — 内部纹理接口类型定义
 
 **复杂度**: 中  
 **阻塞任务**: TODO-2.1.x (Renderer)
