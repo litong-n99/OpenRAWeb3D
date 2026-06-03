@@ -227,6 +227,10 @@ export class TypeDictionary {
    * Iterate over all stored objects (deduplicated).
    *
    * OpenRA 对照: TypeDictionary.GetEnumerator()
+   *
+   * NOTE: Uses 'object' as the interface name. All stored objects must
+   * include 'object' in their `static readonly interfaces` array for
+   * iteration to work correctly.
    */
   [Symbol.iterator](): IterableIterator<unknown> {
     return this.withInterface<unknown>('object')[Symbol.iterator]()

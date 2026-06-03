@@ -227,6 +227,8 @@ export class SpatiallyPartitioned<T> {
         const binBounds = this.binBounds(row, col)
         for (const [key, bounds] of this.binAt(row, col)) {
           if (!bounds.intersectsWith(box)) continue
+          // Safety: ensure item is still tracked in itemBounds
+          if (!this.itemBounds.has(key)) continue
           // If the item is wholly contained within the bin, skip dedup tracking
           if (!binBounds.containsRect(bounds)) {
             if (seen.has(key)) continue

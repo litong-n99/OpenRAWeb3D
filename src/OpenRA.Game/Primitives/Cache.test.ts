@@ -98,4 +98,15 @@ describe('Cache', () => {
     expect(cache.get('hello')).toBe('HELLO')
     expect(seen).toEqual(['hello'])
   })
+
+  it('loader returning undefined does not cause re-invocation', () => {
+    // Verifies fix: get() uses has() not get()===undefined to avoid
+    // infinite re-invocation when the loader legitimately returns undefined.
+    const loader = vi.fn((_k: string): string | undefined => undefined)
+    const cache = new Cache(loader)
+
+    expect(cache.get('a')).toBeUndefined()
+    expect(cache.get('a')).toBeUndefined()
+    expect(loader).toHaveBeenCalledTimes(1)
+  })
 })

@@ -56,12 +56,10 @@ export class Cache<K, V> {
    * @returns the existing or newly-created value
    */
   get(key: K): V {
-    let value = this.store.get(key)
-    if (value === undefined) {
-      value = this.loader(key)
-      this.store.set(key, value)
+    if (!this.store.has(key)) {
+      this.store.set(key, this.loader(key))
     }
-    return value
+    return this.store.get(key)!
   }
 
   /**

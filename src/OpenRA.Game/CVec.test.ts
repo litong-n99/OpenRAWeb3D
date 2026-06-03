@@ -90,6 +90,12 @@ describe('CVec static operators', () => {
     expect(result.Y).toBe(4)
   })
 
+  it('divide handles negative components', () => {
+    const result = CVec.divide(new CVec(-6, 8), 2)
+    expect(result.X).toBe(-3)
+    expect(result.Y).toBe(4)
+  })
+
   it('max takes component-wise maximum', () => {
     const result = CVec.max(new CVec(1, 5), new CVec(3, 2))
     expect(result.X).toBe(3)
