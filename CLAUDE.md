@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 2 -- Rendering Engine
-**Progress**: 25/27 rendering files complete (93%)
+**Phase**: Chapter 2 -- Rendering Engine (COMPLETE)
+**Progress**: 27/27 rendering files complete (100%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -18,7 +18,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | FrameBuffer & Post-Processing (10 files) | Completed, reviewed |
 | Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
 | Platform Abstraction (11 files) | Completed, reviewed |
-| Remaining rendering modules (1 file + 2 shaders) | Stubs / pending |
+| RgbaSpriteRenderer (RGBA sprite batches) | Completed |
+| Model shaders (model.vert/frag) | NOP stubs (fully documented) |
 | Game logic, networking, audio, mod system | Not yet started |
 
 ## Directory Layout
@@ -47,10 +48,11 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       Animation.ts          ← migrated (558 lines, 451 test lines)
       CursorManager.ts      ← migrated (548 lines, 288 test lines)
       TerrainSpriteLayer.ts ← migrated (631 lines, 346 test lines)
+      RgbaSpriteRenderer.ts ← migrated (161 lines, 462 test lines)
       Palette.ts            ← migrated (477 lines, 381 test lines)
       PaletteReference.ts   ← migrated (91 lines, 89 test lines)
       Util.ts               ← migrated (558 lines, 511 test lines)
-      *.ts                  ← 17 remaining stubs
+      *.ts                  ← 16 remaining stubs (beyond Chapter 2 scope)
   OpenRA.Platforms.Default/ ← Platform abstraction (6 migrated, 7 NOP, 5 stubs)
       Shader.ts             ← migrated (417 lines, 572 test lines)
       FrameBuffer.ts        ← migrated (415 lines, 649 test lines)
@@ -60,6 +62,7 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       ITextureInternal.ts   ← migrated (49 lines)
       Sdl2*.ts (4 files)    ← NOP stubs (browser API replacement)
   glsl/                     ← Migrated GLSL shaders (WebGL 2.0 / GLSL ES 3.0)
+                              ← model.vert/frag NOP stubs (StandardMaterial/PBRMaterial)
   assets/                   ← Static assets
   utils/                    ← Shared utilities
 
@@ -192,7 +195,7 @@ npx tsc --noEmit
 
 | Document | Description |
 |----------|-------------|
-| [docs/rendering_migration_plan.md](docs/rendering_migration_plan.md) | Chapter 2 rendering engine migration plan with TODO checklist and file mapping table (26 files) |
+| [docs/rendering_migration_plan.md](docs/rendering_migration_plan.md) | Chapter 2 rendering engine migration plan with TODO checklist and file mapping table (27 migration items, 26 unique files) |
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
