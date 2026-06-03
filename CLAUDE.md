@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 2 (Rendering Engine) -- COMPLETE | Chapter 3 (Actor System) -- PLANNING
-**Progress**: 27/27 rendering files complete (100%), Chapter 3 migration plan created
+**Phase**: Chapter 2 (Rendering Engine) -- COMPLETE | Chapter 3 (Actor System) -- IN PROGRESS
+**Progress**: 27/27 rendering files complete (100%), Chapter 3: 7/36 files migrated (19%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -19,7 +19,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | FrameBuffer & Post-Processing (10 files) | Completed, reviewed |
 | Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
 | Platform Abstraction (11 files) | Completed, reviewed |
-| **Actor System (36 planned)** | DESIGN PHASE (0%) |
+| **Actor System (36 planned)** | IN PROGRESS (7/36 = 19%) |
 | Game logic, networking, audio, mod system | Not yet started
 
 ## Directory Layout
@@ -36,6 +36,7 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
     Renderer.ts             ← migrated (1128 lines, 89 tests)
     Primitives/
       Color.ts              ← migrated (272 lines, 319 test lines)
+    Int32Matrix4x4.ts     ← migrated (120 lines, 5 tests) -- Phase A support
     Graphics/
       WorldRenderer.ts      ← migrated (1314 lines, 74 tests)
       SpriteRenderer.ts     ← migrated (835 lines, 55 tests)
@@ -53,7 +54,13 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       PaletteReference.ts   ← migrated (91 lines, 89 test lines)
       Util.ts               ← migrated (558 lines, 511 test lines)
       *.ts                  ← 16 remaining stubs (beyond Chapter 2 scope)
-    Traits/                 ← Chapter 3: Trait interfaces and components (empty, planned)
+    WPos.ts               ← migrated (180 lines, 24 tests) -- Phase A 3.1.1
+    WVec.ts               ← migrated (230 lines, 35 tests) -- Phase A 3.1.1
+    WAngle.ts             ← migrated (270 lines, 54 tests) -- Phase A 3.1.1
+    WDist.ts              ← migrated (170 lines, 32 tests) -- Phase A 3.1.1
+    WRot.ts               ← migrated (310 lines, 32 tests) -- Phase A 3.1.1
+    Exts.ts               ← migrated (48 lines, 10 tests) -- Phase A support
+    Traits/                 ← Chapter 3: Trait interfaces and components (in progress)
     Activities/             ← Chapter 3: Activity state machine (empty, planned)
     GameRules/              ← Chapter 3: ActorInfo, WeaponInfo config (empty, planned)
     Orders/                 ← Chapter 3: Order generation (empty, planned)

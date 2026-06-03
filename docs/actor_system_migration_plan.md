@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Design Phase (0/36 planned, 0/31 in-scope)
+> **Chapter Status**: Chapter 3 -- Implementation Phase (7/36 migrated, 7/31 in-scope)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -187,11 +187,11 @@ Conversion chain: `CPos` -> `MPos` -> `WPos`. All game logic uses `WPos`; map an
 
 #### 3.1.1 World Coordinate Types
 
-- [ ] **TODO-3.A.1** `src/OpenRA.Game/WPos.ts` -- 3D world position with high precision (1024 sub-units/cell). Map `X/Y/Z` to equivalent properties. Implement `WPos.add(WVec): WPos`, `WPos.subtract(WPos): WVec`, `Lerp()`, `clamp()`, equality operators as static methods. (94 lines C#)
-- [ ] **TODO-3.A.2** `src/OpenRA.Game/WVec.ts` -- 3D world vector. Implement `dot(WVec): number`, `cross(WVec): WVec`, `length: number`, `flatLength` (2D magnitude), `normalize()`, `rotate(WRot): WVec`. (183 lines C#)
-- [ ] **TODO-3.A.3** `src/OpenRA.Game/WAngle.ts` -- World angle (0-1024 = full circle, 256 = 90 degrees). Convert to radians at render boundary. Implement `sin()/cos()/tan()` via lookup table for deterministic cross-browser behavior. Implement `arcsin()/arccos()/arctan2()`. (279 lines C#)
-- [ ] **TODO-3.A.4** `src/OpenRA.Game/WDist.ts` -- World distance with ranged comparison. Implement `length: number`, `compareTo(WDist)`, arithmetic with `WDist`. (194 lines C#)
-- [ ] **TODO-3.A.5** `src/OpenRA.Game/WRot.ts` -- 3D rotation representation. Map to `BABYLON.Quaternion` or Euler angles internally. Implement `WRot.add(WRot)`, `rotAsQuaternion()`, `rotate(WVec): WVec`. (222 lines C#)
+- [x] **TODO-3.A.1** `src/OpenRA.Game/WPos.ts` ✅ — 3D world position with high precision (1024 sub-units/cell). `WPos.add(WVec): WPos`, `WPos.subtract(WPos): WVec`, `Lerp()`, equality operators as static methods. **(180 lines TS + 24 tests)**
+- [x] **TODO-3.A.2** `src/OpenRA.Game/WVec.ts` ✅ — 3D world vector. `dot(WVec): number`, `cross(WVec): WVec`, `length: number`, `flatLength` (2D magnitude), `normalize()`, `rotate(WRot): WVec`. **(230 lines TS + 35 tests)**
+- [x] **TODO-3.A.3** `src/OpenRA.Game/WAngle.ts` ✅ — World angle (0-1024 = full circle, 256 = 90 degrees). Converts to radians at render boundary. `sin()/cos()/tan()` via lookup table for deterministic cross-browser behavior. `arcsin()/arccos()/arctan2()`. **(270 lines TS + 54 tests)**
+- [x] **TODO-3.A.4** `src/OpenRA.Game/WDist.ts` ✅ — World distance with ranged comparison. `length: number`, `compareTo(WDist)`, arithmetic with `WDist`. **(170 lines TS + 32 tests)**
+- [x] **TODO-3.A.5** `src/OpenRA.Game/WRot.ts` ✅ — 3D rotation representation. Maps to `Int32Matrix4x4` internally. `WRot.add(WRot)`, `rotAsMatrix()`, `rotate(WVec): WVec`, `rotateInverse(WVec): WVec`. **(310 lines TS + 32 tests)**
 
 #### 3.1.2 Map Coordinate Types
 

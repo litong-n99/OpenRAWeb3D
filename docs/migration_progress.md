@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-04
-> **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — PLANNING
-> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3 migration plan created, ready for implementation
+> **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — IN PROGRESS
+> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 7/36 files migrated (19%), Phase A 3.1.1 complete
 
 ---
 
@@ -11,13 +11,13 @@
 | Metric | Count |
 |--------|-------|
 | **Chapter 2 rendering files** | 27 (100% complete) |
-| **Chapter 3 core files (planned)** | 8 core + 7 supporting = 15 |
-| **Chapter 3 status** | Migration plan written, pending implementation |
+| **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
+| **Chapter 3 status** | Implementation started: 7/36 (19%), Phase A 3.1.1 complete |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 4-8+ (networking, audio, file system, mod system, UI, map) |
-| **Overall project completion** | Chapter 2/8+ (rendering engine done, actor system planned) |
+| **Overall project completion** | Chapter 2/8+ (rendering engine done, actor system in progress) |
 
-> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (8 core files + 7 supporting files with ~40 TODO items). The plan follows the same format as `docs/rendering_migration_plan.md`.
+> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Implementation has begun: Phase A 3.1.1 World Coordinate Types is complete (7 files, 191 tests).
 
 ---
 
@@ -173,6 +173,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-04 | **Phase A 3.1.1 World Coordinate Types** (7 files) | migration-develop | migration-review | Round 2 approved, 191 tests pass: WPos(180+24), WVec(230+35), WAngle(270+54), WDist(170+32), WRot(310+32), Int32Matrix4x4(120+5), Exts(48+10) |
 | 2026-06-03 | **Chapter 2 FINALIZED** | migration-docs | — | 27/27 (100%), 24+2+1 resolved, ~14,400+ impl lines, ~10,800+ test lines, 27 test files |
 | 2026-06-03 | Platform Abstraction (Section 3.8) — 11 files | migration-develop | migration-review | 3 review rounds, 1068 lines impl, 61 tests, 7 NOP stubs, core wrappers + SDL2 removal |
 | 2026-06-03 | Sprite & Texture System (Section 3.7) — 12 files | migration-develop | migration-review | 2 review rounds, ~4900 lines impl, 12 test files, 252 new tests, Palette + Sprite/Sheet + Animation + TerrainLayer |
@@ -218,14 +219,14 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 ## Chapter 3: Game World & Actor System Progress
 
 > **Migration Plan**: [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md)
-> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (architect design review)
-> **Status**: DESIGN PHASE (0/36 files migrated, 31 in-scope + 5 support)
+> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (Phase A 3.1.1 complete)
+> **Status**: IMPLEMENTATION PHASE (7/36 files migrated, 31 in-scope + 5 support)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 0 | 0% |
+| Completed | 7 | 19% |
 | In Progress | 0 | 0% |
-| Pending | 36 | 100% |
+| Pending | 29 | 81% |
 | **Total planned** | **36** | **100%** |
 | **In-scope** | **31** (17 Phase A + 14 Phase B-I) | |
 | **Deferrable** | **2** (Phase J: Weapon system) | |
@@ -238,11 +239,11 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 | A1 | `MPos.cs` | `src/OpenRA.Game/MPos.ts` | Low | 94 | Pending |
 | A2 | `CPos.cs` | `src/OpenRA.Game/CPos.ts` | Low | 148 | Pending |
 | A3 | `CVec.cs` | `src/OpenRA.Game/CVec.ts` | Low | 147 | Pending |
-| A4 | `WPos.cs` | `src/OpenRA.Game/WPos.ts` | Low | 169 | Pending |
-| A5 | `WVec.cs` | `src/OpenRA.Game/WVec.ts` | Low | 183 | Pending |
-| A6 | `WAngle.cs` | `src/OpenRA.Game/WAngle.ts` | Medium | 279 | Pending |
-| A7 | `WDist.cs` | `src/OpenRA.Game/WDist.ts` | Low | 194 | Pending |
-| A8 | `WRot.cs` | `src/OpenRA.Game/WRot.ts` | Medium | 222 | Pending |
+| A4 | `WPos.cs` | `src/OpenRA.Game/WPos.ts` | Low | 180 (24 tests) | ✅ Completed |
+| A5 | `WVec.cs` | `src/OpenRA.Game/WVec.ts` | Low | 230 (35 tests) | ✅ Completed |
+| A6 | `WAngle.cs` | `src/OpenRA.Game/WAngle.ts` | Medium | 270 (54 tests) | ✅ Completed |
+| A7 | `WDist.cs` | `src/OpenRA.Game/WDist.ts` | Low | 170 (32 tests) | ✅ Completed |
+| A8 | `WRot.cs` | `src/OpenRA.Game/WRot.ts` | Medium | 310 (32 tests) | ✅ Completed |
 | A9 | `BitSet.cs` | `src/OpenRA.Game/Primitives/BitSet.ts` | Low | 171 | Pending |
 | A10 | `LongBitSet.cs` | `src/OpenRA.Game/Primitives/LongBitSet.ts` | Medium | 189 | Pending |
 | A11 | `TypeDictionary.cs` | `src/OpenRA.Game/Primitives/TypeDictionary.ts` | Medium | 183 | Pending |
@@ -252,6 +253,12 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 | A15 | `CachedTransform.cs` | `src/OpenRA.Game/Primitives/CachedTransform.ts` | Low | 41 | Pending |
 | A16 | `ActionQueue.cs` | `src/OpenRA.Game/Primitives/ActionQueue.ts` | Low | 93 | Pending |
 | A17 | `Target.cs` | `src/OpenRA.Game/Traits/Target.ts` | Medium | 295 | Pending |
+
+#### Additional Migrated Files (Beyond 17-Item Phase A Plan)
+
+| # | File | Lines (impl) | Lines (test) | Note |
+|:---:|:---|:---:|:---:|:---|
+| A+1 | `src/OpenRA.Game/Int32Matrix4x4.ts` | 120 | 5 | Required by WRot.ts for 3D rotation matrix representation |
 
 ### Phase B: Trait System Core (2 files)
 
@@ -292,7 +299,7 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 | # | Source | Target | Lines (C#) | Status |
 |:---:|:---|:---|:---:|:---:|
 | S1 | `Sync.cs` | `src/OpenRA.Game/Sync.ts` | 212 | Support |
-| S2 | `Exts.cs` | `src/OpenRA.Game/Exts.ts` | 680 | Support |
+| S2 | `Exts.cs` | `src/OpenRA.Game/Exts.ts` | 680 (48 TS + 10 tests) | ✅ Completed |
 | S3 | `WorldUtils.cs` | `src/OpenRA.Game/WorldUtils.ts` | 112 | Support |
 | S4 | `GameSpeed.cs` | `src/OpenRA.Game/GameSpeed.ts` | 62 | Support |
 | S5 | `ActivityUtils.cs` | `src/OpenRA.Game/Traits/ActivityUtils.ts` | 39 | Support |
