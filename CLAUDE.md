@@ -5,7 +5,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 ## Project Status
 
 **Phase**: Chapter 2 -- Rendering Engine
-**Progress**: 12/27 rendering files complete (44%)
+**Progress**: 20/27 rendering files complete (74%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -16,7 +16,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | RgbaColorRenderer (RGBA color renderer) | Completed, reviewed |
 | Shader / Material System (6 files) | Completed, reviewed |
 | FrameBuffer & Post-Processing (10 files) | Completed, reviewed |
-| Remaining rendering modules (15 files) | Stubs / pending |
+| Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
+| Remaining rendering modules (6 files in plan) | Stubs / pending |
 | Game logic, networking, audio, mod system | Not yet started |
 
 ## Directory Layout
@@ -29,14 +30,27 @@ OpenRA/                     ← Original C# source (READ-ONLY reference, NEVER m
   glsl/                     ← Original GLSL shaders (OpenGL 3.2 / GLSL 1.50)
 
 src/                        ← TypeScript migration target (mirrors OpenRA/ structure)
-  OpenRA.Game/              ← Core engine: Renderer.ts, Graphics/, etc.
-    Renderer.ts             ← migrated (1106 lines, 89 tests)
+  OpenRA.Game/              ← Core engine: Renderer.ts, Graphics/, Primitives/, etc.
+    Renderer.ts             ← migrated (1128 lines, 89 tests)
+    Primitives/
+      Color.ts              ← migrated (272 lines, 319 test lines)
     Graphics/
-      WorldRenderer.ts      ← migrated (1306 lines, 74 tests)
+      WorldRenderer.ts      ← migrated (1314 lines, 74 tests)
       SpriteRenderer.ts     ← migrated (835 lines, 55 tests)
       RgbaColorRenderer.ts  ← migrated (1012 lines, 68 tests)
-      *.ts                  ← 22 remaining stubs
-  OpenRA.Platforms.Default/ ← Platform abstraction stubs
+      Sprite.ts             ← migrated (296 lines, 268 test lines)
+      Sheet.ts              ← migrated (437 lines, 351 test lines)
+      SheetBuilder.ts       ← migrated (502 lines, 367 test lines)
+      HardwarePalette.ts    ← migrated (658 lines, 463 test lines)
+      PlayerColorRemap.ts   ← migrated (154 lines, 191 test lines)
+      Animation.ts          ← migrated (558 lines, 451 test lines)
+      CursorManager.ts      ← migrated (548 lines, 288 test lines)
+      TerrainSpriteLayer.ts ← migrated (631 lines, 346 test lines)
+      Palette.ts            ← migrated (477 lines, 381 test lines)
+      PaletteReference.ts   ← migrated (91 lines, 89 test lines)
+      Util.ts               ← migrated (558 lines, 511 test lines)
+      *.ts                  ← 19 remaining stubs
+  OpenRA.Platforms.Default/ ← Platform abstraction (2 migrated, 16 stubs)
   glsl/                     ← Migrated GLSL shaders (WebGL 2.0 / GLSL ES 3.0)
   assets/                   ← Static assets
   utils/                    ← Shared utilities
@@ -81,6 +95,16 @@ docs/
 | `Vertex` 48-byte struct | `VertexData` multi-array |
 | `Util.PremultiplyAlpha()` | `material.alphaMode = ALPHA_PREMULTIPLIED` |
 | CPU vertex computation + inline types | Babylon.js dynamic Mesh + ShaderMaterial |
+| `Sheet` (texture atlas / sprite sheet) | `BABYLON.Texture` / `RawTexture` with UV sub-regions |
+| `Sprite` (single sprite from sheet) | `MeshBuilder.CreatePlane()` + custom UV offset/scale |
+| `SheetBuilder` (runtime packing) | Build-time `maxrects-packer` / TexturePacker |
+| `IPalette` / `ImmutablePalette` / `MutablePalette` | `Uint32Array` + custom TypeScript interface (indexer -> `at()` method) |
+| `PlayerColorRemap` (HSV recolor) | GPU uniform lookup via 256x1 `RawTexture` |
+| `Animation` (frame-based sprite anim) | `mesh.updateVerticesData("uv", ...)` frame swap + 25fps tick |
+| `CursorManager` (hardware cursor) | CSS `cursor: url(...)` / HTML overlay element |
+| `TerrainSpriteLayer` (large terrain grid) | Single large-plane `Mesh` + `updateVerticesData()` dirty-row update |
+| `PaletteReference` (weak palette link) | TypeScript class with getter + setter (no `internal` keyword) |
+| `RenderPostProcessPassVertex` (postprocess vertex) | Babylon.js `PostProcess` auto-generates fullscreen quad |
 
 ## Agent Team Structure
 

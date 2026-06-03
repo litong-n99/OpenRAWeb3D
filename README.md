@@ -5,7 +5,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 ## Status
 
 **Phase**: Chapter 2 -- Rendering Engine  
-**Progress**: 12/27 rendering files complete (44%)  
+**Progress**: 20/27 rendering files complete (74%)  
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -16,7 +16,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | RgbaColorRenderer (RGBA color renderer) | Completed |
 | Shader / Material System (6 files) | Completed |
 | FrameBuffer & Post-Processing (10 files) | Completed |
-| Remaining rendering modules (15 files) | Stubs / pending |
+| Sprite & Texture System (8 core + 4 extra files) | Completed |
+| Remaining rendering modules (6 files in plan) | Stubs / pending |
 | Game logic, networking, audio, mod system | Not yet started |
 
 ## Architecture Overview
@@ -45,6 +46,12 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
 | `ShaderBindings` C# attribute reflection | `ShaderMaterial` + `Effect.ShadersStore` uniform declaration |
 | `Vertex` 48-byte struct | `VertexData` multi-array |
 | `Util.PremultiplyAlpha()` | `material.alphaMode = ALPHA_PREMULTIPLIED` |
+| `Sheet` (texture atlas / sprite sheet) | `BABYLON.Texture` / `RawTexture` with UV sub-regions |
+| `Sprite` (single sprite from sheet) | `MeshBuilder.CreatePlane()` + custom UV offset/scale |
+| `IPalette` (256-color palette, indexer) | `Uint32Array` + TypeScript `at()` method |
+| `PlayerColorRemap` (HSV recolor) | GPU uniform lookup via 256x1 `RawTexture` |
+| `Animation` (frame-based sprite anim) | `mesh.updateVerticesData("uv", ...)` frame swap |
+| `TerrainSpriteLayer` (large terrain grid) | Single large-plane `Mesh` + dirty-row update |
 
 ## Tech Stack
 

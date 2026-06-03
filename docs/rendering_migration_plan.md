@@ -184,22 +184,30 @@
 
 ---
 
-### 3.7 精灵与纹理系统
+### 3.7 精灵与纹理系统 ✅ 已完成
 
 **OpenRA 对照**: `OpenRA.Game/Graphics/Sprite.cs`, `Sheet.cs`, `SheetBuilder.cs`, `HardwarePalette.cs`, `PlayerColorRemap.cs`, `Animation.cs`, `CursorManager.cs`, `TerrainSpriteLayer.cs`  
-**迁移目标**: `src/OpenRA.Game/Graphics/` 下对应 `.ts` 文件
+**迁移目标**: `src/OpenRA.Game/Graphics/` 下对应 `.ts` 文件  
+**状态**: 已完成 (~4900行实现 + ~4000行测试, 12 个源文件 + 12 个测试文件, 252 个测试用例)  
+**审核**: 已通过代码审核（2 轮审核，含额外文件 Palette.ts, PaletteReference.ts, Util.ts, Color.ts）
 
-- [ ] **TODO-2.7.1** `Sprite.ts`: 映射为 `MeshBuilder.CreatePlane()` + 特定 UV 子区域 + `ShaderMaterial`。
-- [ ] **TODO-2.7.2** `Sheet.ts`: `Indexed` → `RawTexture`(LUMINANCE)；`BGRA` → `Texture`(RGBA，注意 R/B 交换)。
-- [ ] **TODO-2.7.3** `SheetBuilder.ts`: 运行时打包替换为构建时预打包（`maxrects-packer` / TexturePacker）。
-- [ ] **TODO-2.7.4** `HardwarePalette.ts`: 256×N `RawTexture` + `ColorShifts` 浮点纹理 + 自定义 Shader 查找。
-- [ ] **TODO-2.7.5** `PlayerColorRemap.ts`: 实现 GPU 端实时 HSV 重映射（方案 B：256×1 查找纹理 + Uniform）。
-- [ ] **TODO-2.7.6** `Animation.ts`: `Sprite.playAnimation()` 或 `mesh.updateVerticesData()` 实现帧切换；固定 25fps 逻辑 Tick。
-- [ ] **TODO-2.7.7** `CursorManager.ts`: CSS `cursor: url(...)` 或独立 HTML 元素覆盖层。
-- [ ] **TODO-2.7.8** `TerrainSpriteLayer.ts`: 大平面网格（宽×高 Quad）+ `updateVerticesData()` 脏行更新。
+- [x] **TODO-2.7.1** `Sprite.ts` (296行): 映射为 `MeshBuilder.CreatePlane()` + 特定 UV 子区域 + `ShaderMaterial`。
+- [x] **TODO-2.7.2** `Sheet.ts` (437行): `Indexed` → `RawTexture`(LUMINANCE)；`BGRA` → `Texture`(RGBA，注意 R/B 交换)。
+- [x] **TODO-2.7.3** `SheetBuilder.ts` (502行): 运行时打包替换为构建时预打包（`maxrects-packer` / TexturePacker）。
+- [x] **TODO-2.7.4** `HardwarePalette.ts` (658行): 256×N `RawTexture` + `ColorShifts` 浮点纹理 + 自定义 Shader 查找。
+- [x] **TODO-2.7.5** `PlayerColorRemap.ts` (154行): 实现 GPU 端实时 HSV 重映射（方案 B：256×1 查找纹理 + Uniform）。
+- [x] **TODO-2.7.6** `Animation.ts` (558行): `Sprite.playAnimation()` 或 `mesh.updateVerticesData()` 实现帧切换；固定 25fps 逻辑 Tick。
+- [x] **TODO-2.7.7** `CursorManager.ts` (548行): CSS `cursor: url(...)` 或独立 HTML 元素覆盖层。
+- [x] **TODO-2.7.8** `TerrainSpriteLayer.ts` (631行): 大平面网格（宽×高 Quad）+ `updateVerticesData()` 脏行更新。
+
+**额外迁移文件**:
+- `Palette.ts` (477行): IPalette 接口 + ImmutablePalette + MutablePalette 实现
+- `PaletteReference.ts` (91行): 调色板引用包装器
+- `Util.ts` (558行): 工具函数（FastCopy, FastCreateQuad, PremultiplyAlpha 等）
+- `Primitives/Color.ts` (272行): ARGB 颜色数据结构
 
 **复杂度**: 高（调色板系统、地形层）/ 低（光标、Sheet）  
-**阻塞任务**: TODO-2.5.x (Shader)
+**阻塞任务**: TODO-2.5.x (Shader) ✅ 已满足
 
 ---
 
