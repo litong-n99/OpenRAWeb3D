@@ -218,71 +218,121 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 ## Chapter 3: Game World & Actor System Progress
 
 > **Migration Plan**: [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md)
-> **Created**: 2026-06-04
-> **Status**: PLANNING (0/15 files migrated)
+> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (architect design review)
+> **Status**: DESIGN PHASE (0/36 files migrated, 31 in-scope + 5 support)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
 | Completed | 0 | 0% |
 | In Progress | 0 | 0% |
-| Pending | 15 | 100% |
-| **Total** | **15** | **100%** |
+| Pending | 36 | 100% |
+| **Total planned** | **36** | **100%** |
+| **In-scope** | **31** (17 Phase A + 14 Phase B-I) | |
+| **Deferrable** | **2** (Phase J: Weapon system) | |
+| **Support** | **5** (migrate as needed) | |
 
-### Core Files (8 from Architecture Analysis Table 4-1)
+### Phase A: Coordinate System & Primitives (17 files, Foundation)
 
-| # | File | Target | Complexity | Lines (C#) | Status |
+| # | Source | Target | Complexity | Lines (C#) | Status |
 |:---:|:---|:---|:---:|:---:|:---:|
-| 1 | `World.cs` | `src/OpenRA.Game/World.ts` | High | 650 | Pending |
-| 2 | `Actor.cs` | `src/OpenRA.Game/Actor.ts` | High | 650 | Pending |
-| 3 | `TraitsInterfaces.cs` | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` | Medium | 664 | Pending |
-| 4 | `TraitDictionary.cs` | `src/OpenRA.Game/TraitDictionary.ts` | Medium | 329 | Pending |
-| 5 | `ActorInfo.cs` | `src/OpenRA.Game/GameRules/ActorInfo.ts` | Medium | 201 | Pending |
-| 6 | `Activity.cs` | `src/OpenRA.Game/Activities/Activity.ts` | High | 296 | Pending |
-| 7 | `WeaponInfo.cs` | `src/OpenRA.Game/GameRules/WeaponInfo.ts` | Medium | 268 | Pending |
-| 8 | `Player.cs` | `src/OpenRA.Game/Player.ts` | Low | 337 | Pending |
+| A1 | `MPos.cs` | `src/OpenRA.Game/MPos.ts` | Low | 94 | Pending |
+| A2 | `CPos.cs` | `src/OpenRA.Game/CPos.ts` | Low | 148 | Pending |
+| A3 | `CVec.cs` | `src/OpenRA.Game/CVec.ts` | Low | 147 | Pending |
+| A4 | `WPos.cs` | `src/OpenRA.Game/WPos.ts` | Low | 169 | Pending |
+| A5 | `WVec.cs` | `src/OpenRA.Game/WVec.ts` | Low | 183 | Pending |
+| A6 | `WAngle.cs` | `src/OpenRA.Game/WAngle.ts` | Medium | 279 | Pending |
+| A7 | `WDist.cs` | `src/OpenRA.Game/WDist.ts` | Low | 194 | Pending |
+| A8 | `WRot.cs` | `src/OpenRA.Game/WRot.ts` | Medium | 222 | Pending |
+| A9 | `BitSet.cs` | `src/OpenRA.Game/Primitives/BitSet.ts` | Low | 171 | Pending |
+| A10 | `LongBitSet.cs` | `src/OpenRA.Game/Primitives/LongBitSet.ts` | Medium | 189 | Pending |
+| A11 | `TypeDictionary.cs` | `src/OpenRA.Game/Primitives/TypeDictionary.ts` | Medium | 183 | Pending |
+| A12 | `SpatiallyPartitioned.cs` | `src/OpenRA.Game/Primitives/SpatiallyPartitioned.ts` | Medium | 169 | Pending |
+| A13 | `PriorityQueue.cs` | `src/OpenRA.Game/Primitives/PriorityQueue.ts` | Low | 159 | Pending |
+| A14 | `Cache.cs` | `src/OpenRA.Game/Primitives/Cache.ts` | Low | 50 | Pending |
+| A15 | `CachedTransform.cs` | `src/OpenRA.Game/Primitives/CachedTransform.ts` | Low | 41 | Pending |
+| A16 | `ActionQueue.cs` | `src/OpenRA.Game/Primitives/ActionQueue.ts` | Low | 93 | Pending |
+| A17 | `Target.cs` | `src/OpenRA.Game/Traits/Target.ts` | Medium | 295 | Pending |
 
-### Supporting Files (7)
+### Phase B: Trait System Core (2 files)
 
-| # | File | Target | Complexity | Status |
+| # | Source | Target | Complexity | Lines (C#) | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| B1 | `TraitDictionary.cs` | `src/OpenRA.Game/TraitDictionary.ts` | Medium | 329 | Pending |
+| B2 | `TraitsInterfaces.cs` | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` | Medium | 664 | Pending |
+
+### Phases C-D: World + Actor (2 files, Core Containers)
+
+| # | Source | Target | Complexity | Lines (C#) | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| C | `World.cs` | `src/OpenRA.Game/World.ts` | HIGH | 650 | Pending |
+| D | `Actor.cs` | `src/OpenRA.Game/Actor.ts` | HIGH | 650 | Pending |
+
+### Phases E-I: Remaining Core System (7 files)
+
+| # | Source | Target | Complexity | Phase | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| E | `ActorInfo.cs` | `src/OpenRA.Game/GameRules/ActorInfo.ts` | Medium | E | Pending |
+| F1 | `Activity.cs` | `src/OpenRA.Game/Activities/Activity.ts` | HIGH | F | Pending |
+| F2 | `CallFunc.cs` | `src/OpenRA.Game/Activities/CallFunc.ts` | Low | F | Pending |
+| G | `Player.cs` | `src/OpenRA.Game/Player.ts` | Low | G | Pending |
+| H1 | `IEffect.cs` | `src/OpenRA.Game/Effects/IEffect.ts` | Low | H | Pending |
+| H2 | `DelayedAction.cs` | `src/OpenRA.Game/Effects/DelayedAction.ts` | Low | H | Pending |
+| H3 | `DelayedImpact.cs` | `src/OpenRA.Game/Effects/DelayedImpact.ts` | Low | H | Pending |
+| I | `ScreenMap.cs` | `src/OpenRA.Game/Traits/World/ScreenMap.ts` | Medium | I | Pending |
+
+### Phase J: Weapon System (2 files, DEFERRABLE)
+
+| # | Source | Target | Complexity | Status |
 |:---:|:---|:---|:---:|:---:|
-| S1 | `CallFunc.cs` | `src/OpenRA.Game/Activities/CallFunc.ts` | Low | Pending |
-| S2 | `Target.cs` | `src/OpenRA.Game/Traits/Target.ts` | Low | Pending |
-| S3 | `Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | Low | Pending |
-| S4 | `ScreenMap.cs` | `src/OpenRA.Game/Traits/World/ScreenMap.ts` | Medium | Pending |
-| S5 | `Shroud.cs` | `src/OpenRA.Game/Traits/Player/Shroud.ts` | Medium | Pending |
-| S6 | `FrozenActorLayer.cs` | `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts` | Medium | Pending |
-| S7 | `IOrderGenerator.cs` | `src/OpenRA.Game/Orders/IOrderGenerator.ts` | Low | Pending |
+| J1 | `WeaponInfo.cs` | `src/OpenRA.Game/GameRules/WeaponInfo.ts` | Medium | Deferred |
+| J2 | `Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | Low | Deferred |
+
+### Support Files (5, migrate as needed)
+
+| # | Source | Target | Lines (C#) | Status |
+|:---:|:---|:---|:---:|:---:|
+| S1 | `Sync.cs` | `src/OpenRA.Game/Sync.ts` | 212 | Support |
+| S2 | `Exts.cs` | `src/OpenRA.Game/Exts.ts` | 680 | Support |
+| S3 | `WorldUtils.cs` | `src/OpenRA.Game/WorldUtils.ts` | 112 | Support |
+| S4 | `GameSpeed.cs` | `src/OpenRA.Game/GameSpeed.ts` | 62 | Support |
+| S5 | `ActivityUtils.cs` | `src/OpenRA.Game/Traits/ActivityUtils.ts` | 39 | Support |
 
 ### Chapter 3 Dependency Graph
 
 ```
-Phase 3A (Foundation):   TraitsInterfaces → TraitDictionary
-Phase 3B (Data Models):  ActorInfo, WeaponInfo, Ruleset
-Phase 3C (Core Actor):   Actor, Target, Player
-Phase 3D (World):        World, ScreenMap
-Phase 3E (Activity):     Activity, CallFunc
-Phase 3F (Game Traits):  Shroud, FrozenActorLayer, IOrderGenerator
+Phase A (17 files) <-- FOUNDATION, no internal deps
+  |
+  +--> Phase B (TraitsInterfaces, TraitDictionary)
+        |
+        +--> Phase C (World) --> Phase D (Actor)
+              |
+              +--> Phase E (ActorInfo), Phase F (Activity), Phase G (Player)
+              +--> Phase H (Effects), Phase I (ScreenMap)
+              +--> Phase J (Weapon) [DEFERRED]
 ```
 
 ### Chapter 3 Dependencies on Chapter 2
 
-- Renderer.ts (Engine.runRenderLoop(), canvas, WebGL context)
-- WorldRenderer.ts (BABYLON.Scene, renderingGroupId, camera)
-- Shader system (ShaderMaterial for custom rendering Traits)
-- Sprite & Texture system (for rendering actor visuals)
+- Renderer.ts (Engine.runRenderLoop()) -- Phase C tick loop
+- WorldRenderer.ts (BABYLON.Scene) -- Phase C GameWorldManager
+- ShaderMaterial system -- Future trait rendering
+- Sprite & Texture system -- Future visual effects
 
 ### Phase Strategy
 
-| Phase | Files | Est. Days | Depends On |
-|-------|-------|:---------:|-----------|
-| 3A: Foundation | TraitsInterfaces, TraitDictionary | 2-3 | Chapter 2 |
-| 3B: Data Models | ActorInfo, WeaponInfo, Ruleset | 2-3 | 3A |
-| 3C: Core Actor | Actor, Target, Player | 3-4 | 3A, 3B |
-| 3D: World | World, ScreenMap | 2-3 | 3C |
-| 3E: Activity | Activity, CallFunc | 2-3 | 3C |
-| 3F: Game Traits | Shroud, FrozenActorLayer, IOrderGenerator | 2-3 | 3C, 3D |
+| Phase | Files | Complexity | Est. Weeks | Depends On |
+|-------|:---:|:---|:---:|-----------|
+| A: Coordinates & Primitives | 17 | Low-Medium | 1-2 | Nothing |
+| B: Trait System Core | 2 | Medium | 1 | Phase A |
+| C+D: World + Actor | 2 | HIGH | 2 | Phases A, B |
+| E: ActorInfo | 1 | Medium | 0.5 | Phase A, B |
+| F: Activity | 2 | HIGH | 1 | Phase A, D |
+| G: Player | 1 | Low | 0.5 | Phase A, D |
+| H: Effects | 3 | Low | 0.5 | Phase C |
+| I: ScreenMap | 1 | Medium | 0.5 | Phase A, D |
+| J: Weapon System | 2 | Medium | DEFERRED | — |
 
-**Total estimated**: 13-19 developer-days
+**Total estimated**: 7-8 weeks (2 devs) or 4-5 weeks (4 devs)
 
 ---
 
