@@ -64,6 +64,7 @@
 | 24 | `glsl/combined.frag` | `src/glsl/combined.frag` | — | 高 | 自定义 `ShaderMaterial` 片段着色器 |
 | 25 | `glsl/postprocess.vert` | `src/glsl/postprocess.vert` | — | 低 | `PostProcess` 自动处理 |
 | 26 | `glsl/postprocess_*.frag` | `src/glsl/postprocess_*.frag` | — | 中 | `CustomPostProcess` / `DefaultRenderingPipeline` |
+| 27 | `OpenRA.Game/Graphics/ShaderBindings.cs` | `src/OpenRA.Game/Graphics/ShaderBindings.ts` | `ShaderBindings` | 中 | `BABYLON.ShaderMaterial` uniform 绑定 |
 
 ---
 
@@ -144,18 +145,20 @@
 
 ---
 
-### 3.5 Shader / 材质系统
+### 3.5 Shader / 材质系统 ✅ 已完成
 
 **OpenRA 对照**: `OpenRA.Game/Graphics/PlatformInterfaces.cs` (`IShader`), `OpenRA.Game/Graphics/ShaderBindings.cs`, `OpenRA.Game/Graphics/Vertex.cs`, `OpenRA.Platforms.Default/Shader.cs`  
-**迁移目标**: `src/OpenRA.Game/Graphics/Shader.ts`, `src/OpenRA.Game/Graphics/Vertex.ts`, `src/OpenRA.Platforms.Default/Shader.ts`
+**迁移目标**: `src/OpenRA.Game/Graphics/PlatformInterfaces.ts`, `src/OpenRA.Game/Graphics/ShaderBindings.ts`, `src/OpenRA.Game/Graphics/Vertex.ts`, `src/OpenRA.Platforms.Default/Shader.ts`  
+**状态**: 已完成 (1791行实现 + 1308行测试, 6 个源文件 + 4 个测试文件, 142 个新增测试用例)  
+**审核**: 已通过代码审核（2 轮审核，修复了 2 个 MAJOR + 5 个 MINOR 问题）
 
-- [ ] **TODO-2.5.1** 用 `ShaderMaterial` + `Effect.ShadersStore` 替代 `IShader` 接口与手动 GL 程序管理。
-- [ ] **TODO-2.5.2** 迁移 `combined.vert` / `combined.frag` 核心逻辑：保留调色板查找算法，适配 Babylon.js uniform 命名。
-- [ ] **TODO-2.5.3** 处理 GLSL 版本差异：OpenGL 3.2 (GLSL 1.50) → WebGL 2.0 (GLSL ES 3.0)。
-- [ ] **TODO-2.5.4** 拆分 `Vertex` 48 字节结构：`positions` + `uvs` + `uvs2` + `colors` 独立属性流。
-- [ ] **TODO-2.5.5** 实现调色板查找精度保障：`floor(tex.r * 255.0 + 0.5)` 精确还原整数索引。
-- [ ] **TODO-2.5.6** 确保调色板纹理使用 `NEAREST` 采样模式，禁用 Mipmap。
-- [ ] **TODO-2.5.7** 映射 `IShader.SetVec()` → `shaderMaterial.setVector3()`，`SetTexture()` → `setTexture()`。
+- [x] **TODO-2.5.1** 用 `ShaderMaterial` + `Effect.ShadersStore` 替代 `IShader` 接口与手动 GL 程序管理。
+- [x] **TODO-2.5.2** 迁移 `combined.vert` / `combined.frag` 核心逻辑：保留调色板查找算法，适配 Babylon.js uniform 命名。
+- [x] **TODO-2.5.3** 处理 GLSL 版本差异：OpenGL 3.2 (GLSL 1.50) → WebGL 2.0 (GLSL ES 3.0)。
+- [x] **TODO-2.5.4** 拆分 `Vertex` 48 字节结构：`positions` + `uvs` + `uvs2` + `colors` 独立属性流。
+- [x] **TODO-2.5.5** 实现调色板查找精度保障：`floor(tex.r * 255.0 + 0.5)` 精确还原整数索引。
+- [x] **TODO-2.5.6** 确保调色板纹理使用 `NEAREST` 采样模式，禁用 Mipmap。
+- [x] **TODO-2.5.7** 映射 `IShader.SetVec()` → `shaderMaterial.setVector3()`，`SetTexture()` → `setTexture()`。
 
 **复杂度**: 高  
 **阻塞任务**: 无（但阻塞 TODO-2.3.x, TODO-2.7.x）
@@ -222,11 +225,11 @@
 
 > 注意：着色器源码先保留在 `src/glsl/` 中，通过 `Effect.ShadersStore` 注册到 Babylon.js。
 
-- [ ] **TODO-2.S1** `combined.vert`：保留精灵顶点变换逻辑，将 `p1/p2` 投影参数替换为 Babylon.js 自动注入的 `worldViewProjection`。
-- [ ] **TODO-2.S2** `combined.frag`：保留调色板纹理查找、ColorShift HSV 偏移、Alpha 测试核心逻辑。
+- [x] **TODO-2.S1** `combined.vert`：保留精灵顶点变换逻辑，将 `p1/p2` 投影参数替换为 Babylon.js 自动注入的 `worldViewProjection`。
+- [x] **TODO-2.S2** `combined.frag`：保留调色板纹理查找、ColorShift HSV 偏移、Alpha 测试核心逻辑。
 - [ ] **TODO-2.S3** `postprocess.vert` / `postprocess_*.frag`：后处理效果迁移为 `PostProcess` 类或 `DefaultRenderingPipeline` 配置。
 - [ ] **TODO-2.S4** `model.vert` / `model.frag`：模型着色器可直接使用 Babylon.js `StandardMaterial` / `PBRMaterial`，无需自定义。
-- [ ] **TODO-2.S5** GLSL 版本适配：确保 `attribute`/`varying`/`texture2D` 等语法与 WebGL 2.0 `in`/`out`/`texture()` 兼容。
+- [x] **TODO-2.S5** GLSL 版本适配：确保 `attribute`/`varying`/`texture2D` 等语法与 WebGL 2.0 `in`/`out`/`texture()` 兼容。
 
 **复杂度**: 高（combined 着色器对）/ 低（model、postprocess 顶点）
 
@@ -237,7 +240,7 @@
 - [x] **TEST-2.1** 创建 `src/OpenRA.Game/Renderer.test.ts`：验证 `Engine` 初始化与 `runRenderLoop()`（89 个测试用例）。
 - [x] **TEST-2.2** 创建 `src/OpenRA.Game/Graphics/WorldRenderer.test.ts`：验证场景图渲染顺序与 `renderingGroupId` 分层（98 个测试用例）。
 - [x] **TEST-2.3** 创建 `src/OpenRA.Game/Graphics/SpriteRenderer.test.ts`：验证 `ThinInstances` 批量矩阵更新与 Billboard 模式（55 个测试用例）。
-- [ ] **TEST-2.4** 创建 `src/OpenRA.Game/Graphics/__tests__/Shader.test.ts`：验证 `ShaderMaterial` 编译成功与 uniform 设置。
+- [x] **TEST-2.4** 创建 `src/OpenRA.Game/Graphics/__tests__/Shader.test.ts` 等 4 个测试文件：验证 `ShaderMaterial` 编译成功与 uniform 设置（142 个新增测试用例，测试文件总计 411 个测试用例）。
 - [ ] **TEST-2.5** 创建 `src/OpenRA.Game/Graphics/__tests__/HardwarePalette.test.ts`：验证调色板纹理查找颜色正确性。
 - [ ] **TEST-2.6** 性能基准：测量 100/500/1000/2000 单位在目标设备上的帧率，确定承载上限。
 

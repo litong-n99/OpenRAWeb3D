@@ -5,7 +5,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 ## Status
 
 **Phase**: Chapter 2 -- Rendering Engine  
-**Progress**: 4/26 rendering files complete (15%)  
+**Progress**: 10/27 rendering files complete (37%)  
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -14,7 +14,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | WorldRenderer (world scene) | Completed |
 | SpriteRenderer (batch sprites) | Completed |
 | RgbaColorRenderer (RGBA color renderer) | Completed |
-| Remaining rendering modules (22 files) | Stubs / pending |
+| Shader / Material System (6 files) | Completed |
+| Remaining rendering modules (17 files) | Stubs / pending |
 | Game logic, networking, audio, mod system | Not yet started |
 
 ## Architecture Overview
@@ -40,6 +41,7 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
 | `HardwarePalette` (256xN texture) | `RawTexture` + custom `ShaderMaterial` |
 | `WorldRenderer.Draw()` 6 phases | `renderingGroupId` layers + `Scene.render()` |
 | `IShader.SetVec/SetTexture` | `ShaderMaterial.setVector3/setTexture` |
+| `ShaderBindings` C# attribute reflection | `ShaderMaterial` + `Effect.ShadersStore` uniform declaration |
 | `Vertex` 48-byte struct | `VertexData` multi-array |
 | `Util.PremultiplyAlpha()` | `material.alphaMode = ALPHA_PREMULTIPLIED` |
 
