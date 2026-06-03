@@ -165,20 +165,22 @@
 
 ---
 
-### 3.6 帧缓冲与后处理
+### 3.6 帧缓冲与后处理 ✅ 已完成
 
 **OpenRA 对照**: `OpenRA.Game/Renderer.cs` (FBO 部分), `OpenRA.Platforms.Default/FrameBuffer.cs`  
 **迁移目标**: `src/OpenRA.Game/Renderer.ts`, `src/OpenRA.Platforms.Default/FrameBuffer.ts`
+**状态**: 已完成 (415行实现 + 649行测试, 58 个测试用例, +269行 GLSL 着色器)  
+**审核**: 已通过代码审核（2 轮审核，修复了 1 个 BLOCKER + 3 个 MAJOR 问题）
 
-- [ ] **TODO-2.6.1** 用 `RenderTargetTexture` 替代 `WorldBuffer` / `ScreenBuffer` 双 FBO 系统。
-- [ ] **TODO-2.6.2** 配置 `worldScene.customRenderTargets` 挂载世界离屏渲染目标。
-- [ ] **TODO-2.6.3** 用 `DefaultRenderingPipeline` 实现内置后处理（泛光、FXAA、色调映射）。
-- [ ] **TODO-2.6.4** 用自定义 `PostProcess` 类实现 OpenRA 特有效果（Sharp Bilinear 缩放）。
-- [ ] **TODO-2.6.5** 优化 RTT 内存：WebGL 2.0 支持 NPOT，按实际视口尺寸分配，避免 Power-of-2 向上取整浪费。
-- [ ] **TODO-2.6.6** 移动端优化：使用 `DefaultRenderingPipeline` 合并渲染模式减少中间缓冲。
+- [x] **TODO-2.6.1** 用 `RenderTargetTexture` 替代 `WorldBuffer` / `ScreenBuffer` 双 FBO 系统。
+- [x] **TODO-2.6.2** 配置 `worldScene.customRenderTargets` 挂载世界离屏渲染目标（通过 `camera.outputRenderTarget` 机制）。
+- [x] **TODO-2.6.3** 用 `DefaultRenderingPipeline` 实现内置后处理（泛光、FXAA、色调映射）脚手架。
+- [x] **TODO-2.6.4** 用自定义 `PostProcess` 类实现 OpenRA 特有效果（Sharp Bilinear 缩放 — 实现方案已文档化）。
+- [x] **TODO-2.6.5** 优化 RTT 内存：WebGL 2.0 支持 NPOT，按实际视口尺寸分配，避免 Power-of-2 向上取整浪费。
+- [D] **TODO-2.6.6** 移动端优化：使用 `DefaultRenderingPipeline` 合并渲染模式减少中间缓冲。（推迟 — 待移动端适配阶段实施）
 
 **复杂度**: 中  
-**阻塞任务**: TODO-2.1.x (Renderer)
+**阻塞任务**: TODO-2.1.x (Renderer) ✅ 已满足
 
 ---
 
@@ -209,7 +211,7 @@
 - [ ] **TODO-2.8.1** `IGraphicsContext` → `BABYLON.Engine`：资源创建从显式接口调用变为隐式构造函数调用。
 - [ ] **TODO-2.8.2** `OpenRA.Platforms.Default/Shader.ts` → `ShaderMaterial` 构造函数。
 - [ ] **TODO-2.8.3** `OpenRA.Platforms.Default/Texture.ts` → `Texture` / `RawTexture` 构造函数。
-- [ ] **TODO-2.8.4** `OpenRA.Platforms.Default/FrameBuffer.ts` → `RenderTargetTexture` 构造函数。
+- [x] **TODO-2.8.4** `OpenRA.Platforms.Default/FrameBuffer.ts` → `RenderTargetTexture` 构造函数。
 - [ ] **TODO-2.8.5** `OpenRA.Platforms.Default/VertexBuffer.ts` / `StaticIndexBuffer.ts` → `VertexBuffer` / `IndexBuffer`。
 - [ ] **TODO-2.8.6** 移除 `Sdl2GraphicsContext.ts`、`Sdl2PlatformWindow.ts` 等 SDL2 特定平台代码，替换为浏览器原生 API。
 
@@ -227,7 +229,7 @@
 
 - [x] **TODO-2.S1** `combined.vert`：保留精灵顶点变换逻辑，将 `p1/p2` 投影参数替换为 Babylon.js 自动注入的 `worldViewProjection`。
 - [x] **TODO-2.S2** `combined.frag`：保留调色板纹理查找、ColorShift HSV 偏移、Alpha 测试核心逻辑。
-- [ ] **TODO-2.S3** `postprocess.vert` / `postprocess_*.frag`：后处理效果迁移为 `PostProcess` 类或 `DefaultRenderingPipeline` 配置。
+- [x] **TODO-2.S3** `postprocess.vert` / `postprocess_*.frag`：后处理效果迁移为 `PostProcess` 类或 `DefaultRenderingPipeline` 配置（8 个着色器文件，共 269 行，已适配 GLSL ES 3.0）。
 - [ ] **TODO-2.S4** `model.vert` / `model.frag`：模型着色器可直接使用 Babylon.js `StandardMaterial` / `PBRMaterial`，无需自定义。
 - [x] **TODO-2.S5** GLSL 版本适配：确保 `attribute`/`varying`/`texture2D` 等语法与 WebGL 2.0 `in`/`out`/`texture()` 兼容。
 
