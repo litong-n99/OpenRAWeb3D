@@ -18,6 +18,22 @@
  * - p2: vec2 — 平移因子
  * - aVertexPosition: vec2 — 顶点位置输入
  * - aVertexTexCoord: vec2 — 纹理坐标输入
+ *
+ * TODO-2.S3 — Babylon.js PostProcess 适配方案:
+ *   原始 OpenRA 通过 p1/p2 手动计算投影（(pos + Pos - Scroll) * p1 + p2），
+ *   Babylon.js PostProcess 使用内部全屏四边形（NDC [-1,1] 空间），
+ *   忽略这些手动投影 uniform。适配策略:
+ *
+ *   方案 A（推荐）: 在 PostProcess 子类构造函数中计算 p1/p2 等效值，
+ *     通过 onApply 回调使用 effect.setFloat2("p1", ...) 设置。
+ *     使用 engine.getRenderWidth()/getRenderHeight() 计算视口缩放。
+ *
+ *   方案 B: 重写着色器使用 Babylon.js 内置的 projection 矩阵，
+ *     移除 p1/p2/Pos/Scroll，改用 Babylon.js PostProcess
+ *     自动注入的 viewport 信息。
+ *
+ *   当前文件保留完整 OpenRA 兼容的 uniform 集合，
+ *   作为参考代码。实际使用时选用方案 A 或 B。
  */
 #version 300 es
 

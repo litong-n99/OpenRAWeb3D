@@ -18,14 +18,14 @@ import {
   Constants,
 } from '@babylonjs/core'
 
-import type {
-  IFrameBuffer,
-  ITexture,
-  Rectangle,
-  Size,
-  Color,
+import {
+  TextureScaleFilter,
+  type IFrameBuffer,
+  type ITexture,
+  type Rectangle,
+  type Size,
+  type Color,
 } from '../OpenRA.Game/Graphics/PlatformInterfaces'
-import { TextureScaleFilter } from '../OpenRA.Game/Graphics/PlatformInterfaces'
 
 // ---------------------------------------------------------------------------
 // ITexture 轻量包装（RenderTargetTexture 内部纹理的 ITexture 适配器）
@@ -35,15 +35,31 @@ import { TextureScaleFilter } from '../OpenRA.Game/Graphics/PlatformInterfaces'
 // 部分方法（如 getData）在当前阶段为 TODO 占位。
 // ---------------------------------------------------------------------------
 
-/** Babylon.js 内部纹理引用的最小类型 */
+/**
+ * Babylon.js InternalTexture 的轻量类型投影。
+ *
+ * 仅包含 FrameBuffer 所需的 samplingMode 和 dispose 成员，
+ * 避免直接依赖 `@babylonjs/core` 的 InternalTexture 类型定义。
+ *
+ * @internal — 不属于公共 API，FrameBuffer 内部使用
+ */
 interface InternalTextureRef {
   samplingMode: number
   dispose(): void
 }
 
+/**
+ * RenderTargetTexture 内部纹理的 ITexture 适配器。
+ *
+ * 将 Babylon.js InternalTexture 包装为 OpenRA 兼容的 ITexture 接口。
+ * 完整 ITexture 实现属于 TODO-2.8.3（Texture.ts 迁移）。
+ *
+ * @internal — 仅供 FrameBuffer 内部使用，不应直接实例化
+ */
 class FrameBufferTexture implements ITexture {
   private readonly _internalTexture: InternalTextureRef | null
   private readonly _size: Size
+  private _disposed = false
 
   constructor(internalTexture: InternalTextureRef | null, size: Size) {
     this._internalTexture = internalTexture
@@ -55,14 +71,14 @@ class FrameBufferTexture implements ITexture {
   }
 
   get scaleFilter(): TextureScaleFilter {
-    if (!this._internalTexture) return TextureScaleFilter.Linear
+    if (this._disposed || !this._internalTexture) return TextureScaleFilter.Linear
     return this._internalTexture.samplingMode === Constants.TEXTURE_NEAREST_SAMPLINGMODE
       ? TextureScaleFilter.Nearest
       : TextureScaleFilter.Linear
   }
 
   set scaleFilter(value: TextureScaleFilter) {
-    if (!this._internalTexture) return
+    if (this._disposed || !this._internalTexture) return
     this._internalTexture.samplingMode =
       value === TextureScaleFilter.Nearest
         ? Constants.TEXTURE_NEAREST_SAMPLINGMODE
@@ -87,6 +103,8 @@ class FrameBufferTexture implements ITexture {
   }
 
   dispose(): void {
+    if (this._disposed) return
+    this._disposed = true
     if (this._internalTexture) {
       this._internalTexture.dispose()
     }
@@ -178,6 +196,8 @@ export class FrameBuffer implements IFrameBuffer {
 
     // NOTE: OpenRA 要求 size 为 2 的幂，否则抛出 InvalidDataException。
     // WebGL 2.0 原生支持 NPOT 纹理，因此不强制要求，但对过大尺寸发出警告。
+    // 16k 是多数 GPU 的最大纹理尺寸上限（WebGL MAX_TEXTURE_SIZE）。
+    // 使用 console.warn 而非抛出异常，因为此限制因设备而异。
     if (size.width > 16384 || size.height > 16384) {
       console.warn(
         `FrameBuffer size (${size.width}x${size.height}) exceeds typical limits. ` +
@@ -195,10 +215,17 @@ export class FrameBuffer implements IFrameBuffer {
     //   - 颜色附件纹理 (RGBA, UNSIGNED_BYTE)
     //   - 深度渲染缓冲 (或深度纹理，取决于配置)
     //   - 自动检查 FBO 完整性
+    //
+    // NOTE: scene 参数为 null 表示此 RTT 是独立 FBO（非场景级渲染目标）。
+    //   Babylon.js 内部通过 Engine.LastCreatedEngine 获取引擎引用。
+    //   FrameBuffer 构造时已持有 engine 引用，确保引擎在 RTT 之前存在。
+    //   若将来 Babylon.js 版本废弃 scene=null 构造路径，可改为:
+    //   engine.createRenderTargetTexture(name, size) 或
+    //   通过内部 API 直接构造 RenderTargetWrapper。
     this.rtt = new RenderTargetTexture(
       'frameBuffer',
       { width: size.width, height: size.height },
-      null, // scene — 独立 RTT，不需要 scene 引用
+      null,
       {
         generateMipMaps: false,
         generateDepthBuffer: true,
@@ -209,6 +236,9 @@ export class FrameBuffer implements IFrameBuffer {
     )
 
     // 包装内部纹理为 ITexture 适配器
+    // HACK: getInternalTexture() 返回 Babylon.js InternalTexture 类型，
+    // 此处向下转型为 InternalTextureRef（最小接口投影），
+    // 避免 FrameBufferTexture 直接依赖 Babylon.js 完整类型定义。
     const internalTex = this.rtt.getInternalTexture() as InternalTextureRef | null
     this.texture = new FrameBufferTexture(internalTex, this.size)
 
@@ -375,6 +405,9 @@ export class FrameBuffer implements IFrameBuffer {
       this.engine.disableScissor()
       this.scissored = false
     }
+
+    // 先释放纹理适配器（标记 _disposed，防止访问已释放的 InternalTexture）
+    this.texture.dispose()
 
     // 释放 RTT（内部释放 FBO + 颜色纹理 + 深度缓冲）
     this.rtt.dispose()

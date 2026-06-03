@@ -831,6 +831,22 @@ export class Renderer {
    * 使放大后的图像平滑而非锐利。
    *
    * OpenRA 对照：SpriteRenderer.EnablePixelArtScaling(false)
+   *
+   * TODO-2.6.4 — Sharp Bilinear 缩放:
+   *   原始 OpenRA 使用自定义 Sharp Bilinear 着色器进行 world→screen 缩放，
+   *   它结合了双线性采样 + 锐化内核，在放大的同时保持像素艺术边缘锐利度。
+   *   当前迁移使用简单的 NEAREST/BILINEAR 切换作为近似方案。
+   *
+   *   要完全实现 Sharp Bilinear，需要:
+   *   1. 创建自定义 PostProcess 类（SharpBilinearPostProcess）
+   *   2. 将 worldRenderTarget 作为输入纹理
+   *   3. 片段着色器实现: 双线性采样 + unsharp mask 锐化
+   *   4. 在 PostProcess.onApply 中设置 uniform（纹理尺寸、锐化系数）
+   *   5. 将 PostProcess 挂载到 uiScene 的渲染管线中
+   *
+   *   近似效果: NEAREST = 完全锐利（锯齿），BILINEAR = 完全平滑（模糊）
+   *   Sharp Bilinear 位于两者之间，可通过调整锐化强度参数逼近。
+   *   当前默认使用 NEAREST（OpenRA 默认像素艺术风格）。
    */
   enableAntialiasingFilter(): void {
     if (this.renderType !== RenderType.UI) {
