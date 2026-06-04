@@ -1,8 +1,8 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 4 -- Map and Terrain System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
-> **Chapter Status**: Chapter 4 -- Design Phase (0/34 planned)
-> **Planning Date**: 2026-06-04
+> **Chapter Status**: Chapter 4 -- Implementation Phase (5/34 migrated, 15%)
+> **Updated**: 2026-06-04 (Phase A complete, awaiting review)
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -173,8 +173,9 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 ### 3.1 Phase A: CellLayer Infrastructure
 
-**Status**: Pending (0/5)
+**Status**: Awaiting Approval (5/5 implemented, pending review)
 **Complexity**: Low-Medium
+**Implemented**: 2026-06-04
 **Blocked by**: Chapter 3 Phase A (CPos, MPos, MapGridType) -- already COMPLETE
 **Blocks**: Phase D (Map.cs -- uses CellLayer for all data planes)
 
@@ -189,7 +190,7 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 #### 3.1.1 CellLayerBase<T>
 
-- [ ] **TODO-4.A.1** `src/OpenRA.Game/Map/CellLayerBase.ts` (78 lines C#) -- Abstract base for grid data storage:
+- [x] **TODO-4.A.1** `src/OpenRA.Game/Map/CellLayerBase.ts` (78 lines C#) -- Abstract base for grid data storage:
   - Generic class `CellLayerBase<T>` with `Size: Size`, `GridType: MapGridType`, `entries: T[] | TypedArray`
   - Constructor from `MapGridType` + `Size`: allocates `width * height` entries
   - Constructor from `Map` instance: delegates to `Map.Grid.Type` and `Map.MapSize`
@@ -202,7 +203,7 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 #### 3.1.2 CellLayer<T>
 
-- [ ] **TODO-4.A.2** `src/OpenRA.Game/Map/CellLayer.ts` (175 lines C#) -- Event-driven typed cell layer:
+- [x] **TODO-4.A.2** `src/OpenRA.Game/Map/CellLayer.ts` (175 lines C#) -- Event-driven typed cell layer:
   - Extends `CellLayerBase<T>`
   - Observer pattern: `addObserver(cb)` / `removeObserver(cb)` for CellEntryChanged
   - `get(cell: CPos): T` / `getByMPos(uv: MPos): T` -- O(1) lookup via index formula
@@ -218,7 +219,7 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 #### 3.1.3 CellRegion
 
-- [ ] **TODO-4.A.3** `src/OpenRA.Game/Map/CellRegion.ts` (169 lines C#) -- Enumerable cell region:
+- [x] **TODO-4.A.3** `src/OpenRA.Game/Map/CellRegion.ts` (169 lines C#) -- Enumerable cell region:
   - Immutable region: `GridType`, `topLeft: MPos`, `bottomRight: MPos`
   - `[Symbol.iterator](): Iterator<MPos>` and `[Symbol.iterator](): Iterator<CPos>` (two iteration modes)
   - `size: number`, `isEmpty: boolean`
@@ -227,8 +228,8 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 #### 3.1.4 ProjectedCellLayer<T> + ProjectedCellRegion
 
-- [ ] **TODO-4.A.4** `src/OpenRA.Game/Map/ProjectedCellLayer.ts` (63 lines C#) -- PPos-indexed layer
-- [ ] **TODO-4.A.5** `src/OpenRA.Game/Map/ProjectedCellRegion.ts` (125 lines C#) -- PPos region iteration
+- [x] **TODO-4.A.4** `src/OpenRA.Game/Map/ProjectedCellLayer.ts` (63 lines C#) -- PPos-indexed layer
+- [x] **TODO-4.A.5** `src/OpenRA.Game/Map/ProjectedCellRegion.ts` (125 lines C#) -- PPos region iteration
 
 **Acceptance Criteria**:
 - CellLayer index formulas match OpenRA for all 4 combinations (Rectangular/CPos, Rectangular/MPos, Isometric/CPos, Isometric/MPos)

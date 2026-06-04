@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-04
-> **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — COMPLETE; Chapter 4 (Map System) — DESIGN PHASE
-> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 36/36 files migrated (100%), Chapter 4: plan created (0/34)
+> **Current phase**: Chapter 4 (Map System) — Phase A complete (5/34, 15%), awaiting review
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 5/34 (15%), Phase A complete
 
 ---
 
@@ -14,9 +14,10 @@
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
 | **Chapter 3 status** | Implementation complete: 36/36 (100%), Phases A-I complete |
 | **Chapter 4 planned files** | 34 (29 from OpenRA + 5 new) |
+| **Chapter 4 status** | Phase A complete: 5/34 (15%), awaiting review |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 5-8+ (networking, audio, file system, mod system, UI) |
-| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 designed (rendering, actors, map plan complete) |
+| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phase A complete (rendering, actors, map system in progress) |
 
 > **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs. Phase E (ActorConfig) is complete: 1 file, ~916 TS + 64 tests, 2 review rounds, 0 BLOCKERs. Phase F (Activity System) is complete: 3 files (Activity.ts, CallFunc.ts, ActivityUtils.ts), ~899 TS + 73 tests, 2 review rounds, 0 BLOCKERs. Phase G (Player) is complete: 1 file, 1272 TS + 1407 test lines, 82 tests, 1 review round, 0 BLOCKERs. Phase H (Effects) is complete: 3 files, ~521 TS + ~687 test lines, 103 tests, 1 review round, 0 BLOCKERs. Phase I (ScreenMap) is complete: 1 file, ~350 TS + ~250 test lines, 1 review round, 0 BLOCKERs.
 
@@ -174,6 +175,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-04 | **Chapter 4 Phase A CellLayer** (5 files) | migration-develop | migration-review | Awaiting review: CellLayerBase.ts, CellLayer.ts, CellRegion.ts, ProjectedCellLayer.ts, ProjectedCellRegion.ts. Foundation for map grid data storage with TypedArray wrappers and observer pattern. Chapter 4: 5/34 (15%). |
 | 2026-06-04 | **Phase I ScreenMap** (1 file) | migration-develop | migration-review | Round 1 approved: ScreenMap.ts (~350 lines, spatial hash grid, rectangle/point queries, 2D-to-3D dual approach -- CPU spatial index for deterministic selection + GPU ray-picking for hover). Chapter 3 COMPLETE (36/36, 100%). |
 | 2026-06-04 | **Phase H Effects** (3 files) | migration-develop | migration-review | Round 1 approved, 103 tests: IEffect.ts (165 lines, tick/render interface), DelayedAction.ts (144 lines, deferred callback), DelayedImpact.ts (212 lines, projectile position interpolation). 521 TS + 687 test lines. 0 BLOCKERs |
 | 2026-06-04 | **Phase G Player** (1 file) | migration-develop | migration-review | Round 1 approved, 82 tests: Player.ts (1272 lines), LongBitSet diplomacy (O(1) bitwise), PlayerActor two-phase init, WinState immutability guard, FactionInfo resolution, relationship coloring, PlayerStub compatibility, stubs for unmigrated deps (Shroud, FrozenActorLayer, Session.Client). 0 BLOCKERs |
@@ -423,17 +425,16 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 
 ---
 
-## Chapter 4: Map & Terrain System (Design Phase)
+## Chapter 4: Map & Terrain System (Phase A Complete, Awaiting Review)
 
 > **Migration Plan**: [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md)
-> **Created**: 2026-06-04 | **Status**: DESIGN PHASE (0/34 planned, 0% migrated)
+> **Created**: 2026-06-04 | **Updated**: 2026-06-04 | **Status**: Phase A complete (5/34 migrated, 15%), awaiting review
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 0 | 0% |
-| In Progress | 0 | 0% |
-| Pending | 34 | 100% |
+| Awaiting Review | 5 | 15% |
+| Pending | 29 | 85% |
 | **Total planned** | **34** | **100%** |
 | **From OpenRA** | **29** | |
 | **New files (no OpenRA equivalent)** | **5** | |
@@ -443,7 +444,7 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
-| Phase A | CellLayer Infrastructure | 5 | Low-Medium | Pending |
+| Phase A | CellLayer Infrastructure | 5 | Low-Medium | Awaiting Review (5/5 done) |
 | Phase B | MapGrid + CellRamp Geometry | 1 (+1 done) | HIGH | Pending |
 | Phase C | TerrainInfo / TileSet | 1 | Medium | Pending |
 | Phase D | Map.cs Core Container | 1 | HIGH | Pending |
