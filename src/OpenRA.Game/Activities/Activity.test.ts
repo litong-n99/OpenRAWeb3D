@@ -608,6 +608,72 @@ describe('Activity', () => {
       // Should NOT change state because not interruptible
       expect(act.state).toBe(ActivityState.Active)
     })
+
+    it('Canceling activity transitions to Done with onLastRun after cleanup tick', () => {
+      const actor = mockActor()
+
+      // Create an activity that detects cancellation and cleans up
+      class CancellingActivity extends Activity {
+        cleanedUp = false
+        onLastRunCalled = false
+
+        override tick(_self: GameActor): boolean {
+          if (this.isCanceling) {
+            this.cleanedUp = true
+            return true // Cleanup complete
+          }
+          return false // Keep running normally
+        }
+
+        override onLastRun(_self: GameActor): void {
+          super.onLastRun(_self)
+          this.onLastRunCalled = true
+        }
+      }
+
+      const act = new CancellingActivity()
+
+      // Queued → Active
+      act.tickOuter(actor)
+      expect(act.state).toBe(ActivityState.Active)
+
+      // Cancel: Active → Canceling
+      act.cancel(actor)
+      expect(act.state).toBe(ActivityState.Canceling)
+
+      // Tick: detects Canceling, cleans up, returns true → Done
+      const result = act.tickOuter(actor)
+      expect(act.cleanedUp).toBe(true)
+      expect(act.state).toBe(ActivityState.Done)
+      expect(act.onLastRunCalled).toBe(true)
+      expect(result).toBeNull() // No next activity
+    })
+
+    it('double-cancel on Done activity is a safe no-op', () => {
+      const actor = mockActor()
+      const act = new ImmediateActivity()
+
+      // Complete the activity normally
+      act.tickOuter(actor)
+      expect(act.state).toBe(ActivityState.Done)
+
+      // Double-cancel: should stay Done, not transition to Canceling
+      act.cancel(actor)
+      expect(act.state).toBe(ActivityState.Done)
+    })
+
+    it('cancel on Queued activity transitions directly to Done', () => {
+      const actor = mockActor()
+      const act = new TickCountActivity(3)
+
+      expect(act.state).toBe(ActivityState.Queued)
+      act.cancel(actor)
+      expect(act.state).toBe(ActivityState.Done)
+
+      // Double-cancel on Done (from Queued→Done via cancel) is also safe
+      act.cancel(actor)
+      expect(act.state).toBe(ActivityState.Done)
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -704,16 +770,27 @@ describe('Activity', () => {
       expect(() => (act as unknown as { printActivityTree: (a: GameActor) => void }).printActivityTree(actor)).not.toThrow()
     })
 
-    it('activitiesImplementing finds matching activities in chain', () => {
+    it('activitiesImplementing finds matching activities by constructor', () => {
       const act1 = new ImmediateActivity()
-      Object.defineProperty(act1, 'constructor', { value: { name: 'ImmediateActivity' } })
       const act2 = new TickCountActivity(1)
-      Object.defineProperty(act2, 'constructor', { value: { name: 'TickCountActivity' } })
 
       act1._nextActivity = act2
 
-      const results = act1.activitiesImplementing('ImmediateActivity')
+      // act1 is ImmediateActivity — should match
+      const results = act1.activitiesImplementing(ImmediateActivity)
       expect(results.length).toBe(1)
+      expect(results[0]).toBe(act1)
+
+      // act2 is TickCountActivity — should match different constructor
+      const results2 = act2.activitiesImplementing(TickCountActivity)
+      expect(results2.length).toBe(1)
+      expect(results2[0]).toBe(act2)
+
+      // act1 is NOT a TickCountActivity, but act2 (in the chain) IS.
+      // activitiesImplementing searches the entire chain including nextActivity.
+      const results3 = act1.activitiesImplementing(TickCountActivity)
+      expect(results3.length).toBe(1)
+      expect(results3[0]).toBe(act2)
     })
   })
 

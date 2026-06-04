@@ -502,6 +502,7 @@ export abstract class Activity implements IActivityInterface {
    * - Cancel child activity (cascading)
    * - If Queued: set Done immediately (activity never started)
    * - If Active/Canceling: set Canceling (activity will clean up in tick)
+   * - If already Done: no-op (prevents Done→Canceling on double-cancel)
    *
    * @param self — the actor that owns this activity
    * @param keepQueue — if true, preserve the queued activity chain (default: false)
@@ -516,6 +517,12 @@ export abstract class Activity implements IActivityInterface {
     if (this._childActivity) {
       this._childActivity.cancel(self)
     }
+
+    // Guard: if already Done, do not change state.
+    // Without this guard, a double-cancel would transition Done→Canceling
+    // (a latent defect present in the OpenRA C# source).
+    if (this.state === ActivityState.Done)
+      return
 
     // Directly mark activities that are queued and therefore didn't run yet
     // as done. Active/Canceling activities must tick to clean up.
@@ -666,20 +673,26 @@ export abstract class Activity implements IActivityInterface {
   // ---------------------------------------------------------------------------
 
   /**
-   * Find all activities in the chain (including children) that implement
-   * a given type or interface.
+   * Find all activities in the chain (including children) that are
+   * instances of a given Activity subclass.
    *
    * OpenRA 对照: Activity.ActivitiesImplementing<T>(bool includeChildren)
    *
-   * Uses duck-typing: checks if the activity's constructor name matches
-   * the target type, or if the activity has a specific method signature.
+   * C# uses `this is T` (runtime generic type check). TypeScript erases
+   * generic type parameters at runtime, so we use `instanceof` with a
+   * constructor reference instead:
    *
-   * @param typeName — the constructor/interface name to search for
+   * ```
+   * // C#: act.ActivitiesImplementing<Move>()
+   * // TS:  act.activitiesImplementing(Move)
+   * ```
+   *
+   * @param ctor — the Activity subclass constructor to match against
    * @param includeChildren — whether to include child activities (default: true)
-   * @returns array of matching activities
+   * @returns array of matching activities, typed as the subclass
    */
-  activitiesImplementing<T extends IActivityInterface>(
-    typeName: string,
+  activitiesImplementing<T extends Activity>(
+    ctor: new (...args: any[]) => T,
     includeChildren: boolean = true,
   ): T[] {
     const result: T[] = []
@@ -689,18 +702,18 @@ export abstract class Activity implements IActivityInterface {
     if (includeChildren) {
       const ca = this.childActivity
       if (ca !== null) {
-        for (const a of ca.activitiesImplementing<T>(typeName, true))
+        for (const a of ca.activitiesImplementing(ctor, true))
           result.push(a)
       }
     }
 
-    if (this.constructor.name === typeName) {
-      result.push(this as unknown as T)
+    if (this instanceof ctor) {
+      result.push(this)
     }
 
     const na = this.nextActivity
     if (na !== null) {
-      for (const a of na.activitiesImplementing<T>(typeName, true))
+      for (const a of na.activitiesImplementing(ctor, true))
         result.push(a)
     }
 
