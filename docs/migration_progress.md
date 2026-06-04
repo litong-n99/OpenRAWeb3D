@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-04
-> **Current phase**: Chapter 4 (Map System) — Phase B COMPLETE (11/34, 32%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 11/34 (32%), Phases A-B complete
+> **Current phase**: Chapter 4 (Map System) — Phase C COMPLETE (12/34, 35%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 12/34 (35%), Phases A-C complete
 
 ---
 
@@ -14,10 +14,10 @@
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
 | **Chapter 3 status** | Implementation complete: 36/36 (100%), Phases A-I complete |
 | **Chapter 4 planned files** | 34 (29 from OpenRA + 5 new) |
-| **Chapter 4 status** | Phase B COMPLETE: 11/34 (32%), 195+138=333 tests, Phase A (8/8) + Phase B (2/2) + MapGridType = 11 |
+| **Chapter 4 status** | Phase C COMPLETE: 12/34 (35%), 195+138+93=426 tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + MapGridType = 12 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 5-8+ (networking, audio, file system, mod system, UI) |
-| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phases A-B complete (rendering, actors, map system: 11/34) |
+| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phases A-C complete (rendering, actors, map system: 12/34) |
 
 > **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs. Phase E (ActorConfig) is complete: 1 file, ~916 TS + 64 tests, 2 review rounds, 0 BLOCKERs. Phase F (Activity System) is complete: 3 files (Activity.ts, CallFunc.ts, ActivityUtils.ts), ~899 TS + 73 tests, 2 review rounds, 0 BLOCKERs. Phase G (Player) is complete: 1 file, 1272 TS + 1407 test lines, 82 tests, 1 review round, 0 BLOCKERs. Phase H (Effects) is complete: 3 files, ~521 TS + ~687 test lines, 103 tests, 1 review round, 0 BLOCKERs. Phase I (ScreenMap) is complete: 1 file, ~350 TS + ~250 test lines, 1 review round, 0 BLOCKERs.
 
@@ -175,6 +175,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-04 | **Chapter 4 Phase C TerrainInfo** (1 file) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): TerrainInfo.ts (814 lines, TerrainTypeInfo + TerrainTileInfo + TileSet), 93 tests, 1205 test lines. Paradigm: C# ulong bits -> Int8Array, BitSet -> Set<string>, FrozenDictionary -> Map, MiniYAML -> JSON. Chapter 4: 12/34 (35%). |
 | 2026-06-04 | **Chapter 4 Phase B MapGrid** (2+2 files) | migration-develop | migration-review | APPROVED (1 Architect WR round, 5 BLOCKERs resolved): MapGrid.ts (436 line), CellRamp.ts (238 lines extracted), Exts.ts isqrtCeiling (+19), CVec.ts hashCode (+18). 138 tests total (39 CellRamp + 49 MapGrid + 10 Exts + 40 CVec). ~674 impl + ~843 test lines. Chapter 4: 11/34 (32%). |
 | 2026-06-04 | **Chapter 4 Phase A CellLayer** (8 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): CellLayerBase.ts, CellLayer.ts, CellRegion.ts, ProjectedCellLayer.ts, ProjectedCellRegion.ts, CellCoordsRegion.ts, MapCoordsRegion.ts, Size.ts. 195/195 tests, ~3,826 total lines. Chapter 4: 8/34 (24%). |
 | 2026-06-04 | **Phase I ScreenMap** (1 file) | migration-develop | migration-review | Round 1 approved: ScreenMap.ts (~350 lines, spatial hash grid, rectangle/point queries, 2D-to-3D dual approach -- CPU spatial index for deterministic selection + GPU ray-picking for hover). Chapter 3 COMPLETE (36/36, 100%). |
@@ -447,7 +448,7 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 |-------|-------------|:---:|:---:|--------|
 | Phase A | CellLayer Infrastructure | 8 | Low-Medium | COMPLETE (8/8, 195 tests) |
 | Phase B | MapGrid + CellRamp Geometry | 2 (+1 done) | HIGH | COMPLETE (2/2, 138 tests) |
-| Phase C | TerrainInfo / TileSet | 1 | Medium | Pending |
+| Phase C | TerrainInfo / TileSet | 1 | Medium | COMPLETE (1/1, 93 tests) |
 | Phase D | Map.cs Core Container | 1 | HIGH | Pending |
 | Phase E | Map Support Files | 11 | Low-Medium | Pending |
 | Phase F | 3D Terrain Mesh Generation | 2 (new) | HIGH | Pending |
@@ -483,6 +484,23 @@ See map_system_migration_plan.md Section 3.1 for full details. 2,857 lines imple
 - `CVec.hashCode()` deterministic tiebreaker for `tilesByDistance` sort
 - Architect WR: CellRamp extracted to separate file with RampCornerHeight/RampSplit enums
 - 1 review round (Architect WR), 5 BLOCKERs resolved, 0 remaining
+
+### Phase C Completed: TerrainInfo / TileSet (1 file, 2026-06-04)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| TerrainInfo.ts | 814 | 1205 | 93 | TerrainTypeInfo, TerrainTileInfo, TileSet + TileTemplate |
+| **Total** | **814** | **1205** | **93** | |
+
+**Implementation details**:
+- 3 classes + 1 interface in single file (OpenRA: 197 lines C# -> 814 lines TS)
+- `TerrainTypeInfo`: `type`, `targetTypes: Set<string>`, `acceptsSmudgeType: Set<string>`, `color: Color`, static `types` registry, `fromJSON()` factory
+- `TerrainTileInfo`: `terrainType`, `height` (0-255), `rampType`, `minColor`/`maxColor`, `riser: Int8Array` (8 directions), `getColor()`, `parseRiser()`
+- `TileSet`: `templates`, `tiles`, `terrainTypes` maps; `getTileInfo()`, `getTerrainType()`, `getTerrainIndex()`, `tryGetTileInfo()`, `fromJSON()` factory
+- `makeTileKey`: combined `(templateId << 8) | tileIndex` key scheme
+- Riser parsing: short-form (`"LU=6"`) and long-form (`"6,6,0,0,0,0,6,6"`) byte-for-byte with OpenRA
+- Paradigm: C# `ulong` bits -> `Int8Array`, `BitSet` -> `Set<string>`, `FrozenDictionary` -> `Map<string,T>`, MiniYAML -> JSON
+- 2 review rounds, 0 BLOCKERs | **Commit**: `a15bee4`
 
 ### Key Architecture Decisions (7 ADRs)
 

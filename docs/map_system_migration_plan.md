@@ -2,7 +2,7 @@
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
 > **Chapter Status**: Chapter 4 -- Implementation Phase (12/34 migrated, 35%)
-> **Updated**: 2026-06-04 (Phase B COMPLETE: CellRamp + MapGrid, 138 tests, review approved; 12/34, 35%)
+> **Updated**: 2026-06-04 (Phase C COMPLETE: TerrainInfo + TileSet, 93 tests, review approved; 12/34, 35%)
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1035%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -154,7 +154,7 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 | **Total mapped files** | 34 (29 from OpenRA + 5 new) |
 | **Phase A (CellLayer infra)** | 8 files (5 original + 3 supporting) |
 | **Phase B (MapGrid)** | 1 file (+1 already done) |
-| **Phase C (TerrainInfo)** | 1 file |
+| **Phase C (TerrainInfo)** | 1 file (COMPLETE, 93 tests) |
 | **Phase D (Map core)** | 1 file |
 | **Phase E (Support files)** | 9 files (2 moved to Phase A) |
 | **Phase F (3D terrain, new)** | 2 files |
@@ -319,22 +319,23 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 ---
 
-### 3.3 Phase C: TerrainInfo / TileSet -- Terrain Type System
+### 3.3 Phase C: TerrainInfo / TileSet -- Terrain Type System ✅ 已完成
 
-**Status**: Pending (0/1)
+**Status**: Completed (1/1) -- 2026-06-04
 **Complexity**: Medium
-**Blocked by**: Phase B (CellRamp for RampType)
+**Implementation**: 814 lines TS + 1205 lines test (2019 total) | **Tests**: 93 test cases | **Review**: 2 rounds, 0 BLOCKERs
+**Blocked by**: Phase B (CellRamp for RampType) -- satisfied
 **Blocks**: Phase D (Map.Tiles uses TerrainTileInfo)
 
-**Description**: All three classes (`TerrainTileInfo`, `TerrainTypeInfo`, `TileSet`) are in a single C# file (197 lines). TileSet is a static class indexing terrain templates from YAML.
+**Description**: All three classes (`TerrainTileInfo`, `TerrainTypeInfo`, `TileSet`) are in a single C# file (197 lines). TileSet is a static class indexing terrain templates from YAML. Paradigm: C# Riser ulong bits -> Int8Array, BitSet -> Set<string>, FrozenDictionary -> Map<string,T>, MiniYAML -> JSON.
 
-- [x] **TODO-4.C.1** `TerrainTypeInfo` (in `TerrainInfo.ts`): `type: string`, `targetTypes: Set<string>`, `acceptsSmudgeType: Set<string>`, `color: Color`, static `types` registry
+- [x] **TODO-4.C.1** `TerrainTypeInfo` (in `TerrainInfo.ts`): `type: string`, `targetTypes: Set<string>`, `acceptsSmudgeType: Set<string>`, `color: Color`, static `types` registry, `fromJSON()` factory
 
-- [x] **TODO-4.C.2** `TerrainTileInfo` (in `TerrainInfo.ts`): `terrainType: number`, `height: number` (0-255), `rampType: number` (index into Ramps), `minColor`/`maxColor`, `riser: Int8Array` (8 directions: TL,TR,R,BR,B,BL,L,TL2). Support short-form (`"LU=6"`) and long-form (`"6,6,0,0,0,0,6,6"`) Riser parsing.
+- [x] **TODO-4.C.2** `TerrainTileInfo` (in `TerrainInfo.ts`): `terrainType: number`, `height: number` (0-255), `rampType: number` (index into Ramps), `minColor`/`maxColor`, `riser: Int8Array` (8 directions: TL,TR,R,BR,B,BL,L,TL2). Short-form (`"LU=6"`) and long-form (`"6,6,0,0,0,0,6,6"`) Riser parsing, `getColor()`, `parseRiser()`.
 
-- [x] **TODO-4.C.3** `TileSet` static class (in `TerrainInfo.ts`): `templates: Map<string, TileTemplate>`, `tiles: Map<number, TerrainTileInfo>`, `terrainTypes: Map<string, TerrainTypeInfo>`, `getTileInfo()`, `getTerrainType()`. JSON format from build-time YAML compilation.
+- [x] **TODO-4.C.3** `TileSet` static class (in `TerrainInfo.ts`): `templates: Map<string, TileTemplate>`, `tiles: Map<number, TerrainTileInfo>`, `terrainTypes: Map<string, TerrainTypeInfo>`, `getTileInfo()`, `getTerrainType()`, `getTerrainIndex()`, `tryGetTileInfo()`, `fromJSON()` factory. `makeTileKey`: combined `(templateId << 8) | tileIndex` key scheme.
 
-**Estimated Effort**: ~400 lines implementation + ~350 lines test (2 developer-days)
+**Completed**: 2026-06-04 | **Commit**: `a15bee4`
 
 ---
 
