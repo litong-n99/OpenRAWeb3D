@@ -5,7 +5,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 ## Project Status
 
 **Phase**: Chapter 2 (Rendering Engine) -- COMPLETE | Chapter 3 (Actor System) -- IN PROGRESS
-**Progress**: 27/27 rendering files complete (100%), Chapter 3: 29/36 files migrated (81%)
+**Progress**: 27/27 rendering files complete (100%), Chapter 3: 32/36 files migrated (89%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -19,7 +19,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | FrameBuffer & Post-Processing (10 files) | Completed, reviewed |
 | Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
 | Platform Abstraction (11 files) | Completed, reviewed |
-| **Actor System (36 planned)** | IN PROGRESS (29/36 = 81%) |
+| **Actor System (36 planned)** | IN PROGRESS (32/36 = 89%) |
 | Game logic, networking, audio, mod system | Not yet started
 
 ## Directory Layout

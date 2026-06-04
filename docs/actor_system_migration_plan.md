@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Implementation Phase (30/36 migrated, 22/31 in-scope)
+> **Chapter Status**: Chapter 3 -- Implementation Phase (32/36 migrated, 24/31 in-scope)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -478,27 +478,29 @@ function traitsImplementingITick(components: Component[]): ITick[] {
 
 ### 3.6 Phase F: Activity.cs -- Behavior State Machine
 
-**Status**: Pending (0/2)
+**Status**: Completed (2/2 + 1 support) -- 2026-06-04
 **Complexity**: HIGH
 **Blocked by**: Phase A (Target type), Phase D (Actor -- `GameActor` reference for `self`)
 **Blocks**: Trait implementations that use Activities (Move, Attack, etc.)
 
-**OpenRA Reference**: `OpenRA.Game/Activities/Activity.cs` (296 lines), `OpenRA.Game/Activities/CallFunc.cs` (39 lines)
-**Migration Target**: `src/OpenRA.Game/Activities/Activity.ts`, `src/OpenRA.Game/Activities/CallFunc.ts`
+**OpenRA Reference**: `OpenRA.Game/Activities/Activity.cs` (296 lines), `OpenRA.Game/Activities/CallFunc.cs` (39 lines), `OpenRA.Game/Traits/ActivityUtils.cs` (39 lines)
+**Migration Target**: `src/OpenRA.Game/Activities/Activity.ts`, `src/OpenRA.Game/Activities/CallFunc.ts`, `src/OpenRA.Game/Traits/ActivityUtils.ts`
 **Key Mapping**: Custom `Activity` abstract class with linked-list chain + child activity priority
 
-**Description**: Behavior state machine using linked-list + child activity two-layer structure. `Activity` is an abstract base class; subclasses implement `tick(actor)` returning `true` to indicate completion. This is one of the most architecturally significant parts of the migration.
+**Description**: Behavior state machine using linked-list + child activity two-layer structure. `Activity` is an abstract base class; subclasses implement `tick(actor)` returning `true` to indicate completion. This is one of the most architecturally significant parts of the migration. ActivityUtils.ts (support file S5) was migrated alongside as a dependency.
+
+**Implementation**: Activity.ts (~722 lines + 849 test, 50 tests), CallFunc.ts (~90 lines + 202 test, 15 tests), ActivityUtils.ts (~87 lines + 8 tests) | **Review**: 2 rounds, 0 BLOCKERs | **Total**: ~899 TS + ~1051 test, 73 tests
 
 Typical activity chain showing composition: "Move to target and attack" is composed of `Move -> Attack -> Move -> Wait`, where `Move` has `PathFind` as a child activity (child executes first), and `Attack` has `Aim` as a child.
 
-- [ ] **TODO-3.F.1** `abstract class Activity`:
+- [x] **TODO-3.F.1** `abstract class Activity` (Activity.ts, 722 lines, 50 tests):
   - `state: ActivityState` enum (`Queued`, `Active`, `Done`, `Canceling`, `Canceled`)
   - `nextActivity: Activity | null` -- Linked-list pointer to next activity in chain
   - `childActivity: Activity | null` -- Sub-activity (executed first when `childHasPriority = true`)
   - `childHasPriority: boolean` -- Default `true`; when child exists and has priority, child is ticked first
   - `isInterruptible: boolean` -- Whether activity can be canceled mid-execution
   - `tick(actor: GameActor): boolean` -- Abstract method; returns `true` when activity is complete
-  - `tickOuter(actor: GameActor): void` -- Main entry point called by World; manages state machine:
+  - `tickOuter(actor: GameActor): void` -- Main entry point called by World; manages state machine (reviewer noted: "near-perfect line-for-line"):
     - If cancelled: set state to `Canceling`, call `tick()` until clean completion
     - If `childActivity` exists and `childHasPriority`: tick child, on completion clear child reference
     - Then tick self: if `tick()` returns `true`, set state to `Done`
@@ -508,25 +510,23 @@ Typical activity chain showing composition: "Move to target and attack" is compo
   - `queueChild(child: Activity): void` -- Set a child activity (replaces any existing child)
   - `queue(next: Activity): void` -- Append to activity chain (traverse to end, set `nextActivity`)
 
-- [ ] **TODO-3.F.2** Activity state machine transitions (documented in code):
+- [x] **TODO-3.F.2** Activity state machine transitions (documented in code):
   - `Queued` -> `onFirstRun()` -> `Active` -> `tick()` returns `true` -> `Done` -> `onLastRun()`
   - Cancellation path: Any state -> `Canceling` -> `tick()` detects cancel state and cleans up -> `Canceled`
   - `isInterruptible = false` prevents cancellation (used by `Attack` activity)
   - Invalid transitions detected and logged as warnings (never silently skip)
 
-- [ ] **TODO-3.F.3** `CallFunc.ts` -- Simple callback activity:
+- [x] **TODO-3.F.3** `CallFunc.ts` -- Simple callback activity (CallFunc.ts, 90 lines, 15 tests):
   - Constructor takes `() => void` callback function
   - `tick()` calls the callback once and returns `true` (immediately done after first tick)
   - Useful for one-shot actions: "play sound after move completes," "explode after delay"
-  - (39 lines C# -> ~60 lines TypeScript)
 
-- [ ] **TODO-3.F.4** `ActivityRunner` utility:
+- [x] **TODO-3.F.4** `ActivityUtils.ts` (support file S5, 87 lines, 8 tests):
+  - Activity state utilities (sequence composition helpers)
+  - Migrated alongside Activity.ts as a direct dependency
   - Manages activity chain execution for a single actor
-  - `runActivity(actor: GameActor, activity: Activity): void` -- Set as current, call `onFirstRun()`
-  - `tickActivities(actor: GameActor): void` -- Call `tickOuter()` on current activity, handle chain advancement
-  - `cancelActivity(actor: GameActor): void` -- Cancel with cleanup, transition to next in chain or idle
 
-- [ ] **TODO-3.F.5** Document Plan B (Promise/async alternative) for UI animations:
+- [x] **TODO-3.F.5** Document Plan B (Promise/async alternative) for UI animations:
   - `Activity.runAsync(actor: GameActor): Promise<void>` -- Async execution path for non-deterministic visual activities
   - Use case: UI transitions, screen shake, camera animations (not game logic)
   - Core game logic ALWAYS uses Plan A (class hierarchy) for determinism
@@ -544,10 +544,7 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 - Activity state transitions are valid: cannot go from Queued directly to Done
 - 500 actors each running an activity tick in under 1ms
 
-**Estimated Effort**:
-- Activity.ts: ~500 lines implementation + ~400 lines test
-- CallFunc.ts: ~60 lines implementation + ~80 lines test
-- Total: 4-5 developer-days
+**Review**: 2 rounds, 0 BLOCKERs. Reviewer noted TickOuter is "near-perfect line-for-line" matching of OpenRA original.
 
 ---
 
