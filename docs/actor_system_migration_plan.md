@@ -560,7 +560,7 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 
 **Description**: Player state and diplomacy using the unique **PlayerActor pattern**: each `Player` owns a `PlayerActor` which has a full Trait set just like regular game Actors. Player capabilities (fog of war, frozen units, resource management, tech tree) are implemented through Traits on the PlayerActor. Uses bitmask for O(1) alliance checks.
 
-- [ ] **TODO-3.G.1** `Player` class (NOT a scene node -- lives alongside the scene):
+- [x] **TODO-3.G.1** `Player` class (NOT a scene node -- lives alongside the scene):
   - `playerName: string` -- Display name
   - `faction: string` -- Faction identifier (e.g., "allies", "soviet")
   - `internalName: string` -- Internal ID
@@ -570,30 +570,30 @@ Typical activity chain showing composition: "Move to target and attack" is compo
   - `alliedPlayersMask: LongBitSet` -- Bitmask of allied players
   - `enemyPlayersMask: LongBitSet` -- Bitmask of enemy players
 
-- [ ] **TODO-3.G.2** Diplomacy system:
+- [x] **TODO-3.G.2** Diplomacy system:
   - `relationshipWith(other: Player): PlayerRelationship` -- Returns `Enemy`, `Neutral`, or `Ally`
   - Bitmask-based O(1) lookup: `(alliedPlayersMask & other.playerMask) != 0` for ally check
   - `playerStances: Map<string, PlayerRelationship>` -- Configurable per-player stances
   - `isAlliedWith(other: Player): boolean`, `isEnemyWith(other: Player): boolean` -- Convenience methods
   - Relationship affects: target acquisition (enemies only), selection (own/allies only), vision sharing
 
-- [ ] **TODO-3.G.3** Resource management (placeholder for economy chapter):
+- [x] **TODO-3.G.3** Resource management (placeholder for economy chapter):
   - `resources: Map<string, number>` -- Cash, power, ore, etc.
   - `addResource(type: string, amount: number): void` -- Add resource, clamp to 0
   - `getResource(type: string): number` -- Query resource amount
   - `canAfford(costs: Map<string, number>): boolean` -- Check if can afford costs
 
-- [ ] **TODO-3.G.4** Event system for UI updates:
+- [x] **TODO-3.G.4** Event system for UI updates:
   - `onResourcesChanged: BABYLON.Observable<ResourceChange>` -- UI subscribes to resource changes
   - `onWinStateChanged: BABYLON.Observable<WinState>` -- UI subscribes to win/loss transitions
   - `onPlayerActorChanged: BABYLON.Observable<GameActor>` -- Notify when PlayerActor traits change
 
-- [ ] **TODO-3.G.5** `Spectating` player flag:
+- [x] **TODO-3.G.5** `Spectating` player flag:
   - A player with no units/control, viewing the game passively
   - Spectating players have full map visibility (no Shroud applied)
   - Cannot issue orders or influence game state
 
-- [ ] **TODO-3.G.6** `IBot` interface placeholder:
+- [x] **TODO-3.G.6** `IBot` interface placeholder:
   - Bot/AI players are activated through the `IBot` Trait on the PlayerActor
   - AI logic migration (condition-action rule system) is deferred to AI chapter
   - Define `IBot` interface: `activate(player: Player): void`, `queueOrder(order: Order): void`
