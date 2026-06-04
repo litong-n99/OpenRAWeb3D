@@ -26,7 +26,7 @@ import { Cache } from '../../Primitives/Cache.js'
 import type { GameActor } from '../../Actor.js'
 import type { Player } from '../../Player.js'
 import type { PlayerStub } from '../../Traits/TraitsInterfaces.js'
-import type { IEffect, ISpatiallyPartitionable } from '../../Effects/IEffect.js'
+import type { IEffect } from '../../Effects/IEffect.js'
 
 // ---------------------------------------------------------------------------
 // Local stub types (avoid circular imports; matching Actor.ts pattern)
@@ -201,6 +201,15 @@ export class ActorBoundsPair {
   constructor(actor: GameActor, bounds: PolygonStub) {
     this.actor = actor
     this.bounds = bounds
+  }
+
+  /**
+   * Human-readable representation.
+   *
+   * OpenRA 对照: ActorBoundsPair.ToString()
+   */
+  toString(): string {
+    return `${this.actor.info?.name ?? 'Unknown'}->${this.bounds.vertices.constructor.name}`
   }
 }
 
@@ -417,17 +426,12 @@ export class ScreenMap {
    * WorldRenderer.ScreenPxPosition, computes a centered bounding
    * rectangle, and adds the effect if the bounds are valid.
    *
-   * NOTE: Only effects implementing ISpatiallyPartitionable are tracked.
-   *
    * @param effect — the effect to register
    * @param position — world-space position
    * @param size — screen-space size of the effect
    */
   addEffect(effect: IEffect, position: WPosLike, size: SizeLike): void {
     if (!this.worldRenderer) return
-
-    // Only track spatially partitionable effects
-    if (!this.isSpatiallyPartitionable(effect)) return
 
     const screenPos = this.worldRenderer.screenPxPosition(position)
     const screenWidth = Math.abs(size.width)
@@ -484,20 +488,6 @@ export class ScreenMap {
    */
   removeEffect(effect: IEffect): void {
     this.partitionedRenderableEffects.remove(effect)
-  }
-
-  /**
-   * Check if an effect implements ISpatiallyPartitionable.
-   *
-   * OpenRA 对照: effect is ISpatiallyPartitionable
-   */
-  private isSpatiallyPartitionable(effect: IEffect): effect is IEffect & ISpatiallyPartitionable {
-    // ISpatiallyPartitionable is a marker interface — check for a property
-    // or just assume all IEffect instances may be partitionable.
-    // In OpenRA, only effects that implement ISpatiallyPartitionable are
-    // added to the spatial index. Since ISpatiallyPartitionable has no
-    // members, we check via a duck-type convention.
-    return 'constructor' in effect
   }
 
   // -----------------------------------------------------------------------
@@ -697,7 +687,10 @@ export class ScreenMap {
 
       // Compute screen bounds (Rectangle[] from IRender traits)
       const screenBounds = this.getActorScreenBounds(a)
-      if (!screenBounds.isEmpty) {
+      // Match frozen actor path: check Width/Height > 0, not isEmpty.
+      // Rectangle.isEmpty only returns true for (0,0,0,0) exactly;
+      // a degenerate rect like (100,100,0,0) would not be caught.
+      if (screenBounds.Width > 0 && screenBounds.Height > 0) {
         this.partitionedRenderableActors.setItemBounds(a, screenBounds)
       } else {
         this.partitionedRenderableActors.remove(a)
@@ -800,6 +793,9 @@ export class ScreenMap {
    */
   private wrapPolygon(raw: { vertices: readonly Vec2[] }): PolygonStub {
     const vertices = raw.vertices
+    // isEmpty: true when the polygon has no vertices, or when all vertices
+    // sit at (0,0) — matching OpenRA where an empty/bogus polygon from a
+    // trait that produces no mouse bounds has all-zero coordinates.
     const isEmpty = vertices.length === 0 || vertices.every(v => v.x === 0 && v.y === 0)
 
     let _boundingRect: Rectangle | null = null
