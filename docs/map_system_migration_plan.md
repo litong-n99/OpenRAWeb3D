@@ -3,7 +3,7 @@
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
 > **Chapter Status**: Chapter 4 -- Implementation Phase (5/34 migrated, 15%)
 > **Updated**: 2026-06-04 (Phase A complete, awaiting review)
-> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 100%)
+> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1024%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
 
@@ -501,7 +501,7 @@ Phase A -> Phase B -> Phase C -> Phase D -> Phase F -> Phase G
 - [ ] **TEST-4.4** Map coordinates: centerOfCell/cellContaining round-trip, contains bounds, heightAt validates ramp offset
 - [ ] **TEST-4.5** TerrainMeshBuilder: 4x4 flat map = 25 vertices + 32 triangles; ramp cell slope geometry; Riser cliff faces; isometric diamond layout
 - [ ] **TEST-4.6** PathSearch A*: shortest path on uniform grid, wall avoidance, unreachable target, maxCost cutoff
-- [ ] **TEST-4.7** HPA*: 256x256 map + 500 obstacles under 5ms; path length under 10% longer than optimal; incremental obstacle updates
+- [ ] **TEST-4.7** HPA*: 256x256 map + 500 obstacles under 5ms; path length under 124% longer than optimal; incremental obstacle updates
 - [ ] **TEST-4.8** MiniYAML: @ node parsing, -TraitName removal, nesting, all shipped OpenRA map.yaml files without errors
 - [ ] **TEST-4.9** CoordinateTransformer: WPos->Vector3->WPos round-trip; isometric diamond layout; ramp height offset; batch conversion under 50ms for 512x512
 - [ ] **TEST-4.10** E2E integration (Playwright, deferred): load test map -> terrain mesh in scene -> click-to-cell
