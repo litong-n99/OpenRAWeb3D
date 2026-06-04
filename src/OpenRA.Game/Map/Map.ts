@@ -3,7 +3,7 @@
  * OpenRA 对照: OpenRA.Game/Map/Map.cs (1450 lines)
  *
  * 核心范式转换:
- * - C# BinaryDataHeader struct → parseBinaryDataHeader() function on DataView
+ * - C# BinaryDataHeader struct → parseBinaryDataHeader() from MapBinParser
  * - C# Stream.ReadUInt8/16/32 → DataView.getUint8/getUint16/getUint32 (little-endian)
  * - C# CellLayer<byte> with Map-taking constructor → CellLayer<number> with (gridType, size)
  * - C# event Action<CPos> CellProjectionChanged → callback array pattern
@@ -11,6 +11,10 @@
  * - C# MersenneTwister → () => number random function
  * - C# CellLayer<PPos[]>/CellLayer<List<MPos>> → CellLayer<PPos[]>/CellLayer<MPos[]>
  * - C# CellLayer<short> cachedTerrainIndexes → CellLayer<number> with -1 sentinel
+ *
+ * Sub-modules (Architect WR approved split):
+ * - TileReference.ts — TerrainTile, ResourceTile value types
+ * - MapBinParser.ts — BinaryDataHeader, parse/serialize map.bin
  */
 
 // ---------------------------------------------------------------------------
@@ -33,50 +37,34 @@ import { ProjectedCellRegion, type GridConfig } from './ProjectedCellRegion'
 import { Rectangle } from '../Primitives/Rectangle'
 import type { Size } from '../Primitives/Size'
 import type { TerrainTypeInfo, TerrainTileInfo } from './TerrainInfo'
+import {
+  type TerrainTile,
+  type ResourceTile,
+  DEFAULT_TERRAIN_TILE,
+  DEFAULT_RESOURCE_TILE,
+} from './TileReference'
+import {
+  parseBinaryDataHeader,
+  computeBinaryDataLayout,
+  writeBinaryDataHeader,
+  BINARY_DATA_HEADER_SIZE,
+  type BinaryDataHeader,
+} from './MapBinParser'
 
 // ---------------------------------------------------------------------------
-// TerrainTile — tile type + variant index (value type)
-// OpenRA 对照: TileReference.cs TerrainTile readonly struct
+// Re-exports (backward compatibility for consumers)
 // ---------------------------------------------------------------------------
 
-/** Terrain tile reference: combined template+tile key and variant index.
- *
- * OpenRA 对照: TerrainTile(ushort type, byte index)
- */
-export interface TerrainTile {
-  /** Combined template+tile key (templateId << 8) | tileIndex. */
-  readonly type: number
-  /** Variant / PickAny index within the template. */
-  readonly index: number
-}
-
-/** Default zero terrain tile.
- *
- * OpenRA 对照: default(TerrainTile) = (0, 0)
- */
-export const DEFAULT_TERRAIN_TILE: TerrainTile = { type: 0, index: 0 }
-
-// ---------------------------------------------------------------------------
-// ResourceTile — resource type + density (value type)
-// OpenRA 对照: TileReference.cs ResourceTile readonly struct
-// ---------------------------------------------------------------------------
-
-/** Resource deposit on a cell.
- *
- * OpenRA 对照: ResourceTile(byte type, byte index)
- */
-export interface ResourceTile {
-  /** Resource type ID (0 = no resource). */
-  readonly type: number
-  /** Resource density/amount. */
-  readonly index: number
-}
-
-/** Default zero resource tile.
- *
- * OpenRA 对照: default(ResourceTile) = (0, 0)
- */
-export const DEFAULT_RESOURCE_TILE: ResourceTile = { type: 0, index: 0 }
+export {
+  type TerrainTile,
+  type ResourceTile,
+  DEFAULT_TERRAIN_TILE,
+  DEFAULT_RESOURCE_TILE,
+} from './TileReference'
+export {
+  parseBinaryDataHeader,
+  type BinaryDataHeader,
+} from './MapBinParser'
 
 // ---------------------------------------------------------------------------
 // MapVisibility
@@ -94,90 +82,6 @@ export const MapVisibility = {
 } as const
 
 export type MapVisibility = (typeof MapVisibility)[keyof typeof MapVisibility]
-
-// ---------------------------------------------------------------------------
-// BinaryDataHeader — 17-byte map.bin header (Format 2)
-// OpenRA 对照: Map.BinaryDataHeader readonly struct
-// ---------------------------------------------------------------------------
-
-/** Parsed binary data header.
- *
- * OpenRA 对照: BinaryDataHeader(Stream, Size)
- *
- * Format 2 layout (17 bytes):
- *   [0]     Format         uint8
- *   [1-2]   Width          uint16 LE
- *   [3-4]   Height         uint16 LE
- *   [5-8]   TilesOffset    uint32 LE
- *   [9-12]  HeightsOffset  uint32 LE (0 if flat)
- *   [13-16] ResourcesOffset uint32 LE
- */
-export interface BinaryDataHeader {
-  format: number
-  width: number
-  height: number
-  tilesOffset: number
-  heightsOffset: number
-  resourcesOffset: number
-}
-
-/**
- * Parse the binary data header from an ArrayBuffer.
- *
- * OpenRA 对照: BinaryDataHeader(Stream s, Size expectedSize)
- *
- * @param data — DataView of map.bin (at least 17 bytes)
- * @param expectedWidth — width from map.yaml (0 to skip validation)
- * @param expectedHeight — height from map.yaml (0 to skip validation)
- * @throws if format unknown or dimensions mismatch
- */
-export function parseBinaryDataHeader(
-  data: DataView,
-  expectedWidth: number,
-  expectedHeight: number,
-): BinaryDataHeader {
-  let offset = 0
-  const format = data.getUint8(offset++)
-  const width = data.getUint16(offset, true)
-  offset += 2
-  const height = data.getUint16(offset, true)
-  offset += 2
-
-  // Check format BEFORE dimension validation (unknown format throws first)
-  if (format !== 1 && format !== 2) {
-    throw new Error(`Unknown binary map format '${format}'`)
-  }
-
-  if (
-    expectedWidth > 0 &&
-    expectedHeight > 0 &&
-    (width !== expectedWidth || height !== expectedHeight)
-  ) {
-    throw new Error('Invalid tile data: dimensions do not match map.yaml')
-  }
-
-  if (format === 1) {
-    const w = width
-    const h = height
-    return {
-      format: 1,
-      width,
-      height,
-      tilesOffset: 5,
-      heightsOffset: 0,
-      resourcesOffset: 3 * w * h + 5,
-    }
-  }
-
-  // Format 2
-  const tilesOffset = data.getUint32(offset, true)
-  offset += 4
-  const heightsOffset = data.getUint32(offset, true)
-  offset += 4
-  const resourcesOffset = data.getUint32(offset, true)
-
-  return { format: 2, width, height, tilesOffset, heightsOffset, resourcesOffset }
-}
 
 // ---------------------------------------------------------------------------
 // ITerrainInfo — Phase D subset
@@ -1647,29 +1551,12 @@ export class Map {
     const h = this.mapSize.height
     const hasHeight = this.grid.maximumTerrainHeight > 0
 
-    const tilesSize = 3 * w * h
-    const heightsSize = hasHeight ? w * h : 0
-    const resourcesSize = 2 * w * h
-
-    const TILES_OFFSET = 17
-    const heightsOffset = hasHeight ? TILES_OFFSET + tilesSize : 0
-    const resourcesOffset = TILES_OFFSET + tilesSize + heightsSize
-
-    const totalSize = TILES_OFFSET + tilesSize + heightsSize + resourcesSize
-    const buffer = new ArrayBuffer(totalSize)
+    const layout = computeBinaryDataLayout(w, h, hasHeight)
+    const buffer = new ArrayBuffer(layout.totalSize)
     const data = new DataView(buffer)
-    let pos = 0
+    let pos = writeBinaryDataHeader(data, 0, this.tileFormat, w, h, layout)
 
-    // Header
-    data.setUint8(pos++, this.tileFormat)
-    data.setUint16(pos, w, true); pos += 2
-    data.setUint16(pos, h, true); pos += 2
-    data.setUint32(pos, TILES_OFFSET, true); pos += 4
-    data.setUint32(pos, heightsOffset, true); pos += 4
-    data.setUint32(pos, resourcesOffset, true); pos += 4
-    // pos should be 17
-
-    // Tile data
+    // Tile data (column-major)
     for (let i = 0; i < w; i++) {
       for (let j = 0; j < h; j++) {
         const tile = this.tiles.getMPos(new MPos(i, j))
@@ -1678,7 +1565,7 @@ export class Map {
       }
     }
 
-    // Height data
+    // Height data (column-major, only if hasHeight)
     if (hasHeight) {
       for (let i = 0; i < w; i++) {
         for (let j = 0; j < h; j++) {
@@ -1687,7 +1574,7 @@ export class Map {
       }
     }
 
-    // Resource data
+    // Resource data (column-major)
     for (let i = 0; i < w; i++) {
       for (let j = 0; j < h; j++) {
         const res = this.resources.getMPos(new MPos(i, j))
