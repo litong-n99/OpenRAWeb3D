@@ -9,7 +9,7 @@
  * - TerrainTileInfo.parseRiser: long form, short form, empty, error cases
  * - TerrainTileInfo construction, getRiserHeight, getColor
  * - TileTemplate interface structure
- * - TileSet loadFromJson, lookups, duplicate detection, error paths
+ * - TileSet fromJSON, lookups, duplicate detection, error paths
  * - makeTileKey, templateIdFromKey, tileIndexFromKey
  */
 
@@ -288,6 +288,24 @@ describe('TerrainTypeInfo', () => {
   it('color parse supports 8-digit hex', () => {
     const tt = new TerrainTypeInfo({ type: 'Water', color: '800000FF' })
     expect(tt.color).toBe(0x800000FF)
+  })
+
+  it('fromJSON factory creates an equivalent instance', () => {
+    const json: TerrainTypeInfoJson = {
+      type: 'Clear',
+      targetTypes: ['Ground'],
+      acceptsSmudgeType: ['Scorch'],
+      color: 'FFDDB0',
+      restrictPlayerColor: true,
+    }
+    const fromCtor = new TerrainTypeInfo(json)
+    const fromFactory = TerrainTypeInfo.fromJSON(json)
+
+    expect(fromFactory.type).toBe(fromCtor.type)
+    expect(fromFactory.color).toBe(fromCtor.color)
+    expect(fromFactory.restrictPlayerColor).toBe(fromCtor.restrictPlayerColor)
+    expect(fromFactory.targetTypes.has('Ground')).toBe(true)
+    expect(fromFactory.acceptsSmudgeType.has('Scorch')).toBe(true)
   })
 })
 
@@ -637,7 +655,7 @@ describe('TileSet — initial state', () => {
     TileSet.clear()
   })
 
-  it('is empty before loadFromJson', () => {
+  it('is empty before fromJSON', () => {
     expect(TileSet.templates.size).toBe(0)
     expect(TileSet.tiles.size).toBe(0)
     expect(TileSet.terrainTypes.size).toBe(0)
@@ -645,16 +663,16 @@ describe('TileSet — initial state', () => {
 })
 
 // ---------------------------------------------------------------------------
-// TileSet.loadFromJson — basic loading
+// TileSet.fromJSON — basic loading
 // ---------------------------------------------------------------------------
 
-describe('TileSet.loadFromJson', () => {
+describe('TileSet.fromJSON', () => {
   beforeEach(() => {
     TileSet.clear()
   })
 
   it('loads a single terrain type', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [
         { type: 'Clear', color: 'FFDDB0' },
       ],
@@ -666,7 +684,7 @@ describe('TileSet.loadFromJson', () => {
   })
 
   it('loads multiple terrain types in order (index = position)', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [
         { type: 'Clear', color: 'FFDDB0' },
         { type: 'Rough', color: '886600' },
@@ -681,7 +699,7 @@ describe('TileSet.loadFromJson', () => {
   })
 
   it('loads a template with tiles', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [
         { type: 'Clear', color: 'FFDDB0' },
         { type: 'Rough', color: '886600' },
@@ -696,7 +714,7 @@ describe('TileSet.loadFromJson', () => {
     })
 
     expect(TileSet.templates.size).toBe(1)
-    const tpl = TileSet.templates.get(255)
+    const tpl = TileSet.templates.get('255')
     expect(tpl).toBeDefined()
     expect(tpl!.id).toBe(255)
     expect(tpl!.size).toEqual({ x: 1, y: 1 })
@@ -706,7 +724,7 @@ describe('TileSet.loadFromJson', () => {
   })
 
   it('loads a template with multiple tiles (2×2)', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
       templates: [
         {
@@ -722,13 +740,13 @@ describe('TileSet.loadFromJson', () => {
       ],
     })
 
-    const tpl = TileSet.templates.get(10)!
+    const tpl = TileSet.templates.get('10')!
     expect(tpl.tilesCount).toBe(4)
     expect(tpl.tiles.length).toBe(4)
   })
 
   it('supports null entries in template tiles array', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
       templates: [
         {
@@ -744,7 +762,7 @@ describe('TileSet.loadFromJson', () => {
       ],
     })
 
-    const tpl = TileSet.templates.get(1)!
+    const tpl = TileSet.templates.get('1')!
     expect(tpl.tiles[0]).not.toBeNull()
     expect(tpl.tiles[1]).toBeNull()
     expect(tpl.tiles[2]).toBeNull()
@@ -754,7 +772,7 @@ describe('TileSet.loadFromJson', () => {
   })
 
   it('PickAny template counts only non-null tiles', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
       templates: [
         {
@@ -771,13 +789,13 @@ describe('TileSet.loadFromJson', () => {
       ],
     })
 
-    const tpl = TileSet.templates.get(5)!
+    const tpl = TileSet.templates.get('5')!
     expect(tpl.pickAny).toBe(true)
     expect(tpl.tilesCount).toBe(3) // 3 non-null
   })
 
   it('populates the global tiles map', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [
         { type: 'Clear', color: 'FFDDB0' },
         { type: 'Rough', color: '886600' },
@@ -802,7 +820,7 @@ describe('TileSet.loadFromJson', () => {
   })
 
   it('populates TerrainTypeInfo.types static registry', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [
         { type: 'Clear', color: 'FFDDB0' },
         { type: 'Rough', color: '886600' },
@@ -817,7 +835,7 @@ describe('TileSet.loadFromJson', () => {
   })
 
   it('loads categories on templates', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
       templates: [
         {
@@ -829,9 +847,23 @@ describe('TileSet.loadFromJson', () => {
       ],
     })
 
-    const tpl = TileSet.templates.get(1)!
+    const tpl = TileSet.templates.get('1')!
     expect(tpl.categories).toContain('Cliff')
     expect(tpl.categories).toContain('Shore')
+  })
+
+  it('fromJSON returns TileSet class for fluent chaining', () => {
+    const result = TileSet.fromJSON({
+      terrainTypes: [
+        { type: 'Clear', color: 'FFDDB0' },
+      ],
+      templates: [
+        { id: 0, size: { x: 1, y: 1 }, tiles: [{ terrainType: 'Clear' }] },
+      ],
+    })
+
+    expect(result).toBe(TileSet)
+    expect(TileSet.terrainTypes.has('Clear')).toBe(true)
   })
 })
 
@@ -842,7 +874,7 @@ describe('TileSet.loadFromJson', () => {
 describe('TileSet — lookups', () => {
   beforeEach(() => {
     TileSet.clear()
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [
         { type: 'Clear', color: 'FFDDB0' },
         { type: 'Rough', color: '886600' },
@@ -934,13 +966,13 @@ describe('TileSet — error handling', () => {
     }
 
     expect(() =>
-      TileSet.loadFromJson({ terrainTypes: types, templates: [] }),
+      TileSet.fromJSON({ terrainTypes: types, templates: [] }),
     ).toThrow('Too many terrain types')
   })
 
   it('rejects duplicate terrain type names', () => {
     expect(() =>
-      TileSet.loadFromJson({
+      TileSet.fromJSON({
         terrainTypes: [
           { type: 'Clear', color: 'FFDDB0' },
           { type: 'Clear', color: '886600' },
@@ -952,7 +984,7 @@ describe('TileSet — error handling', () => {
 
   it('rejects duplicate tile keys', () => {
     expect(() =>
-      TileSet.loadFromJson({
+      TileSet.fromJSON({
         terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
         templates: [
           {
@@ -974,7 +1006,7 @@ describe('TileSet — error handling', () => {
   })
 
   it('clear() resets all state', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
       templates: [
         {
@@ -996,7 +1028,7 @@ describe('TileSet — error handling', () => {
 
   it('reload after clear works correctly', () => {
     // First load
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
       templates: [],
     })
@@ -1007,7 +1039,7 @@ describe('TileSet — error handling', () => {
     expect(TileSet.terrainTypes.size).toBe(0)
 
     // Second load
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Water', color: '0000FF' }],
       templates: [],
     })
@@ -1026,7 +1058,7 @@ describe('TileTemplate', () => {
   })
 
   it('loaded template satisfies TileTemplate interface', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [
         { type: 'Clear', color: 'FFDDB0' },
         { type: 'Rough', color: '886600' },
@@ -1047,7 +1079,7 @@ describe('TileTemplate', () => {
       ],
     })
 
-    const tpl: TileTemplate = TileSet.templates.get(255)!
+    const tpl: TileTemplate = TileSet.templates.get('255')!
     expect(tpl.id).toBe(255)
     expect(tpl.size.x).toBe(2)
     expect(tpl.size.y).toBe(2)
@@ -1064,26 +1096,26 @@ describe('TileTemplate', () => {
   })
 
   it('template categories default to empty array', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
       templates: [
         { id: 1, size: { x: 1, y: 1 }, tiles: [{ terrainType: 'Clear' }] },
       ],
     })
 
-    const tpl = TileSet.templates.get(1)!
+    const tpl = TileSet.templates.get('1')!
     expect(tpl.categories).toEqual([])
   })
 
   it('template tiles and categories are frozen/immutable', () => {
-    TileSet.loadFromJson({
+    TileSet.fromJSON({
       terrainTypes: [{ type: 'Clear', color: 'FFDDB0' }],
       templates: [
         { id: 1, size: { x: 1, y: 1 }, tiles: [{ terrainType: 'Clear' }] },
       ],
     })
 
-    const tpl = TileSet.templates.get(1)!
+    const tpl = TileSet.templates.get('1')!
     expect(Object.isFrozen(tpl.tiles)).toBe(true)
     expect(Object.isFrozen(tpl.categories)).toBe(true)
   })
@@ -1136,7 +1168,7 @@ describe('Integration — full tileset workflow', () => {
       ],
     }
 
-    TileSet.loadFromJson(json)
+    TileSet.fromJSON(json)
 
     // Terrain types registered
     expect(TileSet.terrainTypes.size).toBe(3)
@@ -1149,8 +1181,8 @@ describe('Integration — full tileset workflow', () => {
 
     // Templates
     expect(TileSet.templates.size).toBe(3)
-    expect(TileSet.templates.get(255)!.categories).toContain('Basic')
-    expect(TileSet.templates.get(512)!.size).toEqual({ x: 2, y: 2 })
+    expect(TileSet.templates.get('255')!.categories).toContain('Basic')
+    expect(TileSet.templates.get('512')!.size).toEqual({ x: 2, y: 2 })
 
     // Tiles map
     // Template 255: 1 tile, Template 256: 1 tile, Template 512: 4 tiles

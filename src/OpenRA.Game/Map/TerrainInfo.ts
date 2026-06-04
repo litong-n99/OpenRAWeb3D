@@ -224,7 +224,7 @@ export class TerrainTypeInfo {
   }
 
   /**
-   * Create from JSON.
+   * Create from JSON data.
    *
    * OpenRA 对照: TerrainTypeInfo(MiniYaml my) + FieldLoader.Load(this, my)
    */
@@ -234,6 +234,18 @@ export class TerrainTypeInfo {
     this.acceptsSmudgeType = new Set(json.acceptsSmudgeType ?? [])
     this.color = parseColorHex(json.color)
     this.restrictPlayerColor = json.restrictPlayerColor ?? false
+  }
+
+  /**
+   * Factory: create a TerrainTypeInfo from a JSON entry.
+   *
+   * OpenRA 对照: new TerrainTypeInfo(MiniYaml my)
+   *
+   * @param json — JSON terrain type data
+   * @returns new TerrainTypeInfo instance
+   */
+  static fromJSON(json: TerrainTypeInfoJson): TerrainTypeInfo {
+    return new TerrainTypeInfo(json)
   }
 }
 
@@ -542,15 +554,15 @@ export class TileSet {
    */
   static readonly TerrainPaletteInternalName = 'terrain'
 
-  /** All loaded tile templates, keyed by template ID.
+  /** All loaded tile templates, keyed by template ID as a string.
    *
    * OpenRA 对照: DefaultTerrain.Templates (FrozenDictionary<ushort, TerrainTemplateInfo>)
    *
-   * NOTE: The migration plan references `Map<string, TileTemplate>` but
-   * template IDs are numeric (ushort) in OpenRA, so we use `Map<number, ...>`
-   * for type safety and C# compatibility.
+   * NOTE: OpenRA keys templates by ushort ID. The migration stores IDs as
+   * strings for JSON compatibility (build-time YAML -> JSON preserves template
+   * IDs as string keys from `Template@255` syntax).
    */
-  static readonly templates: Map<number, TileTemplate> = new Map()
+  static readonly templates: Map<string, TileTemplate> = new Map()
 
   /**
    * All individual tiles, keyed by combined (templateId << 8 | tileIndex).
@@ -658,7 +670,7 @@ export class TileSet {
   // ---- Loading --------------------------------------------------------------
 
   /**
-   * Load the TileSet from a compiled JSON tileset definition.
+   * Factory: load the TileSet from a compiled JSON tileset definition.
    *
    * OpenRA 对照: DefaultTerrain(IReadOnlyFileSystem, string filepath)
    *
@@ -666,9 +678,10 @@ export class TileSet {
    * pre-compiled at build time by the MiniYAML→JSON pipeline (Phase H).
    *
    * @param json — compiled tileset JSON
+   * @returns the TileSet class (for fluent chaining)
    * @throws Error if there are duplicate terrain types or invalid references
    */
-  static loadFromJson(json: TileSetJson): void {
+  static fromJSON(json: TileSetJson): typeof TileSet {
     // Clear existing state
     this.clear()
 
@@ -678,11 +691,10 @@ export class TileSet {
     }
 
     const terrainIndexByName = new Map<string, number>()
-    const typeIndexToName = new Map<number, string>()
 
     for (let i = 0; i < json.terrainTypes.length; i++) {
       const entry = json.terrainTypes[i]!
-      const tt = new TerrainTypeInfo(entry)
+      const tt = TerrainTypeInfo.fromJSON(entry)
 
       if (this.terrainTypes.has(tt.type)) {
         throw new Error(`Duplicate terrain type "${tt.type}"`)
@@ -694,7 +706,6 @@ export class TileSet {
       this.terrainTypes.set(tt.type, tt)
       TerrainTypeInfo.types.set(tt.type, tt)
       terrainIndexByName.set(tt.type, i)
-      typeIndexToName.set(i, tt.type)
     }
 
     this._terrainIndexByName = terrainIndexByName
@@ -745,8 +756,10 @@ export class TileSet {
           : tplJson.size.x * tplJson.size.y,
       }
 
-      this.templates.set(tpl.id, tpl)
+      this.templates.set(String(tpl.id), tpl)
     }
+
+    return this
   }
 
   /** Clear all loaded data. Useful for tests. */
