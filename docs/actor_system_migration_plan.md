@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Implementation Phase (35/36 migrated, 27/31 in-scope)
+> **Chapter Status**: Chapter 3 -- Implementation Phase (35/36 migrated, 28/31 in-scope)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -613,8 +613,9 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 
 ### 3.8 Phase H: Effects System
 
-**Status**: Pending (0/3)
+**Status**: Completed (3/3) -- 2026-06-04
 **Complexity**: Low
+**Implementation**: ~521 lines TS (IEffect: 165, DelayedAction: 144, DelayedImpact: 212) + ~687 lines test (103 tests) | **Review**: 1 round, 0 BLOCKERs
 **Blocked by**: Phase C (World -- effects list lives in GameWorldManager)
 **Blocks**: Visual effects (explosions, smoke, delayed callbacks)
 
@@ -652,7 +653,7 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 - Effects with `isDone = true` are removed by World at frame end
 - Multiple effects tick concurrently without interference
 
-**Estimated Effort**: ~200 lines implementation + ~150 lines test (1-2 developer-days)
+**Estimated Effort**: ~200 lines implementation + ~150 lines test (1-2 developer-days) [actual: 521 lines impl + 687 lines test, 103 tests, 1 review round, 0 BLOCKERs]
 
 ---
 

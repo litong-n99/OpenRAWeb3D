@@ -5,7 +5,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 ## Status
 
 **Phase**: Chapter 2 -- Rendering Engine (COMPLETE); Chapter 3 -- Actor System (IN PROGRESS)  
-**Progress**: 27/27 rendering (100%), 32/36 actor system (89%)  
+**Progress**: 27/27 rendering (100%), 35/36 actor system (97%)  
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -18,14 +18,16 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Sprite & Texture System (8 core + 4 extra files) | Completed |
 | Platform Abstraction (11 files) | Completed |
 | Model shaders (model.vert/frag) | NOP stubs |
-| **Chapter 3: Actor System** | **In Progress (32/36)** |
+| **Chapter 3: Actor System** | **In Progress (35/36)** |
 | Coordinate System & Primitives (17 files) | Completed |
 | Trait System Core (2 files) | Completed |
 | GameWorldManager (World.ts) | Completed |
 | GameActor (Actor.ts) | Completed |
 | ActorConfig (ActorInfo.ts) | Completed |
 | Activity System (Activity.ts, CallFunc.ts, ActivityUtils.ts) | Completed |
-| Player, Effects, ScreenMap (4 files remaining) | Pending |
+| Player | Completed |
+| Effects System (IEffect, DelayedAction, DelayedImpact, 103 tests) | Completed |
+| ScreenMap (1 file remaining) | Pending |
 | Weapon System (2 files) | Deferred |
 | Networking, audio, mod system, UI | Not yet started |
 

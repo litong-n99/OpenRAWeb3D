@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-06-04
 > **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — IN PROGRESS
-> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 35/36 files migrated (97%), Phases A-G complete
+> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 35/36 files migrated (97%), Phases A-H complete
 
 ---
 
@@ -12,12 +12,12 @@
 |--------|-------|
 | **Chapter 2 rendering files** | 27 (100% complete) |
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
-| **Chapter 3 status** | Implementation started: 35/36 (97%), Phases A-G complete |
+| **Chapter 3 status** | Implementation started: 35/36 (97%), Phases A-H complete |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 4-8+ (networking, audio, file system, mod system, UI, map) |
 | **Overall project completion** | Chapter 2/8+ (rendering engine done, actor system in progress) |
 
-> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs. Phase E (ActorConfig) is complete: 1 file, ~916 TS + 64 tests, 2 review rounds, 0 BLOCKERs. Phase F (Activity System) is complete: 3 files (Activity.ts, CallFunc.ts, ActivityUtils.ts), ~899 TS + 73 tests, 2 review rounds, 0 BLOCKERs. Phase G (Player) is complete: 1 file, 1272 TS + 1407 test lines, 82 tests, 1 review round, 0 BLOCKERs.
+> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs. Phase E (ActorConfig) is complete: 1 file, ~916 TS + 64 tests, 2 review rounds, 0 BLOCKERs. Phase F (Activity System) is complete: 3 files (Activity.ts, CallFunc.ts, ActivityUtils.ts), ~899 TS + 73 tests, 2 review rounds, 0 BLOCKERs. Phase G (Player) is complete: 1 file, 1272 TS + 1407 test lines, 82 tests, 1 review round, 0 BLOCKERs. Phase H (Effects) is complete: 3 files, ~521 TS + ~687 test lines, 103 tests, 1 review round, 0 BLOCKERs.
 
 ---
 
@@ -173,6 +173,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-04 | **Phase H Effects** (3 files) | migration-develop | migration-review | Round 1 approved, 103 tests: IEffect.ts (165 lines, tick/render interface), DelayedAction.ts (144 lines, deferred callback), DelayedImpact.ts (212 lines, projectile position interpolation). 521 TS + 687 test lines. 0 BLOCKERs |
 | 2026-06-04 | **Phase G Player** (1 file) | migration-develop | migration-review | Round 1 approved, 82 tests: Player.ts (1272 lines), LongBitSet diplomacy (O(1) bitwise), PlayerActor two-phase init, WinState immutability guard, FactionInfo resolution, relationship coloring, PlayerStub compatibility, stubs for unmigrated deps (Shroud, FrozenActorLayer, Session.Client). 0 BLOCKERs |
 | 2026-06-04 | **Phase F Activity System** (3 files) | migration-develop | migration-review | Round 2 approved, 73 tests: Activity.ts (~722 lines, activity state machine, TickOuter, child activity priority, cancellation, linked-list chain), CallFunc.ts (~90 lines, 15 tests, one-shot callback activity), ActivityUtils.ts (~87 lines, 8 tests, activity composition helpers). 0 BLOCKERs |
 | 2026-06-04 | **Phase E ActorConfig** (1 file) | migration-develop | migration-review | Round 2 approved, 64 tests: ActorInfo.ts (~916 lines, ActorConfig class, trait composition from JSON, TraitConfig interface, YAML-to-JSON pipeline design, Object.freeze() immutability, topological sort for trait dependencies). 0 BLOCKERs |
@@ -226,16 +227,16 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 ## Chapter 3: Game World & Actor System Progress
 
 > **Migration Plan**: [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md)
-> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (Phase G complete)
+> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (Phase H complete)
 > **Status**: IMPLEMENTATION PHASE (35/36 files migrated, 32 in-scope + 5 support)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 33 | 97% |
+| Completed | 35 | 97% |
 | In Progress | 0 | 0% |
-| Pending | 3 | 8% |
+| Pending | 1 | 3% |
 | **Total planned** | **36** | **100%** |
-| **In-scope** | **31** (25 Phases A-G + 4 Phase H-I) | |
+| **In-scope** | **31** (28 Phases A-H + 1 Phase I) | |
 | **Deferrable** | **2** (Phase J: Weapon system) | |
 | **Support** | **5** (migrate as needed) | |
 
@@ -307,14 +308,22 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 **Implementation**: ~1272 lines TS + ~1407 lines test, 82 tests total. LongBitSet<PlayerBitMask> diplomacy with O(1) bitwise queries. PlayerActor two-phase init pattern. WinState immutability guard (Won/Lost cannot revert). ResolveFaction with Random resolution (max 10 iterations). PlayerRelationshipColor with ChromeMetrics stubs. FactionInfo/Shroud/FrozenActorLayer/Session.Client stub interfaces for unmigrated dependencies.
 **Review**: 1 round, 0 BLOCKERs | **Date**: 2026-06-04
 
-### Phases H-I: Remaining Core System (4 files)
+### Phase H: Effects System (3 files) ✅ COMPLETE (2026-06-04)
 
-| # | Source | Target | Complexity | Phase | Status |
-|:---:|:---|:---|:---:|:---:|:---:|
-| H1 | `IEffect.cs` | `src/OpenRA.Game/Effects/IEffect.ts` | Low | H | Pending |
-| H2 | `DelayedAction.cs` | `src/OpenRA.Game/Effects/DelayedAction.ts` | Low | H | Pending |
-| H3 | `DelayedImpact.cs` | `src/OpenRA.Game/Effects/DelayedImpact.ts` | Low | H | Pending |
-| I | `ScreenMap.cs` | `src/OpenRA.Game/Traits/World/ScreenMap.ts` | Medium | I | Pending |
+| # | Source | Target | Complexity | Status |
+|:---:|:---|:---|:---:|:---:|
+| H1 | `IEffect.cs` | `src/OpenRA.Game/Effects/IEffect.ts` | Low | ✅ Completed |
+| H2 | `DelayedAction.cs` | `src/OpenRA.Game/Effects/DelayedAction.ts` | Low | ✅ Completed |
+| H3 | `DelayedImpact.cs` | `src/OpenRA.Game/Effects/DelayedImpact.ts` | Low | ✅ Completed |
+
+**Implementation**: ~521 lines TS (IEffect: 165, DelayedAction: 144, DelayedImpact: 212) + ~687 lines test (103 tests). IEffect interface with tick/render lifecycle. DelayedAction defers callback by tick count. DelayedImpact interpolates projectile position toward target.
+**Review**: 1 round, 0 BLOCKERs | **Date**: 2026-06-04
+
+### Phase I: Spatial Query (ScreenMap) (1 file)
+
+| # | Source | Target | Complexity | Status |
+|:---:|:---|:---|:---:|:---:|
+| I | `ScreenMap.cs` | `src/OpenRA.Game/Traits/World/ScreenMap.ts` | Medium | Pending |
 
 ### Phase J: Weapon System (2 files, DEFERRABLE)
 
