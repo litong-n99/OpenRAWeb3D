@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-06-04
 > **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — IN PROGRESS
-> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 28/36 files migrated (78%), Phases A-C complete
+> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 29/36 files migrated (81%), Phases A-D complete
 
 ---
 
@@ -12,12 +12,12 @@
 |--------|-------|
 | **Chapter 2 rendering files** | 27 (100% complete) |
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
-| **Chapter 3 status** | Implementation started: 28/36 (78%), Phases A-C complete |
+| **Chapter 3 status** | Implementation started: 29/36 (81%), Phases A-D complete |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 4-8+ (networking, audio, file system, mod system, UI, map) |
 | **Overall project completion** | Chapter 2/8+ (rendering engine done, actor system in progress) |
 
-> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs.
+> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs.
 
 ---
 
@@ -173,6 +173,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-04 | **Phase D GameActor** (1 file) | migration-develop | migration-review | Round 2 approved, 91 tests: Actor.ts (~1840 lines, GameActor extends TransformNode, component system, condition system, activity integration, lifecycle state machine, cached trait references, ResolveOrder, SyncHash placeholder). 0 BLOCKERs |
 | 2026-06-04 | **Phase C GameWorldManager** (1 file) | migration-develop | migration-review | Round 2 approved, 66 tests: World.ts (~1903 lines, GameWorldManager class, fixed timestep loop, tick execution order, actor lifecycle, player management, WorldActor, pause state, SyncHash placeholder). 0 BLOCKERs |
 | 2026-06-04 | **Phase B Trait System Core** (2 files) | migration-develop | migration-review | Round 2 approved, 149 tests: TraitsInterfaces.ts (~1930 lines, 92 tests, 45+ interfaces, 22 type guards), TraitDictionary.ts (~450 lines, 57 tests, 8 query methods). ~2380 TS + 149 test lines total |
 | 2026-06-04 | **Phase A 3.1.2 + 3.1.3 Map Coords + Primitives** (11 files) | migration-develop | migration-review | 1 round, 0 BLOCKERs, 1219 tests: MPos, CPos, CVec, Target, BitSet, LongBitSet, TypeDictionary, SpatiallyPartitioned, PriorityQueue, Cache, CachedTransform, ActionQueue. ~2700 TS + ~2500 test lines total (Phase A) |
@@ -222,16 +223,16 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 ## Chapter 3: Game World & Actor System Progress
 
 > **Migration Plan**: [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md)
-> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (Phase C complete)
-> **Status**: IMPLEMENTATION PHASE (28/36 files migrated, 31 in-scope + 5 support)
+> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (Phase D complete)
+> **Status**: IMPLEMENTATION PHASE (29/36 files migrated, 31 in-scope + 5 support)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 28 | 78% |
+| Completed | 29 | 81% |
 | In Progress | 0 | 0% |
-| Pending | 8 | 22% |
+| Pending | 7 | 19% |
 | **Total planned** | **36** | **100%** |
-| **In-scope** | **31** (20 Phases A-C + 11 Phase D-I) | |
+| **In-scope** | **31** (21 Phases A-D + 10 Phase E-I) | |
 | **Deferrable** | **2** (Phase J: Weapon system) | |
 | **Support** | **5** (migrate as needed) | |
 
@@ -270,12 +271,12 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 | B1 | `TraitDictionary.cs` | `src/OpenRA.Game/TraitDictionary.ts` | Medium | 450 (57 tests) | ✅ Completed |
 | B2 | `TraitsInterfaces.cs` | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` | Medium | 1930 (92 tests) | ✅ Completed |
 
-### Phases C-D: World + Actor (2 files, Core Containers)
+### Phases C-D: World + Actor (2 files, Core Containers) ✅ COMPLETE (2026-06-04)
 
 | # | Source | Target | Complexity | Lines (C#) | Status |
 |:---:|:---|:---|:---:|:---:|:---:|
 | C | `World.cs` | `src/OpenRA.Game/World.ts` | HIGH | 1903 (66 tests) | ✅ Completed |
-| D | `Actor.cs` | `src/OpenRA.Game/Actor.ts` | HIGH | 650 | Pending |
+| D | `Actor.cs` | `src/OpenRA.Game/Actor.ts` | HIGH | 1840 (91 tests) | ✅ Completed |
 
 ### Phases E-I: Remaining Core System (7 files)
 

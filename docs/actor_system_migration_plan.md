@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Implementation Phase (18/36 migrated, 17/31 in-scope)
+> **Chapter Status**: Chapter 3 -- Implementation Phase (29/36 migrated, 21/31 in-scope)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -350,10 +350,11 @@ function traitsImplementingITick(components: Component[]): ITick[] {
 
 ### 3.4 Phase D: Actor.cs -- Game Object
 
-**Status**: Pending (0/1)
+**Status**: Completed (1/1) -- 2026-06-04
 **Complexity**: HIGH
 **Blocked by**: Phases A, B, C (World for lifecycle integration)
 **Blocks**: All Trait implementations, GameActor usage
+**Implementation**: ~1840 lines TS + 91 tests | **Review**: 2 rounds, 0 BLOCKERs
 
 **OpenRA Reference**: `OpenRA.Game/Actor.cs` (650 lines)
 **Migration Target**: `src/OpenRA.Game/Actor.ts`
@@ -361,7 +362,7 @@ function traitsImplementingITick(components: Component[]): ITick[] {
 
 **Description**: Actor is the universal game entity -- a "lightweight container" where all functionality comes from Trait composition. The Condition System is the core of dynamic behavior, using token-based grant/revoke with reference counting. `Actor.Tick()` drives the Activity system, while `Trait<T>()` and `TraitsImplementing<T>()` query components.
 
-- [ ] **TODO-3.D.1** `GameActor` class extending `BABYLON.TransformNode`:
+- [x] **TODO-3.D.1** `GameActor` class extending `BABYLON.TransformNode`:
   - `actorId: number` (uint32, globally unique)
   - `info: ActorConfig` (static metadata -- actor type definition)
   - `owner: Player` (owning player)
@@ -370,14 +371,14 @@ function traitsImplementingITick(components: Component[]): ITick[] {
   - `willDispose: boolean` / `disposed: boolean` (deferred destruction state)
   - `generation: number` (incremented on replacement, e.g., building upgrade -- network sync)
 
-- [ ] **TODO-3.D.2** Component system (replaces per-actor TraitDictionary):
+- [x] **TODO-3.D.2** Component system (replaces per-actor TraitDictionary):
   - `components: Map<string, Component>` -- Component storage keyed by class name
   - `getComponent<T>(name: string): T | undefined` -- Typed component lookup
   - `getComponentsImplementing<T>(interfaceName: string): T[]` -- Filter by interface using type guards
   - `addComponent(component: Component): void` / `removeComponent(component: Component): void`
   - Components call `attach(actor)` on registration and `detach()` on removal
 
-- [ ] **TODO-3.D.3** Condition system:
+- [x] **TODO-3.D.3** Condition system:
   - `grantCondition(condition: string): number` -- Returns unique integer token
   - `revokeCondition(token: number): void` -- Revoke specific token
   - `hasCondition(condition: string): boolean` -- Check if condition currently active
@@ -387,26 +388,26 @@ function traitsImplementingITick(components: Component[]): ITick[] {
   - `registerObserver(observer: IObservesVariables): void` -- Notify observers on condition change
   - Support `RequiresCondition` expressions: `deployed`, `!deployed`, `deployed || upgraded`, `deployed && !disabled`
 
-- [ ] **TODO-3.D.4** Activity system integration:
+- [x] **TODO-3.D.4** Activity system integration:
   - `currentActivity: Activity | null` -- Currently executing activity
   - `queueActivity(next: Activity, interruptible?: boolean): void` -- Append to activity chain
   - `cancelActivity(): void` -- Cancel current activity with proper cleanup
   - `tickActivities(): void` -- Called by World during each logic tick
 
-- [ ] **TODO-3.D.5** Cached trait references (like OpenRA's fast-path properties):
+- [x] **TODO-3.D.5** Cached trait references (like OpenRA's fast-path properties):
   - `occupiesSpace: IOccupySpace | undefined` -- Fast cache for spatial queries
   - `targetables: ITargetable[]` -- Fast cache for targeting
   - `effectiveOwner: IEffectiveOwner | undefined` -- For mind-control / ownership changes
   - These are set during initialization for fast O(1) access in hot paths
 
-- [ ] **TODO-3.D.6** Lifecycle state machine:
+- [x] **TODO-3.D.6** Lifecycle state machine:
   - States: `Created` -> `initialize()` -> `world.addActor()` -> `InWorld` -> `world.removeActor()` -> `NotInWorld` -> `dispose()` -> `Disposed`
   - `dispose(): void` -- Set `WillDispose = true`, defer to world's `frameEndActions`, fire `INotifyActorDisposing`
   - Lifecycle hooks fire in strict order: `INotifyCreated` -> `INotifyAddedToWorld` -> (game ticks) -> `INotifyRemovedFromWorld` -> `INotifyActorDisposing`
 
-- [ ] **TODO-3.D.7** `ResolveOrder(order: Order): void` -- Dispatch player commands to all `IResolveOrder` components. Iterates all components implementing `IResolveOrder` and calls `resolveOrder(self, order)`.
+- [x] **TODO-3.D.7** `ResolveOrder(order: Order): void` -- Dispatch player commands to all `IResolveOrder` components. Iterates all components implementing `IResolveOrder` and calls `resolveOrder(self, order)`.
 
-- [ ] **TODO-3.D.8** `SyncHash()` -- Deterministic hash for this actor (used for network sync verification). Placeholder in Chapter 3.
+- [x] **TODO-3.D.8** `SyncHash()` -- Deterministic hash for this actor (used for network sync verification). Placeholder in Chapter 3.
 
 **Key Architecture Decision**: `GameActor extends TransformNode` vs wrapping TransformNode
 - **Decision**: Extend `TransformNode` directly (ADR-3.1)
