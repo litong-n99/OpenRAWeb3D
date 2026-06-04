@@ -811,13 +811,13 @@ Phase A (17 files: Coords + Primitives) <-- FOUNDATION, no internal dependencies
 
 ## 5. Verification and Test Strategy
 
-- [ ] **TEST-3.1** Unit tests for all coordinate types:
+- [x] **TEST-3.1** Unit tests for all coordinate types:
   - `WPos`/`WVec` arithmetic correctness (add, subtract, dot, cross, lerp)
   - Coordinate conversion accuracy: `MPos <-> CPos <-> WPos` round-trip with zero loss
   - `WAngle` trigonometric determinism: `sin()/cos()` return identical values across Chrome, Firefox, Safari
   - `WDist` comparison and arithmetic edge cases (zero, max, overflow)
 
-- [ ] **TEST-3.2** Primitives tests:
+- [x] **TEST-3.2** Primitives tests:
   - `BitSet` / `LongBitSet` bitwise operations (set, clear, AND, OR, XOR, NOT)
   - `TypeDictionary` typed get/set operations with string keys
   - `PriorityQueue` min-heap invariant (heap property maintained after enqueue/dequeue)
@@ -825,19 +825,19 @@ Phase A (17 files: Coords + Primitives) <-- FOUNDATION, no internal dependencies
   - `Cache` lazy evaluation and invalidation
   - `ActionQueue` deferred execution order and delay counting
 
-- [ ] **TEST-3.3** TraitDictionary tests:
+- [x] **TEST-3.3** TraitDictionary tests:
   - Add/remove/lookup correctness across multiple interface implementations
   - `traitsImplementing()` returns correct subset (5 ITick traits from 20 components)
   - `withTraitTimed()` batch iteration performance: 1K actors x 20 traits in under 5ms
   - Removal correctly purges from ALL interface indexes
 
-- [ ] **TEST-3.4** GameWorldManager tests:
+- [x] **TEST-3.4** GameWorldManager tests:
   - Fixed timestep loop simulation: 250 ticks in 10 seconds (25 TPS)
   - Tick execution order verification: Activities -> ITick -> Effects -> frameEndActions
   - Actor add/remove lifecycle fires correct `INotify*` events
   - Pause state: no logic ticks while paused, render ticks continue
 
-- [ ] **TEST-3.5** GameActor tests:
+- [x] **TEST-3.5** GameActor tests:
   - Component CRUD operations (add, query, remove)
   - Condition grant/revoke with reference counting (grant x2, revoke x1, still active; revoke again, inactive)
   - `RequiresCondition` expression evaluation: `deployed`, `!deployed`, `deployed || upgraded`, `deployed && !disabled`
@@ -845,25 +845,25 @@ Phase A (17 files: Coords + Primitives) <-- FOUNDATION, no internal dependencies
   - Lifecycle state transitions: Created -> InWorld -> Disposed (all hooks fire in order)
   - `WillDispose` deferred destruction: actor not referenced after marking
 
-- [ ] **TEST-3.6** Activity state machine tests:
+- [x] **TEST-3.6** Activity state machine tests:
   - Chain execution: `Move -> Attack -> Wait` executes in order
   - Child activity priority: `Move` with `PathFind` child ticks child first
   - Cancellation mid-chain: parent cancelled -> child cancelled -> chain advances or stops
   - `isInterruptible = false`: cancel attempt fails, activity continues
   - `onLastRun()` always called on completion and on cancellation (verify cleanup)
 
-- [ ] **TEST-3.7** Player diplomacy tests:
+- [x] **TEST-3.7** Player diplomacy tests:
   - `LongBitSet` O(1) relationship queries: `(alliedMask & otherMask) != 0`
   - `relationshipWith()` correct for ally/enemy/neutral configurations
   - PlayerActor trait delegation (player traits are on actor, player class delegates)
 
-- [ ] **TEST-3.8** ScreenMap spatial query tests:
+- [x] **TEST-3.8** ScreenMap spatial query tests:
   - Rectangle query (selection box) returns all actors in bounds
   - Point query (click/hover) returns closest actor at point
   - Add/remove/update correctness (moving actor updates spatial index)
   - Performance: 1000 actors, point query under 0.5ms
 
-- [ ] **TEST-3.9** Effects system tests:
+- [x] **TEST-3.9** Effects system tests:
   - `DelayedAction` defers callback by correct tick count
   - `DelayedImpact` correctly interpolates position toward target
   - Multiple effects tick concurrently without interference
