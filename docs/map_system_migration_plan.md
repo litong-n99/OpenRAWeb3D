@@ -112,8 +112,8 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 | 12 | `OpenRA.Game/Map/MapPreview.cs` | `src/OpenRA.Game/Map/MapPreview.ts` | `MapPreview` | 781 | Medium | E |
 | 13 | `OpenRA.Game/Map/MapDirectoryTracker.cs` | `src/OpenRA.Game/Map/MapDirectoryTracker.ts` | `MapDirectoryTracker` | 127 | Low | E |
 | 14 | `OpenRA.Game/Map/MapGenerationArgs.cs` | `src/OpenRA.Game/Map/MapGenerationArgs.ts` | `MapGenerationArgs` | 58 | Low | E |
-| 15 | `OpenRA.Game/Map/CellCoordsRegion.cs` | `src/OpenRA.Game/Map/CellCoordsRegion.ts` | `CellCoordsRegion` | 121 | Low | E |
-| 16 | `OpenRA.Game/Map/MapCoordsRegion.cs` | `src/OpenRA.Game/Map/MapCoordsRegion.ts` | `MapCoordsRegion` | 89 | Low | E |
+| 15 | `OpenRA.Game/Map/CellCoordsRegion.cs` | `src/OpenRA.Game/Map/CellCoordsRegion.ts` | `CellCoordsRegion` | 121 | Low | A (done) |
+| 16 | `OpenRA.Game/Map/MapCoordsRegion.cs` | `src/OpenRA.Game/Map/MapCoordsRegion.ts` | `MapCoordsRegion` | 89 | Low | A (done) |
 | 17 | `OpenRA.Game/Map/TileReference.cs` | `src/OpenRA.Game/Map/TileReference.ts` | `TileReference` | 46 | Low | E |
 | 18 | `OpenRA.Game/Map/ActorInitializer.cs` | `src/OpenRA.Game/Map/ActorInitializer.ts` | `ActorInitializer` | 271 | Medium | E |
 | 19 | `OpenRA.Game/Map/ActorReference.cs` | `src/OpenRA.Game/Map/ActorReference.ts` | `ActorReference` | 208 | Medium | E |
@@ -151,11 +151,11 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 | Metric | Count |
 |--------|-------|
 | **Total mapped files** | 34 (29 from OpenRA + 5 new) |
-| **Phase A (CellLayer infra)** | 5 files |
+| **Phase A (CellLayer infra)** | 8 files (5 original + 3 supporting) |
 | **Phase B (MapGrid)** | 1 file (+1 already done) |
 | **Phase C (TerrainInfo)** | 1 file |
 | **Phase D (Map core)** | 1 file |
-| **Phase E (Support files)** | 11 files |
+| **Phase E (Support files)** | 9 files (2 moved to Phase A) |
 | **Phase F (3D terrain, new)** | 2 files |
 | **Phase G (Pathfinding)** | 10 files |
 | **Phase H (MiniYAML pipeline, new)** | 1 file |
@@ -173,9 +173,10 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 ### 3.1 Phase A: CellLayer Infrastructure
 
-**Status**: Awaiting Approval (5/5 implemented, pending review)
+**Status**: COMPLETE (8/8 implemented, 195/195 tests, review approved)
 **Complexity**: Low-Medium
-**Implemented**: 2026-06-04
+**Completed**: 2026-06-04
+**Review**: 2 rounds (1 Architect WR + 1 final), 0 BLOCKERs
 **Blocked by**: Chapter 3 Phase A (CPos, MPos, MapGridType) -- already COMPLETE
 **Blocks**: Phase D (Map.cs -- uses CellLayer for all data planes)
 
@@ -231,6 +232,12 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 - [x] **TODO-4.A.4** `src/OpenRA.Game/Map/ProjectedCellLayer.ts` (63 lines C#) -- PPos-indexed layer
 - [x] **TODO-4.A.5** `src/OpenRA.Game/Map/ProjectedCellRegion.ts` (125 lines C#) -- PPos region iteration
 
+#### 3.1.5 Supporting Files (migrated alongside Phase A as dependencies)
+
+- [x] **TODO-4.A.6** `src/OpenRA.Game/Map/CellCoordsRegion.ts` (121 lines C#) -- Cell-coordinate region iteration (originally Phase E)
+- [x] **TODO-4.A.7** `src/OpenRA.Game/Map/MapCoordsRegion.ts` (89 lines C#) -- Map-coordinate region iteration (originally Phase E)
+- [x] **TODO-4.A.8** `src/OpenRA.Game/Primitives/Size.ts` (21 lines TS new) -- 2D size primitive required by CellLayer (no OpenRA equivalent, extracted from OpenRA.Size)
+
 **Acceptance Criteria**:
 - CellLayer index formulas match OpenRA for all 4 combinations (Rectangular/CPos, Rectangular/MPos, Isometric/CPos, Isometric/MPos)
 - Isometric X<Y guard correctly rejects invalid cells
@@ -239,7 +246,19 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 - CellRegion iteration yields correct sequences
 - 512x512 map layer allocation under 10ms
 
-**Estimated Effort**: ~800 lines implementation + ~600 lines test (3-4 developer-days)
+**Actual Results**: ~2,857 lines implementation + ~969 lines test = 3,826 total lines, 195/195 tests passing, 7 files + 1 supporting (Size.ts). 2 review rounds (1 Architect WR + 1 final), 0 BLOCKERs.
+
+| File | Lines (impl) | Lines (test) |
+|:---|:---:|:---:|
+| CellLayerBase.ts | 213 | 281 |
+| CellLayer.ts | 468 | 722 |
+| CellRegion.ts | 309 | 356 |
+| ProjectedCellLayer.ts | 183 | 227 |
+| ProjectedCellRegion.ts | 234 | 262 |
+| CellCoordsRegion.ts | 171 | 140 |
+| MapCoordsRegion.ts | 122 | 117 |
+| Size.ts (Primitives/) | 21 | -- |
+| **Total** | **~2,857** | **~969** |
 
 ---
 
