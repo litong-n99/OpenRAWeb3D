@@ -24,6 +24,7 @@ import {
   type SessionClientStub,
   type MersenneTwisterStub,
   type NotifyPlayerDisconnectedStub,
+  type PlayerOptions,
   PLAYER_BITMASK_TYPENAME,
 } from './Player.js'
 import { LongBitSet } from './Primitives/LongBitSet.js'
@@ -109,28 +110,44 @@ function createSessionClient(
 /** Track calls for mock world. */
 interface MockWorld {
   players: Player[]
-  createPlayerActorCalls: { internalName: string; owner: Player }[]
-  createPlayerActor: (internalName: string, owner: Player) => GameActor
+  createActorCalls: { internalName: string; owner: Player }[]
+  createUninitializedPlayerActor: (internalName: string, owner: Player) => GameActor
 }
 
 /** Create a mock world for Player construction. */
 function createMockWorld(): MockWorld {
   const world: MockWorld = {
     players: [],
-    createPlayerActorCalls: [],
-    createPlayerActor(_internalName: string, _owner: Player): GameActor {
-      world.createPlayerActorCalls.push({ internalName: _internalName, owner: _owner })
+    createActorCalls: [],
+    createUninitializedPlayerActor(
+      _internalName: string,
+      _owner: Player,
+    ): GameActor {
+      world.createActorCalls.push({
+        internalName: _internalName,
+        owner: _owner,
+      })
       return createMockPlayerActor()
     },
   }
   return world
 }
 
-/** Create a mock GameActor for tests. */
+/** Create a mock GameActor that supports two-phase init. */
 function createMockPlayerActor(): GameActor {
   const traits = new Map<string, unknown>()
+  let _initialized = false
   const actor = {
     actorId: 999,
+    _initialized: false,
+    /** Phase 2: initialize handler (tracks call state). */
+    initialize(_addToWorld?: boolean): void {
+      _initialized = true
+    },
+    /** Check if initialize() was called (two-phase init verification). */
+    get initialized(): boolean {
+      return _initialized
+    },
     traitOrDefault<T>(_name: string): T | undefined {
       return traits.get(_name) as T | undefined
     },
@@ -165,13 +182,13 @@ function createTestPlayer(
   ]
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const player = new Player(
-    world as any,
+  const player = new Player({
+    world: world as any,
     client,
-    pr,
-    random,
+    playerReference: pr,
+    playerRandom: random,
     factionInfos,
-  )
+  })
   world.players.push(player)
 
   return { player, world }
@@ -536,9 +553,9 @@ describe('Player construction', () => {
     expect(player.playable).toBe(true)
     expect(player.nonCombatant).toBe(false)
 
-    // Should have created the PlayerActor
-    expect(world.createPlayerActorCalls.length).toBe(1)
-    expect(world.createPlayerActorCalls[0].internalName).toBe('Player1')
+    // Should have created the PlayerActor (two-phase init)
+    expect(world.createActorCalls.length).toBe(1)
+    expect(world.createActorCalls[0].internalName).toBe('Player1')
   })
 
   it('creates a Player without session client (map-defined player)', () => {
@@ -565,8 +582,8 @@ describe('Player construction', () => {
     expect(player.displaySpawnPoint).toBe(0)
     expect(player.isBot).toBe(false)
 
-    // Should still create PlayerActor
-    expect(world.createPlayerActorCalls.length).toBe(1)
+    // Should still create PlayerActor (two-phase init)
+    expect(world.createActorCalls.length).toBe(1)
   })
 
   it('detects bot players from BotType', () => {
@@ -631,6 +648,29 @@ describe('Player construction', () => {
     // lockFaction=false means requireSelectable=true
     // 'requested' is unselectable, so fallback to random selectable
     expect(player.faction.internalName).toBe('fallback')
+  })
+
+  it('calls initialize() on PlayerActor (two-phase init verification)', () => {
+    const { player, world } = createTestPlayer()
+    // PlayerActor should have been created and initialized
+    expect(world.createActorCalls.length).toBe(1)
+    const pa = player.playerActor as unknown as { initialized?: boolean }
+    expect(pa.initialized).toBe(true)
+  })
+
+  it('accepts PlayerOptions bag correctly', () => {
+    const world = createMockWorld()
+    const options: PlayerOptions = {
+      world: world as unknown as PlayerOptions['world'],
+      client: createSessionClient({ name: 'OptionsPlayer', index: 7 }),
+      playerReference: createPlayerReference({ name: 'OptRef' }),
+      playerRandom: createMockRandom([0]),
+      factionInfos: [createFactionInfo({ internalName: 'default' })],
+    }
+    const player = new Player(options)
+    expect(player.playerName).toBe('OptionsPlayer')
+    expect(player.clientIndex).toBe(7)
+    expect(player.internalName).toBe('OptRef')
   })
 })
 
@@ -990,12 +1030,27 @@ describe('Player WinState transitions', () => {
     expect(player.isSpectating).toBe(true)
   })
 
-  it('can transition back to Undefined (edge case for replays)', () => {
+  it('rejects reversion from Won back to Undefined (immutability guard)', () => {
+    // NOTE: intentional divergence from OpenRA — once Won/Lost, cannot go back
     const { player } = createTestPlayer()
     player.winState = WinState.Won
+    expect(player.winState).toBe(WinState.Won)
+
+    // Attempt to revert — silently ignored by the guard
     player.winState = WinState.Undefined
-    expect(player.winState).toBe(WinState.Undefined)
-    expect(player.isSpectating).toBe(false)
+    expect(player.winState).toBe(WinState.Won) // still Won
+    expect(player.isSpectating).toBe(true) // still spectating via game-over
+  })
+
+  it('rejects reversion from Lost back to Undefined (immutability guard)', () => {
+    const { player } = createTestPlayer()
+    player.winState = WinState.Lost
+    expect(player.winState).toBe(WinState.Lost)
+
+    // Attempt to revert — silently ignored by the guard
+    player.winState = WinState.Undefined
+    expect(player.winState).toBe(WinState.Lost)
+    expect(player.isSpectating).toBe(true)
   })
 })
 

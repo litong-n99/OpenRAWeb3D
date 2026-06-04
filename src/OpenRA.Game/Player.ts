@@ -220,6 +220,54 @@ export interface NotifyPlayerDisconnectedStub {
 }
 
 // ---------------------------------------------------------------------------
+// PlayerOptions — construction parameters (对应 OpenRA Player constructor args)
+// ---------------------------------------------------------------------------
+
+/**
+ * Options bag for Player construction.
+ *
+ * OpenRA 对照: Player(World, Session.Client, PlayerReference, MersenneTwister)
+ *
+ * Uses an options bag because Session.Client, PlayerReference, and
+ * MersenneTwister are not yet fully migrated — the stub interfaces can
+ * be passed directly without positional overloads.
+ *
+ * TODO-3.E: Replace stub types with real classes when dependencies are migrated.
+ */
+export interface PlayerOptions {
+  /** The game world.
+   *
+   * OpenRA 对照: World parameter
+   */
+  world: WorldStubPlayer
+
+  /** The session client (null for map-defined players).
+   *
+   * OpenRA 对照: Session.Client parameter
+   */
+  client: SessionClientStub | null
+
+  /** The player reference from the map.
+   *
+   * OpenRA 对照: PlayerReference parameter
+   */
+  playerReference: PlayerReferenceStub
+
+  /** Random generator for faction resolution.
+   *
+   * OpenRA 对照: MersenneTwister parameter
+   */
+  playerRandom: MersenneTwisterStub
+
+  /** Available faction info objects.
+   *
+   * NOTE: Derived from world.Map.Rules.Actors[SystemActors.World]
+   *   .TraitInfos<FactionInfo>() in OpenRA.
+   */
+  factionInfos: readonly FactionInfoStub[]
+}
+
+// ---------------------------------------------------------------------------
 // Player (对应 OpenRA Player)
 // ---------------------------------------------------------------------------
 
@@ -540,8 +588,23 @@ export class Player implements PlayerStub {
    * Win/Loss state for this player.
    *
    * OpenRA 对照: Player.WinState
+   *
+   * NOTE: Intentional divergence from OpenRA — once a player has Won or
+   * Lost, the state CANNOT be reverted to Undefined. This prevents UI and
+   * network bugs where a stale packet could reset game-over state.
+   * OpenRA allows any transition; we silently guard against invalid reversion.
    */
-  winState: WinState = WinState.Undefined
+  get winState(): WinState {
+    return this._winState
+  }
+
+  set winState(value: WinState) {
+    if (this._winState !== WinState.Undefined && value === WinState.Undefined) {
+      // Silently ignore — once you're out, you stay out
+      return
+    }
+    this._winState = value
+  }
 
   /**
    * Whether this player has mission objectives displayed.
@@ -592,6 +655,13 @@ export class Player implements PlayerStub {
   // -----------------------------------------------------------------------
   // Private fields
   // -----------------------------------------------------------------------
+
+  /**
+   * Backing field for the winState getter/setter (immutability guard).
+   *
+   * OpenRA 对照: Player.WinState (public field)
+   */
+  private _winState: WinState = WinState.Undefined
 
   /**
    * Whether this is a mission map that forbids player leaving.
@@ -690,30 +760,31 @@ export class Player implements PlayerStub {
    * OpenRA 对照: Player(World, Session.Client, PlayerReference,
    *   MersenneTwister)
    *
+   * Uses an options bag because the full Session.Client, PlayerReference,
+   * and MersenneTwister types are not yet migrated.
+   *
    * The constructor:
-   * 1. Stores all identity/configuration fields
+   * 1. Extracts all identity/configuration fields from the options bag
    * 2. Resolves faction and display faction
    * 3. Allocates the player's bit mask in LongBitSet<PlayerBitMask>
-   * 4. Creates the PlayerActor (a GameActor with OwnerInit pointing to this
-   *    player)
-   * 5. Retrieves Shroud and FrozenActorLayer traits from PlayerActor
+   * 4. Creates the PlayerActor via two-phase init:
+   *    a. Phase 1 — create uninitialized shell (world factory)
+   *    b. Phase 2 — initialize the actor (fires INotifyCreated, adds to world)
+   * 5. Retrieves Shroud and FrozenActorLayer traits from initialized PlayerActor
    * 6. Activates bot logic if IsBot and this client is the host
    * 7. Caches unlockRenderPlayer and notifyDisconnected traits
    *
-   * @param world — the game world
-   * @param client — the session client (null for map-defined players)
-   * @param pr — the player reference from the map
-   * @param playerRandom — random generator for faction resolution
-   * @param factionInfos — available faction info objects (for faction
-   *   resolution)
+   * @param options — construction parameters (PlayerOptions bag)
    */
-  constructor(
-    world: WorldStubPlayer,
-    client: SessionClientStub | null,
-    pr: PlayerReferenceStub,
-    playerRandom: MersenneTwisterStub,
-    factionInfos: readonly FactionInfoStub[],
-  ) {
+  constructor(options: PlayerOptions) {
+    const {
+      world,
+      client,
+      playerReference: pr,
+      playerRandom,
+      factionInfos,
+    } = options
+
     this.world = world
 
     this.internalName = pr.name
@@ -797,19 +868,35 @@ export class Player implements PlayerStub {
     // Set IsBot before any PlayerActor callbacks
     this.isBot = this.botType !== null
 
-    // Create the PlayerActor
-    // NOTE: In OpenRA, the PlayerActor type is SystemActors.Player (or
-    // EditorPlayer in editor mode) with an OwnerInit(this).
-    // Since we cannot fully initialize traits yet (no YAML trait system),
-    // we create a minimal actor.
-    // TODO-3.E: Create with proper actor type and trait initialization
-    // when ActorInfo/YAML system is migrated.
-    this.playerActor = world.createPlayerActor(
+    // -------------------------------------------------------------------
+    // PlayerActor two-phase init (对应 OpenRA PlayerActor creation)
+    // -------------------------------------------------------------------
+    // Phase 1: Create uninitialized shell.
+    // In OpenRA: new Actor(world, playerActorType, [new OwnerInit(this)])
+    //
+    // NOTE: Since the YAML trait system is not yet migrated, the world
+    // factory creates a minimal GameActor shell. Full trait population
+    // will be added in TODO-3.E.
+    //
+    // TODO-3.E: Create with proper actor type (SystemActors.Player vs
+    // EditorPlayer) and trait initialization when ActorInfo/YAML system
+    // is migrated.
+    this.playerActor = world.createUninitializedPlayerActor(
       this.internalName,
       this,
     )
 
-    // Retrieve Shroud and FrozenActorLayer from PlayerActor
+    // Phase 2: Initialize the actor.
+    // In OpenRA: PlayerActor.Initialize(true)
+    // This fires INotifyCreated on all traits, registers observers,
+    // finds ICreationActivity, and adds the actor to the world.
+    //
+    // NOTE: The initialize call is via dynamic dispatch because
+    // GameActor is a type-only import (avoids circular deps).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(this.playerActor as any).initialize?.(true)
+
+    // Retrieve Shroud and FrozenActorLayer from initialized PlayerActor
     // NOTE: These are stubs — real trait retrieval will be available
     // when Shroud and FrozenActorLayer are migrated.
     // Use `as any` cast because ShroudStub/FrozenActorLayerStub do not
@@ -824,7 +911,7 @@ export class Player implements PlayerStub {
       FROZEN_ACTOR_LAYER_STUB_DEFAULT
 
     // Activate bot logic on the host
-    // NOTE: Full bot activation requires TBot lookup from world rules and
+    // NOTE: Full bot activation requires IBot lookup from world rules and
     // Game.IsHost check. Stubbed for now.
     // TODO-3.E: Activate bot when IBot and rules system are migrated.
     if (this.isBot) {
@@ -1007,7 +1094,14 @@ export class Player implements PlayerStub {
  */
 interface WorldStubPlayer {
   players: readonly (Player | { botType?: string | null })[]
-  createPlayerActor(internalName: string, owner: Player): GameActor
+  /** Phase 1 of two-phase PlayerActor init — creates an uninitialized shell.
+   *
+   * OpenRA 对照: new Actor(world, playerActorType, [new OwnerInit(this)])
+   *
+   * The returned actor MUST have initialize() called on it (Phase 2)
+   * before trait retrieval.
+   */
+  createUninitializedPlayerActor(internalName: string, owner: Player): GameActor
 }
 
 /**
