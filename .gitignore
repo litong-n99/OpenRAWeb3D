@@ -25,3 +25,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code internal working files
+.claude/tasks/
+.claude/work-requirements/
