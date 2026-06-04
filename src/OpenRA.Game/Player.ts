@@ -1,0 +1,1060 @@
+/**
+ * Player.ts — Player state: diplomacy, resources, Shroud, Bot, WinState
+ * OpenRA 对照: OpenRA.Game/Player.cs
+ *
+ * 核心范式转换:
+ * - C# Player class with Lua scripting → TypeScript Player class (no scene node)
+ * - C# LongBitSet<PlayerBitMask> diplomacy → TypeScript LongBitSet<PlayerBitMask>
+ *   (O(1) bitwise queries)
+ * - C# PlayerActor pattern + Trait system → TypeScript GameActor with Components
+ * - C# Lua scripting interface (IScriptBindable, ILuaTableBinding, etc.) →
+ *   NOT migrated (web uses different scripting approach)
+ * - C# Session.Client / PlayerReference / MersenneTwister → stubbed interfaces
+ *   (full implementation pending Phase E actor system migration)
+ * - C# FluentProvider / ChromeMetrics / Game static → stubbed (pending UI migration)
+ */
+
+import type { CPos } from './CPos.js'
+import type { GameActor } from './Actor.js'
+import { LongBitSet } from './Primitives/LongBitSet.js'
+import {
+  PlayerRelationship,
+  type PlayerStub,
+} from './Traits/TraitsInterfaces.js'
+
+// ---------------------------------------------------------------------------
+// Enums (对应 OpenRA PowerState / WinState)
+// ---------------------------------------------------------------------------
+
+/**
+ * Player power state flags (for low-power notifications).
+ *
+ * OpenRA 对照: PowerState [Flags] enum
+ */
+export const PowerState = {
+  Normal: 1,
+  Low: 2,
+  Critical: 4,
+} as const
+
+export type PowerState = (typeof PowerState)[keyof typeof PowerState]
+
+/**
+ * Win/Loss tracking state for each player.
+ *
+ * OpenRA 对照: WinState enum
+ */
+export const WinState = {
+  Undefined: 0,
+  Won: 1,
+  Lost: 2,
+} as const
+
+export type WinState = (typeof WinState)[keyof typeof WinState]
+
+// ---------------------------------------------------------------------------
+// PlayerBitMask — marker type for LongBitSet<T> namespace (对应 OpenRA
+// PlayerBitMask empty class)
+// ---------------------------------------------------------------------------
+
+/**
+ * Empty marker "class" used as the type tag for LongBitSet<PlayerBitMask>.
+ * In OpenRA this is an empty C# class; in TypeScript it's a symbol/interface
+ * serving the same purpose of namespace isolation for the LongBitSet allocator.
+ *
+ * OpenRA 对照: public class PlayerBitMask { }
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PlayerBitMask {
+  /* marker — intentionally empty */
+}
+
+/**
+ * The type name string used to key the LongBitSet allocator for PlayerBitMask.
+ *
+ * OpenRA 对照: LongBitSetAllocator<PlayerBitMask>
+ */
+export const PLAYER_BITMASK_TYPENAME = 'PlayerBitMask'
+
+// ---------------------------------------------------------------------------
+// Stub interfaces for unmigrated dependencies
+// ---------------------------------------------------------------------------
+
+/**
+ * Stub for PlayerReference (OpenRA.Game/Map/PlayerReference.cs).
+ *
+ * OpenRA 对照: PlayerReference class
+ *
+ * TODO-3.E: Replace with full PlayerReference class when Map module is migrated.
+ */
+export interface PlayerReferenceStub {
+  name: string
+  palette: string
+  bot?: string
+  startingUnitsClass?: string
+  allowBots: boolean
+  playable: boolean
+  required: boolean
+  ownsWorld: boolean
+  spectating: boolean
+  nonCombatant: boolean
+  lockFaction: boolean
+  faction: string
+  lockColor: boolean
+  color: number
+  homeLocation: CPos
+  lockSpawn: boolean
+  spawn: number
+  lockTeam: boolean
+  team: number
+  lockHandicap: boolean
+  handicap: number
+  allies: string[]
+  enemies: string[]
+}
+
+/**
+ * Stub for Session.Client (OpenRA.Network/Session.cs).
+ *
+ * OpenRA 对照: Session.Client class
+ *
+ * Only the fields needed by the Player constructor are included.
+ * TODO-3.C: Replace with full Session.Client when Network module is migrated.
+ */
+export interface SessionClientStub {
+  index: number
+  color: number
+  name: string
+  bot?: string
+  faction: string
+  handicap: number
+  spawnPoint: number
+}
+
+/**
+ * Stub for FactionInfo (OpenRA.Game/Traits/World/Faction.cs).
+ *
+ * OpenRA 对照: FactionInfo : TraitInfo<Faction>
+ *
+ * Only the fields needed by Player.ResolveFaction are included.
+ * TODO-3.E: Replace with full FactionInfo when Trait system is migrated.
+ */
+export interface FactionInfoStub {
+  name: string
+  internalName: string
+  randomFactionMembers: readonly string[]
+  side?: string
+  description?: string
+  selectable: boolean
+}
+
+/**
+ * Stub for Shroud trait (fog of war for a player).
+ *
+ * OpenRA 对照: Shroud trait
+ *
+ * TODO-3.G: Replace with full Shroud class when fog-of-war is migrated.
+ */
+export interface ShroudStub {
+  readonly isDiscovered: boolean
+}
+
+/**
+ * Stub for FrozenActorLayer trait (frozen-under-fog actor display).
+ *
+ * OpenRA 对照: FrozenActorLayer trait
+ *
+ * TODO-3.G: Replace with full FrozenActorLayer when fog-of-war is migrated.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface FrozenActorLayerStub {
+  /* marker — pending fog-of-war migration */
+}
+
+/**
+ * Stub for MersenneTwister (used for faction resolution randomness).
+ *
+ * OpenRA 对照: OpenRA.Support/MersenneTwister.cs
+ */
+export interface MersenneTwisterStub {
+  next(min?: number, max?: number): number
+}
+
+/**
+ * Stub for IBotInfo (bot type configuration).
+ *
+ * OpenRA 对照: IBotInfo
+ */
+export interface BotInfoStub {
+  type: string
+  name: string
+}
+
+/**
+ * Stub for IBot (active bot controller).
+ *
+ * OpenRA 对照: IBot
+ */
+export interface IBotStub {
+  info: BotInfoStub
+  activate(player: PlayerStub): void
+  queueOrder(order: unknown): void
+}
+
+/**
+ * Stub for IUnlocksRenderPlayer trait.
+ *
+ * OpenRA 对照: IUnlocksRenderPlayer
+ */
+export interface UnlocksRenderPlayerStub {
+  readonly renderPlayerUnlocked: boolean
+}
+
+/**
+ * Stub for INotifyPlayerDisconnected trait.
+ *
+ * OpenRA 对照: INotifyPlayerDisconnected
+ */
+export interface NotifyPlayerDisconnectedStub {
+  playerDisconnected(actor: GameActor, player: PlayerStub): void
+}
+
+// ---------------------------------------------------------------------------
+// Player (对应 OpenRA Player)
+// ---------------------------------------------------------------------------
+
+/**
+ * Represents a player in the game world.
+ *
+ * OpenRA 对照: Player class
+ *
+ * Each Player has a PlayerActor — a regular GameActor that carries all player
+ * capabilities via trait composition (Shroud, FrozenActorLayer, resource
+ * management, tech tree, bot logic). This unifies handling: ordinary actors
+ * and player actors use the same trait system.
+ *
+ * Diplomacy uses LongBitSet<PlayerBitMask> for O(1) relationship queries.
+ * Up to 64 players are supported via 64-bit bigint bitmask operations.
+ *
+ * ## Important: Player implements PlayerStub for compatibility
+ *
+ * The Player class implements the PlayerStub interface so it can be used
+ * wherever existing code expects a PlayerStub. The full Player class is the
+ * authoritative type; PlayerStub is a lightweight forward-reference.
+ */
+export class Player implements PlayerStub {
+  // -----------------------------------------------------------------------
+  // Static
+  // -----------------------------------------------------------------------
+
+  /**
+   * The enumerated bot name Fluent key.
+   *
+   * OpenRA 对照: EnumeratedBotName = "enumerated-bot-name"
+   */
+  static readonly ENUMERATED_BOT_NAME = 'enumerated-bot-name'
+
+  /**
+   * Resolve a faction from a faction name, optionally requiring it to be
+   * selectable.
+   *
+   * OpenRA 对照: Player.ResolveFaction(string, IEnumerable<FactionInfo>,
+   *   MersenneTwister, bool)
+   *
+   * Uses the provided random generator for picking from RandomFactionMembers.
+   * Falls back to a random selectable faction if no match is found.
+   *
+   * @param factionName — the faction internal name requested
+   * @param factionInfos — all available faction info objects
+   * @param playerRandom — random generator for faction selection
+   * @param requireSelectable — if true, only consider selectable factions
+   *   (default: true)
+   * @returns the resolved FactionInfo
+   * @throws if a random faction member name cannot be resolved
+   */
+  static resolveFaction(
+    factionName: string,
+    factionInfos: readonly FactionInfoStub[],
+    playerRandom: MersenneTwisterStub,
+    requireSelectable: boolean = true,
+  ): FactionInfoStub {
+    const selectableFactions = factionInfos.filter(
+      (f) => !requireSelectable || f.selectable,
+    )
+
+    let selected =
+      selectableFactions.find((f) => f.internalName === factionName) ??
+      selectableFactions[
+        playerRandom.next(0, selectableFactions.length - 1)
+      ]
+
+    // Don't loop infinitely — OpenRA caps at 10 iterations
+    for (
+      let i = 0;
+      i <= 10 && selected.randomFactionMembers.length > 0;
+      i++
+    ) {
+      const idx = playerRandom.next(
+        0,
+        selected.randomFactionMembers.length - 1,
+      )
+      const faction = selected.randomFactionMembers[idx]
+      const next = selectableFactions.find(
+        (f) => f.internalName === faction,
+      )
+      if (!next) {
+        throw new Error(`Unknown faction: ${faction}`)
+      }
+      selected = next
+    }
+
+    return selected
+  }
+
+  /**
+   * Get a player's original color, ignoring relationship color overrides.
+   *
+   * OpenRA 对照: Player.GetColor(Player)
+   *
+   * @param p — the player to get the color of
+   * @returns the player's original color value (ARGB)
+   */
+  static getColor(p: Player): number {
+    return p.color
+  }
+
+  /**
+   * Compute the display color for a player from a viewer's perspective,
+   * applying relationship color rules.
+   *
+   * OpenRA 对照: Player.PlayerRelationshipColor(Player, Player)
+   *
+   * Relationship coloring rules:
+   * - If player stance colors are disabled (Game.UsePlayerStanceColors)
+   *   or the viewer is spectating: use original player color
+   * - Self: ChromeMetrics.PlayerStanceColorSelf
+   * - Ally: ChromeMetrics.PlayerStanceColorAllies
+   * - Neutral/NonCombatant: ChromeMetrics.PlayerStanceColorNeutrals
+   * - Enemy: ChromeMetrics.PlayerStanceColorEnemies
+   *
+   * @param player — the player whose color to compute
+   * @param viewer — the player whose perspective to use, or null
+   * @returns the relationship-colored ARGB value
+   */
+  static playerRelationshipColor(
+    player: Player,
+    viewer: Player | null,
+  ): number {
+    // NOTE: Game.Settings.Game.UsePlayerStanceColors and ChromeMetrics
+    // are not yet migrated. For now, we return the original player color.
+    // TODO-3.E: Integrate with Game settings and ChromeMetrics when UI
+    // system is migrated.
+
+    if (!playerUseStanceColors || !viewer || viewer.isSpectating) {
+      return player.color
+    }
+
+    if (viewer === player) {
+      return STANCE_COLOR_SELF
+    }
+
+    if (player.isAlliedWith(viewer)) {
+      return STANCE_COLOR_ALLIES
+    }
+
+    if (player.nonCombatant) {
+      return STANCE_COLOR_NEUTRALS
+    }
+
+    return STANCE_COLOR_ENEMIES
+  }
+
+  /**
+   * Update display colors for all players based on a viewer's perspective.
+   * Also updates palette colors in the WorldRenderer.
+   *
+   * OpenRA 对照: Player.SetupRelationshipColors(Player[], Player,
+   *   WorldRenderer, bool)
+   *
+   * @param players — all players in the game
+   * @param viewer — the player whose perspective to use
+   * @param worldRenderer — the WorldRenderer for palette updates
+   *   (stubbed — will be integrated when WorldRenderer is fully migrated)
+   * @param firstRun — true on first setup (palettes are created, not updated)
+   */
+  static setupRelationshipColors(
+    players: Player[],
+    viewer: Player,
+    worldRenderer: WorldRendererStubPlayer,
+    firstRun: boolean,
+  ): void {
+    for (const p of players) {
+      p.displayColor = Player.playerRelationshipColor(p, viewer)
+      worldRenderer.updatePalettesForPlayer(
+        p.internalName,
+        p.displayColor,
+        !firstRun,
+      )
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Instance fields — identity & core references
+  // -----------------------------------------------------------------------
+
+  /**
+   * The game world this player belongs to.
+   *
+   * OpenRA 对照: Player.World
+   */
+  readonly world: WorldStubPlayer
+
+  /**
+   * The PlayerActor — a normal GameActor carrying all player capabilities
+   * (Shroud, FrozenActorLayer, resources, tech tree, bot logic) via traits.
+   *
+   * OpenRA 对照: Player.PlayerActor
+   *
+   * Created in the constructor with an OwnerInit pointing to this Player.
+   */
+  readonly playerActor: GameActor
+
+  /**
+   * Player display name (as entered by the player).
+   *
+   * OpenRA 对照: Player.PlayerName
+   */
+  readonly playerName: string
+
+  /**
+   * Internal name (from PlayerReference.Name, used for diplomacy matching).
+   *
+   * OpenRA 对照: Player.InternalName
+   */
+  readonly internalName: string
+
+  /**
+   * The player's faction (the actual resolved FactionInfo after Random
+   * resolution).
+   *
+   * OpenRA 对照: Player.Faction
+   */
+  readonly faction: FactionInfoStub
+
+  /**
+   * Whether this player cannot engage in combat.
+   *
+   * OpenRA 对照: Player.NonCombatant
+   */
+  readonly nonCombatant: boolean = false
+
+  /**
+   * Whether this player slot is playable (false for spectators, etc.).
+   *
+   * OpenRA 对照: Player.Playable
+   */
+  readonly playable: boolean = true
+
+  /**
+   * The session client index (for human/host-created bot players).
+   *
+   * OpenRA 对照: Player.ClientIndex
+   */
+  readonly clientIndex: number
+
+  /**
+   * The "Home" location (initial camera/spawn area center).
+   *
+   * OpenRA 对照: Player.HomeLocation
+   */
+  readonly homeLocation: CPos
+
+  /**
+   * Player handicap percentage (0-100, applies to HP/cost/speed).
+   *
+   * OpenRA 对照: Player.Handicap
+   */
+  readonly handicap: number
+
+  /**
+   * The PlayerReference this player was created from.
+   *
+   * OpenRA 对照: Player.PlayerReference
+   */
+  readonly playerReference: PlayerReferenceStub
+
+  /**
+   * Whether this player is controlled by an AI bot.
+   *
+   * OpenRA 对照: Player.IsBot
+   */
+  readonly isBot: boolean
+
+  /**
+   * The bot type identifier (null if not a bot).
+   *
+   * OpenRA 对照: Player.BotType
+   */
+  readonly botType: string | null
+
+  /**
+   * The Shroud trait (fog of war for this player).
+   *
+   * OpenRA 对照: Player.Shroud
+   */
+  readonly shroud: ShroudStub
+
+  /**
+   * The FrozenActorLayer trait (frozen-under-fog rendering).
+   *
+   * OpenRA 对照: Player.FrozenActorLayer
+   */
+  readonly frozenActorLayer: FrozenActorLayerStub
+
+  /**
+   * The faction as displayed in the lobby (before Random resolution).
+   *
+   * OpenRA 对照: Player.DisplayFaction
+   */
+  readonly displayFaction: FactionInfoStub
+
+  /**
+   * The spawn point index assigned / chosen in the lobby.
+   *
+   * OpenRA 对照: Player.SpawnPoint
+   */
+  readonly spawnPoint: number
+
+  /**
+   * The display spawn point index (including 0 for Random).
+   *
+   * OpenRA 对照: Player.DisplaySpawnPoint
+   */
+  readonly displaySpawnPoint: number
+
+  // -----------------------------------------------------------------------
+  // Instance fields — mutable state
+  // -----------------------------------------------------------------------
+
+  /**
+   * Win/Loss state for this player.
+   *
+   * OpenRA 对照: Player.WinState
+   */
+  winState: WinState = WinState.Undefined
+
+  /**
+   * Whether this player has mission objectives displayed.
+   *
+   * OpenRA 对照: Player.HasObjectives
+   */
+  hasObjectives: boolean = false
+
+  /**
+   * The player's original color (ARGB format).
+   *
+   * OpenRA 对照: Player.color (readonly backing field)
+   */
+  readonly color: number
+
+  /**
+   * The player's display color (may be overridden by relationship colors).
+   *
+   * OpenRA 对照: Player.Color (with relationship colors applied)
+   */
+  displayColor: number
+
+  // -----------------------------------------------------------------------
+  // Instance fields — diplomacy masks (对应 OpenRA LongBitSet fields)
+  // -----------------------------------------------------------------------
+
+  /**
+   * This player's unique bit in the player bit set.
+   *
+   * OpenRA 对照: Player.PlayerMask
+   */
+  playerMask: LongBitSet<PlayerBitMask>
+
+  /**
+   * Bitmask of all allied players.
+   *
+   * OpenRA 对照: Player.AlliedPlayersMask
+   */
+  alliedPlayersMask: LongBitSet<PlayerBitMask>
+
+  /**
+   * Bitmask of all enemy players.
+   *
+   * OpenRA 对照: Player.EnemyPlayersMask
+   */
+  enemyPlayersMask: LongBitSet<PlayerBitMask>
+
+  // -----------------------------------------------------------------------
+  // Private fields
+  // -----------------------------------------------------------------------
+
+  /**
+   * Whether this is a mission map that forbids player leaving.
+   *
+   * OpenRA 对照: Player.inMissionMap
+   */
+  private readonly _inMissionMap: boolean
+
+  /**
+   * Whether this player is a spectator.
+   *
+   * OpenRA 对照: Player.spectating
+   */
+  private readonly _spectating: boolean
+
+  /**
+   * Registered IUnlocksRenderPlayer traits (fast-path cached array).
+   *
+   * OpenRA 对照: Player.unlockRenderPlayer
+   */
+  private readonly _unlockRenderPlayer: UnlocksRenderPlayerStub[]
+
+  /**
+   * Registered INotifyPlayerDisconnected traits (fast-path cached array).
+   *
+   * OpenRA 对照: Player.notifyDisconnected
+   */
+  private readonly _notifyDisconnected: NotifyPlayerDisconnectedStub[]
+
+  /**
+   * Available bot info objects for resolving bot names.
+   *
+   * OpenRA 对照: Player.botInfos
+   */
+  private readonly _botInfos: BotInfoStub[]
+
+  /**
+   * Cached resolved player name (lazy-computed).
+   *
+   * OpenRA 对照: Player.resolvedPlayerName
+   */
+  private _resolvedPlayerName: string | null = null
+
+  // -----------------------------------------------------------------------
+  // Properties (对应 OpenRA computed properties)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Whether this player is currently spectating.
+   *
+   * OpenRA 对照: Player.Spectating
+   *
+   * A player is spectating if they are in a non-mission map and either:
+   * - They are marked as spectating directly, OR
+   * - Their WinState is not Undefined (game over for this player)
+   */
+  get isSpectating(): boolean {
+    return (
+      !this._inMissionMap &&
+      (this._spectating || this.winState !== WinState.Undefined)
+    )
+  }
+
+  /**
+   * Whether the render player can see this player's units.
+   *
+   * OpenRA 对照: Player.UnlockedRenderPlayer
+   */
+  get unlockedRenderPlayer(): boolean {
+    // PERF: Avoid LINQ — iterate array directly
+    for (const u of this._unlockRenderPlayer) {
+      if (u.renderPlayerUnlocked) return true
+    }
+    return this.winState !== WinState.Undefined && !this._inMissionMap
+  }
+
+  /**
+   * The chosen player name including localized and enumerated bot names.
+   *
+   * OpenRA 对照: Player.ResolvedPlayerName
+   */
+  get resolvedPlayerName(): string {
+    if (this._resolvedPlayerName === null) {
+      this._resolvedPlayerName = this.resolvePlayerName()
+    }
+    return this._resolvedPlayerName
+  }
+
+  // -----------------------------------------------------------------------
+  // Constructor (对应 OpenRA Player constructor)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Create a new Player.
+   *
+   * OpenRA 对照: Player(World, Session.Client, PlayerReference,
+   *   MersenneTwister)
+   *
+   * The constructor:
+   * 1. Stores all identity/configuration fields
+   * 2. Resolves faction and display faction
+   * 3. Allocates the player's bit mask in LongBitSet<PlayerBitMask>
+   * 4. Creates the PlayerActor (a GameActor with OwnerInit pointing to this
+   *    player)
+   * 5. Retrieves Shroud and FrozenActorLayer traits from PlayerActor
+   * 6. Activates bot logic if IsBot and this client is the host
+   * 7. Caches unlockRenderPlayer and notifyDisconnected traits
+   *
+   * @param world — the game world
+   * @param client — the session client (null for map-defined players)
+   * @param pr — the player reference from the map
+   * @param playerRandom — random generator for faction resolution
+   * @param factionInfos — available faction info objects (for faction
+   *   resolution)
+   */
+  constructor(
+    world: WorldStubPlayer,
+    client: SessionClientStub | null,
+    pr: PlayerReferenceStub,
+    playerRandom: MersenneTwisterStub,
+    factionInfos: readonly FactionInfoStub[],
+  ) {
+    this.world = world
+
+    this.internalName = pr.name
+    this.playerReference = pr
+
+    this._inMissionMap = false // NOTE: world.Map.Visibility.HasFlag not yet available
+    this._botInfos = [] // NOTE: botInfos from World.Map.Rules not yet available
+
+    if (client !== null) {
+      // Real player or host-created bot
+      this.clientIndex = client.index
+      this.color = client.color
+      this.displayColor = client.color
+      this.playerName = client.name
+
+      this.botType = client.bot ?? null
+      this.faction = Player.resolveFaction(
+        client.faction,
+        factionInfos,
+        playerRandom,
+        !pr.lockFaction,
+      )
+      this.displayFaction = Player.resolveDisplayFaction(
+        factionInfos,
+        client.faction,
+      )
+
+      this.homeLocation = pr.homeLocation // NOTE: IAssignSpawnPoints resolution not yet available
+      this.spawnPoint = client.spawnPoint
+      this.displaySpawnPoint = client.spawnPoint
+
+      this.handicap = client.handicap
+      this._spectating = false
+      this.nonCombatant = false
+      this.playable = true
+    } else {
+      // Map-defined player
+      this.clientIndex = 0 // NOTE: Owned by host (TODO: fix this — OpenRA comment)
+      this.color = pr.color
+      this.displayColor = pr.color
+      this.playerName = pr.name
+      this.nonCombatant = pr.nonCombatant
+      this.playable = pr.playable
+      this._spectating = pr.spectating
+      this.botType = pr.bot ?? null
+      this.faction = Player.resolveFaction(
+        pr.faction,
+        factionInfos,
+        playerRandom,
+        false,
+      )
+      this.displayFaction = Player.resolveDisplayFaction(
+        factionInfos,
+        pr.faction,
+      )
+      this.homeLocation = pr.homeLocation
+      this.spawnPoint = 0
+      this.displaySpawnPoint = 0
+      this.handicap = pr.handicap
+    }
+
+    // Allocate player bit mask (unless spectating)
+    if (!this._spectating) {
+      this.playerMask = new LongBitSet<PlayerBitMask>(
+        PLAYER_BITMASK_TYPENAME,
+        this.internalName,
+      )
+    } else {
+      this.playerMask = new LongBitSet<PlayerBitMask>(
+        PLAYER_BITMASK_TYPENAME,
+      )
+    }
+
+    this.alliedPlayersMask = new LongBitSet<PlayerBitMask>(
+      PLAYER_BITMASK_TYPENAME,
+    )
+    this.enemyPlayersMask = new LongBitSet<PlayerBitMask>(
+      PLAYER_BITMASK_TYPENAME,
+    )
+
+    // Set IsBot before any PlayerActor callbacks
+    this.isBot = this.botType !== null
+
+    // Create the PlayerActor
+    // NOTE: In OpenRA, the PlayerActor type is SystemActors.Player (or
+    // EditorPlayer in editor mode) with an OwnerInit(this).
+    // Since we cannot fully initialize traits yet (no YAML trait system),
+    // we create a minimal actor.
+    // TODO-3.E: Create with proper actor type and trait initialization
+    // when ActorInfo/YAML system is migrated.
+    this.playerActor = world.createPlayerActor(
+      this.internalName,
+      this,
+    )
+
+    // Retrieve Shroud and FrozenActorLayer from PlayerActor
+    // NOTE: These are stubs — real trait retrieval will be available
+    // when Shroud and FrozenActorLayer are migrated.
+    // Use `as any` cast because ShroudStub/FrozenActorLayerStub do not
+    // extend Component yet (TODO-3.G: Remove cast when traits are migrated).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.shroud =
+      (this.playerActor as any).traitOrDefault?.('Shroud') ??
+      SHROUD_STUB_DEFAULT
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.frozenActorLayer =
+      (this.playerActor as any).traitOrDefault?.('FrozenActorLayer') ??
+      FROZEN_ACTOR_LAYER_STUB_DEFAULT
+
+    // Activate bot logic on the host
+    // NOTE: Full bot activation requires TBot lookup from world rules and
+    // Game.IsHost check. Stubbed for now.
+    // TODO-3.E: Activate bot when IBot and rules system are migrated.
+    if (this.isBot) {
+      // Bot activation will be handled by external code when bot system is ready
+    }
+
+    // Cache unlockRenderPlayer and notifyDisconnected traits
+    this._unlockRenderPlayer = [] // NOTE: Retrieved from PlayerActor traits
+    this._notifyDisconnected = [] // NOTE: Retrieved from PlayerActor traits
+  }
+
+  // -----------------------------------------------------------------------
+  // Static helpers for faction resolution
+  // -----------------------------------------------------------------------
+
+  /**
+   * Resolve the display faction (first match or first faction).
+   *
+   * OpenRA 对照: Player.ResolveDisplayFaction(World, string)
+   *
+   * The display faction is the faction as chosen in the lobby, before
+   * Random faction resolution. It is used for UI display only.
+   *
+   * @param factionInfos — all available faction info objects
+   * @param factionName — the faction internal name requested
+   * @returns the first matching faction, or the first faction overall
+   */
+  static resolveDisplayFaction(
+    factionInfos: readonly FactionInfoStub[],
+    factionName: string,
+  ): FactionInfoStub {
+    return (
+      factionInfos.find((f) => f.internalName === factionName) ??
+      factionInfos[0]
+    )
+  }
+
+  // -----------------------------------------------------------------------
+  // ToString (对应 OpenRA Player.ToString)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Get a human-readable string representation of this player.
+   *
+   * OpenRA 对照: Player.ToString()
+   */
+  toString(): string {
+    return `${this.resolvedPlayerName} (${this.clientIndex})`
+  }
+
+  // -----------------------------------------------------------------------
+  // Name resolution (对应 OpenRA ResolvePlayerName)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Resolve the player's display name, localizing bot names.
+   *
+   * OpenRA 对照: Player.ResolvePlayerName()
+   *
+   * For bot players, the name is resolved using Fluent to provide
+   * localized enumerated bot names (e.g., "Bot 1", "Bot 2").
+   *
+   * NOTE: FluentProvider is not yet migrated. Bot names are returned
+   * with a simple format for now.
+   * TODO-3.E: Integrate with FluentProvider when localization is migrated.
+   */
+  private resolvePlayerName(): string {
+    if (this.isBot && this.botType) {
+      const botInfo = this._botInfos.find((b) => b.type === this.botType)
+      const botName = botInfo?.name ?? this.botType
+
+      // Count bots of the same type for enumeration
+      // NOTE: In OpenRA this uses World.Players — we use world.players
+      let botIndex = 0
+      const worldPlayers = this.world.players as Player[]
+      for (let i = 0; i < worldPlayers.length; i++) {
+        const p = worldPlayers[i]
+        if (p.botType === this.botType) {
+          if (p === this) {
+            botIndex = i // index within same-type bots
+            break
+          }
+        }
+      }
+
+      // NOTE: FluentProvider.GetMessage not yet available.
+      // Simple format: "BotName 1", "BotName 2", etc.
+      return `${botName} ${botIndex + 1}`
+    }
+
+    return this.playerName
+  }
+
+  // -----------------------------------------------------------------------
+  // Diplomacy (对应 OpenRA RelationshipWith / IsAlliedWith)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Determine the diplomatic relationship between this player and another.
+   *
+   * OpenRA 对照: Player.RelationshipWith(Player)
+   *
+   * Relationship rules (matching OpenRA exactly):
+   * 1. Self → Ally
+   * 2. Other is null or spectator → NonCombatant→Neutral, else Ally
+   * 3. AlliedPlayersMask overlaps other.PlayerMask → Ally
+   * 4. EnemyPlayersMask overlaps other.PlayerMask → Enemy
+   * 5. Otherwise → Neutral
+   *
+   * Complexity: O(1) — uses LongBitSet.Overlaps() (bigint bitwise AND)
+   *
+   * @param other — the player to check relationship with, or null
+   * @returns the relationship (Ally, Enemy, or Neutral)
+   */
+  relationshipWith(other: Player | null): PlayerRelationship {
+    if (this === other) {
+      return PlayerRelationship.Ally
+    }
+
+    // Observers are considered allies to active combatants
+    if (other === null || other.isSpectating) {
+      return this.nonCombatant
+        ? PlayerRelationship.Neutral
+        : PlayerRelationship.Ally
+    }
+
+    if (this.alliedPlayersMask.overlaps(other.playerMask)) {
+      return PlayerRelationship.Ally
+    }
+
+    if (this.enemyPlayersMask.overlaps(other.playerMask)) {
+      return PlayerRelationship.Enemy
+    }
+
+    return PlayerRelationship.Neutral
+  }
+
+  /**
+   * Check whether this player is allied with another player.
+   *
+   * OpenRA 对照: Player.IsAlliedWith(Player)
+   *
+   * Equivalent to: RelationshipWith(p) == PlayerRelationship.Ally
+   *
+   * @param p — the player to check (may be null)
+   * @returns true if the other player is an ally
+   */
+  isAlliedWith(p: Player | null): boolean {
+    return this.relationshipWith(p) === PlayerRelationship.Ally
+  }
+
+  // -----------------------------------------------------------------------
+  // Internal methods (对应 OpenRA internal methods)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Notify all INotifyPlayerDisconnected traits that a player disconnected.
+   *
+   * OpenRA 对照: Player.PlayerDisconnected(Player)
+   *
+   * Called internally when a player leaves the game.
+   *
+   * @param p — the player that disconnected
+   */
+  playerDisconnected(p: Player): void {
+    for (const np of this._notifyDisconnected) {
+      np.playerDisconnected(this.playerActor, p)
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Local stub types (avoid circular imports with World/WorldRenderer)
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal World stub for Player constructor dependencies.
+ *
+ * OpenRA 对照: OpenRA.Game/World.cs
+ */
+interface WorldStubPlayer {
+  players: readonly (Player | { botType?: string | null })[]
+  createPlayerActor(internalName: string, owner: Player): GameActor
+}
+
+/**
+ * Minimal WorldRenderer stub for palette update method.
+ *
+ * OpenRA 对照: OpenRA.Game/Graphics/WorldRenderer.cs
+ */
+interface WorldRendererStubPlayer {
+  updatePalettesForPlayer(
+    internalName: string,
+    color: number,
+    isUpdate: boolean,
+  ): void
+}
+
+// ---------------------------------------------------------------------------
+// Default stubs (used when traits are not available from PlayerActor)
+// ---------------------------------------------------------------------------
+
+const SHROUD_STUB_DEFAULT: ShroudStub = {
+  isDiscovered: false,
+}
+
+const FROZEN_ACTOR_LAYER_STUB_DEFAULT: FrozenActorLayerStub = {}
+
+// ---------------------------------------------------------------------------
+// Relationship color constants (hardcoded defaults — these will come from
+// ChromeMetrics when UI system is migrated)
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether to use player stance colors.
+ *
+ * OpenRA 对照: Game.Settings.Game.UsePlayerStanceColors
+ *
+ * TODO-3.E: Read from Game.Settings when game settings are migrated.
+ */
+let playerUseStanceColors = true
+
+/** Default stance color: self (green tint). */
+const STANCE_COLOR_SELF = 0xff00ff00
+
+/** Default stance color: allies (yellow tint). */
+const STANCE_COLOR_ALLIES = 0xffffff00
+
+/** Default stance color: neutrals (white — no tint). */
+const STANCE_COLOR_NEUTRALS = 0xffffffff
+
+/** Default stance color: enemies (red tint). */
+const STANCE_COLOR_ENEMIES = 0xffff0000
