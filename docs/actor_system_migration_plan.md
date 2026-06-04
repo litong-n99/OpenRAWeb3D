@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Implementation Phase (32/36 migrated, 24/31 in-scope)
+> **Chapter Status**: Chapter 3 -- Implementation Phase (33/36 migrated, 25/31 in-scope)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -550,10 +550,11 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 
 ### 3.7 Phase G: Player.cs -- Player Management
 
-**Status**: Pending (0/1)
+**Status**: Completed (1/1) -- 2026-06-04
 **Complexity**: Low
 **Blocked by**: Phase A (LongBitSet for PlayerMask), Phase D (Actor -- PlayerActor pattern)
 **Blocks**: Diplomacy, Fog of War (Shroud), UI (player info display)
+**Implementation**: ~1272 lines TS + ~1407 lines test, 82 tests | **Review**: 1 round, 0 BLOCKERs
 
 **OpenRA Reference**: `OpenRA.Game/Player.cs` (337 lines)
 **Migration Target**: `src/OpenRA.Game/Player.ts`
@@ -606,7 +607,7 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 - `WinState` transitions are immutable (Won/Lost cannot revert)
 - Spectating players have full map visibility and cannot issue orders
 
-**Estimated Effort**: ~400 lines implementation + ~300 lines test (2-3 developer-days)
+**Estimated Effort**: ~1272 lines implementation + ~1407 lines test (82 tests, 1 review round)
 
 ---
 

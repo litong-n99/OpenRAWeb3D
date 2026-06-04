@@ -309,6 +309,13 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 
 ### Phases H-I: Remaining Core System (4 files)
 
+| # | Source | Target | Complexity | Phase | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| H1 | `IEffect.cs` | `src/OpenRA.Game/Effects/IEffect.ts` | Low | H | Pending |
+| H2 | `DelayedAction.cs` | `src/OpenRA.Game/Effects/DelayedAction.ts` | Low | H | Pending |
+| H3 | `DelayedImpact.cs` | `src/OpenRA.Game/Effects/DelayedImpact.ts` | Low | H | Pending |
+| I | `ScreenMap.cs` | `src/OpenRA.Game/Traits/World/ScreenMap.ts` | Medium | I | Pending |
+
 ### Phase J: Weapon System (2 files, DEFERRABLE)
 
 | # | Source | Target | Complexity | Status |
