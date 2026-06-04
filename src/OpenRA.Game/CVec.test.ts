@@ -178,6 +178,40 @@ describe('CVec length', () => {
 })
 
 // ---------------------------------------------------------------------------
+// hashCode
+// ---------------------------------------------------------------------------
+
+describe('CVec.hashCode', () => {
+  it('same CVec produces same hash', () => {
+    expect(new CVec(1, 2).hashCode()).toBe(new CVec(1, 2).hashCode())
+  })
+
+  it('different CVecs typically produce different hashes', () => {
+    const a = new CVec(3, 4)
+    const b = new CVec(4, 3)
+    expect(a.hashCode()).not.toBe(b.hashCode())
+  })
+
+  it('Zero hash is consistent', () => {
+    expect(CVec.Zero.hashCode()).toBe(0)
+  })
+
+  it('hash is deterministic across calls', () => {
+    const v = new CVec(-5, 10)
+    const h1 = v.hashCode()
+    const h2 = v.hashCode()
+    expect(h1).toBe(h2)
+  })
+
+  it('hash is a 32-bit signed integer', () => {
+    const v = new CVec(1000, 2000)
+    const h = v.hashCode()
+    expect(h).toBeGreaterThanOrEqual(-2147483648)
+    expect(h).toBeLessThanOrEqual(2147483647)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Standard methods
 // ---------------------------------------------------------------------------
 

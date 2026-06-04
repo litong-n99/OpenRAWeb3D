@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { isqrt } from './Exts'
+import { isqrt, isqrtCeiling } from './Exts'
 
 describe('isqrt', () => {
   it('isqrt(0) = 0', () => {
@@ -46,5 +46,44 @@ describe('isqrt', () => {
     // sqrt of 2^31 - 1
     const result = isqrt(2147483647)
     expect(result).toBe(46340) // floor(sqrt(2147483647)) = 46340
+  })
+})
+
+// ---------------------------------------------------------------------------
+// isqrtCeiling
+// ---------------------------------------------------------------------------
+
+describe('isqrtCeiling', () => {
+  it('isqrtCeiling(0) = 0', () => {
+    expect(isqrtCeiling(0)).toBe(0)
+  })
+
+  it('isqrtCeiling(1) = 1', () => {
+    expect(isqrtCeiling(1)).toBe(1)
+  })
+
+  it('isqrtCeiling(4) = 2', () => {
+    expect(isqrtCeiling(4)).toBe(2)
+  })
+
+  it('isqrtCeiling(2) = 2 (ceiling)', () => {
+    expect(isqrtCeiling(2)).toBe(2)
+  })
+
+  it('isqrtCeiling(3) = 2 (ceiling)', () => {
+    expect(isqrtCeiling(3)).toBe(2)
+  })
+
+  it('isqrtCeiling(5) = 3 (ceiling)', () => {
+    expect(isqrtCeiling(5)).toBe(3)
+  })
+
+  it('isqrtCeiling of perfect square = floor', () => {
+    expect(isqrtCeiling(100)).toBe(10)
+    expect(isqrtCeiling(1024 * 1024)).toBe(1024)
+  })
+
+  it('throws for negative input', () => {
+    expect(() => isqrtCeiling(-1)).toThrow()
   })
 })

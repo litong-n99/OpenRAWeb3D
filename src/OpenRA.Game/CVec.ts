@@ -229,6 +229,24 @@ export class CVec {
     return isqrt(this.lengthSquared)
   }
 
+  /**
+   * Deterministic hash code for tiebreaker sorting.
+   *
+   * OpenRA 对照: CVec.GetHashCode()
+   *
+   * NOTE: .NET ValueType.GetHashCode() uses a runtime-random seed in
+   * .NET 6+. We use a stable hash for cross-browser determinism:
+   *   h = (X * 397) ^ Y
+   * The constant 397 is chosen to produce reasonable distribution for
+   * typical cell coordinate ranges [-50, 50].
+   *
+   * @returns a deterministic 32-bit integer hash
+   */
+  hashCode(): number {
+    // NOTE: `| 0` converts to 32-bit signed for deterministic results
+    return ((this.X * 397) ^ this.Y) | 0
+  }
+
   // -----------------------------------------------------------------------
   // Standard overrides
   // -----------------------------------------------------------------------

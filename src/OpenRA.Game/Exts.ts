@@ -45,3 +45,23 @@ export function isqrt(n: number): number {
 
   return root
 }
+
+// ---------------------------------------------------------------------------
+// ISqrt — integer square root (ceiling mode)
+// ---------------------------------------------------------------------------
+
+/**
+ * Integer square root with ceiling rounding.
+ *
+ * OpenRA 对照: Exts.ISqrt(int, ISqrtRoundMode.Ceiling)
+ *
+ * Uses the floor isqrt then bumps up if root * root < n.
+ *
+ * @param n — non-negative integer
+ * @returns ceil(sqrt(n))
+ * @throws Error if n is negative
+ */
+export function isqrtCeiling(n: number): number {
+  const root = isqrt(n)
+  return root * root < n ? root + 1 : root
+}

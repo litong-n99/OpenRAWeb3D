@@ -1,260 +1,29 @@
 /**
- * MapGrid.ts — Map grid geometry with CellRamp height interpolation and
- *             deterministic tile distance lookup tables
- * OpenRA 对照: OpenRA.Game/Map/MapGrid.cs (256 lines)
+ * MapGrid.ts — Map grid geometry with deterministic tile distance lookup tables
+ * OpenRA 对照: OpenRA.Game/Map/MapGrid.cs (256 lines C#)
  *
  * 核心范式转换:
- * - C# readonly struct CellRamp → immutable TypeScript class
- * - C# enum RampCornerHeight / RampSplit → const-as-enum objects
  * - C# ImmutableArray<T> → readonly T[] (frozen via Object.freeze)
  * - C# MiniYaml constructor (FieldLoader.Load) → plain config object
- * - ISqrt(…, Ceiling) → private isqrtCeiling() helper (Exts.isqrt only has Floor)
- * - CVec.GetHashCode() sort tiebreaker → deterministic hashCVec() helper
- * - 21 hardcoded CellRamp definitions byte-for-byte from OpenRA source
+ * - C# ISqrt(…, Ceiling) → Exts.isqrtCeiling()
+ * - C# CVec.GetHashCode() → CVec.hashCode()
+ * - CellRamp, RampCornerHeight, RampSplit extracted → CellRamp.ts
  */
 
 import { WVec } from '../WVec'
 import { WRot } from '../WRot'
 import { WAngle } from '../WAngle'
 import { CVec } from '../CVec'
-import { isqrt } from '../Exts'
+import { isqrtCeiling } from '../Exts'
 import { MapGridType } from './MapGridType'
 import { SubCell } from '../Traits/SubCell'
+import { CellRamp, RampCornerHeight, RampSplit } from './CellRamp'
 
 // ---------------------------------------------------------------------------
-// Private helpers (mirror OpenRA Exts / ValueType functionality)
+// Re-export ramp types for backward compatibility
 // ---------------------------------------------------------------------------
 
-/**
- * Integer square root with ceiling rounding.
- *
- * OpenRA 对照: Exts.ISqrt(n, ISqrtRoundMode.Ceiling)
- */
-function isqrtCeiling(n: number): number {
-  const root = isqrt(n)
-  return root * root < n ? root + 1 : root
-}
-
-/**
- * Deterministic hash for CVec tiebreaker sorting.
- *
- * OpenRA 对照: CVec.GetHashCode() — used as secondary sort key in
- * TilesByDistance generation to produce "random-appearing" ordering
- * within same-distance groups.
- *
- * NOTE: .NET ValueType.GetHashCode() uses runtime-random seeds in
- * .NET 6+. We use a stable FNV-1a-like hash for cross-browser determinism.
- */
-function hashCVec(v: CVec): number {
-  // Constants chosen to produce reasonable distribution for typical
-  // cell coordinate ranges [-50, 50]
-  return (v.X * 397) ^ v.Y
-}
-
-// ---------------------------------------------------------------------------
-// RampCornerHeight (OpenRA 对照: RampCornerHeight enum)
-// ---------------------------------------------------------------------------
-
-/**
- * Corner height level for CellRamp construction.
- *
- * OpenRA 对照: RampCornerHeight enum
- *
- * Each corner can be at Low (0), Half (self height), or Full (cell height).
- */
-export const RampCornerHeight = {
-  Low: 0,
-  Half: 1,
-  Full: 2,
-} as const
-
-export type RampCornerHeight =
-  (typeof RampCornerHeight)[keyof typeof RampCornerHeight]
-
-// ---------------------------------------------------------------------------
-// RampSplit (OpenRA 对照: RampSplit enum)
-// ---------------------------------------------------------------------------
-
-/**
- * Polygon split direction for CellRamp.
- *
- * OpenRA 对照: RampSplit enum
- *
- * Flat: single quad (4 vertices = 1 polygon)
- * X: split along diagonal from TL→BR (tri 0-1-3 + tri 1-2-3)
- * Y: split along diagonal from TR→BL (tri 0-1-2 + tri 0-2-3)
- */
-export const RampSplit = {
-  Flat: 0,
-  X: 1,
-  Y: 2,
-} as const
-
-export type RampSplit = (typeof RampSplit)[keyof typeof RampSplit]
-
-// ---------------------------------------------------------------------------
-// CellRamp (OpenRA 对照: CellRamp readonly struct)
-// ---------------------------------------------------------------------------
-
-/** Options for constructing a CellRamp with named corner heights and split. */
-export interface CellRampOptions {
-  tl?: RampCornerHeight
-  tr?: RampCornerHeight
-  br?: RampCornerHeight
-  bl?: RampCornerHeight
-  split?: RampSplit
-}
-
-/**
- * Defines a single cell slope shape with corner heights, triangle polygon(s),
- * and barycentric height interpolation.
- *
- * OpenRA 对照: CellRamp readonly struct
- *
- * Each CellRamp encodes the 3D shape of a terrain slope within one cell.
- * The 4 corners are at grid-relative coordinates with Z = height.
- * The polygon(s) define 1-2 triangles for barycentric interpolation.
- */
-export class CellRamp {
-  /** Height at the center of the cell (computed via HeightOffset(0, 0)).
-   *
-   * OpenRA 对照: CellRamp.CenterHeightOffset
-   */
-  readonly centerHeightOffset: number
-
-  /** Four corners in grid-local space: TL, TR, BR, BL.
-   *
-   * OpenRA 对照: CellRamp.Corners
-   */
-  readonly corners: readonly WVec[]
-
-  /** 1-2 triangle polygons, each as an array of 3 corner references.
-   *
-   * OpenRA 对照: CellRamp.Polygons
-   */
-  readonly polygons: readonly (readonly WVec[])[]
-
-  /** Rotational orientation of the ramp.
-   *
-   * OpenRA 对照: CellRamp.Orientation
-   */
-  readonly orientation: WRot
-
-  /**
-   * Construct a CellRamp for the given grid type.
-   *
-   * OpenRA 对照: CellRamp(MapGridType, WRot, RampCornerHeight…, RampSplit)
-   *
-   * Corner indices: 0=TL, 1=TR, 2=BR, 3=BL
-   *
-   * @param type — grid type (determines corner XY coordinates and height scale)
-   * @param orientation — rotational orientation for slope applications
-   * @param options — corner heights (tl, tr, br, bl) and split direction
-   */
-  constructor(
-    type: MapGridType,
-    orientation: WRot,
-    options: CellRampOptions = {},
-  ) {
-    const {
-      tl = RampCornerHeight.Low,
-      tr = RampCornerHeight.Low,
-      br = RampCornerHeight.Low,
-      bl = RampCornerHeight.Low,
-      split = RampSplit.Flat,
-    } = options
-
-    this.orientation = orientation
-
-    // Height scale: 512 for rectangular, 724 for isometric
-    const scale = type === MapGridType.RectangularIsometric ? 724 : 512
-
-    if (type === MapGridType.RectangularIsometric) {
-      this.corners = Object.freeze([
-        Object.freeze(new WVec(0, -724, 724 * tl)),
-        Object.freeze(new WVec(724, 0, 724 * tr)),
-        Object.freeze(new WVec(0, 724, 724 * br)),
-        Object.freeze(new WVec(-724, 0, 724 * bl)),
-      ]) as readonly WVec[]
-    } else {
-      this.corners = Object.freeze([
-        Object.freeze(new WVec(-scale, -scale, scale * tl)),
-        Object.freeze(new WVec(scale, -scale, scale * tr)),
-        Object.freeze(new WVec(scale, scale, scale * br)),
-        Object.freeze(new WVec(-scale, scale, scale * bl)),
-      ]) as readonly WVec[]
-    }
-
-    // Build polygon(s) based on split mode
-    const c = this.corners
-    if (split === RampSplit.X) {
-      // Split along TL→BR diagonal: two triangles
-      this.polygons = Object.freeze([
-        Object.freeze([c[0], c[1], c[3]]),
-        Object.freeze([c[1], c[2], c[3]]),
-      ]) as readonly (readonly WVec[])[]
-    } else if (split === RampSplit.Y) {
-      // Split along TR→BL diagonal: two triangles
-      this.polygons = Object.freeze([
-        Object.freeze([c[0], c[1], c[2]]),
-        Object.freeze([c[0], c[2], c[3]]),
-      ]) as readonly (readonly WVec[])[]
-    } else {
-      // Flat: single quad (first 3 vertices used as triangle for interpolation)
-      this.polygons = Object.freeze([
-        Object.freeze([c[0], c[1], c[2]]),
-      ]) as readonly (readonly WVec[])[]
-    }
-
-    // Compute center height via barycentric interpolation at (0, 0)
-    this.centerHeightOffset = this.heightOffset(0, 0)
-  }
-
-  /**
-   * Compute the height offset at a given (dx, dy) within the cell using
-   * barycentric interpolation over the ramp's polygon(s).
-   *
-   * OpenRA 对照: CellRamp.HeightOffset(int dX, int dY)
-   *
-   * Iterates over polygon triangles, checks if (dx,dy) is inside the triangle
-   * (0 <= u,v <= 1024), then interpolates Z using barycentric weights.
-   *
-   * @param dX — X offset within cell (grid-local coordinates)
-   * @param dY — Y offset within cell (grid-local coordinates)
-   * @returns interpolated Z (height) at the point
-   */
-  heightOffset(dX: number, dY: number): number {
-    // Iterate over polygons — each is assumed to be a triangle
-    let u: number
-    let v: number
-    let p: readonly WVec[]
-    let i = 0
-
-    do {
-      p = this.polygons[i]
-
-      // Barycentric coordinate u for vertex p[1]
-      u =
-        ((p[1].Y - p[2].Y) * (dX - p[2].X) -
-          (p[1].X - p[2].X) * (dY - p[2].Y)) /
-        1024
-
-      // Barycentric coordinate v for vertex p[0]
-      v =
-        ((p[0].X - p[2].X) * (dY - p[2].Y) -
-          (p[0].Y - p[2].Y) * (dX - p[2].X)) /
-        1024
-
-      // Point is within the triangle if 0 <= u,v <= 1024
-      if (u >= 0 && u <= 1024 && v >= 0 && v <= 1024) break
-
-      i++
-    } while (i < this.polygons.length)
-
-    // Calculate w from u,v and interpolate height
-    return (u * p[0].Z + v * p[1].Z + (1024 - u - v) * p[2].Z) / 1024
-  }
-}
+export { CellRamp, RampCornerHeight, RampSplit, type CellRampOptions } from './CellRamp'
 
 // ---------------------------------------------------------------------------
 // MapGrid configuration interface (MiniYaml replacement)
@@ -324,8 +93,7 @@ export class MapGrid {
    * OpenRA 对照: MapGrid.DefaultSubCell
    *
    * NOTE: Stored as `number` because valid sub-cell indices (0-5) extend
-   *   beyond the SubCell enum values (which only covers Invalid/Any/FullCell/First).
-   *   The SubCell enum in C# is `byte` and can hold any value 0-255.
+   *   beyond the SubCell enum named values. C# byte enum holds 0-255.
    */
   readonly defaultSubCell: number
 
@@ -352,14 +120,14 @@ export class MapGrid {
    *   3: (0,0,0)     — center
    *   4: (-299,256,0)  — bottom-left
    *   5: (256,256,0)   — bottom-right
+   *
+   * NOTE: Indices 0 and 3 are BOTH (0,0,0) — matches OpenRA.
    */
   readonly subCellOffsets: readonly WVec[]
 
   /** The 21 predefined ramp shapes.
    *
    * OpenRA 对照: MapGrid.Ramps
-   *
-   * See the hardcoded array in createRamps() — byte-for-byte from OpenRA.
    */
   readonly ramps: readonly CellRamp[]
 
@@ -387,7 +155,8 @@ export class MapGrid {
     this.maximumTileSearchRange = config.maximumTileSearchRange ?? 50
 
     // TileScale: 1024 rectangular, 1448 isometric
-    this.tileScale = this.type === MapGridType.RectangularIsometric ? 1448 : 1024
+    this.tileScale =
+      this.type === MapGridType.RectangularIsometric ? 1448 : 1024
 
     // SubCellOffsets — exact OpenRA values
     this.subCellOffsets = Object.freeze([
@@ -403,9 +172,7 @@ export class MapGrid {
     const rawDefault = config.defaultSubCell ?? SubCell.Invalid
     if (rawDefault === SubCell.Invalid) {
       // Default to middle sub-cell (index = SubCellOffsets.length / 2 = 3)
-      this.defaultSubCell = Math.floor(
-        this.subCellOffsets.length / 2,
-      )
+      this.defaultSubCell = this.subCellOffsets.length / 2
     } else {
       const minSubCellOffset = this.subCellOffsets.length > 1 ? 1 : 0
       if (
@@ -434,7 +201,7 @@ export class MapGrid {
    *
    * OpenRA 对照: MapGrid.OffsetOfSubCell(SubCell)
    *
-   * @param subCell — sub-cell index (0-5 valid, others return Zero)
+   * @param subCell — sub-cell index (0-5 valid, others return WVec.Zero)
    * @returns the WVec offset for the sub-cell, or WVec.Zero for invalid/any
    */
   offsetOfSubCell(subCell: number): WVec {
@@ -460,14 +227,14 @@ export class MapGrid {
  * OpenRA 对照: MapGrid.Ramps = [ … ] in constructor
  *
  * Rotation axes and amounts match OpenRA byte-for-byte:
- *   southEast = new WVec(724, 724, 0) — used with backward for SE slope
- *   southWest  = new WVec(-724, 724, 0) — used with backward for SW slope
+ *   southEast = new WVec(724, 724, 0)
+ *   southWest  = new WVec(-724, 724, 0)
  *   south      = new WVec(0, 1024, 0)
  *   east       = new WVec(1024, 0, 0)
  *   forward    = new WAngle(64)
- *   backward   = -forward = new WAngle(-64)
+ *   backward   = WAngle.negate(forward)
  *   halfForward  = new WAngle(48)
- *   halfBackward = -halfForward = new WAngle(-48)
+ *   halfBackward = WAngle.negate(halfForward)
  *
  * @param type — MapGridType for corner coordinate computation
  * @returns frozen array of 21 CellRamp instances
@@ -481,24 +248,18 @@ function createRamps(type: MapGridType): readonly CellRamp[] {
 
   // Rotation amounts
   const forward = new WAngle(64)
-  const backward = WAngle.negate(forward) // new WAngle(-64)
+  const backward = WAngle.negate(forward)
   const halfForward = new WAngle(48)
-  const halfBackward = WAngle.negate(halfForward) // new WAngle(-48)
+  const halfBackward = WAngle.negate(halfForward)
 
-  const { Low, Half, Full } = RampCornerHeight
-  const { Flat, X: SplitX, Y: SplitY } = RampSplit
+  const { Half, Full } = RampCornerHeight
+  const { X: SplitX, Y: SplitY } = RampSplit
 
   const ramps = [
     // -------------------------------------------------------------------
     // 0: Flat
     // -------------------------------------------------------------------
-    new CellRamp(type, WRot.None, {
-      tl: Low,
-      tr: Low,
-      br: Low,
-      bl: Low,
-      split: Flat,
-    }),
+    new CellRamp(type, WRot.None),
 
     // -------------------------------------------------------------------
     // 1-4: Two adjacent corners raised by half a cell
@@ -506,22 +267,18 @@ function createRamps(type: MapGridType): readonly CellRamp[] {
     new CellRamp(type, WRot.fromAxisAngle(southEast, backward), {
       tr: Half,
       br: Half,
-      split: Flat,
     }),
     new CellRamp(type, WRot.fromAxisAngle(southWest, backward), {
       br: Half,
       bl: Half,
-      split: Flat,
     }),
     new CellRamp(type, WRot.fromAxisAngle(southEast, forward), {
       tl: Half,
       bl: Half,
-      split: Flat,
     }),
     new CellRamp(type, WRot.fromAxisAngle(southWest, forward), {
       tl: Half,
       tr: Half,
-      split: Flat,
     }),
 
     // -------------------------------------------------------------------
@@ -579,29 +336,25 @@ function createRamps(type: MapGridType): readonly CellRamp[] {
       tr: Half,
       br: Full,
       bl: Half,
-      split: Flat,
     }),
     new CellRamp(type, WRot.fromAxisAngle(east, forward), {
       tl: Half,
       br: Half,
       bl: Full,
-      split: Flat,
     }),
     new CellRamp(type, WRot.fromAxisAngle(south, forward), {
       tl: Full,
       tr: Half,
       bl: Half,
-      split: Flat,
     }),
     new CellRamp(type, WRot.fromAxisAngle(east, backward), {
       tl: Half,
       tr: Full,
       br: Half,
-      split: Flat,
     }),
 
     // -------------------------------------------------------------------
-    // 17-20: Two opposite corners raised by half a cell
+    // 17-21: Two opposite corners raised by half a cell
     // -------------------------------------------------------------------
     new CellRamp(type, WRot.None, {
       tr: Half,
@@ -637,15 +390,14 @@ function createRamps(type: MapGridType): readonly CellRamp[] {
  *
  * OpenRA 对照: MapGrid.CreateTilesByDistance()
  *
- * Cells within maximumTileSearchRange are grouped by integer ceiling distance.
- * Within each group, cells are sorted by: LengthSquared → hash → X → Y.
+ * Cells within maximumTileSearchRange are grouped by integer ceiling distance
+ * (via isqrtCeiling). Within each group, cells are sorted by:
+ *   LengthSquared → hashCode() → X → Y
  *
  * @param range — maximum tile search range
  * @returns frozen array of groups, indexed by ceiling distance
  */
-function createTilesByDistance(
-  range: number,
-): readonly (readonly CVec[])[] {
+function createTilesByDistance(range: number): readonly (readonly CVec[])[] {
   const groups: CVec[][] = []
   for (let i = 0; i < range + 1; i++) {
     groups.push([])
@@ -669,7 +421,7 @@ function createTilesByDistance(
       if (lsResult !== 0) return lsResult
 
       // Secondary: hash code (random-appearing tiebreaker)
-      const hashResult = hashCVec(a) - hashCVec(b)
+      const hashResult = a.hashCode() - b.hashCode()
       if (hashResult !== 0) return hashResult
 
       // Tertiary: X coordinate
