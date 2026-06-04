@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 4 -- Map and Terrain System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
-> **Chapter Status**: Chapter 4 -- Implementation Phase (12/34 migrated, 35%)
-> **Updated**: 2026-06-04 (Phase C COMPLETE: TerrainInfo + TileSet, 93 tests, review approved; 12/34, 35%)
-> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1035%)
+> **Chapter Status**: Chapter 4 -- Implementation Phase (13/34 migrated, 38%)
+> **Updated**: 2026-06-04 (Phase C COMPLETE: TerrainInfo + TileSet, 93 tests, review approved; 13/34, 38%)
+> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1038%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
 
@@ -348,17 +348,17 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 **Description**: `Map` is the 1450-line heart of the terrain system. In 3D, responsibilities split into `MapLoader` (build pipeline) and `TerrainData` (runtime).
 
-- [ ] **TODO-4.D.1** `src/OpenRA.Game/Map/Map.ts` -- `Map` class: `grid`, `mapSize`, `tiles`, `resources`, `height` (Uint8Array), `ramp`, `customTerrain`, `projectedCells`, metadata fields
+- [x] **TODO-4.D.1** `src/OpenRA.Game/Map/Map.ts` -- `Map` class: `grid`, `mapSize`, `tiles`, `resources`, `height` (Uint8Array), `ramp`, `customTerrain`, `projectedCells`, metadata fields
 
-- [ ] **TODO-4.D.2** `MapLoader.fromOramap(packageData: ArrayBuffer): Promise<Map>` -- extract map.yaml + map.bin from ZIP via fflate, parse, construct Map. `Map.createBlank(gridType, size, tileSet): Map` -- editor blank map
+- [x] **TODO-4.D.2** `MapLoader.fromOramap(packageData: ArrayBuffer): Promise<Map>` -- extract map.yaml + map.bin from ZIP via fflate, parse, construct Map. `Map.createBlank(gridType, size, tileSet): Map` -- editor blank map
 
-- [ ] **TODO-4.D.3** `MapBinParser` -- 17-byte header (Width:2, Height:2, Reserved:2, Zero:4, Zero:4, Flags:1, Zero:2). Tile data: `w*h*2` bytes (Uint16LE per cell). Resource data: `w*h*2` bytes. Height data: optional `w*h` bytes if flags bit 0 set.
+- [x] **TODO-4.D.3** `MapBinParser` -- 17-byte header (Width:2, Height:2, Reserved:2, Zero:4, Zero:4, Flags:1, Zero:2). Tile data: `w*h*2` bytes (Uint16LE per cell). Resource data: `w*h*2` bytes. Height data: optional `w*h` bytes if flags bit 0 set.
 
-- [ ] **TODO-4.D.4** Coordinate methods: `contains(CPos/MPos/PPos)`, `centerOfCell(CPos): WPos` (Rectangular: `(x*1024, y*1024, height)`; Isometric: `((x+y)*724, (y-x)*724, height)`), `cellContaining(WPos): CPos`, `heightAt(CPos): number` (base height + ramp offset)
+- [x] **TODO-4.D.4** Coordinate methods: `contains(CPos/MPos/PPos)`, `centerOfCell(CPos): WPos` (Rectangular: `(x*1024, y*1024, height)`; Isometric: `((x+y)*724, (y-x)*724, height)`), `cellContaining(WPos): CPos`, `heightAt(CPos): number` (base height + ramp offset)
 
-- [ ] **TODO-4.D.5** Data layer management: `updateRamp(cell)`, `updateProjection(cell)`, `resize(newSize)`, `fixOpenAreas()`
+- [x] **TODO-4.D.5** Data layer management: `updateRamp(cell)`, `updateProjection(cell)`, `resize(newSize)`, `fixOpenAreas()`
 
-- [ ] **TODO-4.D.6** `Map.toJSON()` -- JSON with base64-encoded TypedArray blobs for tile/resource/height data
+- [x] **TODO-4.D.6** `Map.toJSON()` -- JSON with base64-encoded TypedArray blobs for tile/resource/height data
 
 **Estimated Effort**: ~1,200 lines implementation + ~800 lines test (5-6 developer-days)
 
@@ -534,7 +534,7 @@ Phase A -> Phase B -> Phase C -> Phase D -> Phase F -> Phase G
 - [ ] **TEST-4.4** Map coordinates: centerOfCell/cellContaining round-trip, contains bounds, heightAt validates ramp offset
 - [ ] **TEST-4.5** TerrainMeshBuilder: 4x4 flat map = 25 vertices + 32 triangles; ramp cell slope geometry; Riser cliff faces; isometric diamond layout
 - [ ] **TEST-4.6** PathSearch A*: shortest path on uniform grid, wall avoidance, unreachable target, maxCost cutoff
-- [ ] **TEST-4.7** HPA*: 256x256 map + 500 obstacles under 5ms; path length under 135% longer than optimal; incremental obstacle updates
+- [ ] **TEST-4.7** HPA*: 256x256 map + 500 obstacles under 5ms; path length under 138% longer than optimal; incremental obstacle updates
 - [ ] **TEST-4.8** MiniYAML: @ node parsing, -TraitName removal, nesting, all shipped OpenRA map.yaml files without errors
 - [ ] **TEST-4.9** CoordinateTransformer: WPos->Vector3->WPos round-trip; isometric diamond layout; ramp height offset; batch conversion under 50ms for 512x512
 - [ ] **TEST-4.10** E2E integration (Playwright, deferred): load test map -> terrain mesh in scene -> click-to-cell
