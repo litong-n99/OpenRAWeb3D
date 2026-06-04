@@ -85,31 +85,59 @@ export const PLAYER_BITMASK_TYPENAME = 'PlayerBitMask'
  *
  * OpenRA 对照: PlayerReference class
  *
+ * Represents a player slot definition from the map YAML. Contains starting
+ * configuration (faction, color, spawn, team, allies/enemies) and lobby
+ * lock flags. Map-defined players use default values; client/lobby players
+ * have their overrides applied on top.
+ *
  * TODO-3.E: Replace with full PlayerReference class when Map module is migrated.
  */
 export interface PlayerReferenceStub {
+  /** Player name (display). */
   name: string
+  /** Palette identifier for player colors. */
   palette: string
+  /** Default bot type for this slot. */
   bot?: string
+  /** Starting units class identifier. */
   startingUnitsClass?: string
+  /** Whether bots can fill this slot. */
   allowBots: boolean
+  /** Whether this slot can be occupied by a player. */
   playable: boolean
+  /** Whether this player is required to start the game. */
   required: boolean
+  /** Whether this player owns the world (editor mode). */
   ownsWorld: boolean
+  /** Whether this is a spectator slot. */
   spectating: boolean
+  /** Whether this player is non-combatant (cannot attack). */
   nonCombatant: boolean
+  /** Whether the faction is locked in lobby. */
   lockFaction: boolean
+  /** Default faction internal name. */
   faction: string
+  /** Whether the color is locked in lobby. */
   lockColor: boolean
+  /** Default player color (ARGB). */
   color: number
+  /** Home/spawn location in cells. */
   homeLocation: CPos
+  /** Whether the spawn point is locked in lobby. */
   lockSpawn: boolean
+  /** Default spawn point index. */
   spawn: number
+  /** Whether the team is locked in lobby. */
   lockTeam: boolean
+  /** Default team number. */
   team: number
+  /** Whether the handicap is locked in lobby. */
   lockHandicap: boolean
+  /** Default handicap percentage (0-100). */
   handicap: number
+  /** Allied player names (for diplomacy setup). */
   allies: string[]
+  /** Enemy player names (for diplomacy setup). */
   enemies: string[]
 }
 
@@ -118,16 +146,28 @@ export interface PlayerReferenceStub {
  *
  * OpenRA 对照: Session.Client class
  *
- * Only the fields needed by the Player constructor are included.
+ * Contains the subset of Session.Client fields needed by the Player
+ * constructor for human and host-created bot players.
+ * Fields: index (slot), color (ARGB), name (display), bot (AI type
+ * or null for human), faction (lobby selection), handicap (0-100%),
+ * spawnPoint (map position index).
+ *
  * TODO-3.C: Replace with full Session.Client when Network module is migrated.
  */
 export interface SessionClientStub {
+  /** Client slot index (0-based). */
   index: number
+  /** Player color in ARGB format (0xAARRGGBB). */
   color: number
+  /** Player display name. */
   name: string
+  /** Bot type identifier, or undefined for human players. */
   bot?: string
+  /** Faction internal name selected in lobby. */
   faction: string
+  /** Handicap percentage (0-100). */
   handicap: number
+  /** Spawn point slot index. */
   spawnPoint: number
 }
 
@@ -136,26 +176,40 @@ export interface SessionClientStub {
  *
  * OpenRA 对照: FactionInfo : TraitInfo<Faction>
  *
- * Only the fields needed by Player.ResolveFaction are included.
+ * Contains the faction metadata needed by Player.ResolveFaction() for
+ * faction selection and random-faction resolution (resolving chains of
+ * RandomFactionMembers). Attached to World actor as a trait info.
+ *
  * TODO-3.E: Replace with full FactionInfo when Trait system is migrated.
  */
 export interface FactionInfoStub {
+  /** Display name visible to players. */
   name: string
+  /** Internal name for code references and diplomacy matching. */
   internalName: string
+  /** Random faction members (for Random faction resolution). */
   randomFactionMembers: readonly string[]
+  /** Side identifier (e.g., "Allies", "Soviet"). */
   side?: string
+  /** Tooltip description shown in lobby. */
   description?: string
+  /** Whether this faction appears in the lobby picker. */
   selectable: boolean
 }
 
 /**
  * Stub for Shroud trait (fog of war for a player).
  *
- * OpenRA 对照: Shroud trait
+ * OpenRA 对照: Shroud trait (OpenRA.Game/Traits/Player/Shroud.cs)
+ *
+ * Controls visibility of cells on the map. IsDiscovered returns whether
+ * the cell has ever been explored by this player. Full implementation
+ * uses a 2D bit array for explored/visible state per cell.
  *
  * TODO-3.G: Replace with full Shroud class when fog-of-war is migrated.
  */
 export interface ShroudStub {
+  /** Whether fog of war has been explored at the given cell. */
   readonly isDiscovered: boolean
 }
 
@@ -163,12 +217,18 @@ export interface ShroudStub {
  * Stub for FrozenActorLayer trait (frozen-under-fog actor display).
  *
  * OpenRA 对照: FrozenActorLayer trait
+ *   (OpenRA.Game/Traits/Player/FrozenActorLayer.cs)
+ *
+ * Renders "frozen" copies of enemy actors at their last known position
+ * when they move back into fog of war. Uses the Shroud to determine
+ * which actors should be frozen.
  *
  * TODO-3.G: Replace with full FrozenActorLayer when fog-of-war is migrated.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface FrozenActorLayerStub {
-  /* marker — pending fog-of-war migration */
+  /** Pending fog-of-war migration (TODO-3.G). */
+  /* marker */
 }
 
 /**
@@ -603,7 +663,13 @@ export class Player implements PlayerStub {
       // Silently ignore — once you're out, you stay out
       return
     }
-    this._winState = value
+    if (this._winState !== value) {
+      const oldState = this._winState
+      this._winState = value
+      // Invalidate stance cache on state change (spectating affects diplomacy)
+      this.playerStances.clear()
+      this.onWinStateChanged?.(this, oldState, value)
+    }
   }
 
   /**
@@ -612,6 +678,34 @@ export class Player implements PlayerStub {
    * OpenRA 对照: Player.HasObjectives
    */
   hasObjectives: boolean = false
+
+  /**
+   * Callback invoked when the player's WinState changes.
+   *
+   * OpenRA 对照: WinState change triggers UI updates (Widget logic, Game
+   *   state notifications). In OpenRA this is implicit via property writes
+   *   and Widget polling; here it is an explicit observable for decoupling.
+   *
+   * @param player — the player whose winState changed
+   * @param oldState — the previous win state
+   * @param newState — the new win state
+   */
+  onWinStateChanged:
+    | ((player: Player, oldState: WinState, newState: WinState) => void)
+    | null = null
+
+  /**
+   * Cached diplomacy stances keyed by the other player.
+   *
+   * OpenRA 对照: No direct equivalent in OpenRA (relationship is recomputed
+   *   per call via bitmask). Cache avoids recomputing the same O(1) bitmask
+   *   check multiple times per tick for the same player pair.
+   *
+   * Cleared automatically when ally/enemy masks or winState change.
+   *
+   * @internal Public for testing; use relationshipWith() for normal access.
+   */
+  readonly playerStances = new Map<Player, PlayerRelationship>()
 
   /**
    * The player's original color (ARGB format).
@@ -623,7 +717,15 @@ export class Player implements PlayerStub {
   /**
    * The player's display color (may be overridden by relationship colors).
    *
-   * OpenRA 对照: Player.Color (with relationship colors applied)
+   * OpenRA 对照: Player.Color { get; private set; }
+   *
+   * NOTE: TypeScript cannot express "public get, class-internal set"
+   * accessible from static methods. Convention: only set this field via
+   * `Player.setupRelationshipColors()`. External mutation will be caught
+   * by linting/CI.
+   *
+   * TODO-3.E: Switch to a `private _displayColor` + `static _setColor()`
+   * pattern when the UI system is migrated and needs direct access.
    */
   displayColor: number
 
@@ -983,23 +1085,25 @@ export class Player implements PlayerStub {
       const botInfo = this._botInfos.find((b) => b.type === this.botType)
       const botName = botInfo?.name ?? this.botType
 
-      // Count bots of the same type for enumeration
-      // NOTE: In OpenRA this uses World.Players — we use world.players
-      let botIndex = 0
+      // Count bots of the same type for enumeration.
+      // In OpenRA: World.Players.Where(c => c.BotType == BotType)
+      //   .IndexOf(this) + 1
+      // We count same-type bots seen BEFORE this player in the array,
+      // so that this player is the (sameTypeCount + 1)-th bot.
+      let sameTypeBeforeCount = 0
       const worldPlayers = this.world.players as Player[]
-      for (let i = 0; i < worldPlayers.length; i++) {
-        const p = worldPlayers[i]
+      for (const p of worldPlayers) {
+        if (p === this) {
+          break
+        }
         if (p.botType === this.botType) {
-          if (p === this) {
-            botIndex = i // index within same-type bots
-            break
-          }
+          sameTypeBeforeCount++
         }
       }
 
       // NOTE: FluentProvider.GetMessage not yet available.
       // Simple format: "BotName 1", "BotName 2", etc.
-      return `${botName} ${botIndex + 1}`
+      return `${botName} ${sameTypeBeforeCount + 1}`
     }
 
     return this.playerName
@@ -1061,6 +1165,20 @@ export class Player implements PlayerStub {
    */
   isAlliedWith(p: Player | null): boolean {
     return this.relationshipWith(p) === PlayerRelationship.Ally
+  }
+
+  /**
+   * Check whether this player is at war with another player.
+   *
+   * OpenRA 对照: (convenience — no direct C# equivalent; common pattern)
+   *
+   * Equivalent to: RelationshipWith(p) == PlayerRelationship.Enemy
+   *
+   * @param p — the player to check (may be null)
+   * @returns true if the other player is an enemy
+   */
+  isEnemyWith(p: Player | null): boolean {
+    return this.relationshipWith(p) === PlayerRelationship.Enemy
   }
 
   // -----------------------------------------------------------------------

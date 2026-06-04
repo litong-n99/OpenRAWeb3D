@@ -1193,3 +1193,215 @@ describe('Player diplomacy with LongBitSet', () => {
     expect(p1.relationshipWith(p3)).toBe(PlayerRelationship.Enemy)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Player.isEnemyWith (MAJOR 3)
+// ---------------------------------------------------------------------------
+
+describe('Player.isEnemyWith', () => {
+  it('returns false for self', () => {
+    const { player } = createTestPlayer()
+    expect(player.isEnemyWith(player)).toBe(false)
+  })
+
+  it('returns false for null', () => {
+    const { player } = createTestPlayer()
+    expect(player.isEnemyWith(null)).toBe(false)
+  })
+
+  it('returns true for enemy player', () => {
+    const { player: p1, world } = createTestPlayer({
+      pr: createPlayerReference({ name: 'Player1' }),
+    })
+    const { player: p2 } = createTestPlayer({
+      world,
+      pr: createPlayerReference({ name: 'Player2' }),
+    })
+    p1.enemyPlayersMask = p2.playerMask
+    expect(p1.isEnemyWith(p2)).toBe(true)
+  })
+
+  it('returns false for allied player', () => {
+    const { player: p1, world } = createTestPlayer({
+      pr: createPlayerReference({ name: 'Player1' }),
+    })
+    const { player: p2 } = createTestPlayer({
+      world,
+      pr: createPlayerReference({ name: 'Player2' }),
+    })
+    p1.alliedPlayersMask = p2.playerMask
+    expect(p1.isEnemyWith(p2)).toBe(false)
+  })
+
+  it('returns false for neutral player', () => {
+    const { player: p1, world } = createTestPlayer({
+      pr: createPlayerReference({ name: 'Player1' }),
+    })
+    const { player: p2 } = createTestPlayer({
+      world,
+      pr: createPlayerReference({ name: 'Player2' }),
+    })
+    expect(p1.isEnemyWith(p2)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Player.onWinStateChanged observable (MAJOR 2)
+// ---------------------------------------------------------------------------
+
+describe('Player.onWinStateChanged', () => {
+  it('fires callback when winState changes', () => {
+    const { player } = createTestPlayer()
+    const calls: { oldState: WinState; newState: WinState }[] = []
+    player.onWinStateChanged = (_p, oldState, newState) => {
+      calls.push({ oldState, newState })
+    }
+
+    player.winState = WinState.Won
+    expect(calls.length).toBe(1)
+    expect(calls[0].oldState).toBe(WinState.Undefined)
+    expect(calls[0].newState).toBe(WinState.Won)
+  })
+
+  it('does NOT fire callback when guard blocks reversion', () => {
+    const { player } = createTestPlayer()
+    player.winState = WinState.Won // Won
+
+    const calls: { oldState: WinState; newState: WinState }[] = []
+    player.onWinStateChanged = (_p, oldState, newState) => {
+      calls.push({ oldState, newState })
+    }
+
+    // Attempt blocked reversion — callback should NOT fire
+    player.winState = WinState.Undefined
+    expect(calls.length).toBe(0)
+    expect(player.winState).toBe(WinState.Won)
+  })
+
+  it('does NOT fire callback when setting same value', () => {
+    const { player } = createTestPlayer()
+    const calls: { oldState: WinState; newState: WinState }[] = []
+    player.onWinStateChanged = (_p, oldState, newState) => {
+      calls.push({ oldState, newState })
+    }
+
+    player.winState = WinState.Undefined // already Undefined
+    expect(calls.length).toBe(0)
+  })
+
+  it('fires callback for allowed transition Won→Lost', () => {
+    const { player } = createTestPlayer()
+    player.winState = WinState.Won
+
+    const calls: { oldState: WinState; newState: WinState }[] = []
+    player.onWinStateChanged = (_p, oldState, newState) => {
+      calls.push({ oldState, newState })
+    }
+
+    player.winState = WinState.Lost
+    expect(calls.length).toBe(1)
+    expect(calls[0].oldState).toBe(WinState.Won)
+    expect(calls[0].newState).toBe(WinState.Lost)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Player.playerStances cache (MINOR 5)
+// ---------------------------------------------------------------------------
+
+describe('Player.playerStances cache', () => {
+  it('is empty by default', () => {
+    const { player } = createTestPlayer()
+    expect(player.playerStances.size).toBe(0)
+  })
+
+  it('is cleared when winState changes', () => {
+    const { player: p1, world } = createTestPlayer({
+      pr: createPlayerReference({ name: 'Player1' }),
+    })
+    const { player: p2 } = createTestPlayer({
+      world,
+      pr: createPlayerReference({ name: 'Player2' }),
+    })
+
+    // Pre-populate the cache
+    p1.playerStances.set(p2, PlayerRelationship.Neutral)
+    expect(p1.playerStances.size).toBe(1)
+
+    // Changing winState should clear cache
+    p1.winState = WinState.Won
+    expect(p1.playerStances.size).toBe(0)
+  })
+
+  it('allows external read/write for integration tests', () => {
+    const { player: p1, world } = createTestPlayer({
+      pr: createPlayerReference({ name: 'Player1' }),
+    })
+    const { player: p2 } = createTestPlayer({
+      world,
+      pr: createPlayerReference({ name: 'Player2' }),
+    })
+
+    p1.playerStances.set(p2, PlayerRelationship.Ally)
+    expect(p1.playerStances.get(p2)).toBe(PlayerRelationship.Ally)
+    p1.playerStances.delete(p2)
+    expect(p1.playerStances.has(p2)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Bot name enumeration (MAJOR 1 — fix verification)
+// ---------------------------------------------------------------------------
+
+describe('Bot name enumeration', () => {
+  it('counts only same-type bots for enumeration index', () => {
+    const { player: human, world } = createTestPlayer({
+      pr: createPlayerReference({ name: 'Human' }),
+      client: createSessionClient({ name: 'HumanPlayer' }),
+    })
+
+    // BotA 1
+    const { player: botA1 } = createTestPlayer({
+      world,
+      client: createSessionClient({
+        name: 'BotA',
+        bot: 'RuleBasedBot',
+        faction: 'default',
+      }),
+      pr: createPlayerReference({ name: 'BotA1' }),
+    })
+
+    // BotB 1
+    const { player: botB1 } = createTestPlayer({
+      world,
+      client: createSessionClient({
+        name: 'BotB',
+        bot: 'HarvesterBot',
+        faction: 'default',
+      }),
+      pr: createPlayerReference({ name: 'BotB1' }),
+    })
+
+    // BotA 2
+    const { player: botA2 } = createTestPlayer({
+      world,
+      client: createSessionClient({
+        name: 'AnotherBotA',
+        bot: 'RuleBasedBot',
+        faction: 'default',
+      }),
+      pr: createPlayerReference({ name: 'BotA2' }),
+    })
+
+    // Human name is unaffected
+    expect(human.resolvedPlayerName).toBe('HumanPlayer')
+
+    // Same-type bot enumeration should be correct
+    // botA1 is first RuleBasedBot → "RuleBasedBot 1"
+    expect(botA1.resolvedPlayerName).toBe('RuleBasedBot 1')
+    // botB1 is first HarvesterBot → "HarvesterBot 1"
+    expect(botB1.resolvedPlayerName).toBe('HarvesterBot 1')
+    // botA2 is second RuleBasedBot → "RuleBasedBot 2"
+    expect(botA2.resolvedPlayerName).toBe('RuleBasedBot 2')
+  })
+})
