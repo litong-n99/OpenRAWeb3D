@@ -12,8 +12,6 @@ import {
   BYTES_PER_TILE,
   BYTES_PER_RESOURCE,
   NO_HEIGHT_OFFSET,
-  type BinaryDataHeader,
-  type BinaryDataLayout,
 } from './MapBinParser'
 
 // ---------------------------------------------------------------------------

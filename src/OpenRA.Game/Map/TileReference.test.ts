@@ -10,8 +10,6 @@ import {
   createResourceTile,
   terrainTileEquals,
   resourceTileEquals,
-  type TerrainTile,
-  type ResourceTile,
 } from './TileReference'
 
 // ---------------------------------------------------------------------------

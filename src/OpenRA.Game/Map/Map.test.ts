@@ -337,7 +337,7 @@ describe('GameMap.fromLoaderInput', () => {
       { type: 3, index: 2 },
       { type: 4, index: 3 },
     ]
-    const binaryData = buildBinaryData(width, height, tiles)
+    const binaryData = buildBinaryData({ width, height, hasHeight: false, tiles })
 
     const input: MapLoaderInput = {
       grid,
@@ -373,7 +373,7 @@ describe('GameMap.fromLoaderInput', () => {
       { type: 0, index: 0 },
       { type: 0, index: 0 },
     ]
-    const binaryData = buildBinaryData(width, height, tiles, resources)
+    const binaryData = buildBinaryData({ width, height, hasHeight: false, tiles, resources })
 
     const input: MapLoaderInput = {
       grid,
@@ -405,7 +405,7 @@ describe('GameMap.fromLoaderInput', () => {
     ]
     const resources: { type: number; index: number }[] = []
     const heightData = [0, 1, 2, 3]
-    const binaryData = buildBinaryData(width, height, tiles, resources, heightData)
+    const binaryData = buildBinaryData({ width, height, hasHeight: true, tiles, resources, heights: heightData })
 
     const input: MapLoaderInput = {
       grid: gridWithHeight,
@@ -431,7 +431,7 @@ describe('GameMap.fromLoaderInput', () => {
     const height = 1
     const tiles = [{ type: 0, index: 0 }]
     const heightData = [5] // exceeds max
-    const binaryData = buildBinaryData(width, height, tiles, [], heightData)
+    const binaryData = buildBinaryData({ width, height, hasHeight: true, tiles, resources: [], heights: heightData })
 
     const input: MapLoaderInput = {
       grid: gridWithHeight,
@@ -464,7 +464,7 @@ describe('GameMap.fromLoaderInput', () => {
   it('sets metadata from input', () => {
     const width = 1
     const height = 1
-    const binaryData = buildBinaryData(width, height, [{ type: 0, index: 0 }])
+    const binaryData = buildBinaryData({ width, height, hasHeight: false, tiles: [{ type: 0, index: 0 }] })
 
     const input: MapLoaderInput = {
       grid,
@@ -500,7 +500,7 @@ describe('GameMap.fromLoaderInput', () => {
       { type: 3, index: 0xff }, // becomes (0%4 + 1%4*4) = 4
       { type: 4, index: 0xff }, // becomes (1%4 + 1%4*4) = 5
     ]
-    const binaryData = buildBinaryData(width, height, tiles)
+    const binaryData = buildBinaryData({ width, height, hasHeight: false, tiles })
 
     const input: MapLoaderInput = {
       grid,
@@ -1391,7 +1391,7 @@ describe('Map replacedInvalidTerrainTiles', () => {
     })
 
     const tiles = [{ type: 99, index: 0 }] // invalid — will be replaced
-    const binaryData = buildBinaryData(1, 1, tiles)
+    const binaryData = buildBinaryData({ width: 1, height: 1, hasHeight: false, tiles })
 
     const input: MapLoaderInput = {
       grid,

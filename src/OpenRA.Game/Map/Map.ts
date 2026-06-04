@@ -40,15 +40,12 @@ import type { TerrainTypeInfo, TerrainTileInfo } from './TerrainInfo'
 import {
   type TerrainTile,
   type ResourceTile,
-  DEFAULT_TERRAIN_TILE,
   DEFAULT_RESOURCE_TILE,
 } from './TileReference'
 import {
   parseBinaryDataHeader,
   computeBinaryDataLayout,
   writeBinaryDataHeader,
-  BINARY_DATA_HEADER_SIZE,
-  type BinaryDataHeader,
 } from './MapBinParser'
 
 // ---------------------------------------------------------------------------
