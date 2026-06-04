@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-04
-> **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — COMPLETE
-> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 36/36 files migrated (100%), Phases A-I complete
+> **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — COMPLETE; Chapter 4 (Map System) — DESIGN PHASE
+> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 36/36 files migrated (100%), Chapter 4: plan created (0/34)
 
 ---
 
@@ -13,9 +13,10 @@
 | **Chapter 2 rendering files** | 27 (100% complete) |
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
 | **Chapter 3 status** | Implementation complete: 36/36 (100%), Phases A-I complete |
+| **Chapter 4 planned files** | 34 (29 from OpenRA + 5 new) |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
-| **Remaining chapters** | Chapters 4-8+ (networking, audio, file system, mod system, UI, map) |
-| **Overall project completion** | Chapter 2/8+ (rendering engine done, actor system done) |
+| **Remaining chapters** | Chapters 5-8+ (networking, audio, file system, mod system, UI) |
+| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 designed (rendering, actors, map plan complete) |
 
 > **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs. Phase E (ActorConfig) is complete: 1 file, ~916 TS + 64 tests, 2 review rounds, 0 BLOCKERs. Phase F (Activity System) is complete: 3 files (Activity.ts, CallFunc.ts, ActivityUtils.ts), ~899 TS + 73 tests, 2 review rounds, 0 BLOCKERs. Phase G (Player) is complete: 1 file, 1272 TS + 1407 test lines, 82 tests, 1 review round, 0 BLOCKERs. Phase H (Effects) is complete: 3 files, ~521 TS + ~687 test lines, 103 tests, 1 review round, 0 BLOCKERs. Phase I (ScreenMap) is complete: 1 file, ~350 TS + ~250 test lines, 1 review round, 0 BLOCKERs.
 
@@ -419,3 +420,53 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 - **Total Chapter 3 code**: ~13,000+ TS implementation lines + ~10,000+ test lines across 36 files.
 - **All review rounds**: 15+ rounds across 9 phases, 0 BLOCKERs total.
 - **Remaining support files**: Sync.ts, WorldUtils.ts, GameSpeed.ts (deferred to respective chapters).
+
+---
+
+## Chapter 4: Map & Terrain System (Design Phase)
+
+> **Migration Plan**: [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md)
+> **Created**: 2026-06-04 | **Status**: DESIGN PHASE (0/34 planned, 0% migrated)
+> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 100%)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed | 0 | 0% |
+| In Progress | 0 | 0% |
+| Pending | 34 | 100% |
+| **Total planned** | **34** | **100%** |
+| **From OpenRA** | **29** | |
+| **New files (no OpenRA equivalent)** | **5** | |
+| **Deferrable** | **4** (MapPreview, ActorInit, ActorRef, PlayerRef) | |
+
+### Chapter 4 Phases
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | CellLayer Infrastructure | 5 | Low-Medium | Pending |
+| Phase B | MapGrid + CellRamp Geometry | 1 (+1 done) | HIGH | Pending |
+| Phase C | TerrainInfo / TileSet | 1 | Medium | Pending |
+| Phase D | Map.cs Core Container | 1 | HIGH | Pending |
+| Phase E | Map Support Files | 11 | Low-Medium | Pending |
+| Phase F | 3D Terrain Mesh Generation | 2 (new) | HIGH | Pending |
+| Phase G | Pathfinding System | 10 | HIGH | Pending |
+| Phase H | MiniYAML Pipeline | 1 (new) | HIGH | Pending |
+| Phase I | CoordinateTransformer | 1 (new) | Medium | Pending |
+
+### Already Available (from Chapter 3 Phase A)
+
+- CPos.ts, MPos.ts, WPos.ts, WVec.ts, WAngle.ts, WDist.ts, WRot.ts, CVec.ts
+- MapGridType.ts (with test)
+- PriorityQueue.ts, Cache.ts, SpatiallyPartitioned.ts, BitSet.ts
+
+### Key Architecture Decisions (7 ADRs)
+
+| ADR | Decision |
+|-----|----------|
+| ADR-4.1 | HPA* port as primary pathfinding; RecastNavigation optional |
+| ADR-4.2 | MiniYAML MANDATORY build-time compilation to JSON |
+| ADR-4.3 | Custom terrain mesh from CellRamp data (not CreateGroundFromHeightMap) |
+| ADR-4.4 | Texture splatting (4 types/cell) via custom ShaderMaterial |
+| ADR-4.5 | JSON + base64 TypedArray blobs for map serialization |
+| ADR-4.6 | MapPreview deferred post-Chapter 4 |
+| ADR-4.7 | ActorInitializer/Reference deferred to Chapter 5+ |
