@@ -1,28 +1,24 @@
 /**
- * DelayedImpact.ts — Execute a callback when a projectile reaches its target
+ * DelayedImpact.ts — Delay a warhead impact by a specified number of ticks
  * OpenRA 对照: OpenRA.Game/Effects/DelayedImpact.cs
  *
  * 核心范式转换:
- * - OpenRA DelayedImpact: pure tick delay + IWarhead.DoImpact().
- *   TypeScript version: position-advancing effect that moves from origin
- *   to target at a given speed, then fires onImpact callback.
- *   (per migration plan TODO-3.H.3)
- * - C# IWarhead + WarheadArgs → simplified onImpact callback
- *   (IWarhead/WarheadArgs are not yet migrated — TODO-3.H.3)
+ * - C# IWarhead + WarheadArgs → stub interfaces (not yet migrated)
  * - C# World.AddFrameEndTask(Action<World>) → world.addFrameEndTask(() => void)
- * - OpenRA's DelayedImpact has no position tracking — the migration plan
- *   adds currentPosition for visual interpolation in future sprite effects
+ * - C# w.Remove(this) + wh.DoImpact(target, args) → world.removeEffect(this)
+ *   + warhead.doImpact(target, args) in same frameEndTask
+ * - C# yield break (empty render) → return [] (empty array)
+ * - Pre-decrement pattern matches C# exactly: --delay <= 0
+ *   (delay=5 fires on tick 5, delay=1 fires on tick 1, delay=0 fires on tick 1)
+ *
+ * NOTE: This is a SIMPLE countdown timer — NOT a position-advancing
+ * projectile. The original OpenRA DelayedImpact has no position tracking
+ * or interpolation. It merely delays the execution of wh.DoImpact() by
+ * a fixed number of ticks.
  *
  * 使用场景:
- * - Bullet travel time from weapon to target
- * - Missile flight with visual trail
- * - Artillery shell arc (position interpolation feeds visual trajectory)
- *
- * NOTE: This implementation differs from OpenRA's DelayedImpact in two ways:
- *   1. OpenRA takes IWarhead/arguments directly; this takes a simplified
- *      onImpact callback pending IWarhead migration.
- *   2. OpenRA has no position interpolation; this adds origin-to-target
- *      position advancement per migration plan TODO-3.H.3.
+ * - Delaying a warhead impact for visual effect timing
+ * - Coordinating multi-stage weapon effects
  */
 
 // ---------------------------------------------------------------------------
@@ -32,40 +28,82 @@
 import type { IEffect } from './IEffect.js'
 import type { GameWorldManager } from '../World.js'
 import type { WorldRendererStub, IRenderable } from '../Traits/TraitsInterfaces.js'
-import { WPos } from '../WPos.js'
-import { WDist } from '../WDist.js'
-import { Target } from '../Traits/Target.js'
+import type { Target } from '../Traits/Target.js'
+
+// ---------------------------------------------------------------------------
+// IWarhead stub — TODO-3.H.3 pending full IWarhead migration
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal stub for IWarhead.
+ *
+ * OpenRA 对照: OpenRA.GameRules/IWarhead.cs
+ * TODO-3.H.3: Replace with full IWarhead interface when GameRules is migrated.
+ */
+export interface IWarhead {
+  /** Execute the warhead effect on a target.
+   *
+   * OpenRA 对照: IWarhead.DoImpact(Target, WarheadArgs)
+   */
+  doImpact(target: Target, args: WarheadArgs): void
+}
+
+// ---------------------------------------------------------------------------
+// WarheadArgs stub — TODO-3.H.3 pending full WarheadArgs migration
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal stub for WarheadArgs.
+ *
+ * OpenRA 对照: OpenRA.GameRules/WarheadArgs.cs
+ * TODO-3.H.3: Replace with full WarheadArgs struct when GameRules is migrated.
+ */
+export interface WarheadArgs {
+  /** Weapon that fired this warhead (minimal stub). */
+  weapon?: unknown
+  /** Facing direction of the firer. */
+  facing?: number
+  /** Damage modifier override. */
+  damageModifier?: number[]
+  /** Source actor. */
+  sourceActor?: unknown
+  /** Source weapon info. */
+  sourceWeapon?: unknown
+  /** Additional arguments (extensible). */
+  [key: string]: unknown
+}
 
 // ---------------------------------------------------------------------------
 // DelayedImpact
 // ---------------------------------------------------------------------------
 
 /**
- * An IEffect that advances a position from origin toward target at a given
- * speed, then fires a callback upon arrival.
+ * An IEffect that delays a warhead impact by a fixed number of logic ticks.
  *
  * OpenRA 对照: OpenRA.Effects.DelayedImpact (IEffect implementation)
  *
- * Each tick(), the internal position moves toward the target by the speed
- * distance. When the remaining distance is <= speed, the position snaps to
- * target and the onImpact callback is scheduled via frame-end task.
+ * Each call to tick() pre-decrements an internal counter. When the counter
+ * reaches zero, the warhead's doImpact() is scheduled via frame-end task,
+ * and the effect self-removes from the world.
  *
- * This differs from DelayedAction in that the delay is computed from
- * distance / speed rather than a fixed tick count. This models projectile
- * flight time more naturally.
+ * This is structurally identical to DelayedAction — the difference is
+ * in semantics: DelayedImpact specifically delays warhead impact, while
+ * DelayedAction can execute any callback.
+ *
+ * Pre-decrement behavior (matching C#):
+ * - delay=5: fires on tick 5
+ * - delay=1: fires on tick 1
+ * - delay=0: fires on tick 1
  *
  * Usage:
  * ```
- * const origin = WPos.Zero
- * const targetPos = new WPos(10240, 0, 0) // 10 cells east
- * const speed = WDist.fromCells(5) // 5 cells per tick (instant)
- * const effect = new DelayedImpact(
- *   origin,
- *   Target.fromPos(targetPos),
- *   speed,
- *   (t) => console.log(`Impact at ${t.centerPosition}`),
+ * const impact = new DelayedImpact(
+ *   10,      // delay 10 ticks
+ *   warhead, // IWarhead instance
+ *   target,  // Target to impact
+ *   args,    // WarheadArgs
  * )
- * world.addEffect(effect)
+ * world.addEffect(impact)
  * ```
  */
 export class DelayedImpact implements IEffect {
@@ -73,44 +111,29 @@ export class DelayedImpact implements IEffect {
   // Private state
   // -------------------------------------------------------------------------
 
-  /** Target being approached.
+  /** Target to impact when delay expires.
    *
    * OpenRA 对照: DelayedImpact.target (Target)
    */
-  private readonly _target: Target
+  readonly target: Target
 
-  /** Speed in world distance units per tick.
+  /** Warhead whose doImpact() is called.
    *
-   * NOTE: The migration plan specifies `speed: number`. WDist is used here
-   * for consistency with the OpenRA codebase convention for distances.
+   * OpenRA 对照: DelayedImpact.wh (IWarhead)
    */
-  private readonly _speed: WDist
+  private readonly _warhead: IWarhead
 
-  /** Callback fired when the position reaches the target.
+  /** Arguments passed to doImpact().
    *
-   * NOTE: OpenRA uses IWarhead.DoImpact(target, args). This simplified
-   * callback replaces that pattern pending IWarhead migration.
+   * OpenRA 对照: DelayedImpact.args (WarheadArgs)
    */
-  private readonly _onImpact: (target: Target) => void
+  private readonly _args: WarheadArgs
 
-  /** Current position of the traveling projectile.
+  /** Remaining tick count before impact.
    *
-   * NOTE: Not present in original OpenRA DelayedImpact. Added per
-   * migration plan TODO-3.H.3 to support visual interpolation.
+   * OpenRA 对照: DelayedImpact.delay (int)
    */
-  private _currentPos: WPos
-
-  /** Whether this effect has completed.
-   *
-   * NOTE: Added per migration plan TODO-3.H.3.
-   */
-  private _done = false
-
-  /**
-   * Whether the impact has been triggered. Guards against double-firing
-   * if tick() is called after completion.
-   */
-  private _impactTriggered = false
+  private _delay: number
 
   // -------------------------------------------------------------------------
   // Constructor
@@ -121,29 +144,21 @@ export class DelayedImpact implements IEffect {
    *
    * OpenRA 对照: DelayedImpact(int delay, IWarhead wh, Target target, WarheadArgs args)
    *
-   * Migration adaptation:
-   * - `origin: WPos` replaces the implicit launch position
-   * - `speed: WDist` replaces the fixed tick delay; travel time =
-   *   distance / speed
-   * - `onImpact` replaces IWarhead.DoImpact(target, args)
-   *
-   * @param origin — starting world position of the projectile
-   * @param target — target to approach and impact
-   * @param speed — distance traveled per logic tick (WDist units)
-   * @param onImpact — callback invoked when projectile reaches target.
-   *   Receives the target as it was at construction time (targets may
-   *   have become invalid by impact time — callers should validate).
+   * @param delay — number of game ticks to wait before impacting
+   * @param warhead — the warhead whose doImpact() will be called
+   * @param target — the target to impact
+   * @param args — warhead arguments (damage modifiers, facing, etc.)
    */
   constructor(
-    origin: WPos,
+    delay: number,
+    warhead: IWarhead,
     target: Target,
-    speed: WDist,
-    onImpact: (target: Target) => void,
+    args: WarheadArgs,
   ) {
-    this._target = target
-    this._speed = speed
-    this._onImpact = onImpact
-    this._currentPos = origin
+    this._delay = delay
+    this._warhead = warhead
+    this.target = target
+    this._args = args
   }
 
   // -------------------------------------------------------------------------
@@ -151,38 +166,10 @@ export class DelayedImpact implements IEffect {
   // -------------------------------------------------------------------------
 
   /**
-   * Whether this effect has completed and may be removed.
-   *
-   * NOTE: Added per migration plan TODO-3.H.3.
+   * Remaining tick count before impact fires.
    */
-  get isDone(): boolean {
-    return this._done
-  }
-
-  /**
-   * The current interpolated position of the traveling projectile.
-   *
-   * Useful for visual effects that need to render the projectile at
-   * its current position each frame (e.g., bullet mesh, missile trail).
-   *
-   * NOTE: Not present in original OpenRA DelayedImpact.
-   */
-  get currentPosition(): WPos {
-    return this._currentPos
-  }
-
-  /**
-   * The target being approached.
-   */
-  get target(): Target {
-    return this._target
-  }
-
-  /**
-   * Speed in WDist units per tick.
-   */
-  get speed(): WDist {
-    return this._speed
+  get remainingDelay(): number {
+    return this._delay
   }
 
   // -------------------------------------------------------------------------
@@ -190,66 +177,30 @@ export class DelayedImpact implements IEffect {
   // -------------------------------------------------------------------------
 
   /**
-   * Advance position toward target. When within range, fire onImpact
-   * callback via frame-end task.
+   * Pre-decrement the delay counter. When it reaches zero, schedule the
+   * warhead impact via frame-end task.
    *
    * OpenRA 对照: DelayedImpact.Tick(World)
    *
-   * Position advancement:
-   * - Computes the vector from currentPos to target centerPosition
-   * - If distance <= speed: snap to target, schedule onImpact via
-   *   frameEndTask, and mark as done
-   * - Otherwise: advance currentPos by speed units along the direction
-   *   vector
-   *
-   * Target validation: The target's centerPosition is queried each tick.
-   * If the target is invalid (actor died, etc.), the impact fires
-   * immediately at the current position.
+   * Matches the C# pre-decrement pattern exactly:
+   * ```
+   * if (--delay <= 0)
+   *     world.AddFrameEndTask(w => { w.Remove(this); wh.DoImpact(target, args); });
+   * ```
    *
    * @param world — the game world manager
    */
   tick(world: GameWorldManager): void {
-    // Guard: don't tick after impact already triggered
-    if (this._impactTriggered) return
-
-    let targetPos: WPos
-    try {
-      targetPos = this._target.centerPosition
-    } catch {
-      // Target is invalid (e.g., actor died). Fire impact immediately
-      // at current position.
-      this._triggerImpact(world)
-      return
-    }
-
-    const delta = WPos.subtract(targetPos, this._currentPos)
-    const distToTarget = delta.length
-
-    if (distToTarget <= this._speed.length) {
-      // Reached target — snap to target position before impact
-      this._currentPos = targetPos
-      this._triggerImpact(world)
-    } else {
-      // Advance toward target
-      const dirX = delta.X / distToTarget
-      const dirY = delta.Y / distToTarget
-      const dirZ = delta.Z / distToTarget
-      const speedLen = this._speed.length
-
-      this._currentPos = new WPos(
-        this._currentPos.X + Math.round(dirX * speedLen),
-        this._currentPos.Y + Math.round(dirY * speedLen),
-        this._currentPos.Z + Math.round(dirZ * speedLen),
-      )
+    if (--this._delay <= 0) {
+      world.addFrameEndTask(() => {
+        world.removeEffect(this)
+        this._warhead.doImpact(this.target, this._args)
+      })
     }
   }
 
   /**
-   * DelayedImpact produces no renderables directly.
-   *
-   * NOTE: Visual representation (bullet mesh, missile trail) is the
-   * responsibility of external rendering code that reads currentPosition
-   * each frame via tickRender or onBeforeRenderObservable.
+   * DelayedImpact produces no renderables.
    *
    * OpenRA 对照: DelayedImpact.Render(WorldRenderer) → yield break
    *
@@ -257,26 +208,5 @@ export class DelayedImpact implements IEffect {
    */
   render(_worldRenderer: WorldRendererStub): readonly IRenderable[] {
     return []
-  }
-
-  // -------------------------------------------------------------------------
-  // Private helpers
-  // -------------------------------------------------------------------------
-
-  /**
-   * Schedule the onImpact callback via frame-end task, remove self from
-   * world, and mark as done.
-   *
-   * The callback is deferred to frameEndTask to avoid modifying collections
-   * during tick iteration.
-   */
-  private _triggerImpact(world: GameWorldManager): void {
-    this._impactTriggered = true
-
-    world.addFrameEndTask(() => {
-      world.removeEffect(this)
-      this._onImpact(this._target)
-      this._done = true
-    })
   }
 }

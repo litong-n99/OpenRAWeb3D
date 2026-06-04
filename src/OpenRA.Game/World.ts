@@ -11,6 +11,7 @@
  * - C# SortedDictionary<uint, Actor> → Map<number, IGameActor> (insertion
  *   order OK for Tick; sorted cache for SyncHash)
  * - C# IEffect.Tick(World) → IGameEffect.tick(world: GameWorldManager)
+ *   (IGameEffect is defined in Effects/IEffect.ts — single source of truth)
  * - C# Tick() called by Game loop at 25 TPS → fixed timestep accumulator
  *   driven by requestAnimationFrame, capped at 5 ticks/frame
  * - C# TickRender() called by WorldRenderer.Draw() → hooks into
@@ -44,6 +45,7 @@ import type {
   ActivityStub,
   ActorInfoStub,
 } from './Traits/TraitsInterfaces.js'
+import type { IGameEffect, IGameEffectSync } from './Effects/IEffect.js'
 
 // ---------------------------------------------------------------------------
 // WorldType enum (对应 OpenRA WorldType)
@@ -61,37 +63,6 @@ export const WorldType = {
 } as const
 
 export type WorldType = (typeof WorldType)[keyof typeof WorldType]
-
-// ---------------------------------------------------------------------------
-// IGameEffect — local redefinition matching OpenRA IEffect
-// ---------------------------------------------------------------------------
-
-/**
- * Interface for visual effects ticked each game logic tick.
- *
- * OpenRA 对照: OpenRA.Game/Effects/IEffect.cs — IEffect.Tick(World)
- *
- * NOTE: The full IEffect interface also has Render(WorldRenderer) which
- * returns IRenderable[]. That method is used by SpriteRenderer to collect
- * effect renderables. For now, this is a minimal stub; the full interface
- * will be expanded when SpriteRenderer integration is implemented.
- */
-export interface IGameEffect {
-  /** Called every game logic tick.
-   *
-   * OpenRA 对照: IEffect.Tick(World)
-   */
-  tick(world: GameWorldManager): void
-}
-
-/**
- * Marker interface for sync-relevant effects.
- *
- * OpenRA 对照: ISync (marker interface)
- */
-export interface IGameEffectSync extends IGameEffect {
-  // intentionally empty — marker for SyncHash participation
-}
 
 // ---------------------------------------------------------------------------
 // Forward stubs for unmigrated types

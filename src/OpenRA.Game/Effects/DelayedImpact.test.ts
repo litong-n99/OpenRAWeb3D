@@ -1,19 +1,23 @@
 /**
  * DelayedImpact.test.ts — DelayedImpact migration unit tests
  *
- * Tests focus on: position advancement, target arrival detection,
- * onImpact callback timing, isDone state, edge cases (invalid target,
- * instant arrival, zero-distance target).
+ * Tests focus on: pre-decrement delay counter, warhead.doImpact() via
+ * frameEndTask, self-removal, edge cases.
+ *
+ * DelayedImpact is a SIMPLE countdown timer (matching C#), NOT a
+ * position-advancing projectile.
  *
  * No Babylon.js dependencies — pure logic tests with Vitest.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DelayedImpact } from './DelayedImpact.js'
-import { WPos } from '../WPos.js'
-import { WDist } from '../WDist.js'
+import {
+  DelayedImpact,
+  type IWarhead,
+  type WarheadArgs,
+} from './DelayedImpact.js'
 import { Target } from '../Traits/Target.js'
-import type { IGameEffect } from '../World.js'
+import type { IGameEffect } from './IEffect.js'
 import type { WorldRendererStub } from '../Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
@@ -48,6 +52,19 @@ function createStubWorldRenderer(): WorldRendererStub {
   return {}
 }
 
+function createStubWarhead(onImpact?: (target: Target, args: WarheadArgs) => void): IWarhead {
+  return {
+    doImpact: vi.fn(onImpact),
+  }
+}
+
+function createStubArgs(overrides: Partial<WarheadArgs> = {}): WarheadArgs {
+  return {
+    weapon: 'testWeapon',
+    ...overrides,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // DelayedImpact tests
 // ---------------------------------------------------------------------------
@@ -64,25 +81,20 @@ describe('DelayedImpact', () => {
   // -----------------------------------------------------------------------
 
   describe('constructor', () => {
-    it('stores origin, target, speed, and onImpact', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(10240, 0, 0) // 10 cells east
-      const target = Target.fromPos(targetPos)
-      const speed = WDist.fromCells(2)
-      const onImpact = vi.fn()
+    it('stores delay, warhead, target, and args', () => {
+      const warhead = createStubWarhead()
+      const target = Target.Invalid
+      const args = createStubArgs()
 
-      const di = new DelayedImpact(origin, target, speed, onImpact)
+      const di = new DelayedImpact(5, warhead, target, args)
 
-      // Verify position starts at origin
-      expect(WPos.equals(di.currentPosition, origin)).toBe(true)
-      expect(di.speed.length).toBe(speed.length)
-      expect(di.isDone).toBe(false)
-      expect(onImpact).not.toHaveBeenCalled()
+      expect(di.remainingDelay).toBe(5)
+      expect(di.target).toBe(target)
     })
 
-    it('accepts WPos.Zero as origin', () => {
-      const di = new DelayedImpact(WPos.Zero, Target.Invalid, WDist.Zero, vi.fn())
-      expect(WPos.equals(di.currentPosition, WPos.Zero)).toBe(true)
+    it('accepts zero delay', () => {
+      const di = new DelayedImpact(0, createStubWarhead(), Target.Invalid, createStubArgs())
+      expect(di.remainingDelay).toBe(0)
     })
   })
 
@@ -92,131 +104,102 @@ describe('DelayedImpact', () => {
 
   describe('IEffect interface', () => {
     it('implements IEffect (structural)', () => {
-      const di = new DelayedImpact(
-        WPos.Zero,
-        Target.Invalid,
-        WDist.Zero,
-        vi.fn(),
-      )
+      const di = new DelayedImpact(5, createStubWarhead(), Target.Invalid, createStubArgs())
 
       expect(typeof di.tick).toBe('function')
       expect(typeof di.render).toBe('function')
-      expect('isDone' in di).toBe(true)
     })
 
     it('is compatible with IGameEffect', () => {
       const effect: IGameEffect = new DelayedImpact(
-        WPos.Zero,
+        5,
+        createStubWarhead(),
         Target.Invalid,
-        WDist.Zero,
-        vi.fn(),
+        createStubArgs(),
       )
       expect(typeof effect.tick).toBe('function')
     })
   })
 
   // -----------------------------------------------------------------------
-  // Position advancement (tick)
+  // Pre-decrement behavior (BLOCKER 2 — matching C# --delay <= 0)
   // -----------------------------------------------------------------------
 
-  describe('position advancement', () => {
-    it('advances position toward target each tick', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(10240, 0, 0) // 10 cells east
-      const target = Target.fromPos(targetPos)
-      const speed = WDist.fromCells(1) // 1 cell = 1024 units/tick
+  describe('pre-decrement (matching C# --delay <= 0)', () => {
+    it('delay=5 fires on tick 5 (pre-decrement: 5→4,4→3,3→2,2→1,1→0)', () => {
+      const warhead = createStubWarhead()
+      const target = Target.Invalid
+      const args = createStubArgs()
+      const di = new DelayedImpact(5, warhead, target, args)
 
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
+      // Ticks 1-4: pre-decrement gives 4,3,2,1 — none <= 0
+      di.tick(world as any) // --5 = 4
+      world.drainFrameEndTasks()
+      expect(warhead.doImpact).not.toHaveBeenCalled()
 
-      di.tick(world as any)
-      // Should have advanced by 1024 east
-      const pos1 = di.currentPosition
-      expect(pos1.X).toBe(1024)
-      expect(pos1.Y).toBe(0)
-      expect(pos1.Z).toBe(0)
+      di.tick(world as any) // --4 = 3
+      world.drainFrameEndTasks()
+      expect(warhead.doImpact).not.toHaveBeenCalled()
 
-      di.tick(world as any)
-      const pos2 = di.currentPosition
-      expect(pos2.X).toBe(2048)
+      di.tick(world as any) // --3 = 2
+      world.drainFrameEndTasks()
+      expect(warhead.doImpact).not.toHaveBeenCalled()
+
+      di.tick(world as any) // --2 = 1
+      world.drainFrameEndTasks()
+      expect(warhead.doImpact).not.toHaveBeenCalled()
+
+      // Tick 5: pre-decrement gives 0 — fires!
+      di.tick(world as any) // --1 = 0
+      world.drainFrameEndTasks()
+      expect(warhead.doImpact).toHaveBeenCalledTimes(1)
     })
 
-    it('does NOT overshoot target — snaps exactly to target position', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(2048, 0, 0) // 2 cells east
-      const target = Target.fromPos(targetPos)
-      const speed = WDist.fromCells(3) // speed > distance (3 cells/tick, but only 2 cells away)
+    it('delay=1 fires on tick 1 (pre-decrement: 1→0)', () => {
+      const warhead = createStubWarhead()
+      const di = new DelayedImpact(1, warhead, Target.Invalid, createStubArgs())
 
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
-
-      di.tick(world as any)
-
-      // Should snap to target, not overshoot
-      expect(WPos.equals(di.currentPosition, targetPos)).toBe(true)
+      di.tick(world as any) // --1 = 0
+      world.drainFrameEndTasks()
+      expect(warhead.doImpact).toHaveBeenCalledTimes(1)
     })
 
-    it('advances correctly on diagonal trajectory', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 1024, 0) // diagonal
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(724) // ~sqrt(2*512^2)/2 ≈ 724 — close enough for one tick
+    it('delay=0 fires on tick 1 (pre-decrement: 0→-1)', () => {
+      const warhead = createStubWarhead()
+      const di = new DelayedImpact(0, warhead, Target.Invalid, createStubArgs())
 
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
-
-      di.tick(world as any)
-
-      const pos = di.currentPosition
-      // Should be approximately (512, 512, 0) — actually with rounding:
-      // dirX = 1024 / 1448 ≈ 0.707
-      // dirY = 1024 / 1448 ≈ 0.707
-      // advanceX = round(0.707 * 724) = round(512) = 512
-      // advanceY = round(0.707 * 724) = round(512) = 512
-      expect(pos.X).toBeCloseTo(512, -1) // allow small rounding diff
-      expect(pos.Y).toBeCloseTo(512, -1)
+      di.tick(world as any) // --0 = -1 <= 0
+      world.drainFrameEndTasks()
+      expect(warhead.doImpact).toHaveBeenCalledTimes(1)
     })
   })
 
   // -----------------------------------------------------------------------
-  // Impact triggering
+  // doImpact called with correct arguments
   // -----------------------------------------------------------------------
 
-  describe('impact triggering', () => {
-    it('fires onImpact when position reaches target', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0) // 1 cell east
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048) // fast — arrives in 1 tick
-      const onImpact = vi.fn()
+  describe('doImpact arguments', () => {
+    it('passes target and args to warhead.doImpact()', () => {
+      const warhead = createStubWarhead()
+      const target = Target.Invalid
+      const args = createStubArgs({ weapon: 'rocket' })
 
-      const di = new DelayedImpact(origin, target, speed, onImpact)
+      const di = new DelayedImpact(1, warhead, target, args)
 
       di.tick(world as any)
       world.drainFrameEndTasks()
 
-      expect(onImpact).toHaveBeenCalledTimes(1)
+      expect(warhead.doImpact).toHaveBeenCalledWith(target, args)
     })
+  })
 
-    it('passes the target to onImpact callback', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048)
-      const onImpact = vi.fn()
+  // -----------------------------------------------------------------------
+  // Self-removal via frameEndTask
+  // -----------------------------------------------------------------------
 
-      const di = new DelayedImpact(origin, target, speed, onImpact)
-
-      di.tick(world as any)
-      world.drainFrameEndTasks()
-
-      expect(onImpact).toHaveBeenCalledWith(target)
-    })
-
-    it('removes itself from world upon impact', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048)
-
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
+  describe('self-removal', () => {
+    it('removes itself from world in the frameEndTask', () => {
+      const di = new DelayedImpact(1, createStubWarhead(), Target.Invalid, createStubArgs())
 
       di.tick(world as any)
       world.drainFrameEndTasks()
@@ -225,142 +208,45 @@ describe('DelayedImpact', () => {
       expect(world.removedEffects[0]).toBe(di)
     })
 
-    it('sets isDone = true after impact', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048)
-
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
-
-      expect(di.isDone).toBe(false)
-
-      di.tick(world as any)
-      world.drainFrameEndTasks()
-
-      expect(di.isDone).toBe(true)
-    })
-
-    it('does not fire onImpact before reaching target', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(10240, 0, 0) // 10 cells away
-      const target = Target.fromPos(targetPos)
-      const speed = WDist.fromCells(1) // 1 cell/tick
-      const onImpact = vi.fn()
-
-      const di = new DelayedImpact(origin, target, speed, onImpact)
-
-      // 5 ticks — halfway there
-      for (let i = 0; i < 5; i++) {
-        di.tick(world as any)
-        world.drainFrameEndTasks()
+    it('removes effect BEFORE calling doImpact (matches OpenRA order)', () => {
+      const order: string[] = []
+      const warhead: IWarhead = {
+        doImpact: vi.fn(() => {
+          order.push('doImpact')
+        }),
       }
 
-      expect(onImpact).not.toHaveBeenCalled()
-      expect(di.isDone).toBe(false)
-      expect(di.currentPosition.X).toBe(1024 * 5) // 5 cells east
-    })
+      const originalRemove = world.removeEffect.bind(world)
+      world.removeEffect = (effect: IGameEffect) => {
+        order.push('remove')
+        originalRemove(effect)
+      }
 
-    it('fires onImpact after all ticks needed to reach target', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0) // 1 cell
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(256) // slow — 4 ticks to reach 1 cell
-      const onImpact = vi.fn()
+      const di = new DelayedImpact(1, warhead, Target.Invalid, createStubArgs())
 
-      const di = new DelayedImpact(origin, target, speed, onImpact)
-
-      di.tick(world as any) // 256
+      di.tick(world as any)
       world.drainFrameEndTasks()
-      expect(onImpact).not.toHaveBeenCalled()
 
-      di.tick(world as any) // 512
-      world.drainFrameEndTasks()
-      expect(onImpact).not.toHaveBeenCalled()
-
-      di.tick(world as any) // 768
-      world.drainFrameEndTasks()
-      expect(onImpact).not.toHaveBeenCalled()
-
-      di.tick(world as any) // 1024 — arrived
-      world.drainFrameEndTasks()
-      expect(onImpact).toHaveBeenCalledTimes(1)
-      expect(WPos.equals(di.currentPosition, targetPos)).toBe(true)
+      expect(order).toEqual(['remove', 'doImpact'])
     })
   })
 
   // -----------------------------------------------------------------------
-  // Invalid target handling
+  // Post-expiration: repeats each subsequent tick (OpenRA behavior)
   // -----------------------------------------------------------------------
 
-  describe('invalid target handling', () => {
-    it('triggers impact immediately when target is invalid', () => {
-      const origin = new WPos(0, 0, 0)
-      const speed = WDist.fromCells(1)
-      const onImpact = vi.fn()
+  describe('post-expiration behavior', () => {
+    it('schedules frameEndTask on every tick after expiry (OpenRA quirk)', () => {
+      const warhead = createStubWarhead()
+      const di = new DelayedImpact(1, warhead, Target.Invalid, createStubArgs())
 
-      const di = new DelayedImpact(origin, Target.Invalid, speed, onImpact)
+      di.tick(world as any) // --1 = 0: schedules
+      di.tick(world as any) // --0 = -1: schedules again
+      di.tick(world as any) // ---1 = -2: schedules again
 
-      di.tick(world as any)
+      expect(world.frameEndTasks.length).toBe(3)
       world.drainFrameEndTasks()
-
-      expect(onImpact).toHaveBeenCalledTimes(1)
-      expect(di.isDone).toBe(true)
-    })
-
-    it('currentPosition stays at last position when target is invalid', () => {
-      const origin = new WPos(1024, 2048, 512)
-      const speed = WDist.fromCells(1)
-      const onImpact = vi.fn()
-
-      const di = new DelayedImpact(origin, Target.Invalid, speed, onImpact)
-
-      di.tick(world as any)
-
-      // Position should not have changed (no target to advance toward)
-      expect(WPos.equals(di.currentPosition, origin)).toBe(true)
-    })
-  })
-
-  // -----------------------------------------------------------------------
-  // Post-impact safety (impactTriggered guard)
-  // -----------------------------------------------------------------------
-
-  describe('post-impact safety', () => {
-    it('does not fire onImpact again if ticked after impact', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048) // arrives in 1 tick
-      const onImpact = vi.fn()
-
-      const di = new DelayedImpact(origin, target, speed, onImpact)
-
-      di.tick(world as any) // arrival, schedules
-      world.drainFrameEndTasks()
-      expect(onImpact).toHaveBeenCalledTimes(1)
-
-      // Tick again after impact — should NOT fire again
-      di.tick(world as any)
-      world.drainFrameEndTasks()
-      expect(onImpact).toHaveBeenCalledTimes(1)
-      // No additional removeEffect calls
-      expect(world.removedEffects.length).toBe(1)
-    })
-
-    it('does not schedule additional frameEndTasks after impact', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048)
-
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
-
-      di.tick(world as any) // impacts
-      const taskCount = world.frameEndTasks.length
-
-      di.tick(world as any) // guard prevents additional scheduling
-      expect(world.frameEndTasks.length).toBe(taskCount) // unchanged
+      expect(warhead.doImpact).toHaveBeenCalledTimes(3)
     })
   })
 
@@ -370,110 +256,40 @@ describe('DelayedImpact', () => {
 
   describe('render()', () => {
     it('returns an empty array (yield break equivalent)', () => {
-      const di = new DelayedImpact(
-        WPos.Zero,
-        Target.Invalid,
-        WDist.Zero,
-        vi.fn(),
-      )
+      const di = new DelayedImpact(5, createStubWarhead(), Target.Invalid, createStubArgs())
       const wr = createStubWorldRenderer()
-
-      const result = di.render(wr)
-      expect(result).toEqual([])
-      expect(Array.isArray(result)).toBe(true)
+      expect(di.render(wr)).toEqual([])
     })
 
-    it('returns empty array before and after impact', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048)
+    it('returns empty array before and after execution', () => {
+      const di = new DelayedImpact(1, createStubWarhead(), Target.Invalid, createStubArgs())
       const wr = createStubWorldRenderer()
 
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
-
-      // Before
       expect(di.render(wr)).toEqual([])
 
-      // Execute impact
       di.tick(world as any)
       world.drainFrameEndTasks()
 
-      // After
       expect(di.render(wr)).toEqual([])
     })
   })
 
   // -----------------------------------------------------------------------
-  // currentPosition getter
+  // remainingDelay getter
   // -----------------------------------------------------------------------
 
-  describe('currentPosition', () => {
-    it('returns a copy of the internal position (immutable by contract)', () => {
-      const origin = new WPos(100, 200, 300)
-      const targetPos = new WPos(1100, 200, 300)
-      const target = Target.fromPos(targetPos)
-      const speed = WDist.fromCells(1)
-
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
-
-      // WPos is immutable, so returning the same reference is fine
-      const pos1 = di.currentPosition
-      expect(WPos.equals(pos1, origin)).toBe(true)
-
+  describe('remainingDelay', () => {
+    it('reflects current delay count after each tick', () => {
+      const di = new DelayedImpact(3, createStubWarhead(), Target.Invalid, createStubArgs())
+      expect(di.remainingDelay).toBe(3)
       di.tick(world as any)
-
-      const pos2 = di.currentPosition
-      expect(WPos.equals(pos2, origin)).toBe(false)
-      expect(pos2.X).toBeGreaterThan(origin.X)
-    })
-  })
-
-  // -----------------------------------------------------------------------
-  // isDone lifecycle
-  // -----------------------------------------------------------------------
-
-  describe('isDone lifecycle', () => {
-    it('starts as false', () => {
-      const di = new DelayedImpact(
-        WPos.Zero,
-        Target.Invalid,
-        WDist.Zero,
-        vi.fn(),
-      )
-      expect(di.isDone).toBe(false)
-    })
-
-    it('remains false during travel ticks', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(10240, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = WDist.fromCells(1)
-
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
-
+      expect(di.remainingDelay).toBe(2)
       di.tick(world as any)
-      world.drainFrameEndTasks()
-      expect(di.isDone).toBe(false)
-
+      expect(di.remainingDelay).toBe(1)
       di.tick(world as any)
-      world.drainFrameEndTasks()
-      expect(di.isDone).toBe(false)
-    })
-
-    it('becomes true only after frameEndTask executes', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048)
-
-      const di = new DelayedImpact(origin, target, speed, vi.fn())
-
-      di.tick(world as any) // scheduled but not drained
-      expect(di.isDone).toBe(false) // not yet
-
-      world.drainFrameEndTasks()
-      expect(di.isDone).toBe(true)
+      expect(di.remainingDelay).toBe(0)
+      di.tick(world as any)
+      expect(di.remainingDelay).toBe(-1)
     })
   })
 
@@ -482,123 +298,69 @@ describe('DelayedImpact', () => {
   // -----------------------------------------------------------------------
 
   describe('edge cases', () => {
-    it('handles zero speed (stays at origin unless at target)', () => {
-      const origin = new WPos(100, 200, 0)
-      const targetPos = new WPos(100, 200, 0) // same position!
-      const target = Target.fromPos(targetPos)
-      const speed = WDist.Zero
-
-      const onImpact = vi.fn()
-      const di = new DelayedImpact(origin, target, speed, onImpact)
-
-      di.tick(world as any) // distance = 0, speed = 0: 0 <= 0 triggers
-      world.drainFrameEndTasks()
-
-      expect(onImpact).toHaveBeenCalledTimes(1)
-      expect(WPos.equals(di.currentPosition, targetPos)).toBe(true)
-    })
-
-    it('handles zero distance to target (immediate impact)', () => {
-      const pos = new WPos(512, 512, 0)
-      const target = Target.fromPos(pos)
-      const speed = WDist.fromCells(5)
-      const onImpact = vi.fn()
-
-      const di = new DelayedImpact(pos, target, speed, onImpact)
-
-      di.tick(world as any) // already at target
-      world.drainFrameEndTasks()
-
-      expect(onImpact).toHaveBeenCalledTimes(1)
-    })
-
-    it('handles very fast speed (instant arrival)', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1, 0, 0) // very close
-      const target = Target.fromPos(targetPos)
-      const speed = WDist.MaxValue // speed >> distance
-
-      const onImpact = vi.fn()
-      const di = new DelayedImpact(origin, target, speed, onImpact)
-
-      di.tick(world as any)
-      world.drainFrameEndTasks()
-
-      expect(onImpact).toHaveBeenCalledTimes(1)
-      // Position snaps to target
-      expect(WPos.equals(di.currentPosition, targetPos)).toBe(true)
-    })
-
-    it('handles negative coordinates', () => {
-      const origin = new WPos(-1024, -2048, 0)
-      const targetPos = new WPos(-512, -1024, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(1024) // 1 cell/tick — should arrive in ~1 tick
-
-      const onImpact = vi.fn()
-      const di = new DelayedImpact(origin, target, speed, onImpact)
-
-      di.tick(world as any)
-      world.drainFrameEndTasks()
-
-      // Position should move toward less negative values
-      // With speed 1024 and delta (512, 1024, 0), distance ≈ 1145
-      // 1145 > 1024, so it doesn't arrive in 1 tick
-      expect(onImpact).not.toHaveBeenCalled() // not yet
-
-      di.tick(world as any)
-      world.drainFrameEndTasks()
-      expect(onImpact).toHaveBeenCalledTimes(1)
-    })
-
-    it('handles onImpact that throws', () => {
-      const origin = new WPos(0, 0, 0)
-      const targetPos = new WPos(1024, 0, 0)
-      const target = Target.fromPos(targetPos)
-      const speed = new WDist(2048)
-      const onImpact = vi.fn(() => {
-        throw new Error('impact error')
-      })
-
-      const di = new DelayedImpact(origin, target, speed, onImpact)
+    it('handles doImpact that throws — effect was already removed', () => {
+      const warhead: IWarhead = {
+        doImpact: vi.fn(() => {
+          throw new Error('impact error')
+        }),
+      }
+      const di = new DelayedImpact(1, warhead, Target.Invalid, createStubArgs())
 
       di.tick(world as any)
 
       expect(() => world.drainFrameEndTasks()).toThrow('impact error')
-      // Effect was removed before onImpact
+      // Effect was removed before doImpact ran
       expect(world.removedEffects.length).toBe(1)
-      // isDone is false because it's set after onImpact and onImpact threw
-      expect(di.isDone).toBe(false)
+    })
+
+    it('handles very large delay values', () => {
+      const di = new DelayedImpact(
+        Number.MAX_SAFE_INTEGER,
+        createStubWarhead(),
+        Target.Invalid,
+        createStubArgs(),
+      )
+      expect(di.remainingDelay).toBe(Number.MAX_SAFE_INTEGER)
     })
 
     it('multiple DelayedImpacts tick independently', () => {
-      const origin1 = new WPos(0, 0, 0)
-      const targetPos1 = new WPos(1024, 0, 0)
-      const target1 = Target.fromPos(targetPos1)
-      const speed1 = new WDist(2048) // fast: 1 tick
+      const w1 = createStubWarhead()
+      const w2 = createStubWarhead()
+      const di1 = new DelayedImpact(3, w1, Target.Invalid, createStubArgs())
+      const di2 = new DelayedImpact(1, w2, Target.Invalid, createStubArgs())
 
-      const origin2 = new WPos(0, 0, 0)
-      const targetPos2 = new WPos(10240, 0, 0) // 10 cells away
-      const target2 = Target.fromPos(targetPos2)
-      const speed2 = WDist.fromCells(1) // slow: 10 ticks
+      di1.tick(world as any) // di1: 2
+      di2.tick(world as any) // di2: 0 → schedules
 
-      const onImpact1 = vi.fn()
-      const onImpact2 = vi.fn()
+      expect(w1.doImpact).not.toHaveBeenCalled()
 
-      const di1 = new DelayedImpact(origin1, target1, speed1, onImpact1)
-      const di2 = new DelayedImpact(origin2, target2, speed2, onImpact2)
-
-      // Tick both
-      di1.tick(world as any)
-      di2.tick(world as any)
       world.drainFrameEndTasks()
 
-      // di1 should have arrived (1 tick at speed 2048 for 1 cell)
-      // di2 should still be traveling
-      expect(onImpact1).toHaveBeenCalledTimes(1)
-      expect(onImpact2).not.toHaveBeenCalled()
-      expect(di1.isDone).toBe(true)
-      expect(di2.isDone).toBe(false)
+      expect(w2.doImpact).toHaveBeenCalledTimes(1)
+      expect(w1.doImpact).not.toHaveBeenCalled()
+      expect(di1.remainingDelay).toBe(2)
+    })
+
+    it('IWarhead and WarheadArgs stubs are usable', () => {
+      const captured: { target: Target | null; args: WarheadArgs | null } = {
+        target: null,
+        args: null,
+      }
+      const warhead: IWarhead = {
+        doImpact(target: Target, args: WarheadArgs) {
+          captured.target = target
+          captured.args = args
+        },
+      }
+      const target = Target.Invalid
+      const args = createStubArgs({ weapon: 'artillery' })
+
+      const di = new DelayedImpact(1, warhead, target, args)
+      di.tick(world as any)
+      world.drainFrameEndTasks()
+
+      expect(captured.target).toBe(target)
+      expect(captured.args).toBe(args)
     })
   })
 })

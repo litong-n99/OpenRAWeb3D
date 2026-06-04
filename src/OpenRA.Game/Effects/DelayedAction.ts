@@ -8,7 +8,8 @@
  *   (GameWorldManager instance captured via closure, no World parameter needed)
  * - C# w.Remove(this) (IEffect self-removal) → world.removeEffect(this)
  * - C# yield break (empty render) → return [] (empty array)
- * - Per migration plan TODO-3.H.2: added isDone property for future auto-cleanup
+ * - Pre-decrement pattern matches C# exactly: --delay <= 0
+ *   (delay=5 fires on tick 5, delay=1 fires on tick 1, delay=0 fires on tick 1)
  *
  * 使用场景:
  * - "Destroy this actor in 10 ticks"
@@ -33,9 +34,15 @@ import type { WorldRendererStub, IRenderable } from '../Traits/TraitsInterfaces.
  *
  * OpenRA 对照: OpenRA.Effects.DelayedAction (IEffect implementation)
  *
- * Each call to tick() decrements an internal counter. When the counter
- * reaches zero, the action callback is executed once during the frame-end
- * task phase, and the effect self-removes from the world.
+ * Each call to tick() pre-decrements an internal counter. When the counter
+ * reaches zero or below, the action callback is scheduled for execution
+ * during the frame-end task phase via world.addFrameEndTask(). The effect
+ * self-removes from the world in the same frame-end task.
+ *
+ * Pre-decrement behavior (matching C#):
+ * - delay=5: fires on tick 5 (--5=4, --4=3, --3=2, --2=1, --1=0)
+ * - delay=1: fires on tick 1 (--1=0)
+ * - delay=0: fires on tick 1 (--0=-1)
  *
  * Usage:
  * ```
@@ -60,12 +67,6 @@ export class DelayedAction implements IEffect {
    */
   private _delay: number
 
-  /** Whether this effect has completed execution.
-   *
-   * NOTE: Added per migration plan TODO-3.H.2. Not in original OpenRA.
-   */
-  private _done = false
-
   // -------------------------------------------------------------------------
   // Constructor
   // -------------------------------------------------------------------------
@@ -77,7 +78,7 @@ export class DelayedAction implements IEffect {
    *
    * @param delay — number of game ticks to wait before executing the action.
    *   Must be >= 0. A value of 0 causes the action to execute at the end
-   *   of the first tick (via frameEndTask).
+   *   of the first tick (via frameEndTask because --0 = -1 <= 0).
    * @param action — the callback to execute when delay expires. Executed
    *   once, inside a frame-end task.
    */
@@ -89,15 +90,6 @@ export class DelayedAction implements IEffect {
   // -------------------------------------------------------------------------
   // Public accessors
   // -------------------------------------------------------------------------
-
-  /**
-   * Whether this effect has completed and may be removed.
-   *
-   * NOTE: Added per migration plan TODO-3.H.2. Not in original OpenRA.
-   */
-  get isDone(): boolean {
-    return this._done
-  }
 
   /**
    * Remaining tick count before the action fires.
@@ -113,8 +105,8 @@ export class DelayedAction implements IEffect {
   // -------------------------------------------------------------------------
 
   /**
-   * Decrement the delay counter. When it reaches zero, schedule the action
-   * for execution via frame-end task and mark as done.
+   * Pre-decrement the delay counter. When it reaches zero or below, schedule
+   * the action for execution via frame-end task.
    *
    * OpenRA 对照: DelayedAction.Tick(World)
    *
@@ -123,6 +115,11 @@ export class DelayedAction implements IEffect {
    * ITick and IEffect ticks have completed, preventing mid-iteration
    * modification of actor/effect collections.
    *
+   * Uses PRE-decrement (matching C# --delay pattern):
+   * - delay=5: --delay = 4,3,2,1,0 → fires on tick 5
+   * - delay=1: --delay = 0 → fires on tick 1
+   * - delay=0: --delay = -1 → fires on tick 1
+   *
    * @param world — the game world manager
    */
   tick(world: GameWorldManager): void {
@@ -130,7 +127,6 @@ export class DelayedAction implements IEffect {
       world.addFrameEndTask(() => {
         world.removeEffect(this)
         this._action()
-        this._done = true
       })
     }
   }

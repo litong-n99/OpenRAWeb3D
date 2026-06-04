@@ -9,24 +9,54 @@
  * - C# ISpatiallyPartitionable marker interface → empty TypeScript interface
  * - C# IEffectAboveShroud / IEffectAnnotation sub-interfaces with
  *   RenderAboveShroud/RenderAnnotation → direct TypeScript equivalents
- * - IEffect extends IGameEffect (defined in World.ts) for compatibility
- *   with GameWorldManager's effect management
- *
- * NOTE: The `isDone` property is optional and not in the original OpenRA
- * IEffect. It is added per the migration plan (TODO-3.H.1) to allow World
- * to auto-remove completed effects in future iterations, rather than
- * relying solely on effects self-removing via addFrameEndTask().
+ * - IGameEffect + IGameEffectSync moved from World.ts into this file
+ *   (single source of truth for effect type hierarchy)
+ * - Effects self-remove via world.addFrameEndTask(() => world.removeEffect(this))
+ *   matching OpenRA's w.Remove(this) pattern — no isDone flag needed
  */
 
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
 
-import type { GameWorldManager, IGameEffect } from '../World.js'
+import type { GameWorldManager } from '../World.js'
 import type { WorldRendererStub, IRenderable } from '../Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
-// IEffect — main effect interface (对应 OpenRA IEffect)
+// IGameEffect — base effect interface (moved from World.ts)
+// 对应 OpenRA IEffect.Tick(World) — minimal tick-only view
+// ---------------------------------------------------------------------------
+
+/**
+ * Base interface for effects ticked each game logic tick.
+ *
+ * OpenRA 对照: OpenRA.Game/Effects/IEffect.cs — IEffect.Tick(World)
+ *
+ * IGameEffect is the minimal interface used by GameWorldManager for the
+ * tick phase. The full IEffect extends this with render() support.
+ *
+ * NOTE: Originally defined in World.ts; moved here as single source of
+ * truth for the effect type hierarchy.
+ */
+export interface IGameEffect {
+  /** Called every game logic tick.
+   *
+   * OpenRA 对照: IEffect.Tick(World)
+   */
+  tick(world: GameWorldManager): void
+}
+
+/**
+ * Marker interface for sync-relevant effects.
+ *
+ * OpenRA 对照: ISync (marker interface)
+ */
+export interface IGameEffectSync extends IGameEffect {
+  // intentionally empty — marker for SyncHash participation
+}
+
+// ---------------------------------------------------------------------------
+// IEffect — full effect interface (对应 OpenRA IEffect)
 // ---------------------------------------------------------------------------
 
 /**
@@ -38,12 +68,9 @@ import type { WorldRendererStub, IRenderable } from '../Traits/TraitsInterfaces.
  * Used for projectiles, explosions, screen shakes, delayed callbacks, and
  * other visual or non-visual one-shot operations.
  *
- * Implementation notes:
- * - tick() is called each logic tick by GameWorldManager (25 TPS default)
- * - render() returns an array of renderables for the current frame
- * - isDone (optional) marks the effect for auto-removal by World
- * - Effects that self-remove via addFrameEndTask() should still set isDone
- *   to support future auto-cleanup in World.tick()
+ * Effects self-remove via world.addFrameEndTask(() => world.removeEffect(this)),
+ * matching OpenRA's `w.Remove(this)` pattern. No isDone flag is used — the
+ * frameEndTask drain in World.tick() handles cleanup.
  */
 export interface IEffect extends IGameEffect {
   /** Called each logic tick by GameWorldManager.
@@ -64,15 +91,6 @@ export interface IEffect extends IGameEffect {
    * @returns array of renderable objects (may be empty)
    */
   render(worldRenderer: WorldRendererStub): readonly IRenderable[]
-
-  /** Whether this effect has completed and can be removed.
-   *
-   * NOTE: This property is not in the original OpenRA IEffect. It is
-   * added per migration plan TODO-3.H.1 to support future auto-cleanup.
-   * Effects that self-remove via addFrameEndTask() set this to true
-   * after removal to support future World auto-cleanup iterations.
-   */
-  isDone?: boolean
 }
 
 // ---------------------------------------------------------------------------

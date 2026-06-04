@@ -1,30 +1,23 @@
 /**
  * DelayedAction.test.ts — DelayedAction migration unit tests
  *
- * Tests focus on: delay counter behavior, action execution timing,
- * frameEndTask integration, isDone state, edge cases.
+ * Tests focus on: pre-decrement delay counter, action execution via
+ * frameEndTask, self-removal, edge cases.
  *
  * No Babylon.js dependencies — pure logic tests with Vitest.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DelayedAction } from './DelayedAction.js'
-import type { IGameEffect } from '../World.js'
+import type { IGameEffect } from './IEffect.js'
 import type { WorldRendererStub } from '../Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
 // Minimal GameWorldManager stub for effect tests
 // ---------------------------------------------------------------------------
 
-/**
- * A minimal stub of GameWorldManager providing only the methods that
- * DelayedAction uses: addFrameEndTask() and removeEffect().
- */
 class StubWorld {
-  /** Queue of pending frame end tasks. */
   readonly frameEndTasks: Array<() => void> = []
-
-  /** Effects that were removed via removeEffect(). */
   readonly removedEffects: IGameEffect[] = []
 
   addFrameEndTask(action: () => void): void {
@@ -35,10 +28,6 @@ class StubWorld {
     this.removedEffects.push(effect)
   }
 
-  /**
-   * Execute all pending frame end tasks (simulates GameWorldManager.tick()
-   * draining frameEndActions after effects tick).
-   */
   drainFrameEndTasks(): void {
     while (this.frameEndTasks.length > 0) {
       const task = this.frameEndTasks.shift()!
@@ -76,20 +65,17 @@ describe('DelayedAction', () => {
       const da = new DelayedAction(5, action)
 
       expect(da.remainingDelay).toBe(5)
-      // Action should not be called during construction
       expect(action).not.toHaveBeenCalled()
     })
 
     it('accepts zero delay', () => {
       const da = new DelayedAction(0, vi.fn())
       expect(da.remainingDelay).toBe(0)
-      expect(da.isDone).toBe(false)
     })
 
     it('accepts negative delay', () => {
       const da = new DelayedAction(-1, vi.fn())
       expect(da.remainingDelay).toBe(-1)
-      expect(da.isDone).toBe(false)
     })
   })
 
@@ -100,11 +86,8 @@ describe('DelayedAction', () => {
   describe('IEffect interface', () => {
     it('implements IEffect (structural)', () => {
       const da = new DelayedAction(5, vi.fn())
-
-      // Verify all IEffect members are present
       expect(typeof da.tick).toBe('function')
       expect(typeof da.render).toBe('function')
-      expect('isDone' in da).toBe(true)
     })
 
     it('is compatible with IGameEffect', () => {
@@ -114,109 +97,97 @@ describe('DelayedAction', () => {
   })
 
   // -----------------------------------------------------------------------
-  // tick() — delay decrement
+  // Pre-decrement behavior (BLOCKER 1 — matching C# --delay <= 0)
   // -----------------------------------------------------------------------
 
-  describe('tick()', () => {
-    it('decrements remainingDelay each call', () => {
-      const da = new DelayedAction(5, vi.fn())
-
-      da.tick(world as any)
-      expect(da.remainingDelay).toBe(4)
-
-      da.tick(world as any)
-      expect(da.remainingDelay).toBe(3)
-    })
-
-    it('does not execute action before delay reaches 0', () => {
+  describe('pre-decrement (matching C# --delay <= 0)', () => {
+    it('delay=5 fires on tick 5 (pre-decrement: 5→4,4→3,3→2,2→1,1→0)', () => {
       const action = vi.fn()
-      const da = new DelayedAction(3, action)
+      const da = new DelayedAction(5, action)
 
-      da.tick(world as any) // delay → 2
-      da.tick(world as any) // delay → 1
-      expect(action).not.toHaveBeenCalled()
-      expect(da.isDone).toBe(false)
-    })
-
-    it('does not execute action until frameEndTask drains', () => {
-      const action = vi.fn()
-      const da = new DelayedAction(2, action)
-
-      da.tick(world as any) // delay → 1
-      da.tick(world as any) // delay → 0: schedules frameEndTask
-
-      // Action NOT called yet (frameEndTask not yet drained)
-      expect(action).not.toHaveBeenCalled()
-      expect(world.frameEndTasks.length).toBe(1)
-    })
-
-    it('executes action when frameEndTask drains', () => {
-      const action = vi.fn()
-      const da = new DelayedAction(2, action)
-
-      da.tick(world as any) // delay → 1
-      da.tick(world as any) // delay → 0: schedules frameEndTask
+      // Ticks 1-4: pre-decrement gives 4,3,2,1 — none <= 0
+      da.tick(world as any) // --5 = 4
       world.drainFrameEndTasks()
+      expect(action).not.toHaveBeenCalled()
 
+      da.tick(world as any) // --4 = 3
+      world.drainFrameEndTasks()
+      expect(action).not.toHaveBeenCalled()
+
+      da.tick(world as any) // --3 = 2
+      world.drainFrameEndTasks()
+      expect(action).not.toHaveBeenCalled()
+
+      da.tick(world as any) // --2 = 1
+      world.drainFrameEndTasks()
+      expect(action).not.toHaveBeenCalled()
+
+      // Tick 5: pre-decrement gives 0 — fires!
+      da.tick(world as any) // --1 = 0
+      world.drainFrameEndTasks()
       expect(action).toHaveBeenCalledTimes(1)
     })
 
-    it('removes itself from world when action fires', () => {
+    it('delay=1 fires on tick 1 (pre-decrement: 1→0)', () => {
+      const action = vi.fn()
+      const da = new DelayedAction(1, action)
+
+      da.tick(world as any) // --1 = 0
+      world.drainFrameEndTasks()
+      expect(action).toHaveBeenCalledTimes(1)
+    })
+
+    it('delay=0 fires on tick 1 (pre-decrement: 0→-1)', () => {
+      const action = vi.fn()
+      const da = new DelayedAction(0, action)
+
+      da.tick(world as any) // --0 = -1 <= 0
+      world.drainFrameEndTasks()
+      expect(action).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // tick() — action not called until frameEndTask drains
+  // -----------------------------------------------------------------------
+
+  describe('frameEndTask deferral', () => {
+    it('does not execute action during tick — only after frameEndTask drain', () => {
+      const action = vi.fn()
+      const da = new DelayedAction(2, action)
+
+      da.tick(world as any) // delay → 1
+      da.tick(world as any) // delay → 0: schedules frameEndTask
+
+      expect(action).not.toHaveBeenCalled()
+      expect(world.frameEndTasks.length).toBe(1)
+
+      world.drainFrameEndTasks()
+      expect(action).toHaveBeenCalledTimes(1)
+    })
+
+    it('removes itself from world in the frameEndTask', () => {
       const da = new DelayedAction(1, vi.fn())
 
-      da.tick(world as any) // delay → 0: schedules
+      da.tick(world as any)
       world.drainFrameEndTasks()
 
       expect(world.removedEffects.length).toBe(1)
       expect(world.removedEffects[0]).toBe(da)
     })
-
-    it('sets isDone = true after action executes', () => {
-      const da = new DelayedAction(1, vi.fn())
-
-      expect(da.isDone).toBe(false)
-
-      da.tick(world as any)
-      world.drainFrameEndTasks()
-
-      expect(da.isDone).toBe(true)
-    })
-
-    it('fires immediately on first tick with delay 0', () => {
-      const action = vi.fn()
-      const da = new DelayedAction(0, action)
-
-      da.tick(world as any) // delay → -1: schedules immediately
-      world.drainFrameEndTasks()
-
-      expect(action).toHaveBeenCalledTimes(1)
-      expect(da.isDone).toBe(true)
-    })
-
-    it('fires immediately on first tick with negative delay', () => {
-      const action = vi.fn()
-      const da = new DelayedAction(-3, action)
-
-      da.tick(world as any) // delay → -4: schedules immediately
-      world.drainFrameEndTasks()
-
-      expect(action).toHaveBeenCalledTimes(1)
-      expect(da.isDone).toBe(true)
-    })
   })
 
   // -----------------------------------------------------------------------
-  // tick() — execution order (action after remove)
+  // Execution order
   // -----------------------------------------------------------------------
 
   describe('execution order', () => {
-    it('removes effect before calling action', () => {
+    it('removes effect before calling action (matches OpenRA order)', () => {
       const order: string[] = []
       const da = new DelayedAction(1, () => {
         order.push('action')
       })
 
-      // Override removeEffect to track order
       const originalRemove = world.removeEffect.bind(world)
       world.removeEffect = (effect: IGameEffect) => {
         order.push('remove')
@@ -226,33 +197,24 @@ describe('DelayedAction', () => {
       da.tick(world as any)
       world.drainFrameEndTasks()
 
-      // removeEffect is called first, then action
       expect(order).toEqual(['remove', 'action'])
     })
   })
 
   // -----------------------------------------------------------------------
-  // tick() — multiple ticks after delay expires
+  // Post-expiration: repeats each subsequent tick (OpenRA behavior)
   // -----------------------------------------------------------------------
 
   describe('post-expiration behavior', () => {
-    it('schedules frameEndTask only once even if ticked multiple times after expiry', () => {
+    it('schedules frameEndTask on every tick after expiry (OpenRA quirk)', () => {
       const action = vi.fn()
       const da = new DelayedAction(1, action)
 
-      // First tick decrements to 0 and schedules
-      da.tick(world as any)
-      expect(world.frameEndTasks.length).toBe(1)
+      da.tick(world as any) // --1 = 0: schedules
+      da.tick(world as any) // --0 = -1: schedules again
+      da.tick(world as any) // ---1 = -2: schedules again
 
-      // Subsequent ticks also decrement (to -1, -2, ...) and schedule again
-      da.tick(world as any)
-      da.tick(world as any)
-
-      // Each tick after expiry also schedules (OpenRA behavior)
-      // This matches the OpenRA pattern where --delay continues to fire
-      // the frameEndTask each tick. This is a known quirk.
       expect(world.frameEndTasks.length).toBe(3)
-
       world.drainFrameEndTasks()
       expect(action).toHaveBeenCalledTimes(3)
     })
@@ -266,53 +228,19 @@ describe('DelayedAction', () => {
     it('returns an empty array (yield break equivalent)', () => {
       const da = new DelayedAction(5, vi.fn())
       const wr = createStubWorldRenderer()
-
-      const result = da.render(wr)
-      expect(result).toEqual([])
-      expect(Array.isArray(result)).toBe(true)
+      expect(da.render(wr)).toEqual([])
     })
 
     it('returns empty array before and after execution', () => {
       const da = new DelayedAction(1, vi.fn())
       const wr = createStubWorldRenderer()
 
-      // Before
       expect(da.render(wr)).toEqual([])
 
-      // Execute
       da.tick(world as any)
       world.drainFrameEndTasks()
 
-      // After
       expect(da.render(wr)).toEqual([])
-    })
-  })
-
-  // -----------------------------------------------------------------------
-  // isDone lifecycle
-  // -----------------------------------------------------------------------
-
-  describe('isDone lifecycle', () => {
-    it('starts as false', () => {
-      const da = new DelayedAction(10, vi.fn())
-      expect(da.isDone).toBe(false)
-    })
-
-    it('remains false during ticks before expiry', () => {
-      const da = new DelayedAction(5, vi.fn())
-      da.tick(world as any) // 4
-      da.tick(world as any) // 3
-      expect(da.isDone).toBe(false)
-    })
-
-    it('becomes true only after frameEndTask executes', () => {
-      const da = new DelayedAction(1, vi.fn())
-
-      da.tick(world as any) // scheduled but not drained
-      expect(da.isDone).toBe(false) // still false
-
-      world.drainFrameEndTasks()
-      expect(da.isDone).toBe(true)
     })
   })
 
@@ -321,7 +249,7 @@ describe('DelayedAction', () => {
   // -----------------------------------------------------------------------
 
   describe('remainingDelay', () => {
-    it('reflects current delay count', () => {
+    it('reflects current delay count after each tick', () => {
       const da = new DelayedAction(3, vi.fn())
       expect(da.remainingDelay).toBe(3)
       da.tick(world as any)
@@ -340,7 +268,7 @@ describe('DelayedAction', () => {
   // -----------------------------------------------------------------------
 
   describe('edge cases', () => {
-    it('handles action that throws gracefully', () => {
+    it('handles action that throws — effect was already removed', () => {
       const action = vi.fn(() => {
         throw new Error('test error')
       })
@@ -348,45 +276,14 @@ describe('DelayedAction', () => {
 
       da.tick(world as any)
 
-      // Should not throw when draining — the error propagates normally
-      // because the frameEndTask is a plain function call, not wrapped
       expect(() => world.drainFrameEndTasks()).toThrow('test error')
-      // isDone is still set because removeEffect and action run before _done=true
-      // Actually _done is set after action(), so if action throws, _done stays false
-    })
-
-    it('isDone is false if action throws', () => {
-      const action = vi.fn(() => {
-        throw new Error('test error')
-      })
-      const da = new DelayedAction(1, action)
-
-      da.tick(world as any)
-      try { world.drainFrameEndTasks() } catch { /* expected */ }
-
-      // isDone is set after action() so if action throws, isDone stays false
-      expect(da.isDone).toBe(false)
-      // But the effect WAS removed from world (removeEffect runs first)
+      // Effect was removed before action ran (removeEffect runs first)
       expect(world.removedEffects.length).toBe(1)
     })
 
     it('handles very large delay values', () => {
       const da = new DelayedAction(Number.MAX_SAFE_INTEGER, vi.fn())
       expect(da.remainingDelay).toBe(Number.MAX_SAFE_INTEGER)
-      expect(da.isDone).toBe(false)
-    })
-
-    it('handles action that modifies the world (adds another DelayedAction)', () => {
-      const da = new DelayedAction(1, () => {
-        // Simulating adding another effect during frameEndTask
-        world.addFrameEndTask(() => {
-          // nested frame end task
-        })
-      })
-
-      da.tick(world as any)
-      world.drainFrameEndTasks()
-      expect(da.isDone).toBe(true)
     })
 
     it('multiple DelayedActions tick independently', () => {
@@ -395,29 +292,30 @@ describe('DelayedAction', () => {
       const da1 = new DelayedAction(3, action1)
       const da2 = new DelayedAction(1, action2)
 
-      // Tick both
-      da1.tick(world as any) // delay → 2
-      da2.tick(world as any) // delay → 0, schedules
+      da1.tick(world as any) // da1: 2
+      da2.tick(world as any) // da2: 0 → schedules
 
       expect(action1).not.toHaveBeenCalled()
 
       world.drainFrameEndTasks()
 
-      // da2 action fired, da1 still has 2 ticks remaining
       expect(action2).toHaveBeenCalledTimes(1)
       expect(action1).not.toHaveBeenCalled()
       expect(da1.remainingDelay).toBe(2)
-      expect(da2.isDone).toBe(true)
     })
 
-    it('exact delay count: action fires when delay reaches 0 from positive', () => {
-      const action = vi.fn()
-      const da = new DelayedAction(1, action)
+    it('action that schedules another DelayedAction via frameEndTask', () => {
+      const da = new DelayedAction(1, () => {
+        world.addFrameEndTask(() => {
+          // nested frame end task from within action
+        })
+      })
 
-      // delay = 1
-      da.tick(world as any) // --delay = 0, triggers
+      da.tick(world as any)
       world.drainFrameEndTasks()
-      expect(action).toHaveBeenCalledTimes(1)
+      // FrameEndTask from inside action is queued in the drain loop
+      // Stub drains until empty, so nested tasks also execute
+      expect(world.frameEndTasks.length).toBe(0)
     })
   })
 })

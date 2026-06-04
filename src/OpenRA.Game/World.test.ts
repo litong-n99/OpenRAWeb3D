@@ -13,8 +13,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   GameWorldManager,
   WorldType,
-  type IGameEffect,
 } from './World.js'
+import type { IGameEffect } from './Effects/IEffect.js'
 import {
   Component,
   type IGameActor,
