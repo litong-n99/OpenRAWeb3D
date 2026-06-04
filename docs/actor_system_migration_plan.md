@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Implementation Phase (29/36 migrated, 21/31 in-scope)
+> **Chapter Status**: Chapter 3 -- Implementation Phase (30/36 migrated, 22/31 in-scope)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -428,41 +428,42 @@ function traitsImplementingITick(components: Component[]): ITick[] {
 
 ### 3.5 Phase E: ActorInfo.cs -- Actor Metadata
 
-**Status**: Pending (0/1)
+**Status**: Completed (1/1) -- 2026-06-04
 **Complexity**: Medium
 **Blocked by**: Phase A (primitives), Phase B (conceptual -- Trait interfaces)
 **Blocks**: Actor construction (World.createActor() needs ActorConfig)
+**Implementation**: ~916 lines TS + 64 tests | **Review**: 2 rounds, 0 BLOCKERs
 
 **OpenRA Reference**: `OpenRA.Game/GameRules/ActorInfo.cs` (201 lines)
 **Migration Target**: `src/OpenRA.Game/GameRules/ActorInfo.ts`
 
 **Description**: Static metadata describing an actor type. Loaded from YAML/JSON at game start. Maps to `ActorConfig` class. Handles trait inheritance (child merges parent traits, child overrides parent), `-TraitName` removal syntax, and topological sort of `Requires<T>` dependencies.
 
-- [ ] **TODO-3.E.1** `ActorConfig` class:
+- [x] **TODO-3.E.1** `ActorConfig` class:
   - `name: string` -- Actor type name (e.g., "E1", "HARV", "2TNK")
   - `traitInfos: Map<string, TraitConfig>` -- Trait configurations loaded from JSON
   - `isAbstract: boolean` -- Template-only types (names prefixed with `^`), not spawnable in-game
   - `inheritsFrom: string[]` -- Inheritance chain identifiers for trait composition
 
-- [ ] **TODO-3.E.2** Trait composition from JSON config:
+- [x] **TODO-3.E.2** Trait composition from JSON config:
   - Parse JSON representation of actor YAML (build-time compiled)
   - Apply inheritance: merge parent traits, child properties override parent
   - Handle `-TraitName` removal syntax (explicitly remove inherited traits)
   - Topological sort of `Requires<T>` / `NotBefore<T>` dependencies using Kahn's algorithm
   - Throw descriptive error on circular dependencies or missing requirements
 
-- [ ] **TODO-3.E.3** `TraitConfig` interface:
+- [x] **TODO-3.E.3** `TraitConfig` interface:
   - `name: string` -- Trait name
   - `properties: Record<string, unknown>` -- Raw configuration values (parsed from YAML/JSON)
   - Factory method design: `createTrait(config: TraitConfig): Component` (implementation deferred to concrete trait chapters)
 
-- [ ] **TODO-3.E.4** Build-time YAML-to-JSON compilation design:
+- [x] **TODO-3.E.4** Build-time YAML-to-JSON compilation design:
   - Document the pipeline: YAML files -> build step (Vite plugin) -> JSON modules
   - `fromJSON(json: unknown): ActorConfig` factory method with JSON Schema validation
   - Validate required fields (`name`, `traits`), validate each `TraitConfig` structure
   - Actual `FieldLoader` / YAML parsing implementation deferred to build system chapter
 
-- [ ] **TODO-3.E.5** `ActorConfig` immutability: After construction from JSON, ActorConfig is frozen (no runtime modification). `Object.freeze()` applied to the config and all nested trait configs.
+- [x] **TODO-3.E.5** `ActorConfig` immutability: After construction from JSON, ActorConfig is frozen (no runtime modification). `Object.freeze()` applied to the config and all nested trait configs.
 
 **Acceptance Criteria**:
 - JSON Schema validation catches malformed actor configurations (missing name, invalid trait structure)
@@ -471,7 +472,7 @@ function traitsImplementingITick(components: Component[]): ITick[] {
 - Inheritance: child correctly merges parent traits with override semantics
 - `-TraitName` removal syntax correctly excludes inherited traits
 
-**Estimated Effort**: ~300 lines implementation + ~250 lines test (3 developer-days)
+**Estimated Effort**: ~916 lines implementation + ~1049 lines test (64 tests, 2 review rounds, 0 BLOCKERs)
 
 ---
 
