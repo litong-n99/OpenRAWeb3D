@@ -225,7 +225,7 @@ Conversion chain: `CPos` -> `MPos` -> `WPos`. All game logic uses `WPos`; map an
 
 ### 3.2 Phase B: Trait System Core
 
-**Status**: Pending (0/2)
+**Status**: Completed (2/2)
 **Complexity**: Medium
 **Blocked by**: Phase A (coordinate primitives for Target references in interfaces)
 **Blocks**: World.cs, Actor.cs, all Trait implementations
@@ -244,7 +244,7 @@ function traitsImplementingITick(components: Component[]): ITick[] {
 }
 ```
 
-- [ ] **TODO-3.B.1** `src/OpenRA.Game/Traits/TraitsInterfaces.ts` -- All TypeScript interfaces for the Trait system, organized into 4 categories:
+- [x] **TODO-3.B.1** `src/OpenRA.Game/Traits/TraitsInterfaces.ts` -- All TypeScript interfaces for the Trait system, organized into 4 categories:
   - **Update / Render**: `ITick { tick(actor: GameActor): void }`, `ITickRender { tickRender(wr: WorldRenderer, actor: GameActor): void }`
   - **Lifecycle Notifications**: `INotifyCreated { created(actor: GameActor): void }`, `INotifyAddedToWorld { addedToWorld(actor: GameActor): void }`, `INotifyRemovedFromWorld { removedFromWorld(actor: GameActor): void }`, `INotifyActorDisposing { disposing(actor: GameActor): void }`, `INotifyKilled { killed(actor: GameActor, attackInfo: AttackInfo): void }`
   - **Game Logic**: `IResolveOrder { resolveOrder(actor: GameActor, order: Order): void }`, `IIssueOrder`, `IHealth { hp, maxHp, isDead }`, `IFacing { facing: WAngle }`, `IOccupySpace { occupiedCells, centerPosition }`, `ITargetable`, `IMove`, `IAttack`, `ICrushable`, `ISelectable`, `IDisable`
@@ -253,7 +253,7 @@ function traitsImplementingITick(components: Component[]): ITick[] {
   - Define `Component` abstract base class: `attach(actor)`, `detach()`, `onEnabledChanged(enabled: boolean)`. All Traits extend this.
   - Define `BehaviorComponent` for rendering Traits: wraps `BABYLON.Behavior<T>` interface but integrates with Component lifecycle.
 
-- [ ] **TODO-3.B.2** `src/OpenRA.Game/TraitDictionary.ts` -- Trait storage and query system:
+- [x] **TODO-3.B.2** `src/OpenRA.Game/TraitDictionary.ts` -- Trait storage and query system:
   - Internal storage: `Map<string, Component[]>` keyed by interface name
   - `addTrait(actor: GameActor, trait: Component): void` -- Register a trait, index by all implemented interfaces
   - `removeTrait(actor: GameActor, trait: Component): void` -- Unregister from all interface indexes

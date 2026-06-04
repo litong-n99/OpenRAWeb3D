@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-06-04
 > **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — IN PROGRESS
-> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 18/36 files migrated (50%), Phase A complete
+> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 20/36 files migrated (56%), Phases A-B complete
 
 ---
 
@@ -12,12 +12,12 @@
 |--------|-------|
 | **Chapter 2 rendering files** | 27 (100% complete) |
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
-| **Chapter 3 status** | Implementation started: 18/36 (50%), Phase A complete |
+| **Chapter 3 status** | Implementation started: 20/36 (56%), Phases A-B complete |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 4-8+ (networking, audio, file system, mod system, UI, map) |
 | **Overall project completion** | Chapter 2/8+ (rendering engine done, actor system in progress) |
 
-> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests.
+> **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests.
 
 ---
 
@@ -173,6 +173,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-04 | **Phase B Trait System Core** (2 files) | migration-develop | migration-review | Round 2 approved, 149 tests: TraitsInterfaces.ts (~1930 lines, 92 tests, 45+ interfaces, 22 type guards), TraitDictionary.ts (~450 lines, 57 tests, 8 query methods). ~2380 TS + 149 test lines total |
 | 2026-06-04 | **Phase A 3.1.2 + 3.1.3 Map Coords + Primitives** (11 files) | migration-develop | migration-review | 1 round, 0 BLOCKERs, 1219 tests: MPos, CPos, CVec, Target, BitSet, LongBitSet, TypeDictionary, SpatiallyPartitioned, PriorityQueue, Cache, CachedTransform, ActionQueue. ~2700 TS + ~2500 test lines total (Phase A) |
 | 2026-06-04 | **Phase A 3.1.1 World Coordinate Types** (7 files) | migration-develop | migration-review | Round 2 approved, 191 tests pass: WPos(180+24), WVec(230+35), WAngle(270+54), WDist(170+32), WRot(310+32), Int32Matrix4x4(120+5), Exts(48+10) |
 | 2026-06-03 | **Chapter 2 FINALIZED** | migration-docs | — | 27/27 (100%), 24+2+1 resolved, ~14,400+ impl lines, ~10,800+ test lines, 27 test files |
@@ -220,16 +221,16 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 ## Chapter 3: Game World & Actor System Progress
 
 > **Migration Plan**: [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md)
-> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (Phase A complete)
-> **Status**: IMPLEMENTATION PHASE (18/36 files migrated, 31 in-scope + 5 support)
+> **Created**: 2026-06-04 | **Updated**: 2026-06-04 (Phase B complete)
+> **Status**: IMPLEMENTATION PHASE (20/36 files migrated, 31 in-scope + 5 support)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 18 | 50% |
+| Completed | 20 | 56% |
 | In Progress | 0 | 0% |
-| Pending | 18 | 50% |
+| Pending | 16 | 44% |
 | **Total planned** | **36** | **100%** |
-| **In-scope** | **31** (17 Phase A + 14 Phase B-I) | |
+| **In-scope** | **31** (19 Phase A-B + 12 Phase C-I) | |
 | **Deferrable** | **2** (Phase J: Weapon system) | |
 | **Support** | **5** (migrate as needed) | |
 
@@ -261,12 +262,12 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 |:---:|:---|:---:|:---:|:---|
 | A+1 | `src/OpenRA.Game/Int32Matrix4x4.ts` | 120 | 5 | Required by WRot.ts for 3D rotation matrix representation |
 
-### Phase B: Trait System Core (2 files)
+### Phase B: Trait System Core (2 files) ✅ COMPLETE (2026-06-04)
 
 | # | Source | Target | Complexity | Lines (C#) | Status |
 |:---:|:---|:---|:---:|:---:|:---:|
-| B1 | `TraitDictionary.cs` | `src/OpenRA.Game/TraitDictionary.ts` | Medium | 329 | Pending |
-| B2 | `TraitsInterfaces.cs` | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` | Medium | 664 | Pending |
+| B1 | `TraitDictionary.cs` | `src/OpenRA.Game/TraitDictionary.ts` | Medium | 450 (57 tests) | ✅ Completed |
+| B2 | `TraitsInterfaces.cs` | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` | Medium | 1930 (92 tests) | ✅ Completed |
 
 ### Phases C-D: World + Actor (2 files, Core Containers)
 
