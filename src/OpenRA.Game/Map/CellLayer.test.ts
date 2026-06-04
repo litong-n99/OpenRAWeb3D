@@ -158,11 +158,11 @@ describe('CellLayer', () => {
       expect(mem[7]).toBe(5)
     })
 
-    it('invalid isometric cell (X<Y) throws RangeError (Architect WR item 1)', () => {
-      // CPos(0,1) has X<Y, invalid for RectangularIsometric.
-      // New formula: u = Math.floor(-1/2) = -1, fails Bounds.contains
-      expect(() => layer.set(new CPos(0, 1), 5)).toThrow(RangeError)
-      expect(() => layer.get(new CPos(0, 1))).toThrow(RangeError)
+    it('index formula: CPos(0,1) → correct index (C# truncation-toward-zero)', () => {
+      layer.set(new CPos(0, 1), 5)
+      const mem = layer.asMemory()
+      // u = (-1)/2 = 0 (truncates toward zero, matching C#), v = 0+1 = 1, index = 1*7+0 = 7
+      expect(mem[7]).toBe(5)
     })
 
     it('index formula: CPos(2,0) → correct index', () => {

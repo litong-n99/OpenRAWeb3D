@@ -119,12 +119,11 @@ export class CellLayer<T> extends CellLayerBase<T> {
    * OpenRA 对照: CellLayer<T>.Index(CPos)
    *
    * PERF: Inline CPos.ToMPos to avoid MPos allocation on the hot path.
-   * Architect WR item 1: use >> 1 for non-negative deltas, Math.floor
-   * for negative deltas to ensure invalid cells fail the Bounds check.
+   * This is a direct port of the C# Index(CPos) method.
    *
    * For Rectangular grids: direct (X, Y) → (U, V) mapping, index = Y * W + X.
    * For RectangularIsometric grids:
-   *   u = delta >= 0 ? delta >> 1 : Math.floor(delta / 2)
+   *   u = (x - y) / 2  (truncates toward zero, matching C# int division)
    *   v = x + y
    *   index = v * width + u
    */
@@ -147,12 +146,12 @@ export class CellLayer<T> extends CellLayerBase<T> {
       return y * this.Size.width + x
     }
 
-    // RectangularIsometric — Architect WR item 1:
-    // Use >> 1 for non-negative deltas, Math.floor for negative deltas.
-    // This ensures invalid cells (X < Y for isometric) produce a negative u
-    // that fails the Bounds check, preventing silent incorrect data access.
-    const delta = x - y
-    const u = delta >= 0 ? delta >> 1 : Math.floor(delta / 2)
+    // RectangularIsometric
+    // NOTE: | 0 truncates toward zero, matching C# integer division.
+    // For valid isometric cells (X >= Y), >> 1 gives the same result.
+    // For invalid cells (X < Y), the result matches C# behavior — the
+    // X<Y guard in TryGetValue/Contains is the correct validation path.
+    const u = ((x - y) / 2) | 0
     const v = x + y
 
     if (!this.Bounds.contains(u, v)) {
