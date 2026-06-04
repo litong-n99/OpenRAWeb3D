@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Status
 
-**Phase**: Chapter 4 -- Map & Terrain System (Phase A: 8/34, 24%)  
-**Progress**: 27/27 rendering (100%), 36/36 actor system (100%), 8/34 map system (24%)  
+**Phase**: Chapter 4 -- Map & Terrain System (Phase B: 11/34, 32%)  
+**Progress**: 27/27 rendering (100%), 36/36 actor system (100%), 11/34 map system (32%)  
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -29,9 +29,10 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Effects System (IEffect, DelayedAction, DelayedImpact, 103 tests) | Completed |
 | ScreenMap | Completed |
 | Weapon System (2 files) | Deferred |
-| **Chapter 4: Map & Terrain System** | **Phase A complete (8/34, 24%)** |
+| **Chapter 4: Map & Terrain System** | **Phase B complete (11/34, 32%)** |
 | CellLayer Infrastructure (8 files) | COMPLETE, 195/195 tests |
-| Remaining Map System (26 files) | Pending |
+| MapGrid + CellRamp (2+2 files) | COMPLETE, 138 tests |
+| Remaining Map System (23 files) | Pending |
 | Networking, audio, mod system, UI | Not yet started |
 
 ## Architecture Overview

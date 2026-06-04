@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 4 (Map & Terrain System) -- Phase A complete (8/34, 24%)
-**Progress**: 27/27 rendering (100%), Chapter 3: 36/36 (100%), Chapter 4: 8/34 (24%)
+**Phase**: Chapter 4 (Map & Terrain System) -- Phase B complete (11/34, 32%)
+**Progress**: 27/27 rendering (100%), Chapter 3: 36/36 (100%), Chapter 4: 11/34 (32%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -20,9 +20,10 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
 | Platform Abstraction (11 files) | Completed, reviewed |
 | **Actor System (36 files)** | COMPLETE (100%) |
-| **Map & Terrain System (34 files)** | **Phase A: 8/34 (24%), COMPLETE** |
+| **Map & Terrain System (34 files)** | **Phase B: 11/34 (32%), COMPLETE** |
 | CellLayer Infrastructure (8 files) | COMPLETE, 195/195 tests, 2 review rounds |
-| Remaining Map System (26 files) | Pending |
+| MapGrid + CellRamp (2+2 files) | COMPLETE, 138 tests, 1 review round |
+| Remaining Map System (23 files) | Pending |
 | Game logic, networking, audio, mod system | Not yet started
 
 ## Directory Layout
@@ -62,7 +63,19 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
     WAngle.ts             ← migrated (270 lines, 54 tests) -- Phase A 3.1.1
     WDist.ts              ← migrated (170 lines, 32 tests) -- Phase A 3.1.1
     WRot.ts               ← migrated (310 lines, 32 tests) -- Phase A 3.1.1
-    Exts.ts               ← migrated (48 lines, 10 tests) -- Phase A support
+    Exts.ts               ← migrated (67 lines, 10 tests) -- Phase A support + isqrtCeiling (Phase B)
+    CVec.ts               ← migrated (271 lines, 40 tests) -- hashCode added Phase B
+    Map/                    ← Chapter 4: Map & Terrain System (3/34 基础 + 8/8 Phase A + 2/2 Phase B = 11/34, 32%)
+      MapGridType.ts      ← migrated -- Phase A prereq
+      CellLayerBase.ts    ← migrated (213 lines, 281 test lines) -- Phase A
+      CellLayer.ts        ← migrated (468 lines, 722 test lines) -- Phase A
+      CellRegion.ts       ← migrated (309 lines, 356 test lines) -- Phase A
+      ProjectedCellLayer.ts   ← migrated (183 lines, 227 test lines) -- Phase A
+      ProjectedCellRegion.ts  ← migrated (234 lines, 262 test lines) -- Phase A
+      CellCoordsRegion.ts ← migrated (171 lines, 140 test lines) -- Phase A
+      MapCoordsRegion.ts  ← migrated (122 lines, 117 test lines) -- Phase A
+      MapGrid.ts          ← migrated (436 lines, 491 test lines) -- Phase B
+      CellRamp.ts         ← migrated (238 lines, 352 test lines) -- Phase B
     Traits/                 ← Chapter 3: Trait interfaces and components (in progress)
     Activities/             ← Chapter 3: Activity state machine (empty, planned)
     GameRules/              ← Chapter 3: ActorInfo, WeaponInfo config (empty, planned)

@@ -2,7 +2,7 @@
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
 > **Chapter Status**: Chapter 4 -- Implementation Phase (11/34 migrated, 32%)
-> **Updated**: 2026-06-04 (Phase A COMPLETE, 195/195 tests, review approved)
+> **Updated**: 2026-06-04 (Phase B COMPLETE: CellRamp + MapGrid, 138 tests, review approved; 11/34, 32%)
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1032%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -46,7 +46,7 @@ OpenRA's map system is the data foundation of the entire engine. It stores terra
 ### 1.2 Four Core Architectural Principles
 
 1. **Build-time preprocessing over runtime parsing**: MiniYAML is compiled to JSON at build time; map.bin is converted to ArrayBuffer. The browser never sees MiniYAML.
-2. **CellRamp as geometry source of truth**: The 20 CellRamp shapes directly drive 3D vertex generation, producing continuous terrain surfaces with correct slope geometry.
+2. **CellRamp as geometry source of truth**: The 21 CellRamp shapes directly drive 3D vertex generation, producing continuous terrain surfaces with correct slope geometry.
 3. **TypedArray storage over .NET generics**: CellLayer<T> maps to TypedArrays (Float32Array, Uint8Array) for efficient GPU upload and minimal GC pressure.
 4. **Dual pathfinding strategy**: HPA* abstract graph for game logic determinism; RecastNavigation NavMesh for 3D crowd movement and visual path smoothing.
 
@@ -97,8 +97,9 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 | 5 | `OpenRA.Game/Map/ProjectedCellRegion.cs` | `src/OpenRA.Game/Map/ProjectedCellRegion.ts` | `ProjectedCellRegion` | 125 | Low | A |
 
 | **Phase B: MapGrid -- Grid Geometry** | | | | | |
-| 6 | `OpenRA.Game/Map/MapGrid.cs` | `src/OpenRA.Game/Map/MapGrid.ts` | `MapGrid`, `CellRamp` | 256 | HIGH | B |
-| 7 | (already done) | `src/OpenRA.Game/Map/MapGridType.ts` | `MapGridType` | -- | Done | B |
+| 6 | `OpenRA.Game/Map/MapGrid.cs` | `src/OpenRA.Game/Map/MapGrid.ts` | `MapGrid` | 256 | HIGH | B |
+| 7 | `OpenRA.Game/Map/MapGrid.cs` (extracted) | `src/OpenRA.Game/Map/CellRamp.ts` | `CellRamp`, `RampCornerHeight`, `RampSplit` | -- | HIGH | B |
+| 7a | (already done) | `src/OpenRA.Game/Map/MapGridType.ts` | `MapGridType` | -- | Done | B |
 
 | **Phase C: TerrainInfo / TileSet -- Terrain Type System** | | | | | |
 | 8 | `OpenRA.Game/Map/TerrainInfo.cs` | `src/OpenRA.Game/Map/TerrainInfo.ts` | `TerrainTileInfo`, `TerrainTypeInfo`, `TileSet` | 197 | Medium | C |
@@ -264,12 +265,14 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 ### 3.2 Phase B: MapGrid -- Grid Geometry
 
-**Status**: MapGridType already done; MapGrid + CellRamp pending (0/1 active)
+**Status**: COMPLETE (2/2 files: MapGrid.ts + CellRamp.ts extracted, 138 tests, review approved)
 **Complexity**: HIGH (CellRamp geometry)
+**Completed**: 2026-06-04
+**Review**: 1 round (Architect WR), 5 BLOCKERs resolved, 0 remaining
 **Blocked by**: Chapter 3 Phase A (WVec, WRot, WAngle -- all COMPLETE)
 **Blocks**: Phase C (TerrainInfo for RampType), Phase D (Map holds MapGrid), Phase F (3D terrain from CellRamp)
 
-**Description**: `MapGrid` defines the geometric foundation of the map. The `CellRamp` struct is the critical piece -- it defines 20 discrete slope shapes with corner heights and triangle splits, and provides `HeightOffset(dx, dy)` for barycentric height interpolation within a cell.
+**Description**: `MapGrid` defines the geometric foundation of the map. The `CellRamp` class is the critical piece -- it defines 21 discrete slope shapes with corner heights and triangle splits, and provides `heightOffset(dx, dy)` for barycentric height interpolation within a cell. **Architect WR**: CellRamp extracted to separate `CellRamp.ts` file for modularity; `RampCornerHeight` and `RampSplit` enums added; `Exts.isqrtCeiling()` added for OpenRA `ISqrt(ISqrtRoundMode.Ceiling)` equivalence; `CVec.hashCode()` added for deterministic sort tiebreaker.
 
 #### 3.2.1 MapGrid Configuration + CellRamp
 
@@ -296,13 +299,23 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 - [x] **TODO-4.B.3** `TilesByDistance` generation: cells within range, grouped by integer distance, sorted by LengthSquared -> hash -> X -> Y
 
 **Acceptance Criteria**:
-- All 20 CellRamp corner heights and polygon splits match OpenRA exactly
+- All 21 CellRamp corner heights and polygon splits match OpenRA exactly
 - `heightOffset()` barycentric interpolation verified at corners and center for each ramp type
 - TileScale: 1024 Rectangular, 1448 Isometric
 - SubCellOffsets match OpenRA values
 - TilesByDistance deterministic sort order
 
 **Estimated Effort**: ~500 lines implementation + ~400 lines test (3 developer-days)
+
+**Actual Results**: ~674 lines implementation + ~843 lines test = ~1,517 total lines. 138 tests total (39 CellRamp + 49 MapGrid + 10 Exts.isqrtCeiling + 40 CVec.hashCode). 1 review round (Architect WR), 5 BLOCKERs resolved, 0 remaining. C# integer division -> `Math.trunc()` for heightOffset truncation toward zero. `Exts.isqrtCeiling()` replaces OpenRA `ISqrt(Ceiling)`. `CVec.hashCode()` replaces C# `CVec.GetHashCode()`.
+
+| File | Lines (impl) | Lines (test) |
+|:---|:---:|:---:|
+| MapGrid.ts | 436 | 491 |
+| CellRamp.ts | 238 | 352 |
+| Exts.ts (updated) | 67 (+19) | 41 (+10) |
+| CVec.ts (updated) | 271 (+18) | 34 (+40) |
+| **Total** | **~674** (new/changed) | **~843** |
 
 ---
 
@@ -515,7 +528,7 @@ Phase A -> Phase B -> Phase C -> Phase D -> Phase F -> Phase G
 ## 5. Verification and Test Strategy
 
 - [ ] **TEST-4.1** CellLayer index formulas match OpenRA (10K random pairs, all 4 grid/coordinate combos)
-- [ ] **TEST-4.2** CellRamp geometry: all 20 ramp types, corner heights, heightOffset at corners+center, both grid types
+- [ ] **TEST-4.2** CellRamp geometry: all 21 ramp types, corner heights, heightOffset at corners+center, both grid types
 - [ ] **TEST-4.3** map.bin parser round-trip; 1x1/512x512 edges; with/without height; invalid data errors
 - [ ] **TEST-4.4** Map coordinates: centerOfCell/cellContaining round-trip, contains bounds, heightAt validates ramp offset
 - [ ] **TEST-4.5** TerrainMeshBuilder: 4x4 flat map = 25 vertices + 32 triangles; ramp cell slope geometry; Riser cliff faces; isometric diamond layout
@@ -531,7 +544,7 @@ Phase A -> Phase B -> Phase C -> Phase D -> Phase F -> Phase G
 
 | Risk | Severity | Impact | Mitigation |
 |:---|:---:|:---|:---|
-| **CellRamp 20 shapes -> 3D geometry fidelity** | HIGH | Sloped terrain looks wrong if barycentric interpolation off by 1 unit | Port CellRamp.cs line-for-line; verify heightOffset at all corners + center |
+| **CellRamp 21 shapes -> 3D geometry fidelity** | HIGH | Sloped terrain looks wrong if barycentric interpolation off by 1 unit | Port CellRamp.cs line-for-line; verify heightOffset at all corners + center |
 | **map.bin format undocumented edge cases** | MEDIUM | Some maps may have unexpected binary variations | Test against all OpenRA shipped maps |
 | **MiniYAML @ node semantics too complex for regex** | HIGH | Regex parsing fails on nested @ nodes | Proper recursive descent parser, not regex |
 | **HPA* port ~1500 lines of complex algorithm** | HIGH | Buggy pathfinding breaks all movement and AI | Start with pure A* baseline; add HPA* as optimization; RecastNavigation as fallback |

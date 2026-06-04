@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-04
-> **Current phase**: Chapter 4 (Map System) — Phase A COMPLETE (8/34, 24%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 8/34 (24%), Phase A complete
+> **Current phase**: Chapter 4 (Map System) — Phase B COMPLETE (11/34, 32%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 11/34 (32%), Phases A-B complete
 
 ---
 
@@ -14,10 +14,10 @@
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
 | **Chapter 3 status** | Implementation complete: 36/36 (100%), Phases A-I complete |
 | **Chapter 4 planned files** | 34 (29 from OpenRA + 5 new) |
-| **Chapter 4 status** | Phase A COMPLETE: 8/34 (24%), 195/195 tests, review approved |
+| **Chapter 4 status** | Phase B COMPLETE: 11/34 (32%), 195+138=333 tests, Phase A (8/8) + Phase B (2/2) + MapGridType = 11 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 5-8+ (networking, audio, file system, mod system, UI) |
-| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phase A complete (rendering, actors, map system: 8/34) |
+| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phases A-B complete (rendering, actors, map system: 11/34) |
 
 > **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs. Phase E (ActorConfig) is complete: 1 file, ~916 TS + 64 tests, 2 review rounds, 0 BLOCKERs. Phase F (Activity System) is complete: 3 files (Activity.ts, CallFunc.ts, ActivityUtils.ts), ~899 TS + 73 tests, 2 review rounds, 0 BLOCKERs. Phase G (Player) is complete: 1 file, 1272 TS + 1407 test lines, 82 tests, 1 review round, 0 BLOCKERs. Phase H (Effects) is complete: 3 files, ~521 TS + ~687 test lines, 103 tests, 1 review round, 0 BLOCKERs. Phase I (ScreenMap) is complete: 1 file, ~350 TS + ~250 test lines, 1 review round, 0 BLOCKERs.
 
@@ -175,6 +175,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-04 | **Chapter 4 Phase B MapGrid** (2+2 files) | migration-develop | migration-review | APPROVED (1 Architect WR round, 5 BLOCKERs resolved): MapGrid.ts (436 line), CellRamp.ts (238 lines extracted), Exts.ts isqrtCeiling (+19), CVec.ts hashCode (+18). 138 tests total (39 CellRamp + 49 MapGrid + 10 Exts + 40 CVec). ~674 impl + ~843 test lines. Chapter 4: 11/34 (32%). |
 | 2026-06-04 | **Chapter 4 Phase A CellLayer** (8 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): CellLayerBase.ts, CellLayer.ts, CellRegion.ts, ProjectedCellLayer.ts, ProjectedCellRegion.ts, CellCoordsRegion.ts, MapCoordsRegion.ts, Size.ts. 195/195 tests, ~3,826 total lines. Chapter 4: 8/34 (24%). |
 | 2026-06-04 | **Phase I ScreenMap** (1 file) | migration-develop | migration-review | Round 1 approved: ScreenMap.ts (~350 lines, spatial hash grid, rectangle/point queries, 2D-to-3D dual approach -- CPU spatial index for deterministic selection + GPU ray-picking for hover). Chapter 3 COMPLETE (36/36, 100%). |
 | 2026-06-04 | **Phase H Effects** (3 files) | migration-develop | migration-review | Round 1 approved, 103 tests: IEffect.ts (165 lines, tick/render interface), DelayedAction.ts (144 lines, deferred callback), DelayedImpact.ts (212 lines, projectile position interpolation). 521 TS + 687 test lines. 0 BLOCKERs |
@@ -425,16 +426,16 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 
 ---
 
-## Chapter 4: Map & Terrain System (Phase A COMPLETE)
+## Chapter 4: Map & Terrain System (Phase B COMPLETE)
 
 > **Migration Plan**: [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md)
-> **Created**: 2026-06-04 | **Updated**: 2026-06-04 | **Status**: Phase A COMPLETE (8/34 migrated, 24%), review approved
+> **Created**: 2026-06-04 | **Updated**: 2026-06-04 | **Status**: Phase B COMPLETE (11/34 migrated, 32%), 2 review rounds (Phase A 2, Phase B 1), 0 BLOCKERs
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 8 | 24% |
-| Pending | 26 | 76% |
+| Completed | 11 | 32% |
+| Pending | 23 | 68% |
 | **Total planned** | **34** | **100%** |
 | **From OpenRA** | **29** | |
 | **New files (no OpenRA equivalent)** | **5** | |
@@ -445,7 +446,7 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
 | Phase A | CellLayer Infrastructure | 8 | Low-Medium | COMPLETE (8/8, 195 tests) |
-| Phase B | MapGrid + CellRamp Geometry | 1 (+1 done) | HIGH | Pending |
+| Phase B | MapGrid + CellRamp Geometry | 2 (+1 done) | HIGH | COMPLETE (2/2, 138 tests) |
 | Phase C | TerrainInfo / TileSet | 1 | Medium | Pending |
 | Phase D | Map.cs Core Container | 1 | HIGH | Pending |
 | Phase E | Map Support Files | 11 | Low-Medium | Pending |
@@ -456,9 +457,32 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 
 ### Already Available (from Chapter 3 Phase A)
 
-- CPos.ts, MPos.ts, WPos.ts, WVec.ts, WAngle.ts, WDist.ts, WRot.ts, CVec.ts
+- CPos.ts, MPos.ts, WPos.ts, WVec.ts, WAngle.ts, WDist.ts, WRot.ts, CVec.ts (hashCode added)
+- Exts.ts (isqrtCeiling added)
 - MapGridType.ts (with test)
 - PriorityQueue.ts, Cache.ts, SpatiallyPartitioned.ts, BitSet.ts
+
+### Phase A Completed: CellLayer Infrastructure (8 files, 2026-06-04)
+
+See map_system_migration_plan.md Section 3.1 for full details. 2,857 lines implementation + 969 lines test. 2 review rounds, 0 BLOCKERs.
+
+### Phase B Completed: MapGrid + CellRamp Geometry (2 files + 2 updated, 2026-06-04)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| MapGrid.ts | 436 | 491 | 49 | grid config, subCellOffsets, tilesByDistance, 21 ramps |
+| CellRamp.ts | 238 | 352 | 39 | extracted: RampCornerHeight, RampSplit, heightOffset(), WRot orientation |
+| Exts.ts (updated) | 67 (+19) | 41 (+10) | 10 | isqrtCeiling() for OpenRA ISqrt(Ceiling) |
+| CVec.ts (updated) | 271 (+18) | 34 (+40) | 40 | hashCode() for deterministic sort tiebreaker |
+| **Total** | **~674** (new) | **~843** | **138** | |
+
+**Implementation details**:
+- 21 CellRamp shapes (correct count; doc previously stated 20)
+- Barycentric heightOffset() with `Math.trunc()` for C#-compatible truncation
+- `Exts.isqrtCeiling()` replaces OpenRA `ISqrt(ISqrtRoundMode.Ceiling)`
+- `CVec.hashCode()` deterministic tiebreaker for `tilesByDistance` sort
+- Architect WR: CellRamp extracted to separate file with RampCornerHeight/RampSplit enums
+- 1 review round (Architect WR), 5 BLOCKERs resolved, 0 remaining
 
 ### Key Architecture Decisions (7 ADRs)
 
