@@ -331,6 +331,35 @@ describe('Inheritance merging', () => {
     expect(config.inheritsFrom).toContain('^Parent')
   })
 
+  it('detects circular inheritance: A→B→A', () => {
+    const a = makeJSON({ name: 'A', inherits: ['B'], traits: [] })
+    const b = makeJSON({ name: 'B', inherits: ['A'], traits: [] })
+    const allConfigs = new Map<string, ActorJSON>([['A', a], ['B', b]])
+
+    expect(() => ActorConfig.fromJSON(a, allConfigs)).toThrow(
+      'circular inheritance',
+    )
+  })
+
+  it('detects circular inheritance: A→B→C→A', () => {
+    const a = makeJSON({ name: 'A', inherits: ['B'], traits: [] })
+    const b = makeJSON({ name: 'B', inherits: ['C'], traits: [] })
+    const c = makeJSON({ name: 'C', inherits: ['A'], traits: [] })
+    const allConfigs = new Map<string, ActorJSON>([['A', a], ['B', b], ['C', c]])
+
+    expect(() => ActorConfig.fromJSON(a, allConfigs)).toThrow(
+      'circular inheritance',
+    )
+  })
+
+  it('circular inheritance error message names the chain', () => {
+    const a = makeJSON({ name: 'A', inherits: ['B'], traits: [] })
+    const b = makeJSON({ name: 'B', inherits: ['A'], traits: [] })
+    const allConfigs = new Map<string, ActorJSON>([['A', a], ['B', b]])
+
+    expect(() => ActorConfig.fromJSON(a, allConfigs)).toThrow(/A.*->.*B.*->.*A/)
+  })
+
   it('child removal of trait at grandparent level', () => {
     const grandparent = makeJSON({
       name: '^GP',

@@ -348,8 +348,18 @@ export class ActorConfig {
   static fromJSON(
     json: unknown,
     allConfigs?: ReadonlyMap<string, ActorJSON>,
+    _visited?: Set<string>,
   ): ActorConfig {
     const parsed = validateActorJSON(json)
+
+    // Detect circular inheritance before any processing
+    if (_visited?.has(parsed.name)) {
+      const chain = [..._visited, parsed.name].join(' -> ')
+      throw new Error(
+        `ActorConfig.fromJSON "${parsed.name}": circular inheritance detected. ` +
+        `Inheritance chain: ${chain}`,
+      )
+    }
 
     let traitConfigs = parseTraitConfigs(parsed.traits ?? [], parsed.name)
 
@@ -361,6 +371,12 @@ export class ActorConfig {
         )
       }
 
+      // Track visited nodes for circular inheritance detection.
+      // The visited set is shared across the entire inheritance resolution
+      // call tree: if A→B→C→A, visited={A,B,C} when we re-encounter A.
+      const visited = _visited ?? new Set<string>()
+      visited.add(parsed.name)
+
       const inheritsFrom: string[] = []
       for (const parentName of parsed.inherits) {
         const parentJSON = allConfigs.get(parentName)
@@ -369,8 +385,9 @@ export class ActorConfig {
             `ActorConfig.fromJSON "${parsed.name}": parent "${parentName}" not found in allConfigs.`,
           )
         }
-        // Recursively resolve parent (may also have inheritance)
-        const parentConfig = ActorConfig.fromJSON(parentJSON, allConfigs)
+        // Recursively resolve parent (may also have inheritance).
+        // Pass visited set to detect inheritance cycles.
+        const parentConfig = ActorConfig.fromJSON(parentJSON, allConfigs, visited)
         inheritsFrom.push(...parentConfig.inheritsFrom, parentName)
 
         // Merge parent traits with child. Parent traits come first;
