@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 4 -- Map and Terrain System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
-> **Chapter Status**: Chapter 4 -- Implementation Phase (8/34 migrated, 24%)
+> **Chapter Status**: Chapter 4 -- Implementation Phase (11/34 migrated, 32%)
 > **Updated**: 2026-06-04 (Phase A COMPLETE, 195/195 tests, review approved)
-> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1024%)
+> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1032%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
 
@@ -273,19 +273,19 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 #### 3.2.1 MapGrid Configuration + CellRamp
 
-- [ ] **TODO-4.B.1** `src/OpenRA.Game/Map/MapGrid.ts` (256 lines C#) -- `MapGrid` class:
+- [x] **TODO-4.B.1** `src/OpenRA.Game/Map/MapGrid.ts` (256 lines C#) -- `MapGrid` class:
   - `type: MapGridType`, `tileScale: number` (1024/1448), `maximumTerrainHeight: number`, `enableDepthBuffer: boolean`, `maximumTileSearchRange: number` (default 50)
   - `subCellOffsets: WVec[]` -- 6 predefined offsets: (0,0,0), (-299,-256,0), (256,-256,0), (0,0,0), (-299,256,0), (256,256,0)
   - `offsetOfSubCell(subCell: number): WVec`
   - `tilesByDistance: CVec[][]` -- cells grouped by integer ceiling distance, deterministically sorted
 
-- [ ] **TODO-4.B.2** `CellRamp` class (within MapGrid.ts):
+- [x] **TODO-4.B.2** `CellRamp` class (within MapGrid.ts):
   - `centerHeightOffset: number`, `corners: WVec[]` (4 corners: TL, TR, BR, BL), `polygons: WVec[][]` (1-2 triangles), `orientation: WRot`
   - Rectangular corners: (-512,-512,z), (512,-512,z), (512,512,z), (-512,512,z)
   - Isometric corners: (0,-724,z), (724,0,z), (0,724,z), (-724,0,z)
   - `heightOffset(dx, dy): number` -- barycentric interpolation: find containing triangle via u,v in [0,1024], interpolate `(u*z0 + v*z1 + (1024-u-v)*z2) / 1024`
   - Split modes: Flat (1 quad), X (2 tri: 0-1-3 + 1-2-3), Y (2 tri: 0-1-2 + 0-2-3)
-  - **20 predefined ramps** matching OpenRA hardcoded array:
+  - **21 predefined ramps** matching OpenRA hardcoded array:
     - 1 Flat
     - 4 two-adjacent-corners half (tr+br, br+bl, tl+bl, tl+tr with orientation)
     - 4 one-corner half (br/splitX, bl/splitY, tl/splitX, tr/splitY with orientation)
@@ -293,7 +293,7 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
     - 4 full sloped (mid-half, far-full with orientation)
     - 4 opposite-corners half (tr+bl/splitY, tl+br/splitY, tr+bl/splitX, tl+br/splitX)
 
-- [ ] **TODO-4.B.3** `TilesByDistance` generation: cells within range, grouped by integer distance, sorted by LengthSquared -> hash -> X -> Y
+- [x] **TODO-4.B.3** `TilesByDistance` generation: cells within range, grouped by integer distance, sorted by LengthSquared -> hash -> X -> Y
 
 **Acceptance Criteria**:
 - All 20 CellRamp corner heights and polygon splits match OpenRA exactly
@@ -520,7 +520,7 @@ Phase A -> Phase B -> Phase C -> Phase D -> Phase F -> Phase G
 - [ ] **TEST-4.4** Map coordinates: centerOfCell/cellContaining round-trip, contains bounds, heightAt validates ramp offset
 - [ ] **TEST-4.5** TerrainMeshBuilder: 4x4 flat map = 25 vertices + 32 triangles; ramp cell slope geometry; Riser cliff faces; isometric diamond layout
 - [ ] **TEST-4.6** PathSearch A*: shortest path on uniform grid, wall avoidance, unreachable target, maxCost cutoff
-- [ ] **TEST-4.7** HPA*: 256x256 map + 500 obstacles under 5ms; path length under 124% longer than optimal; incremental obstacle updates
+- [ ] **TEST-4.7** HPA*: 256x256 map + 500 obstacles under 5ms; path length under 132% longer than optimal; incremental obstacle updates
 - [ ] **TEST-4.8** MiniYAML: @ node parsing, -TraitName removal, nesting, all shipped OpenRA map.yaml files without errors
 - [ ] **TEST-4.9** CoordinateTransformer: WPos->Vector3->WPos round-trip; isometric diamond layout; ramp height offset; batch conversion under 50ms for 512x512
 - [ ] **TEST-4.10** E2E integration (Playwright, deferred): load test map -> terrain mesh in scene -> click-to-cell
