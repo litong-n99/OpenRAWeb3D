@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Implementation Phase (33/36 migrated, 25/31 in-scope)
+> **Chapter Status**: Chapter 3 -- Implementation Phase (35/36 migrated, 27/31 in-scope)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -623,18 +623,18 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 
 **Description**: Time-limited visual/non-visual effects that run outside the Actor system. Effects are ticked by World alongside Actors but are not Actors themselves. Used for projectiles, explosions, screen shakes, delayed actions.
 
-- [ ] **TODO-3.H.1** `IEffect.ts` interface:
+- [x] **TODO-3.H.1** `IEffect.ts` interface:
   - `tick(world: GameWorldManager): void` -- Called each logic tick by World
   - `render(worldRenderer: WorldRenderer): IRenderable[]` -- Return renderables for this frame
   - Optional: `isDone: boolean` -- Mark effect for removal (World removes done effects)
 
-- [ ] **TODO-3.H.2** `DelayedAction.ts` -- Execute a callback after a specified number of ticks:
+- [x] **TODO-3.H.2** `DelayedAction.ts` -- Execute a callback after a specified number of ticks:
   - Constructor: `new DelayedAction(delayTicks: number, action: () => void)`
   - `tick()` decrements counter each tick; when counter reaches 0, executes the action callback once
   - Marked `isDone = true` after callback execution
   - Use case: "destroy this actor in 10 ticks," "play explosion sound after 3 ticks"
 
-- [ ] **TODO-3.H.3** `DelayedImpact.ts` -- Execute an action when a projectile reaches its target:
+- [x] **TODO-3.H.3** `DelayedImpact.ts` -- Execute an action when a projectile reaches its target:
   - Constructor: `new DelayedImpact(origin: WPos, target: Target, speed: number, onImpact: (target: Target) => void)`
   - `tick()` advances projectile position toward target at speed rate
   - When position reaches target, calls `onImpact(target)` and marks `isDone = true`

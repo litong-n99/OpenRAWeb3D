@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-06-04
 > **Current phase**: Chapter 2 (Rendering Engine) — COMPLETE; Chapter 3 (Actor System) — IN PROGRESS
-> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 33/36 files migrated (92%), Phases A-G complete
+> **Overall status**: Chapter 2 complete (27/27 = 100%), Chapter 3: 35/36 files migrated (97%), Phases A-G complete
 
 ---
 
@@ -12,7 +12,7 @@
 |--------|-------|
 | **Chapter 2 rendering files** | 27 (100% complete) |
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
-| **Chapter 3 status** | Implementation started: 33/36 (92%), Phases A-G complete |
+| **Chapter 3 status** | Implementation started: 35/36 (97%), Phases A-G complete |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 4-8+ (networking, audio, file system, mod system, UI, map) |
 | **Overall project completion** | Chapter 2/8+ (rendering engine done, actor system in progress) |
@@ -227,11 +227,11 @@ All 27 migration plan items are now resolved. The rendering pipeline is fully op
 
 > **Migration Plan**: [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md)
 > **Created**: 2026-06-04 | **Updated**: 2026-06-04 (Phase G complete)
-> **Status**: IMPLEMENTATION PHASE (33/36 files migrated, 32 in-scope + 5 support)
+> **Status**: IMPLEMENTATION PHASE (35/36 files migrated, 32 in-scope + 5 support)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 33 | 92% |
+| Completed | 33 | 97% |
 | In Progress | 0 | 0% |
 | Pending | 3 | 8% |
 | **Total planned** | **36** | **100%** |
