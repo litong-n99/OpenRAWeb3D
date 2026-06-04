@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HardwarePalette - 调色板颜色精度与玩家颜色偏移 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 320px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .control-group input[type="range"] { width: 100%; accent-color: #e94560; }
+    .control-group input[type="color"] { width: 48px; height: 32px; border: 1px solid #0f3460; border-radius: 4px; background: #1a1a2e; cursor: pointer; padding: 2px; }
+    .control-group .range-value { font-size: 11px; color: #888; float: right; }
+    .control-group select { width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 13px; cursor: pointer; font-weight: 600; transition: background 0.15s; }
+    .control-group button:hover { background: #e94560; color: #fff; }
+    .control-group button.active { background: #e94560; color: #fff; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+    .ref-color-swatch { display: inline-block; width: 16px; height: 16px; border-radius: 2px; border: 1px solid #555; vertical-align: middle; margin-right: 4px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 渲染系统 - 调色板颜色精度与玩家颜色偏移验证</h1>
+    <div class="subtitle">ID: hardware-palette/color-accuracy | 期望结果见 README.md | OpenRA 对照: HardwarePalette.cs + PlayerColorRemap.cs</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C. 测试调色板</h3>
+        <label for="palette-select">选择调色板</label>
+        <select id="palette-select">
+          <option value="gradient">合成渐变 (R→G→B 色带)</option>
+          <option value="reference">已知参考色 (50 个精确颜色)</option>
+          <option value="cctd">C&C TD 模拟 (大地/金属色调)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <h3>玩家颜色重映射 (PlayerColorRemap)</h3>
+        <label>玩家颜色 <input type="color" id="player-color" value="#e94560"></label>
+        <label for="remap-range-start">重映射索引范围 [<span id="remap-range-label">176-191</span>]</label>
+        <div style="display:flex;gap:8px;">
+          <input type="range" id="remap-range-start" min="0" max="255" value="176" style="flex:1;">
+          <input type="range" id="remap-range-end" min="0" max="255" value="191" style="flex:1;">
+        </div>
+        <label for="value-mult">亮度缩放: <span class="range-value" id="vm-val">1.00</span></label>
+        <input type="range" id="value-mult" min="0" max="2" step="0.01" value="1">
+        <button id="apply-remap">应用重映射 (Apply Remap)</button>
+        <button id="reset-remap" style="border-color:#555;color:#888;margin-top:4px;">重置为原始调色板</button>
+      </div>
+      <div class="control-group">
+        <h3>显示选项</h3>
+        <label for="zoom-slider">缩放: <span class="range-value" id="zoom-val">2.0x</span></label>
+        <input type="range" id="zoom-slider" min="0.5" max="4" step="0.1" value="2">
+        <label style="margin-top:8px;">
+          <input type="checkbox" id="show-indices" checked> 显示调色板索引号
+        </label>
+        <label>
+          <input type="checkbox" id="show-grid" checked> 显示网格线
+        </label>
+      </div>
+      <div class="control-group">
+        <h3>参考色验证点</h3>
+        <div id="reference-swatches" style="display:flex;flex-wrap:wrap;gap:4px;font-size:10px;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">帧时间:</span> <span class="val" id="info-frame-time">-</span>
+    <span class="label">调色板行数:</span> <span class="val" id="info-pal-rows">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
