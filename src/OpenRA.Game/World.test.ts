@@ -739,8 +739,24 @@ describe('GameWorldManager endGame', () => {
     world.endGame()
 
     expect(world.isGameOver).toBe(true)
+    expect(world.paused).toBe(true)       // MAJOR: _paused must be set so tick() stops
     expect(world.predictedPaused).toBe(true)
     expect(gameOverFired).toHaveBeenCalled()
+  })
+
+  it('endGame stops worldTick from incrementing', () => {
+    // beforeEach already ran one tick (WorldTick = 1)
+    expect(world.worldTick).toBe(1)
+
+    // End the game
+    world.endGame()
+    expect(world.isGameOver).toBe(true)
+    expect(world.paused).toBe(true)
+
+    // Subsequent tick() should NOT increment WorldTick
+    const tickBefore = world.worldTick
+    world.tick()
+    expect(world.worldTick).toBe(tickBefore)
   })
 
   it('endGame is idempotent', () => {

@@ -1431,7 +1431,10 @@ export class GameWorldManager {
   endGame(): void {
     if (this.isGameOver) return
 
-    this.setPauseState(true)
+    // Use setLocalPauseState so BOTH _paused and predictedPaused are set.
+    // setPauseState() only sets predictedPaused (it sends a network order),
+    // which would leave _paused = false and allow tick() to continue.
+    this.setLocalPauseState(true)
     this.isGameOver = true
 
     // Notify IGameOver traits on WorldActor
