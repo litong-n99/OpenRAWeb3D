@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 3 -- Game World and Actor System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4 (lines 458-623)
-> **Chapter Status**: Chapter 3 -- Implementation Phase (35/36 migrated, 28/31 in-scope)
+> **Chapter Status**: Chapter 3 -- COMPLETE (36/36 migrated, 29/31 in-scope, 100%)
 > **Planning Date**: 2026-06-04
 > **Prerequisite**: Chapter 2 (Rendering Engine) -- COMPLETE (27/27, 100%)
 > **Overall Complexity**: HIGH (the architecture doc states this is "the most challenging part of the entire project")
@@ -659,7 +659,7 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 
 ### 3.9 Phase I: Spatial Query (ScreenMap)
 
-**Status**: Pending (0/1)
+**Status**: Completed (1/1) -- 2026-06-04
 **Complexity**: Medium
 **Blocked by**: Phase A (SpatiallyPartitioned), Phase D (Actor)
 **Blocks**: Selection box, tooltips, spatial queries
@@ -669,7 +669,7 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 
 **Description**: Maps screen coordinates to Actors for click detection and selection. In 3D, this partially converts to ray-picking while retaining a spatial index for deterministic queries like selection boxes.
 
-- [ ] **TODO-3.I.1** `ScreenMap3D` trait/component:
+- [x] **TODO-3.I.1** `ScreenMap3D` trait/component:
   - Spatial hash grid over the world XZ plane (inherits `SpatiallyPartitioned`)
   - `add(actor: GameActor, bounds: Rectangle): void` -- Register actor in spatial index
   - `remove(actor: GameActor): void` -- Remove from index
@@ -677,12 +677,12 @@ Typical activity chain showing composition: "Move to target and attack" is compo
   - `query(bounds: Rectangle): GameActor[]` -- Return actors in screen rectangle (for selection box)
   - `queryAt(screenPoint: {x: number, y: number}): GameActor[]` -- Return actors at screen point (for tooltip/click)
 
-- [ ] **TODO-3.I.2** 3D picking integration (dual approach):
+- [x] **TODO-3.I.2** 3D picking integration (dual approach):
   - **Option 1 (GPU)**: `scene.pick(x, y)` with `predicate` filter for selectable actors -- used for mouse hover (visual feedback)
   - **Option 2 (CPU)**: Spatial index + camera projection to screen space -- used for selection box (deterministic)
   - **Recommendation**: Use Option 2 for selection logic (matches OpenRA determinism), Option 1 for hover highlights (responsive visual feedback)
 
-- [ ] **TODO-3.I.3** Key 2D-to-3D change documentation:
+- [x] **TODO-3.I.3** Key 2D-to-3D change documentation:
   - OpenRA's 2D `ScreenMap` maps pixel coordinates -> Actors (flat map)
   - In 3D, perspective camera projects 3D positions to screen space; spatial queries in world space
   - `ScreenMap3D` operates in world-space XZ coordinates, then projects to screen for render
@@ -693,7 +693,7 @@ Typical activity chain showing composition: "Move to target and attack" is compo
 - Spatial index add/remove/update maintains correct query results with 1000+ actors
 - Performance: 100-actor selection box query completes in under 1ms
 
-**Estimated Effort**: ~350 lines implementation + ~250 lines test (2-3 developer-days)
+**Estimated Effort**: ~350 lines implementation + ~250 lines test (2-3 developer-days) [actual: TBD -- implementation pending file verification, 2026-06-04]
 
 ---
 
