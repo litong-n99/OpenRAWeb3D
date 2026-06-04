@@ -276,10 +276,11 @@ function traitsImplementingITick(components: Component[]): ITick[] {
 
 ### 3.3 Phase C: World.cs -- Game World Container
 
-**Status**: Pending (0/1)
+**Status**: Completed (1/1) -- 2026-06-04
 **Complexity**: HIGH
 **Blocked by**: Phases A, B
 **Blocks**: Phase D (Actor -- co-created with World)
+**Implementation**: ~1903 lines TS + 66 tests | **Review**: 2 rounds, 0 BLOCKERs
 
 **OpenRA Reference**: `OpenRA.Game/World.cs` (650 lines)
 **Migration Target**: `src/OpenRA.Game/World.ts`
@@ -287,7 +288,7 @@ function traitsImplementingITick(components: Component[]): ITick[] {
 
 **Description**: World is the root container for the entire game simulation. `World.Tick()` is the game's main heartbeat. Execution order is carefully designed: increment `WorldTick`, then execute `Activity.Tick()`, all `ITick` Traits, `IEffect.Tick()`. `TickRender()` is independent of logic Tick, calling `ITickRender` per render frame for visual interpolation.
 
-- [ ] **TODO-3.C.1** Create `GameWorldManager` class wrapping `BABYLON.Scene`:
+- [x] **TODO-3.C.1** Create `GameWorldManager` class wrapping `BABYLON.Scene`:
   - `tickRate: number = 25` (25 TPS, 40ms timestep)
   - `worldTick: number` (incremented each logic tick)
   - `actors: Map<number, GameActor>` (sorted by ActorID for deterministic iteration)
@@ -295,7 +296,7 @@ function traitsImplementingITick(components: Component[]): ITick[] {
   - `frameEndActions: Array<() => void>` (deferred tasks, executed at end of tick for safe disposal)
   - `players: Player[]`, `localPlayer: Player`, `renderPlayer: Player`
 
-- [ ] **TODO-3.C.2** Fixed timestep game loop:
+- [x] **TODO-3.C.2** Fixed timestep game loop:
   - Use `requestAnimationFrame` to drive the loop
   - Accumulate elapsed time; when >= 40ms, execute one logic tick and decrement accumulator
   - Low FPS catch-up: execute multiple ticks per frame if accumulator exceeds threshold
@@ -303,7 +304,7 @@ function traitsImplementingITick(components: Component[]): ITick[] {
   - Spiral-of-death protection: cap at maximum 5 ticks per frame
   - Call `ITickRender` every render frame (unaffected by tick timing)
 
-- [ ] **TODO-3.C.3** Tick execution order (must match OpenRA exactly):
+- [x] **TODO-3.C.3** Tick execution order (must match OpenRA exactly):
   1. Increment `worldTick`
   2. Execute `Activity.tickOuter()` for all actors with active activities
   3. Execute `ITick.tick()` for all actors (via `TraitDictionary.withTraitTimed`)
@@ -311,22 +312,22 @@ function traitsImplementingITick(components: Component[]): ITick[] {
   5. Process `frameEndActions` queue (dispose, spawn, deferred operations)
   6. Compute `SyncHash()` (placeholder for network sync validation -- deferred to networking chapter)
 
-- [ ] **TODO-3.C.4** Actor lifecycle management:
+- [x] **TODO-3.C.4** Actor lifecycle management:
   - `addActor(actor: GameActor): void` -- Set `IsInWorld = true`, add to `actors` map, fire `INotifyAddedToWorld` on all traits
   - `removeActor(actor: GameActor): void` -- Set `IsInWorld = false`, fire `INotifyRemovedFromWorld`, defer actual disposal to frame end
   - Actor lookup: `getActorById(id: number): GameActor | undefined`
 
-- [ ] **TODO-3.C.5** Player management:
+- [x] **TODO-3.C.5** Player management:
   - `setPlayers(players: Player[], localPlayer: Player): void` -- Set all players, create PlayerActors
   - `renderPlayer: Player` -- Whose perspective to render (shroud, camera, etc.)
 
-- [ ] **TODO-3.C.6** WorldActor -- Special actor holding global traits (map system, selection system, shroud). Attached as a child of `BABYLON.Scene`. Created automatically during world initialization.
+- [x] **TODO-3.C.6** WorldActor -- Special actor holding global traits (map system, selection system, shroud). Attached as a child of `BABYLON.Scene`. Created automatically during world initialization.
 
-- [ ] **TODO-3.C.7** Pause state management:
+- [x] **TODO-3.C.7** Pause state management:
   - `setPauseState(paused: boolean): void` -- Pause/unpause game ticks (rendering continues)
   - `predictedPaused: boolean` -- For replays: predict if game is paused
 
-- [ ] **TODO-3.C.8** `SyncHash()` -- Compute deterministic hash for network sync validation. Placeholder implementation in Chapter 3; full implementation deferred to networking chapter.
+- [x] **TODO-3.C.8** `SyncHash()` -- Compute deterministic hash for network sync validation. Placeholder implementation in Chapter 3; full implementation deferred to networking chapter.
 
 | Babylon.js API Mapping | |
 |:---|:---|
