@@ -296,6 +296,61 @@ describe('CellRamp — all corners Full (rectangular)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// CellRamp — mid-cell heightOffset (non-corner, non-center, known C# values)
+// ---------------------------------------------------------------------------
+
+describe('CellRamp — mid-cell heightOffset', () => {
+  it('flat tr=Half at (0,-256) mid-top-edge = 128', () => {
+    const ramp = new CellRamp(MapGridType.Rectangular, WRot.None, {
+      tr: RampCornerHeight.Half,
+    })
+    // Tri TL-TR-BR: u=(p1-p2)x(d-p2)/1024=512, v=(p0-p2)x(d-p2)/1024=256
+    // height = (512*0 + 256*512 + 256*0) / 1024 = 128
+    expect(ramp.heightOffset(0, -256)).toBe(128)
+  })
+
+  it('flat tr=Half at (256,0) mid-right-edge = 128', () => {
+    const ramp = new CellRamp(MapGridType.Rectangular, WRot.None, {
+      tr: RampCornerHeight.Half,
+    })
+    // Tri TL-TR-BR: u=256, v=256
+    // height = (256*0 + 256*512 + 512*0) / 1024 = 128
+    expect(ramp.heightOffset(256, 0)).toBe(128)
+  })
+
+  it('X split br=Half at (0,256) = 128', () => {
+    const ramp = new CellRamp(MapGridType.Rectangular, WRot.None, {
+      br: RampCornerHeight.Half,
+      split: RampSplit.X,
+    })
+    // Tri TR-BR-BL: u=256, v=256
+    // height = (256*0 + 256*512 + 512*0) / 1024 = 128
+    expect(ramp.heightOffset(0, 256)).toBe(128)
+  })
+
+  it('Y split bl=Half at (-256,256) = 256', () => {
+    const ramp = new CellRamp(MapGridType.Rectangular, WRot.None, {
+      bl: RampCornerHeight.Half,
+      split: RampSplit.Y,
+    })
+    // Tri TL-BR-BL: u=256, v=256
+    // height = (256*0 + 256*0 + 512*512) / 1024 = 256
+    expect(ramp.heightOffset(-256, 256)).toBe(256)
+  })
+
+  it('all Full corners at (200,-300) = 1024', () => {
+    const ramp = new CellRamp(MapGridType.Rectangular, WRot.None, {
+      tl: RampCornerHeight.Full,
+      tr: RampCornerHeight.Full,
+      br: RampCornerHeight.Full,
+      bl: RampCornerHeight.Full,
+    })
+    // Uniform Z=1024 — any point gives 1024
+    expect(ramp.heightOffset(200, -300)).toBe(1024)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // CellRamp — opposite corner ramps
 // ---------------------------------------------------------------------------
 

@@ -190,8 +190,8 @@ export class CellRamp {
    *
    * Iterates over polygon triangles, checks if (dX, dY) is inside the
    * triangle (0 <= u, v <= 1024), then interpolates Z using barycentric
-   * weights. Uses `Math.trunc()` for C#-compatible integer division
-   * (truncate toward zero).
+   * weights. Uses `| 0` for C#-compatible integer division
+   * (truncate toward zero, 32-bit signed).
    *
    * @param dX — X offset within cell (grid-local coordinates)
    * @param dY — Y offset within cell (grid-local coordinates)
@@ -208,19 +208,20 @@ export class CellRamp {
 
       // Barycentric coordinate u for vertex p[1]
       // C#: u = ((p[1].Y - p[2].Y) * (dX - p[2].X) - (p[1].X - p[2].X) * (dY - p[2].Y)) / 1024
-      u = Math.trunc(
-        ((p[1].Y - p[2].Y) * (dX - p[2].X) -
+      // NOTE: |0 provides C# integer division (truncate toward zero)
+      u =
+        (((p[1].Y - p[2].Y) * (dX - p[2].X) -
           (p[1].X - p[2].X) * (dY - p[2].Y)) /
-          1024,
-      )
+          1024) |
+        0
 
       // Barycentric coordinate v for vertex p[0]
       // C#: v = ((p[0].X - p[2].X) * (dY - p[2].Y) - (p[0].Y - p[2].Y) * (dX - p[2].X)) / 1024
-      v = Math.trunc(
-        ((p[0].X - p[2].X) * (dY - p[2].Y) -
+      v =
+        (((p[0].X - p[2].X) * (dY - p[2].Y) -
           (p[0].Y - p[2].Y) * (dX - p[2].X)) /
-          1024,
-      )
+          1024) |
+        0
 
       // Point is within the triangle if 0 <= u, v <= 1024
       if (u >= 0 && u <= 1024 && v >= 0 && v <= 1024) break
@@ -230,8 +231,8 @@ export class CellRamp {
 
     // Calculate w from u,v and interpolate height
     // C#: return (u * p[0].Z + v * p[1].Z + (1024 - u - v) * p[2].Z) / 1024
-    return Math.trunc(
-      (u * p[0].Z + v * p[1].Z + (1024 - u - v) * p[2].Z) / 1024,
+    return (
+      ((u * p[0].Z + v * p[1].Z + (1024 - u - v) * p[2].Z) / 1024) | 0
     )
   }
 }
