@@ -1,8 +1,8 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 4 -- Map and Terrain System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
-> **Chapter Status**: Chapter 4 -- Implementation Phase (5/34 migrated, 15%)
-> **Updated**: 2026-06-04 (Phase A complete, awaiting review)
+> **Chapter Status**: Chapter 4 -- Implementation Phase (8/34 migrated, 24%)
+> **Updated**: 2026-06-04 (Phase A COMPLETE, 195/195 tests, review approved)
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1024%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
