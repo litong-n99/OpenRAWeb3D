@@ -113,7 +113,15 @@ export class TraitDictionary {
    * @throws if trait.constructor has no `interfaces` static field
    */
   addTrait(actor: IGameActor, trait: Component): void {
-    void actor // intentionally unused — Component already tracks its actor via attach()
+    // M1: Guard against actor-trait mismatch — prevents data corruption
+    // if a trait is registered under a different actor than it was attached to.
+    if (trait.actor !== actor) {
+      throw new Error(
+        `TraitDictionary.addTrait: trait.actor (ID ${trait.actor?.actorId ?? 'null'}) ` +
+        `does not match provided actor (ID ${actor.actorId}). ` +
+        'Call trait.attach(actor) before addTrait(actor, trait).',
+      )
+    }
     const ifaces = this.getInterfaces(trait)
     for (const iface of ifaces) {
       let list = this.traits.get(iface)
@@ -135,7 +143,13 @@ export class TraitDictionary {
    * @param trait — the trait component to unregister
    */
   removeTrait(actor: IGameActor, trait: Component): void {
-    void actor // intentionally unused — Component already tracks its actor via attach()
+    // M1: Guard against actor-trait mismatch (same rationale as addTrait).
+    if (trait.actor !== actor) {
+      throw new Error(
+        `TraitDictionary.removeTrait: trait.actor (ID ${trait.actor?.actorId ?? 'null'}) ` +
+        `does not match provided actor (ID ${actor.actorId}).`,
+      )
+    }
     const ifaces = this.getInterfaces(trait)
     for (const iface of ifaces) {
       const list = this.traits.get(iface)
@@ -178,6 +192,49 @@ export class TraitDictionary {
   // -----------------------------------------------------------------------
   // Per-actor queries
   // -----------------------------------------------------------------------
+  //
+  // M4: Disposed-actor query behavior — intentional difference from C#:
+  //
+  // OpenRA C# TraitDictionary.CheckDestroyed() throws InvalidOperationException
+  // when querying a disposed/destroyed actor. In TypeScript, we do NOT guard
+  // against disposed actors in per-actor queries. Rationale:
+  //
+  // 1. TS has no deterministic finalization — actor.disposed may be set to true
+  //    asynchronously (e.g., in a Babylon.js onDispose callback), while trait
+  //    queries are synchronous in the game loop. A disposed check would create
+  //    nondeterministic failures depending on callback timing.
+  //
+  // 2. The Component.disposed flag serves as the authoritative disposal signal
+  //    for individual traits. Trait lifecycle methods (e.g., ITick.tick) should
+  //    check `this.disposed` and early-return rather than relying on the
+  //    dictionary to block queries.
+  //
+  // 3. Global queries (actorsWithTrait, actorsHavingTrait) inherently skip
+  //    disposed traits because disposed traits are removed from the dictionary
+  //    via removeActor() during the disposal sequence.
+  //
+  // If a caller explicitly needs the C# guard behavior for debugging, use
+  // checkNotDestroyed() before querying.
+
+  /**
+   * Guard: throw if the actor has been destroyed/disposed.
+   *
+   * OpenRA 对照: TraitDictionary.CheckDestroyed(Actor)
+   *
+   * Optional diagnostic guard — not called automatically by query methods
+   * (see M4 rationale above). Callers who need C#-equivalent strict checking
+   * should call this before per-actor queries.
+   *
+   * @param actor — the actor to check
+   * @throws if actor.disposed is true
+   */
+  checkNotDestroyed(actor: IGameActor): void {
+    if (actor.disposed) {
+      throw new Error(
+        `Attempted to get trait from destroyed object (actor ID ${actor.actorId})`,
+      )
+    }
+  }
 
   /**
    * Get all traits implementing a given interface for a specific actor.
@@ -185,6 +242,8 @@ export class TraitDictionary {
    * OpenRA 对照: TraitDictionary.WithInterface<T>(Actor)
    *
    * Uses O(n) linear scan filtered by actor reference.
+   *
+   * NOTE: Does NOT call checkNotDestroyed() automatically (see M4 rationale).
    *
    * @param actor — the actor to query traits for
    * @param interfaceName — the interface name to query
@@ -208,10 +267,61 @@ export class TraitDictionary {
   }
 
   /**
+   * Get the single trait implementing a given interface for a specific actor.
+   * Throws if not found or if multiple traits exist.
+   *
+   * OpenRA 对照: TraitDictionary.Get<T>(Actor) — throws on missing/multiple
+   *
+   * NOTE: Does NOT call checkNotDestroyed() automatically (see M4 rationale).
+   *
+   * @param actor — the actor to query
+   * @param interfaceName — the interface name to query
+   * @returns the matching trait
+   * @throws if actor has no trait of this interface
+   * @throws if actor has multiple traits of this interface
+   */
+  trait<T extends Component>(
+    actor: IGameActor,
+    interfaceName: string,
+  ): T {
+    this.recordQuery(interfaceName)
+    const list = this.traits.get(interfaceName)
+    if (!list) {
+      throw new Error(
+        `Actor does not have trait of type '${interfaceName}'`,
+      )
+    }
+
+    let found: T | undefined
+    for (const c of list) {
+      if (c.actor?.actorId === actor.actorId) {
+        if (found) {
+          throw new Error(
+            `Actor has multiple traits of type '${interfaceName}'`,
+          )
+        }
+        found = c as unknown as T
+      }
+    }
+
+    if (!found) {
+      throw new Error(
+        `Actor does not have trait of type '${interfaceName}'`,
+      )
+    }
+
+    return found
+  }
+
+  /**
    * Get the first trait implementing a given interface for a specific actor,
    * or undefined if not found.
    *
    * OpenRA 对照: TraitDictionary.GetOrDefault<T>(Actor)
+   *
+   * NOTE: Does NOT call checkNotDestroyed() automatically (see M4 rationale).
+   * NOTE: Unlike trait(), does NOT throw if multiple traits exist; returns
+   *   the first match silently (matching C# GetOrDefault behavior).
    *
    * @param actor — the actor to query
    * @param interfaceName — the interface name to query
@@ -238,6 +348,8 @@ export class TraitDictionary {
    * interface.
    *
    * OpenRA 对照: (no direct equivalent; common usage pattern)
+   *
+   * NOTE: Does NOT call checkNotDestroyed() automatically (see M4 rationale).
    *
    * @param actor — the actor to check
    * @param interfaceName — the interface name to check

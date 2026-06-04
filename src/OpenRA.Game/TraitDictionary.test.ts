@@ -692,20 +692,101 @@ describe('TraitDictionary performance report', () => {
 // ===========================================================================
 
 describe('TraitDictionary edge cases', () => {
-  it('traits with no actor attached are skipped in global queries', () => {
+  it('M1: addTrait throws when trait.actor differs from provided actor', () => {
+    const dict = new TraitDictionary()
+    const actor1 = makeActor()
+    const actor2 = makeActor()
+    const t = new TickComponent()
+    t.attach(actor1)
+    // trait is attached to actor1, but we pass actor2
+    expect(() => dict.addTrait(actor2, t)).toThrow(
+      /does not match provided actor/,
+    )
+  })
+
+  it('M1: addTrait throws when trait has no actor (attach not called)', () => {
     const dict = new TraitDictionary()
     const actor = makeActor()
     const t = new TickComponent()
-    // NOT calling t.attach(actor) — simulate trait with null actor
+    // NOT calling t.attach(actor) — should throw now
+    expect(() => dict.addTrait(actor, t)).toThrow(
+      /does not match provided actor/,
+    )
+  })
+
+  it('M1: removeTrait throws when trait.actor differs from provided actor', () => {
+    const dict = new TraitDictionary()
+    const actor1 = makeActor()
+    const actor2 = makeActor()
+    const t = new TickComponent()
+    t.attach(actor1)
+    dict.addTrait(actor1, t)
+    expect(() => dict.removeTrait(actor2, t)).toThrow(
+      /does not match provided actor/,
+    )
+  })
+
+  it('M2: checkNotDestroyed throws for disposed actor', () => {
+    const dict = new TraitDictionary()
+    const actor = makeActor({ disposed: true })
+    expect(() => dict.checkNotDestroyed(actor)).toThrow(
+      /destroyed object/,
+    )
+  })
+
+  it('M2: checkNotDestroyed does not throw for non-disposed actor', () => {
+    const dict = new TraitDictionary()
+    const actor = makeActor({ disposed: false })
+    expect(() => dict.checkNotDestroyed(actor)).not.toThrow()
+  })
+
+  it('M3: trait() returns the single matching trait', () => {
+    const dict = new TraitDictionary()
+    const actor = makeActor()
+    const t = new TickComponent()
+    t.attach(actor)
     dict.addTrait(actor, t)
 
-    // Per-actor query should NOT find it because c.actor is null (never attached)
-    const perActor = dict.traitsImplementing(actor, 'ITick')
-    expect(perActor).toHaveLength(0)
+    const result = dict.trait<TickComponent>(actor, 'ITick')
+    expect(result).toBe(t)
+  })
 
-    // Global query should also skip it
-    const global = dict.actorsWithTrait('ITick')
-    expect(global).toHaveLength(0)
+  it('M3: trait() throws when no trait found', () => {
+    const dict = new TraitDictionary()
+    const actor = makeActor()
+    expect(() => dict.trait(actor, 'ITick')).toThrow(
+      /does not have trait/,
+    )
+  })
+
+  it('M3: trait() throws when multiple traits found', () => {
+    const dict = new TraitDictionary()
+    const actor = makeActor()
+    const t1 = new TickComponent()
+    const t2 = new TickComponent()
+    t1.attach(actor)
+    t2.attach(actor)
+    dict.addTrait(actor, t1)
+    dict.addTrait(actor, t2)
+
+    expect(() => dict.trait<TickComponent>(actor, 'ITick')).toThrow(
+      /multiple traits/,
+    )
+  })
+
+  it('M3: traitOrDefault does not throw when multiple traits exist', () => {
+    const dict = new TraitDictionary()
+    const actor = makeActor()
+    const t1 = new TickComponent()
+    const t2 = new TickComponent()
+    t1.attach(actor)
+    t2.attach(actor)
+    dict.addTrait(actor, t1)
+    dict.addTrait(actor, t2)
+
+    // traitOrDefault should return first match without throwing
+    const result = dict.traitOrDefault<TickComponent>(actor, 'ITick')
+    expect(result).toBeDefined()
   })
 
   it('disposed actor traits are still in dictionary until removeActor is called', () => {
