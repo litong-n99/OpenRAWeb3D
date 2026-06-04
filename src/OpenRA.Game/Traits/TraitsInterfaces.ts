@@ -485,6 +485,18 @@ export interface ITraitInfoInterface {
   // intentionally empty — marker interface
 }
 
+/**
+ * Marker interface for traits that participate in network sync hashing.
+ *
+ * OpenRA 对照: ISync (marker interface)
+ *
+ * Any trait implementing ISync will have its hash included in the actor's
+ * SyncHash computation for network desync detection.
+ */
+export interface ISync {
+  // intentionally empty — marker interface
+}
+
 // ---------------------------------------------------------------------------
 // Trait metadata interfaces
 // ---------------------------------------------------------------------------

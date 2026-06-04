@@ -61,6 +61,9 @@ import type {
 } from './Traits/TraitsInterfaces.js'
 import { Component } from './Traits/TraitsInterfaces.js'
 import type { GameWorldManager } from './World.js'
+import type { WRot } from './WRot.js'
+import type { WPos } from './WPos.js'
+import type { CPos } from './CPos.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -72,6 +75,24 @@ import type { GameWorldManager } from './World.js'
  * OpenRA 对照: Actor.InvalidConditionToken = -1
  */
 export const INVALID_CONDITION_TOKEN = -1
+
+// ---------------------------------------------------------------------------
+// SystemActors enum (对应 OpenRA SystemActors)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bit flags identifying special system-owned actors.
+ *
+ * OpenRA 对照: SystemActors [Flags] enum
+ */
+export const SystemActors = {
+  Player: 0,
+  EditorPlayer: 1,
+  World: 2,
+  EditorWorld: 4,
+} as const
+
+export type SystemActors = (typeof SystemActors)[keyof typeof SystemActors]
 
 // ---------------------------------------------------------------------------
 // ConditionState — per-condition tracking (对应 OpenRA Actor.ConditionState)
@@ -395,7 +416,7 @@ export class GameActor extends TransformNode implements IGameActor {
    *
    * OpenRA 对照: Actor.Orientation
    */
-  get orientation(): unknown {
+  get orientation(): WRot | null {
     return this._facing?.orientation ?? null
   }
 
@@ -405,6 +426,24 @@ export class GameActor extends TransformNode implements IGameActor {
    * OpenRA 对照: Actor.OccupiesSpace
    */
   occupiesSpace: IOccupySpace | undefined
+
+  /**
+   * The cell position of this actor (top-left of occupied footprint).
+   *
+   * OpenRA 对照: Actor.Location
+   */
+  get location(): CPos | undefined {
+    return this.occupiesSpace?.topLeft
+  }
+
+  /**
+   * The world-space center position of this actor.
+   *
+   * OpenRA 对照: Actor.CenterPosition
+   */
+  get centerPosition(): WPos | undefined {
+    return this.occupiesSpace?.centerPosition
+  }
 
   /**
    * Cached ITargetable traits for O(1) targeting queries.
@@ -1035,20 +1074,34 @@ export class GameActor extends TransformNode implements IGameActor {
   /**
    * Queue an activity for this actor.
    *
-   * OpenRA 对照: Actor.QueueActivity(Activity)
+   * OpenRA 对照: Actor.QueueActivity(Activity) AND Actor.QueueActivity(bool, Activity)
+   *
+   * Two overloads:
+   * - `queueActivity(activity)` — queue with default behavior
+   * - `queueActivity(activity, queued)` — if `queued` is false, cancels
+   *   the current activity before queueing the new one
    *
    * If the actor has no current activity, it starts immediately.
    * Otherwise, it is appended to the end of the activity chain.
    *
    * @param nextActivity — the activity to queue
+   * @param queued — if false, cancel current activity before queueing (optional)
    * @throws if the actor has not been initialized yet
    */
-  queueActivity(nextActivity: ActivityStub): void {
+  queueActivity(nextActivity: ActivityStub): void
+  queueActivity(nextActivity: ActivityStub, queued: boolean): void
+  queueActivity(nextActivity: ActivityStub, queued?: boolean): void {
     if (!this._created) {
       throw new Error(
         'An activity was queued before the actor was created. ' +
         'Queue it inside the INotifyCreated.Created callback instead.',
       )
+    }
+
+    // OpenRA: QueueActivity(bool queued, Activity nextActivity)
+    // If queued is false, cancel existing activities first.
+    if (queued === false) {
+      this.cancelActivity()
     }
 
     const localActivity = nextActivity as unknown as ActivityStubLocal
@@ -1477,6 +1530,15 @@ export class GameActor extends TransformNode implements IGameActor {
     }
 
     this._crushables = this.traitsImplementing<ICrushable & Component>('ICrushable')
+
+    // SyncHash entries from ISync traits
+    // NOTE: Full hash function requires the Sync module (pending TODO-3.D.8).
+    // For now, each trait contributes 0 to the hash.
+    const syncTraits = this.traitsImplementing<Component>('ISync')
+    this._syncHashes = syncTraits.map(trait => ({
+      trait,
+      hashFunction: () => 0, // TODO-3.D.8: Use Sync.getHashFunction(trait)
+    }))
   }
 
   // -----------------------------------------------------------------------
@@ -1702,9 +1764,27 @@ function parsePrimary(
   hasCondition: (condition: string) => boolean,
 ): boolean {
   const trimmed = expr.trim()
-  if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
-    return parseOr(trimmed.substring(1, trimmed.length - 1), hasCondition)
+
+  // Check if the expression is wrapped in matching outer parentheses.
+  // We track nesting depth to avoid being fooled by expressions like
+  // `(deployed) || (upgraded)` where startsWith('(') && endsWith(')')
+  // would incorrectly strip the outer parens.
+  if (trimmed.startsWith('(')) {
+    let depth = 0
+    for (let i = 0; i < trimmed.length; i++) {
+      if (trimmed[i] === '(') depth++
+      else if (trimmed[i] === ')') depth--
+      // If depth reaches 0 at the last character, the entire expression
+      // is wrapped in a single outer pair — strip them and recurse.
+      if (depth === 0 && i === trimmed.length - 1) {
+        return parseOr(trimmed.substring(1, trimmed.length - 1), hasCondition)
+      }
+      // If depth reaches 0 before the end, the expression is NOT fully
+      // wrapped in a single pair — fall through to hasCondition.
+      if (depth === 0) break
+    }
   }
+
   return hasCondition(trimmed)
 }
 

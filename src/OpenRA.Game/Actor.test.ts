@@ -49,7 +49,7 @@ vi.mock('@babylonjs/core', () => {
 // Import modules under test (MUST be after vi.mock)
 // ---------------------------------------------------------------------------
 
-import { GameActor, INVALID_CONDITION_TOKEN, evaluateConditionExpression } from './Actor'
+import { GameActor, INVALID_CONDITION_TOKEN, evaluateConditionExpression, SystemActors } from './Actor'
 import { Component } from './Traits/TraitsInterfaces.js'
 import type {
   IGameActor,
@@ -663,6 +663,35 @@ describe('GameActor', () => {
     it('double negation', () => {
       expect(evaluateConditionExpression('!!deployed', checker)).toBe(true)
     })
+
+    it('handles nested parentheses correctly (Reviewer fix)', () => {
+      // The naive startsWith('(') && endsWith(')') approach would incorrectly
+      // strip the top-level parens from `(deployed) || (upgraded)`, treating
+      // it as a single parenthesized expression. Proper depth tracking fixes this.
+      const conds = new Set(['deployed', 'upgraded'])
+      const chk = (c: string) => conds.has(c)
+
+      // Nested expression: ((deployed) || (upgraded))
+      expect(evaluateConditionExpression('((deployed) || (upgraded))', chk)).toBe(true)
+
+      // Complex nested: ((deployed && !disabled) || (upgraded))
+      expect(
+        evaluateConditionExpression('((deployed && !disabled) || (upgraded))', chk),
+      ).toBe(true)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // SystemActors enum (Reviewer fix)
+  // -----------------------------------------------------------------------
+
+  describe('SystemActors', () => {
+    it('has correct flag values', () => {
+      expect(SystemActors.Player).toBe(0)
+      expect(SystemActors.EditorPlayer).toBe(1)
+      expect(SystemActors.World).toBe(2)
+      expect(SystemActors.EditorWorld).toBe(4)
+    })
   })
 
   // -----------------------------------------------------------------------
@@ -811,6 +840,22 @@ describe('GameActor', () => {
 
       expect(activity.cancelCalls).toBe(1)
       expect(actor.isIdle).toBe(true)
+    })
+
+    it('queueActivity with queued=false cancels existing activities first', () => {
+      const world = createMockWorld()
+      const actor = createTestActor(world)
+      const oldActivity = new TestActivity()
+      const newActivity = new TestActivity()
+
+      actor.initialize(false)
+      actor.queueActivity(oldActivity as unknown as ActivityStub)
+
+      // Queue new activity with queued=false — should cancel old first
+      actor.queueActivity(newActivity as unknown as ActivityStub, false)
+
+      expect(oldActivity.cancelCalls).toBe(1)
+      expect(actor.isIdle).toBe(false) // new activity is active
     })
   })
 
@@ -1037,6 +1082,68 @@ describe('GameActor', () => {
       actor.buildCachedTraitRefs()
 
       expect(actor.effectiveOwner).toBe(comp)
+    })
+
+    it('Location returns IOccupySpace.topLeft', () => {
+      const world = createMockWorld()
+      const actor = createTestActor(world)
+
+      const mockCPos = { Bits: 0, X: 5, Y: 10, Layer: 0 }
+      class OccupySpaceComp extends Component implements IOccupySpace {
+        static readonly interfaces = ['IOccupySpace', 'component']
+        centerPosition = WPos.Zero
+        topLeft = mockCPos as unknown as CPos
+        occupiedCells() { return [] }
+      }
+      const comp = new OccupySpaceComp()
+      actor.addComponent(comp)
+      actor.buildCachedTraitRefs()
+
+      expect(actor.location).toBe(mockCPos as unknown as CPos)
+    })
+
+    it('CenterPosition returns IOccupySpace.centerPosition', () => {
+      const world = createMockWorld()
+      const actor = createTestActor(world)
+
+      const mockPos = new WPos(100, 200, 0)
+      class OccupySpaceComp extends Component implements IOccupySpace {
+        static readonly interfaces = ['IOccupySpace', 'component']
+        centerPosition = mockPos
+        topLeft = { Bits: 0, X: 0, Y: 0, Layer: 0 } as unknown as CPos
+        occupiedCells() { return [] }
+      }
+      const comp = new OccupySpaceComp()
+      actor.addComponent(comp)
+      actor.buildCachedTraitRefs()
+
+      expect(actor.centerPosition).toBe(mockPos)
+    })
+
+    it('Location returns undefined when no IOccupySpace', () => {
+      const actor = createTestActor()
+      expect(actor.location).toBeUndefined()
+    })
+
+    it('CenterPosition returns undefined when no IOccupySpace', () => {
+      const actor = createTestActor()
+      expect(actor.centerPosition).toBeUndefined()
+    })
+
+    it('caches ISync traits for SyncHash', () => {
+      const world = createMockWorld()
+      const actor = createTestActor(world)
+
+      class SyncComp extends Component {
+        static readonly interfaces = ['ISync', 'component']
+      }
+      const comp = new SyncComp()
+      actor.addComponent(comp)
+      actor.buildCachedTraitRefs()
+
+      // Sync hashes should be populated with zero-hash placeholders
+      const hash = actor.computeSyncHash()
+      expect(hash).toBe(0) // Placeholder — will use real hash in TODO-3.D.8
     })
   })
 
