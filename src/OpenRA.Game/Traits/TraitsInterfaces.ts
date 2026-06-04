@@ -1796,9 +1796,36 @@ export interface ICreationActivity {
   getCreationActivity(): ActivityStub
 }
 
-/** Activity stub. */
+/**
+ * Activity stub — forward reference to the full Activity class.
+ *
+ * OpenRA 对照: OpenRA.Game/Activities/Activity.cs
+ *
+ * This interface exposes the minimal surface that IGameActor needs:
+ * queue (append to chain), cancel (abort), and onActorDisposeOuter
+ * (cleanup on actor disposal). The full Activity class (Phase F)
+ * implements this interface plus many additional methods.
+ *
+ * After Phase F, ActivityStub is structurally compatible with Activity.
+ */
 export interface ActivityStub {
-  // minimal stub — Activity system is Phase E
+  /** Append an activity to the end of the chain.
+   *
+   * OpenRA 对照: Activity.Queue(Activity)
+   */
+  queue(activity: ActivityStub): void
+
+  /** Cancel this activity, notifying it that it was aborted.
+   *
+   * OpenRA 对照: Activity.Cancel(Actor)
+   */
+  cancel(actor: IGameActor): void
+
+  /** Called when the actor is being disposed, for cascading cleanup.
+   *
+   * OpenRA 对照: Activity.OnActorDisposeOuter(Actor)
+   */
+  onActorDisposeOuter(actor: IGameActor): void
 }
 
 // ---------------------------------------------------------------------------

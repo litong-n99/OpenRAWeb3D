@@ -50,6 +50,8 @@ vi.mock('@babylonjs/core', () => {
 // ---------------------------------------------------------------------------
 
 import { GameActor, INVALID_CONDITION_TOKEN, evaluateConditionExpression, SystemActors } from './Actor'
+import { Activity } from './Activities/Activity.js'
+import type { GameActor as GameActorType } from './Actor.js'
 import { Component } from './Traits/TraitsInterfaces.js'
 import type {
   IGameActor,
@@ -67,7 +69,6 @@ import type {
   PlayerStub,
   VariableObserver,
   VariableObserverNotifier,
-  ActivityStub,
   DamageState,
   Damage,
   BitSetStub,
@@ -222,38 +223,39 @@ class TestObservesVariablesComponent extends Component implements IObservesVaria
 // to avoid duplicate class name conflicts with ResolveOrderCompA/ResolveOrderCompB.
 
 // ---------------------------------------------------------------------------
-// Test Activity Stub
+// Test Activity — extends real Activity for integration testing
 // ---------------------------------------------------------------------------
 
-class TestActivity {
-  nextActivity: TestActivity | null = null
-  tickResult: TestActivity | null = null
+class TestActivity extends Activity {
+  /** Controls whether tick() returns true (complete) or false (keep running).
+   *
+   * Default: true (activity completes immediately, matching the OpenRA
+   * Activity base class default).
+   */
+  tickReturnValue: boolean = true
+
+  /** How many times tick() has been called. */
   tickCalls = 0
+
+  /** How many times cancel() has been called. */
   cancelCalls = 0
+
+  /** Whether onActorDisposeOuter was called. */
   _disposeOuterCalled = false
 
-  tick(_actor: IGameActor): TestActivity | null {
+  override tick(_self: GameActorType): boolean {
     this.tickCalls++
-    return this.tickResult
+    return this.tickReturnValue
   }
 
-  cancel(_actor: IGameActor): void {
+  override cancel(self: GameActorType, keepQueue?: boolean): void {
     this.cancelCalls++
+    super.cancel(self, keepQueue)
   }
 
-  onActorDisposeOuter(_actor: IGameActor): void {
+  override onActorDisposeOuter(self: GameActorType): void {
     this._disposeOuterCalled = true
-    if (this.nextActivity) {
-      this.nextActivity.onActorDisposeOuter(_actor)
-    }
-  }
-
-  queue(activity: TestActivity): void {
-    if (this.nextActivity === null) {
-      this.nextActivity = activity
-    } else {
-      this.nextActivity.queue(activity)
-    }
+    super.onActorDisposeOuter(self)
   }
 }
 
@@ -737,7 +739,7 @@ describe('GameActor', () => {
       const activity = new TestActivity()
 
       // queueActivity should throw before initialize
-      expect(() => actor.queueActivity(activity as unknown as ActivityStub)).toThrow(
+      expect(() => actor.queueActivity(activity)).toThrow(
         /before the actor was created/,
       )
     })
@@ -752,10 +754,10 @@ describe('GameActor', () => {
       const world = createMockWorld()
       const actor = createTestActor(world)
       const activity = new TestActivity()
-      activity.tickResult = null // Activity completes
+      activity.tickReturnValue = true // Activity completes
 
       actor.initialize(false)
-      actor.queueActivity(activity as unknown as ActivityStub)
+      actor.queueActivity(activity)
       actor.tick()
 
       expect(activity.tickCalls).toBe(1)
@@ -799,12 +801,12 @@ describe('GameActor', () => {
       const actor = createTestActor(world)
       const comp = new TestTickComponent()
       const activity = new TestActivity()
-      activity.tickResult = null // Activity completes immediately
+      activity.tickReturnValue = true // Activity completes immediately
 
       actor.addComponent(comp)
       actor.buildCachedTraitRefs()
       actor.initialize(false)
-      actor.queueActivity(activity as unknown as ActivityStub)
+      actor.queueActivity(activity)
 
       // Tick: activity runs and completes → becoming idle
       actor.tick()
@@ -823,7 +825,7 @@ describe('GameActor', () => {
       const activity = new TestActivity()
 
       actor.initialize(false)
-      actor.queueActivity(activity as unknown as ActivityStub)
+      actor.queueActivity(activity)
 
       // Should NOT be idle
       expect(actor.isIdle).toBe(false)
@@ -835,7 +837,7 @@ describe('GameActor', () => {
       const activity = new TestActivity()
 
       actor.initialize(false)
-      actor.queueActivity(activity as unknown as ActivityStub)
+      actor.queueActivity(activity)
       actor.cancelActivity()
 
       expect(activity.cancelCalls).toBe(1)
@@ -849,10 +851,10 @@ describe('GameActor', () => {
       const newActivity = new TestActivity()
 
       actor.initialize(false)
-      actor.queueActivity(oldActivity as unknown as ActivityStub)
+      actor.queueActivity(oldActivity)
 
       // Queue new activity with queued=false — should cancel old first
-      actor.queueActivity(newActivity as unknown as ActivityStub, false)
+      actor.queueActivity(newActivity, false)
 
       expect(oldActivity.cancelCalls).toBe(1)
       expect(actor.isIdle).toBe(false) // new activity is active
@@ -906,10 +908,10 @@ describe('GameActor', () => {
       const world = createMockWorld()
       const actor = createTestActor(world)
       const activity = new TestActivity()
-      activity.tickResult = null
+      activity.tickReturnValue = true
 
       actor.initialize(false)
-      actor.queueActivity(activity as unknown as ActivityStub)
+      actor.queueActivity(activity)
       actor.dispose()
 
       expect(activity._disposeOuterCalled).toBe(true)

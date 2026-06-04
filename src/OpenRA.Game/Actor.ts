@@ -55,11 +55,12 @@ import type {
   ICrushable,
   PlayerStub,
   ActorInfoStub,
-  ActivityStub,
   VariableObserver,
   VariableObserverNotifier,
 } from './Traits/TraitsInterfaces.js'
 import { Component } from './Traits/TraitsInterfaces.js'
+import { Activity } from './Activities/Activity.js'
+import { runActivity } from './Traits/ActivityUtils.js'
 import type { GameWorldManager } from './World.js'
 import type { WRot } from './WRot.js'
 import type { WPos } from './WPos.js'
@@ -141,84 +142,6 @@ interface SyncHashEntry {
   trait: Component
   /** Cached hash function for this trait. */
   hashFunction: (trait: Component) => number
-}
-
-// ---------------------------------------------------------------------------
-// ActivityStubLocal — minimal Activity base for Phase D (Phase E full impl)
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal abstract Activity base class used within Actor before Phase E.
- *
- * OpenRA 对照: OpenRA.Game/Activities/Activity.cs (subset)
- *
- * NOTE: This is a LOCAL stub. When Phase E (Activity system) is complete,
- * this will be replaced by the full Activity class from Activities/Activity.ts.
- * Only the methods needed by Actor are declared here.
- */
-abstract class ActivityStubLocal {
-  /** The next activity in the chain.
-   *
-   * OpenRA 对照: Activity.NextActivity
-   */
-  nextActivity: ActivityStubLocal | null = null
-
-  /**
-   * Append an activity to the end of the chain.
-   *
-   * OpenRA 对照: Activity.Queue(Activity)
-   */
-  queue(activity: ActivityStubLocal): void {
-    if (this.nextActivity === null) {
-      this.nextActivity = activity
-    } else {
-      this.nextActivity.queue(activity)
-    }
-  }
-
-  /**
-   * Execute one tick of this activity.
-   *
-   * OpenRA 对照: Activity.Tick(Actor)
-   *
-   * @returns the next activity to run, or null if the chain is complete
-   */
-  abstract tick(actor: IGameActor): ActivityStubLocal | null
-
-  /**
-   * Cancel this activity, notifying it that it was aborted.
-   *
-   * OpenRA 对照: Activity.Cancel(Actor)
-   */
-  abstract cancel(actor: IGameActor): void
-
-  /**
-   * Called when the actor is being disposed, for outer cleanup.
-   *
-   * OpenRA 对照: Activity.OnActorDisposeOuter(Actor)
-   */
-  onActorDisposeOuter(_actor: IGameActor): void {
-    // Default: cancel the activity chain
-    this.cancel(_actor)
-    if (this.nextActivity) {
-      this.nextActivity.onActorDisposeOuter(_actor)
-    }
-  }
-
-  /**
-   * Skip any activities in the chain that have already completed.
-   *
-   * OpenRA 对照: Activity.SkipDoneActivities(Activity)
-   */
-  static skipDoneActivities(current: ActivityStubLocal | null): ActivityStubLocal | null {
-    let c = current
-    while (c !== null) {
-      // In full implementation, activities can be marked "done".
-      // For the stub, always return as-is.
-      break
-    }
-    return c
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -395,9 +318,12 @@ export class GameActor extends TransformNode implements IGameActor {
   /** Whether the actor has no current activity.
    *
    * OpenRA 对照: Actor.IsIdle
+   *
+   * Uses SkipDoneActivities to skip past cancelled-while-queued activities
+   * that were marked Done without ever running.
    */
   get isIdle(): boolean {
-    return this._currentActivity === null
+    return Activity.skipDoneActivities(this._currentActivity) === null
   }
 
   // -----------------------------------------------------------------------
@@ -584,7 +510,7 @@ export class GameActor extends TransformNode implements IGameActor {
    *
    * OpenRA 对照: Actor.CurrentActivity
    */
-  private _currentActivity: ActivityStubLocal | null = null
+  private _currentActivity: Activity | null = null
 
   // -----------------------------------------------------------------------
   // Render caching
@@ -721,11 +647,11 @@ export class GameActor extends TransformNode implements IGameActor {
         if (activity !== null) {
           creationActivityTrait = ica
           // Queue the creation activity, prepending any existing activity
-          const stubActivity = activity as unknown as ActivityStubLocal
+          const realActivity = activity as unknown as Activity
           if (this._currentActivity) {
-            stubActivity.queue(this._currentActivity)
+            realActivity.queue(this._currentActivity)
           }
-          this._currentActivity = stubActivity
+          this._currentActivity = realActivity
         }
       }
     }
@@ -914,8 +840,13 @@ export class GameActor extends TransformNode implements IGameActor {
   tick(): void {
     const wasIdle = this.isIdle
 
-    // Run the activity chain
-    this._currentActivity = this.runActivity(this._currentActivity)
+    // Run the activity chain.
+    // SkipDoneActivities is applied to skip past cancelled-while-queued activities.
+    // This matches OpenRA's CurrentActivity getter which calls SkipDoneActivities
+    // before passing the result to ActivityUtils.RunActivity.
+    this._currentActivity = this.runActivity(
+      Activity.skipDoneActivities(this._currentActivity),
+    )
 
     if (!wasIdle && this.isIdle) {
       // Actor became idle this tick — fire becoming-idle notifications,
@@ -924,7 +855,9 @@ export class GameActor extends TransformNode implements IGameActor {
         n.onBecomingIdle(this)
       }
       // Re-run: if OnBecomingIdle queued a new activity, start it now
-      this._currentActivity = this.runActivity(this._currentActivity)
+      this._currentActivity = this.runActivity(
+        Activity.skipDoneActivities(this._currentActivity),
+      )
     } else if (wasIdle) {
       // Actor is staying idle — fire idle tick
       for (const tickIdle of this._tickIdles) {
@@ -938,26 +871,15 @@ export class GameActor extends TransformNode implements IGameActor {
    *
    * OpenRA 对照: ActivityUtils.RunActivity(Actor, Activity)
    *
-   * NOTE: Full implementation is in Phase E (ActivityUtils).
-   * This is a local minimal implementation for Phase D.
+   * Delegates to the shared ActivityUtils.runActivity function.
    *
    * @param root — the root activity to start from
    * @returns the next activity to run (or null if chain is complete)
    */
   private runActivity(
-    root: ActivityStubLocal | null,
-  ): ActivityStubLocal | null {
-    let current = root
-    while (current !== null) {
-      const next = current.tick(this)
-      if (next === current) {
-        // Activity wants to continue running
-        return current
-      }
-      // Activity returned a different activity (or null = chain complete)
-      current = next
-    }
-    return null
+    root: Activity | null,
+  ): Activity | null {
+    return runActivity(this, root) as Activity | null
   }
 
   // -----------------------------------------------------------------------
@@ -1088,9 +1010,9 @@ export class GameActor extends TransformNode implements IGameActor {
    * @param queued — if false, cancel current activity before queueing (optional)
    * @throws if the actor has not been initialized yet
    */
-  queueActivity(nextActivity: ActivityStub): void
-  queueActivity(nextActivity: ActivityStub, queued: boolean): void
-  queueActivity(nextActivity: ActivityStub, queued?: boolean): void {
+  queueActivity(nextActivity: Activity): void
+  queueActivity(nextActivity: Activity, queued: boolean): void
+  queueActivity(nextActivity: Activity, queued?: boolean): void {
     if (!this._created) {
       throw new Error(
         'An activity was queued before the actor was created. ' +
@@ -1104,12 +1026,10 @@ export class GameActor extends TransformNode implements IGameActor {
       this.cancelActivity()
     }
 
-    const localActivity = nextActivity as unknown as ActivityStubLocal
-
     if (this._currentActivity === null) {
-      this._currentActivity = localActivity
+      this._currentActivity = nextActivity
     } else {
-      this._currentActivity.queue(localActivity)
+      this._currentActivity.queue(nextActivity)
     }
   }
 
@@ -1117,11 +1037,15 @@ export class GameActor extends TransformNode implements IGameActor {
    * Cancel the actor's current activity and all queued activities.
    *
    * OpenRA 对照: Actor.CancelActivity()
+   *
+   * NOTE: OpenRA does NOT set CurrentActivity to null after cancel.
+   * The activity chain advances automatically via tickOuter returning
+   * nextActivity on the next tick. Setting _currentActivity to null
+   * would drop queued activities that follow the cancelled one.
    */
   cancelActivity(): void {
     if (this._currentActivity) {
       this._currentActivity.cancel(this)
-      this._currentActivity = null
     }
   }
 
