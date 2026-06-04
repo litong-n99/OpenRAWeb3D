@@ -8,9 +8,10 @@
  * - C# static CellLayer class with Resize → static method on CellLayer
  * - Index formulas MUST match OpenRA exactly (CRITICAL for data integrity)
  *
- * Index formulas (from OpenRA C# source):
+ * Index formulas (from OpenRA C# source, refined per Architect WR):
  *   Rectangular: index = y * width + x  (direct)
- *   Isometric:   u = (x - y) / 2, v = x + y, index = v * width + u
+ *   Isometric:   u = (x-y) >> 1 (non-negative), Math.floor((x-y)/2) (negative)
+ *                v = x + y, index = v * width + u
  */
 
 import { CPos } from '../CPos'
@@ -19,7 +20,7 @@ import { MapGridType, type MapGridType as MapGridTypeEnum } from './MapGridType'
 import { Rectangle } from '../Primitives/Rectangle'
 import { CellLayerBase } from './CellLayerBase'
 import { CellRegion } from './CellRegion'
-import type { Size } from './CellLayerBase'
+import type { Size } from '../Primitives/Size'
 
 // ---------------------------------------------------------------------------
 // CellEntryChanged callback type
@@ -118,16 +119,14 @@ export class CellLayer<T> extends CellLayerBase<T> {
    * OpenRA 对照: CellLayer<T>.Index(CPos)
    *
    * PERF: Inline CPos.ToMPos to avoid MPos allocation on the hot path.
-   * This is a direct port of the C# Index(CPos) method.
+   * Architect WR item 1: use >> 1 for non-negative deltas, Math.floor
+   * for negative deltas to ensure invalid cells fail the Bounds check.
    *
    * For Rectangular grids: direct (X, Y) → (U, V) mapping, index = Y * W + X.
    * For RectangularIsometric grids:
-   *   u = (x - y) / 2
+   *   u = delta >= 0 ? delta >> 1 : Math.floor(delta / 2)
    *   v = x + y
    *   index = v * width + u
-   *
-   * NOTE: Integer division truncates toward zero in both C# and
-   * JavaScript (via |0), ensuring index formula parity.
    */
   private indexFromCPos(cell: CPos): number {
     // PERF: Inline CPos.ToMPos to avoid MPos allocation
@@ -148,10 +147,12 @@ export class CellLayer<T> extends CellLayerBase<T> {
       return y * this.Size.width + x
     }
 
-    // RectangularIsometric
-    // NOTE: (x - y) / 2 uses integer division (truncated toward zero).
-    // JavaScript (x - y) / 2 | 0 gives the same result as C# int division.
-    const u = ((x - y) / 2) | 0
+    // RectangularIsometric — Architect WR item 1:
+    // Use >> 1 for non-negative deltas, Math.floor for negative deltas.
+    // This ensures invalid cells (X < Y for isometric) produce a negative u
+    // that fails the Bounds check, preventing silent incorrect data access.
+    const delta = x - y
+    const u = delta >= 0 ? delta >> 1 : Math.floor(delta / 2)
     const v = x + y
 
     if (!this.Bounds.contains(u, v)) {

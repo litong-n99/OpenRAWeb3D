@@ -17,26 +17,27 @@
 
 import { type MapGridType as MapGridTypeEnum } from './MapGridType'
 import { Rectangle } from '../Primitives/Rectangle'
+import type { Size } from '../Primitives/Size'
 
-// ---------------------------------------------------------------------------
-// Size
-// ---------------------------------------------------------------------------
-
-/** 2D size with integer width/height.
- *
- * OpenRA 对照: OpenRA.Primitives.Size
- *
- * Defined here to avoid circular dependency on Renderer's Size.
- * Matches the project convention: { width: number, height: number }.
- */
-export interface Size {
-  width: number
-  height: number
-}
+// Re-export Size for convenience (many consumers import it from CellLayerBase)
+export type { Size } from '../Primitives/Size'
 
 // ---------------------------------------------------------------------------
 // CellLayerBase<T>
 // ---------------------------------------------------------------------------
+
+// NOTE: TypedArray optimization for numeric layers (Architect WR item 5):
+// OpenRA CellLayer<byte/int/float> stores value types inline. TypeScript
+// Array<number> always boxes as double, which is less memory-efficient.
+// For numeric layers (especially Height: CellLayer<byte>), consider using
+// a TypedArray-backed subclass (e.g., Int8Array for byte, Int32Array for
+// int). This is deferred to Phase D when Map.Height/Map.Ramp are migrated.
+//
+// Suggested pattern:
+//   class NumericCellLayer extends CellLayerBase<number> {
+//     protected readonly Entries: Int8Array | Int32Array | Float64Array
+//   }
+// For now, Array<T> provides correctness; TypedArray provides efficiency.
 
 /**
  * Abstract generic base for cell-based data layers.

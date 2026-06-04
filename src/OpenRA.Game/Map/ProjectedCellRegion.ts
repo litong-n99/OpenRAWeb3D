@@ -12,9 +12,27 @@
 import { PPos } from '../MPos'
 import { MPos } from '../MPos'
 import { MapGridType, type MapGridType as MapGridTypeEnum } from './MapGridType'
-import type { Size } from './CellLayerBase'
+import type { Size } from '../Primitives/Size'
 import { MapCoordsRegion } from './MapCoordsRegion'
 import { Rectangle } from '../Primitives/Rectangle'
+
+// ---------------------------------------------------------------------------
+// GridConfig (Architect WR)
+// ---------------------------------------------------------------------------
+
+/**
+ * Grid configuration for ProjectedCellRegion.
+ *
+ * Architect WR item: GridConfig pattern replacing the decomposed
+ * (gridType, mapSize, maximumTerrainHeight) parameters.
+ *
+ * When Map is migrated (Phase D), GridConfig can be sourced from a Map
+ * instance via `{ gridType: map.gridType, maximumTerrainHeight: map.grid.maximumTerrainHeight }`.
+ */
+export interface GridConfig {
+  gridType: MapGridTypeEnum
+  maximumTerrainHeight: number
+}
 
 // ---------------------------------------------------------------------------
 // ProjectedCellRegion
@@ -62,25 +80,23 @@ export class ProjectedCellRegion implements Iterable<PPos> {
    *
    * OpenRA 对照: ProjectedCellRegion(Map, PPos, PPos)
    *
-   * NOTE: OpenRA takes a Map and uses map.Grid.Type,
-   * map.Grid.MaximumTerrainHeight, and map.Height.Clamp().
-   * Since Map is not yet migrated (Phase D), we accept the decomposed
-   * parameters directly.
+   * Architect WR: uses GridConfig pattern instead of raw (gridType, maxHeight)
+   * params. When Map is migrated (Phase D), GridConfig can be sourced from
+   * a Map instance.
    *
-   * Height offset calculation (matching OpenRA):
-   *   Each height step is 512 WDist units, equivalent to 1 MPos step for
-   *   isometric cells, but only half an MPos step for classic (Rectangular) cells.
+   * Height offset calculation (Architect WR item 4):
+   *   Isometric: offset = maxHeight (1 MPos step per height unit)
+   *   Rectangular: offset = maxHeight >> 1 (half MPos step per height unit)
+   * Each height step is 512 WDist units.
    *
-   * @param gridType — the map's grid type
+   * @param gridConfig — grid type and maximum terrain height
    * @param mapSize — the map's size in cells (for clamping)
-   * @param maximumTerrainHeight — the maximum terrain height value (0-255)
    * @param topLeft — inclusive top-left corner in projected coordinates
    * @param bottomRight — inclusive bottom-right corner in projected coordinates
    */
   constructor(
-    gridType: MapGridTypeEnum,
+    gridConfig: GridConfig,
     mapSize: Size,
-    maximumTerrainHeight: number,
     topLeft: PPos,
     bottomRight: PPos,
   ) {
@@ -95,10 +111,11 @@ export class ProjectedCellRegion implements Iterable<PPos> {
     // been projected into this region if they have height > 0.
     // Each height step is equivalent to 512 WDist units, which is one MPos
     // step for isometric cells, but only half a MPos step for classic cells.
+    // Architect WR item 4: >> 1 for Rectangular (positive-only, fast).
     const heightOffset =
-      gridType === MapGridType.RectangularIsometric
-        ? maximumTerrainHeight
-        : (maximumTerrainHeight / 2) | 0
+      gridConfig.gridType === MapGridType.RectangularIsometric
+        ? gridConfig.maximumTerrainHeight
+        : gridConfig.maximumTerrainHeight >> 1
 
     // Clamp the bottom coordinate so it doesn't overflow the map
     const br = new MPos(

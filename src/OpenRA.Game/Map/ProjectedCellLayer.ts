@@ -14,7 +14,7 @@
 import { PPos } from '../MPos'
 import { type MapGridType as MapGridTypeEnum } from './MapGridType'
 import { CellLayerBase } from './CellLayerBase'
-import type { Size } from './CellLayerBase'
+import type { Size } from '../Primitives/Size'
 
 // ---------------------------------------------------------------------------
 // ProjectedCellLayer<T>
