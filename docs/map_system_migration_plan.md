@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 4 -- Map and Terrain System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
-> **Chapter Status**: Chapter 4 -- Implementation Phase (11/34 migrated, 32%)
-> **Updated**: 2026-06-04 (Phase B COMPLETE: CellRamp + MapGrid, 138 tests, review approved; 11/34, 32%)
-> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1032%)
+> **Chapter Status**: Chapter 4 -- Implementation Phase (12/34 migrated, 35%)
+> **Updated**: 2026-06-04 (Phase B COMPLETE: CellRamp + MapGrid, 138 tests, review approved; 12/34, 35%)
+> **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1035%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
 
@@ -328,11 +328,11 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 **Description**: All three classes (`TerrainTileInfo`, `TerrainTypeInfo`, `TileSet`) are in a single C# file (197 lines). TileSet is a static class indexing terrain templates from YAML.
 
-- [ ] **TODO-4.C.1** `TerrainTypeInfo` (in `TerrainInfo.ts`): `type: string`, `targetTypes: Set<string>`, `acceptsSmudgeType: Set<string>`, `color: Color`, static `types` registry
+- [x] **TODO-4.C.1** `TerrainTypeInfo` (in `TerrainInfo.ts`): `type: string`, `targetTypes: Set<string>`, `acceptsSmudgeType: Set<string>`, `color: Color`, static `types` registry
 
-- [ ] **TODO-4.C.2** `TerrainTileInfo` (in `TerrainInfo.ts`): `terrainType: number`, `height: number` (0-255), `rampType: number` (index into Ramps), `minColor`/`maxColor`, `riser: Int8Array` (8 directions: TL,TR,R,BR,B,BL,L,TL2). Support short-form (`"LU=6"`) and long-form (`"6,6,0,0,0,0,6,6"`) Riser parsing.
+- [x] **TODO-4.C.2** `TerrainTileInfo` (in `TerrainInfo.ts`): `terrainType: number`, `height: number` (0-255), `rampType: number` (index into Ramps), `minColor`/`maxColor`, `riser: Int8Array` (8 directions: TL,TR,R,BR,B,BL,L,TL2). Support short-form (`"LU=6"`) and long-form (`"6,6,0,0,0,0,6,6"`) Riser parsing.
 
-- [ ] **TODO-4.C.3** `TileSet` static class (in `TerrainInfo.ts`): `templates: Map<string, TileTemplate>`, `tiles: Map<number, TerrainTileInfo>`, `terrainTypes: Map<string, TerrainTypeInfo>`, `getTileInfo()`, `getTerrainType()`. JSON format from build-time YAML compilation.
+- [x] **TODO-4.C.3** `TileSet` static class (in `TerrainInfo.ts`): `templates: Map<string, TileTemplate>`, `tiles: Map<number, TerrainTileInfo>`, `terrainTypes: Map<string, TerrainTypeInfo>`, `getTileInfo()`, `getTerrainType()`. JSON format from build-time YAML compilation.
 
 **Estimated Effort**: ~400 lines implementation + ~350 lines test (2 developer-days)
 
@@ -533,7 +533,7 @@ Phase A -> Phase B -> Phase C -> Phase D -> Phase F -> Phase G
 - [ ] **TEST-4.4** Map coordinates: centerOfCell/cellContaining round-trip, contains bounds, heightAt validates ramp offset
 - [ ] **TEST-4.5** TerrainMeshBuilder: 4x4 flat map = 25 vertices + 32 triangles; ramp cell slope geometry; Riser cliff faces; isometric diamond layout
 - [ ] **TEST-4.6** PathSearch A*: shortest path on uniform grid, wall avoidance, unreachable target, maxCost cutoff
-- [ ] **TEST-4.7** HPA*: 256x256 map + 500 obstacles under 5ms; path length under 132% longer than optimal; incremental obstacle updates
+- [ ] **TEST-4.7** HPA*: 256x256 map + 500 obstacles under 5ms; path length under 135% longer than optimal; incremental obstacle updates
 - [ ] **TEST-4.8** MiniYAML: @ node parsing, -TraitName removal, nesting, all shipped OpenRA map.yaml files without errors
 - [ ] **TEST-4.9** CoordinateTransformer: WPos->Vector3->WPos round-trip; isometric diamond layout; ramp height offset; batch conversion under 50ms for 512x512
 - [ ] **TEST-4.10** E2E integration (Playwright, deferred): load test map -> terrain mesh in scene -> click-to-cell
