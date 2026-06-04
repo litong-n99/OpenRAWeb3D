@@ -41,6 +41,8 @@ import type {
   PlayerStub,
   WorldRendererStub,
   WorldStub,
+  ActivityStub,
+  ActorInfoStub,
 } from './Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
@@ -307,10 +309,61 @@ class StubActor implements IGameActor {
   isInWorld: boolean = false
   isDead: boolean = false
   disposed: boolean = false
+  owner: PlayerStub | undefined = undefined
+  world: WorldStub | undefined = undefined
+  info: ActorInfoStub | undefined = undefined
+  willDispose: boolean = false
+  generation: number = 0
 
   constructor(actorId: number) {
     this.actorId = actorId
   }
+
+  get isIdle(): boolean {
+    return true // StubActor has no activity; always idle
+  }
+
+  // -----------------------------------------------------------------------
+  // Condition system stubs (Phase D)
+  // -----------------------------------------------------------------------
+
+  /** @inheritdoc */
+  grantCondition(_condition: string): number {
+    return -1 // InvalidConditionToken — conditions not supported on StubActor
+  }
+
+  /** @inheritdoc */
+  revokeCondition(_token: number): number {
+    return -1
+  }
+
+  /** @inheritdoc */
+  hasCondition(_condition: string): boolean {
+    return false
+  }
+
+  /** @inheritdoc */
+  tokenValid(_token: number): boolean {
+    return false
+  }
+
+  // -----------------------------------------------------------------------
+  // Activity system stubs (Phase D stubs, Phase E full impl)
+  // -----------------------------------------------------------------------
+
+  /** @inheritdoc */
+  queueActivity(_nextActivity: ActivityStub): void {
+    // TODO-3.E: Full Activity chain implementation
+  }
+
+  /** @inheritdoc */
+  cancelActivity(): void {
+    // TODO-3.E: Full Activity cancellation
+  }
+
+  // -----------------------------------------------------------------------
+  // Tick (existing)
+  // -----------------------------------------------------------------------
 
   /**
    * Called by World.Tick() for each actor.

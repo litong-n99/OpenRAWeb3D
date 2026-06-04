@@ -168,18 +168,23 @@ export interface LongBitSetStub<_T> {
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal forward reference to the GameActor class.
+ * Forward reference to the GameActor class.
  *
- * OpenRA 对照: OpenRA.Game/Actor.cs (subset)
+ * OpenRA 对照: OpenRA.Game/Actor.cs
  *
- * This interface exposes only the members that trait interfaces need.
- * The full GameActor class (Phase D) will implement this interface.
+ * This interface exposes the members that trait interfaces need to interact
+ * with actors. The full GameActor class (Phase D) implements this interface.
  * Pattern matches {@link IActorRef} — a lightweight contract to break
  * circular dependencies between traits and the actor container.
  *
- * NOTE: Members are added incrementally as trait implementations require them.
+ * Expanded in Phase D to include condition system, activity system,
+ * and trait query delegation methods.
  */
 export interface IGameActor {
+  // -----------------------------------------------------------------------
+  // Identity & state (Phase B — original, REQUIRED)
+  // -----------------------------------------------------------------------
+
   /** Globally unique actor identifier.
    *
    * OpenRA 对照: Actor.ActorID
@@ -203,6 +208,121 @@ export interface IGameActor {
    * OpenRA 对照: Actor.Disposed
    */
   readonly disposed: boolean
+
+  // -----------------------------------------------------------------------
+  // Core references (Phase D — optional to preserve compatibility with
+  // minimal stub actors used in tests)
+  // -----------------------------------------------------------------------
+
+  /** The player that owns this actor.
+   *
+   * OpenRA 对照: Actor.Owner
+   */
+  owner?: PlayerStub | undefined
+
+  /** The world this actor belongs to.
+   *
+   * OpenRA 对照: Actor.World
+   */
+  world?: WorldStub | undefined
+
+  /** Static actor type metadata.
+   *
+   * OpenRA 对照: Actor.Info
+   */
+  info?: ActorInfoStub | undefined
+
+  /** Whether this actor is flagged for deferred disposal.
+   *
+   * OpenRA 对照: Actor.WillDispose
+   */
+  willDispose?: boolean
+
+  /** Replacement generation counter (incremented on upgrade / owner change).
+   *
+   * OpenRA 对照: Actor.Generation
+   */
+  generation?: number
+
+  /** Whether the actor currently has no activity.
+   *
+   * OpenRA 对照: Actor.IsIdle
+   */
+  readonly isIdle?: boolean
+
+  // -----------------------------------------------------------------------
+  // Condition system (Phase D — optional for stub/minimal actors)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Grant a named condition to this actor.
+   *
+   * OpenRA 对照: Actor.GrantCondition(string)
+   *
+   * Conditions are reference-counted: granting the same condition twice
+   * creates two tokens. The condition is removed only when ALL tokens
+   * are revoked.
+   *
+   * @param condition — the condition name to grant
+   * @returns a unique integer token for revocation, or -1 if condition
+   *          is null/empty (InvalidConditionToken)
+   */
+  grantCondition?(condition: string): number
+
+  /**
+   * Revoke a previously granted condition by its token.
+   *
+   * OpenRA 对照: Actor.RevokeCondition(int)
+   *
+   * @param token — the token returned by grantCondition
+   * @returns -1 (InvalidConditionToken) on success
+   * @throws if the token is not valid
+   */
+  revokeCondition?(token: number): number
+
+  /**
+   * Check whether a condition is currently active (has at least one token).
+   *
+   * OpenRA 对照: conditionCache check (not a direct C# method, but equivalent
+   *   to checking conditionCache[condition] > 0)
+   *
+   * @param condition — the condition name to check
+   * @returns true if the condition is currently active
+   */
+  hasCondition?(condition: string): boolean
+
+  /**
+   * Check whether a revocation token is still valid.
+   *
+   * OpenRA 对照: Actor.TokenValid(int)
+   *
+   * @param token — the token to check
+   * @returns true if the token is still valid for revocation
+   */
+  tokenValid?(token: number): boolean
+
+  // -----------------------------------------------------------------------
+  // Activity system (Phase D stubs, full impl Phase E — optional for stubs)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Queue an activity for this actor.
+   *
+   * OpenRA 对照: Actor.QueueActivity(Activity)
+   *
+   * If the actor has no current activity, the new activity starts immediately.
+   * Otherwise, it is appended to the end of the activity chain.
+   *
+   * @param nextActivity — the activity to queue
+   */
+  queueActivity?(nextActivity: ActivityStub): void
+
+  /**
+   * Cancel the actor's current activity and all queued activities.
+   *
+   * OpenRA 对照: Actor.CancelActivity()
+   */
+  cancelActivity?(): void
 }
 
 // ---------------------------------------------------------------------------
