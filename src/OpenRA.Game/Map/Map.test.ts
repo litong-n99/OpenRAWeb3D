@@ -1,9 +1,9 @@
 /**
- * GameMap.test.ts — Map core container migration unit tests
+ * Map.test.ts — Map core container migration unit tests
  *
- * Since GameMap.ts does not import from @babylonjs/core (it's pure terrain data),
+ * Since Map.ts does not import from @babylonjs/core (it's pure terrain data),
  * no Babylon.js mocking is needed. Tests focus on:
- * - BinaryDataHeader parsing
+ * - MapBinParser integration (parseBinaryDataHeader via re-export)
  * - Map creation (blank, from binary data)
  * - Coordinate methods (centerOfCell, cellContaining, offset)
  * - Contains checks
@@ -19,13 +19,12 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   Map as GameMap,
   MapVisibility,
-  parseBinaryDataHeader,
-  type TerrainTile,
   type ITerrainInfo,
   type MapLoaderInput,
-  DEFAULT_TERRAIN_TILE,
-  DEFAULT_RESOURCE_TILE,
 } from './Map'
+import { buildBinaryData, parseBinaryDataHeader } from './MapBinParser'
+import type { TerrainTile } from './TileReference'
+import { DEFAULT_RESOURCE_TILE, DEFAULT_TERRAIN_TILE } from './TileReference'
 import { MapGrid } from './MapGrid'
 import { MapGridType } from './MapGridType'
 import { CPos } from '../CPos'
@@ -113,70 +112,6 @@ function makeIsometricGrid(maxTerrainHeight = 0): MapGrid {
     maximumTerrainHeight: maxTerrainHeight,
     maximumTileSearchRange: 50,
   })
-}
-
-/** Build a binary data buffer in Format 2 for testing.
- *
- * Writes tile/resource/height data in column-major order (i loop first, then j)
- * matching OpenRA's save/load pattern.
- */
-function buildBinaryData(
-  width: number,
-  height: number,
-  tiles: { type: number; index: number }[],
-  resources: { type: number; index: number }[] = [],
-  heights: number[] = [],
-): ArrayBuffer {
-  const hasHeight = heights.length > 0
-  const TILES_OFFSET = 17
-  const heightsOffset = hasHeight ? TILES_OFFSET + 3 * width * height : 0
-  const resourcesOffset = TILES_OFFSET + 3 * width * height + (hasHeight ? width * height : 0)
-
-  const totalSize =
-    17 + 3 * width * height + (hasHeight ? width * height : 0) + 2 * width * height
-  const buffer = new ArrayBuffer(totalSize)
-  const data = new DataView(buffer)
-  let pos = 0
-
-  // Header
-  data.setUint8(pos++, 2) // format
-  data.setUint16(pos, width, true); pos += 2
-  data.setUint16(pos, height, true); pos += 2
-  data.setUint32(pos, TILES_OFFSET, true); pos += 4
-  data.setUint32(pos, heightsOffset, true); pos += 4
-  data.setUint32(pos, resourcesOffset, true); pos += 4
-
-  // Helper: column-major index for position (i, j)
-  const idx = (i: number, j: number) => j * width + i
-
-  // Tile data: column-major (i then j)
-  for (let i = 0; i < width; i++) {
-    for (let j = 0; j < height; j++) {
-      const t = tiles[idx(i, j)] ?? { type: 0, index: 0 }
-      data.setUint16(pos, t.type, true); pos += 2
-      data.setUint8(pos++, t.index)
-    }
-  }
-
-  // Height data: column-major
-  if (hasHeight) {
-    for (let i = 0; i < width; i++) {
-      for (let j = 0; j < height; j++) {
-        data.setUint8(pos++, heights[idx(i, j)] ?? 0)
-      }
-    }
-  }
-
-  // Resource data: column-major
-  for (let i = 0; i < width; i++) {
-    for (let j = 0; j < height; j++) {
-      const r = resources[idx(i, j)] ?? { type: 0, index: 0 }
-      data.setUint8(pos++, r.type)
-      data.setUint8(pos++, r.index)
-    }
-  }
-
-  return buffer
 }
 
 // ---------------------------------------------------------------------------
