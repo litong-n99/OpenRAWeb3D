@@ -360,6 +360,25 @@ describe('Inheritance merging', () => {
     expect(() => ActorConfig.fromJSON(a, allConfigs)).toThrow(/A.*->.*B.*->.*A/)
   })
 
+  it('allows diamond inheritance: A inherits [B, C], B→D, C→D', () => {
+    const d = makeJSON({ name: '^D', traits: [makeTrait({ trait: 'D' })] })
+    const c = makeJSON({ name: '^C', inherits: ['^D'], traits: [makeTrait({ trait: 'C' })] })
+    const b = makeJSON({ name: '^B', inherits: ['^D'], traits: [makeTrait({ trait: 'B' })] })
+    const a = makeJSON({ name: 'A', inherits: ['^B', '^C'], traits: [makeTrait({ trait: 'A' })] })
+
+    const allConfigs = new Map<string, ActorJSON>([
+      ['^D', d], ['^C', c], ['^B', b], ['A', a],
+    ])
+
+    // Should NOT throw — diamond inheritance is not a cycle
+    const config = ActorConfig.fromJSON(a, allConfigs)
+    expect(config.hasTraitInfo('A')).toBe(true)
+    expect(config.hasTraitInfo('B')).toBe(true)
+    expect(config.hasTraitInfo('C')).toBe(true)
+    expect(config.hasTraitInfo('D')).toBe(true)
+    expect(config.traitConfigs).toHaveLength(4)
+  })
+
   it('child removal of trait at grandparent level', () => {
     const grandparent = makeJSON({
       name: '^GP',

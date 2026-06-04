@@ -342,19 +342,26 @@ export class ActorConfig {
    *
    * @param json — raw JSON object conforming to ActorJSON shape
    * @param allConfigs — optional map of all actor JSONs for inheritance resolution
+   * @param _ancestorPath — internal: current ancestor chain for cycle detection.
+   *   An immutable array (not a shared Set) so diamond inheritance works correctly.
    * @returns a deeply-frozen ActorConfig
    * @throws if JSON is malformed or circular dependencies are detected
    */
   static fromJSON(
     json: unknown,
     allConfigs?: ReadonlyMap<string, ActorJSON>,
-    _visited?: Set<string>,
+    _ancestorPath?: readonly string[],
   ): ActorConfig {
     const parsed = validateActorJSON(json)
 
-    // Detect circular inheritance before any processing
-    if (_visited?.has(parsed.name)) {
-      const chain = [..._visited, parsed.name].join(' -> ')
+    // Detect circular inheritance: if this actor already appears in MY own
+    // ancestor chain, we have a true cycle.
+    // Uses an immutable ancestor-path array (not a shared Set) so that
+    // diamond inheritance (A inherits [B,C], both B and C inherit D) is
+    // correctly allowed — D only appears in D's own ancestor checks,
+    // not in sibling branches.
+    if (_ancestorPath?.includes(parsed.name)) {
+      const chain = [..._ancestorPath, parsed.name].join(' -> ')
       throw new Error(
         `ActorConfig.fromJSON "${parsed.name}": circular inheritance detected. ` +
         `Inheritance chain: ${chain}`,
@@ -371,11 +378,10 @@ export class ActorConfig {
         )
       }
 
-      // Track visited nodes for circular inheritance detection.
-      // The visited set is shared across the entire inheritance resolution
-      // call tree: if A→B→C→A, visited={A,B,C} when we re-encounter A.
-      const visited = _visited ?? new Set<string>()
-      visited.add(parsed.name)
+      // Build my ancestor path for recursive calls. Each recursive call
+      // receives a new array (immutable snapshot), so sibling branches
+      // do not contaminate each other's ancestor checks.
+      const myPath: readonly string[] = [...(_ancestorPath ?? []), parsed.name]
 
       const inheritsFrom: string[] = []
       for (const parentName of parsed.inherits) {
@@ -386,8 +392,8 @@ export class ActorConfig {
           )
         }
         // Recursively resolve parent (may also have inheritance).
-        // Pass visited set to detect inheritance cycles.
-        const parentConfig = ActorConfig.fromJSON(parentJSON, allConfigs, visited)
+        // Pass ancestor path to detect true inheritance cycles.
+        const parentConfig = ActorConfig.fromJSON(parentJSON, allConfigs, myPath)
         inheritsFrom.push(...parentConfig.inheritsFrom, parentName)
 
         // Merge parent traits with child. Parent traits come first;
