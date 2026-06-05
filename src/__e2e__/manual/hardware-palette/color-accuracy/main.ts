@@ -396,6 +396,7 @@ async function main(): Promise<void> {
   matOriginal.diffuseTexture = texOriginal
   matOriginal.specularColor.set(0, 0, 0)
   matOriginal.backFaceCulling = false
+  matOriginal.disableLighting = true
 
   const planeOriginal = MeshBuilder.CreatePlane(
     'planeOriginal',
@@ -433,6 +434,7 @@ async function main(): Promise<void> {
   labelOrigMat.diffuseTexture = labelOrigTex
   labelOrigMat.specularColor.set(0, 0, 0)
   labelOrigMat.backFaceCulling = false
+  labelOrigMat.disableLighting = true
   labelOrigPlane.material = labelOrigMat
 
   // 右侧：重映射后调色板
@@ -446,6 +448,7 @@ async function main(): Promise<void> {
   matRemapped.diffuseTexture = texRemapped
   matRemapped.specularColor.set(0, 0, 0)
   matRemapped.backFaceCulling = false
+  matRemapped.disableLighting = true
 
   const planeRemapped = MeshBuilder.CreatePlane(
     'planeRemapped',
@@ -483,6 +486,7 @@ async function main(): Promise<void> {
   labelRmpMat.diffuseTexture = labelRmpTex
   labelRmpMat.specularColor.set(0, 0, 0)
   labelRmpMat.backFaceCulling = false
+  labelRmpMat.disableLighting = true
   labelRmpPlane.material = labelRmpMat
 
   // ---- 状态 ----
