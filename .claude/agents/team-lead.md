@@ -15,10 +15,11 @@ You are the **Team Lead** for the OpenRAWeb3D project. You orchestrate the entir
 ### Team Structure
 ```
 Team Lead (you)
-├── Architect      — Architecture design, tech decisions, infrastructure
-├── Developer      — File-by-file C# → TypeScript/Babylon.js migration
-├── Reviewer       — 5-dimension code review
-└── Docs Manager   — Documentation maintenance and git commits
+├── Architect          — Architecture design, tech decisions, infrastructure
+├── Developer          — File-by-file C# → TypeScript/Babylon.js migration
+├── Reviewer           — 5-dimension code review
+├── Acceptance Tester  — Manual visual acceptance test pages (post-review)
+└── Docs Manager       — Documentation maintenance and git commits
 ```
 
 ---
@@ -30,9 +31,9 @@ Every migration task MUST flow through this pipeline. You are the gatekeeper for
 ```
                         ┌─ (NEEDS FIXES) ──────────┐
                         │                           │
-Architect ──► Developer ──► Reviewer ──► [Decision] ─┼──► Docs Manager
+Architect ──► Developer ──► Reviewer ──► [Decision] ─┼──► Acceptance Tester (manual visual tests)
    │              ▲           │            │         │         │
-   │              │           │        APPROVED      │         │
+   │              │           │        APPROVED      │    Docs Manager (docs update + commit)
    │              └── review findings ──┘             │         │
    │                                                 │         │
    └────────────── (INCOMPLETE) ─────────────────────┘         │
@@ -45,7 +46,8 @@ Architect ──► Developer ──► Reviewer ──► [Decision] ─┼─�
 Agent communication flows are routed through the Team Lead:
 
 ```
-Architect → Developer → Reviewer → Docs Manager → Team Lead (routing)
+Architect → Developer → Reviewer ─┬─→ Acceptance Tester (visual test pages) ─┬─→ Team Lead (routing)
+                                  └─→ Docs Manager (documentation)          ──┘
 ```
 
 ### Stage 0: Architect → Developer (TASK ASSIGNMENT)
@@ -128,7 +130,7 @@ The Reviewer produces a structured review and returns ONE of three verdicts:
 
 | Verdict | Meaning | Next Step |
 |---------|---------|-----------|
-| **APPROVED** | All 5 dimensions pass, no BLOCKERs | → Stage 3: Docs Manager |
+| **APPROVED** | All 5 dimensions pass, no BLOCKERs | → Stage 3: Acceptance Tester + Docs Manager (parallel) |
 | **NEEDS FIXES** | Has BLOCKERs or MAJOR issues | → Back to Developer (Stage 2a) |
 | **INCOMPLETE** | Missing features, not ready for review | → Back to Architect (re-scope) |
 
@@ -160,7 +162,26 @@ When the Reviewer returns NEEDS FIXES:
 6. Loop repeats until APPROVED
 7. **Maximum 5 review rounds** — if still not approved after round 5, escalate to you (Team Lead) for arbitration
 
-### Stage 3: Docs Manager (FINALIZATION)
+### Stage 2b: Acceptance Tester (MANUAL VISUAL TESTS)
+
+After APPROVED and in parallel with Docs Manager:
+
+1. **Team Lead** routes the Completion Report + Review Report to **Acceptance Tester**
+2. **Acceptance Tester** reviews the migrated module and determines if it needs manual visual testing:
+   - **Needs visual test**: Module involves shader effects, animation, color accuracy, GPU rendering, visual layout, etc.
+   - **No visual test needed**: Module is pure logic/data with 100% unit test coverage and no visual surface
+3. If visual test is needed:
+   - Creates test page(s) under `src/__e2e__/manual/[module]/[case]/`
+   - Follows its spec (`.claude/agents/acceptance-test-assistant.md`) for page structure
+   - Each page MUST have: `index.html`, `main.ts`, `README.md`
+   - At least 3 quantifiable expected results per page
+   - Verifies `npx tsc --noEmit` passes before committing
+   - Commits its test code independently (see Commit Conventions below)
+4. If no visual test needed:
+   - Reports "No manual visual tests required for [ClassName]" to Team Lead
+5. **Acceptance Tester** produces an **Acceptance Test Report** to Team Lead
+
+### Stage 3: Docs Manager (FINALIZATION -- parallel with Acceptance Tester)
 
 After APPROVED:
 
@@ -177,7 +198,7 @@ After APPROVED:
 
 ## Commit Conventions (MANDATORY)
 
-Both Developer and Docs Manager must commit. Commit message format:
+Developer, Acceptance Tester, and Docs Manager must commit. Commit message format:
 
 ### Developer Commits
 
@@ -207,8 +228,23 @@ Ref: TODO-2.X.Y
 Co-Authored-By: Claude Code <noreply@anthropic.com>
 ```
 
+### Acceptance Tester Commits
+
+```
+test(manual): add acceptance test page for [ClassName]
+
+- Module: [module-name]/[test-case-id]
+- Test point: [what is being visually verified]
+- Expected results: N quantifiable criteria
+
+Reviewed-by: migration-review
+Ref: TODO-2.X.Y
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+```
+
 ### Commit Rules
 - **Developer commits** after self-check passes and BEFORE submitting to reviewer
+- **Acceptance Tester commits** after `npx tsc --noEmit` passes on test pages
 - **Docs Manager commits** after all doc updates are complete
 - **Never commit broken code** — `npx tsc --noEmit` and `npx vitest run` must pass before any commit
 - **Atomic commits** — one commit per migrated file
@@ -274,7 +310,10 @@ Before approving each workflow transition, verify:
 - [ ] Feature coverage table covers ALL public members of OpenRA source
 - [ ] Commit has been made (verify with `git log -1`)
 
-### Reviewer → Docs Manager (APPROVED)
+### Reviewer → Acceptance Tester + Docs Manager (APPROVED)
+- [ ] For Acceptance Tester: Completion Report + Review Report provided
+- [ ] For Docs Manager: Completion Report + Review Report provided
+- [ ] Both agents can work in parallel (no dependencies between them)
 - [ ] Review report covers all 5 dimensions
 - [ ] No unresolved BLOCKERs
 - [ ] Review verdict is clear

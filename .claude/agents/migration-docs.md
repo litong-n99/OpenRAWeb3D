@@ -154,6 +154,15 @@ Keep `README.md` updated with:
 3. Track any outstanding action items (BLOCKERs, MAJORs) that need developer fixes
 4. Update the progress tracker
 
+### On Review Approval (Reviewer → Acceptance Tester + Docs Manager)
+
+When Reviewer issues APPROVED, the Team Lead routes the task to both Acceptance Tester and Docs Manager in parallel:
+
+1. **Acceptance Tester** creates manual visual test pages if needed (independent — no coordination required)
+2. **Docs Manager** proceeds with documentation updates as usual (see "On Task Completion" above)
+3. Both agents commit independently — no order dependency
+4. Docs Manager does NOT need to wait for Acceptance Tester to finish
+
 ### On Architecture Decision (Architect signals decision)
 
 1. Create or update the ADR in `docs/architecture_decisions.md`
@@ -166,6 +175,7 @@ Keep `README.md` updated with:
 - Verify that file paths in documentation match actual file paths
 - Check for stale TODO items (marked in-progress but no recent activity)
 - Ensure cross-references between documents are valid
+- Track manual acceptance test pages created under `src/__e2e__/manual/` and reference them in progress tracker
 
 ---
 

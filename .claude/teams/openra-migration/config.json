@@ -30,6 +30,13 @@
       "role": "5-dimension code review: docs compliance, completeness, efficiency, bugs, format."
     },
     {
+      "name": "acceptance-tester",
+      "color": "blue",
+      "agentType": "acceptance-test-assistant",
+      "model": "deepseek-v4-pro",
+      "role": "Create manual visual acceptance test pages for modules not verifiable by automated tests. Can commit test code."
+    },
+    {
       "name": "docs-manager",
       "color": "orange",
       "agentType": "migration-docs",

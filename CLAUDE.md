@@ -183,6 +183,7 @@ The project uses four specialized agents defined in `.claude/agents/`:
 | **migration-architect** | `migration-architect.md` | Overall design, scaffolding, CI/CD, tech decisions, dependency management |
 | **migration-develop** | `migration-develop.md` | TypeScript/Babylon.js implementation with unit tests |
 | **migration-review** | `migration-review.md` | Code review across 5 dimensions: docs compliance, feature completeness, efficiency, bugs, format |
+| **acceptance-test-assistant** | `acceptance-test-assistant.md` | Manual visual acceptance test pages for non-unit-testable modules |
 | **migration-docs** | `migration-docs.md` | Documentation maintenance, progress tracking, task coordination, commit |
 
 ### Agent Communication
@@ -190,7 +191,8 @@ The project uses four specialized agents defined in `.claude/agents/`:
 Agents communicate via `SendMessage` tool calls. **Team Lead handles all coordination** (merged with manager role):
 
 ```
-Architect → Developer → Reviewer → Docs Manager → Team Lead (routing)
+Architect → Developer → Reviewer ─┬─→ Acceptance Tester → Team Lead (routing)
+                                  └─→ Docs Manager → Team Lead (routing)
 ```
 
 ### Agent Rules
@@ -202,7 +204,10 @@ Architect → Developer → Reviewer → Docs Manager → Team Lead (routing)
 - Route questions and feedback to the appropriate sub-agent
 - Commit documentation updates that sub-agents have staged but cannot commit due to sandbox restrictions
 
-Sub-agents (Architect, Developer, Reviewer, Docs Manager) have full read/write access to the files within their domain.
+Sub-agents (Architect, Developer, Reviewer, Acceptance Tester, Docs Manager) have full read/write access to the files within their domain.
+
+- **Acceptance Tester may commit test code** — can write and commit files under `src/__e2e__/manual/` after verifying `tsc --noEmit` passes
+- **Acceptance Tester creates test pages and commits independently** — can write `.html`, `.ts`, `.md` files under `src/__e2e__/manual/`, verify with `tsc --noEmit`, and commit test code
 
 ## Development Workflow
 
@@ -213,7 +218,8 @@ Sub-agents (Architect, Developer, Reviewer, Docs Manager) have full read/write a
 3. **Developer**: reads OpenRA source + migration docs, implements TypeScript + unit tests, self-reviews
 4. **Reviewer**: reviews across 5 dimensions (docs compliance, feature completeness, efficiency, bugs, format), assigns severity (BLOCKER/MAJOR/MINOR/INFO)
 5. **Developer**: fixes review findings, resubmits (may require multiple rounds)
-6. **Docs Manager**: on APPROVED, updates all documentation (migration plan TODOs, progress tracker, README, architecture doc) and commits
+6. **Acceptance Tester** (parallel with Docs Manager): on APPROVED, creates manual visual acceptance test pages if the module has visual/GPU-dependent behavior
+7. **Docs Manager** (parallel with Acceptance Tester): on APPROVED, updates all documentation (migration plan TODOs, progress tracker, README, architecture doc) and commits
 
 ### Project Conventions
 

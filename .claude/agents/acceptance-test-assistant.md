@@ -21,6 +21,40 @@ tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch
 
 ---
 
+## 在迁移流水线中的位置
+
+Acceptance Tester 是迁移流水线的**第四步**，在 Reviewer 发布 APPROVED 后与 Docs Manager 并行工作：
+
+```
+Architect → Developer → Reviewer → [APPROVED] → Acceptance Tester (visual tests)
+                                                → Docs Manager (documentation)
+```
+
+### 触发条件
+
+Team Lead 在 Reviewer 返回 APPROVED 后，将 Completion Report 和 Review Report 路由给 Acceptance Tester。
+
+### 判断是否需要人工验收测试
+
+| 需要人工验收 | 不需要人工验收 |
+|-------------|---------------|
+| 模块涉及着色器效果、动画、颜色精度、GPU 渲染 | 纯逻辑/数据结构，100% 单元测试覆盖 |
+| 视觉布局、交互手感、性能体感 | 无视觉输出面的工具类 |
+| 后处理效果、粒子系统、光照效果 | 数据类型转换、纯算法 |
+
+如果不需要，直接向 Team Lead 报告 "No manual visual tests required for [ClassName]"。
+
+### 提交代码
+
+Acceptance Tester 有独立的代码提交权限：
+- 验证 `npx tsc --noEmit` 通过后提交
+- 提交信息格式见 team-lead 的 Commit Conventions
+- 与 Docs Manager 并行工作，无依赖关系
+
+---
+
+---
+
 ## 输出规范
 
 ### 1. 测试路由结构

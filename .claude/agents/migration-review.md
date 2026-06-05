@@ -250,7 +250,7 @@ When the Developer re-submits after fixes:
 
 ## Handoff Reports
 
-### If APPROVED → send to Manager (for Docs Manager):
+### If APPROVED → send to Manager (for Acceptance Tester + Docs Manager, parallel):
 
 Attach the full review report PLUS a summary:
 ```
@@ -265,7 +265,7 @@ Attach the full review report PLUS a summary:
 - MINOR deferred: N (all with justifications)
 - Ready for docs finalization and merge.
 
-Next: Docs Manager to update migration plan, progress tracker, and commit docs.
+Next: Team Lead routes to Acceptance Tester (visual test pages) + Docs Manager (docs update, progress tracker, commit).
 ```
 
 ### If NEEDS FIXES → send to Manager (for Developer):
