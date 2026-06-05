@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceptance Tests — OpenRAWeb3D</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    .container { max-width: 800px; width: 100%; }
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #e94560 0%, #f39c12 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    .subtitle { color: #8b949e; font-size: 14px; margin-bottom: 32px; }
+    .test-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .test-list a {
+      display: block;
+      padding: 16px 20px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      color: #c9d1d9;
+      text-decoration: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .test-list a:hover {
+      border-color: #e94560;
+      background: #1c2128;
+    }
+    .test-list .test-name { font-size: 16px; font-weight: 600; color: #f0f6fc; }
+    .test-list .test-id { font-size: 12px; color: #8b949e; margin-top: 4px; font-family: 'Consolas', 'Fira Code', monospace; }
+    .test-list .test-path { font-size: 11px; color: #484f58; margin-top: 2px; font-family: 'Consolas', 'Fira Code', monospace; }
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #484f58;
+      font-size: 14px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 32px;
+      color: #58a6ff;
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .back-link:hover { text-decoration: underline; }
+    .page-count {
+      font-size: 12px;
+      color: #484f58;
+      margin-top: 16px;
+    }
+    footer {
+      margin-top: 48px;
+      font-size: 11px;
+      color: #30363d;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Acceptance Tests</h1>
+    <p class="subtitle">
+      Manual visual verification pages for the OpenRAWeb3D rendering pipeline.
+      Each page validates a module that cannot be covered by automated unit tests
+      (shader output, color accuracy, animation feel, GPU-dependent behavior).
+    </p>
+    <ul id="test-list" class="test-list">
+      <!-- Populated by main.ts via import.meta.glob -->
+    </ul>
+    <div id="empty-state" class="empty-state" style="display:none;">
+      No acceptance test pages found in src/__e2e__/manual/
+    </div>
+    <p id="page-count" class="page-count"></p>
+    <a class="back-link" href="/">&larr; Back to main app</a>
+  </div>
+  <footer>OpenRAWeb3D Acceptance Test Hub &mdash; Dev Mode Only</footer>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -93,6 +93,17 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
                               ← model.vert/frag NOP stubs (StandardMaterial/PBRMaterial)
   assets/                   ← Static assets
   utils/                    ← Shared utilities
+  __e2e__/                  ← Manual acceptance test pages (dev-only, excluded from production builds)
+    manual/
+      index.html            ← Hub page: auto-lists all test pages (served at /test/)
+      main.ts               ← Auto-discovery via import.meta.glob
+      [module-name]/        ← Per-module test page directories
+        [test-case-id]/     ← Individual test cases
+          index.html        ← Test page entry
+          main.ts           ← Test logic + Babylon.js scene
+          README.md         ← Expected results + verification steps
+
+vite.config.ts              ← Vite 8 MPA config + /test/ route plugin (dev-only)
 
 .claude/
   agents/
@@ -223,6 +234,8 @@ npm install
 
 # Start dev server
 npm run dev
+# Main app: http://localhost:5173/
+# Acceptance test hub: http://localhost:5173/test/
 
 # Build for production
 npm run build
@@ -236,6 +249,38 @@ npm test
 # Type-check
 npx tsc --noEmit
 ```
+
+## Acceptance Testing (Manual Visual Verification)
+
+The project includes a framework for manual visual acceptance testing of modules that cannot be verified through automated unit tests (animation, shader effects, visual layout, interaction feel, etc.). This is a **dev-only** infrastructure -- test pages are excluded from production builds.
+
+### URL Scheme
+
+| URL | Maps To | Purpose |
+|-----|---------|---------|
+| `/` | `index.html` | Main application |
+| `/test/` | `src/__e2e__/manual/index.html` | Hub page listing all test pages |
+| `/test/[module]/[case]/` | `src/__e2e__/manual/[module]/[case]/index.html` | Individual test case |
+
+All `/test/` URLs are available only in dev mode (`npm run dev`). Production builds (`npm run build`) exclude all test pages from `dist/` via `build.rollupOptions.input` (only `index.html` is included).
+
+### How It Works
+
+- **`vite.config.ts`** uses a custom dev-only plugin (`vite-plugin-test-routes`) that rewrites `/test/...` URLs to `/src/__e2e__/manual/...` on the filesystem. Old `/src/__e2e__/manual/...` page URLs are blocked (404) to enforce the canonical `/test/` prefix.
+- **Hub page auto-discovery**: `src/__e2e__/manual/main.ts` uses `import.meta.glob('./**/index.html', { eager: false })` to discover all test pages at dev server startup. No manual route registration is needed.
+- **HMR-aware**: The hub page re-renders the test list on hot module updates, so adding a new test page directory takes effect after dev server restart or HMR refresh.
+
+### Creating a New Test Page
+
+1. Create a directory: `src/__e2e__/manual/[module-name]/[test-case-id]/`
+2. Add three files inside:
+   - `index.html` -- HTML entry point with inline styles and layout (see page template in `.claude/agents/acceptance-test-assistant.md`)
+   - `main.ts` -- TypeScript logic + Babylon.js scene setup
+   - `README.md` -- Expected results (at least 3 quantifiable criteria) + verification step-by-step
+3. No config changes needed -- the hub page auto-discovers the new directory on next dev server start
+4. Access the page at `http://localhost:5173/test/[module-name]/[test-case-id]/`
+
+The agent responsible for creating these test pages is defined in `.claude/agents/acceptance-test-assistant.md`.
 
 ## Key Documentation
 

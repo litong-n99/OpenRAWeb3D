@@ -38,11 +38,20 @@ tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch
 
 文件存储位置：
 ```
-src/__e2e__/manual/[module-name]/[test-case-id]/
-├── index.html          ← 测试页面入口
-├── main.ts             ← 测试用例逻辑 + Babylon.js 场景搭建
-└── README.md           ← 期望结果 + 检验流程文档
+src/__e2e__/manual/
+├── index.html          ← 总页面（Hub）：自动发现并列出所有测试页面
+├── main.ts             ← 自动发现逻辑（import.meta.glob），HMR 感知
+└── [module-name]/
+    └── [test-case-id]/
+        ├── index.html  ← 测试页面入口
+        ├── main.ts     ← 测试用例逻辑 + Babylon.js 场景搭建
+        └── README.md   ← 期望结果 + 检验流程文档
 ```
+
+重要说明：
+- **Hub 页面自动发现**：`src/__e2e__/manual/main.ts` 使用 `import.meta.glob('./**/index.html', { eager: false })` 自动发现所有子目录中的测试页面。创建新测试页面**无需手动注册路由**，只需创建目录和文件即可。
+- **开发模式访问**：测试页面在 dev 模式下通过 `/test/[module-name]/[test-case-id]/` 访问（例如 `/test/hardware-palette/color-accuracy/`）。`vite.config.ts` 中的自定义插件负责将 `/test/` URL 重写为文件系统路径。
+- **生产构建排除**：`npm run build` 通过 `build.rollupOptions.input` 仅包含 `index.html`，测试页面不会出现在 `dist/` 中。
 
 ### 2. 测试页面必须包含以下区域
 
@@ -74,7 +83,7 @@ src/__e2e__/manual/[module-name]/[test-case-id]/
 ## 检验流程
 
 1. **准备工作**
-   - 打开测试页面：`http://localhost:5173/test/[module]/[id]`
+   - 打开测试页面：`http://localhost:5173/test/[module]/[id]/`
    - 确认环境信息栏显示 "WebGL 2.0" 引擎
    - 设置屏幕分辨率为 1920×1080（1x 缩放）
 
@@ -130,10 +139,12 @@ src/__e2e__/manual/[module-name]/[test-case-id]/
    - `index.html`：Vite 入口 + 布局（标题区 + 沙盒区 + 信息栏区）
    - `main.ts`：Babylon.js 场景搭建 + 组件加载 + 交互控件
    - `README.md`：期望结果 + 完整检验流程
-5. **注册路由**：修改 Vite 配置或路由表，确保 `/test/...` 路径可访问
-6. **自检**：确认 `npx tsc --noEmit` 通过，Vite 开发服务器能正常加载页面
+5. **无需注册路由**：Hub 页面通过 `import.meta.glob` 自动发现新目录，`vite.config.ts` 中的 `vite-plugin-test-routes` 插件已将 `/test/...` 映射到文件系统路径。创建文件后重启 dev server 即可。
+6. **自检**：确认 `npx tsc --noEmit` 通过，Vite 开发服务器能正常加载页面（访问 `http://localhost:5173/test/[module-name]/[test-case-id]/` 和 Hub 页面 `http://localhost:5173/test/`）
 
 ### 页面布局模板
+
+下面的模板可以直接使用，无需修改。Vite 会自动处理 `<script type="module" src="./main.ts">` 中的相对路径解析——脚本文件和 HTML 放在同一目录下即可正常工作。
 
 ```html
 <!DOCTYPE html>
@@ -200,7 +211,8 @@ src/__e2e__/manual/[module-name]/[test-case-id]/
 - [ ] `src/__e2e__/manual/[module]/[id]/main.ts` — 测试用例逻辑
 - [ ] `src/__e2e__/manual/[module]/[id]/README.md` — 期望结果 + 检验流程
 - [ ] `npx tsc --noEmit` 通过
-- [ ] 页面在 `http://localhost:5173/test/[module]/[id]` 可访问
+- [ ] 页面在 `http://localhost:5173/test/[module]/[id]/` 可访问（Hub 页面自动发现，无需修改 Vite 配置或手动注册路由）
 - [ ] 环境信息栏正确显示 UA / 视口 / 引擎 / FPS
 - [ ] 至少 3 条可量化的期望结果
 - [ ] README.md 包含完整检验流程（含边界测试）
+- [ ] **无需修改 `vite.config.ts`**：Hub 页面通过 `import.meta.glob` 自动发现新目录，只需创建文件即可
