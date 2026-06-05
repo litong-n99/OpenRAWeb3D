@@ -37,6 +37,45 @@ const TEX_WIDTH = GRID_COLS * CELL_SIZE  // 576
 const TEX_HEIGHT = GRID_ROWS * CELL_SIZE  // 576
 
 // ---------------------------------------------------------------------------
+// 调试基础设施
+// ---------------------------------------------------------------------------
+
+let debugOverlay: HTMLElement | null = null
+const debugLines: string[] = []
+const MAX_DEBUG_LINES = 60
+
+function debugLog(label: string, value?: unknown): void {
+  const ts = new Date().toISOString().slice(11, 23) // HH:MM:SS.sss
+  let line: string
+  if (value !== undefined) {
+    const valStr = typeof value === 'object' ? JSON.stringify(value) : String(value)
+    line = `[${ts}] ${label}: ${valStr}`
+  } else {
+    line = `[${ts}] ${label}`
+  }
+  console.log(line)
+  debugLines.push(line)
+  while (debugLines.length > MAX_DEBUG_LINES) debugLines.shift()
+  if (debugOverlay) {
+    debugOverlay.textContent = debugLines.join('\n')
+    debugOverlay.scrollTop = debugOverlay.scrollHeight
+  }
+}
+
+function debugError(label: string, err: unknown): void {
+  const ts = new Date().toISOString().slice(11, 23)
+  const msg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err)
+  const line = `[${ts}] ERROR ${label}: ${msg}`
+  console.error(line)
+  debugLines.push(line)
+  while (debugLines.length > MAX_DEBUG_LINES) debugLines.shift()
+  if (debugOverlay) {
+    debugOverlay.textContent = debugLines.join('\n')
+    debugOverlay.scrollTop = debugOverlay.scrollHeight
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 调色板工厂函数
 // ---------------------------------------------------------------------------
 
@@ -309,9 +348,19 @@ function updateTexture(
   showIndices: boolean,
   showGrid: boolean,
 ): void {
-  const ctx = getCanvasCtx(texture)
-  drawPaletteToCanvas(ctx, palette, showIndices, showGrid)
-  texture.update(false)
+  const texName = texture.name
+  try {
+    const ctx = getCanvasCtx(texture)
+    if (!ctx) {
+      debugError(`updateTexture[${texName}] getContext returned null`, new Error('null context'))
+      return
+    }
+    drawPaletteToCanvas(ctx, palette, showIndices, showGrid)
+    texture.update(false)
+    debugLog(`updateTexture[${texName}] OK`, `size=${texture.getSize().width}x${texture.getSize().height}`)
+  } catch (err) {
+    debugError(`updateTexture[${texName}] failed`, err)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -319,6 +368,10 @@ function updateTexture(
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
+  // ---- 获取 debug overlay ----
+  debugOverlay = document.getElementById('debug-overlay')
+  debugLog('main() started', `UA=${navigator.userAgent.slice(0, 60)}`)
+
   // ---- 环境信息采集 ----
   const infoUa = document.getElementById('info-ua')!
   const infoViewport = document.getElementById('info-viewport')!
@@ -331,6 +384,7 @@ async function main(): Promise<void> {
   infoUa.textContent = navigator.userAgent.slice(0, 80)
   infoViewport.textContent = `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x`
   infoTime.textContent = new Date().toISOString()
+  debugLog('viewport', `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x`)
 
   const updateViewport = (): void => {
     infoViewport.textContent = `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x`
@@ -338,36 +392,50 @@ async function main(): Promise<void> {
   window.addEventListener('resize', updateViewport)
 
   // ---- Babylon.js 初始化 ----
+  debugLog('creating canvas element')
   const canvas = document.createElement('canvas')
   canvas.style.width = '100%'
   canvas.style.height = '100%'
   document.getElementById('sandbox')!.appendChild(canvas)
+  debugLog('canvas appended', `size=${canvas.width}x${canvas.height} clientSize=${canvas.clientWidth}x${canvas.clientHeight}`)
 
   let engine: Engine
   try {
+    debugLog('creating Engine', 'preserveDrawingBuffer=false stencil=false antialias=false')
     engine = new Engine(canvas, true, {
       preserveDrawingBuffer: false,
       stencil: false,
       antialias: false,
     })
-  } catch {
+  } catch (err) {
+    debugError('Engine creation failed', err)
     document.getElementById('gpu-error')!.style.display = 'flex'
     infoEngine.textContent = 'UNAVAILABLE'
     return
   }
 
   const webGlVersion = engine.webGLVersion
+  debugLog('Engine created OK', `Babylon.js v${Engine.Version} WebGL ${webGlVersion}.0`)
+  debugLog('Engine capabilities', {
+    webGlVersion,
+    isWebGPU: engine.isWebGPU,
+    isFullscreen: engine.isFullscreen,
+  })
   infoEngine.textContent = `Babylon.js v${Engine.Version} / WebGL ${webGlVersion}.0`
 
+  // ---- 场景创建 ----
   const scene = new Scene(engine)
   scene.clearColor.set(0.1, 0.11, 0.14, 1)
+  debugLog('Scene created', `clearColor=(0.1,0.11,0.14,1) meshes=${scene.meshes.length} materials=${scene.materials.length}`)
 
-  // 正交相机：从 +Z 轴正对调色板纹理平面（平面默认朝向 +Z）
+  // ---- 正交相机 ----
+  // alpha=0, beta=PI/2: 相机位于 (0,0,8)，从 +Z 轴朝原点看
+  // 平面默认朝向 +Z，相机正对平面正面
   const camera = new ArcRotateCamera(
     'cam',
-    0,                 // alpha: 相机在 +Z 轴上
-    Math.PI / 2,       // beta: 水平视角
-    8,                 // radius
+    0,                 // alpha: 0 = 相机在 XZ 平面的 +Z 半轴
+    Math.PI / 2,       // beta: PI/2 = 水平视角（赤道）
+    8,                 // radius: 距离原点 8 单位
     new Vector3(0, 0, 0),
     scene,
   )
@@ -375,28 +443,42 @@ async function main(): Promise<void> {
   camera.lowerRadiusLimit = 3
   camera.upperRadiusLimit = 30
   camera.panningSensibility = 200
-  // 禁用自动旋转，允许鼠标拖拽平移
   camera.inputs.clear()
-  // 保留简单的鼠标滚轮缩放（通过 radius）
   camera.inputs.addMouseWheel()
 
-  // 光照（StandardMaterial 需要）
+  debugLog('Camera created', {
+    alpha: camera.alpha,
+    beta: camera.beta,
+    radius: camera.radius,
+    mode: camera.mode,
+    position: { x: camera.position.x.toFixed(2), y: camera.position.y.toFixed(2), z: camera.position.z.toFixed(2) },
+    target: { x: camera.target.x, y: camera.target.y, z: camera.target.z },
+    minZ: camera.minZ,
+    maxZ: camera.maxZ,
+  })
+
+  // ---- 光照 ----
   const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
   light.intensity = 0.9
+  debugLog('HemisphericLight created', `direction=(0,1,0) intensity=0.9`)
 
   // ---- 创建两个纹理平面 ----
   // 左侧：原始调色板
+  debugLog('creating texOriginal', `DynamicTexture ${TEX_WIDTH}x${TEX_HEIGHT}`)
   const texOriginal = new DynamicTexture(
     'texOriginal',
     { width: TEX_WIDTH, height: TEX_HEIGHT },
     scene,
     false, // no mipmap
   )
+  debugLog('texOriginal created', `size=${texOriginal.getSize().width}x${texOriginal.getSize().height} invertY=${texOriginal.invertY}`)
+
   const matOriginal = new StandardMaterial('matOriginal', scene)
   matOriginal.diffuseTexture = texOriginal
   matOriginal.specularColor.set(0, 0, 0)
   matOriginal.backFaceCulling = false
   matOriginal.disableLighting = true
+  debugLog('matOriginal', `diffuseTexture=${matOriginal.diffuseTexture?.name} disableLighting=${matOriginal.disableLighting} backFaceCulling=${matOriginal.backFaceCulling}`)
 
   const planeOriginal = MeshBuilder.CreatePlane(
     'planeOriginal',
@@ -406,8 +488,9 @@ async function main(): Promise<void> {
   planeOriginal.position.x = -2.2
   planeOriginal.position.y = 0
   planeOriginal.material = matOriginal
+  debugLog('planeOriginal', `pos=(${planeOriginal.position.x},${planeOriginal.position.y},${planeOriginal.position.z}) hasMat=${!!planeOriginal.material} isVisible=${planeOriginal.isVisible}`)
 
-  // 标签 "ORIGINAL" 在平面下方（使用第二个更小的平面做标签，简化实现）
+  // 标签 "ORIGINAL"
   const labelOrigPlane = MeshBuilder.CreatePlane(
     'labelOrig',
     { width: 2.5, height: 0.4 },
@@ -430,25 +513,32 @@ async function main(): Promise<void> {
   labelOrigCtx.textBaseline = 'middle'
   labelOrigCtx.fillText('ORIGINAL PALETTE', 256, 32)
   labelOrigTex.update(false)
+  debugLog('labelOrigTex updated', `size=512x64`)
+
   const labelOrigMat = new StandardMaterial('labelOrigMat', scene)
   labelOrigMat.diffuseTexture = labelOrigTex
   labelOrigMat.specularColor.set(0, 0, 0)
   labelOrigMat.backFaceCulling = false
   labelOrigMat.disableLighting = true
   labelOrigPlane.material = labelOrigMat
+  debugLog('labelOrigMat', `disableLighting=${labelOrigMat.disableLighting}`)
 
   // 右侧：重映射后调色板
+  debugLog('creating texRemapped', `DynamicTexture ${TEX_WIDTH}x${TEX_HEIGHT}`)
   const texRemapped = new DynamicTexture(
     'texRemapped',
     { width: TEX_WIDTH, height: TEX_HEIGHT },
     scene,
     false,
   )
+  debugLog('texRemapped created', `size=${texRemapped.getSize().width}x${texRemapped.getSize().height}`)
+
   const matRemapped = new StandardMaterial('matRemapped', scene)
   matRemapped.diffuseTexture = texRemapped
   matRemapped.specularColor.set(0, 0, 0)
   matRemapped.backFaceCulling = false
   matRemapped.disableLighting = true
+  debugLog('matRemapped', `disableLighting=${matRemapped.disableLighting}`)
 
   const planeRemapped = MeshBuilder.CreatePlane(
     'planeRemapped',
@@ -458,6 +548,7 @@ async function main(): Promise<void> {
   planeRemapped.position.x = 2.2
   planeRemapped.position.y = 0
   planeRemapped.material = matRemapped
+  debugLog('planeRemapped', `pos=(${planeRemapped.position.x},${planeRemapped.position.y},${planeRemapped.position.z}) hasMat=${!!planeRemapped.material} isVisible=${planeRemapped.isVisible}`)
 
   // 标签 "REMAPPED"
   const labelRmpPlane = MeshBuilder.CreatePlane(
@@ -482,12 +573,21 @@ async function main(): Promise<void> {
   labelRmpCtx.textBaseline = 'middle'
   labelRmpCtx.fillText('REMAPPED PALETTE', 256, 32)
   labelRmpTex.update(false)
+  debugLog('labelRmpTex updated', `size=512x64`)
+
   const labelRmpMat = new StandardMaterial('labelRmpMat', scene)
   labelRmpMat.diffuseTexture = labelRmpTex
   labelRmpMat.specularColor.set(0, 0, 0)
   labelRmpMat.backFaceCulling = false
   labelRmpMat.disableLighting = true
   labelRmpPlane.material = labelRmpMat
+  debugLog('labelRmpMat', `disableLighting=${labelRmpMat.disableLighting}`)
+
+  // ---- 场景统计 ----
+  debugLog('Scene summary', `meshes=${scene.meshes.length} materials=${scene.materials.length} textures=${scene.textures.length} lights=${scene.lights.length}`)
+  for (const m of scene.meshes) {
+    debugLog(`  mesh[${m.name}]`, `pos=(${m.position.x},${m.position.y},${m.position.z}) visible=${m.isVisible} mat=${(m.material as StandardMaterial)?.name || 'none'}`)
+  }
 
   // ---- 状态 ----
   let currentPalette: ImmutablePalette = createGradientPalette()
@@ -495,6 +595,7 @@ async function main(): Promise<void> {
   let remapActive = false
   let showIndices = true
   let showGrid = true
+  debugLog('initial palette', `type=gradient PALETTE_SIZE=${PALETTE_SIZE}`)
 
   // ---- UI 元素绑定 ----
   const paletteSelect = document.getElementById('palette-select') as HTMLSelectElement
@@ -564,8 +665,6 @@ async function main(): Promise<void> {
     const remapIndices = getRemapRange()
     const valueMult = parseFloat(valueMultSlider.value)
 
-    // PlayerColorRemap 使用原始的 _value，但 valueMultiplier 由调用方处理
-    // 这里我们通过重新创建 remap 来应用 valueMultiplier
     const adjustedColor = {
       r: playerColor.r,
       g: playerColor.g,
@@ -573,14 +672,11 @@ async function main(): Promise<void> {
       a: 255,
     }
 
-    // 亮度缩放：在构建 remap 时无法直接传入 valueMultiplier，
-    // 因此通过 ScalingRemap 适配器封装原始 remap
     const baseRemap = new PlayerColorRemap(remapIndices, adjustedColor)
     const scalingRemap = {
       getRemappedColor(original: { r: number; g: number; b: number; a: number }, index: number): { r: number; g: number; b: number; a: number } {
         const result = baseRemap.getRemappedColor(original, index)
         if (!remapIndices.includes(index)) return result
-        // 应用亮度缩放
         const scaled = {
           r: Math.min(255, Math.round(result.r * valueMult)),
           g: Math.min(255, Math.round(result.g * valueMult)),
@@ -594,6 +690,7 @@ async function main(): Promise<void> {
     remappedPalette = ImmutablePalette.fromRemapped(currentPalette, scalingRemap)
     remapActive = true
     applyRemapBtn.classList.add('active')
+    debugLog('applyRemap', `color=#${hex} range=[${Math.min(...remapIndices)}-${Math.max(...remapIndices)}] valueMult=${valueMult.toFixed(2)}`)
     updateTexture(texRemapped, remappedPalette, showIndices, showGrid)
   }
 
@@ -604,6 +701,7 @@ async function main(): Promise<void> {
     remappedPalette = currentPalette
     remapActive = false
     applyRemapBtn.classList.remove('active')
+    debugLog('resetRemap', 'restored original palette')
     updateTexture(texRemapped, remappedPalette, showIndices, showGrid)
   }
 
@@ -611,6 +709,7 @@ async function main(): Promise<void> {
    * 刷新两个纹理（当调色板切换或显示选项改变时调用）。
    */
   function refreshTextures(): void {
+    debugLog('refreshTextures', `showIndices=${showIndices} showGrid=${showGrid} remapActive=${remapActive}`)
     updateTexture(texOriginal, currentPalette, showIndices, showGrid)
     if (remapActive) {
       applyRemap()
@@ -637,6 +736,7 @@ async function main(): Promise<void> {
     remappedPalette = currentPalette
     remapActive = false
     applyRemapBtn.classList.remove('active')
+    debugLog('palette changed', paletteSelect.value)
     refreshTextures()
   })
 
@@ -684,6 +784,9 @@ async function main(): Promise<void> {
   camera.orthoBottom = -5 / initZoom
   camera.orthoLeft = -5.5 / initZoom
   camera.orthoRight = 5.5 / initZoom
+  debugLog('Ortho params', `zoom=${initZoom} left=${camera.orthoLeft?.toFixed(2)} right=${camera.orthoRight?.toFixed(2)} top=${camera.orthoTop?.toFixed(2)} bottom=${camera.orthoBottom?.toFixed(2)}`)
+  debugLog('Camera final', `position=(${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}) minZ=${camera.minZ} maxZ=${camera.maxZ}`)
+
   refreshTextures()
 
   // ---- FPS 监控 ----
@@ -691,6 +794,7 @@ async function main(): Promise<void> {
   let fpsAccum = 0
   let fpsDisplay = 0
   let lastFpsUpdate = performance.now()
+  let renderLoopLogged = false
 
   scene.onBeforeRenderObservable.add(() => {
     const now = performance.now()
@@ -705,6 +809,12 @@ async function main(): Promise<void> {
       fpsAccum = 0
     }
 
+    // 首次渲染时记录诊断信息
+    if (!renderLoopLogged) {
+      renderLoopLogged = true
+      debugLog('RENDER LOOP ACTIVE', `fps=${fpsDisplay} sceneMeshes=${scene.meshes.length} activeCamera=${scene.activeCamera?.name || 'none'}`)
+    }
+
     infoFps.textContent = String(fpsDisplay)
     infoFrameTime.textContent = fpsDisplay > 0
       ? `${(1000 / fpsDisplay).toFixed(1)}ms`
@@ -716,15 +826,20 @@ async function main(): Promise<void> {
   engine.runRenderLoop(() => {
     scene.render()
   })
+  debugLog('engine.runRenderLoop registered')
 
   // ---- Canvas 自适应 ----
   const resizeObserver = new ResizeObserver(() => {
     engine.resize()
+    debugLog('resize', `${canvas.clientWidth}x${canvas.clientHeight}`)
   })
   resizeObserver.observe(canvas)
+
+  debugLog('main() complete', 'waiting for first frame...')
 }
 
 main().catch((err: unknown) => {
+  debugError('main() FATAL', err)
   const errorEl = document.getElementById('gpu-error')!
   errorEl.style.display = 'flex'
   errorEl.textContent = `初始化失败: ${err instanceof Error ? err.message : String(err)}`
