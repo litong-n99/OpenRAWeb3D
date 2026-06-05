@@ -112,8 +112,8 @@
 ### 准备工作
 
 1. 打开测试页面：
-   - 开发模式: `http://localhost:5173/src/__e2e__/manual/hardware-palette/color-accuracy/`
-   - 或通过文件路径直接访问 index.html
+   - 开发模式: `http://localhost:5173/test/hardware-palette/color-accuracy/`
+   - （旧的 `/src/__e2e__/manual/...` 路径已不再可用，请使用 `/test/` 前缀访问）
 2. 确认页面底部**环境信息栏**显示：
    - 引擎: `Babylon.js vX.Y.Z / WebGL 2.0`（非 WebGL 1.0）
    - FPS: 显示数值（非 `-`）

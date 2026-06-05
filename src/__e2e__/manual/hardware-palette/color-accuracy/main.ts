@@ -282,7 +282,7 @@ function drawPaletteToCanvas(
     if (showIndices) {
       const luminance = 0.299 * r + 0.587 * g + 0.114 * b
       ctx.fillStyle = luminance > 140 ? '#000' : '#fff'
-      ctx.font = '9px monospace'
+      ctx.font = '10px monospace'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(String(i), x + CELL_SIZE / 2, y + CELL_SIZE / 2)
@@ -362,11 +362,11 @@ async function main(): Promise<void> {
   const scene = new Scene(engine)
   scene.clearColor.set(0.1, 0.11, 0.14, 1)
 
-  // 正交相机：正对调色板纹理平面
+  // 正交相机：从 +Z 轴正对调色板纹理平面（平面默认朝向 +Z）
   const camera = new ArcRotateCamera(
     'cam',
-    Math.PI / 2,       // alpha: 正对前方
-    Math.PI / 2,       // beta: 水平
+    0,                 // alpha: 相机在 +Z 轴上
+    Math.PI / 2,       // beta: 水平视角
     8,                 // radius
     new Vector3(0, 0, 0),
     scene,
