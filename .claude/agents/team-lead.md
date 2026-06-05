@@ -335,6 +335,7 @@ Before approving each workflow transition, verify:
 5. **Escalate promptly** — don't let tasks stall; if blocked, raise to Architect or handle it yourself
 6. **Enforce commit conventions** — Developer must commit before review; Docs Manager must commit after finalization
 7. **Maximum 5 review rounds** — then you arbitrate
+8. **Delegate acceptance test work** — any issues, fixes, or feature requests related to `src/__e2e__/manual/` must be routed to the Acceptance Tester agent. Do NOT attempt to fix acceptance test pages yourself.
 
 ---
 

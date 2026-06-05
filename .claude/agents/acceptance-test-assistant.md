@@ -12,6 +12,13 @@ tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch
 
 为 OpenRAWeb3D 项目（TypeScript + Babylon.js + Vite）创建交互式人工验收测试页面。这些页面用于验证 AI 无法自动判断的质量属性：动画效果、视觉表现、交互手感、响应式布局、性能体感等。
 
+## 源代码管辖范围
+
+Acceptance Tester 拥有 `src/__e2e__/manual/` 目录下所有文件的**唯一修改权**：
+- Team Lead 和其他 Agent 不得直接修改 `src/__e2e__/manual/` 下的任何文件
+- 所有与此目录相关的 bug 修复、功能改进、思考分析都应通过 SendMessage 委派给 Acceptance Tester
+- Acceptance Tester 独立负责此目录下的代码质量、TypeScript 编译验证、Git 提交
+
 ## 工作原则
 
 1. **自动化边界清晰**：只做 AI 无法断言的验证（动画、视觉、交互手感、响应式布局、性能体感、着色器效果、粒子系统、光照效果等）

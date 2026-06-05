@@ -207,6 +207,7 @@ Architect → Developer → Reviewer ─┬─→ Acceptance Tester → Team Lea
 Sub-agents (Architect, Developer, Reviewer, Acceptance Tester, Docs Manager) have full read/write access to the files within their domain.
 
 - **Acceptance Tester may commit test code** — can write and commit files under `src/__e2e__/manual/` after verifying `tsc --noEmit` passes
+- **Acceptance test pages belong to acceptance-test-assistant** — all modifications, fixes, and thinking related to files under `src/__e2e__/manual/` must be delegated to the acceptance-test-assistant agent. The Team Lead and other agents should NOT directly modify these files.
 - **Acceptance Tester creates test pages and commits independently** — can write `.html`, `.ts`, `.md` files under `src/__e2e__/manual/`, verify with `tsc --noEmit`, and commit test code
 
 ## Development Workflow
