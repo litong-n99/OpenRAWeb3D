@@ -429,11 +429,12 @@ async function main(): Promise<void> {
   debugLog('Scene created', `clearColor=(0.1,0.11,0.14,1) meshes=${scene.meshes.length} materials=${scene.materials.length}`)
 
   // ---- 正交相机 ----
-  // alpha=0, beta=PI/2: 相机位于 (0,0,8)，从 +Z 轴朝原点看
+  // Babylon.js ArcRotateCamera convention: alpha=0 -> +X, alpha=PI/2 -> +Z
+  // alpha=PI/2, beta=PI/2: 相机位于 (0,0,8)，从 +Z 轴朝原点看
   // 平面默认朝向 +Z，相机正对平面正面
   const camera = new ArcRotateCamera(
     'cam',
-    0,                 // alpha: 0 = 相机在 XZ 平面的 +Z 半轴
+    Math.PI / 2,       // alpha: PI/2 = 相机在 +Z 轴上
     Math.PI / 2,       // beta: PI/2 = 水平视角（赤道）
     8,                 // radius: 距离原点 8 单位
     new Vector3(0, 0, 0),
