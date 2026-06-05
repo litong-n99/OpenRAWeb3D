@@ -937,6 +937,9 @@ export class RgbaColorRenderer {
       this.material.setFloat('alpha', 1)
       // 调试图形：禁用深度写入 + 最高渲染组，避免 Z-fighting（对应 TODO-2.4.4）
       this.material.disableDepthWrite = true
+      // 禁用背面剔除：该渲染器绘制任意朝向的 quad（线段、矩形），
+      // 如果相机恰好在 quad 的"背面"，几何体将完全消失。
+      this.material.backFaceCulling = false
 
       this.mesh.material = this.material
       this.mesh.isPickable = false
