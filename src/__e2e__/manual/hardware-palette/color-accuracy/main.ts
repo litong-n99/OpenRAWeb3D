@@ -235,8 +235,10 @@ function drawPaletteToCanvas(
     const x = col * CELL_SIZE
     const y = row * CELL_SIZE
 
-    const { r, g, b, a } = fromArgb(palette.at(i))
+    const argb = palette.at(i)
+    const { r, g, b, a } = fromArgb(argb)
 
+    // 透明像素显示棋盘格背景
     if (a < 255) {
       ctx.fillStyle = '#333'
       ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE)
@@ -246,15 +248,18 @@ function drawPaletteToCanvas(
       ctx.fillRect(x + half, y + half, half, half)
     }
 
+    // 绘制颜色块（预乘 Alpha 由 CSS rgba 处理）
     ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`
     ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE)
 
+    // 网格线
     if (showGrid) {
       ctx.strokeStyle = 'rgba(255,255,255,0.12)'
       ctx.lineWidth = 0.5
       ctx.strokeRect(x + 0.25, y + 0.25, CELL_SIZE - 0.5, CELL_SIZE - 0.5)
     }
 
+    // 索引号
     if (showIndices) {
       const luminance = 0.299 * r + 0.587 * g + 0.114 * b
       ctx.fillStyle = luminance > 140 ? '#000' : '#fff'
@@ -275,7 +280,6 @@ function getCanvasCtx(texture: DynamicTexture): CanvasRenderingContext2D {
 
 /**
  * 验证 canvas 像素是否包含预期的颜色数据。
- * 读取坐标 (cellPixelX, cellPixelY) 处的一个像素并记录其 RGBA 值。
  */
 function verifyCanvasPixel(
   ctx: CanvasRenderingContext2D,
@@ -288,6 +292,17 @@ function verifyCanvasPixel(
     console.log(`[verify-canvas] ${label}: pixel@(${cellPixelX},${cellPixelY}) = rgba(${pixel[0]},${pixel[1]},${pixel[2]},${pixel[3]})`)
   } catch (err) {
     console.error(`[verify-canvas] ${label}: getImageData failed`, err)
+  }
+}
+
+/**
+ * 诊断调色板值：记录原始 uint32 ARGB 值和解码后的 RGBA 分量。
+ */
+function diagnosePaletteValues(palette: IPalette, label: string): void {
+  for (const idx of [0, 1, 2, 3, 4, 10, 20, 85, 170, 255]) {
+    const argb = palette.at(idx)
+    const { r, g, b, a } = fromArgb(argb)
+    console.log(`[diagnose] ${label} index ${idx}: argb=0x${argb.toString(16).padStart(8, '0')} → rgba(${r},${g},${b},${a})`)
   }
 }
 
@@ -308,17 +323,24 @@ function updateTexture(
       console.error(`[updateTexture] ${texName}: getContext returned null`)
       return
     }
+    // 先记录调色板原始值
+    if (verify) {
+      console.log(`[updateTexture] ${texName}: ctx.canvas.size=${(ctx.canvas as HTMLCanvasElement).width}x${(ctx.canvas as HTMLCanvasElement).height}`)
+      diagnosePaletteValues(palette, texName)
+    }
     drawPaletteToCanvas(ctx, palette, showIndices, showGrid)
 
-    // 验证 canvas 像素：index 0 (纯黑 #000000) 的中心点位于 (18, 18)
+    // 验证 canvas 像素：index 0 (纯黑) 的中心点位于 (18, 18)
+    // index 1 (纯红渐变) 的中心点位于 (54, 18)
     if (verify) {
-      verifyCanvasPixel(ctx, texName, CELL_SIZE / 2, CELL_SIZE / 2)
-      // 验证 index 1 (纯红 #ff0000) 的中心点位于 (18+36, 18) = (54, 18)
-      verifyCanvasPixel(ctx, texName, CELL_SIZE + CELL_SIZE / 2, CELL_SIZE / 2)
+      verifyCanvasPixel(ctx, `${texName}-beforeText-index0`, CELL_SIZE / 2, CELL_SIZE / 2)
+      verifyCanvasPixel(ctx, `${texName}-beforeText-index1`, CELL_SIZE + CELL_SIZE / 2, CELL_SIZE / 2)
+      // 也检查索引 2 和 3（纯绿和纯蓝）
+      verifyCanvasPixel(ctx, `${texName}-index2`, 2 * CELL_SIZE + CELL_SIZE / 2, CELL_SIZE / 2)
+      verifyCanvasPixel(ctx, `${texName}-index3`, 3 * CELL_SIZE + CELL_SIZE / 2, CELL_SIZE / 2)
     }
 
-    // 使用 invertY=true：Canvas 2D 原点在左上角，WebGL 纹理原点在左下角，
-    // 必须翻转 Y 轴才能正确显示
+    // invertY=true: Canvas 2D 原点在左上角，WebGL 纹理原点在左下角，必须翻转 Y 轴
     texture.update(true)
     console.log(`[updateTexture] ${texName}: OK ${texture.getSize().width}x${texture.getSize().height}`)
   } catch (err) {
@@ -327,7 +349,7 @@ function updateTexture(
 }
 
 // ---------------------------------------------------------------------------
-// 材质工厂：创建具有纹理的 unlit 材质
+// 材质工厂
 // ---------------------------------------------------------------------------
 
 const WHITE = new Color3(1, 1, 1)
@@ -339,7 +361,7 @@ function createTextureMaterial(
 ): StandardMaterial {
   const mat = new StandardMaterial(name, scene)
   mat.diffuseTexture = texture
-  mat.emissiveTexture = texture    // unlit 模式下备用：若 disableLighting 忽略 diffuse，emissive 可兜底
+  mat.emissiveTexture = texture
   mat.emissiveColor = WHITE
   mat.specularColor.set(0, 0, 0)
   mat.backFaceCulling = false
@@ -375,7 +397,6 @@ async function main(): Promise<void> {
   const canvas = document.createElement('canvas')
   canvas.style.width = '100%'
   canvas.style.height = '100%'
-  // 在创建 Engine 前设置 canvas 绘制缓冲区尺寸，匹配容器大小
   const sandboxRect = sandboxEl.getBoundingClientRect()
   canvas.width = Math.max(sandboxRect.width || 800, 1)
   canvas.height = Math.max(sandboxRect.height || 600, 1)
@@ -404,11 +425,17 @@ async function main(): Promise<void> {
   scene.clearColor.set(0.1, 0.11, 0.14, 1)
 
   // ---- 正交相机 ----
-  // Babylon.js ArcRotateCamera: alpha=0 -> +X, alpha=PI/2 -> +Z
+  // Babylon.js uses Matrix.LookAtLH: right = cross(up, forward) in LH coords.
+  // With alpha=-PI/2, camera at (0,0,-8), forward=(0,0,+1), up=(0,1,0):
+  //   right = cross((0,1,0),(0,0,1)) = (+1,0,0)
+  // Screen-right = world+X, screen-left = world-X. Correct.
+  //
+  // Camera is behind the +Z-facing planes. With backFaceCulling=false, the
+  // back faces render, mirroring UVs to give the correct left-to-right reading.
   const camera = new ArcRotateCamera(
     'cam',
-    Math.PI / 2,       // alpha: PI/2 -> 相机在 +Z 轴上
-    Math.PI / 2,       // beta: PI/2 = 水平视角（赤道）
+    -Math.PI / 2,      // alpha: -PI/2 -> camera at (0,0,-8) on -Z
+    Math.PI / 2,       // beta: PI/2 = horizontal
     8,                 // radius
     new Vector3(0, 0, 0),
     scene,
@@ -420,9 +447,9 @@ async function main(): Promise<void> {
   camera.inputs.clear()
   camera.inputs.addMouseWheel()
 
-  console.log(`[init] Camera: pos=(${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}) alpha=${camera.alpha.toFixed(2)} beta=${camera.beta.toFixed(2)} radius=${camera.radius}`)
+  console.log(`[init] Camera: pos=(${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}) alpha=${camera.alpha.toFixed(4)} beta=${camera.beta.toFixed(4)} radius=${camera.radius}`)
 
-  // ---- 光照 (StandardMaterial 兼容，虽然 disableLighting=true 不受影响) ----
+  // ---- 光照 ----
   const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
   light.intensity = 0.9
 
@@ -432,7 +459,7 @@ async function main(): Promise<void> {
     'texOriginal',
     { width: TEX_WIDTH, height: TEX_HEIGHT },
     scene,
-    false, // no mipmap
+    false,
   )
   const matOriginal = createTextureMaterial('matOriginal', texOriginal, scene)
 
@@ -541,9 +568,6 @@ async function main(): Promise<void> {
 
   const refSwatchesDiv = document.getElementById('reference-swatches')!
 
-  /**
-   * 更新参考色样本显示。
-   */
   function updateReferenceSwatches(): void {
     const refIndices = [0, 1, 2, 3, 4, 10, 11, 12, 20, 176, 177, 180, 185, 191, 255]
     refSwatchesDiv.innerHTML = ''
@@ -631,7 +655,6 @@ async function main(): Promise<void> {
     infoPalRows.textContent = '1'
   }
 
-  // 调色板切换
   paletteSelect.addEventListener('change', () => {
     switch (paletteSelect.value) {
       case 'gradient':
@@ -650,7 +673,6 @@ async function main(): Promise<void> {
     refreshTextures()
   })
 
-  // 重映射范围滑块联动
   const updateRangeLabel = (): void => {
     const start = parseInt(remapStartSlider.value, 10)
     const end = parseInt(remapEndSlider.value, 10)
@@ -659,16 +681,13 @@ async function main(): Promise<void> {
   remapStartSlider.addEventListener('input', updateRangeLabel)
   remapEndSlider.addEventListener('input', updateRangeLabel)
 
-  // 亮度缩放
   valueMultSlider.addEventListener('input', () => {
     vmValSpan.textContent = parseFloat(valueMultSlider.value).toFixed(2)
   })
 
-  // 应用/重置按钮
   applyRemapBtn.addEventListener('click', applyRemap)
   resetRemapBtn.addEventListener('click', resetRemap)
 
-  // 缩放
   zoomSlider.addEventListener('input', () => {
     const z = parseFloat(zoomSlider.value)
     zoomValSpan.textContent = `${z.toFixed(1)}x`
@@ -678,7 +697,6 @@ async function main(): Promise<void> {
     camera.orthoRight = 5 / z
   })
 
-  // 显示选项
   showIndicesCb.addEventListener('change', () => {
     showIndices = showIndicesCb.checked
     refreshTextures()
@@ -732,7 +750,6 @@ async function main(): Promise<void> {
     scene.render()
   })
 
-  // ---- Canvas 自适应 ----
   const resizeObserver = new ResizeObserver(() => {
     engine.resize()
   })
