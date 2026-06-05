@@ -14,6 +14,7 @@ import { Scene } from '@babylonjs/core'
 import { ArcRotateCamera } from '@babylonjs/core'
 import { HemisphericLight } from '@babylonjs/core'
 import { Vector3 } from '@babylonjs/core'
+import { Color3 } from '@babylonjs/core'
 import { MeshBuilder } from '@babylonjs/core'
 import { StandardMaterial } from '@babylonjs/core'
 import { DynamicTexture } from '@babylonjs/core'
@@ -35,45 +36,6 @@ const CELL_SIZE = 36
 /** 纹理总尺寸（含边距） */
 const TEX_WIDTH = GRID_COLS * CELL_SIZE  // 576
 const TEX_HEIGHT = GRID_ROWS * CELL_SIZE  // 576
-
-// ---------------------------------------------------------------------------
-// 调试基础设施
-// ---------------------------------------------------------------------------
-
-let debugOverlay: HTMLElement | null = null
-const debugLines: string[] = []
-const MAX_DEBUG_LINES = 60
-
-function debugLog(label: string, value?: unknown): void {
-  const ts = new Date().toISOString().slice(11, 23) // HH:MM:SS.sss
-  let line: string
-  if (value !== undefined) {
-    const valStr = typeof value === 'object' ? JSON.stringify(value) : String(value)
-    line = `[${ts}] ${label}: ${valStr}`
-  } else {
-    line = `[${ts}] ${label}`
-  }
-  console.log(line)
-  debugLines.push(line)
-  while (debugLines.length > MAX_DEBUG_LINES) debugLines.shift()
-  if (debugOverlay) {
-    debugOverlay.textContent = debugLines.join('\n')
-    debugOverlay.scrollTop = debugOverlay.scrollHeight
-  }
-}
-
-function debugError(label: string, err: unknown): void {
-  const ts = new Date().toISOString().slice(11, 23)
-  const msg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err)
-  const line = `[${ts}] ERROR ${label}: ${msg}`
-  console.error(line)
-  debugLines.push(line)
-  while (debugLines.length > MAX_DEBUG_LINES) debugLines.shift()
-  if (debugOverlay) {
-    debugOverlay.textContent = debugLines.join('\n')
-    debugOverlay.scrollTop = debugOverlay.scrollHeight
-  }
-}
 
 // ---------------------------------------------------------------------------
 // 调色板工厂函数
@@ -113,55 +75,52 @@ function createGradientPalette(): ImmutablePalette {
  */
 function createReferencePalette(): ImmutablePalette {
   const colors = new Uint32Array(PALETTE_SIZE)
-  // 默认填充深灰色
   for (let i = 0; i < PALETTE_SIZE; i++) {
     colors[i] = toArgb(255, 26, 26, 26)
   }
 
-  // 在特定索引放置已知参考色
   const refs: [number, number, number, number, number][] = [
-    // [index, A, R, G, B]
-    [0,   255, 0,   0,   0],    // 纯黑
-    [1,   255, 255, 0,   0],    // 纯红
-    [2,   255, 0,   255, 0],    // 纯绿
-    [3,   255, 0,   0,   255],  // 纯蓝
-    [4,   255, 255, 255, 255],  // 纯白
-    [10,  255, 255, 255, 0],    // 黄
-    [11,  255, 0,   255, 255],  // 青
-    [12,  255, 255, 0,   255],  // 品红
-    [20,  255, 128, 128, 128],  // 中灰
-    [21,  255, 64,  64,  64],   // 深灰
-    [22,  255, 192, 192, 192],  // 浅灰
-    [30,  255, 128, 0,   0],    // 暗红
-    [31,  255, 0,   128, 0],    // 暗绿
-    [32,  255, 0,   0,   128],  // 暗蓝
-    [40,  255, 255, 128, 0],    // 橙
-    [41,  255, 128, 0,   255],  // 紫
-    [50,  128, 255, 0,   0],    // 半透明红
-    [51,  128, 0,   255, 0],    // 半透明绿
-    [52,  128, 0,   0,   255],  // 半透明蓝
-    [60,  0,   0,   0,   0],    // 完全透明
-    [176, 255, 180, 180, 210],  // 玩家色槽 1 (浅蓝灰)
-    [177, 255, 160, 160, 200],  // 玩家色槽 2
-    [178, 255, 140, 140, 180],  // 玩家色槽 3
-    [179, 255, 120, 120, 170],  // 玩家色槽 4
-    [180, 255, 100, 100, 160],  // 玩家色槽 5
-    [181, 255, 90,  90,  150],  // 玩家色槽 6
-    [182, 255, 80,  80,  140],  // 玩家色槽 7
-    [183, 255, 70,  70,  130],  // 玩家色槽 8
-    [184, 255, 200, 180, 160],  // 玩家色槽 9 (暖灰)
-    [185, 255, 190, 170, 150],  // 玩家色槽 10
-    [186, 255, 180, 160, 140],  // 玩家色槽 11
-    [187, 255, 170, 150, 130],  // 玩家色槽 12
-    [188, 255, 160, 140, 120],  // 玩家色槽 13
-    [189, 255, 150, 130, 110],  // 玩家色槽 14
-    [190, 255, 140, 120, 100],  // 玩家色槽 15
-    [191, 255, 130, 110, 90],   // 玩家色槽 16
-    [200, 255, 255, 0,   128],  // 亮粉
-    [210, 255, 0,   128, 128],  // 蓝绿
-    [220, 255, 128, 128, 0],    // 橄榄
-    [240, 255, 0,   255, 128],  // 春绿
-    [250, 255, 255, 128, 128],  // 浅粉
+    [0,   255, 0,   0,   0],
+    [1,   255, 255, 0,   0],
+    [2,   255, 0,   255, 0],
+    [3,   255, 0,   0,   255],
+    [4,   255, 255, 255, 255],
+    [10,  255, 255, 255, 0],
+    [11,  255, 0,   255, 255],
+    [12,  255, 255, 0,   255],
+    [20,  255, 128, 128, 128],
+    [21,  255, 64,  64,  64],
+    [22,  255, 192, 192, 192],
+    [30,  255, 128, 0,   0],
+    [31,  255, 0,   128, 0],
+    [32,  255, 0,   0,   128],
+    [40,  255, 255, 128, 0],
+    [41,  255, 128, 0,   255],
+    [50,  128, 255, 0,   0],
+    [51,  128, 0,   255, 0],
+    [52,  128, 0,   0,   255],
+    [60,  0,   0,   0,   0],
+    [176, 255, 180, 180, 210],
+    [177, 255, 160, 160, 200],
+    [178, 255, 140, 140, 180],
+    [179, 255, 120, 120, 170],
+    [180, 255, 100, 100, 160],
+    [181, 255, 90,  90,  150],
+    [182, 255, 80,  80,  140],
+    [183, 255, 70,  70,  130],
+    [184, 255, 200, 180, 160],
+    [185, 255, 190, 170, 150],
+    [186, 255, 180, 160, 140],
+    [187, 255, 170, 150, 130],
+    [188, 255, 160, 140, 120],
+    [189, 255, 150, 130, 110],
+    [190, 255, 140, 120, 100],
+    [191, 255, 130, 110, 90],
+    [200, 255, 255, 0,   128],
+    [210, 255, 0,   128, 128],
+    [220, 255, 128, 128, 0],
+    [240, 255, 0,   255, 128],
+    [250, 255, 255, 128, 128],
   ]
 
   for (const [idx, a, r, g, b] of refs) {
@@ -173,18 +132,14 @@ function createReferencePalette(): ImmutablePalette {
 
 /**
  * 创建模拟 C&C Tiberian Dawn 风格的调色板。
- *
- * 包含大地色系、金属色、玩家色槽位（176-191）、火焰/高亮色。
  */
 function createCCTDPalette(): ImmutablePalette {
   const colors = new Uint32Array(PALETTE_SIZE)
 
-  // 0-15: 暗色/黑色系
   for (let i = 0; i < 16; i++) {
     const v = Math.round((i / 15) * 40)
     colors[i] = toArgb(255, v, v, v)
   }
-  // 16-31: 大地棕色系
   for (let i = 0; i < 16; i++) {
     const t = i / 15
     colors[16 + i] = toArgb(255,
@@ -193,7 +148,6 @@ function createCCTDPalette(): ImmutablePalette {
       Math.round(20 + t * 30),
     )
   }
-  // 32-63: 植被绿色系
   for (let i = 0; i < 32; i++) {
     const t = i / 31
     colors[32 + i] = toArgb(255,
@@ -202,7 +156,6 @@ function createCCTDPalette(): ImmutablePalette {
       Math.round(10 + t * 40),
     )
   }
-  // 64-95: 水面蓝色系
   for (let i = 0; i < 32; i++) {
     const t = i / 31
     colors[64 + i] = toArgb(255,
@@ -211,13 +164,11 @@ function createCCTDPalette(): ImmutablePalette {
       Math.round(80 + t * 150),
     )
   }
-  // 96-127: 金属灰色系
   for (let i = 0; i < 32; i++) {
     const t = i / 31
     const v = Math.round(60 + t * 160)
     colors[96 + i] = toArgb(255, v, v, v)
   }
-  // 128-159: 暖色/沙漠系
   for (let i = 0; i < 32; i++) {
     const t = i / 31
     colors[128 + i] = toArgb(255,
@@ -226,7 +177,6 @@ function createCCTDPalette(): ImmutablePalette {
       Math.round(80 + t * 60),
     )
   }
-  // 160-175: 火焰/高亮色系
   for (let i = 0; i < 16; i++) {
     const t = i / 15
     colors[160 + i] = toArgb(255,
@@ -235,7 +185,6 @@ function createCCTDPalette(): ImmutablePalette {
       Math.round(50 - t * 40),
     )
   }
-  // 176-191: 玩家颜色槽位（蓝灰色系 — 将被 PlayerColorRemap 替换）
   for (let i = 0; i < 16; i++) {
     const t = i / 15
     colors[176 + i] = toArgb(255,
@@ -244,7 +193,6 @@ function createCCTDPalette(): ImmutablePalette {
       Math.round(220 - t * 80),
     )
   }
-  // 192-223: 紫色/特殊色系
   for (let i = 0; i < 32; i++) {
     const t = i / 31
     colors[192 + i] = toArgb(255,
@@ -253,7 +201,6 @@ function createCCTDPalette(): ImmutablePalette {
       Math.round(80 + t * 120),
     )
   }
-  // 224-254: 亮色高光系
   for (let i = 0; i < 31; i++) {
     const t = i / 30
     colors[224 + i] = toArgb(255,
@@ -262,7 +209,6 @@ function createCCTDPalette(): ImmutablePalette {
       Math.round(100 + t * 155),
     )
   }
-  // 255: 纯白
   colors[255] = toArgb(255, 255, 255, 255)
 
   return ImmutablePalette.fromColors(colors)
@@ -274,11 +220,6 @@ function createCCTDPalette(): ImmutablePalette {
 
 /**
  * 将调色板绘制到 DynamicTexture 的 2D canvas 上，呈现为 16x16 色块网格。
- *
- * @param ctx — Canvas 2D 渲染上下文
- * @param palette — 要绘制的调色板（256 色）
- * @param showIndices — 是否在每个色块上叠加索引号文本
- * @param showGrid — 是否绘制网格线
  */
 function drawPaletteToCanvas(
   ctx: CanvasRenderingContext2D,
@@ -296,7 +237,6 @@ function drawPaletteToCanvas(
 
     const { r, g, b, a } = fromArgb(palette.at(i))
 
-    // 透明像素显示棋盘格背景
     if (a < 255) {
       ctx.fillStyle = '#333'
       ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE)
@@ -306,18 +246,15 @@ function drawPaletteToCanvas(
       ctx.fillRect(x + half, y + half, half, half)
     }
 
-    // 绘制颜色块（预乘 Alpha 由 CSS rgba 处理）
     ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`
     ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE)
 
-    // 网格线
     if (showGrid) {
       ctx.strokeStyle = 'rgba(255,255,255,0.12)'
       ctx.lineWidth = 0.5
       ctx.strokeRect(x + 0.25, y + 0.25, CELL_SIZE - 0.5, CELL_SIZE - 0.5)
     }
 
-    // 索引号
     if (showIndices) {
       const luminance = 0.299 * r + 0.587 * g + 0.114 * b
       ctx.fillStyle = luminance > 140 ? '#000' : '#fff'
@@ -331,12 +268,27 @@ function drawPaletteToCanvas(
 
 /**
  * 从 Babylon.js DynamicTexture 获取原生 CanvasRenderingContext2D。
- *
- * Babylon.js 的 getContext() 返回 ICanvasRenderingContext（子集类型），
- * 此处通过类型断言转换为完整的 CanvasRenderingContext2D。
  */
 function getCanvasCtx(texture: DynamicTexture): CanvasRenderingContext2D {
   return texture.getContext() as unknown as CanvasRenderingContext2D
+}
+
+/**
+ * 验证 canvas 像素是否包含预期的颜色数据。
+ * 读取坐标 (cellPixelX, cellPixelY) 处的一个像素并记录其 RGBA 值。
+ */
+function verifyCanvasPixel(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  cellPixelX: number,
+  cellPixelY: number,
+): void {
+  try {
+    const pixel = ctx.getImageData(cellPixelX, cellPixelY, 1, 1).data
+    console.log(`[verify-canvas] ${label}: pixel@(${cellPixelX},${cellPixelY}) = rgba(${pixel[0]},${pixel[1]},${pixel[2]},${pixel[3]})`)
+  } catch (err) {
+    console.error(`[verify-canvas] ${label}: getImageData failed`, err)
+  }
 }
 
 /**
@@ -347,20 +299,52 @@ function updateTexture(
   palette: IPalette,
   showIndices: boolean,
   showGrid: boolean,
+  verify: boolean,
 ): void {
   const texName = texture.name
   try {
     const ctx = getCanvasCtx(texture)
     if (!ctx) {
-      debugError(`updateTexture[${texName}] getContext returned null`, new Error('null context'))
+      console.error(`[updateTexture] ${texName}: getContext returned null`)
       return
     }
     drawPaletteToCanvas(ctx, palette, showIndices, showGrid)
-    texture.update(false)
-    debugLog(`updateTexture[${texName}] OK`, `size=${texture.getSize().width}x${texture.getSize().height}`)
+
+    // 验证 canvas 像素：index 0 (纯黑 #000000) 的中心点位于 (18, 18)
+    if (verify) {
+      verifyCanvasPixel(ctx, texName, CELL_SIZE / 2, CELL_SIZE / 2)
+      // 验证 index 1 (纯红 #ff0000) 的中心点位于 (18+36, 18) = (54, 18)
+      verifyCanvasPixel(ctx, texName, CELL_SIZE + CELL_SIZE / 2, CELL_SIZE / 2)
+    }
+
+    // 使用 invertY=true：Canvas 2D 原点在左上角，WebGL 纹理原点在左下角，
+    // 必须翻转 Y 轴才能正确显示
+    texture.update(true)
+    console.log(`[updateTexture] ${texName}: OK ${texture.getSize().width}x${texture.getSize().height}`)
   } catch (err) {
-    debugError(`updateTexture[${texName}] failed`, err)
+    console.error(`[updateTexture] ${texName}: failed`, err)
   }
+}
+
+// ---------------------------------------------------------------------------
+// 材质工厂：创建具有纹理的 unlit 材质
+// ---------------------------------------------------------------------------
+
+const WHITE = new Color3(1, 1, 1)
+
+function createTextureMaterial(
+  name: string,
+  texture: DynamicTexture,
+  scene: Scene,
+): StandardMaterial {
+  const mat = new StandardMaterial(name, scene)
+  mat.diffuseTexture = texture
+  mat.emissiveTexture = texture    // unlit 模式下备用：若 disableLighting 忽略 diffuse，emissive 可兜底
+  mat.emissiveColor = WHITE
+  mat.specularColor.set(0, 0, 0)
+  mat.backFaceCulling = false
+  mat.disableLighting = true
+  return mat
 }
 
 // ---------------------------------------------------------------------------
@@ -368,10 +352,6 @@ function updateTexture(
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  // ---- 获取 debug overlay ----
-  debugOverlay = document.getElementById('debug-overlay')
-  debugLog('main() started', `UA=${navigator.userAgent.slice(0, 60)}`)
-
   // ---- 环境信息采集 ----
   const infoUa = document.getElementById('info-ua')!
   const infoViewport = document.getElementById('info-viewport')!
@@ -384,7 +364,6 @@ async function main(): Promise<void> {
   infoUa.textContent = navigator.userAgent.slice(0, 80)
   infoViewport.textContent = `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x`
   infoTime.textContent = new Date().toISOString()
-  debugLog('viewport', `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x`)
 
   const updateViewport = (): void => {
     infoViewport.textContent = `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x`
@@ -392,51 +371,45 @@ async function main(): Promise<void> {
   window.addEventListener('resize', updateViewport)
 
   // ---- Babylon.js 初始化 ----
-  debugLog('creating canvas element')
+  const sandboxEl = document.getElementById('sandbox')!
   const canvas = document.createElement('canvas')
   canvas.style.width = '100%'
   canvas.style.height = '100%'
-  document.getElementById('sandbox')!.appendChild(canvas)
-  debugLog('canvas appended', `size=${canvas.width}x${canvas.height} clientSize=${canvas.clientWidth}x${canvas.clientHeight}`)
+  // 在创建 Engine 前设置 canvas 绘制缓冲区尺寸，匹配容器大小
+  const sandboxRect = sandboxEl.getBoundingClientRect()
+  canvas.width = Math.max(sandboxRect.width || 800, 1)
+  canvas.height = Math.max(sandboxRect.height || 600, 1)
+  console.log(`[init] canvas buffer size: ${canvas.width}x${canvas.height}`)
+  sandboxEl.appendChild(canvas)
 
   let engine: Engine
   try {
-    debugLog('creating Engine', 'preserveDrawingBuffer=false stencil=false antialias=false')
     engine = new Engine(canvas, true, {
       preserveDrawingBuffer: false,
       stencil: false,
       antialias: false,
     })
-  } catch (err) {
-    debugError('Engine creation failed', err)
+  } catch {
     document.getElementById('gpu-error')!.style.display = 'flex'
     infoEngine.textContent = 'UNAVAILABLE'
     return
   }
 
   const webGlVersion = engine.webGLVersion
-  debugLog('Engine created OK', `Babylon.js v${Engine.Version} WebGL ${webGlVersion}.0`)
-  debugLog('Engine capabilities', {
-    webGlVersion,
-    isWebGPU: engine.isWebGPU,
-    isFullscreen: engine.isFullscreen,
-  })
+  console.log(`[init] Engine: Babylon.js v${Engine.Version} / WebGL ${webGlVersion}.0`)
   infoEngine.textContent = `Babylon.js v${Engine.Version} / WebGL ${webGlVersion}.0`
 
   // ---- 场景创建 ----
   const scene = new Scene(engine)
   scene.clearColor.set(0.1, 0.11, 0.14, 1)
-  debugLog('Scene created', `clearColor=(0.1,0.11,0.14,1) meshes=${scene.meshes.length} materials=${scene.materials.length}`)
 
   // ---- 正交相机 ----
-  // Babylon.js ArcRotateCamera convention: alpha=0 -> +X, alpha=PI/2 -> +Z
-  // alpha=PI/2, beta=PI/2: 相机位于 (0,0,8)，从 +Z 轴朝原点看
-  // 平面默认朝向 +Z，相机正对平面正面
+  // Babylon.js ArcRotateCamera: alpha=0 -> +X, alpha=PI/2 -> +Z
   const camera = new ArcRotateCamera(
     'cam',
-    Math.PI / 2,       // alpha: PI/2 = 相机在 +Z 轴上
+    Math.PI / 2,       // alpha: PI/2 -> 相机在 +Z 轴上
     Math.PI / 2,       // beta: PI/2 = 水平视角（赤道）
-    8,                 // radius: 距离原点 8 单位
+    8,                 // radius
     new Vector3(0, 0, 0),
     scene,
   )
@@ -447,39 +420,21 @@ async function main(): Promise<void> {
   camera.inputs.clear()
   camera.inputs.addMouseWheel()
 
-  debugLog('Camera created', {
-    alpha: camera.alpha,
-    beta: camera.beta,
-    radius: camera.radius,
-    mode: camera.mode,
-    position: { x: camera.position.x.toFixed(2), y: camera.position.y.toFixed(2), z: camera.position.z.toFixed(2) },
-    target: { x: camera.target.x, y: camera.target.y, z: camera.target.z },
-    minZ: camera.minZ,
-    maxZ: camera.maxZ,
-  })
+  console.log(`[init] Camera: pos=(${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}) alpha=${camera.alpha.toFixed(2)} beta=${camera.beta.toFixed(2)} radius=${camera.radius}`)
 
-  // ---- 光照 ----
+  // ---- 光照 (StandardMaterial 兼容，虽然 disableLighting=true 不受影响) ----
   const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
   light.intensity = 0.9
-  debugLog('HemisphericLight created', `direction=(0,1,0) intensity=0.9`)
 
   // ---- 创建两个纹理平面 ----
   // 左侧：原始调色板
-  debugLog('creating texOriginal', `DynamicTexture ${TEX_WIDTH}x${TEX_HEIGHT}`)
   const texOriginal = new DynamicTexture(
     'texOriginal',
     { width: TEX_WIDTH, height: TEX_HEIGHT },
     scene,
     false, // no mipmap
   )
-  debugLog('texOriginal created', `size=${texOriginal.getSize().width}x${texOriginal.getSize().height} invertY=${texOriginal.invertY}`)
-
-  const matOriginal = new StandardMaterial('matOriginal', scene)
-  matOriginal.diffuseTexture = texOriginal
-  matOriginal.specularColor.set(0, 0, 0)
-  matOriginal.backFaceCulling = false
-  matOriginal.disableLighting = true
-  debugLog('matOriginal', `diffuseTexture=${matOriginal.diffuseTexture?.name} disableLighting=${matOriginal.disableLighting} backFaceCulling=${matOriginal.backFaceCulling}`)
+  const matOriginal = createTextureMaterial('matOriginal', texOriginal, scene)
 
   const planeOriginal = MeshBuilder.CreatePlane(
     'planeOriginal',
@@ -489,9 +444,8 @@ async function main(): Promise<void> {
   planeOriginal.position.x = -2.2
   planeOriginal.position.y = 0
   planeOriginal.material = matOriginal
-  debugLog('planeOriginal', `pos=(${planeOriginal.position.x},${planeOriginal.position.y},${planeOriginal.position.z}) hasMat=${!!planeOriginal.material} isVisible=${planeOriginal.isVisible}`)
 
-  // 标签 "ORIGINAL"
+  // 标签 "ORIGINAL PALETTE"
   const labelOrigPlane = MeshBuilder.CreatePlane(
     'labelOrig',
     { width: 2.5, height: 0.4 },
@@ -513,33 +467,18 @@ async function main(): Promise<void> {
   labelOrigCtx.textAlign = 'center'
   labelOrigCtx.textBaseline = 'middle'
   labelOrigCtx.fillText('ORIGINAL PALETTE', 256, 32)
-  labelOrigTex.update(false)
-  debugLog('labelOrigTex updated', `size=512x64`)
-
-  const labelOrigMat = new StandardMaterial('labelOrigMat', scene)
-  labelOrigMat.diffuseTexture = labelOrigTex
-  labelOrigMat.specularColor.set(0, 0, 0)
-  labelOrigMat.backFaceCulling = false
-  labelOrigMat.disableLighting = true
+  labelOrigTex.update(true)
+  const labelOrigMat = createTextureMaterial('labelOrigMat', labelOrigTex, scene)
   labelOrigPlane.material = labelOrigMat
-  debugLog('labelOrigMat', `disableLighting=${labelOrigMat.disableLighting}`)
 
   // 右侧：重映射后调色板
-  debugLog('creating texRemapped', `DynamicTexture ${TEX_WIDTH}x${TEX_HEIGHT}`)
   const texRemapped = new DynamicTexture(
     'texRemapped',
     { width: TEX_WIDTH, height: TEX_HEIGHT },
     scene,
     false,
   )
-  debugLog('texRemapped created', `size=${texRemapped.getSize().width}x${texRemapped.getSize().height}`)
-
-  const matRemapped = new StandardMaterial('matRemapped', scene)
-  matRemapped.diffuseTexture = texRemapped
-  matRemapped.specularColor.set(0, 0, 0)
-  matRemapped.backFaceCulling = false
-  matRemapped.disableLighting = true
-  debugLog('matRemapped', `disableLighting=${matRemapped.disableLighting}`)
+  const matRemapped = createTextureMaterial('matRemapped', texRemapped, scene)
 
   const planeRemapped = MeshBuilder.CreatePlane(
     'planeRemapped',
@@ -549,9 +488,8 @@ async function main(): Promise<void> {
   planeRemapped.position.x = 2.2
   planeRemapped.position.y = 0
   planeRemapped.material = matRemapped
-  debugLog('planeRemapped', `pos=(${planeRemapped.position.x},${planeRemapped.position.y},${planeRemapped.position.z}) hasMat=${!!planeRemapped.material} isVisible=${planeRemapped.isVisible}`)
 
-  // 标签 "REMAPPED"
+  // 标签 "REMAPPED PALETTE"
   const labelRmpPlane = MeshBuilder.CreatePlane(
     'labelRmp',
     { width: 2.5, height: 0.4 },
@@ -573,22 +511,11 @@ async function main(): Promise<void> {
   labelRmpCtx.textAlign = 'center'
   labelRmpCtx.textBaseline = 'middle'
   labelRmpCtx.fillText('REMAPPED PALETTE', 256, 32)
-  labelRmpTex.update(false)
-  debugLog('labelRmpTex updated', `size=512x64`)
-
-  const labelRmpMat = new StandardMaterial('labelRmpMat', scene)
-  labelRmpMat.diffuseTexture = labelRmpTex
-  labelRmpMat.specularColor.set(0, 0, 0)
-  labelRmpMat.backFaceCulling = false
-  labelRmpMat.disableLighting = true
+  labelRmpTex.update(true)
+  const labelRmpMat = createTextureMaterial('labelRmpMat', labelRmpTex, scene)
   labelRmpPlane.material = labelRmpMat
-  debugLog('labelRmpMat', `disableLighting=${labelRmpMat.disableLighting}`)
 
-  // ---- 场景统计 ----
-  debugLog('Scene summary', `meshes=${scene.meshes.length} materials=${scene.materials.length} textures=${scene.textures.length} lights=${scene.lights.length}`)
-  for (const m of scene.meshes) {
-    debugLog(`  mesh[${m.name}]`, `pos=(${m.position.x},${m.position.y},${m.position.z}) visible=${m.isVisible} mat=${(m.material as StandardMaterial)?.name || 'none'}`)
-  }
+  console.log(`[init] Scene: ${scene.meshes.length} meshes, ${scene.materials.length} materials`)
 
   // ---- 状态 ----
   let currentPalette: ImmutablePalette = createGradientPalette()
@@ -596,7 +523,6 @@ async function main(): Promise<void> {
   let remapActive = false
   let showIndices = true
   let showGrid = true
-  debugLog('initial palette', `type=gradient PALETTE_SIZE=${PALETTE_SIZE}`)
 
   // ---- UI 元素绑定 ----
   const paletteSelect = document.getElementById('palette-select') as HTMLSelectElement
@@ -613,11 +539,10 @@ async function main(): Promise<void> {
   const showIndicesCb = document.getElementById('show-indices') as HTMLInputElement
   const showGridCb = document.getElementById('show-grid') as HTMLInputElement
 
-  // 参考色样本容器
   const refSwatchesDiv = document.getElementById('reference-swatches')!
 
   /**
-   * 更新参考色样本显示（左下角控件面板）。
+   * 更新参考色样本显示。
    */
   function updateReferenceSwatches(): void {
     const refIndices = [0, 1, 2, 3, 4, 10, 11, 12, 20, 176, 177, 180, 185, 191, 255]
@@ -636,9 +561,6 @@ async function main(): Promise<void> {
     }
   }
 
-  /**
-   * 获取当前重映射索引范围。
-   */
   function getRemapRange(): number[] {
     const start = parseInt(remapStartSlider.value, 10)
     const end = parseInt(remapEndSlider.value, 10)
@@ -651,9 +573,6 @@ async function main(): Promise<void> {
     return indices
   }
 
-  /**
-   * 应用 PlayerColorRemap 并更新右侧纹理。
-   */
   function applyRemap(): void {
     const hex = playerColorInput.value.replace('#', '')
     const playerColor = {
@@ -691,31 +610,22 @@ async function main(): Promise<void> {
     remappedPalette = ImmutablePalette.fromRemapped(currentPalette, scalingRemap)
     remapActive = true
     applyRemapBtn.classList.add('active')
-    debugLog('applyRemap', `color=#${hex} range=[${Math.min(...remapIndices)}-${Math.max(...remapIndices)}] valueMult=${valueMult.toFixed(2)}`)
-    updateTexture(texRemapped, remappedPalette, showIndices, showGrid)
+    updateTexture(texRemapped, remappedPalette, showIndices, showGrid, false)
   }
 
-  /**
-   * 重置重映射（右侧显示原始调色板）。
-   */
   function resetRemap(): void {
     remappedPalette = currentPalette
     remapActive = false
     applyRemapBtn.classList.remove('active')
-    debugLog('resetRemap', 'restored original palette')
-    updateTexture(texRemapped, remappedPalette, showIndices, showGrid)
+    updateTexture(texRemapped, remappedPalette, showIndices, showGrid, false)
   }
 
-  /**
-   * 刷新两个纹理（当调色板切换或显示选项改变时调用）。
-   */
   function refreshTextures(): void {
-    debugLog('refreshTextures', `showIndices=${showIndices} showGrid=${showGrid} remapActive=${remapActive}`)
-    updateTexture(texOriginal, currentPalette, showIndices, showGrid)
+    updateTexture(texOriginal, currentPalette, showIndices, showGrid, true)
     if (remapActive) {
       applyRemap()
     } else {
-      updateTexture(texRemapped, remappedPalette, showIndices, showGrid)
+      updateTexture(texRemapped, remappedPalette, showIndices, showGrid, false)
     }
     updateReferenceSwatches()
     infoPalRows.textContent = '1'
@@ -737,7 +647,6 @@ async function main(): Promise<void> {
     remappedPalette = currentPalette
     remapActive = false
     applyRemapBtn.classList.remove('active')
-    debugLog('palette changed', paletteSelect.value)
     refreshTextures()
   })
 
@@ -785,17 +694,15 @@ async function main(): Promise<void> {
   camera.orthoBottom = -5 / initZoom
   camera.orthoLeft = -5.5 / initZoom
   camera.orthoRight = 5.5 / initZoom
-  debugLog('Ortho params', `zoom=${initZoom} left=${camera.orthoLeft?.toFixed(2)} right=${camera.orthoRight?.toFixed(2)} top=${camera.orthoTop?.toFixed(2)} bottom=${camera.orthoBottom?.toFixed(2)}`)
-  debugLog('Camera final', `position=(${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}) minZ=${camera.minZ} maxZ=${camera.maxZ}`)
 
   refreshTextures()
 
-  // ---- FPS 监控 ----
+  // ---- FPS 监控 + 渲染循环 ----
   let fpsFrames = 0
   let fpsAccum = 0
   let fpsDisplay = 0
   let lastFpsUpdate = performance.now()
-  let renderLoopLogged = false
+  let firstFrame = true
 
   scene.onBeforeRenderObservable.add(() => {
     const now = performance.now()
@@ -803,17 +710,15 @@ async function main(): Promise<void> {
     fpsAccum += now - lastFpsUpdate
     lastFpsUpdate = now
 
-    // 每 500ms 更新一次 FPS 显示
     if (fpsAccum >= 500) {
       fpsDisplay = Math.round((fpsFrames / fpsAccum) * 1000)
       fpsFrames = 0
       fpsAccum = 0
     }
 
-    // 首次渲染时记录诊断信息
-    if (!renderLoopLogged) {
-      renderLoopLogged = true
-      debugLog('RENDER LOOP ACTIVE', `fps=${fpsDisplay} sceneMeshes=${scene.meshes.length} activeCamera=${scene.activeCamera?.name || 'none'}`)
+    if (firstFrame) {
+      firstFrame = false
+      console.log(`[render-loop] first frame: fps=${fpsDisplay} meshes=${scene.meshes.length} camera=${scene.activeCamera?.name || 'none'}`)
     }
 
     infoFps.textContent = String(fpsDisplay)
@@ -823,26 +728,20 @@ async function main(): Promise<void> {
     infoTime.textContent = new Date().toISOString()
   })
 
-  // ---- 渲染循环 ----
   engine.runRenderLoop(() => {
     scene.render()
   })
-  debugLog('engine.runRenderLoop registered')
 
   // ---- Canvas 自适应 ----
   const resizeObserver = new ResizeObserver(() => {
     engine.resize()
-    debugLog('resize', `${canvas.clientWidth}x${canvas.clientHeight}`)
   })
   resizeObserver.observe(canvas)
-
-  debugLog('main() complete', 'waiting for first frame...')
 }
 
 main().catch((err: unknown) => {
-  debugError('main() FATAL', err)
+  console.error('[fatal] main() failed:', err)
   const errorEl = document.getElementById('gpu-error')!
   errorEl.style.display = 'flex'
   errorEl.textContent = `初始化失败: ${err instanceof Error ? err.message : String(err)}`
-  console.error(err)
 })
