@@ -19,6 +19,7 @@ import { MeshBuilder } from '@babylonjs/core'
 import { Mesh } from '@babylonjs/core'
 import { StandardMaterial } from '@babylonjs/core'
 import { DynamicTexture } from '@babylonjs/core'
+import { Tags } from '@babylonjs/core'
 
 // ---------------------------------------------------------------------------
 // 常量
@@ -137,13 +138,24 @@ function createAxes(scene: Scene): void {
   const len = GRID_SIZE * GRID_SPACING * 0.6
   const y0 = -GRID_SIZE * GRID_SPACING * 0.4
 
-  MeshBuilder.CreateLines('axisX', { points: [new Vector3(0, y0, 0), new Vector3(len, y0, 0)] }, scene).color = new Color3(1, 0, 0)
-  MeshBuilder.CreateLines('axisY', { points: [new Vector3(0, y0, 0), new Vector3(0, y0 + len, 0)] }, scene).color = new Color3(0, 1, 0)
-  MeshBuilder.CreateLines('axisZ', { points: [new Vector3(0, y0, 0), new Vector3(0, y0, len)] }, scene).color = new Color3(0, 0, 1)
+  const axisX = MeshBuilder.CreateLines('axisX', { points: [new Vector3(0, y0, 0), new Vector3(len, y0, 0)] }, scene)
+  axisX.color = new Color3(1, 0, 0)
+  Tags.AddTagsTo(axisX, 'axisLine')
 
-  createLabelPlane('labelX', 'X (Red)', 2, new Vector3(len + 1.2, y0, 0), scene)
-  createLabelPlane('labelY', 'Y (Green)', 2, new Vector3(0, y0 + len + 1.2, 0), scene)
-  createLabelPlane('labelZ', 'Z (Blue)', 2, new Vector3(0, y0, len + 1.2), scene)
+  const axisY = MeshBuilder.CreateLines('axisY', { points: [new Vector3(0, y0, 0), new Vector3(0, y0 + len, 0)] }, scene)
+  axisY.color = new Color3(0, 1, 0)
+  Tags.AddTagsTo(axisY, 'axisLine')
+
+  const axisZ = MeshBuilder.CreateLines('axisZ', { points: [new Vector3(0, y0, 0), new Vector3(0, y0, len)] }, scene)
+  axisZ.color = new Color3(0, 0, 1)
+  Tags.AddTagsTo(axisZ, 'axisLine')
+
+  const labelX = createLabelPlane('labelX', 'X (Red)', 2, new Vector3(len + 1.2, y0, 0), scene)
+  Tags.AddTagsTo(labelX, 'axisLabel')
+  const labelY = createLabelPlane('labelY', 'Y (Green)', 2, new Vector3(0, y0 + len + 1.2, 0), scene)
+  Tags.AddTagsTo(labelY, 'axisLabel')
+  const labelZ = createLabelPlane('labelZ', 'Z (Blue)', 2, new Vector3(0, y0, len + 1.2), scene)
+  Tags.AddTagsTo(labelZ, 'axisLabel')
 }
 
 // ---------------------------------------------------------------------------
@@ -265,6 +277,21 @@ async function main(): Promise<void> {
     }
   }
 
+  // ---- 精灵网格标签（标注 5x5 网格 = 25 个精灵） ----
+  const gridLabelTex = createLabelTexture('gridLabelTex', 'SPRITES (5×5) — BILLBOARDMODE_Y', scene)
+  const gridLabelMat = new StandardMaterial('gridLabelMat', scene)
+  gridLabelMat.diffuseTexture = gridLabelTex
+  gridLabelMat.emissiveTexture = gridLabelTex
+  gridLabelMat.emissiveColor = new Color3(1, 1, 1)
+  gridLabelMat.specularColor.set(0, 0, 0)
+  gridLabelMat.backFaceCulling = false
+  gridLabelMat.disableLighting = true
+  const gridLabel = MeshBuilder.CreatePlane('gridLabel', { width: 7, height: 0.7 }, scene)
+  gridLabel.position = new Vector3(0, half + 1.6, 0)
+  gridLabel.material = gridLabelMat
+  gridLabel.billboardMode = Mesh.BILLBOARDMODE_ALL
+  Tags.AddTagsTo(gridLabel, 'gridLabel')
+
   // ---- 地面参照平面（无 billboard，用于对比） ----
   const refTex = createArrowTexture('refArrow', new Color3(0.9, 0.2, 0.2), scene)
   const refMat = new StandardMaterial('refMat', scene)
@@ -346,27 +373,8 @@ async function main(): Promise<void> {
 
   showAxesCb.addEventListener('change', () => {
     const visible = showAxesCb.checked
-    scene.getMeshesByTags('axisX').forEach(m => m.isVisible = visible)
-    scene.getMeshesByTags('axisY').forEach(m => m.isVisible = visible)
-    scene.getMeshesByTags('axisZ').forEach(m => m.isVisible = visible)
-    // Also toggle axes via name pattern
-    scene.meshes.forEach(m => {
-      if (m.name.startsWith('axis') || m.name.startsWith('label_')) {
-        if (m.name.includes('X') || m.name.includes('Y') || m.name.includes('Z') || m.name.startsWith('label_')) {
-          // We need a better way to target axes and labels - use tags
-        }
-      }
-    })
-  })
-
-  // Tag axes for easy toggling
-  scene.meshes.forEach(m => {
-    if (['axisX', 'axisY', 'axisZ'].includes(m.name)) {
-      (m as any).metadata = { ...(m as any).metadata, isAxis: true }
-    }
-    if (m.name === 'refLabel') {
-      (m as any).metadata = { ...(m as any).metadata, isRefLabel: true }
-    }
+    scene.getMeshesByTags('axisLine').forEach(m => m.isVisible = visible)
+    scene.getMeshesByTags('axisLabel').forEach(m => m.isVisible = visible)
   })
 
   showGridCb.addEventListener('change', () => {
