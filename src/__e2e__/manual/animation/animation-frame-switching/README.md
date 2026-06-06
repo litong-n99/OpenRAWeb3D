@@ -152,9 +152,9 @@
 
 ## 结果判定
 
-- [ ] 期望 1 通过（PlayRepeating 循环流畅）
-- [ ] 期望 2 通过（PlayThen 单次停止）
-- [ ] 期望 3 通过（PlayBackwardsThen 反向）
+- [x] 期望 1 通过（PlayRepeating 循环流畅）
+- [x] 期望 2 通过（PlayThen 单次停止 - Play 按钮已修复：动画结束后点击 Play 从帧 0 重新开始）
+- [x] 期望 3 通过（PlayBackwardsThen 反向 - Play 按钮已修复：动画结束后点击 Play 从末帧重新开始）
 - [ ] 期望 4 通过（帧间隔可调）
 - [ ] 期望 5 通过（FPS ≥ 55）
 

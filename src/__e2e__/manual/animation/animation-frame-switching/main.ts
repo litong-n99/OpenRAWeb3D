@@ -346,6 +346,20 @@ async function main(): Promise<void> {
   })
 
   btnPlay.addEventListener('click', () => {
+    // Reset frame position if animation had reached its natural end:
+    //   - PlayThen stops at frameCount-1; reset to 0 to replay from start
+    //   - PlayBackwardsThen stops at 0; reset to frameCount-1 to replay backwards
+    if (playMode === 'then' && currentFrame >= frameCount - 1) {
+      currentFrame = 0
+      timeUntilNextFrame = tickInterval
+      totalTicks = 0
+      setAnimTexture(currentFrame)
+    } else if (playMode === 'backwards' && currentFrame <= 0) {
+      currentFrame = frameCount - 1
+      timeUntilNextFrame = tickInterval
+      totalTicks = 0
+      setAnimTexture(currentFrame)
+    }
     isPlaying = true
     btnPlay.classList.add('active')
     btnPause.classList.remove('active')
