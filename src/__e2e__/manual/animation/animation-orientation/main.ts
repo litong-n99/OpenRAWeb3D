@@ -79,7 +79,7 @@ function createFacingTexture(
 }
 
 // ---------------------------------------------------------------------------
-// WAngle → 角度转换（OpenRA 定义：0=北，顺时针）
+// WAngle → 角度转换（OpenRA 定义：0=北，逆时针）
 // ---------------------------------------------------------------------------
 
 function wangleToDegrees(wangle: number): number {
@@ -89,13 +89,13 @@ function wangleToDegrees(wangle: number): number {
 function wangleToDirectionLabel(wangle: number): string {
   const deg = wangleToDegrees(wangle)
   if (deg < 22.5 || deg >= 337.5) return '北 N'
-  if (deg >= 22.5 && deg < 67.5) return '东北 NE'
-  if (deg >= 67.5 && deg < 112.5) return '东 E'
-  if (deg >= 112.5 && deg < 157.5) return '东南 SE'
+  if (deg >= 22.5 && deg < 67.5) return '西北 NW'
+  if (deg >= 67.5 && deg < 112.5) return '西 W'
+  if (deg >= 112.5 && deg < 157.5) return '西南 SW'
   if (deg >= 157.5 && deg < 202.5) return '南 S'
-  if (deg >= 202.5 && deg < 247.5) return '西南 SW'
-  if (deg >= 247.5 && deg < 292.5) return '西 W'
-  return '西北 NW'
+  if (deg >= 202.5 && deg < 247.5) return '东南 SE'
+  if (deg >= 247.5 && deg < 292.5) return '东 E'
+  return '东北 NE'
 }
 
 // ---------------------------------------------------------------------------
@@ -167,15 +167,16 @@ async function main(): Promise<void> {
   light.intensity = 0.9
 
   // ---- 创建朝向纹理（8 个方向） ----
+  // 逆时针 (OpenRA WAngle convention): 0=N, 256=W, 512=S, 768=E
   const facingInfos = [
     { wStart: 0, wEnd: 63, label: 'N', deg: 0, posX: 0, posY: 2 },
-    { wStart: 64, wEnd: 191, label: 'NE', deg: 45, posX: 2, posY: 1.2 },
-    { wStart: 192, wEnd: 319, label: 'E', deg: 90, posX: 2.8, posY: 0 },
-    { wStart: 320, wEnd: 447, label: 'SE', deg: 135, posX: 2, posY: -1.2 },
+    { wStart: 64, wEnd: 191, label: 'NW', deg: 315, posX: -2, posY: 1.2 },
+    { wStart: 192, wEnd: 319, label: 'W', deg: 270, posX: -2.8, posY: 0 },
+    { wStart: 320, wEnd: 447, label: 'SW', deg: 225, posX: -2, posY: -1.2 },
     { wStart: 448, wEnd: 575, label: 'S', deg: 180, posX: 0, posY: -2 },
-    { wStart: 576, wEnd: 703, label: 'SW', deg: 225, posX: -2, posY: -1.2 },
-    { wStart: 704, wEnd: 831, label: 'W', deg: 270, posX: -2.8, posY: 0 },
-    { wStart: 832, wEnd: 1023, label: 'NW', deg: 315, posX: -2, posY: 1.2 },
+    { wStart: 576, wEnd: 703, label: 'SE', deg: 135, posX: 2, posY: -1.2 },
+    { wStart: 704, wEnd: 831, label: 'E', deg: 90, posX: 2.8, posY: 0 },
+    { wStart: 832, wEnd: 1023, label: 'NE', deg: 45, posX: 2, posY: 1.2 },
   ]
 
   const facingPlanes: { plane: Mesh; wStart: number; wEnd: number; label: string }[] = []
@@ -209,7 +210,7 @@ async function main(): Promise<void> {
 
     mainCtx.save()
     mainCtx.translate(half, half)
-    mainCtx.rotate((deg * Math.PI) / 180) // 箭头本地尖端朝上，0° WAngle (北) 无需旋转
+    mainCtx.rotate((-deg * Math.PI) / 180) // 逆时针：0° WAngle (北) → 尖端朝上
 
     // 大箭头
     mainCtx.fillStyle = '#e94560'
@@ -340,7 +341,7 @@ async function main(): Promise<void> {
 
     // 方向箭头
     const deg = wangleToDegrees(wangle)
-    const rad = ((deg - 90) * Math.PI) / 180
+    const rad = ((-deg - 90) * Math.PI) / 180
     const ex = cx + Math.cos(rad) * r * 0.8
     const ey = cy + Math.sin(rad) * r * 0.8
 
@@ -407,9 +408,9 @@ async function main(): Promise<void> {
 
   for (const [id, wangle] of [
     ['btn-north', 0],
-    ['btn-east', 256],
+    ['btn-east', 768],
     ['btn-south', 512],
-    ['btn-west', 768],
+    ['btn-west', 256],
   ] as const) {
     document.getElementById(id)!.addEventListener('click', () => {
       angleSlider.value = String(wangle)
