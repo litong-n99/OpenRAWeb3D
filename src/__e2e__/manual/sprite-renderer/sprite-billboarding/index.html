@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpriteRenderer - Billboard 模式验证 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 300px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .control-group input[type="range"] { width: 100%; accent-color: #e94560; }
+    .control-group .range-value { font-size: 11px; color: #888; float: right; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 13px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 4px; }
+    .control-group button:hover { background: #e94560; color: #fff; }
+    .control-group button.active { background: #e94560; color: #fff; }
+    .control-group select { width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 渲染系统 - SpriteRenderer Billboard 模式验证</h1>
+    <div class="subtitle">ID: sprite-renderer/sprite-billboarding | 期望结果见 README.md | OpenRA 对照: SpriteRenderer.cs (BILLBOARDMODE_Y)</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C. 摄像机控制</h3>
+        <label>水平旋转 (Alpha): <span class="range-value" id="alpha-val">-90°</span></label>
+        <input type="range" id="alpha-slider" min="-180" max="0" value="-90" step="1">
+        <label>俯仰角 (Beta): <span class="range-value" id="beta-val">90°</span></label>
+        <input type="range" id="beta-slider" min="30" max="150" value="90" step="1">
+        <label>距离: <span class="range-value" id="radius-val">12.0</span></label>
+        <input type="range" id="radius-slider" min="4" max="30" value="12" step="0.5">
+        <button id="reset-cam">重置摄像机 (RTS 默认视角)</button>
+      </div>
+      <div class="control-group">
+        <h3>Billboard 模式</h3>
+        <label for="billboard-mode">Billboard 模式</label>
+        <select id="billboard-mode">
+          <option value="Y" selected>BILLBOARDMODE_Y (RTS 推荐)</option>
+          <option value="ALL">BILLBOARDMODE_ALL</option>
+          <option value="NONE">无 (标准几何体)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <h3>观察辅助</h3>
+        <label>
+          <input type="checkbox" id="show-axes" checked> 显示坐标轴参考
+        </label>
+        <label>
+          <input type="checkbox" id="show-grid" checked> 显示地面网格
+        </label>
+        <label>
+          <input type="checkbox" id="show-labels" checked> 显示精灵标签
+        </label>
+        <label>
+          <input type="checkbox" id="auto-rotate"> 自动旋转摄像机
+        </label>
+      </div>
+      <div class="control-group">
+        <h3>当前状态</h3>
+        <div class="info-row"><span>活跃精灵数</span><span class="val" id="state-sprites">-</span></div>
+        <div class="info-row"><span>摄像机 Alpha</span><span class="val" id="state-alpha">-</span></div>
+        <div class="info-row"><span>摄像机 Beta</span><span class="val" id="state-beta">-</span></div>
+        <div class="info-row"><span>精灵朝向 (Z rot)</span><span class="val" id="state-rot">-</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

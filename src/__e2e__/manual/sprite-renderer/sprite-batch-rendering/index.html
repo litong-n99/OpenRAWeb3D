@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpriteRenderer - ThinInstances 批量渲染性能 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 320px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .control-group input[type="range"] { width: 100%; accent-color: #e94560; }
+    .control-group .range-value { font-size: 11px; color: #888; float: right; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 13px; cursor: pointer; font-weight: 600; transition: all 0.15s; margin-top: 4px; }
+    .control-group button:hover { background: #e94560; color: #fff; }
+    .control-group button.danger { border-color: #f44; color: #f44; }
+    .control-group button.danger:hover { background: #f44; color: #fff; }
+    .preset-buttons { display: flex; gap: 6px; }
+    .preset-buttons button { flex: 1; font-size: 12px; }
+    .perf-meter { display: flex; gap: 8px; align-items: stretch; }
+    .perf-card { flex: 1; background: #0d1117; border-radius: 6px; border: 1px solid #0f3460; padding: 10px; text-align: center; }
+    .perf-card .perf-value { font-size: 28px; font-weight: 700; font-family: 'Consolas', 'Fira Code', monospace; }
+    .perf-card .perf-value.good { color: #2ecc71; }
+    .perf-card .perf-value.warn { color: #f39c12; }
+    .perf-card .perf-value.bad { color: #e74c3c; }
+    .perf-card .perf-label { font-size: 10px; color: #666; text-transform: uppercase; margin-top: 2px; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    #fps-chart { width: 100%; height: 80px; background: #0d1117; border-radius: 4px; border: 1px solid #0f3460; overflow: hidden; position: relative; }
+    #fps-chart canvas { width: 100%; height: 100%; display: block; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 渲染系统 - SpriteRenderer ThinInstances 批量渲染性能验证</h1>
+    <div class="subtitle">ID: sprite-renderer/sprite-batch-rendering | 期望结果见 README.md | OpenRA 对照: ThinInstancesGroup.setInstances()</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+      <div id="perf-overlay" style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.8);padding:8px 14px;border-radius:6px;font-family:'Consolas',monospace;font-size:14px;color:#2ecc71;pointer-events:none;">
+        FPS: <span id="overlay-fps">-</span> | 精灵数: <span id="overlay-count">-</span>
+      </div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C. 精灵数量</h3>
+        <div class="preset-buttons">
+          <button id="preset-100">100</button>
+          <button id="preset-500">500</button>
+          <button id="preset-1000">1,000</button>
+          <button id="preset-5000">5,000</button>
+        </div>
+        <label style="margin-top:8px;">自定义数量: <span class="range-value" id="count-val">500</span></label>
+        <input type="range" id="count-slider" min="50" max="5000" step="50" value="500">
+        <button id="apply-count">应用</button>
+      </div>
+      <div class="control-group">
+        <h3>性能数据</h3>
+        <div class="perf-meter">
+          <div class="perf-card">
+            <div class="perf-value good" id="perf-fps">-</div>
+            <div class="perf-label">FPS</div>
+          </div>
+          <div class="perf-card">
+            <div class="perf-value good" id="perf-frame-time">-</div>
+            <div class="perf-label">帧时间</div>
+          </div>
+          <div class="perf-card">
+            <div class="perf-value good" id="perf-draw-calls">-</div>
+            <div class="perf-label">Draw Calls</div>
+          </div>
+        </div>
+      </div>
+      <div class="control-group">
+        <h3>FPS 实时图表</h3>
+        <div id="fps-chart"><canvas id="fps-canvas"></canvas></div>
+        <div class="info-row" style="margin-top:4px;">
+          <span>最高</span><span class="val" id="chart-max">-</span>
+          <span>平均</span><span class="val" id="chart-avg">-</span>
+          <span>最低</span><span class="val" id="chart-min">-</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <h3>渲染选项</h3>
+        <label>
+          <input type="checkbox" id="enable-animation" checked> 精灵动画（旋转+颜色变化）
+        </label>
+        <label>
+          <input type="checkbox" id="show-bounds"> 显示精灵边界框
+        </label>
+        <label>
+          <input type="checkbox" id="stress-mode"> 压力模式（每帧重新创建精灵）
+        </label>
+        <button class="danger" id="reset-scene">重置场景</button>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
