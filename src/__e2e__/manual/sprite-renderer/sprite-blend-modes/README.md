@@ -194,4 +194,3 @@
 | **ACCEPTED** | 全部通过 |
 | **REJECTED** | 任一期望未通过（尤其是 Additive/Subtractive/Multiply 区分度） |
 
-测试人：__________  日期：__________  签字：__________
