@@ -39,7 +39,7 @@ function createFacingTexture(
   // 旋转上下文使箭头指向对应方向
   ctx.save()
   ctx.translate(half, half)
-  ctx.rotate((rotationDeg * Math.PI) / 180)
+  ctx.rotate(((rotationDeg - 90) * Math.PI) / 180)
 
   // 箭头身体（指向右侧 = 0° = 东）
   ctx.fillStyle = '#e94560'
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
 
     mainCtx.save()
     mainCtx.translate(half, half)
-    mainCtx.rotate(((deg - 90) * Math.PI) / 180) // 调整：0° WAngle (北) = 向上
+    mainCtx.rotate((deg * Math.PI) / 180) // 箭头本地尖端朝上，0° WAngle (北) 无需旋转
 
     // 大箭头
     mainCtx.fillStyle = '#e94560'
