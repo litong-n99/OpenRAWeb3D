@@ -320,6 +320,8 @@ async function main(): Promise<void> {
   refLabel.position = new Vector3(-half - 2.5, -half - 1.5, 0)
   refLabel.material = refLabelMat
   refLabel.billboardMode = Mesh.BILLBOARDMODE_ALL // 标签始终面向相机
+  Tags.AddTagsTo(refLabel, 'spriteLabel')
+  Tags.AddTagsTo(gridLabel, 'spriteLabel')
 
   // ---- UI 绑定 ----
   const alphaSlider = document.getElementById('alpha-slider') as HTMLInputElement
@@ -331,6 +333,7 @@ async function main(): Promise<void> {
   const billboardModeSel = document.getElementById('billboard-mode') as HTMLSelectElement
   const showAxesCb = document.getElementById('show-axes') as HTMLInputElement
   const showGridCb = document.getElementById('show-grid') as HTMLInputElement
+  const showLabelsCb = document.getElementById('show-labels') as HTMLInputElement
   const resetCamBtn = document.getElementById('reset-cam') as HTMLButtonElement
   const autoRotateCb = document.getElementById('auto-rotate') as HTMLInputElement
   const stateSprites = document.getElementById('state-sprites')!
@@ -384,6 +387,11 @@ async function main(): Promise<void> {
         m.isVisible = visible
       }
     })
+  })
+
+  showLabelsCb.addEventListener('change', () => {
+    const visible = showLabelsCb.checked
+    scene.getMeshesByTags('spriteLabel').forEach(m => m.isVisible = visible)
   })
 
   resetCamBtn.addEventListener('click', () => {
