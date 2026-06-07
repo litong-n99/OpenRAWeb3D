@@ -311,14 +311,22 @@ async function main(): Promise<void> {
 
     if (show('polygon')) {
       // 区域 6: 五角星 (左下)
-      const starPts: Vec2[] = []
+      // 五角星是凹多边形，扇三角剖分会跨越外部区域。
+      // 改用中心点三角剖分：每个三角形 = 中心 + 相邻两顶点，共 10 个三角形精确覆盖。
+      const starVertices: Vec2[] = []
       const starCx = -5.5, starCy = -3, outerR = 1.2, innerR = 0.5
       for (let i = 0; i < 10; i++) {
         const r = i % 2 === 0 ? outerR : innerR
-        const angle = (i * Math.PI) / 5 - Math.PI / 2
-        starPts.push({ x: starCx + Math.cos(angle) * r, y: starCy + Math.sin(angle) * r })
+        const angle = (i * Math.PI) / 5 + Math.PI / 2
+        starVertices.push({ x: starCx + Math.cos(angle) * r, y: starCy + Math.sin(angle) * r })
       }
-      builder.fillPolygon(starPts, { ...lineC, a: 0.8 })
+      const center: Vec3 = { x: starCx, y: starCy, z: 0 }
+      for (let i = 0; i < 10; i++) {
+        const j = (i + 1) % 10
+        const a: Vec3 = { x: starVertices[i].x, y: starVertices[i].y, z: 0 }
+        const b: Vec3 = { x: starVertices[j].x, y: starVertices[j].y, z: 0 }
+        builder.addQuad(center, a, b, b, { ...lineC, a: 0.8 })
+      }
     }
 
     const mesh = builder.buildMesh(scene)
