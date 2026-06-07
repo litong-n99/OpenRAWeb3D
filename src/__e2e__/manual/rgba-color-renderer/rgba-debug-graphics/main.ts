@@ -142,25 +142,14 @@ class DebugGraphicsBuilder {
    */
   fillPolygon(points: Vec2[], color: Rgba, z = 0): void {
     if (points.length < 3) return
-    // 简单凸多边形三角剖分（扇形）
+    // 凸多边形扇形三角剖分 (fan triangulation)
+    // 使用退化 quad (a,b,c,c) 模拟三角形，避免引入独立的三角形方法
     const base = points[0]
     for (let i = 1; i < points.length - 1; i++) {
       const a: Vec3 = { x: base.x, y: base.y, z }
       const b: Vec3 = { x: points[i].x, y: points[i].y, z }
       const c: Vec3 = { x: points[i + 1].x, y: points[i + 1].y, z }
-      this.addQuad(a, b, c, c, color) // 使用 quad 退化模拟三角形
-    }
-
-    // 重新实现多边形填充为线段扫描
-    // 简化：对凸多边形使用扇形分解
-    this.vertices.length = 0
-    this.indices.length = 0
-    this.vertexBase = 0
-    for (let i = 1; i < points.length - 1; i++) {
-      const a: Vec3 = { x: base.x, y: base.y, z }
-      const bV: Vec3 = { x: points[i].x, y: points[i].y, z }
-      const cV: Vec3 = { x: points[i + 1].x, y: points[i + 1].y, z }
-      this.addQuad(a, bV, cV, cV, color)
+      this.addQuad(a, b, c, c, color)
     }
   }
 
@@ -246,7 +235,10 @@ async function main(): Promise<void> {
   const scene = new Scene(engine)
   scene.clearColor = new Color4(0.08, 0.09, 0.12, 1)
 
-  const camera = new ArcRotateCamera('cam', -Math.PI / 2, Math.PI / 2, 10, new Vector3(0, 0, 0), scene)
+  // alpha=0, beta=PI/2: camera at (0,0,10) looking along -Z at the XY plane.
+  // Local frame: up=+Y (screen up), right=+X (screen right).
+  // orthoLeft/Right map to world X, orthoTop/Bottom map to world Y.
+  const camera = new ArcRotateCamera('cam', 0, Math.PI / 2, 10, new Vector3(0, 0, 0), scene)
   camera.mode = 1
   camera.orthoTop = 5
   camera.orthoBottom = -5
