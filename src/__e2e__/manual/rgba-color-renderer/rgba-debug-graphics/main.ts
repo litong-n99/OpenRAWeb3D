@@ -109,6 +109,12 @@ class DebugGraphicsBuilder {
     this.drawLine(x2, y1, x2, y2, width, color, z) // right
     this.drawLine(x2, y2, x1, y2, width, color, z) // bottom
     this.drawLine(x1, y2, x1, y1, width, color, z) // left
+    // 填充四角缺口：每个缺口 = (线宽/2)² 的正方形
+    const hw = width * 0.5
+    this.fillRect(x2, y1, x2 + hw, y1 + hw, color, z)       // 右上外角
+    this.fillRect(x1 - hw, y1, x1, y1 + hw, color, z)       // 左上外角
+    this.fillRect(x2, y2 - hw, x2 + hw, y2, color, z)       // 右下外角
+    this.fillRect(x1 - hw, y2 - hw, x1, y2, color, z)       // 左下外角
   }
 
   /**
