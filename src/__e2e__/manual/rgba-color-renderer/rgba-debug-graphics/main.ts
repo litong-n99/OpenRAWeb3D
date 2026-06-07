@@ -254,61 +254,84 @@ async function main(): Promise<void> {
   light.intensity = 0.9
 
   // ---- 构建 Debug 图形 ----
-  function buildAllShapes(lineColorHex: string, fillColorHex: string, lineWidth: number): Mesh {
+  type ShapeFilter = 'all' | 'lines' | 'rect' | 'fillrect' | 'ellipse' | 'polygon'
+
+  interface BuildResult {
+    mesh: Mesh
+    quadCount: number
+  }
+
+  function buildShapes(lineColorHex: string, fillColorHex: string, lineWidth: number, filter: ShapeFilter): BuildResult {
     const builder = new DebugGraphicsBuilder()
     const lineC = hexToColor(lineColorHex)
     const fillC = hexToColor(fillColorHex)
+    const show = (type: ShapeFilter) => filter === 'all' || filter === type
 
-    // 区域 1: 线条 (左上)
-    builder.drawLine(-6.5, 3, -4, 3, lineWidth, lineC)
-    builder.drawLine(-6.5, 2.5, -4, 4, lineWidth, lineC) // 对角线
-    builder.drawLine(-6.5, 2, -6.5, 4, lineWidth, { ...lineC, r: 1, g: 0.9, b: 0.2 }) // 竖线 (黄色)
-    builder.drawLine(-6.5, 1.5, -4, 1.5, lineWidth, { ...lineC, r: 0.2, g: 0.9, b: 1 }) // 横线 (青色)
-
-    // 区域 2: 矩形边框 (中上)
-    builder.drawRect(-3.2, 3.2, -1, 1.8, lineWidth, lineC)
-
-    // 区域 3: 填充矩形 (右上)
-    builder.fillRect(-0.3, 3.2, 1.8, 1.8, fillC)
-    builder.drawRect(-0.3, 3.2, 1.8, 1.8, 0.5, { ...lineC, a: 0.5 })
-
-    // 区域 4: 椭圆 (中)
-    builder.fillEllipse(-5, -0.5, 1.2, 1.8, fillC)
-    builder.fillEllipse(-2.5, -0.5, 0.6, 1.5, { ...lineC, a: 0.7 })
-
-    // 区域 5: 嵌套矩形 (右下)
-    builder.fillRect(0, 0.5, 3, -2, { ...fillC, a: 0.5 })
-    builder.drawRect(0, 0.5, 3, -2, 1.5, lineC)
-
-    // 区域 6: 五角星 (左下)
-    const starPts: Vec2[] = []
-    const starCx = -5.5, starCy = -3, outerR = 1.2, innerR = 0.5
-    for (let i = 0; i < 10; i++) {
-      const r = i % 2 === 0 ? outerR : innerR
-      const angle = (i * Math.PI) / 5 - Math.PI / 2
-      starPts.push({ x: starCx + Math.cos(angle) * r, y: starCy + Math.sin(angle) * r })
+    if (show('lines')) {
+      // 区域 1: 线条 (左上)
+      builder.drawLine(-6.5, 3, -4, 3, lineWidth, lineC)
+      builder.drawLine(-6.5, 2.5, -4, 4, lineWidth, lineC) // 对角线
+      builder.drawLine(-6.5, 2, -6.5, 4, lineWidth, { ...lineC, r: 1, g: 0.9, b: 0.2 }) // 竖线 (黄色)
+      builder.drawLine(-6.5, 1.5, -4, 1.5, lineWidth, { ...lineC, r: 0.2, g: 0.9, b: 1 }) // 横线 (青色)
     }
-    builder.fillPolygon(starPts, { ...lineC, a: 0.8 })
 
-    return builder.buildMesh(scene)
+    if (show('rect')) {
+      // 区域 2: 矩形边框 (中上)
+      builder.drawRect(-3.2, 3.2, -1, 1.8, lineWidth, lineC)
+    }
+
+    if (show('fillrect')) {
+      // 区域 3: 填充矩形 (右上)
+      builder.fillRect(-0.3, 3.2, 1.8, 1.8, fillC)
+      builder.drawRect(-0.3, 3.2, 1.8, 1.8, 0.5, { ...lineC, a: 0.5 })
+      // 区域 5: 嵌套矩形 (右下)
+      builder.fillRect(0, 0.5, 3, -2, { ...fillC, a: 0.5 })
+      builder.drawRect(0, 0.5, 3, -2, 1.5, lineC)
+    }
+
+    if (show('ellipse')) {
+      // 区域 4: 椭圆 (中)
+      builder.fillEllipse(-5, -0.5, 1.2, 1.8, fillC)
+      builder.fillEllipse(-2.5, -0.5, 0.6, 1.5, { ...lineC, a: 0.7 })
+    }
+
+    if (show('polygon')) {
+      // 区域 6: 五角星 (左下)
+      const starPts: Vec2[] = []
+      const starCx = -5.5, starCy = -3, outerR = 1.2, innerR = 0.5
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? outerR : innerR
+        const angle = (i * Math.PI) / 5 - Math.PI / 2
+        starPts.push({ x: starCx + Math.cos(angle) * r, y: starCy + Math.sin(angle) * r })
+      }
+      builder.fillPolygon(starPts, { ...lineC, a: 0.8 })
+    }
+
+    const mesh = builder.buildMesh(scene)
+    return { mesh, quadCount: builder.quadCount }
   }
 
-  let debugMesh = buildAllShapes('#e94560', '#2ecc71', 2)
-  debugMesh.renderingGroupId = 3
+  let currentResult = buildShapes('#e94560', '#2ecc71', 2, 'all')
+  currentResult.mesh.renderingGroupId = 3
+  document.getElementById('state-quads')!.textContent = String(currentResult.quadCount)
 
   // ---- UI 绑定 ----
   const widthSlider = document.getElementById('width-slider') as HTMLInputElement
   const widthVal = document.getElementById('width-val')!
   const lineColorInput = document.getElementById('line-color') as HTMLInputElement
   const fillColorInput = document.getElementById('fill-color') as HTMLInputElement
+  const shapeSelect = document.getElementById('shape-select') as HTMLSelectElement
 
   function rebuild(): void {
-    debugMesh.dispose()
+    currentResult.mesh.dispose()
     const lw = parseFloat(widthSlider.value)
-    debugMesh = buildAllShapes(lineColorInput.value, fillColorInput.value, lw)
-    debugMesh.renderingGroupId = 3
-    document.getElementById('state-quads')!.textContent = String(0) // updated after build
+    const filter = shapeSelect.value as ShapeFilter
+    currentResult = buildShapes(lineColorInput.value, fillColorInput.value, lw, filter)
+    currentResult.mesh.renderingGroupId = 3
+    document.getElementById('state-quads')!.textContent = String(currentResult.quadCount)
   }
+
+  shapeSelect.addEventListener('change', rebuild)
 
   widthSlider.addEventListener('input', () => {
     widthVal.textContent = widthSlider.value

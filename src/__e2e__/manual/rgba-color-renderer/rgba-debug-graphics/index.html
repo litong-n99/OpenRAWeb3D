@@ -24,6 +24,7 @@
     .control-group button:hover { background: #e94560; color: #fff; }
     .control-group button.active { background: #e94560; color: #fff; }
     .control-group select { width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    .color-hint { font-size: 10px; color: #666; margin: 6px 0 0 0; line-height: 1.6; }
     .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
     .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
     #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
@@ -59,6 +60,7 @@
         <h3>颜色控制</h3>
         <label>线条颜色: <input type="color" id="line-color" value="#e94560"></label>
         <label>填充颜色: <input type="color" id="fill-color" value="#2ecc71"></label>
+        <p class="color-hint">线条颜色用于：线段、矩形边框、五角星<br>填充颜色用于：填充矩形、椭圆</p>
         <button id="apply-colors">应用颜色</button>
       </div>
       <div class="control-group">
