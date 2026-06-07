@@ -235,10 +235,13 @@ async function main(): Promise<void> {
   const scene = new Scene(engine)
   scene.clearColor = new Color4(0.08, 0.09, 0.12, 1)
 
-  // alpha=0, beta=PI/2: camera at (0,0,10) looking along -Z at the XY plane.
-  // Local frame: up=+Y (screen up), right=+X (screen right).
-  // orthoLeft/Right map to world X, orthoTop/Bottom map to world Y.
-  const camera = new ArcRotateCamera('cam', 0, Math.PI / 2, 10, new Vector3(0, 0, 0), scene)
+  // alpha=-PI/2, beta=PI/2: camera at (0,0,-10) looking along +Z at the XY plane.
+  // ArcRotateCamera pos = (R*cos(alpha)*sin(beta), R*cos(beta), R*sin(alpha)*sin(beta))
+  //   = (10*0*1, 10*0, 10*(-1)*1) = (0,0,-10).
+  // View Z = normalize(target-pos) = (0,0,1). View X = cross(up,forward) = (1,0,0).
+  // So viewX = worldX, viewY = worldY. No flip.
+  // orthoLeft=-8..right=8 maps to worldX=-8..8, orthoBottom=-5..top=5 maps to worldY=-5..5.
+  const camera = new ArcRotateCamera('cam', -Math.PI / 2, Math.PI / 2, 10, new Vector3(0, 0, 0), scene)
   camera.mode = 1
   camera.orthoTop = 5
   camera.orthoBottom = -5
