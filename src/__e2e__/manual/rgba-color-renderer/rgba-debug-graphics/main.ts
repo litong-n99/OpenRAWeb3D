@@ -130,16 +130,23 @@ class DebugGraphicsBuilder {
 
   /**
    * 填充椭圆（扫描线法）
+   *
+   * 使用自适应步长的扫描线近似。步长取决于椭圆总高度 (2*ry)，
+   * 目标至少 20 条扫描线以确保视觉平滑，步长钳制在 [0.05, 0.5]。
+   * 每条扫描线用 fillRect 绘制以确保各扫描线之间无缝衔接。
    */
   fillEllipse(cx: number, cy: number, rx: number, ry: number, color: Rgba, z = 0): void {
-    const startY = Math.ceil(cy - ry)
-    const endY = Math.floor(cy + ry)
-    for (let y = startY; y <= endY; y++) {
+    const totalHeight = 2 * ry
+    // Target ~20 scanlines per ellipse; clamp to avoid vertex explosion or coarse stepping
+    const step = Math.max(0.05, Math.min(0.5, totalHeight / 20))
+    const startY = cy - ry
+    const endY = cy + ry
+    for (let y = startY; y < endY; y += step) {
       const dy = (y - cy) / (ry || 1e-9)
       const disc = 1 - dy * dy
       if (disc <= 0) continue
       const dx = rx * Math.sqrt(disc)
-      this.drawLine(cx - dx, y, cx + dx, y, 1, color, z)
+      this.fillRect(cx - dx, y, cx + dx, y + step, color, z)
     }
   }
 
