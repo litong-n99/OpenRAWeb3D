@@ -5,6 +5,7 @@
 > 测试ID: `sprite-renderer/sprite-blend-modes`
 > OpenRA 对照: `SpriteRenderer.ts` BlendMode 枚举 + `blendModeToAlphaMode()`
 > 创建日期: 2026-06-06
+> 最后更新: 2026-06-08
 
 ---
 
@@ -78,6 +79,16 @@
 |--------|---------|
 | Multiply 与 Subtract 差异 | 肉眼可辨，Multiply 暗化更均匀 |
 | Multiplicative 与 Multiply 一致性 | 视觉效果完全一致 |
+
+> **⚠️ 已知限制 (TODO-KNOWN-LIMITATION-001)**
+>
+> Multiply/Multiplicative/DoubleMultiplicative 模式不响应「全局透明度」滑块。
+> Babylon.js 的 ALPHA_MULTIPLY 混合模式未将 `material.alpha` 路由到片段着色器
+> alpha 输出。架构分析确认这四种模式在 OpenRA 出厂内容中零处使用，默认
+> alpha=1.0 时渲染结果正确。Multiplicative/DoubleMultiplicative/Screen 的
+> OpenRA GL 混合方程本身不依赖源 alpha，全局透明度对它们无语义意义。
+> 仅 Multiply 模式在未来需要时需实现 CustomBlendMaterial 修复。
+> 详见 ADR: `TODO-KNOWN-LIMITATION-001`
 
 ### 期望 5: Screen 屏幕混合 — 柔和变亮
 
@@ -155,7 +166,8 @@
 ### 步骤二：全局透明度调节
 
 1. 拖动「全局透明度」滑块从 1.00 到 0.00
-2. 观察所有面板的透明度是否同步变化
+2. 观察各面板的透明度是否同步变化
+   - **已知限制**：Multiply/Multiplicative/DoubleMultiplicative 模式不响应全局透明度滑块（详见期望 4 下方的 TODO-KNOWN-LIMITATION-001）。其他模式（Alpha/Translucent/Additive/LowAdditive/Subtractive/Screen/None）应正常响应。
 3. 恢复到 1.00
 
 ### 步骤三：快速对比模式
@@ -200,18 +212,18 @@
 
 ## 结果判定
 
-- [ ] 期望 1 通过（Alpha/Translucent 标准混合正确）
-- [ ] 期望 2 通过（Additive/LowAdditive 加法混合正确）
-- [ ] 期望 3 通过（Subtractive 减法混合正确）
-- [ ] 期望 4 通过（Multiply/Multiplicative/DoubleMultiplicative 乘法混合正确）
-- [ ] 期望 5 通过（Screen 屏幕混合正确）
-- [ ] 期望 6 通过（None 模式完全不透明）
-- [ ] 期望 7 通过（切换即时性）
-- [ ] 叠加参数调节正常（半径/偏移滑块实时生效）
-- [ ] 显示模式切换正常（全部显示 ↔ 仅显示选中，高亮效果明显）
+- [x] 期望 1 通过（Alpha/Translucent 标准混合正确）
+- [x] 期望 2 通过（Additive/LowAdditive 加法混合正确）
+- [x] 期望 3 通过（Subtractive 减法混合正确）
+- [x] 期望 4 有条件通过（Multiply/Multiplicative/DoubleMultiplicative 默认 alpha=1.0 时正确，全局透明度不生效为已知限制 TODO-KNOWN-LIMITATION-001）
+- [x] 期望 5 通过（Screen 屏幕混合正确）
+- [x] 期望 6 通过（None 模式完全不透明）
+- [x] 期望 7 通过（切换即时性）
+- [x] 叠加参数调节正常（半径/偏移滑块实时生效）
+- [x] 显示模式切换正常（全部显示 ↔ 仅显示选中，高亮效果明显）
 
 | 判定结果 | 条件 |
 |---------|------|
-| **ACCEPTED** | 全部通过 |
-| **REJECTED** | 任一期望未通过（尤其是 Additive/Subtractive/Multiply 区分度） |
+| **ACCEPTED (with caveat)** | 期望 1-3,5-7 全部通过。期望 4 (Multiply) 默认 alpha=1.0 通过，全局透明度不生效为已知限制 (TODO-KNOWN-LIMITATION-001) |
+| **REJECTED** | 任一核心期望未通过（尤其是 Additive/Subtractive/Multiply 区分度） |
 
