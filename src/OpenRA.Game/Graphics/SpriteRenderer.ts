@@ -11,13 +11,16 @@
  */
 
 import {
+  Color3,
   Engine,
   MeshBuilder,
   Mesh,
+  Quaternion,
   RawTexture,
   StandardMaterial,
   Texture,
   Matrix,
+  Vector3,
   type Scene,
 } from '@babylonjs/core'
 
@@ -726,79 +729,96 @@ class ThinInstancesGroup implements ISpriteRenderGroup {
   private currentBlend: BlendMode = BlendMode.Alpha
   private disposed = false
 
+  // 预分配缓冲区：复用 Float32Array 避免每帧 GC 分配
+  // 仅在精灵数增长时扩容，常态下零分配
+  private matrixBuffer: Float32Array = new Float32Array(0)
+  private colorBuffer: Float32Array = new Float32Array(0)
+
+  // 可复用的临时对象：ToRef 变体零分配
+  private readonly _scaleV = new Vector3()
+  private readonly _quat = new Quaternion()
+  private readonly _transV = new Vector3()
+  private readonly _worldMatrix = new Matrix()
+
   constructor(sheet: ISheet, scene: Scene) {
-    // 创建基础 Billboard Mesh
-    this.mesh = MeshBuilder.CreatePlane(
+    // 创建基础地面 Mesh（XZ 水平面，直接面向俯视正交摄像机）
+    // NOTE: 使用 CreateGround 替代 CreatePlane，因为 ThinInstances 不会
+    // 继承 billboardMode。XZ 平面直接面向顶视角摄像机(0,50,0)。
+    this.mesh = MeshBuilder.CreateGround(
       `spriteGroup_${sheet.size.width}x${sheet.size.height}`,
-      { size: 1 },
+      { width: 1, height: 1 },
       scene,
     )
-    this.mesh.billboardMode = Mesh.BILLBOARDMODE_Y
 
     // 创建材质
     this.material = new StandardMaterial(`spriteMat_${sheet.size.width}`, scene)
     this.material.diffuseTexture = sheet.texture
+    // NOTE: Babylon.js 9.x 在 disableLighting=true 时仅输出 emissive 通道，
+    // 必须同时设置 emissiveTexture + emissiveColor，否则所有精灵渲染为黑色。
+    this.material.emissiveTexture = sheet.texture
+    this.material.emissiveColor = new Color3(1, 1, 1)
     this.material.useAlphaFromDiffuseTexture = true
     this.material.backFaceCulling = false
     this.material.disableLighting = true
     this.material.alphaMode = Engine.ALPHA_COMBINE
 
     this.mesh.material = this.material
+
+    // NOTE: ThinInstances 基础 mesh 仅 1×1 单位，但精灵分布在大区域中。
+    // 设置 alwaysSelectAsActiveMesh 防止基础 mesh 原点离开视口时整批被裁剪。
+    this.mesh.alwaysSelectAsActiveMesh = true
   }
 
   setInstances(instances: SpriteInstance[]): void {
     if (this.disposed || instances.length === 0) return
 
-    // 构建矩阵缓冲区（每个实例一个 4x4 矩阵，16 个 float）
-    const matrices = new Float32Array(instances.length * 16)
-    const colors = new Float32Array(instances.length * 4)
+    // 按需扩容预分配缓冲区（常态下零分配）
+    const matrixNeeded = instances.length * 16
+    if (this.matrixBuffer.length < matrixNeeded) {
+      this.matrixBuffer = new Float32Array(matrixNeeded)
+    }
+    const colorNeeded = instances.length * 4
+    if (this.colorBuffer.length < colorNeeded) {
+      this.colorBuffer = new Float32Array(colorNeeded)
+    }
 
     for (let i = 0; i < instances.length; i++) {
       const inst = instances[i]
 
-      // 世界矩阵构建：正确顺序 T * R * S（先缩放，再旋转，最后平移）
-      // Babylon.js 使用列向量约定：A.multiply(B) = A * B
-      // 应用到顶点 v：T * R * S * v = 先 S 缩放，再 R 旋转，最后 T 平移
-      const scaleMatrix = Matrix.Scaling(
+      // 缩放（ToRef 变体：复用 _scaleV，零分配）
+      this._scaleV.set(
         inst.sprite.size.x * inst.scale.x,
         inst.sprite.size.y * inst.scale.y,
         inst.scale.z,
       )
 
-      const rotMatrix = Matrix.RotationZ(inst.rotation)
+      // 旋转：Y 轴旋转用于地面 XZ 平面上的精灵旋转
+      // NOTE: CreateGround 输出 XZ 平面，精灵旋转为绕 Y（上）轴
+      Quaternion.RotationYawPitchRollToRef(inst.rotation, 0, 0, this._quat)
 
-      // zRamp 应与 offset 一起被缩放（审核发现：zRamp 未乘 scale）
+      // 平移（含 zRamp —— OpenRA 地形高度渐变）
       const scaledZRamp = inst.sprite.zRamp * inst.scale.y
-
-      const translation = Matrix.Translation(
+      this._transV.set(
         inst.location.x + inst.sprite.offset.x * inst.scale.x,
         inst.location.y + inst.sprite.offset.y * inst.scale.y + scaledZRamp,
         inst.location.z + inst.sprite.offset.z * inst.scale.z,
       )
 
-      // T * R * S（正确的 SRT 顺序）
-      const world = translation
-        .multiply(rotMatrix)
-        .multiply(scaleMatrix)
-
-      // 复制到缓冲区
-      const m = world.m
-      const offset = i * 16
-      for (let j = 0; j < 16; j++) {
-        matrices[offset + j] = m[j]
-      }
+      // 组合世界矩阵：T * R * S（ToRef 变体，零分配）
+      Matrix.ComposeToRef(this._scaleV, this._quat, this._transV, this._worldMatrix)
+      this._worldMatrix.copyToArray(this.matrixBuffer, i * 16)
 
       // 实例颜色（色调 * 透明度）
       const cOff = i * 4
-      colors[cOff] = inst.tint.x * inst.alpha
-      colors[cOff + 1] = inst.tint.y * inst.alpha
-      colors[cOff + 2] = inst.tint.z * inst.alpha
-      colors[cOff + 3] = inst.alpha
+      this.colorBuffer[cOff] = inst.tint.x * inst.alpha
+      this.colorBuffer[cOff + 1] = inst.tint.y * inst.alpha
+      this.colorBuffer[cOff + 2] = inst.tint.z * inst.alpha
+      this.colorBuffer[cOff + 3] = inst.alpha
     }
 
-    // 批量设置 ThinInstances 数据
-    this.mesh.thinInstanceSetBuffer('matrix', matrices, 16)
-    this.mesh.thinInstanceSetBuffer('color', colors, 4)
+    // 批量设置 ThinInstances 数据（subarray 确保传递精确大小）
+    this.mesh.thinInstanceSetBuffer('matrix', this.matrixBuffer.subarray(0, matrixNeeded), 16)
+    this.mesh.thinInstanceSetBuffer('color', this.colorBuffer.subarray(0, colorNeeded), 4)
 
     // 刷新包围盒信息
     this.mesh.refreshBoundingInfo()

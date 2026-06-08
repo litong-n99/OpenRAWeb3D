@@ -12,7 +12,27 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // ---------------------------------------------------------------------------
 
 vi.mock('@babylonjs/core', () => {
+  const Color3 = vi.fn(function (this: any, r: number, g: number, b: number) {
+    this.r = r
+    this.g = g
+    this.b = b
+  })
+  const Vector3 = vi.fn(function (this: any) {
+    this.x = 0
+    this.y = 0
+    this.z = 0
+    this.set = vi.fn(function (this: any, x: number, y: number, z: number) {
+      this.x = x; this.y = y; this.z = z
+    })
+  })
+  const Quaternion = vi.fn(function (this: any) {
+    this.x = 0; this.y = 0; this.z = 0; this.w = 1
+  })
+  ;(Quaternion as any).RotationYawPitchRollToRef = vi.fn()
   return {
+    Color3,
+    Vector3,
+    Quaternion,
     Engine: {
       ALPHA_DISABLE: 0,
       ALPHA_COMBINE: 2,
@@ -30,12 +50,22 @@ vi.mock('@babylonjs/core', () => {
         refreshBoundingInfo: vi.fn(),
         dispose: vi.fn(),
       }),
+      CreateGround: vi.fn().mockReturnValue({
+        material: null,
+        isVisible: false,
+        alwaysSelectAsActiveMesh: false,
+        thinInstanceSetBuffer: vi.fn(),
+        refreshBoundingInfo: vi.fn(),
+        dispose: vi.fn(),
+      }),
     },
     Mesh: {
       BILLBOARDMODE_Y: 2,
     },
     StandardMaterial: vi.fn(function (this: any) {
       this.diffuseTexture = null
+      this.emissiveTexture = null
+      this.emissiveColor = null
       this.useAlphaFromDiffuseTexture = false
       this.backFaceCulling = true
       this.disableLighting = false
@@ -47,8 +77,13 @@ vi.mock('@babylonjs/core', () => {
       NEAREST_SAMPLINGMODE: 1,
       BILINEAR_SAMPLINGMODE: 2,
     },
-    Matrix: {
-      Translation: vi.fn().mockReturnValue({
+    Matrix: (() => {
+      // Matrix needs to be both a constructor (new Matrix()) and have static methods
+      const Matrix = vi.fn(function (this: any) {
+        this.m = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+        this.copyToArray = vi.fn()
+      })
+      ;(Matrix as any).Translation = vi.fn().mockReturnValue({
         m: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
         multiply: function (this: any, other: any) {
           return {
@@ -56,8 +91,8 @@ vi.mock('@babylonjs/core', () => {
             multiply: this.multiply,
           }
         },
-      }),
-      Scaling: vi.fn().mockReturnValue({
+      })
+      ;(Matrix as any).Scaling = vi.fn().mockReturnValue({
         m: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
         multiply: function (this: any, other: any) {
           return {
@@ -65,8 +100,8 @@ vi.mock('@babylonjs/core', () => {
             multiply: this.multiply,
           }
         },
-      }),
-      RotationZ: vi.fn().mockReturnValue({
+      })
+      ;(Matrix as any).RotationZ = vi.fn().mockReturnValue({
         m: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
         multiply: function (this: any, other: any) {
           return {
@@ -74,8 +109,10 @@ vi.mock('@babylonjs/core', () => {
             multiply: this.multiply,
           }
         },
-      }),
-    },
+      })
+      ;(Matrix as any).ComposeToRef = vi.fn()
+      return Matrix
+    })(),
   }
 })
 
@@ -611,10 +648,10 @@ describe('ThinInstancesBackend', () => {
     backend?.dispose()
   })
 
-  it('getOrCreateGroup creates Billboard mesh', () => {
+  it('getOrCreateGroup creates Ground mesh', () => {
     const group = backend.getOrCreateGroup(sheet, scene)
     expect(group).toBeDefined()
-    expect(MeshBuilder.CreatePlane).toHaveBeenCalled()
+    expect(MeshBuilder.CreateGround).toHaveBeenCalled()
     expect(StandardMaterial).toHaveBeenCalled()
   })
 
@@ -626,7 +663,7 @@ describe('ThinInstancesBackend', () => {
     expect(group1).toBeDefined()
     expect(group2).toBeDefined()
     // Each call creates new mesh (caching handled by SpriteRenderer)
-    expect(MeshBuilder.CreatePlane).toHaveBeenCalledTimes(2)
+    expect(MeshBuilder.CreateGround).toHaveBeenCalledTimes(2)
   })
 
   it('dispose cleans up all meshes', () => {
@@ -634,9 +671,9 @@ describe('ThinInstancesBackend', () => {
     expect(() => backend.dispose()).not.toThrow()
   })
 
-  it('group sets Billboard mode to BILLBOARDMODE_Y', () => {
+  it('group sets alwaysSelectAsActiveMesh for frustum culling', () => {
     backend.getOrCreateGroup(sheet, scene)
-    const mesh = vi.mocked(MeshBuilder.CreatePlane).mock.results.at(-1)?.value
-    expect(mesh?.billboardMode).toBe(2) // Mesh.BILLBOARDMODE_Y
+    const mesh = vi.mocked(MeshBuilder.CreateGround).mock.results.at(-1)?.value
+    expect(mesh?.alwaysSelectAsActiveMesh).toBe(true)
   })
 })
