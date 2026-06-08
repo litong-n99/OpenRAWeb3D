@@ -129,16 +129,16 @@ function createCheckerboardTexture(scene: Scene): DynamicTexture {
   const ctx = tex.getContext() as unknown as CanvasRenderingContext2D
   for (let y = 0; y < 2; y++) {
     for (let x = 0; x < 2; x++) {
-      ctx.fillStyle = (x + y) % 2 === 0 ? '#333333' : '#555555'
+      ctx.fillStyle = (x + y) % 2 === 0 ? '#222222' : '#888888'
       ctx.fillRect(x * size, y * size, size, size)
     }
   }
   tex.update(true)
   // bgPlane = 100×100, checker squares = uScale × 2 per axis.
-  // Target ~0.4 units per square (fine checkerboard).
-  // 0.4 = 100 / (uScale × 2) → uScale = 100 / 0.8 = 125
-  tex.uScale = 125
-  tex.vScale = 125
+  // Target ~1.67 units per square (visible in ortho viewport of ~24 units wide).
+  // 1.67 = 100 / (uScale × 2) → uScale ≈ 30
+  tex.uScale = 30
+  tex.vScale = 30
   return tex
 }
 
@@ -378,16 +378,12 @@ async function main(): Promise<void> {
     mat.disableLighting = true
     // 设置对应的 Babylon.js alphaMode
     mat.alphaMode = info.alphaMode
-    // emissive 仅用于 ALPHA_ADD 和 ALPHA_COMBINE 模式，
-    // 因为 emissive 是加性通道，会干扰 Subtractive/Multiply/Screen/Disable 的混合行为，
-    // 在透明区域产生黑色背景。
-    const useEmissive = info.alphaMode === 1 || info.alphaMode === 2 // ALPHA_ADD=1, ALPHA_COMBINE=2
-    if (useEmissive) {
-      mat.emissiveTexture = overlayTex
-      mat.emissiveColor = new Color3(1, 1, 1)
-    } else {
-      mat.emissiveColor = new Color3(0, 0, 0)
-    }
+    // When disableLighting=true, Babylon.js StandardMaterial output formula is:
+    //   output = emissiveColor × emissiveTexture + ambient
+    // diffuseTexture is completely ignored. All modes must set emissiveTexture
+    // to display their overlay texture.
+    mat.emissiveTexture = overlayTex
+    mat.emissiveColor = new Color3(1, 1, 1)
 
     // 创建显示平面
     const plane = MeshBuilder.CreatePlane(`plane_${info.label}`, { width: 1.8, height: 1.8 }, scene)
@@ -475,15 +471,14 @@ async function main(): Promise<void> {
           // 选中的面板：放大 25% + 暖色调高亮
           g.plane.scaling.setAll(1.25)
           g.labelPlane.scaling.setAll(1.3)
-          // 暖色 emissive 使选中面板呈现温暖的黄色调，与非选中面板的原始颜色明显区分
-          g.material.emissiveColor = new Color3(1.0, 0.9, 0.8)
+          // Warm emissive values >1 produce a brightening effect (legal in HDR pipeline)
+          g.material.emissiveColor = new Color3(1.3, 1.2, 1.0)
         } else {
           // 非选中面板：正常大小
           g.plane.scaling.setAll(1)
           g.labelPlane.scaling.setAll(1)
-          // 恢复 each material's original emissive color based on its alpha mode
-          const useEmissive = g.info.alphaMode === 1 || g.info.alphaMode === 2
-          g.material.emissiveColor = useEmissive ? new Color3(1, 1, 1) : new Color3(0, 0, 0)
+          // All modes use emissiveTexture for display (disableLighting=true)
+          g.material.emissiveColor = new Color3(1, 1, 1)
         }
       }
     } else {
@@ -498,8 +493,7 @@ async function main(): Promise<void> {
         g.labelPlane.isVisible = isSelected && labelsVisible
         g.plane.scaling.setAll(1)
         g.labelPlane.scaling.setAll(1)
-        const useEmissive = g.info.alphaMode === 1 || g.info.alphaMode === 2
-        g.material.emissiveColor = useEmissive ? new Color3(1, 1, 1) : new Color3(0, 0, 0)
+        g.material.emissiveColor = new Color3(1, 1, 1)
       }
     }
   }
