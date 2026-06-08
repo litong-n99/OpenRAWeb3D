@@ -5,7 +5,7 @@
 > 测试ID: `sprite-renderer/sprite-batch-rendering`
 > OpenRA 对照: `SpriteRenderer.ts` ThinInstancesGroup.setInstances()
 > 创建日期: 2026-06-06
-> 最后修复: 2026-06-08（修复精灵不可见 + FPS=1 — 根因见下文第三轮修复记录）
+> 最后修复: 2026-06-08（修复渲染循环静默死亡 + 控件不可用 — 根因见下文第四轮修复记录）
 
 ---
 
@@ -74,6 +74,33 @@
 ---
 
 ## 已知问题 & 修复记录
+
+### 2026-06-08 (4): 右侧控件不可用 + FPS 固定不变（已修复）
+
+**现象**: 左侧精灵区域可见，但右侧所有交互控件（预设按钮、滑块、复选框等）几乎不可用，FPS 数值固定不变。
+
+**根因**: 两个问题共享同一根因。
+
+**根因 (1) -- FPS 固定不变**:
+HTML 的 `#info-bar` 中缺少 `<span id="info-fps">` 元素，但 `main.ts` 第 185 行 `document.getElementById('info-fps')!` 获取到 `null`。
+当渲染循环运行约 250ms 后 (`fpsAccum >= 250`)，第 491 行的 `infoFps.textContent = String(fpsDisplay)` 对 `null` 赋值，抛出 `TypeError`。
+
+**根因 (2) -- Babylon.js 渲染循环静默死亡**:
+Babylon.js 9.10.1 的 `_renderFrame()`（`abstractEngine.pure.js:442-447`）调用用户注册的 render 回调时**不使用 try-catch**。任何未捕获错误会沿调用栈传播：
+```
+用户回调 throws → _renderFrame() → _processFrame() → _renderLoop()
+```
+在 `_renderLoop()` 中，错误发生在 `requestAnimationFrame` 调度之前，导致下一帧**永远不会被调度**。渲染循环彻底死亡，且没有任何警告或日志输出。
+
+**根因 (3) -- 控件"不可用"的错觉**:
+渲染循环死亡后，`scene.render()` 不再被调用。用户点击控件时：
+- DOM 更新正常执行（overlay 计数变化、滑块值变化）
+- 但 GPU 缓冲区虽然被 `applyThinInstances()` 更新，`scene.render()` 永远不会再执行
+- Canvas 显示的是循环死亡前的最后一帧，看起来"控件无效"
+
+**修复**:
+1. 在 `index.html` 的 `#info-bar` 中添加缺失的 `<span class="label">FPS:</span> <span class="val" id="info-fps">-</span>` 元素
+2. 将 `engine.runRenderLoop` 的**整个回调体**包裹在 `try { ... } catch (loopErr) { console.error(...) }` 中，确保任何未预期错误都不会导致 Babylon.js 渲染循环静默死亡
 
 ### 2026-06-08 (3): 精灵不可见 + FPS 显示为 1（已修复）
 

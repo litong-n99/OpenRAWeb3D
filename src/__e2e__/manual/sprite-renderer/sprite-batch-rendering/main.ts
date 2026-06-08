@@ -422,83 +422,91 @@ async function main(): Promise<void> {
   let estimatedDrawCalls = 1
 
   engine.runRenderLoop(() => {
-    // Reset the FPS clock on the first real frame to avoid counting
-    // all initialization time as one giant "frame" that reports FPS=1.
-    if (firstFrame) {
-      lastFpsUpdate = performance.now()
-      firstFrame = false
-    }
-    const now = performance.now()
-
     try {
-      // 动画：更新旋转
-      if (enableAnimation && spriteData.length > 0) {
-        for (const d of spriteData) {
-          d.rotation += d.speed
-        }
-        applyThinInstances()
+      // Reset the FPS clock on the first real frame to avoid counting
+      // all initialization time as one giant "frame" that reports FPS=1.
+      if (firstFrame) {
+        lastFpsUpdate = performance.now()
+        firstFrame = false
       }
+      const now = performance.now()
 
-      // 压力模式：每 10 帧重新生成精灵
-      if (stressMode) {
-        frameCount++
-        if (frameCount % 10 === 0) {
-          spriteData = generateSprites(spriteCount)
+      try {
+        // 动画：更新旋转
+        if (enableAnimation && spriteData.length > 0) {
+          for (const d of spriteData) {
+            d.rotation += d.speed
+          }
           applyThinInstances()
         }
-      }
-    } catch (err) {
-      console.error('[render-loop] applyThinInstances failed:', err)
-    }
 
-    try {
-      scene.render()
-    } catch (renderErr) {
-      console.error('[render-loop] scene.render() failed:', renderErr)
-      // Don't let a render error kill the loop; try again next frame
-    }
-
-    // Log first successful frame for diagnostics
-    if (fpsFrames === 0 && fpsDisplay === 0 && !firstFrame) {
-      console.log(`[render-loop] first frame rendered: meshes=${scene.meshes.length}, activeCamera=${scene.activeCamera?.name}, sprites=${spriteData.length}`)
-    }
-
-    // FPS 计算
-    fpsFrames++
-    fpsAccum += now - lastFpsUpdate
-    lastFpsUpdate = now
-
-    if (fpsAccum >= 250) {
-      fpsDisplay = Math.round((fpsFrames / fpsAccum) * 1000)
-      fpsFrames = 0
-      fpsAccum = 0
-
-      // 更新每 0.5 秒估算 draw calls
-      if (Date.now() - lastDrawCallSample > 500) {
-        estimatedDrawCalls = 1 + Math.ceil(spriteData.length / 1024) // ThinInstances 每 1024 个一批
-        lastDrawCallSample = Date.now()
+        // 压力模式：每 10 帧重新生成精灵
+        if (stressMode) {
+          frameCount++
+          if (frameCount % 10 === 0) {
+            spriteData = generateSprites(spriteCount)
+            applyThinInstances()
+          }
+        }
+      } catch (err) {
+        console.error('[render-loop] applyThinInstances failed:', err)
       }
 
-      pushFpsSample(fpsHistory, fpsDisplay)
-      drawFpsChart(fpsHistory, fpsCanvas)
-
-      const frameTimeMs = fpsDisplay > 0 ? (1000 / fpsDisplay).toFixed(1) : '-'
-
-      overlayFps.textContent = String(fpsDisplay)
-      perfFps.textContent = String(fpsDisplay)
-      perfFrameTime.textContent = frameTimeMs + 'ms'
-      perfDrawCalls.textContent = String(estimatedDrawCalls)
-      infoFps.textContent = String(fpsDisplay)
-      infoTime.textContent = new Date().toISOString()
-
-      // 颜色指示
-      if (fpsDisplay >= 55) {
-        perfFps.className = 'perf-value good'
-      } else if (fpsDisplay >= 30) {
-        perfFps.className = 'perf-value warn'
-      } else {
-        perfFps.className = 'perf-value bad'
+      try {
+        scene.render()
+      } catch (renderErr) {
+        console.error('[render-loop] scene.render() failed:', renderErr)
       }
+
+      // Log first successful frame for diagnostics
+      if (fpsFrames === 0 && fpsDisplay === 0 && !firstFrame) {
+        console.log(`[render-loop] first frame rendered: meshes=${scene.meshes.length}, activeCamera=${scene.activeCamera?.name}, sprites=${spriteData.length}`)
+      }
+
+      // FPS 计算
+      fpsFrames++
+      fpsAccum += now - lastFpsUpdate
+      lastFpsUpdate = now
+
+      if (fpsAccum >= 250) {
+        fpsDisplay = Math.round((fpsFrames / fpsAccum) * 1000)
+        fpsFrames = 0
+        fpsAccum = 0
+
+        // 更新每 0.5 秒估算 draw calls
+        if (Date.now() - lastDrawCallSample > 500) {
+          estimatedDrawCalls = 1 + Math.ceil(spriteData.length / 1024) // ThinInstances 每 1024 个一批
+          lastDrawCallSample = Date.now()
+        }
+
+        pushFpsSample(fpsHistory, fpsDisplay)
+        drawFpsChart(fpsHistory, fpsCanvas)
+
+        const frameTimeMs = fpsDisplay > 0 ? (1000 / fpsDisplay).toFixed(1) : '-'
+
+        overlayFps.textContent = String(fpsDisplay)
+        perfFps.textContent = String(fpsDisplay)
+        perfFrameTime.textContent = frameTimeMs + 'ms'
+        perfDrawCalls.textContent = String(estimatedDrawCalls)
+        infoFps.textContent = String(fpsDisplay)
+        infoTime.textContent = new Date().toISOString()
+
+        // 颜色指示
+        if (fpsDisplay >= 55) {
+          perfFps.className = 'perf-value good'
+        } else if (fpsDisplay >= 30) {
+          perfFps.className = 'perf-value warn'
+        } else {
+          perfFps.className = 'perf-value bad'
+        }
+      }
+    } catch (loopErr) {
+      console.error('[render-loop] unhandled error (loop continues):', loopErr)
+      // IMPORTANT: Do NOT re-throw. Babylon.js 9.x does not wrap render
+      // callbacks in try-catch. Any unhandled error propagates through
+      // _renderFrame -> _processFrame -> _renderLoop and prevents
+      // requestAnimationFrame from being scheduled for the next frame,
+      // silently killing the entire render loop.
     }
   })
 
