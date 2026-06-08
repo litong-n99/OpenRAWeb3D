@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TerrainSpriteLayer - 地形瓦片批量渲染 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #sandbox .overlay-tooltip { position: absolute; padding: 6px 10px; background: rgba(0,0,0,0.85); color: #eee; font-size: 11px; border-radius: 4px; pointer-events: none; display: none; font-family: 'Consolas', monospace; }
+    #controls { width: 300px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #controls h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ctrl-group { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .ctrl-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 3px; }
+    .ctrl-group select, .ctrl-group input[type="range"] { width: 100%; }
+    .ctrl-group select { padding: 5px 8px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; }
+    .ctrl-group input[type="range"] { accent-color: #e94560; }
+    .ctrl-group button { width: 100%; padding: 7px 12px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 12px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 3px; }
+    .ctrl-group button:hover { background: #e94560; color: #fff; }
+    .ctrl-group button.active { background: #e94560; color: #fff; }
+    .stat-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .stat-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    .dirty-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+    .dirty-indicator.clean { background: #444; }
+    .dirty-indicator.dirty { background: #e94560; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+    #dirty-rows-display { max-height: 80px; overflow-y: auto; font-size: 10px; color: #888; font-family: 'Consolas', monospace; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 地形系统 - 地形瓦片批量渲染验证</h1>
+    <div class="subtitle">ID: terrain-sprite-layer/batch-rendering | 期望结果见 README.md | OpenRA 对照: TerrainSpriteLayer.ts (4*W*H vertices, dirty rows, 8 sheets)</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+      <div class="overlay-tooltip" id="cell-tooltip"></div>
+    </div>
+    <div id="controls">
+      <div class="ctrl-group">
+        <h3>C. 地图控制</h3>
+        <label for="map-size">地图尺寸</label>
+        <select id="map-size">
+          <option value="8">8x8 (64 瓦片)</option>
+          <option value="16" selected>16x16 (256 瓦片)</option>
+          <option value="32">32x32 (1024 瓦片)</option>
+          <option value="64">64x64 (4096 瓦片)</option>
+        </select>
+        <label style="margin-top:6px;" for="terrain-pattern">地形模式</label>
+        <select id="terrain-pattern">
+          <option value="checkerboard" selected>棋盘格 (双色)</option>
+          <option value="gradient-columns">列渐变 (10 色)</option>
+          <option value="random">随机混合</option>
+          <option value="stripes">水平条纹 (8 行)</option>
+        </select>
+        <button id="btn-apply-terrain">应用地形模式</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>C. 脏行更新验证</h3>
+        <label for="update-row">更新行索引</label>
+        <input type="range" id="update-row" min="0" max="15" value="3">
+        <span style="font-size:11px;color:#888;">目标行: <span id="update-row-val" style="color:#ccc;">3</span></span>
+        <label for="update-color" style="margin-top:6px;">更新颜色</label>
+        <select id="update-color">
+          <option value="#e94560" selected>红色 (#e94560)</option>
+          <option value="#33cc33">绿色 (#33cc33)</option>
+          <option value="#3366ff">蓝色 (#3366ff)</option>
+          <option value="#ff9933">橙色 (#ff9933)</option>
+          <option value="#ffff00">黄色 (#ffff00)</option>
+        </select>
+        <button id="btn-update-row">更新整行 (标记脏行)</button>
+        <button id="btn-update-random-cell">更新随机单元格</button>
+        <button id="btn-commit-dirty">提交脏行 (batch upload)</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>C. Sheet 槽位绑定</h3>
+        <div id="sheet-slots">
+          <!-- Filled by JS -->
+        </div>
+        <label for="active-sheet">当前活跃 Sheet</label>
+        <select id="active-sheet">
+          <option value="0" selected>Sheet 0 (默认纹理)</option>
+          <option value="1">Sheet 1 (红-黑)</option>
+          <option value="2">Sheet 2 (绿-黑)</option>
+          <option value="3">Sheet 3 (蓝-黑)</option>
+        </select>
+        <button id="btn-switch-sheet">切换 Sheet</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>状态监控</h3>
+        <div class="stat-row"><span>地图尺寸</span><span class="val" id="stat-map-size">16x16</span></div>
+        <div class="stat-row"><span>总瓦片数</span><span class="val" id="stat-tiles">256</span></div>
+        <div class="stat-row"><span>总顶点数</span><span class="val" id="stat-vertices">1024</span></div>
+        <div class="stat-row"><span>脏行数</span><span class="val" id="stat-dirty-rows">0</span></div>
+        <div class="stat-row"><span>活跃 Sheet 槽位</span><span class="val" id="stat-active-sheets">1 / 8</span></div>
+        <hr style="border-color:#0f3460;margin:6px 0;">
+        <div class="stat-row"><span>最后更新耗时</span><span class="val" id="stat-update-time">- ms</span></div>
+        <div class="stat-row"><span>提交耗时</span><span class="val" id="stat-commit-time">- ms</span></div>
+        <label style="margin-top:6px;">脏行列表</label>
+        <div id="dirty-rows-display">(无)</div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
