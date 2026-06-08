@@ -158,6 +158,50 @@ function createLabelTexture(name: string, text: string, scene: Scene): DynamicTe
 }
 
 // ---------------------------------------------------------------------------
+// 辅助：在 DynamicTexture 上绘制两个重叠渐变圆
+// ---------------------------------------------------------------------------
+
+function drawOverlapCircles(
+  tex: DynamicTexture,
+  radiusMul: number,
+  offsetMul: number,
+): void {
+  const texSize = 512
+  const ctx = tex.getContext() as unknown as CanvasRenderingContext2D
+  ctx.clearRect(0, 0, texSize, texSize)
+
+  const half = texSize / 2
+  const radius = 100 * radiusMul
+  const offset = 40 * offsetMul
+
+  // 圆 1：红色（左下）
+  const cx1 = half - offset
+  const cy1 = half + offset
+  const g1 = ctx.createRadialGradient(cx1, cy1, 0, cx1, cy1, radius)
+  g1.addColorStop(0, 'rgba(255,60,60,0.85)')
+  g1.addColorStop(0.7, 'rgba(255,60,60,0.5)')
+  g1.addColorStop(1, 'rgba(255,60,60,0.0)')
+  ctx.fillStyle = g1
+  ctx.beginPath()
+  ctx.arc(cx1, cy1, radius, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 圆 2：青色（右上）
+  const cx2 = half + offset
+  const cy2 = half - offset
+  const g2 = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, radius)
+  g2.addColorStop(0, 'rgba(60,200,255,0.85)')
+  g2.addColorStop(0.7, 'rgba(60,200,255,0.5)')
+  g2.addColorStop(1, 'rgba(60,200,255,0.0)')
+  ctx.fillStyle = g2
+  ctx.beginPath()
+  ctx.arc(cx2, cy2, radius, 0, Math.PI * 2)
+  ctx.fill()
+
+  tex.update(true)
+}
+
+// ---------------------------------------------------------------------------
 // 测试计划面（包含两个重叠圆 + 标签）
 // ---------------------------------------------------------------------------
 
@@ -165,6 +209,7 @@ interface TestPlaneGroup {
   plane: ReturnType<typeof MeshBuilder.CreatePlane>
   labelPlane: ReturnType<typeof MeshBuilder.CreatePlane>
   material: StandardMaterial
+  overlayTex: DynamicTexture
   info: BlendInfo
 }
 
@@ -249,6 +294,11 @@ async function main(): Promise<void> {
   bgPlane.position.z = -0.1
   bgPlane.material = bgMat
 
+  // ---- 可变参数状态 ----
+  let circleRadiusMul = 1.0
+  let circleOffsetMul = 0.0
+  let globalAlpha = 1.0
+
   // ---- 创建 10 个混合模式测试面板 ----
   const cols = 5
   const rows = 2
@@ -267,42 +317,9 @@ async function main(): Promise<void> {
     const cy = startY - row * cellH
 
     // ---- 创建测试面板：使用 DynamicTexture 渲染两个重叠圆 ----
-    const texSize = 512
-    const overlayTex = new DynamicTexture(`overlay_${info.label}`, { width: texSize, height: texSize }, scene, false)
-    const ctx = overlayTex.getContext() as unknown as CanvasRenderingContext2D
-    // 透明背景
-    ctx.clearRect(0, 0, texSize, texSize)
-
-    const half = texSize / 2
-    const radius = 100
-    const offset = 40 // 两个圆的偏移
-
-    // 圆 1：红色（左下）
-    const cx1 = half - offset
-    const cy1 = half + offset
-    const g1 = ctx.createRadialGradient(cx1, cy1, 0, cx1, cy1, radius)
-    g1.addColorStop(0, 'rgba(255,60,60,0.85)')
-    g1.addColorStop(0.7, 'rgba(255,60,60,0.5)')
-    g1.addColorStop(1, 'rgba(255,60,60,0.0)')
-    ctx.fillStyle = g1
-    ctx.beginPath()
-    ctx.arc(cx1, cy1, radius, 0, Math.PI * 2)
-    ctx.fill()
-
-    // 圆 2：青色（右上）
-    const cx2 = half + offset
-    const cy2 = half - offset
-    const g2 = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, radius)
-    g2.addColorStop(0, 'rgba(60,200,255,0.85)')
-    g2.addColorStop(0.7, 'rgba(60,200,255,0.5)')
-    g2.addColorStop(1, 'rgba(60,200,255,0.0)')
-    ctx.fillStyle = g2
-    ctx.beginPath()
-    ctx.arc(cx2, cy2, radius, 0, Math.PI * 2)
-    ctx.fill()
-
-    overlayTex.update(true)
+    const overlayTex = new DynamicTexture(`overlay_${info.label}`, { width: 512, height: 512 }, scene, false)
     overlayTex.hasAlpha = true
+    drawOverlapCircles(overlayTex, circleRadiusMul, circleOffsetMul)
 
     // 创建材质并设置混合模式
     const mat = new StandardMaterial(`mat_${info.label}`, scene)
@@ -335,7 +352,7 @@ async function main(): Promise<void> {
     labelPlane.position = new Vector3(cx, cy - 0.8, 0)
     labelPlane.material = labelMat
 
-    testGroups.push({ plane, labelPlane, material: mat, info })
+    testGroups.push({ plane, labelPlane, material: mat, overlayTex, info })
   }
 
   // ---- UI: 混合模式列表 ----
@@ -346,9 +363,21 @@ async function main(): Promise<void> {
   const showLabelsCb = document.getElementById('show-labels') as HTMLInputElement
   const singleDisplayCb = document.getElementById('single-display') as HTMLInputElement
   const quickCompareCb = document.getElementById('quick-compare') as HTMLInputElement
+  const radiusSlider = document.getElementById('radius-slider') as HTMLInputElement
+  const radiusValEl = document.getElementById('radius-val')!
+  const offsetSlider = document.getElementById('offset-slider') as HTMLInputElement
+  const offsetValEl = document.getElementById('offset-val')!
 
   let selectedBlendIdx = 0
 
+  // ---- 重新生成所有叠加纹理 ----
+  function regenerateAllTextures(): void {
+    for (const g of testGroups) {
+      drawOverlapCircles(g.overlayTex, circleRadiusMul, circleOffsetMul)
+    }
+  }
+
+  // ---- 渲染混合模式列表 ----
   function renderBlendList(): void {
     blendListEl.innerHTML = ''
     for (let i = 0; i < BLEND_INFOS.length; i++) {
@@ -361,6 +390,7 @@ async function main(): Promise<void> {
         <div class="alpha-mode">${info.alphaModeLabel}</div>
       `
       div.addEventListener('click', () => {
+        if (i === selectedBlendIdx) return // 无变化，跳过
         selectedBlendIdx = i
         renderBlendList()
         highlightSelectedBlend()
@@ -369,36 +399,71 @@ async function main(): Promise<void> {
     }
   }
 
+  // ---- 高亮/显示选中的混合模式 ----
   function highlightSelectedBlend(): void {
+    const labelsVisible = showLabelsCb.checked
+    const selectedMode = BLEND_INFOS[selectedBlendIdx].mode
+
     if (singleDisplayCb.checked) {
-      // 仅显示选中的
+      // checked = 全部显示 + 高亮选中（与标签文字「全部显示（取消则仅显示选中）」一致）
       for (const g of testGroups) {
-        g.plane.isVisible = g.info.mode === BLEND_INFOS[selectedBlendIdx].mode
-        g.labelPlane.isVisible = g.plane.isVisible
+        const isSelected = g.info.mode === selectedMode
+        g.plane.isVisible = true
+        g.plane.visibility = globalAlpha
+        g.labelPlane.isVisible = labelsVisible
+
+        if (isSelected) {
+          // 选中的面板：放大 15% + 暖色发光边框效果
+          g.plane.scaling.setAll(1.15)
+          g.labelPlane.scaling.setAll(1.3)
+          // 添加黄色高亮叠加到 emissive
+          g.material.emissiveColor = new Color3(0.25, 0.2, 0.05)
+        } else {
+          // 非选中面板：正常大小，无额外 emissive
+          g.plane.scaling.setAll(1)
+          g.labelPlane.scaling.setAll(1)
+          g.material.emissiveColor = new Color3(0, 0, 0)
+        }
       }
     } else {
-      // 全部显示，高亮选中的
+      // unchecked = 仅显示选中
       for (const g of testGroups) {
-        g.plane.isVisible = true
-        g.labelPlane.isVisible = true
-        // 选中项放大
-        if (g.info.mode === BLEND_INFOS[selectedBlendIdx].mode) {
-          g.plane.scaling.setAll(1.15)
-        } else {
-          g.plane.scaling.setAll(1)
+        const isSelected = g.info.mode === selectedMode
+        g.plane.isVisible = isSelected
+        if (isSelected) {
+          g.plane.visibility = globalAlpha
+        }
+        g.labelPlane.isVisible = isSelected && labelsVisible
+        g.plane.scaling.setAll(1)
+        g.labelPlane.scaling.setAll(1)
+        g.material.emissiveColor = new Color3(0, 0, 0)
+      }
+    }
+  }
+
+  // ---- 全局透明度更新 ----
+  function updateAllAlpha(val: number): void {
+    globalAlpha = val
+    // 更新所有当前可见的 plane（保留 highlightSelectedBlend 设置的可见性）
+    const selectedMode = BLEND_INFOS[selectedBlendIdx].mode
+    for (const g of testGroups) {
+      if (singleDisplayCb.checked) {
+        // 全部显示模式：所有 plane 都可见
+        g.plane.visibility = val
+      } else {
+        // 仅显示选中模式：仅更新选中的 plane
+        if (g.info.mode === selectedMode) {
+          g.plane.visibility = val
         }
       }
     }
   }
 
-  function updateAllAlpha(val: number): void {
-    for (const g of testGroups) {
-      // 通过调节材质的整体 alpha 来模拟全局透明度
-      g.plane.visibility = val
-    }
-  }
-
+  // ---- 初始渲染 ----
   renderBlendList()
+  highlightSelectedBlend()
+
+  // ---- 事件绑定 ----
 
   alphaSlider.addEventListener('input', () => {
     const val = parseFloat(alphaSlider.value)
@@ -411,16 +476,27 @@ async function main(): Promise<void> {
   })
 
   showLabelsCb.addEventListener('change', () => {
-    for (const g of testGroups) {
-      g.labelPlane.isVisible = showLabelsCb.checked
-    }
+    // 重新运行 highlightSelectedBlend 以正确设置标签可见性
+    //（它会读取 showLabelsCb.checked 并组合 display mode 逻辑）
+    highlightSelectedBlend()
   })
 
   singleDisplayCb.addEventListener('change', highlightSelectedBlend)
 
-  let quickCompareActive = false
   quickCompareCb.addEventListener('change', () => {
-    quickCompareActive = quickCompareCb.checked
+    // quickCompareActive 在 renderLoop 中读取，此处仅开关
+  })
+
+  radiusSlider.addEventListener('input', () => {
+    circleRadiusMul = parseFloat(radiusSlider.value)
+    radiusValEl.textContent = circleRadiusMul.toFixed(2)
+    regenerateAllTextures()
+  })
+
+  offsetSlider.addEventListener('input', () => {
+    circleOffsetMul = parseFloat(offsetSlider.value)
+    offsetValEl.textContent = circleOffsetMul.toFixed(2)
+    regenerateAllTextures()
   })
 
   // ---- FPS 监控 ----
@@ -430,7 +506,7 @@ async function main(): Promise<void> {
   let lastFpsUpdate = performance.now()
 
   engine.runRenderLoop(() => {
-    if (quickCompareActive) {
+    if (quickCompareCb.checked) {
       // 每 1.5 秒切换一个混合模式显示
       const idx = Math.floor(Date.now() / 1500) % BLEND_INFOS.length
       if (idx !== selectedBlendIdx) {
