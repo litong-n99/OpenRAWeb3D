@@ -114,6 +114,7 @@ vi.mock('@babylonjs/core', () => {
     StandardMaterial: vi.fn(function StandardMaterialMock(this: any) {
       this.dispose = vi.fn()
       this.diffuseTexture = null
+      this.emissiveTexture = null
       this.emissiveColor = null
       this.disableLighting = false
       this.backFaceCulling = true
@@ -242,6 +243,29 @@ describe('Renderer', () => {
     it('stopRenderLoop delegates to engine.stopRenderLoop', () => {
       renderer.stopRenderLoop()
       expect(renderer.engine.stopRenderLoop).toHaveBeenCalledTimes(1)
+    })
+
+    // BLOCKER #3: Render loop error protection
+    it('catches callback errors and does not rethrow to prevent silent loop death', () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const errorCallback = vi.fn(() => {
+        throw new Error('frame error')
+      })
+
+      // Capture the callback passed to runRenderLoop and invoke it directly
+      const runLoopMock = renderer.engine.runRenderLoop as ReturnType<typeof vi.fn>
+      renderer.startRenderLoop(errorCallback)
+
+      // Extract the wrapped callback from the first call to runRenderLoop
+      const wrappedCallback = runLoopMock.mock.calls[0][0] as () => void
+      expect(() => wrappedCallback()).not.toThrow()
+
+      expect(errorCallback).toHaveBeenCalled()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[Renderer] Unhandled error in render loop callback:',
+        expect.any(Error),
+      )
+      consoleErrorSpy.mockRestore()
     })
   })
 
@@ -669,6 +693,18 @@ describe('Renderer', () => {
       renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
       renderer.beginUI()
       expect(MeshBuilder.CreatePlane).toHaveBeenCalledTimes(callCount)
+    })
+
+    // MAJOR #6: emissiveTexture must be set for disableLighting=true materials
+    it('sets emissiveTexture on world quad material for disableLighting compatibility', () => {
+      renderer.beginWorld({ x: 0, y: 0 }, { width: 400, height: 400 })
+      renderer.beginUI()
+
+      const mat = vi.mocked(StandardMaterial).mock.results.at(-1)?.value
+      expect(mat).toBeDefined()
+      expect(mat.diffuseTexture).toBeDefined()
+      expect(mat.emissiveTexture).toBe(mat.diffuseTexture) // same RTT texture
+      expect(mat.emissiveColor).toBeDefined()
     })
 
     // Bug-7: 禁用背面剔除

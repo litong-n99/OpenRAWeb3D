@@ -648,6 +648,7 @@ export class Renderer {
 
       const mat = new StandardMaterial('worldMat', this.uiScene)
       mat.diffuseTexture = this.worldRenderTarget
+      mat.emissiveTexture = this.worldRenderTarget
       mat.emissiveColor = new Color3(1, 1, 1)
       mat.disableLighting = true
       // 防御性：禁用背面剔除，确保 plane 在所有朝向下均可见
@@ -1069,7 +1070,12 @@ export class Renderer {
    */
   startRenderLoop(callback: (deltaTime: number) => void): void {
     this.engine.runRenderLoop(() => {
-      callback(this.engine.getDeltaTime())
+      try {
+        callback(this.engine.getDeltaTime())
+      } catch (error) {
+        console.error('[Renderer] Unhandled error in render loop callback:', error)
+        // Do NOT rethrow -- would kill render loop silently
+      }
     })
   }
 
