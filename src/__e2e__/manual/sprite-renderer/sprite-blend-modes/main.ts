@@ -270,12 +270,42 @@ async function main(): Promise<void> {
     scene,
   )
   camera.mode = 1 // ORTHOGRAPHIC_CAMERA
-  camera.orthoTop = 5
-  camera.orthoBottom = -5
-  camera.orthoLeft = -12
-  camera.orthoRight = 12
   camera.inputs.clear()
   camera.inputs.addMouseWheel()
+
+  // 设计基准：24×10 视口（比例 2.4:1），以此为中心做 fit 适配
+  const DESIGN_WIDTH = 24
+  const DESIGN_HEIGHT = 10
+
+  function updateViewport(): void {
+    const c = engine.getRenderingCanvas()
+    if (!c) return
+    const canvasW = c.width
+    const canvasH = c.height
+    if (canvasH <= 0) return
+    const canvasAspect = canvasW / canvasH
+    const designAspect = DESIGN_WIDTH / DESIGN_HEIGHT // 2.4
+
+    if (canvasAspect >= designAspect) {
+      // 画布更宽 → 保持垂直 10 单位，水平扩展
+      const halfH = DESIGN_HEIGHT / 2
+      const halfW = halfH * canvasAspect
+      camera.orthoTop = halfH
+      camera.orthoBottom = -halfH
+      camera.orthoLeft = -halfW
+      camera.orthoRight = halfW
+    } else {
+      // 画布更高 → 保持水平 24 单位，垂直扩展
+      const halfW = DESIGN_WIDTH / 2
+      const halfH = halfW / canvasAspect
+      camera.orthoTop = halfH
+      camera.orthoBottom = -halfH
+      camera.orthoLeft = -halfW
+      camera.orthoRight = halfW
+    }
+  }
+
+  updateViewport()
 
   // ---- 光照 ----
   const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
@@ -290,9 +320,11 @@ async function main(): Promise<void> {
   bgMat.backFaceCulling = false
   bgMat.disableLighting = true
 
-  const bgPlane = MeshBuilder.CreatePlane('bgPlane', { width: 24, height: 10 }, scene)
-  bgPlane.position.z = -0.1
+  // 背景平面必须足够大以覆盖所有可能的 ortho 视口
+  const bgPlane = MeshBuilder.CreatePlane('bgPlane', { width: 100, height: 100 }, scene)
+  bgPlane.position.z = 0.5   // 在所有测试面板后面（相机沿 +Z 方向看，z 值越大越远）
   bgPlane.material = bgMat
+  bgPlane.renderingGroupId = 0  // 最先渲染，确保在底层
 
   // ---- 可变参数状态 ----
   let circleRadiusMul = 1.0
@@ -337,6 +369,7 @@ async function main(): Promise<void> {
     const plane = MeshBuilder.CreatePlane(`plane_${info.label}`, { width: 1.8, height: 1.8 }, scene)
     plane.position = new Vector3(cx, cy + 0.3, 0)
     plane.material = mat
+    plane.renderingGroupId = 1  // 在背景之后渲染，确保显示在上层
 
     // 创建标签
     const labelTex = createLabelTexture(`labelTex_${info.label}`, info.label, scene)
@@ -351,6 +384,7 @@ async function main(): Promise<void> {
     const labelPlane = MeshBuilder.CreatePlane(`labelPlane_${info.label}`, { width: 1.8, height: 0.25 }, scene)
     labelPlane.position = new Vector3(cx, cy - 0.8, 0)
     labelPlane.material = labelMat
+    labelPlane.renderingGroupId = 1  // 与对应测试面板同组渲染
 
     testGroups.push({ plane, labelPlane, material: mat, overlayTex, info })
   }
@@ -534,6 +568,7 @@ async function main(): Promise<void> {
 
   const resizeObserver = new ResizeObserver(() => {
     engine.resize()
+    updateViewport()
     infoViewport.textContent = `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x`
   })
   resizeObserver.observe(canvas)
