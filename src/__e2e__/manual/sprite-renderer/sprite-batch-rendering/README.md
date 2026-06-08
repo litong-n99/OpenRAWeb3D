@@ -5,7 +5,7 @@
 > 测试ID: `sprite-renderer/sprite-batch-rendering`
 > OpenRA 对照: `SpriteRenderer.ts` ThinInstancesGroup.setInstances()
 > 创建日期: 2026-06-06
-> 最后修复: 2026-06-08（修复精灵不可见 bug — 根因见下文）
+> 最后修复: 2026-06-08（修复精灵不可见 + FPS=1 — 根因见下文第三轮修复记录）
 
 ---
 
@@ -74,6 +74,39 @@
 ---
 
 ## 已知问题 & 修复记录
+
+### 2026-06-08 (3): 精灵不可见 + FPS 显示为 1（已修复）
+
+**现象**: 左侧渲染区域无任何显示，FPS 显示为 1，FPS 实时图表中无内容。
+
+**根因 (1) -- 精灵不可见**:
+`StandardMaterial` 设置了 `disableLighting = true`，但仅设置了 `diffuseTexture`，没有设置 `emissiveTexture` 和 `emissiveColor`。
+当 `disableLighting = true` 时，Babylon.js 的 shader 跳过所有光照计算，仅使用 emissive 通道输出颜色：
+```
+finalColor = emissiveColor * emissiveTexture
+```
+- `emissiveColor` 默认值为 `Color3(0, 0, 0)`（黑色）
+- `emissiveTexture` 未设置
+- 结果：所有精灵渲染为纯黑色，在深色背景 `Color4(0.05, 0.06, 0.08, 1)` 上完全不可见
+
+此修复参考了 `hardware-palette/color-accuracy/main.ts` 中已验证可行的模式：同时设置 `diffuseTexture`、`emissiveTexture` 和 `emissiveColor`。
+
+**根因 (2) -- FPS 显示为 1**:
+`lastFpsUpdate = performance.now()` 在 `engine.runRenderLoop()` 之前设置（此时包含整个 Babylon.js 初始化 + `updateSpriteCount(500)` 的开销），导致第一帧的 `delta = now - lastFpsUpdate` 包含了所有初始化时间（可达数秒）。
+第一帧的 FPS 计算为 `Math.round(1 / hugeDelta * 1000) ≈ 1`，且此值会持续显示直到下次 FPS 更新（~250ms 后）。
+若 `scene.render()` 在后续帧因其他问题崩溃（或用户仅观察了初始值），显示会一直停留在 1。
+
+**根因 (3) -- FPS 图表无内容**:
+`drawFpsChart()` 在 `history.samples.length < 2` 时直接返回。初次 FPS 更新后仅累积 1 个样本，不足以绘制图表。
+
+**修复**:
+1. 同时设置 `baseMat.diffuseTexture` 和 `baseMat.emissiveTexture = baseTex`
+2. 设置 `baseMat.emissiveColor = Color3.White()`（否则纹理被黑色调制）
+3. 移除 `useAlphaFromDiffuseTexture`（emissive 模式下 alpha 来自纹理本身）
+4. 使用 `firstFrame` 标志：在第一帧才初始化 `lastFpsUpdate`，避免计入初始化开销
+5. 对 `scene.render()` 包裹 try-catch，防止渲染异常静默中断渲染循环
+6. 添加 `baseMesh.alwaysSelectAsActiveMesh = true` 防止错误的视锥体裁剪
+7. 添加诊断 console.log 用于运行时排错
 
 ### 2026-06-08 (2): GC 压力导致 FPS=2（已修复）
 

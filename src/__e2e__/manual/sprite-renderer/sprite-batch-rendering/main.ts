@@ -243,8 +243,14 @@ async function main(): Promise<void> {
   // ---- 基础精灵纹理（用于 ThinInstances 基础 Mesh） ----
   const baseTex = createSpriteTexture(new Color3(1, 1, 1), scene)
   const baseMat = new StandardMaterial('baseMat', scene)
+  // CRITICAL: disableLighting=true means Babylon.js uses ONLY the emissive channel.
+  // Both emissiveTexture AND emissiveColor must be set, otherwise the mesh renders
+  // as black (emissiveColor defaults to Color3(0,0,0)) on a near-black background,
+  // making all sprites invisible.  This matches the pattern proven in
+  // hardware-palette/color-accuracy/main.ts.
   baseMat.diffuseTexture = baseTex
-  baseMat.useAlphaFromDiffuseTexture = true
+  baseMat.emissiveTexture = baseTex
+  baseMat.emissiveColor = Color3.White()
   baseMat.specularColor.set(0, 0, 0)
   baseMat.backFaceCulling = false
   baseMat.disableLighting = true
@@ -256,6 +262,10 @@ async function main(): Promise<void> {
   // 但 ThinInstances 不继承 billboardMode，导致精灵边缘朝摄像机不可见。
   const baseMesh = MeshBuilder.CreateGround('baseSpriteMesh', { width: 1, height: 1 }, scene)
   baseMesh.material = baseMat
+  // Prevent frustum culling: the base mesh is only 1x1 at origin, but thin
+  // instances spread across a 40x40 area.  Without this flag, the renderer
+  // may cull the entire mesh because its base bounding box is too small.
+  baseMesh.alwaysSelectAsActiveMesh = true
 
   // ---- 精灵数据 ----
   let spriteData: SpriteData[] = []
@@ -399,17 +409,25 @@ async function main(): Promise<void> {
 
   // ---- 初始化 ----
   updateSpriteCount(500)
+  console.log(`[init] scene ready: ${scene.meshes.length} meshes, spriteData.length=${spriteData.length}`)
 
   // ---- FPS 监控 + 渲染循环 ----
   let fpsFrames = 0
   let fpsAccum = 0
   let fpsDisplay = 0
-  let lastFpsUpdate = performance.now()
+  let lastFpsUpdate = 0
+  let firstFrame = true  // skip first frame's huge delta (includes init overhead)
   let frameCount = 0
   let lastDrawCallSample = Date.now()
   let estimatedDrawCalls = 1
 
   engine.runRenderLoop(() => {
+    // Reset the FPS clock on the first real frame to avoid counting
+    // all initialization time as one giant "frame" that reports FPS=1.
+    if (firstFrame) {
+      lastFpsUpdate = performance.now()
+      firstFrame = false
+    }
     const now = performance.now()
 
     try {
@@ -433,7 +451,17 @@ async function main(): Promise<void> {
       console.error('[render-loop] applyThinInstances failed:', err)
     }
 
-    scene.render()
+    try {
+      scene.render()
+    } catch (renderErr) {
+      console.error('[render-loop] scene.render() failed:', renderErr)
+      // Don't let a render error kill the loop; try again next frame
+    }
+
+    // Log first successful frame for diagnostics
+    if (fpsFrames === 0 && fpsDisplay === 0 && !firstFrame) {
+      console.log(`[render-loop] first frame rendered: meshes=${scene.meshes.length}, activeCamera=${scene.activeCamera?.name}, sprites=${spriteData.length}`)
+    }
 
     // FPS 计算
     fpsFrames++
