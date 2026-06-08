@@ -344,6 +344,8 @@ async function main(): Promise<void> {
   function commitDirtyRows(): void {
     if (!sps || dirtyRows.size === 0) return
 
+    const dirtyCount = dirtyRows.size  // 记录提交前的脏行数
+
     const startTime = performance.now()
     sps.setParticles()
     const elapsed = (performance.now() - startTime).toFixed(2)
@@ -351,6 +353,7 @@ async function main(): Promise<void> {
 
     dirtyRows.clear()
     updateStats()
+    statDirtyRows.textContent = String(dirtyCount)  // 显示本次提交的脏行数
   }
 
   // ---- 按钮事件 ----
