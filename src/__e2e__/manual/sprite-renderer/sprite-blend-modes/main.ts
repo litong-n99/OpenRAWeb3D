@@ -134,8 +134,11 @@ function createCheckerboardTexture(scene: Scene): DynamicTexture {
     }
   }
   tex.update(true)
-  tex.uScale = 8
-  tex.vScale = 8
+  // bgPlane = 100×100, checker squares = uScale × 2 per axis.
+  // Target ~1.5 units per square (same visual density as original 24-unit plane with uScale=8).
+  // 1.5 = 100 / (uScale × 2) → uScale ≈ 100 / 3 ≈ 33.3
+  tex.uScale = 33
+  tex.vScale = 33
   return tex
 }
 
