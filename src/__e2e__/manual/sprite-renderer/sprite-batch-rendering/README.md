@@ -68,12 +68,23 @@
 - 精灵为水平放置的彩色圆形纹理（地面平铺，从俯视 RTS 视角可见）
 - 精灵位置随机分布在 40x40 区域内（XZ 平面），无重叠异常
 - 8 种颜色（红/绿/蓝/黄/紫/青/橙/白）的精灵均匀分布
-- 精灵缩放范围 0.3-0.8，大小不一自然
+- 精灵缩放范围 2-5，大小不一自然（在 40x40 区域内从俯视 RTS 视角清晰可见）
 - 精灵纹理为白色圆圈 + 半透明白色外环，通过 instanceColor 着色
 
 ---
 
 ## 已知问题 & 修复记录
+
+### 2026-06-08 (2): GC 压力导致 FPS=2（已修复）
+
+**根因**: `applyThinInstances()` 在动画模式（默认勾选）下每帧调用，内部对每个精灵创建 5 个 Matrix 对象（`Matrix.Scaling` + `Matrix.RotationY` + `Matrix.Translation` + 2 次 `multiply`），加上两个大 `Float32Array`。500 精灵时每帧分配 ~2500 Matrix + 2 数组，触发巨量 GC，FPS 降至 2。
+
+**修复**:
+1. 预分配 `matricesBuffer` / `colorsBuffer`，仅在 `spriteCount` 变化时重新分配
+2. 使用 `Matrix.ComposeToRef` + `Quaternion.RotationYawPitchRollToRef`（ToRef 变体）替代逐 Matrix 构建，复用 4 个预分配对象（`_scale` / `_translation` / `_rotation` / `_world`）
+3. 每帧写入成本降至纯数值填充（~32KB 写入 + 零 GC）
+
+**同时修复**: sprite scale 从 0.3-0.8 增大到 2-5 单位，确保在 camera radius=45 下肉眼清晰可见。
 
 ### 2026-06-08: 精灵不渲染问题（已修复）
 

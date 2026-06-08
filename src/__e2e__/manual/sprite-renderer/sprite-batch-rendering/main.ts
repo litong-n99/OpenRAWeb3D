@@ -19,6 +19,7 @@ import { MeshBuilder } from '@babylonjs/core'
 import { StandardMaterial } from '@babylonjs/core'
 import { DynamicTexture } from '@babylonjs/core'
 import { Matrix } from '@babylonjs/core'
+import { Quaternion } from '@babylonjs/core'
 
 // ---------------------------------------------------------------------------
 // 类型：精灵实例数据
@@ -46,6 +47,17 @@ const PALETTE_COLORS: Color3[] = [
   new Color3(0.95, 0.5, 0.2),   // 橙
   new Color3(0.95, 0.95, 0.95), // 白
 ]
+
+// ---------------------------------------------------------------------------
+// 预分配缓冲区（避免每帧 GC 压力）
+// ---------------------------------------------------------------------------
+
+let matricesBuffer = new Float32Array(0)
+let colorsBuffer = new Float32Array(0)
+const _scale = new Vector3()
+const _translation = new Vector3()
+const _rotation = new Quaternion()
+const _world = new Matrix()
 
 // ---------------------------------------------------------------------------
 // 辅助：创建带纹理的单个精灵平面（用作 ThinInstances 的基础 Mesh）
@@ -262,53 +274,62 @@ async function main(): Promise<void> {
         rotation: Math.random() * Math.PI * 2,
         speed: (Math.random() - 0.5) * 0.02,
         colorIndex: i % PALETTE_COLORS.length,
-        scale: 0.3 + Math.random() * 0.5,
+        scale: 2 + Math.random() * 3,             // 放大到 2-5 单位，确保在 40x40 区域内肉眼可见
       })
     }
     return data
   }
 
+  /**
+   * 批量更新 ThinInstances 矩阵缓冲区。
+   *
+   * 性能关键：此函数在动画模式下每帧调用，必须零分配。
+   * - 使用预分配的 Float32Array（仅在 count 变化时重新分配）
+   * - 使用 Matrix.ComposeToRef + Quaternion.RotationYawPitchRollToRef（ToRef 变体，复用对象）
+   * - 修复前每帧分配 2500+ Matrix 对象 + 2 个大数组，导致 FPS=2
+   */
   function applyThinInstances(): void {
     if (spriteData.length === 0) return
 
     const count = spriteData.length
-    const matrices = new Float32Array(count * 16)
-    const colors = new Float32Array(count * 4)
+
+    // 仅在 count 变化时重新分配缓冲区（避免每帧 GC）
+    if (matricesBuffer.length !== count * 16) {
+      matricesBuffer = new Float32Array(count * 16)
+    }
+    if (colorsBuffer.length !== count * 4) {
+      colorsBuffer = new Float32Array(count * 4)
+    }
 
     for (let i = 0; i < count; i++) {
       const d = spriteData[i]
       const c = PALETTE_COLORS[d.colorIndex]
 
-      // 世界矩阵：T * Ry * S
-      // - Scale: 统一缩放
-      // - RotationY: 绕世界 Y 轴旋转（模拟地面单位朝向）
-      // - Translation: 放置到 XZ 平面位置
-      const scaleMatrix = Matrix.Scaling(d.scale, d.scale, d.scale)
-      const rotMatrix = Matrix.RotationY(d.rotation)
-      const transMatrix = Matrix.Translation(d.position.x, d.position.y, d.position.z)
+      // 使用 ToRef 变体：复用预分配对象，零分配
+      _scale.set(d.scale, d.scale, d.scale)
+      _translation.set(d.position.x, d.position.y, d.position.z)
+      // yaw=d.rotation 绕 Y 轴旋转（模拟地面单位朝向），pitch=0, roll=0
+      Quaternion.RotationYawPitchRollToRef(d.rotation, 0, 0, _rotation)
+      // scale * rotation * translation -> 单个世界矩阵
+      Matrix.ComposeToRef(_scale, _rotation, _translation, _world)
 
-      // T * R * S（正确的 SRT 顺序：先缩放，再旋转，最后平移）
-      const world = transMatrix.multiply(rotMatrix).multiply(scaleMatrix)
-      const m = world.m
       const off = i * 16
-      for (let j = 0; j < 16; j++) {
-        matrices[off + j] = m[j]
-      }
+      matricesBuffer.set(_world.m, off)
 
-      // 实例颜色（RGB * alpha 混合）
+      // 实例颜色（RGB + alpha）
       const co = i * 4
-      colors[co] = c.r
-      colors[co + 1] = c.g
-      colors[co + 2] = c.b
-      colors[co + 3] = 0.9
+      colorsBuffer[co] = c.r
+      colorsBuffer[co + 1] = c.g
+      colorsBuffer[co + 2] = c.b
+      colorsBuffer[co + 3] = 0.9
     }
 
     // 批量设置 ThinInstances 缓冲区
     // staticBuffer=false 允许动态更新（动画帧间修改矩阵）
-    baseMesh.thinInstanceSetBuffer('matrix', matrices, 16, false)
+    baseMesh.thinInstanceSetBuffer('matrix', matricesBuffer, 16, false)
     // color 缓冲区会被 Babylon.js 自动转换为 instanceColor 属性，
     // StandardMaterial 通过 INSTANCESCOLOR define 支持此属性
-    baseMesh.thinInstanceSetBuffer('color', colors, 4, false)
+    baseMesh.thinInstanceSetBuffer('color', colorsBuffer, 4, false)
 
     // 使用 thinInstanceRefreshBoundingInfo 计算包含所有实例的包围盒
     // (refreshBoundingInfo 仅计算基础 mesh 的包围盒，不会包含 thin instances)
