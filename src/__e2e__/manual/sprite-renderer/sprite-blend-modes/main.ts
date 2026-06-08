@@ -135,10 +135,10 @@ function createCheckerboardTexture(scene: Scene): DynamicTexture {
   }
   tex.update(true)
   // bgPlane = 100×100, checker squares = uScale × 2 per axis.
-  // Target ~1.5 units per square (same visual density as original 24-unit plane with uScale=8).
-  // 1.5 = 100 / (uScale × 2) → uScale ≈ 100 / 3 ≈ 33.3
-  tex.uScale = 33
-  tex.vScale = 33
+  // Target ~0.4 units per square (fine checkerboard).
+  // 0.4 = 100 / (uScale × 2) → uScale = 100 / 0.8 = 125
+  tex.uScale = 125
+  tex.vScale = 125
   return tex
 }
 
@@ -274,11 +274,15 @@ async function main(): Promise<void> {
   )
   camera.mode = 1 // ORTHOGRAPHIC_CAMERA
   camera.inputs.clear()
-  camera.inputs.addMouseWheel()
+  // 不使用 ArcRotateCamera 内置的滚轮输入，改为手动管理 zoomLevel，
+  // 因为 updateViewport() 在 resize 时会覆盖 camera.orthoTop/Bottom/Left/Right
 
   // 设计基准：24×10 视口（比例 2.4:1），以此为中心做 fit 适配
   const DESIGN_WIDTH = 24
   const DESIGN_HEIGHT = 10
+
+  // 缩放级别：1.0 = 设计基准，<1 = 放大，>1 = 缩小
+  let zoomLevel = 1.0
 
   function updateViewport(): void {
     const c = engine.getRenderingCanvas()
@@ -291,7 +295,7 @@ async function main(): Promise<void> {
 
     if (canvasAspect >= designAspect) {
       // 画布更宽 → 保持垂直 10 单位，水平扩展
-      const halfH = DESIGN_HEIGHT / 2
+      const halfH = (DESIGN_HEIGHT / 2) * zoomLevel
       const halfW = halfH * canvasAspect
       camera.orthoTop = halfH
       camera.orthoBottom = -halfH
@@ -299,7 +303,7 @@ async function main(): Promise<void> {
       camera.orthoRight = halfW
     } else {
       // 画布更高 → 保持水平 24 单位，垂直扩展
-      const halfW = DESIGN_WIDTH / 2
+      const halfW = (DESIGN_WIDTH / 2) * zoomLevel
       const halfH = halfW / canvasAspect
       camera.orthoTop = halfH
       camera.orthoBottom = -halfH
@@ -307,6 +311,15 @@ async function main(): Promise<void> {
       camera.orthoRight = halfW
     }
   }
+
+  // 自定义滚轮缩放处理
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault()
+    const factor = e.deltaY > 0 ? 1.1 : 1 / 1.1
+    zoomLevel *= factor
+    zoomLevel = Math.max(0.15, Math.min(8.0, zoomLevel))
+    updateViewport()
+  }, { passive: false })
 
   updateViewport()
 
@@ -359,14 +372,22 @@ async function main(): Promise<void> {
     // 创建材质并设置混合模式
     const mat = new StandardMaterial(`mat_${info.label}`, scene)
     mat.diffuseTexture = overlayTex
-    mat.emissiveTexture = overlayTex
-    mat.emissiveColor = new Color3(1, 1, 1)
     mat.useAlphaFromDiffuseTexture = true
     mat.specularColor.set(0, 0, 0)
     mat.backFaceCulling = false
     mat.disableLighting = true
     // 设置对应的 Babylon.js alphaMode
     mat.alphaMode = info.alphaMode
+    // emissive 仅用于 ALPHA_ADD 和 ALPHA_COMBINE 模式，
+    // 因为 emissive 是加性通道，会干扰 Subtractive/Multiply/Screen/Disable 的混合行为，
+    // 在透明区域产生黑色背景。
+    const useEmissive = info.alphaMode === 1 || info.alphaMode === 2 // ALPHA_ADD=1, ALPHA_COMBINE=2
+    if (useEmissive) {
+      mat.emissiveTexture = overlayTex
+      mat.emissiveColor = new Color3(1, 1, 1)
+    } else {
+      mat.emissiveColor = new Color3(0, 0, 0)
+    }
 
     // 创建显示平面
     const plane = MeshBuilder.CreatePlane(`plane_${info.label}`, { width: 1.8, height: 1.8 }, scene)
@@ -447,6 +468,7 @@ async function main(): Promise<void> {
         const isSelected = g.info.mode === selectedMode
         g.plane.isVisible = true
         g.plane.visibility = globalAlpha
+        g.material.alpha = globalAlpha
         g.labelPlane.isVisible = labelsVisible
 
         if (isSelected) {
@@ -456,10 +478,12 @@ async function main(): Promise<void> {
           // 暖色 emissive 使选中面板呈现温暖的黄色调，与非选中面板的原始颜色明显区分
           g.material.emissiveColor = new Color3(1.0, 0.9, 0.8)
         } else {
-          // 非选中面板：正常大小，emissiveColor=(1,1,1) 确保纹理正常显示
+          // 非选中面板：正常大小
           g.plane.scaling.setAll(1)
           g.labelPlane.scaling.setAll(1)
-          g.material.emissiveColor = new Color3(1, 1, 1)
+          // 恢复 each material's original emissive color based on its alpha mode
+          const useEmissive = g.info.alphaMode === 1 || g.info.alphaMode === 2
+          g.material.emissiveColor = useEmissive ? new Color3(1, 1, 1) : new Color3(0, 0, 0)
         }
       }
     } else {
@@ -469,11 +493,13 @@ async function main(): Promise<void> {
         g.plane.isVisible = isSelected
         if (isSelected) {
           g.plane.visibility = globalAlpha
+          g.material.alpha = globalAlpha
         }
         g.labelPlane.isVisible = isSelected && labelsVisible
         g.plane.scaling.setAll(1)
         g.labelPlane.scaling.setAll(1)
-        g.material.emissiveColor = new Color3(1, 1, 1)
+        const useEmissive = g.info.alphaMode === 1 || g.info.alphaMode === 2
+        g.material.emissiveColor = useEmissive ? new Color3(1, 1, 1) : new Color3(0, 0, 0)
       }
     }
   }
@@ -482,15 +508,18 @@ async function main(): Promise<void> {
   function updateAllAlpha(val: number): void {
     globalAlpha = val
     // 更新所有当前可见的 plane（保留 highlightSelectedBlend 设置的可见性）
+    // 同时使用 plane.visibility 和 material.alpha，确保跨不同 alphaMode 生效
     const selectedMode = BLEND_INFOS[selectedBlendIdx].mode
     for (const g of testGroups) {
       if (singleDisplayCb.checked) {
         // 全部显示模式：所有 plane 都可见
         g.plane.visibility = val
+        g.material.alpha = val
       } else {
         // 仅显示选中模式：仅更新选中的 plane
         if (g.info.mode === selectedMode) {
           g.plane.visibility = val
+          g.material.alpha = val
         }
       }
     }
