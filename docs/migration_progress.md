@@ -1,6 +1,6 @@
 # OpenRAWeb3D Migration Progress
 
-> **Last updated**: 2026-06-04
+> **Last updated**: 2026-06-08
 > **Current phase**: Chapter 4 (Map System) — Phase C COMPLETE (12/34, 35%)
 > **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 12/34 (35%), Phases A-C complete
 
@@ -38,9 +38,9 @@
 
 | # | File | Lines (impl) | Lines (test) | Test Cases | Reviewed |
 |:---:|:---|:---:|:---:|:---:|:---:|
-| 1 | `src/OpenRA.Game/Renderer.ts` | 1128 | 782 | 89 | Yes |
+| 1 | `src/OpenRA.Game/Renderer.ts` | 1134 | 928 | 91 | Yes |
 | 2 | `src/OpenRA.Game/Graphics/WorldRenderer.ts` | 1314 | 1104 | 74 | Yes |
-| 3 | `src/OpenRA.Game/Graphics/SpriteRenderer.ts` | 835 | 642 | 55 | Pending |
+| 3 | `src/OpenRA.Game/Graphics/SpriteRenderer.ts` | 855 | 679 | 55 | Yes |
 | 4 | `src/OpenRA.Game/Graphics/RgbaColorRenderer.ts` | 1012 | 858 | 68 | Yes |
 | 5 | `src/OpenRA.Game/Graphics/RgbaSpriteRenderer.ts` | 161 | 462 | — | Pending |
 | 7 | `src/OpenRA.Game/Graphics/PlatformInterfaces.ts` | 407 | 118 | — | Yes |
@@ -139,9 +139,9 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Test File | Lines | Test Cases | Status |
 |-----------|:-----:|:----------:|--------|
-| `src/OpenRA.Game/Renderer.test.ts` | 782 | 89 | Passing |
+| `src/OpenRA.Game/Renderer.test.ts` | 928 | 91 | Passing |
 | `src/OpenRA.Game/Graphics/WorldRenderer.test.ts` | 1104 | 74 | Passing |
-| `src/OpenRA.Game/Graphics/SpriteRenderer.test.ts` | 642 | 55 | Passing |
+| `src/OpenRA.Game/Graphics/SpriteRenderer.test.ts` | 679 | 55 | Passing |
 | `src/OpenRA.Game/Graphics/RgbaColorRenderer.test.ts` | 858 | 68 | Passing |
 | `src/OpenRA.Game/Graphics/RgbaSpriteRenderer.test.ts` | 462 | — | Pending |
 | `src/OpenRA.Game/Graphics/PlatformInterfaces.test.ts` | 118 | — | Passing |
@@ -175,6 +175,8 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-08 | **SpriteRenderer.ts fix** | migration-develop | migration-review | APPROVED: Resolved 5 issues (3 BLOCKER + 2 MAJOR) from lessons-learned audit. BLOCKER #1: CreatePlane->CreateGround, removed billboardMode. BLOCKER #2: Added emissiveTexture + emissiveColor for disableLighting. MAJOR #4: ToRef matrix variants + pre-allocated buffers for zero GC. MAJOR #5: alwaysSelectAsActiveMesh=true for frustum culling. Rotation: Z->Y axis for XZ ground plane. Commit `e96bc06`. |
+| 2026-06-08 | **Renderer.ts fix** | migration-develop | migration-review | APPROVED: Resolved 2 issues (1 BLOCKER + 1 MAJOR). BLOCKER #3: try-catch in render loop callback to prevent silent death. MAJOR #6: Added emissiveTexture to world quad material. Commit `623cb4f`. |
 | 2026-06-04 | **Chapter 4 Phase C TerrainInfo** (1 file) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): TerrainInfo.ts (814 lines, TerrainTypeInfo + TerrainTileInfo + TileSet), 93 tests, 1205 test lines. Paradigm: C# ulong bits -> Int8Array, BitSet -> Set<string>, FrozenDictionary -> Map, MiniYAML -> JSON. Chapter 4: 12/34 (35%). |
 | 2026-06-04 | **Chapter 4 Phase B MapGrid** (2+2 files) | migration-develop | migration-review | APPROVED (1 Architect WR round, 5 BLOCKERs resolved): MapGrid.ts (436 line), CellRamp.ts (238 lines extracted), Exts.ts isqrtCeiling (+19), CVec.ts hashCode (+18). 138 tests total (39 CellRamp + 49 MapGrid + 10 Exts + 40 CVec). ~674 impl + ~843 test lines. Chapter 4: 11/34 (32%). |
 | 2026-06-04 | **Chapter 4 Phase A CellLayer** (8 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): CellLayerBase.ts, CellLayer.ts, CellRegion.ts, ProjectedCellLayer.ts, ProjectedCellRegion.ts, CellCoordsRegion.ts, MapCoordsRegion.ts, Size.ts. 195/195 tests, ~3,826 total lines. Chapter 4: 8/34 (24%). |

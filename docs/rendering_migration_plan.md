@@ -79,8 +79,8 @@
 
 **OpenRA 对照**: `OpenRA.Game/Renderer.cs`  
 **迁移目标**: `src/OpenRA.Game/Renderer.ts`  
-**状态**: 已完成 (938行实现 + 782行测试, 89 个测试用例)  
-**审核**: 已通过代码审核，修复了像素艺术缩放、平台退化 API 文档等问题
+**状态**: 已完成 (1134行实现 + 928行测试, 91 个测试用例)  
+**审核**: 已通过代码审核，修复了像素艺术缩放、平台退化 API 文档等问题。后期修复：render loop try-catch 错误保护 + emissiveTexture (commit `623cb4f`)
 
 - [x] **TODO-2.1.1** 移除所有直接 OpenGL 调用（`GL.BindFramebuffer`、`GL.Clear`、`GL.Scissor`）。
 - [x] **TODO-2.1.2** 用 `BABYLON.Engine` + `HTMLCanvasElement` 替代 SDL2 窗口管理与 OpenGL 上下文。
@@ -118,12 +118,13 @@
 
 **OpenRA 对照**: `OpenRA.Game/Graphics/SpriteRenderer.cs`  
 **迁移目标**: `src/OpenRA.Game/Graphics/SpriteRenderer.ts`  
-**状态**: 已完成 (~430行实现 + ~430行测试, 55 个测试用例)
+**状态**: 已完成 (855行实现 + 679行测试, 55 个测试用例)  
+**审核**: 已通过代码审核。后期修复：CreateGround 替代失效的 Billboard + emissiveTexture/emissiveColor + ToRef 矩阵零分配 + alwaysSelectAsActiveMesh (commit `e96bc06`, 3 BLOCKER + 2 MAJOR)
 
-- [x] **TODO-2.3.1** 批量渲染方案：选择 ThinInstances + Billboard Mesh 组合（`ThinInstancesBackend`）。
+- [x] **TODO-2.3.1** 批量渲染方案：选择 ThinInstances + XZ 地面平面 Mesh 组合（`ThinInstancesBackend`）。
 - [x] **TODO-2.3.2** ThinInstances 批量渲染：通过 `thinInstanceSetBuffer("matrix")` 批量更新变换矩阵。
 - [x] **TODO-2.3.3** 调色板索引机制：`IPaletteTexture` 接口预留，`ShaderMaterial` 替换待 Shader 模块迁移后实现。
-- [x] **TODO-2.3.4** Billboard 模式：`BILLBOARDMODE_Y` 保持 RTS 精灵直立视觉效果。
+- [x] **TODO-2.3.4** 精灵朝向：使用 `CreateGround`（XZ 水平面）直接面向俯视正交相机，纹理通过 RotationY 旋转；不使用 Billboard（ThinInstances 不继承 billboardMode）。纹理 UV 配合 XZ 地面平面适配。
 - [x] **TODO-2.3.5** 多 Sheet 管理：通过分组 ThinInstances 实现 Sheet 间切换，超过容量时自动 Flush。
 - [x] **TODO-2.3.6** BlendMode 管理：`blendModeToAlphaMode()` 映射 10 种混合模式到 Babylon.js `material.alphaMode`。
 

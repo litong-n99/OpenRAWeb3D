@@ -13,7 +13,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | **Rendering Engine (27 files)** | COMPLETE (100%) |
 | Renderer (main renderer) | Completed, reviewed |
 | WorldRenderer (world scene) | Completed, reviewed |
-| SpriteRenderer (batch sprites) | Completed |
+| SpriteRenderer (batch sprites) | Completed, reviewed |
 | RgbaColorRenderer (RGBA color renderer) | Completed, reviewed |
 | Shader / Material System (6 files) | Completed, reviewed |
 | FrameBuffer & Post-Processing (10 files) | Completed, reviewed |
@@ -38,13 +38,13 @@ OpenRA/                     ← Original C# source (READ-ONLY reference, NEVER m
 
 src/                        ← TypeScript migration target (mirrors OpenRA/ structure)
   OpenRA.Game/              ← Core engine: Renderer.ts, Graphics/, Primitives/, etc.
-    Renderer.ts             ← migrated (1128 lines, 89 tests)
+    Renderer.ts             ← migrated (1134 lines, 91 tests)
     Primitives/
       Color.ts              ← migrated (272 lines, 319 test lines)
     Int32Matrix4x4.ts     ← migrated (120 lines, 5 tests) -- Phase A support
     Graphics/
       WorldRenderer.ts      ← migrated (1314 lines, 74 tests)
-      SpriteRenderer.ts     ← migrated (835 lines, 55 tests)
+      SpriteRenderer.ts     ← migrated (855 lines, 55 tests)
       RgbaColorRenderer.ts  ← migrated (1012 lines, 68 tests)
       Sprite.ts             ← migrated (296 lines, 268 test lines)
       Sheet.ts              ← migrated (437 lines, 351 test lines)
