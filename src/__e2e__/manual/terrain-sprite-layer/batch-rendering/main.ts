@@ -283,6 +283,7 @@ async function main(): Promise<void> {
         const z = row * cellWorldSize - halfExtent + cellWorldSize / 2
 
         p.position.set(x, 0, z)
+        p.rotation.x = -Math.PI / 2  // Lay the XY plane flat onto the XZ ground plane
         p.scaling.set(cellWorldSize * 0.92, cellWorldSize * 0.92, 1)
         p.isVisible = true
 
