@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sheet + SheetBuilder - 纹理图集打包可视化 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; display: flex; align-items: center; justify-content: center; }
+    #sandbox canvas { display: block; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 320px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #controls h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ctrl-group { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .ctrl-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 3px; }
+    .ctrl-group select, .ctrl-group input[type="range"] { width: 100%; }
+    .ctrl-group select { padding: 5px 8px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; }
+    .ctrl-group input[type="range"] { accent-color: #e94560; }
+    .ctrl-group button { width: 100%; padding: 7px 12px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 12px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 3px; }
+    .ctrl-group button:hover { background: #e94560; color: #fff; }
+    .stat-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .stat-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+    #channel-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #888; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Sheet + SheetBuilder - 纹理图集打包布局与通道验证</h1>
+    <div class="subtitle">ID: sheet/atlas-packing | 期望结果见 README.md | OpenRA 对照: Sheet.ts (BGRA→RGBA), SheetBuilder.ts (行式打包)</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="ctrl-group">
+        <h3>C. 图集配置</h3>
+        <label for="sheet-type">Sheet 类型</label>
+        <select id="sheet-type">
+          <option value="BGRA" selected>BGRA (4 通道 RGBA 纹理)</option>
+          <option value="Indexed">Indexed (单通道 8-bit 索引)</option>
+        </select>
+        <label style="margin-top:6px;" for="sheet-size">Sheet 尺寸</label>
+        <select id="sheet-size">
+          <option value="128">128 x 128</option>
+          <option value="256" selected>256 x 256</option>
+          <option value="512">512 x 512</option>
+        </select>
+        <label style="margin-top:6px;" for="pack-mode">打包模式</label>
+        <select id="pack-mode">
+          <option value="random" selected>随机尺寸精灵 (模拟运行时打包)</option>
+          <option value="uniform">等尺寸精灵 (16x16)</option>
+          <option value="mixed">混合尺寸 (小/中/大)</option>
+        </select>
+        <label style="margin-top:6px;">精灵数量</label>
+        <input type="range" id="sprite-count" min="4" max="64" value="20">
+        <span style="font-size:11px;color:#888;">数量: <span id="sprite-count-val" style="color:#ccc;">20</span></span>
+        <button id="btn-repack">重新打包</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>C. BGRA↔RGBA 字节交换验证</h3>
+        <label for="swap-mode">显示模式</label>
+        <select id="swap-mode">
+          <option value="correct" selected>正确 RGBA (已交换 R↔B)</option>
+          <option value="swapped">错误 BGRA (未交换，源数据)</option>
+          <option value="diff">差异对比 (左右分屏)</option>
+        </select>
+        <label style="margin-top:6px;" for="test-color">标准测试色</label>
+        <select id="test-color">
+          <option value="red" selected>纯红 #FF0000 → BGRA [0,0,255,255]</option>
+          <option value="blue">纯蓝 #0000FF → BGRA [255,0,0,255]</option>
+          <option value="green">纯绿 #00FF00 → BGRA [0,255,0,255]</option>
+        </select>
+        <span style="font-size:10px;color:#666;margin-top:4px;display:block;">
+          BGRA 字节序: [B,G,R,A] = [0,0,255,255] 上传后交换为 RGBA [255,0,0,255]。若未交换，GPU 将 B 当 R 使用 → 红蓝互换。
+        </span>
+      </div>
+      <div class="ctrl-group">
+        <h3>状态监控</h3>
+        <div class="stat-row"><span>Sheet 尺寸</span><span class="val" id="stat-sheet-size">256x256</span></div>
+        <div class="stat-row"><span>精灵总数</span><span class="val" id="stat-sprites">20</span></div>
+        <div class="stat-row"><span>打包利用率</span><span class="val" id="stat-utilization">-</span></div>
+        <div class="stat-row"><span>通道 (Indexed 模式)</span><span class="val" id="stat-channels">N/A (BGRA)</span></div>
+        <div class="stat-row"><span>像素间距 (margin)</span><span class="val" id="stat-margin">0 或 1 px</span></div>
+        <div id="channel-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#e94560;"></div> R 通道</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#33cc33;"></div> G 通道</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#3366ff;"></div> B 通道</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff9933;"></div> A 通道</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#888;"></div> 未使用</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
