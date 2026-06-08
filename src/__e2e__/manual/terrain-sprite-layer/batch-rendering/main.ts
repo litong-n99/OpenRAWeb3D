@@ -345,6 +345,9 @@ async function main(): Promise<void> {
     if (!sps || dirtyRows.size === 0) return
 
     const dirtyCount = dirtyRows.size  // 记录提交前的脏行数
+    const rows = [...dirtyRows].sort((a, b) => a - b)
+    const dirtyListText = rows.slice(0, 20).join(', ') +
+      (rows.length > 20 ? ` ... (+${rows.length - 20} 行)` : '')
 
     const startTime = performance.now()
     sps.setParticles()
@@ -354,6 +357,7 @@ async function main(): Promise<void> {
     dirtyRows.clear()
     updateStats()
     statDirtyRows.textContent = String(dirtyCount)  // 显示本次提交的脏行数
+    dirtyRowsDisplay.textContent = dirtyListText   // 覆盖 updateStats() 写入的'(无)'
   }
 
   // ---- 按钮事件 ----
