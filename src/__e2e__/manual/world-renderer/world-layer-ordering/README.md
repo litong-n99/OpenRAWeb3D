@@ -5,6 +5,7 @@
 > 测试ID: `world-renderer/world-layer-ordering`
 > OpenRA 对照: `WorldRenderer.ts` — RenderGroup.Terrain(0), Actor(1), Overlay(2), Annotation(3)
 > 创建日期: 2026-06-06
+> 最后更新: 2026-06-08
 
 ---
 
@@ -40,8 +41,14 @@
 
 ## 结果判定
 
-- [ ] 期望 1 通过
-- [ ] 期望 2 通过
-- [ ] 期望 3 通过
-- [ ] 期望 4 通过
+- [x] 期望 1 通过（层级顺序 terrain < actor < overlay < annotation）
+- [x] 期望 2 通过（图层独立可见性切换即时）
+- [x] 期望 3 通过（偏移时层级关系维持）
+- [x] 期望 4 通过（FPS >= 55）
+
+| 判定结果 | 条件 |
+|---------|------|
+| **ACCEPTED** | 全部通过 ✅ |
+| ~~ACCEPTED WITH ISSUES~~ | 所有期望通过，边界测试有 1-2 项异常 |
+| ~~REJECTED~~ | 任一期望未通过 |
 
