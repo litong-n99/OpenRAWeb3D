@@ -1,5 +1,5 @@
 /**
- * main.ts — SpriteRenderer ThinInstances 批量渲染性能测试
+ * main.ts -- SpriteRenderer ThinInstances 批量渲染性能测试
  *
  * 测试目标:
  *   1. 验证 100/500/1000/5000 个精灵同时渲染时的 FPS 稳定性
@@ -16,7 +16,6 @@ import { HemisphericLight } from '@babylonjs/core'
 import { Vector3 } from '@babylonjs/core'
 import { Color3, Color4 } from '@babylonjs/core'
 import { MeshBuilder } from '@babylonjs/core'
-import { Mesh } from '@babylonjs/core'
 import { StandardMaterial } from '@babylonjs/core'
 import { DynamicTexture } from '@babylonjs/core'
 import { Matrix } from '@babylonjs/core'
@@ -26,9 +25,9 @@ import { Matrix } from '@babylonjs/core'
 // ---------------------------------------------------------------------------
 
 interface SpriteData {
-  position: Vector3
-  rotation: number
-  speed: number      // 旋转速度
+  position: Vector3   // 世界位置 (XZ 平面 + 微小 Y 偏移模拟地面)
+  rotation: number    // 绕 Y 轴的旋转角（模拟单位朝向）
+  speed: number       // 旋转速度
   colorIndex: number  // 调色板索引
   scale: number
 }
@@ -69,7 +68,7 @@ function createSpriteTexture(color: Color3, scene: Scene): DynamicTexture {
   ctx.fill()
 
   // 外圈
-  ctx.strokeStyle = `rgba(255,255,255,0.7)`
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.arc(half, half, half * 0.45, 0, Math.PI * 2)
@@ -209,17 +208,19 @@ async function main(): Promise<void> {
   const scene = new Scene(engine)
   scene.clearColor = new Color4(0.05, 0.06, 0.08, 1)
 
-  // ---- 摄像机 ----
+  // ---- 摄像机 (RTS 俯视角) ----
+  // alpha=-PI/4 使 camera 同时具有 X 和 Z 分量，避免边缘视角
+  // beta=PI/4 提供约 45 度俯视角（RTS 经典视角）
   const camera = new ArcRotateCamera(
     'cam',
-    -Math.PI / 2,
-    Math.PI / 3,  // RTS 视角
-    30,
+    -Math.PI / 4,   // alpha: 绕 Y 轴 -45 度
+    Math.PI / 4,     // beta: 俯角 45 度
+    45,              // radius: 足够看到 40x40 区域
     new Vector3(0, 0, 0),
     scene,
   )
   camera.lowerRadiusLimit = 5
-  camera.upperRadiusLimit = 80
+  camera.upperRadiusLimit = 100
   camera.panningSensibility = 500
   camera.attachControl(canvas, true)
 
@@ -231,31 +232,32 @@ async function main(): Promise<void> {
   const baseTex = createSpriteTexture(new Color3(1, 1, 1), scene)
   const baseMat = new StandardMaterial('baseMat', scene)
   baseMat.diffuseTexture = baseTex
-  baseMat.emissiveTexture = baseTex
-  baseMat.emissiveColor = new Color3(1, 1, 1)
   baseMat.useAlphaFromDiffuseTexture = true
   baseMat.specularColor.set(0, 0, 0)
   baseMat.backFaceCulling = false
   baseMat.disableLighting = true
 
-  // ---- 创建基础 Mesh（1x1 单位平面，用作所有 ThinInstances 的模板） ----
-  const baseMesh = MeshBuilder.CreatePlane('baseSpriteMesh', { size: 1 }, scene)
-  baseMesh.billboardMode = Mesh.BILLBOARDMODE_Y
+  // ---- 创建基础 Mesh（水平平面 XZ，作为地面精灵模板） ----
+  // 使用 CreateGround 创建 XZ 平面（水平放置在地面上）
+  // 这样从俯视 RTS 视角可以清晰地看到精灵
+  // 注：原代码使用 CreatePlane（垂直 XY 平面）+ BILLBOARDMODE_Y，
+  // 但 ThinInstances 不继承 billboardMode，导致精灵边缘朝摄像机不可见。
+  const baseMesh = MeshBuilder.CreateGround('baseSpriteMesh', { width: 1, height: 1 }, scene)
   baseMesh.material = baseMat
 
   // ---- 精灵数据 ----
   let spriteData: SpriteData[] = []
   let spriteCount = 500
-  const areaSize = 40 // 分布区域大小
+  const areaSize = 40 // 分布区域大小（XZ 平面）
 
   function generateSprites(count: number): SpriteData[] {
     const data: SpriteData[] = []
     for (let i = 0; i < count; i++) {
       data.push({
         position: new Vector3(
-          (Math.random() - 0.5) * areaSize,
-          (Math.random() - 0.5) * areaSize * 0.7,
-          Math.random() * 0.5, // 微小的 Z 偏移
+          (Math.random() - 0.5) * areaSize,      // X: 世界 X 轴
+          0.05 + Math.random() * 0.2,             // Y: 微小高度偏移（贴在地面上）
+          (Math.random() - 0.5) * areaSize,       // Z: 世界 Z 轴
         ),
         rotation: Math.random() * Math.PI * 2,
         speed: (Math.random() - 0.5) * 0.02,
@@ -277,10 +279,15 @@ async function main(): Promise<void> {
       const d = spriteData[i]
       const c = PALETTE_COLORS[d.colorIndex]
 
+      // 世界矩阵：T * Ry * S
+      // - Scale: 统一缩放
+      // - RotationY: 绕世界 Y 轴旋转（模拟地面单位朝向）
+      // - Translation: 放置到 XZ 平面位置
       const scaleMatrix = Matrix.Scaling(d.scale, d.scale, d.scale)
-      const rotMatrix = Matrix.RotationZ(d.rotation)
+      const rotMatrix = Matrix.RotationY(d.rotation)
       const transMatrix = Matrix.Translation(d.position.x, d.position.y, d.position.z)
 
+      // T * R * S（正确的 SRT 顺序：先缩放，再旋转，最后平移）
       const world = transMatrix.multiply(rotMatrix).multiply(scaleMatrix)
       const m = world.m
       const off = i * 16
@@ -288,6 +295,7 @@ async function main(): Promise<void> {
         matrices[off + j] = m[j]
       }
 
+      // 实例颜色（RGB * alpha 混合）
       const co = i * 4
       colors[co] = c.r
       colors[co + 1] = c.g
@@ -295,9 +303,19 @@ async function main(): Promise<void> {
       colors[co + 3] = 0.9
     }
 
-    baseMesh.thinInstanceSetBuffer('matrix', matrices, 16)
-    baseMesh.thinInstanceSetBuffer('color', colors, 4)
-    baseMesh.refreshBoundingInfo()
+    // 批量设置 ThinInstances 缓冲区
+    // staticBuffer=false 允许动态更新（动画帧间修改矩阵）
+    baseMesh.thinInstanceSetBuffer('matrix', matrices, 16, false)
+    // color 缓冲区会被 Babylon.js 自动转换为 instanceColor 属性，
+    // StandardMaterial 通过 INSTANCESCOLOR define 支持此属性
+    baseMesh.thinInstanceSetBuffer('color', colors, 4, false)
+
+    // 使用 thinInstanceRefreshBoundingInfo 计算包含所有实例的包围盒
+    // (refreshBoundingInfo 仅计算基础 mesh 的包围盒，不会包含 thin instances)
+    baseMesh.thinInstanceRefreshBoundingInfo(false)
+
+    // 确保 mesh 可见
+    baseMesh.isVisible = true
   }
 
   function updateSpriteCount(newCount: number): void {
@@ -373,21 +391,25 @@ async function main(): Promise<void> {
   engine.runRenderLoop(() => {
     const now = performance.now()
 
-    // 动画：更新旋转
-    if (enableAnimation && spriteData.length > 0) {
-      for (const d of spriteData) {
-        d.rotation += d.speed
-      }
-      applyThinInstances()
-    }
-
-    // 压力模式：每 10 帧重新生成精灵
-    if (stressMode) {
-      frameCount++
-      if (frameCount % 10 === 0) {
-        spriteData = generateSprites(spriteCount)
+    try {
+      // 动画：更新旋转
+      if (enableAnimation && spriteData.length > 0) {
+        for (const d of spriteData) {
+          d.rotation += d.speed
+        }
         applyThinInstances()
       }
+
+      // 压力模式：每 10 帧重新生成精灵
+      if (stressMode) {
+        frameCount++
+        if (frameCount % 10 === 0) {
+          spriteData = generateSprites(spriteCount)
+          applyThinInstances()
+        }
+      }
+    } catch (err) {
+      console.error('[render-loop] applyThinInstances failed:', err)
     }
 
     scene.render()
