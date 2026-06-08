@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animation - 高级播放模式与序列切换 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 340px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #controls h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ctrl-group { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .ctrl-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 3px; }
+    .ctrl-group select, .ctrl-group input[type="range"] { width: 100%; }
+    .ctrl-group select { padding: 5px 8px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; }
+    .ctrl-group input[type="range"] { accent-color: #e94560; }
+    .ctrl-group button { padding: 7px 14px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 12px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin: 3px 4px 0 0; }
+    .ctrl-group button:hover { background: #e94560; color: #fff; }
+    .ctrl-group button.active { background: #e94560; color: #fff; }
+    .btn-row { display: flex; gap: 4px; flex-wrap: wrap; }
+    .btn-row button { flex: 1; min-width: 60px; }
+    .btn-secondary { border-color: #f39c12 !important; color: #f39c12 !important; }
+    .btn-secondary:hover { background: #f39c12 !important; color: #fff !important; }
+    .stat-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .stat-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    #progress-bar-container { width: 100%; height: 6px; background: #333; border-radius: 3px; margin: 6px 0; overflow: hidden; }
+    #progress-bar { height: 100%; background: #e94560; border-radius: 3px; transition: width 0.1s; }
+    #fetch-index-slider { width: 100%; accent-color: #e94560; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 动画系统 - PlayFetchIndex / ReplaceAnim 高级播放模式验证</h1>
+    <div class="subtitle">ID: animation/animation-play-modes | 期望结果见 README.md | OpenRA 对照: Animation.ts (6 种播放模式 全部覆盖)</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="ctrl-group">
+        <h3>C. 当前播放模式</h3>
+        <label for="play-mode">模式选择</label>
+        <select id="play-mode">
+          <option value="fetchIndex" selected>PlayFetchIndex (外部帧控制, tickAlways)</option>
+          <option value="replaceAnim">ReplaceAnim (序列替换保帧位)</option>
+          <option value="random">GetRandomExistingSequence (随机序列)</option>
+        </select>
+      </div>
+
+      <!-- PlayFetchIndex 控制 -->
+      <div class="ctrl-group" id="fetch-index-controls">
+        <h3>C. PlayFetchIndex — 外部帧索引控制</h3>
+        <label>外部帧索引 (模拟进度条/外部输入)</label>
+        <input type="range" id="fetch-index-slider" min="0" max="14" value="0" step="1">
+        <span style="font-size:11px;color:#888;">当前外部帧: <span id="fetch-index-val" style="color:#ccc;">0</span> / 14</span>
+        <div id="progress-bar-container"><div id="progress-bar" style="width:0%;"></div></div>
+        <div class="btn-row">
+          <button id="btn-auto-progress" class="active">自动推进 (2 帧/s)</button>
+          <button id="btn-fetch-manual">手动控制</button>
+        </div>
+        <label style="margin-top:6px;">说明</label>
+        <span style="font-size:10px;color:#666;">tickAlways=true: 每 Tick 直接调用 func() 获取帧索引，不等时间累积。用于构建进度条等需外部精确控制帧位置的场景。</span>
+      </div>
+
+      <!-- ReplaceAnim 控制 -->
+      <div class="ctrl-group" id="replace-anim-controls" style="display:none;">
+        <h3>C. ReplaceAnim — 序列替换保帧位</h3>
+        <label>目标序列 (保持当前帧位置取模)</label>
+        <div class="btn-row">
+          <button id="btn-replace-walk" class="active">当前序列: walk (15帧)</button>
+        </div>
+        <div class="btn-row" style="margin-top:4px;">
+          <button id="btn-replace-attack" class="btn-secondary">替换为 attack (8帧)</button>
+          <button id="btn-replace-idle">替换为 idle (4帧)</button>
+          <button id="btn-replace-deploy">替换为 deploy (30帧)</button>
+        </div>
+        <label style="margin-top:6px;">说明</label>
+        <span style="font-size:10px;color:#666;">序列切换时保持帧索引位置 (mod 新序列长度)。如 walk 帧 12 → attack 帧 12%8=4。用于单位切换武器时保持行走动画的相对帧位置。</span>
+      </div>
+
+      <!-- 序列信息 -->
+      <div class="ctrl-group">
+        <h3>序列信息</h3>
+        <div class="stat-row"><span>活跃序列</span><span class="val" id="state-sequence">walk</span></div>
+        <div class="stat-row"><span>序列长度</span><span class="val" id="state-seq-length">15 帧</span></div>
+        <div class="stat-row"><span>帧间隔</span><span class="val" id="state-tick">40ms (25fps)</span></div>
+        <div class="stat-row"><span>当前帧</span><span class="val" id="state-frame">0</span></div>
+        <div class="stat-row"><span>播放方向</span><span class="val" id="state-direction">正向</span></div>
+        <div class="stat-row"><span>tickAlways</span><span class="val" id="state-tick-always">true</span></div>
+        <div class="stat-row"><span>下一帧剩余</span><span class="val" id="state-time-left">0ms</span></div>
+      </div>
+
+      <!-- 结果日志 -->
+      <div class="ctrl-group">
+        <h3>事件日志</h3>
+        <div id="event-log" style="max-height:120px;overflow-y:auto;font-size:10px;color:#888;font-family:'Consolas',monospace;line-height:1.4;">
+          (等待操作...)
+        </div>
+        <button id="btn-clear-log" style="border-color:#555;color:#888;font-size:10px;padding:3px 8px;margin-top:4px;">清空日志</button>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
