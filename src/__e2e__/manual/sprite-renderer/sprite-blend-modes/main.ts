@@ -413,16 +413,16 @@ async function main(): Promise<void> {
         g.labelPlane.isVisible = labelsVisible
 
         if (isSelected) {
-          // 选中的面板：放大 15% + 暖色发光边框效果
-          g.plane.scaling.setAll(1.15)
+          // 选中的面板：放大 25% + 暖色调高亮
+          g.plane.scaling.setAll(1.25)
           g.labelPlane.scaling.setAll(1.3)
-          // 添加黄色高亮叠加到 emissive
-          g.material.emissiveColor = new Color3(0.25, 0.2, 0.05)
+          // 暖色 emissive 使选中面板呈现温暖的黄色调，与非选中面板的原始颜色明显区分
+          g.material.emissiveColor = new Color3(1.0, 0.9, 0.8)
         } else {
-          // 非选中面板：正常大小，无额外 emissive
+          // 非选中面板：正常大小，emissiveColor=(1,1,1) 确保纹理正常显示
           g.plane.scaling.setAll(1)
           g.labelPlane.scaling.setAll(1)
-          g.material.emissiveColor = new Color3(0, 0, 0)
+          g.material.emissiveColor = new Color3(1, 1, 1)
         }
       }
     } else {
@@ -436,7 +436,7 @@ async function main(): Promise<void> {
         g.labelPlane.isVisible = isSelected && labelsVisible
         g.plane.scaling.setAll(1)
         g.labelPlane.scaling.setAll(1)
-        g.material.emissiveColor = new Color3(0, 0, 0)
+        g.material.emissiveColor = new Color3(1, 1, 1)
       }
     }
   }
