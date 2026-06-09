@@ -139,8 +139,9 @@ function renderAtlas(
   _sheetType: 'BGRA' | 'Indexed',
   swapMode: 'correct' | 'swapped' | 'diff',
   diffSide: 'left' | 'right',
+  scene: Scene | null = null,
 ): DynamicTexture {
-  const tex = new DynamicTexture(`atlas_${size}`, { width: size, height: size }, null!, false)
+  const tex = new DynamicTexture(`atlas_${size}`, { width: size, height: size }, scene, false)
   const ctx = tex.getContext() as unknown as CanvasRenderingContext2D
 
   // 背景：深灰，方便看边界
@@ -327,11 +328,15 @@ async function main(): Promise<void> {
   const scene = new Scene(engine)
   scene.clearColor = new Color4(0.10, 0.11, 0.14, 1)
 
-  // ---- 摄像机 ----  (正交，直接看纹理)
+  // ---- 摄像机 ----  (正交，从正上方俯视 XZ 平面上的纹理图集)
+  //
+  // beta=Math.PI/2 使摄像机位于平面上方，向下俯视。
+  // beta=0 会导致摄像机与平面同高，只能看到平面的薄边（表现
+  // 为"一条彩色线"的 bug）。
   const camera = new ArcRotateCamera(
     'cam',
     -Math.PI / 2,
-    0,
+    Math.PI / 2,
     5,
     new Vector3(0, 0, 0),
     scene,
@@ -395,8 +400,11 @@ async function main(): Promise<void> {
 
     if (swapMode === 'diff') {
       // 差异对比：左侧正确，右侧错误
-      const texLeft = renderAtlas(sheetSize, packed, sheetType, 'correct', 'left')
-      const texRight = renderAtlas(sheetSize, packed, sheetType, 'swapped', 'right')
+      //
+      // NOTE: texLeft/texRight 仅用于 canvas 合成，不需要
+      // babylon 场景引用（它们不会被直接赋值给 material）。
+      const texLeft = renderAtlas(sheetSize, packed, sheetType, 'correct', 'left', null)
+      const texRight = renderAtlas(sheetSize, packed, sheetType, 'swapped', 'right', null)
 
       // 合成为一张纹理
       const combined = new DynamicTexture('combined', { width: sheetSize, height: sheetSize }, scene, false)
@@ -428,7 +436,7 @@ async function main(): Promise<void> {
       atlasMat.diffuseTexture = combined
       atlasMat.emissiveTexture = combined
     } else {
-      const tex = renderAtlas(sheetSize, packed, sheetType, swapMode, 'left')
+      const tex = renderAtlas(sheetSize, packed, sheetType, swapMode, 'left', scene)
       atlasMat.diffuseTexture = tex
       atlasMat.emissiveTexture = tex
     }
