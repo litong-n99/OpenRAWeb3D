@@ -557,55 +557,22 @@ async function main(): Promise<void> {
   let pickSuccesses = 0
 
   // ============================================================
-  // 诊断层 1: 所有 pointer 事件 (Babylon.js 使用这些事件)
-  // 这些 handler 只记录日志，不做任何业务逻辑
+  // Pointer 事件 — 业务逻辑主入口
+  //
+  // 为什么用 pointerdown/pointerup 而不是 mousedown/mouseup:
+  //   Babylon.js 在 pointerdown 时调用 setPointerCapture()（见
+  //   webDeviceInputSystem.js:434），浏览器建立 pointer capture 后
+  //   会抑制兼容性 mouse 事件（mousedown/mouseup 不再派发）。
+  //   因此必须使用 pointer 事件来驱动选择逻辑。
   // ============================================================
 
   canvas.addEventListener('pointerdown', (e) => {
     const seq = nextSeq()
-    const rect = canvas.getBoundingClientRect()
-    console.log(`${DIAG_PREFIX} [EVENT #${seq}] pointerdown: pointerId=${e.pointerId} button=${e.button} client=(${e.clientX},${e.clientY}) canvasRel=(${(e.clientX - rect.left).toFixed(1)}, ${(e.clientY - rect.top).toFixed(1)}) target=${(e.target as HTMLElement)?.tagName ?? '?'}`)
-  })
+    console.group(`${DIAG_PREFIX} [EVENT #${seq}] pointerdown START`)
 
-  canvas.addEventListener('pointerup', (e) => {
-    const seq = nextSeq()
-    const rect = canvas.getBoundingClientRect()
-    console.log(`${DIAG_PREFIX} [EVENT #${seq}] pointerup:   pointerId=${e.pointerId} button=${e.button} client=(${e.clientX},${e.clientY}) canvasRel=(${(e.clientX - rect.left).toFixed(1)}, ${(e.clientY - rect.top).toFixed(1)}) target=${(e.target as HTMLElement)?.tagName ?? '?'}`)
-  })
-
-  canvas.addEventListener('pointermove', (e) => {
-    // Only log pointermove if selecting or hover testing, to reduce noise
-    if (!isSelecting && !hoverTestEnabled) return
-    const seq = nextSeq()
-    console.log(`${DIAG_PREFIX} [EVENT #${seq}] pointermove: pointerId=${e.pointerId} client=(${e.clientX},${e.clientY}) buttons=${e.buttons}`)
-  })
-
-  // Log pointer capture events (diagnose if pointer capture is being set/released unexpectedly)
-  canvas.addEventListener('gotpointercapture', (e) => {
-    console.log(`${DIAG_PREFIX} [EVENT] gotpointercapture: pointerId=${e.pointerId}`)
-  })
-  canvas.addEventListener('lostpointercapture', (e) => {
-    console.log(`${DIAG_PREFIX} [EVENT] lostpointercapture: pointerId=${e.pointerId}`)
-  })
-
-  // Log focus events on canvas (diagnose the white-box focus issue)
-  canvas.addEventListener('focus', () => {
-    console.log(`${DIAG_PREFIX} [EVENT] canvas FOCUS`)
-  })
-  canvas.addEventListener('blur', () => {
-    console.log(`${DIAG_PREFIX} [EVENT] canvas BLUR`)
-  })
-
-  // ============================================================
-  // 诊断层 2: mouse 事件 (我们的业务逻辑使用这些)
-  // ============================================================
-
-  canvas.addEventListener('mousedown', (e) => {
-    const seq = nextSeq()
-    console.group(`${DIAG_PREFIX} [EVENT #${seq}] mousedown START`)
-
+    // 只处理左键/主指针的 pointerdown
     if (e.button !== 0) {
-      console.log(`${DIAG_PREFIX}   SKIP: button=${e.button} (not left button)`)
+      console.log(`${DIAG_PREFIX}   SKIP: button=${e.button} (not left/primary button)`)
       console.groupEnd()
       return
     }
@@ -615,18 +582,15 @@ async function main(): Promise<void> {
     selStartX = e.clientX
     selStartY = e.clientY
 
-    dumpCanvasDiagnostics(`mousedown #${pickAttempts}`)
+    dumpCanvasDiagnostics(`pointerdown #${pickAttempts}`)
 
     const canvasRect = canvas.getBoundingClientRect()
     const sx = e.clientX - canvasRect.left
     const sy = e.clientY - canvasRect.top
 
-    console.log(`${DIAG_PREFIX}   mousedown #${pickAttempts}: client=(${e.clientX},${e.clientY})`)
+    console.log(`${DIAG_PREFIX}   pointerdown #${pickAttempts}: pointerId=${e.pointerId} client=(${e.clientX},${e.clientY})`)
     console.log(`${DIAG_PREFIX}   canvasRect: left=${canvasRect.left.toFixed(1)}, top=${canvasRect.top.toFixed(1)}, w=${canvasRect.width.toFixed(1)}, h=${canvasRect.height.toFixed(1)}`)
     console.log(`${DIAG_PREFIX}   CSS relative to canvas: (${sx.toFixed(1)}, ${sy.toFixed(1)})`)
-
-    // Prevent text selection and browser drag
-    e.preventDefault()
 
     const pick = screenToWorld(canvasRect, sx, sy)
     selStartWorld = pick
@@ -635,7 +599,6 @@ async function main(): Promise<void> {
       pickSuccesses++
       console.log(`${DIAG_PREFIX}   → pick SUCCESS: world=(${pick.x.toFixed(2)}, ${pick.z.toFixed(2)}) successes=${pickSuccesses}/${pickAttempts}`)
 
-      // 诊断: 哪些 unit 在这个点下
       const pointHits = grid.queryPoint(pick.x, pick.z)
       console.log(`${DIAG_PREFIX}   → Point query preview at this position: ${pointHits.length} unit(s)`)
       for (const h of pointHits) {
@@ -657,7 +620,8 @@ async function main(): Promise<void> {
     console.groupEnd()
   })
 
-  canvas.addEventListener('mousemove', (e) => {
+  canvas.addEventListener('pointermove', (e) => {
+    // 框选时的矩形绘制
     if (isSelecting) {
       const canvasRect = canvas.getBoundingClientRect()
       const x = Math.min(selStartX, e.clientX)
@@ -692,14 +656,14 @@ async function main(): Promise<void> {
     }
   })
 
-  canvas.addEventListener('mouseup', (e) => {
+  canvas.addEventListener('pointerup', (e) => {
     const seq = nextSeq()
-    console.group(`${DIAG_PREFIX} [EVENT #${seq}] mouseup START`)
+    console.group(`${DIAG_PREFIX} [EVENT #${seq}] pointerup START`)
 
-    console.log(`${DIAG_PREFIX}   isSelecting=${isSelecting} selStartWorld=${selStartWorld ? `(${selStartWorld.x.toFixed(2)}, ${selStartWorld.z.toFixed(2)})` : 'null'}`)
+    console.log(`${DIAG_PREFIX}   pointerId=${e.pointerId} isSelecting=${isSelecting} selStartWorld=${selStartWorld ? `(${selStartWorld.x.toFixed(2)}, ${selStartWorld.z.toFixed(2)})` : 'null'}`)
 
     if (!isSelecting) {
-      console.log(`${DIAG_PREFIX}   SKIP: not in selection state (isSelecting=false) — was mousedown missed?`)
+      console.log(`${DIAG_PREFIX}   SKIP: not in selection state (isSelecting=false)`)
       console.groupEnd()
       return
     }
@@ -708,7 +672,7 @@ async function main(): Promise<void> {
     selRectEl.style.display = 'none'
 
     if (!selStartWorld) {
-      console.warn(`${DIAG_PREFIX}   SKIP: selStartWorld is null — screenToWorld failed on mousedown`)
+      console.warn(`${DIAG_PREFIX}   SKIP: selStartWorld is null — screenToWorld failed on pointerdown`)
       overlayEl.textContent = 'Click missed ground plane — check console for details'
       console.groupEnd()
       return
@@ -718,11 +682,11 @@ async function main(): Promise<void> {
     const sx = e.clientX - canvasRect.left
     const sy = e.clientY - canvasRect.top
 
-    console.log(`${DIAG_PREFIX}   mouseup: client=(${e.clientX},${e.clientY}) canvasRel=(${sx.toFixed(1)}, ${sy.toFixed(1)})`)
+    console.log(`${DIAG_PREFIX}   pointerup: client=(${e.clientX},${e.clientY}) canvasRel=(${sx.toFixed(1)}, ${sy.toFixed(1)})`)
 
     const endPick = screenToWorld(canvasRect, sx, sy)
     if (!endPick) {
-      console.warn(`${DIAG_PREFIX}   SKIP: endPick is null — screenToWorld failed on mouseup`)
+      console.warn(`${DIAG_PREFIX}   SKIP: endPick is null — screenToWorld failed on pointerup`)
       overlayEl.textContent = 'Release missed ground plane — check console'
       console.groupEnd()
       return
@@ -735,7 +699,7 @@ async function main(): Promise<void> {
     console.log(`${DIAG_PREFIX}   startWorld=(${selStartWorld.x.toFixed(2)}, ${selStartWorld.z.toFixed(2)}) endWorld=(${endPick.x.toFixed(2)}, ${endPick.z.toFixed(2)})`)
     console.log(`${DIAG_PREFIX}   dx=${dx.toFixed(3)} dz=${dz.toFixed(3)} dragDist=${dragDist.toFixed(3)}`)
 
-    const CLICK_THRESHOLD = 1.0 // world units — slightly larger to be forgiving
+    const CLICK_THRESHOLD = 1.0 // world units
 
     if (dragDist < CLICK_THRESHOLD) {
       // 精确点击 (ActorsAtMouse)
@@ -771,6 +735,35 @@ async function main(): Promise<void> {
     }
 
     console.groupEnd()
+  })
+
+  // ---- 诊断: pointer capture / focus / legacy mouse 事件跟踪 ----
+
+  canvas.addEventListener('gotpointercapture', (e) => {
+    console.log(`${DIAG_PREFIX} [EVENT] gotpointercapture: pointerId=${e.pointerId}`)
+  })
+  canvas.addEventListener('lostpointercapture', (e) => {
+    console.log(`${DIAG_PREFIX} [EVENT] lostpointercapture: pointerId=${e.pointerId}`)
+  })
+
+  canvas.addEventListener('focus', () => {
+    console.log(`${DIAG_PREFIX} [EVENT] canvas FOCUS`)
+  })
+  canvas.addEventListener('blur', () => {
+    console.log(`${DIAG_PREFIX} [EVENT] canvas BLUR`)
+  })
+
+  // 保留 mousedown/mouseup/mousemove 监听器作为诊断桩。
+  // 如果浏览器在 pointer capture 下仍然派发 mouse 事件，这里会记录；
+  // 否则（当前观察到的情况）这些 handler 不会有输出。
+  canvas.addEventListener('mousedown', (e) => {
+    console.log(`${DIAG_PREFIX} [MOUSE-STUB] mousedown: button=${e.button} client=(${e.clientX},${e.clientY}) — browser fired legacy mouse event`)
+  })
+  canvas.addEventListener('mouseup', (e) => {
+    console.log(`${DIAG_PREFIX} [MOUSE-STUB] mouseup: button=${e.button} client=(${e.clientX},${e.clientY}) — browser fired legacy mouse event`)
+  })
+  canvas.addEventListener('mousemove', (_e) => {
+    // silently ignore, too noisy
   })
 
   // ---- 右键诊断菜单 ----

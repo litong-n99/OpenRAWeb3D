@@ -5,12 +5,29 @@
 > 测试ID: `screenmap/spatial-query`
 > OpenRA 对照: `ScreenMap.ts` — SpatiallyPartitioned<T> spatial hash, mouse hit-test, box selection
 > 创建日期: 2026-06-09
-> 状态: **PENDING (diagnostics collected, awaiting feedback)**
+> 状态: **PENDING (Round 4: 根因定位+修复，pointer event 迁移完成，等待用户验证)**
 >
-> **调试轮次**: Round 3 — 添加了全面的诊断日志，覆盖完整事件链路
+> **调试轮次**:
 > - Round 1 (504758a): 修复 unit mesh 遮挡 scene.pick()
 > - Round 2 (c6fe9ac): 替换 scene.pick() 为 createPickingRay() + XZ plane intersection
-> - Round 3 (本次): 修复 Canvas focus outline 白框 + 添加 pointer/mouse 事件链路日志 + canvas 尺寸诊断
+> - Round 3 (f77dbad): Canvas focus outline 白框修复 + 全面诊断日志
+> - **Round 4 (本次): 将业务逻辑从 mousedown/mouseup 迁移到 pointerdown/pointerup**
+>
+> ### Round 4 根因分析
+>
+> **已确认的根因**: Babylon.js 的 `WebDeviceInputSystem._pointerDownEvent` 在 `pointerdown` 时
+> 调用 `canvas.setPointerCapture(mouseId)`（`webDeviceInputSystem.js:434`）。浏览器建立 pointer
+> capture 后，兼容性 mouse 事件（`mousedown`/`mouseup`/`mousemove`）不再派发。
+>
+> **证据**（来自用户收集的控制台日志）:
+> - `[EVENT #1] pointerdown` — 正常触发
+> - `[EVENT] gotpointercapture` — pointer capture 已建立
+> - `[EVENT #2] pointerup` — 正常触发
+> - `[EVENT] lostpointercapture` — pointer capture 已释放
+> - **没有任何 `mousedown`/`mouseup` 日志** — 兼容性 mouse 事件被浏览器抑制
+>
+> **修复**: 将选择逻辑（selStartWorld 记录、框选矩形绘制、点选/框选查询）全部迁移到
+> `pointerdown`/`pointermove`/`pointerup` 事件处理器。
 
 ---
 
