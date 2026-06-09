@@ -74,7 +74,7 @@ camera.lowerRadiusLimit = 500
 camera.upperRadiusLimit = 8000
 camera.target = new Vector3(0, 150, 0)
 camera.attachControl(canvas, true)
-camera.wheelPrecision = 1.0
+camera.wheelDeltaPercentage = 0.05
 
 // ---------------------------------------------------------------------------
 // Lighting
