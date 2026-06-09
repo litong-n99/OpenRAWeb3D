@@ -5,7 +5,7 @@
 > 测试ID: `screenmap/spatial-query`
 > OpenRA 对照: `ScreenMap.ts` — SpatiallyPartitioned<T> spatial hash, mouse hit-test, box selection
 > 创建日期: 2026-06-09
-> 状态: **PENDING (Round 5: 高亮修复 + Camera 键盘控制)**
+> 状态: **ACCEPTED (2026-06-09)**
 >
 > **调试轮次**:
 > - Round 1 (504758a): 修复 unit mesh 遮挡 scene.pick()
@@ -230,15 +230,15 @@
 | **PARTIAL** | 部分未通过，已记录具体差异 |
 | **REJECTED** | BLOCKER 级问题 |
 
-- [ ] 期望 1 通过（精确点击）
-- [ ] 期望 2 通过（矩形框选）
-- [ ] 期望 3 通过（包圍盒可视化）
-- [ ] 期望 4 通过（Mouse Bounds）
-- [ ] 期望 5 通过（分区网格粒度）
-- [ ] 期望 6 通过（Hover 检测）
-- [ ] 期望 7 通过（随机化一致性）
+- [x] 期望 1 通过（精确点击）
+- [x] 期望 2 通过（矩形框选）
+- [x] 期望 3 通过（包圍盒可视化）
+- [x] 期望 4 通过（Mouse Bounds）
+- [x] 期望 5 通过（分区网格粒度）
+- [x] 期望 6 通过（Hover 检测）
+- [x] 期望 7 通过（随机化一致性）
 
-**最终判定: _______________**
+**最终判定: ACCEPTED**
 
 **设备信息**:
 - GPU: __________
