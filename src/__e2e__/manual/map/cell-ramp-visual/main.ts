@@ -91,12 +91,24 @@ camera.target = new Vector3(0, 0, 0)
 
 // ---------------------------------------------------------------------------
 // Lighting
+//
+// Two hemispheric lights from opposite directions + high ambient so that
+// sloped surfaces are visible from any camera angle (fixes Bug 3).
 // ---------------------------------------------------------------------------
 
-const light = new HemisphericLight('light', new Vector3(0.2, 1, 0.3), scene)
-light.intensity = 0.8
-light.diffuse = new Color3(0.9, 0.9, 0.9)
-light.specular = new Color3(0.1, 0.1, 0.1)
+// Main light: above and slightly to the right
+const light1 = new HemisphericLight('light1', new Vector3(0.2, 1, 0.3), scene)
+light1.intensity = 0.9
+light1.diffuse = new Color3(0.95, 0.95, 0.95)
+light1.specular = new Color3(0.05, 0.05, 0.05)
+light1.groundColor = new Color3(0.2, 0.2, 0.25)
+
+// Fill light: from below to illuminate undersides of slopes
+const light2 = new HemisphericLight('light2', new Vector3(-0.2, -1, -0.3), scene)
+light2.intensity = 0.4
+light2.diffuse = new Color3(0.6, 0.6, 0.7)
+light2.specular = new Color3(0, 0, 0)
+light2.groundColor = new Color3(0.15, 0.15, 0.18)
 
 // ---------------------------------------------------------------------------
 // State
@@ -201,9 +213,27 @@ function buildRamps(gridType: MapGridType): void {
     vertexData.positions = positions
     vertexData.indices = indices
     vertexData.colors = colors
+
+    // Compute per-vertex normals from the triangle geometry.
+    // Without normals the GPU sees all-zero vectors and
+    // dot(normal, lightDir) = 0 → completely black fragments.
+    // (Fixes Bug 3: missing normals)
+    {
+      const normals: number[] = []
+      VertexData.ComputeNormals(positions, indices, normals)
+      vertexData.normals = normals
+    }
+
     vertexData.applyToMesh(rampMesh, true)
 
-    // Edges rendering: create tubes along triangle edges.
+    // Material for the ramp mesh — high emissive so the vertex colors
+    // remain visible even when the surface normal points away from both lights.
+    const mat = new StandardMaterial(`rampMat-${i}`, scene)
+    mat.diffuseColor = new Color3(0.75, 0.75, 0.75)
+    mat.emissiveColor = new Color3(0.45, 0.45, 0.45)
+    mat.alpha = 0.88
+    mat.backFaceCulling = false
+    rampMesh.material = mat
     // Uses CreateTube with a 2-point path — the tube naturally follows the
     // edge endpoints without manual orientation math.
     // (Fixes Bug 1: CreateCylinder + lookAt had Y/Z axis mismatch,
@@ -253,19 +283,11 @@ function buildRamps(gridType: MapGridType): void {
 
       const sphereMat = new StandardMaterial(`sphereMat-${i}-${c}`, scene)
       sphereMat.diffuseColor = heightToColor(wv.Z, maxPossibleHeight)
-      sphereMat.emissiveColor = sphereMat.diffuseColor.scale(0.3)
+      sphereMat.emissiveColor = sphereMat.diffuseColor.scale(0.6)
       sphere.material = sphereMat
 
       rampMeshes.push(sphere)
     }
-
-    // Material for the ramp mesh
-    const mat = new StandardMaterial(`rampMat-${i}`, scene)
-    mat.diffuseColor = new Color3(0.7, 0.7, 0.7)
-    mat.emissiveColor = new Color3(0.1, 0.1, 0.1)
-    mat.alpha = 0.85
-    mat.backFaceCulling = false
-    rampMesh.material = mat
 
     rampMeshes.push(rampMesh)
   }
