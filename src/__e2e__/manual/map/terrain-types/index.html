@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TerrainInfo - 地形类型分类与 TileSet | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 350px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .terrain-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #0f3460; font-size: 12px; }
+    .terrain-item:last-child { border-bottom: none; }
+    .terrain-swatch { width: 28px; height: 28px; border-radius: 4px; border: 2px solid #555; flex-shrink: 0; }
+    .terrain-name { font-weight: 600; min-width: 70px; }
+    .terrain-hex { color: #888; font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; }
+    .terrain-type { color: #666; font-size: 10px; }
+    .tile-item { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 11px; color: #888; }
+    .tile-swatch { width: 16px; height: 16px; border-radius: 2px; border: 1px solid #444; flex-shrink: 0; }
+    .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; background: #0f3460; color: #aaa; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    button { width: 100%; padding: 8px 14px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 13px; cursor: pointer; font-weight: 600; }
+    button:hover { background: #e94560; color: #fff; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px; }
+    .stats .stat-label { color: #666; }
+    .stats .stat-val { color: #e94560; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 地图系统 - 地形类型分类与 TileSet 颜色验证</h1>
+    <div class="subtitle">ID: map/terrain-types | 期望结果见 README.md | OpenRA 对照: TerrainInfo.cs (TerrainTypeInfo + TerrainTileInfo + TileSet)</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 -- 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C. TileSet 统计信息</h3>
+        <div class="stats" id="tileset-stats">
+          <div class="stat-label">地形类型数:</div><div class="stat-val" id="stat-types">-</div>
+          <div class="stat-label">模板数:</div><div class="stat-val" id="stat-templates">-</div>
+          <div class="stat-label">总 Tile 数:</div><div class="stat-val" id="stat-tiles">-</div>
+          <div class="stat-label">含 Ramp 的 Tile:</div><div class="stat-val" id="stat-ramped">-</div>
+        </div>
+      </div>
+      <div class="control-group">
+        <h3>B. 期望结果 #1: 地形类型颜色</h3>
+        <div id="terrain-list">
+          <!-- populated by JS -->
+        </div>
+      </div>
+      <div class="control-group">
+        <h3>B. 期望结果 #2: 模板 Tile 详情</h3>
+        <div id="template-tiles">
+          <!-- populated by JS -->
+        </div>
+      </div>
+      <div class="control-group">
+        <button id="randomize-colors">随机化 Tile 颜色 (验证 getColor 插值)</button>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
