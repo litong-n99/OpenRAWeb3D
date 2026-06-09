@@ -74,6 +74,7 @@ camera.lowerRadiusLimit = 500
 camera.upperRadiusLimit = 8000
 camera.target = new Vector3(0, 150, 0)
 camera.attachControl(canvas, true)
+camera.wheelPrecision = 1.0
 
 // ---------------------------------------------------------------------------
 // Lighting
@@ -203,19 +204,12 @@ function buildRamps(gridType: MapGridType): void {
 
         const ba = wvecToBjs(a)
         const bb = wvecToBjs(b)
-        const mid = ba.add(bb).scale(0.5)
-        const dir = bb.subtract(ba)
-        const len = dir.length()
 
-        const edgeLine = MeshBuilder.CreateCylinder(`edge-${i}-${drawnEdges.size}`, {
-          height: len,
-          diameter: 20,
+        const edgeLine = MeshBuilder.CreateTube(`edge-${i}-${drawnEdges.size}`, {
+          path: [ba, bb],
+          radius: 4,
         }, scene)
         edgeLine.parent = parentNode
-        edgeLine.position = mid
-
-        // Orient cylinder to align with edge direction
-        edgeLine.lookAt(bb, 0, 0, 1)
 
         // Gray edge material
         const edgeMat = new StandardMaterial(`edgeMat-${i}-${drawnEdges.size}`, scene)
