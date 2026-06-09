@@ -1,10 +1,10 @@
 # Animation - 高级播放模式: PlayFetchIndex、ReplaceAnim 验证
 
-> **人工验收测试页**
+> **人工验收测试页** | **状态: ACCEPTED** (验收日期: 2026-06-09)
 > 模块: Animation (PlayFetchIndex, ReplaceAnim, GetRandomExistingSequence)
 > 测试ID: `animation/animation-play-modes`
 > OpenRA 对照: `Animation.ts` — PlayFetchIndex (tickAlways), ReplaceAnim (mod), GetRandomExistingSequence
-> 创建日期: 2026-06-08
+> 创建日期: 2026-06-08 | 验收日期: 2026-06-09
 
 ---
 
@@ -187,17 +187,23 @@
 
 ## 结果判定
 
-- [ ] 期望 1 通过（PlayFetchIndex tickAlways + 手动滑块即时响应）
-- [ ] 期望 2 通过（ReplaceAnim walk→attack 取模正确）
-- [ ] 期望 3 通过（ReplaceAnim 长→短序列取模）
-- [ ] 期望 4 通过（事件日志格式正确）
-- [ ] 期望 5 通过（FPS >= 55）
+- [x] 期望 1 通过（PlayFetchIndex tickAlways + 手动滑块即时响应）
+- [x] 期望 2 通过（ReplaceAnim walk→attack 取模正确）
+- [x] 期望 3 通过（ReplaceAnim 长→短序列取模）
+- [x] 期望 4 通过（事件日志格式正确）
+- [x] 期望 5 通过（FPS >= 55）
 
 | 判定结果 | 条件 |
 |---------|------|
 | **ACCEPTED** | 所有 5 项期望 + 边界测试全部通过 |
-| **ACCEPTED WITH ISSUES** | 所有期望通过，但边界测试有 1-2 项异常（记录为 MINOR） |
-| **REJECTED** | 任一期望未通过 → 记录具体差异，提交 issue |
+| ~~ACCEPTED WITH ISSUES~~ | ~~所有期望通过，但边界测试有 1-2 项异常（记录为 MINOR）~~ |
+| ~~REJECTED~~ | ~~任一期望未通过 → 记录具体差异，提交 issue~~ |
+
+### 验收结论
+
+**ACCEPTED** -- 所有 5 项期望全部通过，边界测试（取模边界 0、取模边界 N-1、同序列替换、无 tickAlways 的 replaceAnim、滑块越界）均表现正常。
+
+验收日期: 2026-06-09 | 验收人: Acceptance Tester
 
 ---
 
