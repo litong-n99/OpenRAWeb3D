@@ -5,29 +5,36 @@
 > 测试ID: `screenmap/spatial-query`
 > OpenRA 对照: `ScreenMap.ts` — SpatiallyPartitioned<T> spatial hash, mouse hit-test, box selection
 > 创建日期: 2026-06-09
-> 状态: **PENDING (Round 4: 根因定位+修复，pointer event 迁移完成，等待用户验证)**
+> 状态: **PENDING (Round 5: 高亮修复 + Camera 键盘控制)**
 >
 > **调试轮次**:
 > - Round 1 (504758a): 修复 unit mesh 遮挡 scene.pick()
 > - Round 2 (c6fe9ac): 替换 scene.pick() 为 createPickingRay() + XZ plane intersection
 > - Round 3 (f77dbad): Canvas focus outline 白框修复 + 全面诊断日志
-> - **Round 4 (本次): 将业务逻辑从 mousedown/mouseup 迁移到 pointerdown/pointerup**
+> - Round 4 (f77dbad): 将业务逻辑从 mousedown/mouseup 迁移到 pointerdown/pointerup
+> - **Round 5 (本次): 修复选中高亮不可见 + Camera 改为键盘控制**
 >
-> ### Round 4 根因分析
+> ### Round 5 修复
 >
-> **已确认的根因**: Babylon.js 的 `WebDeviceInputSystem._pointerDownEvent` 在 `pointerdown` 时
-> 调用 `canvas.setPointerCapture(mouseId)`（`webDeviceInputSystem.js:434`）。浏览器建立 pointer
-> capture 后，兼容性 mouse 事件（`mousedown`/`mouseup`/`mousemove`）不再派发。
+> **问题 1 - 选中单元未出现亮青色高亮**:
+> 根因: `highlightSelected()` 使用 `emissiveColor` 乘法调色。单元材质启用了
+> `disableLighting=true`，输出 = `emissiveColor × emissiveTexture`。将
+> emissiveColor 设为青色 (0.4,0.9,1.0) 乘以红色/蓝色纹理后结果近乎黑色或暗色，
+> 肉眼无法辨认高亮变化。
 >
-> **证据**（来自用户收集的控制台日志）:
-> - `[EVENT #1] pointerdown` — 正常触发
-> - `[EVENT] gotpointercapture` — pointer capture 已建立
-> - `[EVENT #2] pointerup` — 正常触发
-> - `[EVENT] lostpointercapture` — pointer capture 已释放
-> - **没有任何 `mousedown`/`mouseup` 日志** — 兼容性 mouse 事件被浏览器抑制
+> 修复: 高亮时移除 emissiveTexture，让 emissiveColor 直接作为纯色输出。
+> - 选中: 纯青色 emissiveColor(0,1,1)，无纹理
+> - 悬停: 纯黄色 emissiveColor(1,1,0)，无纹理
+> - 普通: 恢复纹理 + emissiveColor(1,1,1)
 >
-> **修复**: 将选择逻辑（selStartWorld 记录、框选矩形绘制、点选/框选查询）全部迁移到
-> `pointerdown`/`pointermove`/`pointerup` 事件处理器。
+> **问题 2 - 拖拽鼠标时 Camera 乱动**:
+> 根因: `camera.attachControl(canvas, true)` 使 Camera 响应鼠标拖拽进行
+> 旋转/平移/缩放，与框选拖拽冲突。
+>
+> 修复: 移除 attachControl，改用键盘 + 滚轮控制。
+> - Insert 键: Camera 左转 (alpha += 0.15 rad, ~8.6°)
+> - Delete 键: Camera 右转 (alpha -= 0.15 rad, ~8.6°)
+> - 滚轮: 缩放 (radius ± 0.01 * deltaY)
 
 ---
 
@@ -50,8 +57,8 @@
 **操作**: 对场景中的某个单元执行精确点击（单击，不拖拽）。
 
 **量化标准**:
-- 仅被点击的单元高亮（emissiveColor 变为亮青色 `rgb(102, 230, 255)`）
-- 其他所有单元保持未选中状态
+- 仅被点击的单元高亮（纯青色 emissiveColor(0,1,1)，纹理被移除）
+- 其他所有单元保持原始颜色（有编号纹理）
 - 状态栏「选中」计数应显示 **1 个**
 - 如果点击空白区域，选中计数应显示 **0 个**
 
@@ -110,8 +117,8 @@
 **操作**: 启用「Hover Test」按钮，缓慢移动鼠标经过多个单元。
 
 **量化标准**:
-- 鼠标悬停时，当前单元高亮为黄色 (emissiveColor R=229, G=229, B=76)
-- 鼠标离开时，高亮立即消失（**50ms 内**）
+- 鼠标悬停时，当前单元高亮为纯黄色 (emissiveColor(1,1,0)，纹理被移除)
+- 鼠标离开时，高亮立即消失（**50ms 内**），恢复原始纹理
 - 左上角 overlay 显示当前鼠标的世界坐标 (x, z)
 - Hover 检测仅在单元边界内触发（不在空白处误触发）
 
@@ -137,8 +144,9 @@
 
 1. 打开测试页面：`http://localhost:5173/test/screenmap/spatial-query/`
 2. 确认环境信息栏显示 WebGL 2.0
-3. 确认场景中有 20 个彩色方块随机分布
+3. 确认场景中有 20 个彩色方块（带白色编号）随机分布
 4. 默认应显示绿色包圍盒线框
+5. **Camera 控制**: Insert 左转 / Delete 右转 / 滚轮缩放 (不再支持鼠标拖拽 Camera)
 
 ### 步骤一：精确点击验证
 
@@ -209,7 +217,7 @@
 1. **选择框覆盖整个场景**: 从角落拖到对角 → 应选中 20 个全部单元
 2. **选择框覆盖 0 个单元**: 在场景外空白区域框选 → 选中计数 = 0
 3. **快速重复操作**: 快速点击 Randomize + 框选 5 次 → 无崩溃
-4. **极端 Camera 缩放**: zoom 到最近 → 单元和线框仍正确渲染
+4. **极端 Camera 缩放**: 滚轮 zoom 到最近 (radius=5) → 单元和线框仍正确渲染
 5. **重叠单元**: 如果单元重叠，框选应选中重叠的所有单元
 
 ---
@@ -240,7 +248,7 @@
 
 ---
 
-## 调试日志收集指南 (Round 3)
+## 调试日志收集指南 (Round 5)
 
 打开浏览器 DevTools 控制台 (F12 → Console)，执行以下操作并**截图或复制全部控制台输出**：
 
@@ -250,28 +258,28 @@
 - 确认没有红色错误
 
 ### 步骤 2: 单击一个可见单元
-- 在控制台中观察应出现两组日志:
-  - `[EVENT #N] pointerdown:` (诊断层1 — pointer事件)
-  - `[EVENT #N] mousedown START` (诊断层2 — mouse事件 + 业务逻辑)
-  - `[EVENT #N] pointerup:` (诊断层1)
-  - `[EVENT #N] mouseup START` (诊断层2)
+- 在控制台中观察应出现:
+  - `[EVENT #N] pointerdown START` — 含 pick 诊断
+  - `[EVENT #N] pointerup START` — 含最终选中计数
 - **关键检查**:
-  - mousedown 组中 `→ pick SUCCESS` 是否出现？坐标是否合理？
+  - pointerdown 组中 `→ pick SUCCESS` 是否出现？坐标是否合理？
   - `→ Point query preview at this position: N unit(s)` N 是否 > 0？
-  - mouseup 组中 `→ final selected count: N` N 是否 > 0？
+  - pointerup 组中 `→ final selected count: N` N 是否 > 0？
 - 如果任何一步出现 FAILED、SKIP 或 N=0，截图该部分日志
 
 ### 步骤 3: 如果点击后无高亮
-- 重点检查 mouseup 日志组:
-  - `isSelecting=true` 还是 `false`？如果为 `false`，说明 mousedown 状态未正确传递
-  - `selStartWorld` 是否为 `null`？如果为 `null`，说明 screenToWorld 失败
-  - 是否出现了 `SKIP: not in selection state`？这说明 mouseup 比 mousedown 先到或 mousedown 未触发
-  - 是否出现了 `SKIP: selStartWorld is null`？说明 screenToWorld 在 mousedown 时失败
+- 重点检查 pointerup 日志组:
+  - `isSelecting=true` 还是 `false`？
+  - `selStartWorld` 是否为 `null`？
+  - 是否出现了 `SKIP` 提示？
 - **空白处右键** 触发诊断日志（包含 scene.pick、createPickingRay、所有 unit 位置状态）
+- 确认高亮逻辑: 选中单元应显示纯青色 (无纹理)，未选中单元有编号纹理
 
-### 步骤 4: Canvas 白框检查
-- 点击 Canvas 后，Canvas 周围是否还有白框？
-- 如果仍有白框，记录浏览器名称和版本
+### 步骤 4: Camera 键盘控制
+- 按 Insert 键: Camera 应向左旋转 (alpha 增加，视图向左平移)
+- 按 Delete 键: Camera 应向右旋转 (alpha 减少，视图向右平移)
+- 滚轮缩放: 向前放大 (radius 减小)，向后缩小 (radius 增大)
+- 拖拽鼠标: Camera 不应移动
 
 ### 提交日志
 将所有控制台日志复制到文本文件，标注：

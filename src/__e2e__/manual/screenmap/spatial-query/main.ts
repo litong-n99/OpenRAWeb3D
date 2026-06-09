@@ -46,6 +46,8 @@ interface Unit {
   hitPoly: readonly { x: number; z: number }[]
   selected: boolean
   hovered: boolean
+  /** 原始纹理引用，用于取消高亮时恢复 */
+  tex: DynamicTexture
 }
 
 // ---------------------------------------------------------------------------
@@ -259,12 +261,32 @@ async function main(): Promise<void> {
   )
   camera.lowerRadiusLimit = 5
   camera.upperRadiusLimit = 50
-  camera.panningSensibility = 500
   scene.activeCamera = camera
-  camera.attachControl(canvas, true)
+  // 不使用 camera.attachControl() — 拖拽框选需要独占鼠标，
+  // Camera 交互改为键盘 (Insert/Delete) + 滚轮缩放。
 
   const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
   light.intensity = 0.9
+
+  // ---- Camera 键盘/滚轮控制 ----
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Insert') {
+      camera.alpha += 0.15
+      e.preventDefault()
+    } else if (e.key === 'Delete') {
+      camera.alpha -= 0.15
+      e.preventDefault()
+    }
+  })
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault()
+    camera.radius += e.deltaY * 0.01
+    camera.radius = Math.max(
+      camera.lowerRadiusLimit ?? 5,
+      Math.min(camera.upperRadiusLimit ?? 50, camera.radius),
+    )
+  }, { passive: false })
 
   // ---- 地面 ----
   const groundMat = new StandardMaterial('ground', scene)
@@ -372,6 +394,7 @@ async function main(): Promise<void> {
         ],
         selected: false,
         hovered: false,
+        tex,
       }
       units.push(unit)
     }
@@ -447,14 +470,29 @@ async function main(): Promise<void> {
     drawGridLines()
   }
 
+  /**
+   * 高亮选中/悬停单元。
+   *
+   * 为什么不用 emissiveColor 乘法调色？
+   *   单元纹理是彩色块（红/蓝/绿等）+ 白色文字。用 disableLighting 时
+   *   输出 = emissiveColor × emissiveTexture。将 emissiveColor 设为青色
+   *   (0.4,0.9,1.0) 乘上红色纹理 ≈ 几乎黑色，乘上蓝色纹理 ≈ 暗蓝——变化太
+   *   细微，肉眼无法辨认"高亮"。
+   *
+   * 修复方案：高亮时移除纹理，让 emissiveColor 直接作为纯色输出。
+   *   选中 → 纯青色 (0,1,1)，悬停 → 纯黄色 (1,1,0)，普通 → 恢复纹理。
+   */
   function highlightSelected(): void {
     for (const unit of units) {
       const mat = unit.mesh.material as StandardMaterial
       if (unit.selected) {
-        mat.emissiveColor = new Color3(0.4, 0.9, 1.0)
+        mat.emissiveTexture = null
+        mat.emissiveColor = new Color3(0, 1, 1) // Pure cyan
       } else if (unit.hovered) {
-        mat.emissiveColor = new Color3(0.9, 0.9, 0.3)
+        mat.emissiveTexture = null
+        mat.emissiveColor = new Color3(1, 1, 0) // Pure yellow
       } else {
+        mat.emissiveTexture = unit.tex
         mat.emissiveColor = Color3.White()
       }
     }
