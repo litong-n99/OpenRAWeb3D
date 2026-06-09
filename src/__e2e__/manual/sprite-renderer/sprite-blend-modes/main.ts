@@ -332,6 +332,7 @@ async function main(): Promise<void> {
   const bgMat = new StandardMaterial('bgMat', scene)
   bgMat.diffuseTexture = checkerTex
   bgMat.emissiveColor = new Color3(1, 1, 1)
+  bgMat.emissiveTexture = checkerTex
   bgMat.specularColor.set(0, 0, 0)
   bgMat.backFaceCulling = false
   bgMat.disableLighting = true
