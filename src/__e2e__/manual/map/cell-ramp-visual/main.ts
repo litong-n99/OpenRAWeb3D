@@ -73,12 +73,13 @@ const camera = new ArcRotateCamera(
 camera.lowerRadiusLimit = 500
 camera.upperRadiusLimit = 8000
 camera.target = new Vector3(0, 150, 0)
-// 不使用 camera.attachControl() — 避免 pointer capture 干扰场景点击检测。
-// Camera 交互改为键盘 (箭头键选 ramp) + 滚轮缩放。
+camera.attachControl(canvas, true)
 
 // ---------------------------------------------------------------------------
 // Lighting
 // ---------------------------------------------------------------------------
+
+scene.ambientColor = new Color3(0.3, 0.3, 0.35)
 
 const light = new HemisphericLight('light', new Vector3(0.2, 1, 0.3), scene)
 light.intensity = 0.8
@@ -355,16 +356,6 @@ canvas.addEventListener('click', (evt) => {
     updateRampDetail(idx)
   }
 })
-
-// Wheel zoom — manual handler to avoid camera.attachControl() pointer capture
-canvas.addEventListener('wheel', (e) => {
-  e.preventDefault()
-  camera.radius += e.deltaY * 2
-  camera.radius = Math.max(
-    camera.lowerRadiusLimit ?? 500,
-    Math.min(camera.upperRadiusLimit ?? 8000, camera.radius),
-  )
-}, { passive: false })
 
 // Resize
 window.addEventListener('resize', () => {
