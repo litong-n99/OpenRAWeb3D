@@ -28,6 +28,10 @@ import { MapGridType } from '../../../../OpenRA.Game/Map/MapGridType'
 import { WRot } from '../../../../OpenRA.Game/WRot'
 import { WVec } from '../../../../OpenRA.Game/WVec'
 
+// Grid layout constants — 7 columns × 3 rows = 21 ramps
+const COLS = 7
+const ROWS = 3
+
 // ---------------------------------------------------------------------------
 // DOM elements
 // ---------------------------------------------------------------------------
@@ -60,22 +64,30 @@ scene.clearColor = new Color4(0.05, 0.07, 0.12, 1.0)
 
 // ---------------------------------------------------------------------------
 // Camera
+//
+// Grid sizing (used by both camera and buildRamps):
+//   Rectangular:  cell spacing = tileScale(1024) + gap(400) = 1424
+//   Isometric:    cell spacing = tileScale(1448) + gap(400) = 1848
+//   Grid width  ≈ COLS × spacing ≈ 10K–13K world units
+//   Camera needs radius ≈ width / 1.2 to frame the full grid at 60° beta.
 // ---------------------------------------------------------------------------
+
+const BASE_CELL_SPACING = 1024 + 400 // Rectangular default; recalculated in buildRamps
 
 const camera = new ArcRotateCamera(
   'camera',
   Math.PI / 4,
   Math.PI / 3,
-  3500,
-  new Vector3(0, 200, 0),
+  BASE_CELL_SPACING * COLS * 1.2,
+  new Vector3(0, 0, 0),
   scene,
 )
-camera.lowerRadiusLimit = 500
-camera.upperRadiusLimit = 8000
-camera.wheelPrecision = 80
+camera.lowerRadiusLimit = BASE_CELL_SPACING / 2
+camera.upperRadiusLimit = BASE_CELL_SPACING * COLS * 3
+camera.wheelPrecision = 40
 camera.panningSensibility = 200
 camera.attachControl(canvas, true)
-camera.target = new Vector3(0, 150, 0)
+camera.target = new Vector3(0, 0, 0)
 
 // ---------------------------------------------------------------------------
 // Lighting
@@ -140,9 +152,9 @@ function buildRamps(gridType: MapGridType): void {
   const maxPossibleHeight = tileScale * 2 // Full = 2 * scale
 
   // Layout: 7 columns x 3 rows = 21
-  const cols = 7
+  const cols = COLS
   const cellSize = tileScale + 400 // spacing between cells
-  const rows = Math.ceil(ramps.length / cols)
+  const rows = ROWS
 
   for (let i = 0; i < ramps.length; i++) {
     const ramp = ramps[i]!
@@ -191,7 +203,11 @@ function buildRamps(gridType: MapGridType): void {
     vertexData.colors = colors
     vertexData.applyToMesh(rampMesh, true)
 
-    // Edges rendering: create thin tubes along triangle edges
+    // Edges rendering: create tubes along triangle edges.
+    // Uses CreateTube with a 2-point path — the tube naturally follows the
+    // edge endpoints without manual orientation math.
+    // (Fixes Bug 1: CreateCylinder + lookAt had Y/Z axis mismatch,
+    //  producing misaligned "flying sticks" instead of aligned edges.)
     const drawnEdges = new Set<string>()
     for (const tri of polygons) {
       for (let v = 0; v < 3; v++) {
@@ -203,28 +219,21 @@ function buildRamps(gridType: MapGridType): void {
 
         const ba = wvecToBjs(a)
         const bb = wvecToBjs(b)
-        const mid = ba.add(bb).scale(0.5)
-        const dir = bb.subtract(ba)
-        const len = dir.length()
 
-        const edgeLine = MeshBuilder.CreateCylinder(`edge-${i}-${drawnEdges.size}`, {
-          height: len,
-          diameter: 20,
+        const tube = MeshBuilder.CreateTube(`edge-${i}-${drawnEdges.size}`, {
+          path: [ba, bb],
+          radius: 12,
+          tessellation: 6,
         }, scene)
-        edgeLine.parent = parentNode
-        edgeLine.position = mid
+        tube.parent = parentNode
 
-        // Orient cylinder to align with edge direction
-        edgeLine.lookAt(bb, 0, 0, 1)
-
-        // Gray edge material
         const edgeMat = new StandardMaterial(`edgeMat-${i}-${drawnEdges.size}`, scene)
-        edgeMat.diffuseColor = new Color3(0.5, 0.5, 0.5)
-        edgeMat.emissiveColor = new Color3(0.2, 0.2, 0.2)
-        edgeMat.alpha = 0.7
-        edgeLine.material = edgeMat
+        edgeMat.diffuseColor = new Color3(0.45, 0.45, 0.45)
+        edgeMat.emissiveColor = new Color3(0.15, 0.15, 0.15)
+        edgeMat.alpha = 0.55
+        tube.material = edgeMat
 
-        rampMeshes.push(edgeLine)
+        rampMeshes.push(tube)
       }
     }
 
@@ -262,6 +271,14 @@ function buildRamps(gridType: MapGridType): void {
   }
 
   currentGridType = gridType
+
+  // Adjust camera limits for the current grid type
+  const spacing = tileScale + 400
+  camera.lowerRadiusLimit = spacing / 2
+  camera.upperRadiusLimit = spacing * COLS * 3
+  camera.radius = spacing * COLS * 1.2
+  camera.target = new Vector3(0, 0, 0)
+
   updateInfoBar()
 }
 
@@ -337,10 +354,12 @@ document.getElementById('grid-type-select')!.addEventListener('change', (e) => {
 
 // Reset camera
 document.getElementById('reset-camera')!.addEventListener('click', () => {
+  const tileScale = currentGridType === MapGridType.RectangularIsometric ? 1448 : 1024
+  const spacing = tileScale + 400
   camera.alpha = Math.PI / 4
   camera.beta = Math.PI / 3
-  camera.radius = 3500
-  camera.target = new Vector3(0, 150, 0)
+  camera.radius = spacing * COLS * 1.2
+  camera.target = new Vector3(0, 0, 0)
 })
 
 // Click detection on ramp meshes
