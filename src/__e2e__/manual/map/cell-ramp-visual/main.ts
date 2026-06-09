@@ -111,6 +111,120 @@ light2.specular = new Color3(0, 0, 0)
 light2.groundColor = new Color3(0.15, 0.15, 0.18)
 
 // ---------------------------------------------------------------------------
+// Ambient color — global base illumination applied to all materials.
+// Babylon.js default is (0, 0, 0). Without ambient, the only light a
+// surface receives is HemisphericLight interpolation between diffuse and
+// groundColor. Surfaces whose normals interpolate to a dark mix (e.g. a
+// slope facing sideways relative to both lights) get very little light.
+// Setting ambient provides a guaranteed brightness floor.
+// ---------------------------------------------------------------------------
+
+scene.ambientColor = new Color3(0.25, 0.25, 0.28)
+
+// ---------------------------------------------------------------------------
+// Lighting diagnostics
+// ---------------------------------------------------------------------------
+
+interface DiagEntry {
+  time: number
+  ambient: string
+  camAlphaDeg: number
+  camBetaDeg: number
+  lightCount: number
+  shadowGenCount: number
+  sampleNormal: string
+  light1State: string
+  light2State: string
+}
+
+/**
+ * Dump complete lighting state to console.  Called on camera rotation
+ * (throttled) and on demand via the 'L' key.  Also populates the
+ * diagnostic panel element #diag-output in the side bar.
+ */
+function dumpLightingState(reason: string): void {
+  // ---- gather data ----
+  const lights = scene.lights ?? []
+  const shadowGens = (scene as any).shadowGenerators ?? []
+  const hasShadowGens = Array.isArray(shadowGens) ? shadowGens.length : 0
+
+  // sample the first ramp mesh (ramp-0) to read one computed normal
+  let sampleNormal = 'N/A'
+  const sampleMesh = scene.getMeshByName('ramp-0')
+  if (sampleMesh) {
+    const data = sampleMesh.getVerticesData('normal')
+    if (data && data.length >= 3) {
+      sampleNormal = `(${data[0]!.toFixed(3)}, ${data[1]!.toFixed(3)}, ${data[2]!.toFixed(3)})`
+    }
+  }
+
+  const camDir = camera.getDirection(new Vector3(0, 0, 1))
+  const camPos = camera.position
+
+  const fmtColor = (c: Color3): string =>
+    `(${c.r.toFixed(2)}, ${c.g.toFixed(2)}, ${c.b.toFixed(2)})`
+
+  const entry: DiagEntry = {
+    time: performance.now(),
+    ambient: fmtColor(scene.ambientColor),
+    camAlphaDeg: Math.round((camera.alpha * 180) / Math.PI) % 360,
+    camBetaDeg: Math.round((camera.beta * 180) / Math.PI),
+    lightCount: lights.length,
+    shadowGenCount: hasShadowGens,
+    sampleNormal,
+    light1State: `dir=${light1.direction.toString()} int=${light1.intensity} diff=${fmtColor(light1.diffuse)} spec=${fmtColor(light1.specular)} ground=${fmtColor(light1.groundColor)}`,
+    light2State: `dir=${light2.direction.toString()} int=${light2.intensity} diff=${fmtColor(light2.diffuse)} spec=${fmtColor(light2.specular)} ground=${fmtColor(light2.groundColor)}`,
+  }
+
+  // ---- console log ----
+  console.group(
+    `[LIGHTING DIAG] ${reason} @ ${new Date().toISOString().slice(11, 19)}`,
+  )
+  console.log('scene.ambientColor       =', entry.ambient)
+  console.log('scene.lights count       =', entry.lightCount)
+  console.log('shadowGenerators count   =', entry.shadowGenCount)
+  console.log('camera alpha (deg)       =', entry.camAlphaDeg)
+  console.log('camera beta  (deg)       =', entry.camBetaDeg)
+  console.log('camera position          =', camPos.toString())
+  console.log('camera look direction    =', camDir.toString())
+  console.log('ramp-0 first normal      =', entry.sampleNormal)
+  console.log('light1 (main)            =', entry.light1State)
+  console.log('light2 (fill)            =', entry.light2State)
+  console.log('--- per-light detail ---')
+  for (const l of lights) {
+    console.log(`  ${l.name}: enabled=${l.isEnabled()}, intensity=${l.intensity}, diffuse=${l.diffuse.toString()}`)
+  }
+  // log if any material has disableLighting
+  let disableLightingCount = 0
+  for (const m of scene.materials) {
+    if (m && (m as any).disableLighting === true) disableLightingCount++
+  }
+  console.log('materials w/ disableLighting =', disableLightingCount)
+  console.groupEnd()
+
+  // ---- side-panel text update ----
+  const diagEl = document.getElementById('diag-output')
+  if (diagEl) {
+    diagEl.textContent =
+      `ambient=${entry.ambient} | cam α=${entry.camAlphaDeg}° β=${entry.camBetaDeg}°\n` +
+      `lights=${entry.lightCount} shadows=${entry.shadowGenCount}\n` +
+      `normal[0]=${entry.sampleNormal}\n` +
+      `${entry.light1State}\n` +
+      `${entry.light2State}`
+  }
+}
+
+// Throttled camera-change logger: fires at most once per 500ms
+let _lastDiagTime = 0
+camera.onViewMatrixChangedObservable.add(() => {
+  const now = performance.now()
+  if (now - _lastDiagTime > 500) {
+    _lastDiagTime = now
+    dumpLightingState('camera moved')
+  }
+})
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
@@ -404,7 +518,7 @@ window.addEventListener('resize', () => {
   updateInfoBar()
 })
 
-// Keyboard: arrow keys to cycle through ramps
+// Keyboard: arrow keys to cycle through ramps, L=dump lighting, I=inspector
 window.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
     selectedRampIndex = Math.min(20, (selectedRampIndex + 1) % 21)
@@ -413,12 +527,23 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
     selectedRampIndex = Math.max(0, selectedRampIndex <= 0 ? 20 : selectedRampIndex - 1)
     updateRampDetail(selectedRampIndex)
+  } else if (e.key === 'l' || e.key === 'L') {
+    dumpLightingState('manual (L key)')
+  } else if (e.key === 'i' || e.key === 'I') {
+    if (scene.debugLayer.isVisible()) {
+      scene.debugLayer.hide()
+    } else {
+      scene.debugLayer.show({ overlay: true })
+    }
   }
 })
 
 // ---------------------------------------------------------------------------
 // Startup
 // ---------------------------------------------------------------------------
+
+// Initial lighting diagnostic dump
+dumpLightingState('startup')
 
 buildRamps(currentGridType)
 updateRampDetail(0)
