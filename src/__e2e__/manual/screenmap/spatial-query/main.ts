@@ -28,6 +28,7 @@ import type { Mesh } from '@babylonjs/core'
 import { StandardMaterial } from '@babylonjs/core'
 import { DynamicTexture } from '@babylonjs/core'
 import { TransformNode } from '@babylonjs/core'
+import { Matrix } from '@babylonjs/core'
 
 // ---------------------------------------------------------------------------
 // Unit 数据结构 — 模拟 Actor 的空间索引条目
@@ -189,22 +190,6 @@ function createBoundsLines(
 }
 
 // ---------------------------------------------------------------------------
-// 投影到 XZ 平面 (屏幕 → 世界, 利用摄像机)
-// ---------------------------------------------------------------------------
-
-function screenToWorld(
-  scene: Scene,
-  sx: number,
-  sy: number,
-): { x: number; z: number } | null {
-  const pickInfo = scene.pick(sx, sy, (mesh) => mesh.name === 'ground')
-  if (pickInfo?.pickedPoint) {
-    return { x: pickInfo.pickedPoint.x, z: pickInfo.pickedPoint.z }
-  }
-  return null
-}
-
-// ---------------------------------------------------------------------------
 // 主函数
 // ---------------------------------------------------------------------------
 
@@ -252,6 +237,8 @@ async function main(): Promise<void> {
   camera.lowerRadiusLimit = 5
   camera.upperRadiusLimit = 50
   camera.panningSensibility = 500
+  // Explicitly set as active camera for scene.pick() / createPickingRay()
+  scene.activeCamera = camera
   camera.attachControl(canvas, true)
 
   const light = new HemisphericLight('light', new Vector3(0, 1, 0), scene)
@@ -265,6 +252,24 @@ async function main(): Promise<void> {
   groundMesh.material = groundMat
   groundMesh.position.y = -0.01
   groundMesh.isPickable = true
+
+  // ---- 诊断: 输出 canvas/engine 尺寸信息 ----
+  console.log('[screenmap] === Canvas & Engine Dimensions ===')
+  console.log(`[screenmap] canvas.width (attr):  ${canvas.width}`)
+  console.log(`[screenmap] canvas.height (attr): ${canvas.height}`)
+  console.log(`[screenmap] canvas.style.width:     ${canvas.style.width}`)
+  console.log(`[screenmap] canvas.style.height:    ${canvas.style.height}`)
+  const initRect = canvas.getBoundingClientRect()
+  console.log(`[screenmap] canvas.getBoundingClientRect(): ${initRect.width} x ${initRect.height}`)
+  console.log(`[screenmap] engine.getRenderWidth():  ${engine.getRenderWidth()}`)
+  console.log(`[screenmap] engine.getRenderHeight(): ${engine.getRenderHeight()}`)
+  console.log(`[screenmap] engine.getHardwareScalingLevel(): ${engine.getHardwareScalingLevel()}`)
+  console.log(`[screenmap] scene.activeCamera: ${scene.activeCamera?.name ?? 'NULL'}`)
+  console.log(`[screenmap] scene.cameras.length: ${scene.cameras.length}`)
+  console.log(`[screenmap] scene.meshes.length: ${scene.meshes.length}`)
+  for (const m of scene.meshes) {
+    console.log(`[screenmap]   mesh: name="${m.name}", isPickable=${m.isPickable}, isVisible=${m.isVisible}, isEnabled=${m.isEnabled()}`)
+  }
 
   // ---- 世界参数 ----
   const WORLD_W = 30
@@ -331,10 +336,8 @@ async function main(): Promise<void> {
       mesh.material = mat
       mesh.parent = node
       mesh.position = Vector3.Zero()
-      // Unit meshes must NOT be pickable, otherwise they occlude the ground
-      // in scene.pick() and screenToWorld() returns null (no ground hit).
-      // This breaks both point-click (ActorsAtMouse) and box-select
-      // (ActorsInMouseBox) when mousedown starts on a unit.
+      // Unit meshes must NOT be pickable, otherwise scene.pick() will hit them
+      // instead of the ground, causing screenToWorld() to return null.
       mesh.isPickable = false
 
       const unit: Unit = {
@@ -439,39 +442,129 @@ async function main(): Promise<void> {
     }
   }
 
-  // ---- 框选状态 ----
+  // -------------------------------------------------------------------------
+  // screenToWorld — 使用 createPickingRay + XZ 平面求交
+  //
+  // 原因: scene.pick() 依赖场景中的 pickable mesh。如果 ground mesh 因为
+  // 任何原因未被射线命中（坐标缩放、viewport 偏移、camera frustum 问题等），
+  // 整个点击链路就会静默失败。使用 createPickingRay 直接从 camera 的 view/
+  // projection 矩阵反算出世界空间射线，然后与 XZ 平面 (y=0) 求交，完全不
+  // 依赖 mesh picking，从根本上消除这类"看不见"的故障。
+  // -------------------------------------------------------------------------
+
+  /**
+   * 将屏幕像素坐标转换为世界 XZ 平面坐标
+   *
+   * @param canvasRect canvas.getBoundingClientRect() 结果
+   * @param sx CSS 像素相对于 canvas 左上角的 X
+   * @param sy CSS 像素相对于 canvas 左上角的 Y
+   * @returns 世界空间 XZ 平面交点，或 null（射线与 XZ 平面平行/背离）
+   */
+  function screenToWorld(
+    canvasRect: DOMRect,
+    sx: number,
+    sy: number,
+  ): { x: number; z: number } | null {
+    // Step 1: 将 CSS 像素转换为 engine rendering 坐标
+    //    hardwareScalingLevel = 1.0 时两者一致；非 1.0 时需要缩放
+    const renderWidth = engine.getRenderWidth()
+    const renderHeight = engine.getRenderHeight()
+    const scaleX = renderWidth / (canvasRect.width || 1)
+    const scaleY = renderHeight / (canvasRect.height || 1)
+    const pickX = sx * scaleX
+    const pickY = sy * scaleY
+
+    // Step 2: 用 camera 的 view/projection 创建世界空间射线
+    //    createPickingRay 内部会调用 camera.getViewMatrix() 和
+    //    camera.getProjectionMatrix() 进行 unproject
+    const ray = scene.createPickingRay(
+      pickX, pickY,
+      Matrix.Identity(),  // world matrix — identity = world space
+      camera,              // 显式传入 camera，不依赖 scene.activeCamera
+    )
+
+    // Step 3: 射线与 XZ 平面 (y=0) 求交
+    //    ray = origin + t * direction
+    //    求 origin.y + t * direction.y = 0 → t = -origin.y / direction.y
+    if (Math.abs(ray.direction.y) < 1e-8) {
+      // 射线几乎平行于 XZ 平面 (camera 视角极低)
+      return null
+    }
+
+    const t = -ray.origin.y / ray.direction.y
+    if (t <= 0) {
+      // 交点在射线后方（camera 在 XZ 平面以下）
+      return null
+    }
+
+    const wx = ray.origin.x + t * ray.direction.x
+    const wz = ray.origin.z + t * ray.direction.z
+
+    // 只返回世界范围内的交点
+    if (wx < -WORLD_W / 2 || wx > WORLD_W / 2 || wz < -WORLD_H / 2 || wz > WORLD_H / 2) {
+      return { x: wx, z: wz } // 仍然返回，让 queryPoint/queryRect 自行判断
+    }
+
+    return { x: wx, z: wz }
+  }
+
+  // -------------------------------------------------------------------------
+  // 点击/框选事件处理
+  // -------------------------------------------------------------------------
+
   const selRect = document.getElementById('selection-rect')!
+  const statSelected = document.getElementById('stat-selected')!
+  const overlayEl = document.getElementById('overlay')!
+
   let isSelecting = false
   let selStartX = 0
   let selStartY = 0
   let selStartWorld: { x: number; z: number } | null = null
+  // 点击诊断计数器
+  let pickAttempts = 0
+  let pickSuccesses = 0
 
   canvas.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return
+
+    pickAttempts++
     isSelecting = true
     selStartX = e.clientX
     selStartY = e.clientY
 
-    const rect = canvas.getBoundingClientRect()
-    const pick = screenToWorld(scene, e.clientX - rect.left, e.clientY - rect.top)
+    const canvasRect = canvas.getBoundingClientRect()
+    const sx = e.clientX - canvasRect.left
+    const sy = e.clientY - canvasRect.top
+
+    console.log(`[screenmap] mousedown #${pickAttempts}: client=(${e.clientX},${e.clientY}) canvasRect=(${canvasRect.left},${canvasRect.top},${canvasRect.width},${canvasRect.height}) pickCSS=(${sx},${sy})`)
+
+    const pick = screenToWorld(canvasRect, sx, sy)
     selStartWorld = pick
+
+    if (pick) {
+      pickSuccesses++
+      console.log(`[screenmap]   → pick SUCCESS: world=(${pick.x.toFixed(2)}, ${pick.z.toFixed(2)}) successes=${pickSuccesses}/${pickAttempts}`)
+    } else {
+      console.warn(`[screenmap]   → pick FAILED: screenToWorld returned null successes=${pickSuccesses}/${pickAttempts}`)
+      console.warn(`[screenmap]     engine renderSize=(${engine.getRenderWidth()},${engine.getRenderHeight()}) scale=(${(engine.getRenderWidth() / (canvasRect.width || 1)).toFixed(3)}, ${(engine.getRenderHeight() / (canvasRect.height || 1)).toFixed(3)})`)
+    }
 
     // 取消所有选中
     for (const u of units) u.selected = false
     highlightSelected()
-    document.getElementById('stat-selected')!.textContent = '0'
+    statSelected.textContent = '0'
   })
 
   canvas.addEventListener('mousemove', (e) => {
     if (isSelecting) {
-      const rect = canvas.getBoundingClientRect()
+      const canvasRect = canvas.getBoundingClientRect()
       const x = Math.min(selStartX, e.clientX)
       const y = Math.min(selStartY, e.clientY)
       const w = Math.abs(e.clientX - selStartX)
       const h = Math.abs(e.clientY - selStartY)
       selRect.style.display = 'block'
-      selRect.style.left = (x - rect.left) + 'px'
-      selRect.style.top = (y - rect.top) + 'px'
+      selRect.style.left = (x - canvasRect.left) + 'px'
+      selRect.style.top = (y - canvasRect.top) + 'px'
       selRect.style.width = w + 'px'
       selRect.style.height = h + 'px'
     }
@@ -479,7 +572,9 @@ async function main(): Promise<void> {
     // Hover 检测
     if (hoverTestEnabled && !isSelecting) {
       const canvasRect = canvas.getBoundingClientRect()
-      const pick = screenToWorld(scene, e.clientX - canvasRect.left, e.clientY - canvasRect.top)
+      const sx = e.clientX - canvasRect.left
+      const sy = e.clientY - canvasRect.top
+      const pick = screenToWorld(canvasRect, sx, sy)
       let found = false
       for (const u of units) u.hovered = false
       if (pick) {
@@ -491,8 +586,8 @@ async function main(): Promise<void> {
         }
       }
       highlightSelected()
-      document.getElementById('overlay')!.textContent =
-        found ? `Hover: (${pick?.x?.toFixed(1)}, ${pick?.z?.toFixed(1)})` : 'Hover: none'
+      overlayEl.textContent =
+        found ? `Hover: (${pick?.x?.toFixed(1)}, ${pick?.z?.toFixed(1)})` : `Hover: none (pick: ${pick ? 'ok' : 'null'})`
     }
   })
 
@@ -501,28 +596,73 @@ async function main(): Promise<void> {
     isSelecting = false
     selRect.style.display = 'none'
 
-    if (!selStartWorld) return
+    if (!selStartWorld) {
+      console.warn('[screenmap] mouseup: selStartWorld is null, skipping selection')
+      overlayEl.textContent = 'Click missed ground plane — check console for details'
+      return
+    }
 
     const canvasRect = canvas.getBoundingClientRect()
-    const endPick = screenToWorld(scene, e.clientX - canvasRect.left, e.clientY - canvasRect.top)
-    if (!endPick) return
+    const sx = e.clientX - canvasRect.left
+    const sy = e.clientY - canvasRect.top
+    const endPick = screenToWorld(canvasRect, sx, sy)
+    if (!endPick) {
+      console.warn('[screenmap] mouseup: endPick is null, skipping selection')
+      overlayEl.textContent = 'Release missed ground plane — check console'
+      return
+    }
 
     const dx = Math.abs(endPick.x - selStartWorld.x)
     const dz = Math.abs(endPick.z - selStartWorld.z)
 
+    console.log(`[screenmap] mouseup: startWorld=(${selStartWorld.x.toFixed(2)},${selStartWorld.z.toFixed(2)}) endWorld=(${endPick.x.toFixed(2)},${endPick.z.toFixed(2)}) dx=${dx.toFixed(3)} dz=${dz.toFixed(3)}`)
+
     if (dx < 0.5 && dz < 0.5) {
       // 精确点击 (ActorsAtMouse) — 使用点查询
       const hits = grid.queryPoint(selStartWorld.x, selStartWorld.z)
+      console.log(`[screenmap]   → point query (ActorsAtMouse) at (${selStartWorld.x.toFixed(2)}, ${selStartWorld.z.toFixed(2)}): ${hits.length} hit(s)`)
       for (const h of hits) h.selected = true
     } else {
       // 框选 (ActorsInMouseBox) — 使用矩形查询
       const hits = grid.queryRect(selStartWorld.x, selStartWorld.z, endPick.x, endPick.z)
+      console.log(`[screenmap]   → rect query (ActorsInMouseBox): ${hits.length} hit(s)`)
       for (const h of hits) h.selected = true
     }
 
     const selCount = units.filter(u => u.selected).length
-    document.getElementById('stat-selected')!.textContent = String(selCount)
+    statSelected.textContent = String(selCount)
+    overlayEl.textContent = selCount > 0
+      ? `Selected: ${selCount} unit(s)`
+      : `No units selected (${dx < 0.5 && dz < 0.5 ? 'point' : 'rect'} query)`
     highlightSelected()
+  })
+
+  // -------------------------------------------------------------------------
+  // 诊断: 添加一个「测试 scene.pick()」按钮
+  // -------------------------------------------------------------------------
+  canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault()
+    const canvasRect = canvas.getBoundingClientRect()
+    const sx = e.clientX - canvasRect.left
+    const sy = e.clientY - canvasRect.top
+
+    console.log('[screenmap] === scene.pick() diagnostic (right-click) ===')
+    console.log(`[screenmap]   CSS coords: (${sx.toFixed(1)}, ${sy.toFixed(1)})`)
+
+    // Test scene.pick() without predicate — what does it hit?
+    const pickAll = scene.pick(sx, sy)
+    console.log(`[screenmap]   scene.pick(no predicate): hit=${pickAll?.hit}, mesh="${pickAll?.pickedMesh?.name ?? 'null'}", point=${pickAll?.pickedPoint ? `(${pickAll.pickedPoint.x.toFixed(2)}, ${pickAll.pickedPoint.y.toFixed(2)}, ${pickAll.pickedPoint.z.toFixed(2)})` : 'null'}`)
+
+    // Test scene.pick() with predicate
+    const pickGround = scene.pick(sx, sy, (mesh) => mesh.name === 'ground')
+    console.log(`[screenmap]   scene.pick(ground predicate): hit=${pickGround?.hit}, mesh="${pickGround?.pickedMesh?.name ?? 'null'}", point=${pickGround?.pickedPoint ? `(${pickGround.pickedPoint.x.toFixed(2)}, ${pickGround.pickedPoint.y.toFixed(2)}, ${pickGround.pickedPoint.z.toFixed(2)})` : 'null'}`)
+
+    // Test createPickingRay
+    const ray = scene.createPickingRay(sx, sy, Matrix.Identity(), camera)
+    console.log(`[screenmap]   createPickingRay: origin=(${ray.origin.x.toFixed(2)}, ${ray.origin.y.toFixed(2)}, ${ray.origin.z.toFixed(2)}) dir=(${ray.direction.x.toFixed(3)}, ${ray.direction.y.toFixed(3)}, ${ray.direction.z.toFixed(3)})`)
+
+    const ourPick = screenToWorld(canvasRect, sx, sy)
+    console.log(`[screenmap]   screenToWorld (ray-plane): ${ourPick ? `(${ourPick.x.toFixed(2)}, ${ourPick.z.toFixed(2)})` : 'null'}`)
   })
 
   // ---- 初始化 ----
