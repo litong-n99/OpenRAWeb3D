@@ -22,7 +22,6 @@ import {
   StandardMaterial,
   Mesh,
   VertexData,
-  RawTexture,
 } from '@babylonjs/core'
 import { MapGrid } from '../../../../OpenRA.Game/Map/MapGrid'
 import { MapGridType } from '../../../../OpenRA.Game/Map/MapGridType'
@@ -62,26 +61,6 @@ if (typeof WebGLRenderingContext === 'undefined') {
 
 const scene = new Scene(engine)
 scene.clearColor = new Color4(0.05, 0.07, 0.12, 1.0)
-
-// ---------------------------------------------------------------------------
-// Shared 1x1 white emissive texture for disableLighting materials.
-//
-// When disableLighting=true on StandardMaterial, the fragment shader outputs
-//   emissiveColor * sample(emissiveTexture)
-// without any lighting calculation.  A white 1x1 texture acts as the identity
-// multiplier, letting emissiveColor pass through unmodified.
-//
-// This is the proven pattern from terrain-sprite-layer and world-renderer
-// acceptance test pages (see commit e8abc79).
-// ---------------------------------------------------------------------------
-
-const WHITE_TEX = new RawTexture(
-  new Uint8Array([255, 255, 255, 255]),
-  1, 1,
-  Engine.TEXTUREFORMAT_RGBA,
-  scene,
-  false,
-)
 
 // ---------------------------------------------------------------------------
 // Camera
@@ -296,7 +275,11 @@ function buildRamps(gridType: MapGridType): void {
   const grid = new MapGrid({ type: gridType })
   const ramps = grid.ramps
   const tileScale = grid.tileScale // 1024 or 1448
-  const maxPossibleHeight = tileScale * 2 // Full = 2 * scale
+  // Full ramp corner = RampCornerHeight.Full (2) × scale, so
+  // max possible Z = 2 × (tileScale / 2) = tileScale.
+  // Previously tileScale*2=2048 was wrong — it halved all t values,
+  // washing out height-based colors.
+  const maxPossibleHeight = tileScale
 
   // Layout: 7 columns x 3 rows = 21
   const cols = COLS
@@ -351,18 +334,15 @@ function buildRamps(gridType: MapGridType): void {
 
     vertexData.applyToMesh(rampMesh, true)
 
-    // Material: disableLighting=true with per-ramp emissiveColor.
-    //
-    // StandardMaterial ignores vertex colors in the built-in shader, so
-    // vertexData.colors is intentionally omitted.  Instead each ramp gets a
-    // material whose emissiveColor encodes its height range — flat (blue)
-    // through sloped (yellow) to steep (red).
-    //
-    // disableLighting=true REQUIRES an emissiveTexture in this Babylon.js
-    // version.  WHITE_TEX (a 1x1 RGBA white pixel) acts as the identity
-    // multiplier, so the final fragment color is just emissiveColor.
+    // Material: colour each ramp by its max corner height.
+    // Use the standard lighting pipeline (NOT disableLighting) with:
+    //  - emissive = height colour at 0.85 (bright ambient floor)
+    //  - diffuse  = height colour at 0.55 (normal-modulated fill)
+    //  - specular = (0,0,0) (no specular highlights to confuse shadow perception)
+    //  - alpha = 1.0 (fully opaque — avoids transparent-pass depth issues)
+    // Two opposing HemisphericLights + scene.ambientColor ensure every
+    // surface orientation receives non-zero illumination.
     {
-      // Compute per-ramp color from the maximum corner height
       const maxCZ = Math.max(
         ramp.corners[0].Z, ramp.corners[1].Z,
         ramp.corners[2].Z, ramp.corners[3].Z,
@@ -370,10 +350,9 @@ function buildRamps(gridType: MapGridType): void {
       const matColor = heightToColor(maxCZ, maxPossibleHeight)
 
       const mat = new StandardMaterial(`rampMat-${i}`, scene)
-      mat.disableLighting = true
-      mat.emissiveColor = matColor
-      mat.emissiveTexture = WHITE_TEX
-      mat.alpha = 0.88
+      mat.diffuseColor = matColor.scale(0.55)
+      mat.emissiveColor = matColor.scale(0.85)
+      mat.specularColor = new Color3(0, 0, 0)
       mat.backFaceCulling = false
       rampMesh.material = mat
     }
@@ -401,9 +380,9 @@ function buildRamps(gridType: MapGridType): void {
         tube.parent = parentNode
 
         const edgeMat = new StandardMaterial(`edgeMat-${i}-${drawnEdges.size}`, scene)
-        edgeMat.disableLighting = true
-        edgeMat.emissiveColor = new Color3(0.45, 0.45, 0.45)
-        edgeMat.emissiveTexture = WHITE_TEX
+        edgeMat.diffuseColor = new Color3(0.25, 0.25, 0.25)
+        edgeMat.emissiveColor = new Color3(0.35, 0.35, 0.35)
+        edgeMat.specularColor = new Color3(0, 0, 0)
         edgeMat.alpha = 0.55
         tube.material = edgeMat
 
@@ -426,9 +405,10 @@ function buildRamps(gridType: MapGridType): void {
       sphere.position = bjs
 
       const sphereMat = new StandardMaterial(`sphereMat-${i}-${c}`, scene)
-      sphereMat.disableLighting = true
-      sphereMat.emissiveColor = heightToColor(wv.Z, maxPossibleHeight)
-      sphereMat.emissiveTexture = WHITE_TEX
+      const sc = heightToColor(wv.Z, maxPossibleHeight)
+      sphereMat.diffuseColor = sc.scale(0.6)
+      sphereMat.emissiveColor = sc.scale(0.8)
+      sphereMat.specularColor = new Color3(0, 0, 0)
       sphere.material = sphereMat
 
       rampMeshes.push(sphere)
