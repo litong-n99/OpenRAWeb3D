@@ -1,7 +1,8 @@
-# Sprite Batch Rendering -- Lessons Learned & Project-Wide Audit
+# Project-Wide Audit: Lessons Learned from Acceptance Test Pages
 
-Date: 2026-06-08
-Source: 4-round bug-fixing cycle on `sprite-batch-rendering` acceptance test page
+Date: 2026-06-08 (Chapter 1), 2026-06-09 (Chapter 2)
+Last Updated: 2026-06-09
+Sources: 4-round bug-fixing cycle on `sprite-batch-rendering`, 3-round cycle on `screenmap/spatial-query`
 
 ---
 
@@ -366,3 +367,240 @@ Future test pages should start from the `sprite-batch-rendering/main.ts` templat
 | **Performance benchmark for any batch renderer** | Per-frame allocation issues only manifest at scale |
 | **Render loop safety rule**: all `runRenderLoop` callbacks MUST have try-catch | Prevents silent render loop death in production |
 | **Template-based test page creation** | Ensures defensive patterns (try-catch, DOM safety, emissive/diffuse parity) are always applied |
+
+---
+
+## Chapter 2: spatial-query Lessons Learned & Project-Wide Audit
+
+Date: 2026-06-09
+Source: 3-round bug-fixing cycle on `screenmap/spatial-query` acceptance test page
+
+---
+
+## Summary
+
+The `screenmap/spatial-query` acceptance test page required three rounds of fixes, uncovering issues in three new categories: pointer capture mechanism interaction, camera control vs custom interaction conflict, and canvas focus styling. This chapter audits the entire project for each category.
+
+---
+
+## Issue 7 (spatial-query #1): Babylon.js `setPointerCapture()` Suppresses Compatibility Mouse Events
+
+### Finding
+
+Babylon.js `camera.attachControl(canvas)` calls `setPointerCapture()` on `pointerdown`. Once the browser establishes pointer capture, it **suppresses all compatibility mouse events** (`mousedown`, `mouseup`, `mousemove`) for the captured pointer. Any business logic registered on `mousedown`/`mouseup`/`mousemove` event listeners will never execute while pointer capture is active.
+
+This is a browser-spec behavior: pointer capture redirects all pointer events to the capturing element and suppresses the legacy mouse event path.
+
+### Fix
+
+All canvas-level interaction logic MUST use `pointerdown`/`pointerup`/`pointermove` instead of `mousedown`/`mouseup`/`mousemove` when `attachControl()` is in use (or may be used in the future).
+
+### Project-Wide Audit
+
+#### Production Code
+
+| File | Canvas mouse listeners? | Status |
+|------|------------------------|--------|
+| `src/OpenRA.Game/Renderer.ts` | NO (only `window.resize`) | CLEAN |
+| `src/OpenRA.Game/Graphics/WorldRenderer.ts` | NO | CLEAN |
+
+Production code uses `TargetCamera` without `attachControl()` and has no canvas mouse event listeners. No issue.
+
+#### Test Pages
+
+| File | `attachControl`? | Canvas mouse listeners? | Risk |
+|------|------------------|------------------------|------|
+| `screenmap/spatial-query/main.ts` | NO (intentionally avoided) | `mousedown`/`mouseup`/`mousemove` as **diagnostic stubs** (line 797-805, intentionally silent observers) | NONE -- diagnostic only, no active logic depends on them. Also has proper `pointerdown`/`pointerup`/`pointermove` (lines 607/661/697) for actual interaction logic. |
+| `terrain-sprite-layer/batch-rendering/main.ts` | YES (line 170) | `mousemove` (line 424, tooltip), `mouseleave` (line 465), `click` (line 470) | LOW -- `mousemove` for tooltip fires during hover (no button press = no pointer capture). During camera drag, suppression is actually desired (no tooltip while rotating). `click` is a higher-level event synthesized from pointer events, not suppressed. |
+| 13 other test pages | YES (5 files) or NO | None have canvas mouse listeners | CLEAN |
+
+**Verdict**: No active mouse-event logic is broken by pointer capture in the current codebase. The `terrain-sprite-layer` tooltip design is correct because:
+1. Tooltip `mousemove` fires during simple hover (no button pressed, no pointer capture)
+2. During camera drag (pointer capture active), tooltip suppression is the desired UX
+3. `click` events are synthesized from pointer events and are not suppressed
+
+### Preventive Rule
+
+**Do not register `mousedown`/`mouseup`/`mousemove` on the canvas if the page uses `camera.attachControl()`.** Use `pointerdown`/`pointerup`/`pointermove` for all canvas interaction logic. This applies to both test pages and future production code.
+
+---
+
+## Issue 8 (spatial-query #2): Camera `attachControl()` Conflicts with Custom Pointer Interactions
+
+### Finding
+
+`camera.attachControl()` in Babylon.js configures the camera (typically `ArcRotateCamera`) to consume all pointer events for rotation, panning, and zooming. If a page also implements custom drag-based interactions (rectangle selection, drawing, drag-to-pan), the two systems conflict -- dragging the mouse causes both the camera to move AND the custom interaction to trigger.
+
+Specifically:
+- `ArcRotateCamera` uses `pointerdown` to begin drag rotation
+- Custom drag-select also uses `pointerdown` to begin rectangle selection
+- Both fire simultaneously, producing jittery/unusable behavior
+
+### Fix
+
+For pages that need custom pointer-based drag interactions on the canvas, **remove `camera.attachControl()`** and implement camera control manually via:
+- Keyboard: WASD or arrow keys for panning, Q/E for rotation
+- Scroll wheel: `wheel` event listener for zoom
+- This gives exclusive pointer control to the custom interaction logic
+
+The `screenmap/spatial-query` page is the reference implementation of this pattern.
+
+### Project-Wide Audit
+
+#### Production Code
+
+| File | Camera type | `attachControl`? | Custom pointer interaction? | Conflict? |
+|------|------------|-------------------|---------------------------|-----------|
+| `src/OpenRA.Game/Renderer.ts` | `TargetCamera` (orthographic/perspective) | NO | None currently implemented | CLEAN |
+
+The production camera system is designed for explicit programmatic control (scrolling/panning tied to game logic), not user-drag interaction. No conflict expected. However, when game interaction systems (selection, command issuing) are implemented, the camera interaction model must be planned to avoid this conflict.
+
+#### Test Pages
+
+| File | `attachControl`? | Custom canvas drag interaction? | Conflict? |
+|------|------------------|--------------------------------|-----------|
+| `screenmap/spatial-query/main.ts` | NO (line 265 comment) | YES (drag-to-select rectangle) | CORRECT (manually avoided) |
+| `actor/actor-scene-rendering/main.ts` | YES (line 157) | None (only button clicks) | CLEAN |
+| `sprite-renderer/sprite-billboarding/main.ts` | YES (line 220) | None (only button clicks) | CLEAN |
+| `sprite-renderer/sprite-batch-rendering/main.ts` | YES (line 237) | None (only button clicks) | CLEAN |
+| `player/player-diplomacy/main.ts` | YES (line 208) | None (only button clicks) | CLEAN |
+| `terrain-sprite-layer/batch-rendering/main.ts` | YES (line 170) | `click` (cell update) + `mousemove` (tooltip) | LOW -- `click` is point-based, not drag-based; `mousemove` for tooltip fires during hover only |
+
+**Verdict**: No current conflicts. The `spatial-query` page correctly avoids `attachControl` because it implements custom drag-select. All other `attachControl` pages do not implement drag-based canvas interactions.
+
+### Architectural Rule for Future Production Code
+
+When implementing game interaction systems (selection, orders, etc.):
+
+1. If the camera is user-controlled via drag (e.g., `ArcRotateCamera.attachControl()`), game interactions should use **modifier keys** (Shift+click, Ctrl+drag) or **discrete click** (not drag) to avoid conflict.
+2. If the game needs drag-based interactions (box selection), use a **programmatic camera** (`TargetCamera` with keyboard/wheel control) as done in the production `Renderer.ts`.
+3. The spatial-query pattern (keyboard + wheel camera, exclusive pointer for custom interaction) is the recommended approach for complex interaction scenarios.
+
+---
+
+## Issue 9 (spatial-query #3): Canvas Focus Ring (White Box) on Click
+
+### Finding
+
+When a `<canvas>` element receives focus (e.g., from a click), the browser draws a focus indicator ring. On dark backgrounds, this appears as a **white box** around the canvas. In applications where the canvas is clicked frequently (games, test pages), this creates an annoying visual flash on every click.
+
+### Fix
+
+Add to the CSS targeting the Babylon.js canvas:
+```css
+canvas {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;  /* Prevent browser gesture interpretation */
+}
+```
+
+And add to the JavaScript after creating the canvas:
+```typescript
+canvas.tabIndex = -1  // Prevent Tab key from focusing the canvas
+```
+
+The `screenmap/spatial-query/index.html` is the reference implementation (line 15).
+
+### Project-Wide Audit
+
+#### Production Code
+
+| Scope | Has fix? | Severity |
+|-------|---------|----------|
+| `src/style.css` | NO canvas-specific rules | **MAJOR** -- when the production app is integrated, clicking the game canvas will flash a white focus ring |
+| `src/OpenRA.Game/Renderer.ts` | NO canvas styling code | **MAJOR** -- `Renderer` constructor receives canvas but does not apply `tabIndex = -1` or outline CSS |
+| `src/main.ts` | NO (still Vite template boilerplate) | NOTE -- main.ts not yet integrated with Renderer |
+
+**Fix needed**: When main.ts integrates the Renderer, either:
+1. Add `canvas { outline: none !important; touch-action: none; }` to `src/style.css`, OR
+2. Add inline style setting in `Renderer` constructor: `canvas.style.outline = 'none'` + `canvas.style.touchAction = 'none'` + `canvas.tabIndex = -1`
+
+#### Test Pages
+
+| Page | Has outline fix? | Status |
+|------|-----------------|--------|
+| `screenmap/spatial-query/index.html` | YES (line 15: `#sandbox canvas { outline: none !important; touch-action: none; }`) | REFERENCE |
+| 15 other test pages | NO (only `display: block; width/height: 100%`) | **MISSING** -- clicking canvas causes white focus ring flash |
+
+**All 15 test pages without the fix** should add `outline: none !important; -webkit-tap-highlight-color: transparent; touch-action: none;` to their `#sandbox canvas` CSS rule, and add `canvas.tabIndex = -1` in JavaScript after canvas creation.
+
+The affected test page directories:
+1. `world-renderer/world-z-sorting`
+2. `world-renderer/world-layer-ordering`
+3. `animation/animation-frame-switching`
+4. `animation/animation-play-modes`
+5. `animation/animation-orientation`
+6. `sprite-renderer/sprite-batch-rendering`
+7. `sprite-renderer/sprite-billboarding`
+8. `sprite-renderer/sprite-blend-modes`
+9. `rgba-color-renderer/rgba-debug-graphics`
+10. `rgba-color-renderer/rgba-alpha-blending`
+11. `terrain-sprite-layer/batch-rendering`
+12. `actor/actor-scene-rendering`
+13. `player/player-diplomacy`
+14. `sheet/atlas-packing`
+15. `hardware-palette/color-accuracy`
+
+---
+
+## Issue 10 (spatial-query follow-up): Additional `disableLighting` + Missing `emissiveTexture` Site
+
+### Finding
+
+During the project-wide audit of all `disableLighting = true` sites, one additional issue was discovered that was missed in the original Issue #3 audit:
+
+| File | Line | Description | Severity |
+|------|------|-------------|----------|
+| `src/__e2e__/manual/sprite-renderer/sprite-blend-modes/main.ts` | 332-337 | `bgMat` (background checkerboard) sets `diffuseTexture = checkerTex` + `emissiveColor = White` + `disableLighting = true`, but **`emissiveTexture` is NOT set** | **MAJOR** (test page) |
+
+The checkerboard background texture is assigned only to `diffuseTexture`. With `disableLighting = true`, the shader ignores `diffuseTexture` and uses only `emissiveColor * emissiveTexture`. Since `emissiveTexture` is not set, the background renders as solid white instead of the intended checkerboard pattern.
+
+**Fix**: Add `bgMat.emissiveTexture = checkerTex` after line 334.
+
+### Updated Audit: All `disableLighting = true` Sites Verified
+
+All 37 `disableLighting = true` sites across 17 files have been verified. **36 of 37 are correct** (all set both `emissiveColor` and, where a texture is intended, `emissiveTexture`). The single exception is `sprite-blend-modes/main.ts:332-337` (background material).
+
+### Previously "NEEDS CHECK" Entries -- All Confirmed Correct
+
+All 8 test pages previously marked "NEEDS CHECK" in the Issue #3 audit table have been verified. Every `disableLighting = true` material in these pages correctly sets both `emissiveTexture` and `emissiveColor`:
+
+| File | Sites | Status |
+|------|-------|--------|
+| `world-renderer/world-layer-ordering/main.ts` | 2 | CORRECT (emissiveTexture + emissiveColor both set) |
+| `world-renderer/world-z-sorting/main.ts` | 4 | CORRECT |
+| `animation/animation-frame-switching/main.ts` | 3 | CORRECT |
+| `animation/animation-orientation/main.ts` | 3 | CORRECT |
+| `animation/animation-play-modes/main.ts` | 2 | CORRECT |
+| `sprite-renderer/sprite-blend-modes/main.ts` | 3 total (2 correct + 1 bgMat bug) | 1 BUG |
+| `sprite-renderer/sprite-billboarding/main.ts` | 5 | CORRECT |
+| `hardware-palette/color-accuracy/main.ts` | 1 | CORRECT |
+
+---
+
+## Consolidated New Action Items
+
+### Test Page Fixes from spatial-query Audit
+
+| Priority | Scope | Issue | Action |
+|----------|-------|-------|--------|
+| **MAJOR** | `sprite-renderer/sprite-blend-modes/main.ts:333` | `bgMat` missing `emissiveTexture` | Add `bgMat.emissiveTexture = checkerTex` |
+| MINOR | 15 test page `index.html` files | Missing canvas outline CSS fix | Add `outline: none !important; -webkit-tap-highlight-color: transparent; touch-action: none;` to `#sandbox canvas` rule + `canvas.tabIndex = -1` in JS |
+| MINOR | 8 test pages (non-sprite-batch-rendering) | No try-catch in `runRenderLoop` callbacks | Add try-catch (previously identified in Issue #4, still pending) |
+| MINOR | 10 test pages, ~144 instances | `getElementById!` non-null assertions | Replace with helper function (previously identified in Issue #6, still pending) |
+
+### Production Code Action Items
+
+| Priority | Scope | Issue | Action |
+|----------|-------|-------|--------|
+| **MAJOR** | `src/style.css` + `src/OpenRA.Game/Renderer.ts` | Production canvas missing outline fix | Add `canvas { outline: none !important; touch-action: none; }` to style.css; add `canvas.tabIndex = -1` in Renderer constructor or canvas creation site |
+| NOTE | Future game interaction systems | Camera control vs custom interaction may conflict | Follow architectural rules in Issue #8 when implementing selection/command systems |
+
+### Updated Template for New Test Pages
+
+In addition to the three rules from Chapter 1:
+
+4. **Canvas outline**: Include `#sandbox canvas { outline: none !important; -webkit-tap-highlight-color: transparent; touch-action: none; }` in every `index.html`, and `canvas.tabIndex = -1` in JavaScript after canvas creation.
+5. **Pointer events, not mouse events**: Use `pointerdown`/`pointerup`/`pointermove` for all canvas interactions. Never use `mousedown`/`mouseup`/`mousemove` if `camera.attachControl()` is or may be used.
+6. **Camera vs interaction decision**: If the page needs custom drag interactions (selection, drawing), do NOT call `camera.attachControl()`. Use keyboard + wheel for camera control instead. Use `screenmap/spatial-query/main.ts` as the reference template for this pattern.
