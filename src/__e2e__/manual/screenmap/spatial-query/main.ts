@@ -331,6 +331,11 @@ async function main(): Promise<void> {
       mesh.material = mat
       mesh.parent = node
       mesh.position = Vector3.Zero()
+      // Unit meshes must NOT be pickable, otherwise they occlude the ground
+      // in scene.pick() and screenToWorld() returns null (no ground hit).
+      // This breaks both point-click (ActorsAtMouse) and box-select
+      // (ActorsInMouseBox) when mousedown starts on a unit.
+      mesh.isPickable = false
 
       const unit: Unit = {
         node,
