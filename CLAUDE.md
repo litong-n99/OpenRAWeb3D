@@ -112,7 +112,9 @@ vite.config.ts              ← Vite 8 MPA config + /test/ route plugin (dev-onl
     migration-review.md      ← Code review agent spec
     migration-docs.md        ← Documentation manager agent spec
   teams/
-    openra-migration/        ← Reusable team configuration template
+    openra-migration/              ← Original team template (legacy)
+    openra-migration-deepseek/     ← DeepSeek model team configuration
+    openra-migration-kimi/         ← Kimi model team configuration
 
 docs/
   openra_migration.agent.final.converted.md   ← Comprehensive architecture analysis (~199KB)
@@ -176,15 +178,27 @@ docs/
 
 ## Agent Team Structure
 
-The project uses four specialized agents defined in `.claude/agents/`:
+The project uses five specialized agents defined in `.claude/agents/`:
 
 | Agent | Spec File | Role |
 |-------|-----------|------|
+| **team-lead** | `team-lead.md` | Task coordination, routing, progress tracking. Does NOT write code. |
 | **migration-architect** | `migration-architect.md` | Overall design, scaffolding, CI/CD, tech decisions, dependency management |
 | **migration-develop** | `migration-develop.md` | TypeScript/Babylon.js implementation with unit tests |
 | **migration-review** | `migration-review.md` | Code review across 5 dimensions: docs compliance, feature completeness, efficiency, bugs, format |
 | **acceptance-test-assistant** | `acceptance-test-assistant.md` | Manual visual acceptance test pages for non-unit-testable modules |
 | **migration-docs** | `migration-docs.md` | Documentation maintenance, progress tracking, task coordination, commit |
+
+### Team Configurations
+
+The project has two pre-configured team setups in `.claude/teams/`, selected by model provider:
+
+| Model Provider | Team Config | Models Used |
+|---------------|-------------|-------------|
+| **DeepSeek** | `.claude/teams/openra-migration-deepseek/` | team-lead: `deepseek-v4-flash`, all others: `deepseek-v4-pro` |
+| **Kimi** | `.claude/teams/openra-migration-kimi/` | all members: `kimi-k2.6` |
+
+Spawn a team via `TeamCreate` with the appropriate config file when initiating migration work.
 
 ### Agent Communication
 
