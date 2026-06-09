@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameActor - 3D 场景渲染 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 180px); }
+    #sandbox canvas { display: block; }
+    #controls { padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input { padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    #controls button:hover { background: #0f3460; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-wrap: wrap; }
+    #info-bar span { white-space: nowrap; }
+    #actor-stats { margin-left: auto; color: #58a6ff; }
+    #actor-stats span { margin-left: 12px; }
+    #gpu-error { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; background: rgba(255,0,0,0.08); color: #ff6b6b; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Actor System - GameActor 3D 场景渲染</h1>
+    <div class="subtitle">ID: actor/actor-scene-rendering | 期望结果见 README.md</div>
+  </div>
+  <div id="controls">
+    <button id="btn-spawn" title="创建 5 个新 Actor 在随机位置">+ Spawn 5</button>
+    <button id="btn-dispose-all" title="销毁所有当前可见的 Actor">Trash All</button>
+    <button id="btn-move-random" title="将所有 Actor 移动到新的随机位置">Move Random</button>
+    <button id="btn-scale" title="循环切换 Actor 的缩放">Cycle Scale</button>
+    <label>
+      <input type="checkbox" id="chk-animate" checked>
+      动画旋转
+    </label>
+    <label>
+      <input type="checkbox" id="chk-show-labels">
+      显示标签
+    </label>
+    <button id="btn-owner-toggle" title="切换 Actor 的 Owner 颜色">Toggle Owner</button>
+    <span style="color:#8b949e;font-size:12px;" id="actor-stats">
+      活跃 Actor: <span id="stat-count">0</span>
+      <span>总创建: <span id="stat-total">0</span></span>
+    </span>
+  </div>
+  <div id="sandbox">
+    <div id="gpu-error">WebGL 不可用 — 请检查浏览器支持</div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScreenMap - 空间查询可视化 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 180px); }
+    #sandbox canvas { display: block; }
+    #overlay { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 4px; font-size: 12px; color: #58a6ff; pointer-events: none; }
+    #controls { padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input { padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #58a6ff; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-wrap: wrap; }
+    #info-bar span { white-space: nowrap; }
+    #selection-rect { position: absolute; border: 1px solid #58a6ff; background: rgba(88,166,255,0.1); pointer-events: none; display: none; }
+    #gpu-error { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; background: rgba(255,0,0,0.08); color: #ff6b6b; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>ScreenMap - 空间查询与选择框可视化</h1>
+    <div class="subtitle">ID: screenmap/spatial-query | 期望结果见 README.md</div>
+  </div>
+  <div id="controls">
+    <button id="btn-randomize" title="随机分布所有单位到新位置">Randomize Positions</button>
+    <button id="btn-bounds" class="active" title="显示可见单元的 ScreenBounds 包围盒">Show Bounds</button>
+    <button id="btn-mouse-bounds" title="显示鼠标命中测试 Bounds (IMouseBounds)">Show Mouse Bounds</button>
+    <button id="btn-grid" title="显示 ScreenMap 的分区网格 (bin grid)">Show Grid</button>
+    <span style="color:#484f58;">|</span>
+    <label>Bin 大小:
+      <select id="sel-bin-size">
+        <option value="5" selected>5 (细)</option>
+        <option value="10">10 (中)</option>
+        <option value="15">15 (粗)</option>
+      </select>
+    </label>
+    <span style="color:#484f58;">|</span>
+    <button id="btn-hover-test" title="启用鼠标悬停检测（移动鼠标到单元上观察高亮）">Hover Test</button>
+    <span style="color:#484f58;">|</span>
+    <span style="font-size:12px;color:#8b949e;">
+      框选: 拖拽鼠标绘制选择框 |
+      选中: <span id="stat-selected" style="color:#58a6ff;">0</span> 个
+    </span>
+  </div>
+  <div id="sandbox">
+    <div id="overlay"></div>
+    <div id="selection-rect"></div>
+    <div id="gpu-error">WebGL 不可用 — 请检查浏览器支持</div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
