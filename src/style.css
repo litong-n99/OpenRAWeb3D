@@ -54,6 +54,23 @@ body {
   margin: 0;
 }
 
+/* ---------------------------------------------------------------------------
+ * Canvas: suppress browser default focus ring
+ *
+ * When the user clicks the WebGL canvas, browsers draw a default focus outline
+ * (white ring on dark background).  outline: none removes this entirely.
+ * touch-action: none prevents browser-level gesture interference (pan/zoom)
+ * on touch devices, ensuring all input reaches the game engine.
+ *
+ * NOTE: We intentionally do NOT set tabIndex = -1 on the canvas element,
+ * because the canvas is the primary game input surface and must remain
+ * focusable for keyboard events to work correctly.
+ * --------------------------------------------------------------------------- */
+canvas {
+  outline: none !important;
+  touch-action: none;
+}
+
 h1,
 h2 {
   font-family: var(--heading);
