@@ -29,6 +29,7 @@ import { StandardMaterial } from '@babylonjs/core'
 import { DynamicTexture } from '@babylonjs/core'
 import { TransformNode } from '@babylonjs/core'
 import { Matrix } from '@babylonjs/core'
+import { Tools } from '@babylonjs/core'
 
 // ---------------------------------------------------------------------------
 // Unit 数据结构 — 模拟 Actor 的空间索引条目
@@ -37,9 +38,9 @@ import { Matrix } from '@babylonjs/core'
 interface Unit {
   node: TransformNode
   mesh: Mesh
-  /** 包圍盒在世界 XZ 平面上的宽度 (对应 ScreenBounds 宽度的一半) */
+  /** 包围盒在世界 XZ 平面上的宽度 (对应 ScreenBounds 宽度的一半) */
   halfWidth: number
-  /** 包圍盒在世界 XZ 平面上的高度 (对应 ScreenBounds 高度的一半) */
+  /** 包围盒在世界 XZ 平面上的高度 (对应 ScreenBounds 高度的一半) */
   halfHeight: number
   /** 命中测试多边形顶点 (XZ 平面, 相对于 node 中心) */
   hitPoly: readonly { x: number; z: number }[]
@@ -124,7 +125,6 @@ class SpatialGrid {
         for (const unit of this.cells[r * this.cols + c].units) {
           if (seen.has(unit)) continue
           seen.add(unit)
-          // 检查 Unit 包围盒是否与查询矩形相交
           const ux = unit.node.position.x
           const uz = unit.node.position.z
           if (
@@ -163,7 +163,7 @@ class SpatialGrid {
 }
 
 // ---------------------------------------------------------------------------
-// Unit 包圍盒可视化 Line
+// Unit 包围盒可视化 Line
 // ---------------------------------------------------------------------------
 
 function createBoundsLines(
@@ -190,6 +190,17 @@ function createBoundsLines(
 }
 
 // ---------------------------------------------------------------------------
+// 诊断工具: 结构化日志前缀
+// ---------------------------------------------------------------------------
+
+const DIAG_PREFIX = '[screenmap]'
+
+let eventSeq = 0
+function nextSeq(): number {
+  return ++eventSeq
+}
+
+// ---------------------------------------------------------------------------
 // 主函数
 // ---------------------------------------------------------------------------
 
@@ -213,9 +224,21 @@ async function main(): Promise<void> {
   const canvas = document.createElement('canvas')
   canvas.style.width = '100%'
   canvas.style.height = '100%'
+  // Prevent browser focus outline (CSS handles visual, this prevents focus ring)
+  canvas.tabIndex = -1
   canvas.width = Math.max(sandboxEl.getBoundingClientRect().width || 800, 1)
   canvas.height = Math.max(sandboxEl.getBoundingClientRect().height || 600, 1)
   sandboxEl.appendChild(canvas)
+
+  // ---- 诊断: canvas 初始化后的尺寸 ----
+  console.group(`${DIAG_PREFIX} Initial Canvas Setup`)
+  console.log(`${DIAG_PREFIX} canvas.width (attribute): ${canvas.width}`)
+  console.log(`${DIAG_PREFIX} canvas.height (attribute): ${canvas.height}`)
+  console.log(`${DIAG_PREFIX} canvas.style.width: ${canvas.style.width}`)
+  console.log(`${DIAG_PREFIX} canvas.style.height: ${canvas.style.height}`)
+  console.log(`${DIAG_PREFIX} canvas.tabIndex: ${canvas.tabIndex}`)
+  console.log(`${DIAG_PREFIX} sandboxEl.getBoundingClientRect(): w=${sandboxEl.getBoundingClientRect().width}, h=${sandboxEl.getBoundingClientRect().height}`)
+  console.groupEnd()
 
   let engine: Engine
   try {
@@ -237,7 +260,6 @@ async function main(): Promise<void> {
   camera.lowerRadiusLimit = 5
   camera.upperRadiusLimit = 50
   camera.panningSensibility = 500
-  // Explicitly set as active camera for scene.pick() / createPickingRay()
   scene.activeCamera = camera
   camera.attachControl(canvas, true)
 
@@ -253,23 +275,23 @@ async function main(): Promise<void> {
   groundMesh.position.y = -0.01
   groundMesh.isPickable = true
 
-  // ---- 诊断: 输出 canvas/engine 尺寸信息 ----
-  console.log('[screenmap] === Canvas & Engine Dimensions ===')
-  console.log(`[screenmap] canvas.width (attr):  ${canvas.width}`)
-  console.log(`[screenmap] canvas.height (attr): ${canvas.height}`)
-  console.log(`[screenmap] canvas.style.width:     ${canvas.style.width}`)
-  console.log(`[screenmap] canvas.style.height:    ${canvas.style.height}`)
+  // ---- 诊断: Engine 创建后的尺寸 ----
+  console.group(`${DIAG_PREFIX} Engine Created`)
   const initRect = canvas.getBoundingClientRect()
-  console.log(`[screenmap] canvas.getBoundingClientRect(): ${initRect.width} x ${initRect.height}`)
-  console.log(`[screenmap] engine.getRenderWidth():  ${engine.getRenderWidth()}`)
-  console.log(`[screenmap] engine.getRenderHeight(): ${engine.getRenderHeight()}`)
-  console.log(`[screenmap] engine.getHardwareScalingLevel(): ${engine.getHardwareScalingLevel()}`)
-  console.log(`[screenmap] scene.activeCamera: ${scene.activeCamera?.name ?? 'NULL'}`)
-  console.log(`[screenmap] scene.cameras.length: ${scene.cameras.length}`)
-  console.log(`[screenmap] scene.meshes.length: ${scene.meshes.length}`)
+  console.log(`${DIAG_PREFIX} canvas.getBoundingClientRect(): ${initRect.width.toFixed(1)} x ${initRect.height.toFixed(1)}, left=${initRect.left.toFixed(1)}, top=${initRect.top.toFixed(1)}`)
+  console.log(`${DIAG_PREFIX} canvas.width (attr):  ${canvas.width}`)
+  console.log(`${DIAG_PREFIX} canvas.height (attr): ${canvas.height}`)
+  console.log(`${DIAG_PREFIX} engine.getRenderWidth():  ${engine.getRenderWidth()}`)
+  console.log(`${DIAG_PREFIX} engine.getRenderHeight(): ${engine.getRenderHeight()}`)
+  console.log(`${DIAG_PREFIX} engine.getHardwareScalingLevel(): ${engine.getHardwareScalingLevel()}`)
+  console.log(`${DIAG_PREFIX} scene.activeCamera: ${scene.activeCamera?.name ?? 'NULL'}`)
+  console.log(`${DIAG_PREFIX} scene.cameras.length: ${scene.cameras.length}`)
+  console.log(`${DIAG_PREFIX} scene.meshes.length: ${scene.meshes.length}`)
   for (const m of scene.meshes) {
-    console.log(`[screenmap]   mesh: name="${m.name}", isPickable=${m.isPickable}, isVisible=${m.isVisible}, isEnabled=${m.isEnabled()}`)
+    console.log(`${DIAG_PREFIX}   mesh: name="${m.name}", isPickable=${m.isPickable}, isVisible=${m.isVisible}, isEnabled=${m.isEnabled()}`)
   }
+  Tools.Log(`${DIAG_PREFIX} === Setup complete, ready for interaction ===`)
+  console.groupEnd()
 
   // ---- 世界参数 ----
   const WORLD_W = 30
@@ -308,7 +330,6 @@ async function main(): Promise<void> {
   const unitSize = 1.5
 
   function spawnUnits(count: number): void {
-    // 清除旧 unit
     for (const u of units) {
       u.mesh.dispose()
       u.node.dispose()
@@ -336,8 +357,6 @@ async function main(): Promise<void> {
       mesh.material = mat
       mesh.parent = node
       mesh.position = Vector3.Zero()
-      // Unit meshes must NOT be pickable, otherwise scene.pick() will hit them
-      // instead of the ground, causing screenToWorld() to return null.
       mesh.isPickable = false
 
       const unit: Unit = {
@@ -409,7 +428,6 @@ async function main(): Promise<void> {
         boundsLines.push(line)
       }
       if (showMouseBounds) {
-        // Mouse bounds 多边形
         const cx = unit.node.position.x
         const cz = unit.node.position.z
         const pts = unit.hitPoly.map(p => new Vector3(cx + p.x, 0.04, cz + p.z))
@@ -444,29 +462,16 @@ async function main(): Promise<void> {
 
   // -------------------------------------------------------------------------
   // screenToWorld — 使用 createPickingRay + XZ 平面求交
-  //
-  // 原因: scene.pick() 依赖场景中的 pickable mesh。如果 ground mesh 因为
-  // 任何原因未被射线命中（坐标缩放、viewport 偏移、camera frustum 问题等），
-  // 整个点击链路就会静默失败。使用 createPickingRay 直接从 camera 的 view/
-  // projection 矩阵反算出世界空间射线，然后与 XZ 平面 (y=0) 求交，完全不
-  // 依赖 mesh picking，从根本上消除这类"看不见"的故障。
   // -------------------------------------------------------------------------
 
   /**
    * 将屏幕像素坐标转换为世界 XZ 平面坐标
-   *
-   * @param canvasRect canvas.getBoundingClientRect() 结果
-   * @param sx CSS 像素相对于 canvas 左上角的 X
-   * @param sy CSS 像素相对于 canvas 左上角的 Y
-   * @returns 世界空间 XZ 平面交点，或 null（射线与 XZ 平面平行/背离）
    */
   function screenToWorld(
     canvasRect: DOMRect,
     sx: number,
     sy: number,
   ): { x: number; z: number } | null {
-    // Step 1: 将 CSS 像素转换为 engine rendering 坐标
-    //    hardwareScalingLevel = 1.0 时两者一致；非 1.0 时需要缩放
     const renderWidth = engine.getRenderWidth()
     const renderHeight = engine.getRenderHeight()
     const scaleX = renderWidth / (canvasRect.width || 1)
@@ -474,45 +479,73 @@ async function main(): Promise<void> {
     const pickX = sx * scaleX
     const pickY = sy * scaleY
 
-    // Step 2: 用 camera 的 view/projection 创建世界空间射线
-    //    createPickingRay 内部会调用 camera.getViewMatrix() 和
-    //    camera.getProjectionMatrix() 进行 unproject
     const ray = scene.createPickingRay(
       pickX, pickY,
-      Matrix.Identity(),  // world matrix — identity = world space
-      camera,              // 显式传入 camera，不依赖 scene.activeCamera
+      Matrix.Identity(),
+      camera,
     )
 
-    // Step 3: 射线与 XZ 平面 (y=0) 求交
-    //    ray = origin + t * direction
-    //    求 origin.y + t * direction.y = 0 → t = -origin.y / direction.y
+    // 诊断: 输出 ray 详情
+    console.log(`${DIAG_PREFIX}   screenToWorld: pickRaw=(${pickX.toFixed(1)}, ${pickY.toFixed(1)}) scale=(${scaleX.toFixed(4)}, ${scaleY.toFixed(4)})`)
+    console.log(`${DIAG_PREFIX}   screenToWorld: ray.origin=(${ray.origin.x.toFixed(2)}, ${ray.origin.y.toFixed(2)}, ${ray.origin.z.toFixed(2)})`)
+    console.log(`${DIAG_PREFIX}   screenToWorld: ray.dir=(${ray.direction.x.toFixed(4)}, ${ray.direction.y.toFixed(4)}, ${ray.direction.z.toFixed(4)})`)
+
     if (Math.abs(ray.direction.y) < 1e-8) {
-      // 射线几乎平行于 XZ 平面 (camera 视角极低)
+      console.warn(`${DIAG_PREFIX}   screenToWorld: REJECTED — ray nearly parallel to XZ plane (dir.y=${ray.direction.y.toFixed(8)})`)
       return null
     }
 
     const t = -ray.origin.y / ray.direction.y
     if (t <= 0) {
-      // 交点在射线后方（camera 在 XZ 平面以下）
+      console.warn(`${DIAG_PREFIX}   screenToWorld: REJECTED — intersection behind camera (t=${t.toFixed(3)})`)
+      console.warn(`${DIAG_PREFIX}     camera.position.y=${camera.position.y.toFixed(2)}, camera.target.y=${camera.target?.y ?? '?'}`)
       return null
     }
 
     const wx = ray.origin.x + t * ray.direction.x
     const wz = ray.origin.z + t * ray.direction.z
 
-    // 只返回世界范围内的交点
-    if (wx < -WORLD_W / 2 || wx > WORLD_W / 2 || wz < -WORLD_H / 2 || wz > WORLD_H / 2) {
-      return { x: wx, z: wz } // 仍然返回，让 queryPoint/queryRect 自行判断
-    }
+    const inWorld = wx >= -WORLD_W / 2 && wx <= WORLD_W / 2 && wz >= -WORLD_H / 2 && wz <= WORLD_H / 2
+    console.log(`${DIAG_PREFIX}   screenToWorld: HIT → world=(${wx.toFixed(2)}, ${wz.toFixed(2)}) t=${t.toFixed(2)} inWorld=${inWorld}`)
 
     return { x: wx, z: wz }
   }
 
+  /**
+   * 打印完整的 canvas 尺寸诊断信息
+   */
+  function dumpCanvasDiagnostics(label: string): void {
+    const rect = canvas.getBoundingClientRect()
+    console.group(`${DIAG_PREFIX} Canvas Dimensions [${label}]`)
+    console.log(`${DIAG_PREFIX}   getBoundingClientRect: ${rect.width.toFixed(1)} x ${rect.height.toFixed(1)}, left=${rect.left.toFixed(1)}, top=${rect.top.toFixed(1)}`)
+    console.log(`${DIAG_PREFIX}   canvas.width (attr):  ${canvas.width}`)
+    console.log(`${DIAG_PREFIX}   canvas.height (attr): ${canvas.height}`)
+    console.log(`${DIAG_PREFIX}   canvas.style.width:   ${canvas.style.width}`)
+    console.log(`${DIAG_PREFIX}   canvas.style.height:  ${canvas.style.height}`)
+    console.log(`${DIAG_PREFIX}   engine.getRenderWidth:  ${engine.getRenderWidth()}`)
+    console.log(`${DIAG_PREFIX}   engine.getRenderHeight: ${engine.getRenderHeight()}`)
+    console.log(`${DIAG_PREFIX}   window.inner: ${window.innerWidth}x${window.innerHeight}`)
+    console.log(`${DIAG_PREFIX}   sandboxEl BCR: ${sandboxEl.getBoundingClientRect().width.toFixed(1)} x ${sandboxEl.getBoundingClientRect().height.toFixed(1)}`)
+    console.groupEnd()
+  }
+
+  /**
+   * 打印所有 unit 的位置和选中状态
+   */
+  function dumpUnitState(): void {
+    console.group(`${DIAG_PREFIX} Unit State`)
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i]
+      console.log(`${DIAG_PREFIX}   [${i}] pos=(${u.node.position.x.toFixed(2)}, ${u.node.position.z.toFixed(2)}) hw=${u.halfWidth} hh=${u.halfHeight} sel=${u.selected} hov=${u.hovered}`)
+    }
+    console.groupEnd()
+  }
+
   // -------------------------------------------------------------------------
-  // 点击/框选事件处理
+  // 事件处理
   // -------------------------------------------------------------------------
 
-  const selRect = document.getElementById('selection-rect')!
+  const selRectEl = document.getElementById('selection-rect')!
   const statSelected = document.getElementById('stat-selected')!
   const overlayEl = document.getElementById('overlay')!
 
@@ -520,39 +553,108 @@ async function main(): Promise<void> {
   let selStartX = 0
   let selStartY = 0
   let selStartWorld: { x: number; z: number } | null = null
-  // 点击诊断计数器
   let pickAttempts = 0
   let pickSuccesses = 0
 
+  // ============================================================
+  // 诊断层 1: 所有 pointer 事件 (Babylon.js 使用这些事件)
+  // 这些 handler 只记录日志，不做任何业务逻辑
+  // ============================================================
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const seq = nextSeq()
+    const rect = canvas.getBoundingClientRect()
+    console.log(`${DIAG_PREFIX} [EVENT #${seq}] pointerdown: pointerId=${e.pointerId} button=${e.button} client=(${e.clientX},${e.clientY}) canvasRel=(${(e.clientX - rect.left).toFixed(1)}, ${(e.clientY - rect.top).toFixed(1)}) target=${(e.target as HTMLElement)?.tagName ?? '?'}`)
+  })
+
+  canvas.addEventListener('pointerup', (e) => {
+    const seq = nextSeq()
+    const rect = canvas.getBoundingClientRect()
+    console.log(`${DIAG_PREFIX} [EVENT #${seq}] pointerup:   pointerId=${e.pointerId} button=${e.button} client=(${e.clientX},${e.clientY}) canvasRel=(${(e.clientX - rect.left).toFixed(1)}, ${(e.clientY - rect.top).toFixed(1)}) target=${(e.target as HTMLElement)?.tagName ?? '?'}`)
+  })
+
+  canvas.addEventListener('pointermove', (e) => {
+    // Only log pointermove if selecting or hover testing, to reduce noise
+    if (!isSelecting && !hoverTestEnabled) return
+    const seq = nextSeq()
+    console.log(`${DIAG_PREFIX} [EVENT #${seq}] pointermove: pointerId=${e.pointerId} client=(${e.clientX},${e.clientY}) buttons=${e.buttons}`)
+  })
+
+  // Log pointer capture events (diagnose if pointer capture is being set/released unexpectedly)
+  canvas.addEventListener('gotpointercapture', (e) => {
+    console.log(`${DIAG_PREFIX} [EVENT] gotpointercapture: pointerId=${e.pointerId}`)
+  })
+  canvas.addEventListener('lostpointercapture', (e) => {
+    console.log(`${DIAG_PREFIX} [EVENT] lostpointercapture: pointerId=${e.pointerId}`)
+  })
+
+  // Log focus events on canvas (diagnose the white-box focus issue)
+  canvas.addEventListener('focus', () => {
+    console.log(`${DIAG_PREFIX} [EVENT] canvas FOCUS`)
+  })
+  canvas.addEventListener('blur', () => {
+    console.log(`${DIAG_PREFIX} [EVENT] canvas BLUR`)
+  })
+
+  // ============================================================
+  // 诊断层 2: mouse 事件 (我们的业务逻辑使用这些)
+  // ============================================================
+
   canvas.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return
+    const seq = nextSeq()
+    console.group(`${DIAG_PREFIX} [EVENT #${seq}] mousedown START`)
+
+    if (e.button !== 0) {
+      console.log(`${DIAG_PREFIX}   SKIP: button=${e.button} (not left button)`)
+      console.groupEnd()
+      return
+    }
 
     pickAttempts++
     isSelecting = true
     selStartX = e.clientX
     selStartY = e.clientY
 
+    dumpCanvasDiagnostics(`mousedown #${pickAttempts}`)
+
     const canvasRect = canvas.getBoundingClientRect()
     const sx = e.clientX - canvasRect.left
     const sy = e.clientY - canvasRect.top
 
-    console.log(`[screenmap] mousedown #${pickAttempts}: client=(${e.clientX},${e.clientY}) canvasRect=(${canvasRect.left},${canvasRect.top},${canvasRect.width},${canvasRect.height}) pickCSS=(${sx},${sy})`)
+    console.log(`${DIAG_PREFIX}   mousedown #${pickAttempts}: client=(${e.clientX},${e.clientY})`)
+    console.log(`${DIAG_PREFIX}   canvasRect: left=${canvasRect.left.toFixed(1)}, top=${canvasRect.top.toFixed(1)}, w=${canvasRect.width.toFixed(1)}, h=${canvasRect.height.toFixed(1)}`)
+    console.log(`${DIAG_PREFIX}   CSS relative to canvas: (${sx.toFixed(1)}, ${sy.toFixed(1)})`)
+
+    // Prevent text selection and browser drag
+    e.preventDefault()
 
     const pick = screenToWorld(canvasRect, sx, sy)
     selStartWorld = pick
 
     if (pick) {
       pickSuccesses++
-      console.log(`[screenmap]   → pick SUCCESS: world=(${pick.x.toFixed(2)}, ${pick.z.toFixed(2)}) successes=${pickSuccesses}/${pickAttempts}`)
+      console.log(`${DIAG_PREFIX}   → pick SUCCESS: world=(${pick.x.toFixed(2)}, ${pick.z.toFixed(2)}) successes=${pickSuccesses}/${pickAttempts}`)
+
+      // 诊断: 哪些 unit 在这个点下
+      const pointHits = grid.queryPoint(pick.x, pick.z)
+      console.log(`${DIAG_PREFIX}   → Point query preview at this position: ${pointHits.length} unit(s)`)
+      for (const h of pointHits) {
+        console.log(`${DIAG_PREFIX}     ${h.node.name} at (${h.node.position.x.toFixed(2)}, ${h.node.position.z.toFixed(2)})`)
+      }
     } else {
-      console.warn(`[screenmap]   → pick FAILED: screenToWorld returned null successes=${pickSuccesses}/${pickAttempts}`)
-      console.warn(`[screenmap]     engine renderSize=(${engine.getRenderWidth()},${engine.getRenderHeight()}) scale=(${(engine.getRenderWidth() / (canvasRect.width || 1)).toFixed(3)}, ${(engine.getRenderHeight() / (canvasRect.height || 1)).toFixed(3)})`)
+      console.warn(`${DIAG_PREFIX}   → pick FAILED: screenToWorld returned null`)
+      console.warn(`${DIAG_PREFIX}     successes=${pickSuccesses}/${pickAttempts}`)
+      dumpCanvasDiagnostics('PICK FAILED')
     }
 
-    // 取消所有选中
-    for (const u of units) u.selected = false
+    // 取消所有选中 (准备新的选择)
+    for (const u of units) {
+      if (u.selected) console.log(`${DIAG_PREFIX}   deselecting ${u.node.name}`)
+      u.selected = false
+    }
     highlightSelected()
     statSelected.textContent = '0'
+    console.groupEnd()
   })
 
   canvas.addEventListener('mousemove', (e) => {
@@ -562,11 +664,11 @@ async function main(): Promise<void> {
       const y = Math.min(selStartY, e.clientY)
       const w = Math.abs(e.clientX - selStartX)
       const h = Math.abs(e.clientY - selStartY)
-      selRect.style.display = 'block'
-      selRect.style.left = (x - canvasRect.left) + 'px'
-      selRect.style.top = (y - canvasRect.top) + 'px'
-      selRect.style.width = w + 'px'
-      selRect.style.height = h + 'px'
+      selRectEl.style.display = 'block'
+      selRectEl.style.left = (x - canvasRect.left) + 'px'
+      selRectEl.style.top = (y - canvasRect.top) + 'px'
+      selRectEl.style.width = w + 'px'
+      selRectEl.style.height = h + 'px'
     }
 
     // Hover 检测
@@ -580,7 +682,6 @@ async function main(): Promise<void> {
       if (pick) {
         const hits = grid.queryPoint(pick.x, pick.z)
         if (hits.length > 0) {
-          // 找到最近的一个（按 Z-order）
           hits[hits.length - 1].hovered = true
           found = true
         }
@@ -592,77 +693,127 @@ async function main(): Promise<void> {
   })
 
   canvas.addEventListener('mouseup', (e) => {
-    if (!isSelecting) return
+    const seq = nextSeq()
+    console.group(`${DIAG_PREFIX} [EVENT #${seq}] mouseup START`)
+
+    console.log(`${DIAG_PREFIX}   isSelecting=${isSelecting} selStartWorld=${selStartWorld ? `(${selStartWorld.x.toFixed(2)}, ${selStartWorld.z.toFixed(2)})` : 'null'}`)
+
+    if (!isSelecting) {
+      console.log(`${DIAG_PREFIX}   SKIP: not in selection state (isSelecting=false) — was mousedown missed?`)
+      console.groupEnd()
+      return
+    }
+
     isSelecting = false
-    selRect.style.display = 'none'
+    selRectEl.style.display = 'none'
 
     if (!selStartWorld) {
-      console.warn('[screenmap] mouseup: selStartWorld is null, skipping selection')
+      console.warn(`${DIAG_PREFIX}   SKIP: selStartWorld is null — screenToWorld failed on mousedown`)
       overlayEl.textContent = 'Click missed ground plane — check console for details'
+      console.groupEnd()
       return
     }
 
     const canvasRect = canvas.getBoundingClientRect()
     const sx = e.clientX - canvasRect.left
     const sy = e.clientY - canvasRect.top
+
+    console.log(`${DIAG_PREFIX}   mouseup: client=(${e.clientX},${e.clientY}) canvasRel=(${sx.toFixed(1)}, ${sy.toFixed(1)})`)
+
     const endPick = screenToWorld(canvasRect, sx, sy)
     if (!endPick) {
-      console.warn('[screenmap] mouseup: endPick is null, skipping selection')
+      console.warn(`${DIAG_PREFIX}   SKIP: endPick is null — screenToWorld failed on mouseup`)
       overlayEl.textContent = 'Release missed ground plane — check console'
+      console.groupEnd()
       return
     }
 
     const dx = Math.abs(endPick.x - selStartWorld.x)
     const dz = Math.abs(endPick.z - selStartWorld.z)
+    const dragDist = Math.sqrt(dx * dx + dz * dz)
 
-    console.log(`[screenmap] mouseup: startWorld=(${selStartWorld.x.toFixed(2)},${selStartWorld.z.toFixed(2)}) endWorld=(${endPick.x.toFixed(2)},${endPick.z.toFixed(2)}) dx=${dx.toFixed(3)} dz=${dz.toFixed(3)}`)
+    console.log(`${DIAG_PREFIX}   startWorld=(${selStartWorld.x.toFixed(2)}, ${selStartWorld.z.toFixed(2)}) endWorld=(${endPick.x.toFixed(2)}, ${endPick.z.toFixed(2)})`)
+    console.log(`${DIAG_PREFIX}   dx=${dx.toFixed(3)} dz=${dz.toFixed(3)} dragDist=${dragDist.toFixed(3)}`)
 
-    if (dx < 0.5 && dz < 0.5) {
-      // 精确点击 (ActorsAtMouse) — 使用点查询
+    const CLICK_THRESHOLD = 1.0 // world units — slightly larger to be forgiving
+
+    if (dragDist < CLICK_THRESHOLD) {
+      // 精确点击 (ActorsAtMouse)
       const hits = grid.queryPoint(selStartWorld.x, selStartWorld.z)
-      console.log(`[screenmap]   → point query (ActorsAtMouse) at (${selStartWorld.x.toFixed(2)}, ${selStartWorld.z.toFixed(2)}): ${hits.length} hit(s)`)
-      for (const h of hits) h.selected = true
+      console.log(`${DIAG_PREFIX}   → point query (ActorsAtMouse) at (${selStartWorld.x.toFixed(2)}, ${selStartWorld.z.toFixed(2)}): ${hits.length} hit(s)`)
+      for (let i = 0; i < hits.length; i++) {
+        const h = hits[i]
+        console.log(`${DIAG_PREFIX}     hit[${i}]: ${h.node.name} at (${h.node.position.x.toFixed(2)}, ${h.node.position.z.toFixed(2)}) hw=${h.halfWidth} hh=${h.halfHeight}`)
+        h.selected = true
+      }
     } else {
-      // 框选 (ActorsInMouseBox) — 使用矩形查询
+      // 框选 (ActorsInMouseBox)
       const hits = grid.queryRect(selStartWorld.x, selStartWorld.z, endPick.x, endPick.z)
-      console.log(`[screenmap]   → rect query (ActorsInMouseBox): ${hits.length} hit(s)`)
-      for (const h of hits) h.selected = true
+      console.log(`${DIAG_PREFIX}   → rect query (ActorsInMouseBox): ${hits.length} hit(s)`)
+      for (let i = 0; i < hits.length; i++) {
+        const h = hits[i]
+        console.log(`${DIAG_PREFIX}     hit[${i}]: ${h.node.name} at (${h.node.position.x.toFixed(2)}, ${h.node.position.z.toFixed(2)})`)
+        h.selected = true
+      }
     }
 
     const selCount = units.filter(u => u.selected).length
+    console.log(`${DIAG_PREFIX}   → final selected count: ${selCount}`)
     statSelected.textContent = String(selCount)
     overlayEl.textContent = selCount > 0
       ? `Selected: ${selCount} unit(s)`
-      : `No units selected (${dx < 0.5 && dz < 0.5 ? 'point' : 'rect'} query)`
+      : `No units selected (${dragDist < CLICK_THRESHOLD ? 'point' : 'rect'} query at (${selStartWorld.x.toFixed(1)}, ${selStartWorld.z.toFixed(1)}))`
     highlightSelected()
+
+    if (selCount === 0 && dragDist < CLICK_THRESHOLD) {
+      console.warn(`${DIAG_PREFIX}   No units found at click location. Nearest unit positions:`)
+      dumpUnitState()
+    }
+
+    console.groupEnd()
   })
 
-  // -------------------------------------------------------------------------
-  // 诊断: 添加一个「测试 scene.pick()」按钮
-  // -------------------------------------------------------------------------
+  // ---- 右键诊断菜单 ----
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault()
+    const seq = nextSeq()
+    console.group(`${DIAG_PREFIX} [EVENT #${seq}] RIGHT-CLICK DIAGNOSTIC`)
+    dumpCanvasDiagnostics('right-click')
+
     const canvasRect = canvas.getBoundingClientRect()
     const sx = e.clientX - canvasRect.left
     const sy = e.clientY - canvasRect.top
 
-    console.log('[screenmap] === scene.pick() diagnostic (right-click) ===')
-    console.log(`[screenmap]   CSS coords: (${sx.toFixed(1)}, ${sy.toFixed(1)})`)
+    console.log(`${DIAG_PREFIX}   CSS coords: (${sx.toFixed(1)}, ${sy.toFixed(1)})`)
 
-    // Test scene.pick() without predicate — what does it hit?
+    // Test scene.pick() without predicate
     const pickAll = scene.pick(sx, sy)
-    console.log(`[screenmap]   scene.pick(no predicate): hit=${pickAll?.hit}, mesh="${pickAll?.pickedMesh?.name ?? 'null'}", point=${pickAll?.pickedPoint ? `(${pickAll.pickedPoint.x.toFixed(2)}, ${pickAll.pickedPoint.y.toFixed(2)}, ${pickAll.pickedPoint.z.toFixed(2)})` : 'null'}`)
+    console.log(`${DIAG_PREFIX}   scene.pick(no predicate): hit=${pickAll?.hit}, mesh="${pickAll?.pickedMesh?.name ?? 'null'}", point=${pickAll?.pickedPoint ? `(${pickAll.pickedPoint.x.toFixed(2)}, ${pickAll.pickedPoint.y.toFixed(2)}, ${pickAll.pickedPoint.z.toFixed(2)})` : 'null'}`)
 
-    // Test scene.pick() with predicate
+    // Test scene.pick() with ground predicate
     const pickGround = scene.pick(sx, sy, (mesh) => mesh.name === 'ground')
-    console.log(`[screenmap]   scene.pick(ground predicate): hit=${pickGround?.hit}, mesh="${pickGround?.pickedMesh?.name ?? 'null'}", point=${pickGround?.pickedPoint ? `(${pickGround.pickedPoint.x.toFixed(2)}, ${pickGround.pickedPoint.y.toFixed(2)}, ${pickGround.pickedPoint.z.toFixed(2)})` : 'null'}`)
+    console.log(`${DIAG_PREFIX}   scene.pick(ground pred): hit=${pickGround?.hit}, mesh="${pickGround?.pickedMesh?.name ?? 'null'}", point=${pickGround?.pickedPoint ? `(${pickGround.pickedPoint.x.toFixed(2)}, ${pickGround.pickedPoint.y.toFixed(2)}, ${pickGround.pickedPoint.z.toFixed(2)})` : 'null'}`)
 
     // Test createPickingRay
     const ray = scene.createPickingRay(sx, sy, Matrix.Identity(), camera)
-    console.log(`[screenmap]   createPickingRay: origin=(${ray.origin.x.toFixed(2)}, ${ray.origin.y.toFixed(2)}, ${ray.origin.z.toFixed(2)}) dir=(${ray.direction.x.toFixed(3)}, ${ray.direction.y.toFixed(3)}, ${ray.direction.z.toFixed(3)})`)
+    console.log(`${DIAG_PREFIX}   createPickingRay: origin=(${ray.origin.x.toFixed(2)}, ${ray.origin.y.toFixed(2)}, ${ray.origin.z.toFixed(2)}) dir=(${ray.direction.x.toFixed(4)}, ${ray.direction.y.toFixed(4)}, ${ray.direction.z.toFixed(4)})`)
 
+    // Our screenToWorld
     const ourPick = screenToWorld(canvasRect, sx, sy)
-    console.log(`[screenmap]   screenToWorld (ray-plane): ${ourPick ? `(${ourPick.x.toFixed(2)}, ${ourPick.z.toFixed(2)})` : 'null'}`)
+    console.log(`${DIAG_PREFIX}   screenToWorld (ray-plane): ${ourPick ? `(${ourPick.x.toFixed(2)}, ${ourPick.z.toFixed(2)})` : 'null'}`)
+
+    // Point query at the picked location
+    if (ourPick) {
+      const hits = grid.queryPoint(ourPick.x, ourPick.z)
+      console.log(`${DIAG_PREFIX}   queryPoint at pick: ${hits.length} unit(s)`)
+      for (const h of hits) {
+        console.log(`${DIAG_PREFIX}     ${h.node.name} at (${h.node.position.x.toFixed(2)}, ${h.node.position.z.toFixed(2)})`)
+      }
+    }
+
+    // Full unit state dump
+    dumpUnitState()
+    console.groupEnd()
   })
 
   // ---- 初始化 ----
@@ -672,12 +823,18 @@ async function main(): Promise<void> {
 
   // ---- UI 绑定 ----
   document.getElementById('btn-randomize')!.addEventListener('click', () => {
+    console.log(`${DIAG_PREFIX} [UI] Randomize Positions clicked`)
     for (const unit of units) {
       unit.node.position.x = (Math.random() - 0.5) * (WORLD_W - 4)
       unit.node.position.z = (Math.random() - 0.5) * (WORLD_H - 4)
     }
     rebuildGrid()
     drawBoundsLines()
+    // Clear selection
+    for (const u of units) u.selected = false
+    highlightSelected()
+    statSelected.textContent = '0'
+    overlayEl.textContent = 'Positions randomized'
   })
 
   document.getElementById('btn-bounds')!.addEventListener('click', function(this: HTMLElement) {
@@ -729,6 +886,7 @@ async function main(): Promise<void> {
 
   document.getElementById('sel-bin-size')!.addEventListener('change', (e) => {
     const val = parseInt((e.target as HTMLSelectElement).value, 10)
+    console.log(`${DIAG_PREFIX} [UI] Bin size changed to ${val}`)
     grid = new SpatialGrid(WORLD_W, WORLD_H, val)
     rebuildGrid()
     drawGridLines()
@@ -756,19 +914,22 @@ async function main(): Promise<void> {
         infoTime.textContent = new Date().toISOString()
       }
     } catch (loopErr) {
-      console.error('[render-loop] error:', loopErr)
+      console.error(`${DIAG_PREFIX} [render-loop] error:`, loopErr)
     }
   })
 
   const resizeObserver = new ResizeObserver(() => {
     engine.resize()
     infoViewport.textContent = `${window.innerWidth}x${window.innerHeight} @ ${window.devicePixelRatio}x`
+    // Log resize for diagnostics
+    const r2 = canvas.getBoundingClientRect()
+    console.log(`${DIAG_PREFIX} [RESIZE] canvas BCR: ${r2.width.toFixed(1)}x${r2.height.toFixed(1)}, engine: ${engine.getRenderWidth()}x${engine.getRenderHeight()}`)
   })
   resizeObserver.observe(canvas)
 }
 
 main().catch((err: unknown) => {
-  console.error('[fatal] main() failed:', err)
+  console.error(`${DIAG_PREFIX} [fatal] main() failed:`, err)
   const errorEl = document.getElementById('gpu-error')!
   errorEl.style.display = 'flex'
   errorEl.textContent = `初始化失败: ${err instanceof Error ? err.message : String(err)}`

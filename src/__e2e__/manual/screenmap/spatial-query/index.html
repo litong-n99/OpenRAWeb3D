@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ScreenMap - 空间查询可视化 | 人工验收</title>
   <style>
-    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    /* Prevent text selection during drag operations */
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; -webkit-user-select: none; user-select: none; }
     #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
     #header h1 { margin: 0; font-size: 20px; }
     #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
-    #sandbox { position: relative; width: 100%; height: calc(100vh - 180px); }
-    #sandbox canvas { display: block; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 180px); overflow: hidden; }
+    /* Suppress browser focus outline (the white box) and prevent browser gestures from stealing pointer events */
+    #sandbox canvas { display: block; outline: none !important; -webkit-tap-highlight-color: transparent; touch-action: none; }
     #overlay { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 4px; font-size: 12px; color: #58a6ff; pointer-events: none; }
     #controls { padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     #controls label { font-size: 13px; color: #a0a0b0; }

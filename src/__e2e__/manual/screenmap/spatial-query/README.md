@@ -5,7 +5,12 @@
 > 测试ID: `screenmap/spatial-query`
 > OpenRA 对照: `ScreenMap.ts` — SpatiallyPartitioned<T> spatial hash, mouse hit-test, box selection
 > 创建日期: 2026-06-09
-> 状态: **PENDING**
+> 状态: **PENDING (diagnostics collected, awaiting feedback)**
+>
+> **调试轮次**: Round 3 — 添加了全面的诊断日志，覆盖完整事件链路
+> - Round 1 (504758a): 修复 unit mesh 遮挡 scene.pick()
+> - Round 2 (c6fe9ac): 替换 scene.pick() 为 createPickingRay() + XZ plane intersection
+> - Round 3 (本次): 修复 Canvas focus outline 白框 + 添加 pointer/mouse 事件链路日志 + canvas 尺寸诊断
 
 ---
 
@@ -215,3 +220,43 @@
 - 浏览器: __________
 - 操作系统: __________
 - 视口: __________
+
+---
+
+## 调试日志收集指南 (Round 3)
+
+打开浏览器 DevTools 控制台 (F12 → Console)，执行以下操作并**截图或复制全部控制台输出**：
+
+### 步骤 1: 页面加载后检查
+- 确认控制台中出现 `[screenmap] === Setup complete, ready for interaction ===`
+- 确认 Canvas Dimensions 组中 `canvas.width` 和 `engine.getRenderWidth()` 值相等
+- 确认没有红色错误
+
+### 步骤 2: 单击一个可见单元
+- 在控制台中观察应出现两组日志:
+  - `[EVENT #N] pointerdown:` (诊断层1 — pointer事件)
+  - `[EVENT #N] mousedown START` (诊断层2 — mouse事件 + 业务逻辑)
+  - `[EVENT #N] pointerup:` (诊断层1)
+  - `[EVENT #N] mouseup START` (诊断层2)
+- **关键检查**:
+  - mousedown 组中 `→ pick SUCCESS` 是否出现？坐标是否合理？
+  - `→ Point query preview at this position: N unit(s)` N 是否 > 0？
+  - mouseup 组中 `→ final selected count: N` N 是否 > 0？
+- 如果任何一步出现 FAILED、SKIP 或 N=0，截图该部分日志
+
+### 步骤 3: 如果点击后无高亮
+- 重点检查 mouseup 日志组:
+  - `isSelecting=true` 还是 `false`？如果为 `false`，说明 mousedown 状态未正确传递
+  - `selStartWorld` 是否为 `null`？如果为 `null`，说明 screenToWorld 失败
+  - 是否出现了 `SKIP: not in selection state`？这说明 mouseup 比 mousedown 先到或 mousedown 未触发
+  - 是否出现了 `SKIP: selStartWorld is null`？说明 screenToWorld 在 mousedown 时失败
+- **空白处右键** 触发诊断日志（包含 scene.pick、createPickingRay、所有 unit 位置状态）
+
+### 步骤 4: Canvas 白框检查
+- 点击 Canvas 后，Canvas 周围是否还有白框？
+- 如果仍有白框，记录浏览器名称和版本
+
+### 提交日志
+将所有控制台日志复制到文本文件，标注：
+- 哪个操作产生了哪些日志
+- 哪些步骤的结果与预期不符
