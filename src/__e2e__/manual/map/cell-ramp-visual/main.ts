@@ -22,6 +22,7 @@ import {
   StandardMaterial,
   Mesh,
   VertexData,
+  RawTexture,
 } from '@babylonjs/core'
 import { MapGrid } from '../../../../OpenRA.Game/Map/MapGrid'
 import { MapGridType } from '../../../../OpenRA.Game/Map/MapGridType'
@@ -61,6 +62,26 @@ if (typeof WebGLRenderingContext === 'undefined') {
 
 const scene = new Scene(engine)
 scene.clearColor = new Color4(0.05, 0.07, 0.12, 1.0)
+
+// ---------------------------------------------------------------------------
+// Shared 1x1 white emissive texture for disableLighting materials.
+//
+// When disableLighting=true on StandardMaterial, the fragment shader outputs
+//   emissiveColor * sample(emissiveTexture)
+// without any lighting calculation.  A white 1x1 texture acts as the identity
+// multiplier, letting emissiveColor pass through unmodified.
+//
+// This is the proven pattern from terrain-sprite-layer and world-renderer
+// acceptance test pages (see commit e8abc79).
+// ---------------------------------------------------------------------------
+
+const WHITE_TEX = new RawTexture(
+  new Uint8Array([255, 255, 255, 255]),
+  1, 1,
+  Engine.TEXTUREFORMAT_RGBA,
+  scene,
+  false,
+)
 
 // ---------------------------------------------------------------------------
 // Camera
@@ -296,13 +317,10 @@ function buildRamps(gridType: MapGridType): void {
     parentNode.position = new Vector3(offsetX, 0, offsetZ)
     rampParentNodes.push(parentNode)
 
-    // Build mesh from polygon triangles
+    // Build mesh from polygon triangles.
+    // Each polygon is a triangle (3 WVec vertices).
     const polygons = ramp.polygons
-
-    // Combine all triangles into a single custom mesh
-    // Each polygon is a triangle (3 WVec vertices)
     const positions: number[] = []
-    const colors: number[] = []
     const indices: number[] = []
 
     for (const tri of polygons) {
@@ -312,9 +330,6 @@ function buildRamps(gridType: MapGridType): void {
         const wv = tri[v]!
         const bjs = wvecToBjs(wv)
         positions.push(bjs.x, bjs.y, bjs.z)
-
-        const c = heightToColor(wv.Z, maxPossibleHeight)
-        colors.push(c.r, c.g, c.b, 1.0)
       }
 
       indices.push(baseIdx, baseIdx + 1, baseIdx + 2)
@@ -326,12 +341,8 @@ function buildRamps(gridType: MapGridType): void {
     const vertexData = new VertexData()
     vertexData.positions = positions
     vertexData.indices = indices
-    vertexData.colors = colors
 
-    // Compute per-vertex normals from the triangle geometry.
-    // Without normals the GPU sees all-zero vectors and
-    // dot(normal, lightDir) = 0 → completely black fragments.
-    // (Fixes Bug 3: missing normals)
+    // Compute per-vertex normals from the triangle geometry
     {
       const normals: number[] = []
       VertexData.ComputeNormals(positions, indices, normals)
@@ -340,14 +351,32 @@ function buildRamps(gridType: MapGridType): void {
 
     vertexData.applyToMesh(rampMesh, true)
 
-    // Material for the ramp mesh — high emissive so the vertex colors
-    // remain visible even when the surface normal points away from both lights.
-    const mat = new StandardMaterial(`rampMat-${i}`, scene)
-    mat.diffuseColor = new Color3(0.75, 0.75, 0.75)
-    mat.emissiveColor = new Color3(0.45, 0.45, 0.45)
-    mat.alpha = 0.88
-    mat.backFaceCulling = false
-    rampMesh.material = mat
+    // Material: disableLighting=true with per-ramp emissiveColor.
+    //
+    // StandardMaterial ignores vertex colors in the built-in shader, so
+    // vertexData.colors is intentionally omitted.  Instead each ramp gets a
+    // material whose emissiveColor encodes its height range — flat (blue)
+    // through sloped (yellow) to steep (red).
+    //
+    // disableLighting=true REQUIRES an emissiveTexture in this Babylon.js
+    // version.  WHITE_TEX (a 1x1 RGBA white pixel) acts as the identity
+    // multiplier, so the final fragment color is just emissiveColor.
+    {
+      // Compute per-ramp color from the maximum corner height
+      const maxCZ = Math.max(
+        ramp.corners[0].Z, ramp.corners[1].Z,
+        ramp.corners[2].Z, ramp.corners[3].Z,
+      )
+      const matColor = heightToColor(maxCZ, maxPossibleHeight)
+
+      const mat = new StandardMaterial(`rampMat-${i}`, scene)
+      mat.disableLighting = true
+      mat.emissiveColor = matColor
+      mat.emissiveTexture = WHITE_TEX
+      mat.alpha = 0.88
+      mat.backFaceCulling = false
+      rampMesh.material = mat
+    }
     // Uses CreateTube with a 2-point path — the tube naturally follows the
     // edge endpoints without manual orientation math.
     // (Fixes Bug 1: CreateCylinder + lookAt had Y/Z axis mismatch,
@@ -372,8 +401,9 @@ function buildRamps(gridType: MapGridType): void {
         tube.parent = parentNode
 
         const edgeMat = new StandardMaterial(`edgeMat-${i}-${drawnEdges.size}`, scene)
-        edgeMat.diffuseColor = new Color3(0.45, 0.45, 0.45)
-        edgeMat.emissiveColor = new Color3(0.15, 0.15, 0.15)
+        edgeMat.disableLighting = true
+        edgeMat.emissiveColor = new Color3(0.45, 0.45, 0.45)
+        edgeMat.emissiveTexture = WHITE_TEX
         edgeMat.alpha = 0.55
         tube.material = edgeMat
 
@@ -396,8 +426,9 @@ function buildRamps(gridType: MapGridType): void {
       sphere.position = bjs
 
       const sphereMat = new StandardMaterial(`sphereMat-${i}-${c}`, scene)
-      sphereMat.diffuseColor = heightToColor(wv.Z, maxPossibleHeight)
-      sphereMat.emissiveColor = sphereMat.diffuseColor.scale(0.6)
+      sphereMat.disableLighting = true
+      sphereMat.emissiveColor = heightToColor(wv.Z, maxPossibleHeight)
+      sphereMat.emissiveTexture = WHITE_TEX
       sphere.material = sphereMat
 
       rampMeshes.push(sphere)
