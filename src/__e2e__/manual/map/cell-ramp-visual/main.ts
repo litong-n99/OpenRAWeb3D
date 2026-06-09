@@ -60,7 +60,9 @@ if (typeof WebGLRenderingContext === 'undefined') {
 }
 
 const scene = new Scene(engine)
-scene.clearColor = new Color4(0.05, 0.07, 0.12, 1.0)
+// Slightly lighter than pure black so dark ramp surfaces are never
+// confused with the background (avoids optical "shadow" illusion).
+scene.clearColor = new Color4(0.12, 0.14, 0.20, 1.0)
 
 // ---------------------------------------------------------------------------
 // Camera
@@ -229,7 +231,9 @@ camera.onViewMatrixChangedObservable.add(() => {
 // ---------------------------------------------------------------------------
 
 let currentGridType: MapGridType = MapGridType.Rectangular
-const rampMeshes: Mesh[] = []
+const rampFaces: Mesh[] = []   // ramp triangle meshes only (no edges/spheres)
+const edgeTubes: Mesh[] = []   // edge tube meshes (toggleable)
+const cornerSpheres: Mesh[] = [] // corner sphere meshes (toggleable)
 const rampParentNodes: Mesh[] = []
 let selectedRampIndex = -1
 
@@ -266,9 +270,13 @@ function wvecToBjs(w: WVec): Vector3 {
 
 function buildRamps(gridType: MapGridType): void {
   // Clean up old meshes
-  for (const m of rampMeshes) m.dispose()
+  for (const m of rampFaces) m.dispose()
+  for (const m of edgeTubes) m.dispose()
+  for (const m of cornerSpheres) m.dispose()
   for (const n of rampParentNodes) n.dispose()
-  rampMeshes.length = 0
+  rampFaces.length = 0
+  edgeTubes.length = 0
+  cornerSpheres.length = 0
   rampParentNodes.length = 0
   selectedRampIndex = -1
 
@@ -374,19 +382,19 @@ function buildRamps(gridType: MapGridType): void {
 
         const tube = MeshBuilder.CreateTube(`edge-${i}-${drawnEdges.size}`, {
           path: [ba, bb],
-          radius: 12,
-          tessellation: 6,
+          radius: 4,
+          tessellation: 4,
         }, scene)
         tube.parent = parentNode
 
         const edgeMat = new StandardMaterial(`edgeMat-${i}-${drawnEdges.size}`, scene)
-        edgeMat.diffuseColor = new Color3(0.25, 0.25, 0.25)
-        edgeMat.emissiveColor = new Color3(0.35, 0.35, 0.35)
+        edgeMat.diffuseColor = new Color3(0.2, 0.2, 0.2)
+        edgeMat.emissiveColor = new Color3(0.3, 0.3, 0.3)
         edgeMat.specularColor = new Color3(0, 0, 0)
-        edgeMat.alpha = 0.55
+        edgeMat.backFaceCulling = false
         tube.material = edgeMat
 
-        rampMeshes.push(tube)
+        edgeTubes.push(tube)
       }
     }
 
@@ -411,10 +419,10 @@ function buildRamps(gridType: MapGridType): void {
       sphereMat.specularColor = new Color3(0, 0, 0)
       sphere.material = sphereMat
 
-      rampMeshes.push(sphere)
+      cornerSpheres.push(sphere)
     }
 
-    rampMeshes.push(rampMesh)
+    rampFaces.push(rampMesh)
   }
 
   currentGridType = gridType
@@ -546,6 +554,40 @@ window.addEventListener('keydown', (e) => {
     } else {
       scene.debugLayer.show({ overlay: true })
     }
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Visibility toggles — hides edge tubes / corner spheres to test
+// whether they are occluding the ramp faces (user's occlusion hypothesis).
+// ---------------------------------------------------------------------------
+
+function setEdgesVisible(v: boolean): void {
+  for (const m of edgeTubes) m.setEnabled(v)
+}
+
+function setSpheresVisible(v: boolean): void {
+  for (const m of cornerSpheres) m.setEnabled(v)
+}
+
+// Toggle checkboxes
+document.getElementById('toggle-edges')!.addEventListener('change', (e) => {
+  setEdgesVisible((e.target as HTMLInputElement).checked)
+})
+document.getElementById('toggle-spheres')!.addEventListener('change', (e) => {
+  setSpheresVisible((e.target as HTMLInputElement).checked)
+})
+
+// Also toggle with keyboard: 'E' for edges, 'S' for spheres
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'e' || e.key === 'E') {
+    const cb = document.getElementById('toggle-edges') as HTMLInputElement
+    cb.checked = !cb.checked
+    setEdgesVisible(cb.checked)
+  } else if (e.key === 's' || e.key === 'S') {
+    const cb = document.getElementById('toggle-spheres') as HTMLInputElement
+    cb.checked = !cb.checked
+    setSpheresVisible(cb.checked)
   }
 })
 
