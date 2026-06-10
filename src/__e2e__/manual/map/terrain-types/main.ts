@@ -206,8 +206,9 @@ for (let i = 0; i < terrainTypesArr.length; i++) {
   plane.rotation.x = -Math.PI / 2
 
   const mat = new StandardMaterial(`mat-${tt.type}`, scene)
-  // finalColor = diffuseColor * ambientColor(default White) * scene.ambientColor(White) = c3
+  // finalColor = diffuseColor * ambientColor(White) * scene.ambientColor(White) = c3
   mat.diffuseColor = new Color3(r / 255, g / 255, b / 255)
+  mat.ambientColor = Color3.White()
   mat.alpha = a / 255
   plane.material = mat
 }
