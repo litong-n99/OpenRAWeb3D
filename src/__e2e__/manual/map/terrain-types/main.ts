@@ -134,6 +134,9 @@ canvas.style.outline = 'none'
 canvas.style.touchAction = 'none'
 sandbox.appendChild(canvas)
 
+console.log('[DEBUG] sandbox offset:', sandbox.offsetWidth, sandbox.offsetHeight)
+console.log('[DEBUG] canvas intrinsic:', canvas.width, canvas.height)
+
 const engine = new Engine(canvas, true, {
   preserveDrawingBuffer: true,
   stencil: true,
@@ -145,6 +148,10 @@ if (typeof WebGLRenderingContext === 'undefined') {
 
 const scene = new Scene(engine)
 scene.clearColor = new Color4(0.08, 0.09, 0.14, 1.0)
+
+console.log('[DEBUG] engine ready:', (engine as any).isReady)
+window.addEventListener('error', (e) => console.error('[DEBUG] Global error:', e.message, e.error))
+window.addEventListener('unhandledrejection', (e) => console.error('[DEBUG] Unhandled rejection:', (e as any).reason))
 
 // ---------------------------------------------------------------------------
 // Camera
@@ -184,6 +191,9 @@ TileSet.fromJSON(SAMPLE_TILESET)
 // ---------------------------------------------------------------------------
 
 const terrainTypesArr = Array.from(TileSet.terrainTypes.values())
+
+console.log('[DEBUG] terrainTypes count:', terrainTypesArr.length)
+console.log('[DEBUG] scene ambientColor:', scene.ambientColor)
 const gridSize = Math.ceil(Math.sqrt(terrainTypesArr.length))
 const cellSize = 1.2
 
@@ -211,6 +221,14 @@ for (let i = 0; i < terrainTypesArr.length; i++) {
   mat.ambientColor = Color3.White()
   mat.alpha = a / 255
   plane.material = mat
+
+  if (i === 0) {
+    console.log('[DEBUG] first plane name:', plane.name)
+    console.log('[DEBUG] first plane position:', plane.position)
+    console.log('[DEBUG] first mat diffuse:', mat.diffuseColor)
+    console.log('[DEBUG] first mat ambient:', mat.ambientColor)
+    console.log('[DEBUG] first mat alpha:', mat.alpha)
+  }
 }
 
 // Ground plane
@@ -220,6 +238,13 @@ ground.rotation.x = -Math.PI / 2
 const groundMat = new StandardMaterial('groundMat', scene)
 groundMat.diffuseColor = new Color3(0.05, 0.06, 0.09)
 ground.material = groundMat
+
+console.log('[DEBUG] total meshes:', scene.meshes.length)
+console.log('[DEBUG] camera position:', camera.position)
+console.log('[DEBUG] camera target:', camera.target)
+scene.meshes.forEach((m, idx) => {
+  if (idx < 3) console.log('[DEBUG] mesh', idx, m.name, 'pos:', m.position, 'mat:', m.material?.name)
+})
 
 // ---------------------------------------------------------------------------
 // Populate terrain type list in side panel
@@ -316,6 +341,10 @@ updateInfoBar()
 
 engine.runRenderLoop(() => {
   scene.render()
+  const frameId = (engine as any).getFrameId?.() ?? 0
+  if (frameId % 60 === 1) {
+    console.log('[DEBUG] frame', frameId, 'meshes:', scene.meshes.length)
+  }
   document.getElementById('info-fps')!.textContent = `${engine.getFps().toFixed(1)}`
 })
 
