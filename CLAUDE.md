@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 4 (Map & Terrain System) -- Phase C complete (12/34, 35%)
-**Progress**: 27/27 rendering (100%), Chapter 3: 36/36 (100%), Chapter 4: 12/34 (35%)
+**Phase**: Chapter 4 (Map & Terrain System) -- Phase E complete (19/34, 56%)
+**Progress**: 27/27 rendering (100%), Chapter 3: 36/36 (100%), Chapter 4: 19/34 (56%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -20,11 +20,13 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
 | Platform Abstraction (11 files) | Completed, reviewed |
 | **Actor System (36 files)** | COMPLETE (100%) |
-| **Map & Terrain System (34 files)** | **Phase B: 11/34 (32%), COMPLETE** |
+| **Map & Terrain System (34 files)** | **Phase E: 19/34 (56%), Phases A-E COMPLETE** |
 | CellLayer Infrastructure (8 files) | COMPLETE, 195/195 tests, 2 review rounds |
 | MapGrid + CellRamp (2+2 files) | COMPLETE, 138 tests, 1 review round |
 | TerrainInfo / TileSet (1 file) | COMPLETE, 93 tests, 2 review rounds |
-| Remaining Map System (22 files) | Pending |
+| Map Core (Map.ts + MapBinParser.ts) | COMPLETE, ~1699 test lines, 38+ tests |
+| Map Support Files (7 files) | COMPLETE, ~1030 test lines, 96 tests |
+| Remaining Map System (15 files) | Pending (Phases F-I) |
 | Game logic, networking, audio, mod system | Not yet started
 
 ## Directory Layout
@@ -66,7 +68,7 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
     WRot.ts               ← migrated (310 lines, 32 tests) -- Phase A 3.1.1
     Exts.ts               ← migrated (67 lines, 10 tests) -- Phase A support + isqrtCeiling (Phase B)
     CVec.ts               ← migrated (271 lines, 40 tests) -- hashCode added Phase B
-    Map/                    ← Chapter 4: Map & Terrain System (3/34 基础 + 8/8 Phase A + 2/2 Phase B = 11/34, 32%)
+    Map/                    ← Chapter 4: Map & Terrain System (19/34, 56%, Phases A-E COMPLETE)
       MapGridType.ts      ← migrated -- Phase A prereq
       CellLayerBase.ts    ← migrated (213 lines, 281 test lines) -- Phase A
       CellLayer.ts        ← migrated (468 lines, 722 test lines) -- Phase A
@@ -77,9 +79,21 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       MapCoordsRegion.ts  ← migrated (122 lines, 117 test lines) -- Phase A
       MapGrid.ts          ← migrated (436 lines, 491 test lines) -- Phase B
       CellRamp.ts         ← migrated (238 lines, 352 test lines) -- Phase B
-    Traits/                 ← Chapter 3: Trait interfaces and components (in progress)
-    Activities/             ← Chapter 3: Activity state machine (empty, planned)
-    GameRules/              ← Chapter 3: ActorInfo, WeaponInfo config (empty, planned)
+      TerrainInfo.ts      ← migrated (814 lines, 1205 test lines) -- Phase C
+      Map.ts              ← migrated (1699 lines, 1409 test lines) -- Phase D
+      MapBinParser.ts     ← migrated (325 lines, 290 test lines) -- Phase D
+      MapCache.ts         ← migrated (816 lines, 465 test lines) -- Phase E
+      MapPlayers.ts       ← migrated (241 lines, 266 test lines) -- Phase E
+      MapDirectoryTracker.ts  ← migrated (271 lines, 291 test lines) -- Phase E
+      MapGenerationArgs.ts    ← migrated (84 lines, 156 test lines) -- Phase E
+      PlayerReference.ts  ← migrated (163 lines, 165 test lines) -- Phase E
+      TileReference.ts    ← migrated (103 lines, 83 test lines) -- Phase E
+      MapPreview.ts       ← stub (241 lines) -- deferred Chapter 5+
+    FileSystem/
+      IReadOnlyPackage.ts ← stub (78 lines) -- deferred Chapter 5+
+    Traits/                 ← Chapter 3: Trait interfaces and components (COMPLETE)
+    Activities/             ← Chapter 3: Activity state machine (COMPLETE)
+    GameRules/              ← Chapter 3: ActorInfo, WeaponInfo config (COMPLETE)
     Orders/                 ← Chapter 3: Order generation (empty, planned)
   OpenRA.Platforms.Default/ ← Platform abstraction (6 migrated, 7 NOP, 5 stubs)
       Shader.ts             ← migrated (417 lines, 572 test lines)

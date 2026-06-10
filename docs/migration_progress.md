@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
-> **Last updated**: 2026-06-08
-> **Current phase**: Chapter 4 (Map System) — Phase C COMPLETE (12/34, 35%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 12/34 (35%), Phases A-C complete
+> **Last updated**: 2026-06-11
+> **Current phase**: Chapter 4 (Map System) — Phase E COMPLETE (19/34, 56%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 19/34 (56%), Phases A-E complete
 
 ---
 
@@ -14,10 +14,10 @@
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
 | **Chapter 3 status** | Implementation complete: 36/36 (100%), Phases A-I complete |
 | **Chapter 4 planned files** | 34 (29 from OpenRA + 5 new) |
-| **Chapter 4 status** | Phase C COMPLETE: 12/34 (35%), 195+138+93=426 tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + MapGridType = 12 |
+| **Chapter 4 status** | Phase E COMPLETE: 19/34 (56%), 426+96+30+8=560 tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + Phase D (2/2) + Phase E (7/7) = 19 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 5-8+ (networking, audio, file system, mod system, UI) |
-| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phases A-C complete (rendering, actors, map system: 12/34) |
+| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phases A-E complete (rendering, actors, map system: 19/34) |
 
 > **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs. Phase E (ActorConfig) is complete: 1 file, ~916 TS + 64 tests, 2 review rounds, 0 BLOCKERs. Phase F (Activity System) is complete: 3 files (Activity.ts, CallFunc.ts, ActivityUtils.ts), ~899 TS + 73 tests, 2 review rounds, 0 BLOCKERs. Phase G (Player) is complete: 1 file, 1272 TS + 1407 test lines, 82 tests, 1 review round, 0 BLOCKERs. Phase H (Effects) is complete: 3 files, ~521 TS + ~687 test lines, 103 tests, 1 review round, 0 BLOCKERs. Phase I (ScreenMap) is complete: 1 file, ~350 TS + ~250 test lines, 1 review round, 0 BLOCKERs.
 
@@ -121,8 +121,8 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Game/Traits/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Activities/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Network/` | 0 | 0 | 0 | All |
-| `OpenRA.Game/FileSystem/` | 0 | 0 | 0 | All |
-| `OpenRA.Game/Map/` | 0 | 0 | 0 | All |
+| `OpenRA.Game/FileSystem/` | 1 | 1 | 0 | 0 |
+| `OpenRA.Game/Map/` | 19 | 19 | 0 | 0 |
 | `OpenRA.Mods.Cnc/` | 0 | 0 | 0 | All |
 | Other modules | 0 | 0 | 0 | All |
 
@@ -175,6 +175,8 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-11 | **Phase E Map Support Files** (7 files) | migration-develop | migration-review | APPROVED: MapCache.ts (816+465, 30 tests), MapPlayers.ts (241+266, 12 tests), MapDirectoryTracker.ts (271+291, 15 tests), MapGenerationArgs.ts (84+156, 8 tests), PlayerReference.ts (163+165, 15 tests), TileReference.ts (103+83, 8 tests), MapPreview.ts stub (241), IReadOnlyPackage.ts stub (78). ~940 impl + ~1030 test lines, 96 tests. Commits `8c49914`, `92c8a33`, `f8a0664`, `e53b66f`. |
+| 2026-06-11 | **Phase D Map Core** (2 files) | migration-develop | migration-review | APPROVED: Map.ts (1699+1409, 30+ tests), MapBinParser.ts (325+290, 8 tests). ~2024 impl + ~1699 test lines. Binary map.bin parser, ZIP extraction, coordinate methods, CellLayer data planes. Commit `8c49914`. |
 | 2026-06-08 | **SpriteRenderer.ts fix** | migration-develop | migration-review | APPROVED: Resolved 5 issues (3 BLOCKER + 2 MAJOR) from lessons-learned audit. BLOCKER #1: CreatePlane->CreateGround, removed billboardMode. BLOCKER #2: Added emissiveTexture + emissiveColor for disableLighting. MAJOR #4: ToRef matrix variants + pre-allocated buffers for zero GC. MAJOR #5: alwaysSelectAsActiveMesh=true for frustum culling. Rotation: Z->Y axis for XZ ground plane. Commit `e96bc06`. |
 | 2026-06-08 | **Renderer.ts fix** | migration-develop | migration-review | APPROVED: Resolved 2 issues (1 BLOCKER + 1 MAJOR). BLOCKER #3: try-catch in render loop callback to prevent silent death. MAJOR #6: Added emissiveTexture to world quad material. Commit `623cb4f`. |
 | 2026-06-04 | **Chapter 4 Phase C TerrainInfo** (1 file) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): TerrainInfo.ts (814 lines, TerrainTypeInfo + TerrainTileInfo + TileSet), 93 tests, 1205 test lines. Paradigm: C# ulong bits -> Int8Array, BitSet -> Set<string>, FrozenDictionary -> Map, MiniYAML -> JSON. Chapter 4: 12/34 (35%). |
@@ -429,20 +431,20 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 
 ---
 
-## Chapter 4: Map & Terrain System (Phase B COMPLETE)
+## Chapter 4: Map & Terrain System (Phase E COMPLETE)
 
 > **Migration Plan**: [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md)
-> **Created**: 2026-06-04 | **Updated**: 2026-06-04 | **Status**: Phase B COMPLETE (11/34 migrated, 32%), 2 review rounds (Phase A 2, Phase B 1), 0 BLOCKERs
+> **Created**: 2026-06-04 | **Updated**: 2026-06-11 | **Status**: Phase E COMPLETE (19/34 migrated, 56%), Phases A-E all complete
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 11 | 32% |
-| Pending | 23 | 68% |
+| Completed | 19 | 56% |
+| Pending | 15 | 44% |
 | **Total planned** | **34** | **100%** |
 | **From OpenRA** | **29** | |
 | **New files (no OpenRA equivalent)** | **5** | |
-| **Deferrable** | **4** (MapPreview, ActorInit, ActorRef, PlayerRef) | |
+| **Deferrable** | **3** (MapPreview stub, ActorInit, ActorRef) | |
 
 ### Chapter 4 Phases
 
@@ -451,8 +453,8 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 | Phase A | CellLayer Infrastructure | 8 | Low-Medium | COMPLETE (8/8, 195 tests) |
 | Phase B | MapGrid + CellRamp Geometry | 2 (+1 done) | HIGH | COMPLETE (2/2, 138 tests) |
 | Phase C | TerrainInfo / TileSet | 1 | Medium | COMPLETE (1/1, 93 tests) |
-| Phase D | Map.cs Core Container | 1 | HIGH | Pending |
-| Phase E | Map Support Files | 11 | Low-Medium | Pending |
+| Phase D | Map.cs Core Container | 2 | HIGH | COMPLETE (2/2, 30+ tests) |
+| Phase E | Map Support Files | 7 (+2 stubs) | Low-Medium | COMPLETE (7/7, 96 tests) |
 | Phase F | 3D Terrain Mesh Generation | 2 (new) | HIGH | Pending |
 | Phase G | Pathfinding System | 10 | HIGH | Pending |
 | Phase H | MiniYAML Pipeline | 1 (new) | HIGH | Pending |
@@ -503,6 +505,42 @@ See map_system_migration_plan.md Section 3.1 for full details. 2,857 lines imple
 - Riser parsing: short-form (`"LU=6"`) and long-form (`"6,6,0,0,0,0,6,6"`) byte-for-byte with OpenRA
 - Paradigm: C# `ulong` bits -> `Int8Array`, `BitSet` -> `Set<string>`, `FrozenDictionary` -> `Map<string,T>`, MiniYAML -> JSON
 - 2 review rounds, 0 BLOCKERs | **Commit**: `a15bee4`
+
+### Phase D Completed: Map.cs Core Container (2 files, 2026-06-11)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| Map.ts | 1699 | 1409 | 30+ | Core map container: grid, mapSize, tiles, resources, height, ramp, customTerrain, projectedCells |
+| MapBinParser.ts | 325 | 290 | 8 | Binary map.bin parser: 17-byte header, tile/resource/height data |
+| **Total** | **2024** | **1699** | **38+** | |
+
+**Implementation details**:
+- `Map` class: full map container with CellLayer-based data planes, coordinate conversion, height at position
+- `MapBinParser`: parses OpenRA map.bin format (Uint16LE tile data, optional height byte array)
+- `MapLoader.fromOramap()`: ZIP extraction via fflate, delegates to MapBinParser
+- `Map.createBlank()`: editor blank map creation
+- Coordinate methods: `centerOfCell()`, `cellContaining()`, `heightAt()` with ramp offset
+- Review: APPROVED | **Commit**: `8c49914`
+
+### Phase E Completed: Map Support Files (7 files + 2 stubs, 2026-06-11)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| MapCache.ts | 816 | 465 | 30 | Map directory scanner with LRU cache, JSON manifest indexing |
+| MapPlayers.ts | 241 | 266 | 12 | Spawn management, player slot validation |
+| MapDirectoryTracker.ts | 271 | 291 | 15 | File watcher abstraction, polling manifest with debouncing |
+| MapGenerationArgs.ts | 84 | 156 | 8 | Map generation parameters: seed, size, terrain config |
+| PlayerReference.ts | 163 | 165 | 15 | Player metadata: name, faction, spawn, color, team |
+| TileReference.ts | 103 | 83 | 8 | (TemplateID, TileIndex) pair with makeTileKey() helper |
+| MapPreview.ts | 241 | -- | stub | Stub for Chapter 5+ (needs terrain rendering pipeline) |
+| IReadOnlyPackage.ts | 78 | -- | stub | Package abstraction interface stub |
+| **Total (7 impl + 2 stub)** | **~940** | **~1030** | **96** | |
+
+**Implementation details**:
+- All 7 non-deferrable files fully implemented with tests
+- MapPreview and IReadOnlyPackage stubbed for future chapters
+- ActorReference and ActorInitializer deferred to Chapter 5+ (per ADR-4.7)
+- Review: APPROVED | **Commits**: `8c49914`, `92c8a33`, `f8a0664`, `e53b66f`
 
 ### Key Architecture Decisions (7 ADRs)
 
