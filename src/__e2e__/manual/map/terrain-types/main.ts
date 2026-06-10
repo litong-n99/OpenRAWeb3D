@@ -166,9 +166,16 @@ camera.attachControl(canvas, true)
 // ---------------------------------------------------------------------------
 // Lighting
 // ---------------------------------------------------------------------------
+// Precise lighting setup: final color = diffuseColor * lightIntensity + emissiveColor.
+// With ambient=Black, diffuse=White, intensity=1.0, emissive=Black,
+// the rendered color exactly equals the tileset definition.
+scene.ambientColor = Color3.Black()
 
 const light = new HemisphericLight('light', new Vector3(0, 1, 0.2), scene)
-light.intensity = 0.9
+light.intensity = 1.0
+light.diffuse = Color3.White()
+light.groundColor = Color3.Black()
+light.specular = Color3.Black()
 
 // ---------------------------------------------------------------------------
 // Load tileset
@@ -203,19 +210,22 @@ for (let i = 0; i < terrainTypesArr.length; i++) {
   plane.rotation.x = -Math.PI / 2
 
   const mat = new StandardMaterial(`mat-${tt.type}`, scene)
-  // Disable lighting so the rendered color matches the tileset definition exactly.
-  mat.disableLighting = true
-  mat.emissiveColor = new Color3(r / 255, g / 255, b / 255)
+  // Precise lighting: diffuseColor * White(1.0) + Black = exact tileset color.
+  mat.diffuseColor = new Color3(r / 255, g / 255, b / 255)
+  mat.emissiveColor = Color3.Black()
+  mat.specularColor = Color3.Black()
+  mat.backFaceCulling = false
   mat.alpha = a / 255
   plane.material = mat
 }
 
-// Ground plane
+// Ground plane (disable lighting so background stays constant)
 const ground = MeshBuilder.CreatePlane('ground', { width: gridSize * cellSize * 1.3, height: gridSize * cellSize * 1.3 }, scene)
 ground.position.y = -0.05
 ground.rotation.x = -Math.PI / 2
 const groundMat = new StandardMaterial('groundMat', scene)
-groundMat.diffuseColor = new Color3(0.05, 0.06, 0.09)
+groundMat.disableLighting = true
+groundMat.emissiveColor = new Color3(0.05, 0.06, 0.09)
 ground.material = groundMat
 
 // ---------------------------------------------------------------------------
