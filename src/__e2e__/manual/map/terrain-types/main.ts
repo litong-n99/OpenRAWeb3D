@@ -134,6 +134,11 @@ canvas.style.outline = 'none'
 canvas.style.touchAction = 'none'
 sandbox.appendChild(canvas)
 
+// Match WebGL drawing buffer to actual display size.
+const rect = sandbox.getBoundingClientRect()
+canvas.width = rect.width
+canvas.height = rect.height
+
 console.log('[DEBUG] sandbox offset:', sandbox.offsetWidth, sandbox.offsetHeight)
 console.log('[DEBUG] canvas intrinsic:', canvas.width, canvas.height)
 
@@ -351,6 +356,8 @@ engine.runRenderLoop(() => {
 // ---------------------------------------------------------------------------
 // Resize
 // ---------------------------------------------------------------------------
+
+engine.resize()
 
 window.addEventListener('resize', () => {
   engine.resize()
