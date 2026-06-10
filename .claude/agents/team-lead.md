@@ -46,8 +46,20 @@ Architect ──► Developer ──► Reviewer ──► [Decision] ─┼─�
 Agent communication flows are routed through the Team Lead:
 
 ```
-Architect → Developer → Reviewer ─┬─→ Acceptance Tester (visual test pages) ─┬─→ Team Lead (routing)
-                                  └─→ Docs Manager (documentation)          ──┘
+Architect → Developer → Reviewer(code) ──► [APPROVED]
+                                              │
+                                              ▼
+                                    Acceptance Tester (visual test pages)
+                                              │
+                                              ▼
+                                        Reviewer(test pages)
+                                              │
+                                              ├─ NEEDS FIXES ──► Acceptance Tester (fix loop, max 5)
+                                              │
+                                              └─ APPROVED ────► Docs Manager (documentation)
+                                                                      │
+                                                                      ▼
+                                                                    Team Lead (routing)
 ```
 
 ### Stage 0: Architect → Developer (TASK ASSIGNMENT)
@@ -130,7 +142,7 @@ The Reviewer produces a structured review and returns ONE of three verdicts:
 
 | Verdict | Meaning | Next Step |
 |---------|---------|-----------|
-| **APPROVED** | All 5 dimensions pass, no BLOCKERs | → Stage 3: Acceptance Tester + Docs Manager (parallel) |
+| **APPROVED** | All 5 dimensions pass, no BLOCKERs | → Stage 3: Acceptance Tester + Docs Manager (parallel start) → Reviewer(test pages) → finalize |
 | **NEEDS FIXES** | Has BLOCKERs or MAJOR issues | → Back to Developer (Stage 2a) |
 | **INCOMPLETE** | Missing features, not ready for review | → Back to Architect (re-scope) |
 
@@ -164,34 +176,55 @@ When the Reviewer returns NEEDS FIXES:
 
 ### Stage 2b: Acceptance Tester (MANUAL VISUAL TESTS)
 
-After APPROVED and in parallel with Docs Manager:
+After code review APPROVED, in parallel with Docs Manager:
 
 1. **Team Lead** routes the Completion Report + Review Report to **Acceptance Tester**
 2. **Acceptance Tester** reviews the migrated module and determines if it needs manual visual testing:
    - **Needs visual test**: Module involves shader effects, animation, color accuracy, GPU rendering, visual layout, etc.
    - **No visual test needed**: Module is pure logic/data with 100% unit test coverage and no visual surface
-3. If visual test is needed:
+3. If no visual test needed:
+   - Reports "No manual visual tests required for [ClassName]" to Team Lead
+   - Team Lead immediately routes to **Docs Manager** for finalization
+4. If visual test is needed:
    - Creates test page(s) under `src/__e2e__/manual/[module]/[case]/`
    - Follows its spec (`.claude/agents/acceptance-test-assistant.md`) for page structure
    - Each page MUST have: `index.html`, `main.ts`, `README.md`
    - At least 3 quantifiable expected results per page
-   - Verifies `npx tsc --noEmit` passes before committing
-   - Commits its test code independently (see Commit Conventions below)
-4. If no visual test needed:
-   - Reports "No manual visual tests required for [ClassName]" to Team Lead
-5. **Acceptance Tester** produces an **Acceptance Test Report** to Team Lead
+   - Verifies `npx tsc --noEmit` passes before submitting for review
+5. **Acceptance Tester** produces an **Acceptance Test Submission Report** to Team Lead (cc Reviewer)
 
-### Stage 3: Docs Manager (FINALIZATION -- parallel with Acceptance Tester)
+### Stage 2c: Acceptance Test Review (REVIEW-REJECT LOOP)
 
-After APPROVED:
+Acceptance Tester's test pages MUST be reviewed by Reviewer before final approval:
 
-1. **Docs Manager** receives the Completion Report and Review Report
+1. **Team Lead** routes the Acceptance Test Submission Report to **Reviewer**
+2. **Reviewer** reviews the test pages across the same 5 dimensions (adapted for e2e):
+   - DOCS COMPLIANCE: Test page matches module's expected behavior from migration docs
+   - FEATURE COMPLETENESS: All visual/GPU-dependent features from the module are covered
+   - CODE EFFICIENCY: No per-frame allocation, memory leaks, or unnecessary GPU uploads
+   - BUG DETECTION: Visual correctness, color accuracy, canvas sizing, coordinate system errors
+   - CODE FORMAT & COMMENTS: File header, JSDoc, quantifiable expectations in README.md
+3. **Reviewer** issues ONE of three verdicts:
+   - **APPROVED** → Acceptance Tester may commit; Team Lead routes to Docs Manager for finalization
+   - **NEEDS FIXES** → Team Lead routes findings to Acceptance Tester (fix loop below)
+   - **INCOMPLETE** → Team Lead routes back to Acceptance Tester for re-scoping
+4. If NEEDS FIXES:
+   - **Acceptance Tester** addresses ALL BLOCKER and MAJOR items
+   - **Acceptance Tester** produces a **Re-Submission Report** (same format as Developer)
+   - **Reviewer** re-reviews only changed items
+   - **Maximum 5 review rounds** — if still not approved after round 5, escalate to Team Lead for arbitration
+
+### Stage 3: Docs Manager (FINALIZATION)
+
+Docs Manager starts in parallel with Acceptance Tester on code review APPROVED:
+
+1. **Docs Manager** receives the Completion Report and Code Review Report
 2. **Docs Manager** updates:
    - `docs/rendering_migration_plan.md` — TODO status
    - `docs/migration_progress.md` — progress tracker
    - `README.md` — if needed
    - `docs/openra_migration.agent.final.converted.md` — if new paradigm mappings discovered
-3. **Docs Manager** commits all changes with proper commit message (see Commit Conventions)
+3. **Docs Manager** commits documentation updates independently (Acceptance Test Review does NOT block docs commit)
 4. **Docs Manager** produces a **Finalization Report**
 
 ---
@@ -236,6 +269,7 @@ test(manual): add acceptance test page for [ClassName]
 - Module: [module-name]/[test-case-id]
 - Test point: [what is being visually verified]
 - Expected results: N quantifiable criteria
+- Test review: APPROVED by migration-review
 
 Reviewed-by: migration-review
 Ref: TODO-2.X.Y
@@ -244,8 +278,8 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 
 ### Commit Rules
 - **Developer commits** after self-check passes and BEFORE submitting to reviewer
-- **Acceptance Tester commits** after `npx tsc --noEmit` passes on test pages
-- **Docs Manager commits** after all doc updates are complete
+- **Acceptance Tester commits** after Reviewer APPROVED on test pages and `npx tsc --noEmit` passes
+- **Docs Manager commits** after all doc updates are complete (independent of test review timing)
 - **Never commit broken code** — `npx tsc --noEmit` and `npx vitest run` must pass before any commit
 - **Atomic commits** — one commit per migrated file
 - **Never commit `OpenRA/` files** — absolute rule

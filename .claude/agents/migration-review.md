@@ -162,7 +162,9 @@ Structure your review as follows:
 
 ## Workflow
 
-When invoked to review a file:
+### Code Review (Developer's migration code)
+
+When invoked to review a migrated file:
 
 1. **Read the Developer's Completion Report** — understand what was implemented
 2. **Read the migration docs** — understand what the plan says about this file
@@ -172,6 +174,26 @@ When invoked to review a file:
 6. **Produce the structured review** — covering all 5 dimensions
 7. **Prioritize action items** — blockers first, with clear fix suggestions
 8. **Deliver verdict to Manager and Developer**
+
+### Acceptance Test Review (Acceptance Tester's e2e test pages)
+
+When invoked to review acceptance test pages:
+
+1. **Read the Acceptance Test Submission Report** — understand what visual features are being verified
+2. **Read the migration docs** — verify test coverage aligns with planned visual verification points
+3. **Read the README.md** — check quantifiable expectations (at least 3, with specific metrics)
+4. **Read the main.ts** — review Babylon.js scene setup, rendering correctness, performance
+5. **Read the index.html** — verify layout includes: test title, expected results panel, sandbox, environment info bar
+6. **Produce the structured review** — covering the 5 dimensions adapted for e2e:
+   - **DOCS COMPLIANCE**: Test page matches module's expected behavior from migration docs
+   - **FEATURE COMPLETENESS**: All visual/GPU-dependent features from the module are covered
+   - **CODE EFFICIENCY**: No per-frame allocation, memory leaks, unnecessary GPU uploads
+   - **BUG DETECTION**: Visual correctness, color accuracy, canvas sizing, coordinate system errors (e.g., CreatePlane rotation direction, disableLighting + emissiveColor correctness)
+   - **CODE FORMAT & COMMENTS**: File header with OpenRA reference, JSDoc, quantifiable expectations
+7. **Prioritize action items** — blockers first
+8. **Deliver verdict to Manager and Acceptance Tester**
+
+The same verdict rules apply (APPROVED / NEEDS FIXES / INCOMPLETE), the same 5-round limit applies, and the same re-review scope (changed items only) applies.
 
 ---
 

@@ -31,16 +31,22 @@ Acceptance Tester 拥有 `src/__e2e__/manual/` 目录下所有文件的**唯一�
 
 ## 在迁移流水线中的位置
 
-Acceptance Tester 是迁移流水线的**第四步**，在 Reviewer 发布 APPROVED 后与 Docs Manager 并行工作：
+Acceptance Tester 是迁移流水线的**第四步**，在代码 Reviewer 发布 APPROVED 后与 Docs Manager 并行开始工作，但其测试页面必须经过 Reviewer 的 Acceptance Test Review：
 
 ```
-Architect → Developer → Reviewer → [APPROVED] → Acceptance Tester (visual tests)
-                                                → Docs Manager (documentation)
+Architect → Developer → Reviewer(code) → [APPROVED] → Acceptance Tester + Docs Manager (并行开始)
+                                                             │
+                                                             ▼ (Acceptance Tester 完成后)
+                                                      Reviewer(test pages) [Decision]
+                                                             │
+                                                             ├─ NEEDS FIXES → Acceptance Tester 修改 (最多 5 轮)
+                                                             │
+                                                             └─ APPROVED
 ```
 
 ### 触发条件
 
-Team Lead 在 Reviewer 返回 APPROVED 后，将 Completion Report 和 Review Report 路由给 Acceptance Tester。
+Team Lead 在代码 Reviewer 返回 APPROVED 后，将 Completion Report 和 Review Report 路由给 Acceptance Tester。Acceptance Tester 完成测试页面开发后，提交给 Reviewer 进行 Acceptance Test Review。
 
 ### 判断是否需要人工验收测试
 
@@ -54,10 +60,11 @@ Team Lead 在 Reviewer 返回 APPROVED 后，将 Completion Report 和 Review Re
 
 ### 提交代码
 
-Acceptance Tester 有独立的代码提交权限：
-- 验证 `npx tsc --noEmit` 通过后提交
-- 提交信息格式见 team-lead 的 Commit Conventions
-- 与 Docs Manager 并行工作，无依赖关系
+Acceptance Tester 提交前必须经过 Reviewer 的测试页面审核：
+- 验证 `npx tsc --noEmit` 通过
+- 提交信息格式见 team-lead 的 Commit Conventions（需包含 `- Test review: APPROVED by migration-review`）
+- 与 Docs Manager 并行工作，但提交时机在 Reviewer APPROVED 之后
+- 若 Reviewer 返回 NEEDS FIXES，按 Re-Submission Report 格式响应（同 Developer 的 review-reject loop）
 
 ---
 

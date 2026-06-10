@@ -154,14 +154,16 @@ Keep `README.md` updated with:
 3. Track any outstanding action items (BLOCKERs, MAJORs) that need developer fixes
 4. Update the progress tracker
 
-### On Review Approval (Reviewer → Acceptance Tester + Docs Manager)
+### On Code Review Approval (Reviewer → Acceptance Tester + Docs Manager)
 
-When Reviewer issues APPROVED, the Team Lead routes the task to both Acceptance Tester and Docs Manager in parallel:
+When code Reviewer issues APPROVED, the Team Lead routes the task to both Acceptance Tester and Docs Manager in parallel:
 
-1. **Acceptance Tester** creates manual visual test pages if needed (independent — no coordination required)
+1. **Acceptance Tester** starts creating manual visual test pages if needed
 2. **Docs Manager** proceeds with documentation updates as usual (see "On Task Completion" above)
-3. Both agents commit independently — no order dependency
-4. Docs Manager does NOT need to wait for Acceptance Tester to finish
+3. **Docs Manager** commits independently — Acceptance Test Review does NOT block docs commit
+4. After Acceptance Tester completes test pages, Reviewer performs **Acceptance Test Review** (see `team-lead.md` Stage 2c)
+5. If Acceptance Test Review returns NEEDS FIXES, Acceptance Tester fixes and re-submits (max 5 rounds)
+6. Acceptance Tester commits test code only after Acceptance Test Review APPROVED
 
 ### On Architecture Decision (Architect signals decision)
 

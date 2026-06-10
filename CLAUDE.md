@@ -222,7 +222,8 @@ Sub-agents (Architect, Developer, Reviewer, Acceptance Tester, Docs Manager) hav
 
 - **Acceptance Tester may commit test code** — can write and commit files under `src/__e2e__/manual/` after verifying `tsc --noEmit` passes
 - **Acceptance test pages belong to acceptance-test-assistant** — all modifications, fixes, and thinking related to files under `src/__e2e__/manual/` must be delegated to the acceptance-test-assistant agent. The Team Lead and other agents should NOT directly modify these files.
-- **Acceptance Tester creates test pages and commits independently** — can write `.html`, `.ts`, `.md` files under `src/__e2e__/manual/`, verify with `tsc --noEmit`, and commit test code
+- **Acceptance Tester creates test pages** — can write `.html`, `.ts`, `.md` files under `src/__e2e__/manual/`, verify with `tsc --noEmit`
+- **Acceptance Tester commits after Reviewer APPROVED** — test pages must pass Reviewer's acceptance test review before commit (or commit and amend after approval)
 
 ## Development Workflow
 
@@ -231,10 +232,11 @@ Sub-agents (Architect, Developer, Reviewer, Acceptance Tester, Docs Manager) hav
 1. **Team Lead** assigns task to Architect (if design needed) or Developer
 2. **Architect** (if needed): analyzes OpenRA source, writes design spec, updates migration plan
 3. **Developer**: reads OpenRA source + migration docs, implements TypeScript + unit tests, self-reviews
-4. **Reviewer**: reviews across 5 dimensions (docs compliance, feature completeness, efficiency, bugs, format), assigns severity (BLOCKER/MAJOR/MINOR/INFO)
+4. **Reviewer** (Code Review): reviews implementation across 5 dimensions (docs compliance, feature completeness, efficiency, bugs, format), assigns severity (BLOCKER/MAJOR/MINOR/INFO)
 5. **Developer**: fixes review findings, resubmits (may require multiple rounds)
-6. **Acceptance Tester** (parallel with Docs Manager): on APPROVED, creates manual visual acceptance test pages if the module has visual/GPU-dependent behavior
-7. **Docs Manager** (parallel with Acceptance Tester): on APPROVED, updates all documentation (migration plan TODOs, progress tracker, README, architecture doc) and commits
+6. **Acceptance Tester** + **Docs Manager** (parallel start on code review APPROVED): Acceptance Tester creates manual visual acceptance test pages if needed; Docs Manager begins documentation updates
+7. **Reviewer** (Acceptance Test Review): after Acceptance Tester completes, reviews the test pages across 5 dimensions; if NEEDS FIXES → Acceptance Tester fixes (max 5 rounds), then re-reviews
+8. Finalize: Acceptance Tester commits test code (after test review APPROVED); Docs Manager commits documentation updates (independent of test review timing)
 
 ### Project Conventions
 
