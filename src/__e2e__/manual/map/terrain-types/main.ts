@@ -20,6 +20,7 @@ import {
 import {
   TileSet,
   colorToComponents,
+  TerrainTile,
 } from '../../../../OpenRA.Game/Map/TerrainInfo'
 import type { TileSetJson } from '../../../../OpenRA.Game/Map/TerrainInfo'
 
@@ -365,3 +366,7 @@ window.addEventListener('resize', () => {
   engine.resize()
   updateInfoBar()
 })
+
+// Expose key classes to global window for console debugging (step 4.4 in README)
+;(window as any).TileSet = TileSet
+;(window as any).TerrainTile = TerrainTile
