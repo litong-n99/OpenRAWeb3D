@@ -177,13 +177,10 @@ camera.attachControl(canvas, true)
 // ---------------------------------------------------------------------------
 // Lighting
 // ---------------------------------------------------------------------------
-// Use scene.ambientColor as the sole light source. StandardMaterial's
-// default ambientColor is White(1,1,1), so:
-//   finalColor = diffuseColor * ambientColor * sceneAmbientColor
-//              = c3 * White * White
-//              = c3 (exact tileset color)
-// No HemisphericLight needed; this avoids all normal-dependent lighting issues.
-scene.ambientColor = Color3.White()
+// Use disableLighting=true + emissiveColor to render exact tileset colors.
+// This is the same proven pattern used in cell-ramp-visual.
+// diffuseColor + ambientColor setup produced white planes in this
+// Babylon.js version/configuration despite correct math on paper.
 
 // ---------------------------------------------------------------------------
 // Load tileset
@@ -222,9 +219,8 @@ for (let i = 0; i < terrainTypesArr.length; i++) {
   plane.rotation.x = Math.PI / 2
 
   const mat = new StandardMaterial(`mat-${tt.type}`, scene)
-  // finalColor = diffuseColor * ambientColor(White) * scene.ambientColor(White) = c3
-  mat.diffuseColor = new Color3(r / 255, g / 255, b / 255)
-  mat.ambientColor = Color3.White()
+  mat.disableLighting = true
+  mat.emissiveColor = new Color3(r / 255, g / 255, b / 255)
   mat.alpha = a / 255
   plane.material = mat
 
@@ -243,7 +239,8 @@ ground.position.y = -0.05
 // In Babylon.js left-handed coords, +PI/2 turns the +Z-normal plane to face +Y (up).
 ground.rotation.x = Math.PI / 2
 const groundMat = new StandardMaterial('groundMat', scene)
-groundMat.diffuseColor = new Color3(0.05, 0.06, 0.09)
+groundMat.disableLighting = true
+groundMat.emissiveColor = new Color3(0.05, 0.06, 0.09)
 ground.material = groundMat
 
 console.log('[DEBUG] total meshes:', scene.meshes.length)
