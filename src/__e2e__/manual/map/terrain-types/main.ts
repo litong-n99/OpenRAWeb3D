@@ -11,7 +11,6 @@ import {
   Engine,
   Scene,
   ArcRotateCamera,
-  HemisphericLight,
   Vector3,
   Color3,
   Color4,
@@ -166,16 +165,13 @@ camera.attachControl(canvas, true)
 // ---------------------------------------------------------------------------
 // Lighting
 // ---------------------------------------------------------------------------
-// Precise lighting setup: final color = diffuseColor * lightIntensity + emissiveColor.
-// With ambient=Black, diffuse=White, intensity=1.0, emissive=Black,
-// the rendered color exactly equals the tileset definition.
-scene.ambientColor = Color3.Black()
-
-const light = new HemisphericLight('light', new Vector3(0, 1, 0.2), scene)
-light.intensity = 1.0
-light.diffuse = Color3.White()
-light.groundColor = Color3.Black()
-light.specular = Color3.Black()
+// Use scene.ambientColor as the sole light source. StandardMaterial's
+// default ambientColor is White(1,1,1), so:
+//   finalColor = diffuseColor * ambientColor * sceneAmbientColor
+//              = c3 * White * White
+//              = c3 (exact tileset color)
+// No HemisphericLight needed; this avoids all normal-dependent lighting issues.
+scene.ambientColor = Color3.White()
 
 // ---------------------------------------------------------------------------
 // Load tileset
@@ -210,22 +206,18 @@ for (let i = 0; i < terrainTypesArr.length; i++) {
   plane.rotation.x = -Math.PI / 2
 
   const mat = new StandardMaterial(`mat-${tt.type}`, scene)
-  // Precise lighting: diffuseColor * White(1.0) + Black = exact tileset color.
+  // finalColor = diffuseColor * ambientColor(default White) * scene.ambientColor(White) = c3
   mat.diffuseColor = new Color3(r / 255, g / 255, b / 255)
-  mat.emissiveColor = Color3.Black()
-  mat.specularColor = Color3.Black()
-  mat.backFaceCulling = false
   mat.alpha = a / 255
   plane.material = mat
 }
 
-// Ground plane (disable lighting so background stays constant)
+// Ground plane
 const ground = MeshBuilder.CreatePlane('ground', { width: gridSize * cellSize * 1.3, height: gridSize * cellSize * 1.3 }, scene)
 ground.position.y = -0.05
 ground.rotation.x = -Math.PI / 2
 const groundMat = new StandardMaterial('groundMat', scene)
-groundMat.disableLighting = true
-groundMat.emissiveColor = new Color3(0.05, 0.06, 0.09)
+groundMat.diffuseColor = new Color3(0.05, 0.06, 0.09)
 ground.material = groundMat
 
 // ---------------------------------------------------------------------------
