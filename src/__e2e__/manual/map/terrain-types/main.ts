@@ -288,6 +288,8 @@ function renderTemplateTiles(): void {
     const [, r, g, b] = colorToComponents(color)
     const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`.toUpperCase()
 
+    const hasRiser = Array.from(tileInfo.riser.values).some(v => v !== 0xFF)
+
     const div = document.createElement('div')
     div.className = 'tile-item'
     div.innerHTML = `
@@ -295,6 +297,7 @@ function renderTemplateTiles(): void {
       <span>Tpl#${templateId}[${tileIdx}]</span>
       <span class="badge">h=${tileInfo.height}</span>
       <span class="badge">ramp=${tileInfo.rampType}</span>
+      ${hasRiser ? '<span class="badge">riser</span>' : ''}
       <span style="color:#666;font-size:10px;">${hex}</span>
     `
     templateTilesEl.appendChild(div)
