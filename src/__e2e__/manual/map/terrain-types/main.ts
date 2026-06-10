@@ -203,8 +203,9 @@ for (let i = 0; i < terrainTypesArr.length; i++) {
   plane.rotation.x = -Math.PI / 2
 
   const mat = new StandardMaterial(`mat-${tt.type}`, scene)
-  mat.diffuseColor = new Color3(r / 255, g / 255, b / 255)
-  mat.emissiveColor = new Color3(r / 510, g / 510, b / 510)
+  // Disable lighting so the rendered color matches the tileset definition exactly.
+  mat.disableLighting = true
+  mat.emissiveColor = new Color3(r / 255, g / 255, b / 255)
   mat.alpha = a / 255
   plane.material = mat
 }

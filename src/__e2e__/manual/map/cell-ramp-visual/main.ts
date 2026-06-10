@@ -79,7 +79,9 @@ camera.wheelDeltaPercentage = 0.05
 // ---------------------------------------------------------------------------
 // Lighting
 // ---------------------------------------------------------------------------
-
+// NOTE: scene.ambientColor and HemisphericLight are kept for background
+// atmosphere and camera clarity, but individual cell materials use
+// disableLighting=true so their colors render exactly as defined.
 scene.ambientColor = new Color3(0.3, 0.3, 0.35)
 
 const light = new HemisphericLight('light', new Vector3(0.2, 1, 0.3), scene)
@@ -220,10 +222,10 @@ function buildRamps(gridType: MapGridType): void {
         }, scene)
         edgeLine.parent = parentNode
 
-        // Gray edge material
+        // Gray edge material (exact display color, lighting disabled)
         const edgeMat = new StandardMaterial(`edgeMat-${i}-${drawnEdges.size}`, scene)
-        edgeMat.diffuseColor = new Color3(0.5, 0.5, 0.5)
-        edgeMat.emissiveColor = new Color3(0.2, 0.2, 0.2)
+        edgeMat.disableLighting = true
+        edgeMat.emissiveColor = new Color3(0.5, 0.5, 0.5)
         edgeMat.alpha = 0.7
         edgeLine.material = edgeMat
 
@@ -246,17 +248,17 @@ function buildRamps(gridType: MapGridType): void {
       sphere.position = bjs
 
       const sphereMat = new StandardMaterial(`sphereMat-${i}-${c}`, scene)
-      sphereMat.diffuseColor = heightToColor(wv.Z, maxPossibleHeight)
-      sphereMat.emissiveColor = sphereMat.diffuseColor.scale(0.3)
+      sphereMat.disableLighting = true
+      sphereMat.emissiveColor = heightToColor(wv.Z, maxPossibleHeight)
       sphere.material = sphereMat
 
       rampMeshes.push(sphere)
     }
 
-    // Material for the ramp mesh
+    // Material for the ramp mesh (exact display color, lighting disabled)
     const mat = new StandardMaterial(`rampMat-${i}`, scene)
-    mat.diffuseColor = new Color3(0.7, 0.7, 0.7)
-    mat.emissiveColor = new Color3(0.1, 0.1, 0.1)
+    mat.disableLighting = true
+    mat.emissiveColor = new Color3(0.7, 0.7, 0.7)
     mat.alpha = 0.85
     mat.backFaceCulling = false
     rampMesh.material = mat
