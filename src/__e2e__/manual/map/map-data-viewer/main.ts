@@ -341,7 +341,8 @@ function buildMapMesh(map: Map, viewMode: ViewMode, hScale: number): void {
         height: cellWorldSize,
       }, scene)
       plane.position = new Vector3(wx, wy, wz)
-      plane.rotation.x = -Math.PI / 2
+      // In Babylon.js left-handed coords, +PI/2 turns the +Z-normal plane to face +Y (up).
+      plane.rotation.x = Math.PI / 2
 
       const c3 = new Color3(color[0], color[1], color[2])
       const mat = new StandardMaterial(`mat-${x}-${y}`, scene)

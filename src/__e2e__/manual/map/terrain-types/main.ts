@@ -218,7 +218,8 @@ for (let i = 0; i < terrainTypesArr.length; i++) {
     0.01,
     (row - (gridSize - 1) / 2) * cellSize,
   )
-  plane.rotation.x = -Math.PI / 2
+  // In Babylon.js left-handed coords, +PI/2 turns the +Z-normal plane to face +Y (up).
+  plane.rotation.x = Math.PI / 2
 
   const mat = new StandardMaterial(`mat-${tt.type}`, scene)
   // finalColor = diffuseColor * ambientColor(White) * scene.ambientColor(White) = c3
@@ -239,7 +240,8 @@ for (let i = 0; i < terrainTypesArr.length; i++) {
 // Ground plane
 const ground = MeshBuilder.CreatePlane('ground', { width: gridSize * cellSize * 1.3, height: gridSize * cellSize * 1.3 }, scene)
 ground.position.y = -0.05
-ground.rotation.x = -Math.PI / 2
+// In Babylon.js left-handed coords, +PI/2 turns the +Z-normal plane to face +Y (up).
+ground.rotation.x = Math.PI / 2
 const groundMat = new StandardMaterial('groundMat', scene)
 groundMat.diffuseColor = new Color3(0.05, 0.06, 0.09)
 ground.material = groundMat
