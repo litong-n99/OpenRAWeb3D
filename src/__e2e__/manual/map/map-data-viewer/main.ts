@@ -345,14 +345,10 @@ function buildMapMesh(map: Map, viewMode: ViewMode, hScale: number): void {
 
       const c3 = new Color3(color[0], color[1], color[2])
       const mat = new StandardMaterial(`mat-${x}-${y}`, scene)
-      mat.diffuseColor = c3
-      mat.ambientColor = c3
-      mat.emissiveColor = new Color3(
-        Math.min(1, color[0] * 0.4 + 0.12),
-        Math.min(1, color[1] * 0.4 + 0.12),
-        Math.min(1, color[2] * 0.4 + 0.12),
-      )
-      mat.specularColor = new Color3(0.05, 0.05, 0.05)
+      // Disable all lighting so the rendered color matches TERRAIN_COLORS exactly.
+      // This is an acceptance-test page: color accuracy matters more than realism.
+      mat.disableLighting = true
+      mat.emissiveColor = c3
       mat.backFaceCulling = false
       plane.material = mat
 
