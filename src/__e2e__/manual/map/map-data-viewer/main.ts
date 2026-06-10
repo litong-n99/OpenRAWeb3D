@@ -214,7 +214,7 @@ const engine = new Engine(canvas, true, {
 
 const scene = new Scene(engine)
 scene.clearColor = new Color4(0.05, 0.07, 0.12, 1.0)
-scene.ambientColor = new Color3(0.35, 0.35, 0.4)
+scene.ambientColor = new Color3(0.55, 0.55, 0.6)
 
 // ---------------------------------------------------------------------------
 // Camera
@@ -238,7 +238,10 @@ camera.wheelDeltaPercentage = 0.05
 // ---------------------------------------------------------------------------
 
 const light = new HemisphericLight('light', new Vector3(0.2, 1, 0.3), scene)
-light.intensity = 0.85
+light.intensity = 1.0
+light.diffuse = new Color3(0.95, 0.95, 0.95)
+light.groundColor = new Color3(0.45, 0.45, 0.5)
+light.specular = new Color3(0.1, 0.1, 0.1)
 
 // ---------------------------------------------------------------------------
 // State
@@ -340,8 +343,15 @@ function buildMapMesh(map: Map, viewMode: ViewMode, hScale: number): void {
       plane.position = new Vector3(wx, wy, wz)
       plane.rotation.x = -Math.PI / 2
 
+      const c3 = new Color3(color[0], color[1], color[2])
       const mat = new StandardMaterial(`mat-${x}-${y}`, scene)
-      mat.diffuseColor = new Color3(color[0], color[1], color[2])
+      mat.diffuseColor = c3
+      mat.ambientColor = c3
+      mat.emissiveColor = new Color3(
+        Math.min(1, color[0] * 0.4 + 0.12),
+        Math.min(1, color[1] * 0.4 + 0.12),
+        Math.min(1, color[2] * 0.4 + 0.12),
+      )
       mat.specularColor = new Color3(0.05, 0.05, 0.05)
       mat.backFaceCulling = false
       plane.material = mat
