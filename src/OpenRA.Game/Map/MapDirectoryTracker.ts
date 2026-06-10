@@ -14,14 +14,19 @@
  */
 
 import type { IReadOnlyPackage } from '../FileSystem/IReadOnlyPackage.js'
-// Forward reference to avoid circular dependency
+import type { MapClassification } from './MapPreview.js'
+import { MapStatus } from './MapPreview.js'
+
+// ---------------------------------------------------------------------------
+// Forward reference to avoid circular dependency with MapCache
+// ---------------------------------------------------------------------------
+
+/** MapCache 的最小接口 — 仅包含 MapDirectoryTracker 所需的方法。 */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface MapCache {
+interface MapCacheLike {
   loadMap(map: string, package_: IReadOnlyPackage, classification: MapClassification, oldMap: string | null): void
   [Symbol.iterator](): Iterator<import('./MapPreview.js').MapPreview>
 }
-import type { MapClassification } from './MapPreview.js'
-import { MapStatus } from './MapPreview.js'
 
 // ---------------------------------------------------------------------------
 // MapAction enum
@@ -182,7 +187,7 @@ export class MapDirectoryTracker {
    *
    * @param mapCache — 要更新的地图缓存
    */
-  updateMaps(mapCache: MapCache): void {
+  updateMaps(mapCache: MapCacheLike): void {
     if (!this._dirty) {
       return
     }
@@ -224,7 +229,7 @@ export class MapDirectoryTracker {
    * @param path — 要匹配的路径
    * @returns 匹配的 MapPreview，如果未找到则返回 null
    */
-  private findMapByPath(mapCache: MapCache, path: string): import('./MapPreview.js').MapPreview | null {
+  private findMapByPath(mapCache: MapCacheLike, path: string): import('./MapPreview.js').MapPreview | null {
     for (const preview of mapCache) {
       if (preview.path === path && preview.status === MapStatus.Available) {
         return preview

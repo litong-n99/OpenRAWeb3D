@@ -19,12 +19,19 @@ import { CPos } from '../CPos.js'
  * JSON 适配的 player definition 节点结构。
  *
  * OpenRA 对照: MiniYamlNode (Key = "PlayerReference@name", Value.Nodes)
+ *
+ * NOTE: 在 OpenRA 中，PlayerReference 通过 FieldLoader.Load(this, MiniYaml)
+ * 从 MiniYaml 节点加载。在浏览器中，我们使用一个平面 JSON 对象，其中
+ * 每个属性对应一个 PlayerReference 字段。"nodes" 字段保留用于向后兼容
+ * 基于 MiniYaml 的源格式；基于属性的格式是首选。
  */
 export interface PlayerDefinition {
   /** 玩家引用名称（如 "Neutral", "Multi0"）。 */
   name: string
-  /** 属性节点数组（JSON 适配的 MiniYamlNode 列表）。 */
-  nodes: unknown[]
+  /** 属性节点数组（JSON 适配的 MiniYamlNode 列表）—— 保留用于向后兼容。 */
+  nodes?: unknown[]
+  /** 玩家属性作为平面键值对（首选格式）。 */
+  properties?: Partial<PlayerReference>
 }
 
 // ---------------------------------------------------------------------------

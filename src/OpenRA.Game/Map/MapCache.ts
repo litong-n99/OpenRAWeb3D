@@ -22,8 +22,8 @@ import type { IReadOnlyPackage, IReadWritePackage } from '../FileSystem/IReadOnl
 import type { MapGridType } from './MapGridType.js'
 import { MapGridType as MapGridTypeConst } from './MapGridType.js'
 import { MapPreview, MapStatus, MapClassification, MapClassificationExts } from './MapPreview.js'
+import { MapDirectoryTracker } from './MapDirectoryTracker.js'
 import type { MersenneTwisterStub } from '../Traits/TraitsInterfaces.js'
-// NOTE: MapPlayers and Size types used indirectly via MapPreview
 
 // ---------------------------------------------------------------------------
 // Stubs for dependencies not yet migrated
@@ -152,6 +152,12 @@ export class MapCache implements Iterable<MapPreview> {
   /** Manifest 引用。 */
   private readonly _manifest: ManifestStub
 
+  /** 追踪异步小地图加载器 promise 以在 dispose 时正确等待。 */
+  private _previewLoaderPromise: Promise<void> | null = null
+
+  /** 取消标志：当为 true 时，加载器循环应尽早退出。 */
+  private _previewLoaderCancelled = false
+
   // -----------------------------------------------------------------------
   // Constructor
   // -----------------------------------------------------------------------
@@ -162,8 +168,9 @@ export class MapCache implements Iterable<MapPreview> {
    * OpenRA 对照: MapCache(Manifest, FS)
    *
    * @param manifest — 模组清单
+   * @param _modFiles — 模组文件系统 (TODO-4.E.7: 完整的文件系统实现)
    */
-  constructor(manifest: ManifestStub) {
+  constructor(manifest: ManifestStub, _modFiles?: unknown) {
     this._manifest = manifest
     this._sheetBuilder = new SheetBuilder(
       SheetType.BGRA,
@@ -370,8 +377,11 @@ export class MapCache implements Iterable<MapPreview> {
    */
   private computeUid(_package_: IReadOnlyPackage): string {
     // TODO-4.E.2: 在完整的 MapPreview 实现中，使用实际的 UID 计算
-    // 目前，返回基于包名称的确定性 UID
-    return `uid-${_package_.name}-${Math.random().toString(36).slice(2, 10)}`
+    // 目前，返回基于包名称的确定性哈希 UID
+    const hash = _package_.name.split('').reduce((h, c) => {
+      return ((h << 5) - h + c.charCodeAt(0)) | 0
+    }, 0)
+    return `uid-${_package_.name}-${Math.abs(hash).toString(16)}`
   }
 
   // -----------------------------------------------------------------------
@@ -524,7 +534,12 @@ export class MapCache implements Iterable<MapPreview> {
 
     if (launchLoader) {
       // 使用 setTimeout 将加载器启动延迟到下一个 tick
-      setTimeout(() => this.runMinimapLoader(), 0)
+      // 存储 promise 以便 dispose 可以等待它完成
+      this._previewLoaderPromise = new Promise((resolve) => {
+        setTimeout(() => {
+          this.runMinimapLoader().then(resolve).catch(resolve)
+        }, 0)
+      })
     }
   }
 
@@ -537,6 +552,8 @@ export class MapCache implements Iterable<MapPreview> {
    * 以防止在打开地图选择器时出现 UI 卡顿。
    */
   private async runMinimapLoader(): Promise<void> {
+    // NOTE: JavaScript 是单线程的，因此此检查-设置序列是原子的。
+    // 无需像 C# lock() 那样的显式同步。
     if (this._previewLoaderRunning) return
     this._previewLoaderRunning = true
 
@@ -548,6 +565,12 @@ export class MapCache implements Iterable<MapPreview> {
     let keepAlive = MaxKeepAlive
 
     while (true) {
+      // 检查取消标志
+      if (this._previewLoaderCancelled) {
+        this._previewLoaderShutdown = true
+        break
+      }
+
       // 筛选出需要小地图生成的预览
       const todo = this._generateMinimap.filter((p) => p.getMinimap() === null)
       this._generateMinimap = []
@@ -567,6 +590,9 @@ export class MapCache implements Iterable<MapPreview> {
 
       // 将小地图渲染到共享图集中
       for (const p of todo) {
+        // 如果已取消，尽早退出
+        if (this._previewLoaderCancelled) break
+
         if (p.preview !== null) {
           try {
             // TODO-4.E.4: 实际的小地图渲染 (SheetBuilder.Add)
@@ -732,7 +758,19 @@ export class MapCache implements Iterable<MapPreview> {
    *
    * OpenRA 对照: MapCache.Dispose()
    */
+  /**
+   * 释放所有预览、目录跟踪器和图集构建器。
+   *
+   * OpenRA 对照: MapCache.Dispose()
+   *
+   * NOTE: 此方法同步返回，但会设置取消标志以停止异步小地图加载器。
+   * 如果加载器正在运行，图集构建器将保持可用，直到加载器循环退出。
+   * 对于需要保证加载器已完成的清理，请使用 disposeAsync()。
+   */
   dispose(): void {
+    // 设置取消标志以停止异步加载器循环
+    this._previewLoaderCancelled = true
+
     // 处理所有预览
     for (const p of this._previews.values()) {
       p.dispose()
@@ -743,20 +781,36 @@ export class MapCache implements Iterable<MapPreview> {
       t.dispose()
     }
 
-    // 处理图集构建器
-    this._sheetBuilder.dispose()
-
     // 清除状态
     this._mapLocations.clear()
     this._mapUpdates.clear()
     this._generateMinimap = []
     this._previewLoaderShutdown = true
     this._previews.clear()
+
+    // 处理图集构建器
+    this._sheetBuilder.dispose()
+  }
+
+  /**
+   * 异步释放，等待小地图加载器完成后再处理资源。
+   *
+   * OpenRA 对照: MapCache.Dispose() (C# 版本等待 Thread.Join)
+   *
+   * 这是 dispose() 的异步版本，保证在返回前异步小地图加载器
+   * 已完全退出。在需要干净关闭的场景（如测试清理）中使用此方法。
+   */
+  async disposeAsync(): Promise<void> {
+    // 设置取消标志以停止异步加载器循环
+    this._previewLoaderCancelled = true
+
+    // 等待加载器 promise 完成（如果正在运行）
+    if (this._previewLoaderPromise) {
+      await this._previewLoaderPromise
+      this._previewLoaderPromise = null
+    }
+
+    // 现在可以安全地同步处理所有资源
+    this.dispose()
   }
 }
-
-// ---------------------------------------------------------------------------
-// Import MapDirectoryTracker at end to avoid circular dependency issues
-// ---------------------------------------------------------------------------
-
-import { MapDirectoryTracker } from './MapDirectoryTracker.js'

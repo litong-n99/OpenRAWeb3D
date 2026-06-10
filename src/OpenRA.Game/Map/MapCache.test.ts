@@ -224,6 +224,34 @@ describe('MapCache', () => {
     })
   })
 
+  describe('computeUid determinism', () => {
+    it('generates same UID for same package name', () => {
+      const cache = new MapCache(createMockManifest())
+      const pkg = { name: '/maps/test.oramap', contents: [], openPackage: () => null }
+
+      // @ts-expect-error — accessing private method
+      const uid1 = cache.computeUid(pkg)
+      // @ts-expect-error — accessing private method
+      const uid2 = cache.computeUid(pkg)
+
+      expect(uid1).toBe(uid2)
+      expect(uid1).toContain('/maps/test.oramap')
+    })
+
+    it('generates different UIDs for different package names', () => {
+      const cache = new MapCache(createMockManifest())
+      const pkg1 = { name: '/maps/a.oramap', contents: [], openPackage: () => null }
+      const pkg2 = { name: '/maps/b.oramap', contents: [], openPackage: () => null }
+
+      // @ts-expect-error — accessing private method
+      const uid1 = cache.computeUid(pkg1)
+      // @ts-expect-error — accessing private method
+      const uid2 = cache.computeUid(pkg2)
+
+      expect(uid1).not.toBe(uid2)
+    })
+  })
+
   describe('iteration', () => {
     it('implements iterable protocol', () => {
       const cache = new MapCache(createMockManifest())
@@ -387,6 +415,51 @@ describe('MapCache', () => {
         cache.dispose()
         cache.dispose()
       }).not.toThrow()
+    })
+
+    it('sets cancellation flag to stop loader', () => {
+      const cache = new MapCache(createMockManifest())
+      // @ts-expect-error — accessing private field
+      expect(cache._previewLoaderCancelled).toBe(false)
+      cache.dispose()
+      // @ts-expect-error — accessing private field
+      expect(cache._previewLoaderCancelled).toBe(true)
+    })
+  })
+
+  describe('disposeAsync', () => {
+    it('returns a promise', async () => {
+      const cache = new MapCache(createMockManifest())
+      const result = cache.disposeAsync()
+      expect(result).toBeInstanceOf(Promise)
+      await result
+    })
+
+    it('resolves after cleanup', async () => {
+      const cache = new MapCache(createMockManifest())
+      cache.get('uid-1')
+
+      await cache.disposeAsync()
+
+      expect(cache.mapLocations.size).toBe(0)
+    })
+
+    it('sets cancellation flag', async () => {
+      const cache = new MapCache(createMockManifest())
+      // @ts-expect-error — accessing private field
+      expect(cache._previewLoaderCancelled).toBe(false)
+      await cache.disposeAsync()
+      // @ts-expect-error — accessing private field
+      expect(cache._previewLoaderCancelled).toBe(true)
+    })
+  })
+
+  describe('constructor with modFiles', () => {
+    it('accepts optional modFiles parameter', () => {
+      const manifest = createMockManifest()
+      const modFiles = { root: '/mods/ra' }
+      const cache = new MapCache(manifest, modFiles)
+      expect(cache).toBeDefined()
     })
   })
 })

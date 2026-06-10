@@ -13,6 +13,7 @@
 
 import { PlayerReference, type PlayerDefinition } from './PlayerReference.js'
 import type { RulesetStub } from '../Traits/TraitsInterfaces.js'
+import type { FactionInfoStub } from '../Player.js'
 
 // ---------------------------------------------------------------------------
 // MapPlayers
@@ -83,7 +84,9 @@ export class MapPlayers {
       // PlayerDefinition[] constructor
       this.players = new Map()
       for (const def of arg1) {
-        const pr = new PlayerReference(def as unknown as Partial<PlayerReference>)
+        // Merge name from definition with properties (if provided)
+        const props = def.properties ?? {}
+        const pr = new PlayerReference({ ...props, name: def.name ?? props.name ?? '' })
         this.players.set(pr.name, pr)
       }
     } else {
@@ -148,17 +151,17 @@ export class MapPlayers {
    */
   private getFirstSelectableFaction(rules: RulesetStub): string {
     // Try to get faction info from the ruleset stub
-    // The stub's actors map may contain FactionInfo objects
+    // The stub's actors map may contain World actor info with FactionInfo traits
     const worldActor = rules.actors.get('World')
     if (worldActor) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const actor = worldActor as any
+      // Use a type guard to safely access the factions array
+      const actor = worldActor as { factions?: unknown[] }
       if (actor.factions && Array.isArray(actor.factions)) {
         for (const faction of actor.factions) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          if ((faction as any).selectable) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return (faction as any).internalName ?? 'Random'
+          // Type guard for FactionInfoStub shape
+          const f = faction as Partial<FactionInfoStub>
+          if (f.selectable === true && typeof f.internalName === 'string') {
+            return f.internalName
           }
         }
       }

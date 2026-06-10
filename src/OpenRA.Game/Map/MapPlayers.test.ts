@@ -63,6 +63,49 @@ describe('MapPlayers', () => {
       expect(player!.name).toBe('TestPlayer')
     })
 
+    it('parses properties from PlayerDefinition', () => {
+      const defs = [
+        {
+          name: 'CustomPlayer',
+          properties: {
+            playable: true,
+            faction: 'Allies',
+            allowBots: false,
+            enemies: ['Creeps'],
+          },
+        },
+      ]
+
+      const mp = new MapPlayers(defs)
+      const player = mp.players.get('CustomPlayer')
+
+      expect(player).toBeInstanceOf(PlayerReference)
+      expect(player!.name).toBe('CustomPlayer')
+      expect(player!.playable).toBe(true)
+      expect(player!.faction).toBe('Allies')
+      expect(player!.allowBots).toBe(false)
+      expect(player!.enemies).toEqual(['Creeps'])
+    })
+
+    it('uses name from definition over properties', () => {
+      const defs = [
+        {
+          name: 'DefName',
+          properties: {
+            name: 'PropName',
+            playable: true,
+          },
+        },
+      ]
+
+      const mp = new MapPlayers(defs)
+      const player = mp.players.get('DefName')
+
+      // Definition name takes precedence
+      expect(player!.name).toBe('DefName')
+      expect(player!.playable).toBe(true)
+    })
+
     it('handles empty definitions array', () => {
       const mp = new MapPlayers([])
       expect(mp.players.size).toBe(0)
