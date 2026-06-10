@@ -70,9 +70,9 @@ describe('CellRamp — flat rectangular', () => {
     expect(bl.Z).toBe(0)
   })
 
-  it('has one polygon (flat split)', () => {
+  it('has one polygon (flat split) with 4 vertices (quad)', () => {
     expect(ramp.polygons.length).toBe(1)
-    expect(ramp.polygons[0].length).toBe(3)
+    expect(ramp.polygons[0].length).toBe(4)
   })
 
   it('centerHeightOffset is 0 for flat ramp', () => {

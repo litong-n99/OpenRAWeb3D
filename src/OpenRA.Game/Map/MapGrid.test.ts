@@ -146,10 +146,12 @@ describe('MapGrid — all 21 predefined CellRamp shapes (rectangular)', () => {
     })
   })
 
-  it('every ramp polygon has exactly 3 vertices', () => {
+  it('every ramp polygon vertex count matches split type', () => {
     grid.ramps.forEach((r, i) => {
       r.polygons.forEach((p, pi) => {
-        expect(p.length, `ramp ${i} polygon ${pi} vertex count`).toBe(3)
+        // Flat split: single quad (4 vertices); X/Y split: triangles (3 vertices)
+        const expectedVerts = r.polygons.length === 1 ? 4 : 3
+        expect(p.length, `ramp ${i} polygon ${pi} vertex count`).toBe(expectedVerts)
       })
     })
   })

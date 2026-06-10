@@ -159,20 +159,22 @@ function buildRamps(gridType: MapGridType): void {
     parentNode.position = new Vector3(offsetX, 0, offsetZ)
     rampParentNodes.push(parentNode)
 
-    // Build mesh from polygon triangles
+    // Build mesh from polygon triangles/quads
     const polygons = ramp.polygons
 
     // Combine all triangles into a single custom mesh
-    // Each polygon is a triangle (3 WVec vertices)
+    // Flat split: 1 quad (4 vertices) → 2 triangles (0,1,2 + 0,2,3)
+    // X/Y split: 2 triangles (3 vertices each)
     const positions: number[] = []
     const colors: number[] = []
     const indices: number[] = []
 
-    for (const tri of polygons) {
+    for (const poly of polygons) {
       const baseIdx = positions.length / 3
 
-      for (let v = 0; v < 3; v++) {
-        const wv = tri[v]!
+      // Push all vertices for this polygon
+      for (let v = 0; v < poly.length; v++) {
+        const wv = poly[v]!
         const bjs = wvecToBjs(wv)
         positions.push(bjs.x, bjs.y, bjs.z)
 
@@ -180,7 +182,14 @@ function buildRamps(gridType: MapGridType): void {
         colors.push(c.r, c.g, c.b, 1.0)
       }
 
-      indices.push(baseIdx, baseIdx + 1, baseIdx + 2)
+      if (poly.length === 4) {
+        // Quad: triangulate as two triangles (0,1,2) and (0,2,3)
+        indices.push(baseIdx, baseIdx + 1, baseIdx + 2)
+        indices.push(baseIdx, baseIdx + 2, baseIdx + 3)
+      } else {
+        // Triangle
+        indices.push(baseIdx, baseIdx + 1, baseIdx + 2)
+      }
     }
 
     const rampMesh = new Mesh(`ramp-${i}`, scene)
@@ -192,12 +201,12 @@ function buildRamps(gridType: MapGridType): void {
     vertexData.colors = colors
     vertexData.applyToMesh(rampMesh, true)
 
-    // Edges rendering: create thin tubes along triangle edges
+    // Edges rendering: create thin tubes along polygon edges
     const drawnEdges = new Set<string>()
-    for (const tri of polygons) {
-      for (let v = 0; v < 3; v++) {
-        const a = tri[v]!
-        const b = tri[(v + 1) % 3]!
+    for (const poly of polygons) {
+      for (let v = 0; v < poly.length; v++) {
+        const a = poly[v]!
+        const b = poly[(v + 1) % poly.length]!
         const edgeKey = `${Math.min(a.X, b.X)},${Math.min(a.Y, b.Y)},${Math.min(a.Z, b.Z)}|${Math.max(a.X, b.X)},${Math.max(a.Y, b.Y)},${Math.max(a.Z, b.Z)}`
         if (drawnEdges.has(edgeKey)) continue
         drawnEdges.add(edgeKey)
@@ -276,7 +285,7 @@ function updateRampDetail(index: number): void {
 
   // Determine split type
   const polys = ramp.polygons
-  let splitName = 'Flat (1 triangle)'
+  let splitName = 'Flat (1 quad, 4 vertices)'
   if (polys.length === 2) {
     const p0 = polys[0]!
     // X split: 0-1-3 + 1-2-3

@@ -44,7 +44,7 @@ export type RampCornerHeight =
  *
  * OpenRA 对照: RampSplit enum
  *
- * Flat: single quad treated as triangle (corners 0-1-2)
+ * Flat: single quad (4 corners); HeightOffset uses first 3 as triangle
  * X: split along TL→BR diagonal (tri 0-1-3 + tri 1-2-3)
  * Y: split along TR→BL diagonal (tri 0-1-2 + tri 0-2-3)
  */
@@ -101,7 +101,7 @@ export class CellRamp {
    */
   readonly corners: readonly WVec[]
 
-  /** 1-2 triangle polygons, each as an array of 3 vertices.
+  /** 1-2 polygon(s). Flat split: 1 quad (4 vertices); X/Y split: 2 triangles (3 vertices each).
    *
    * OpenRA 对照: CellRamp.Polygons
    */
@@ -171,9 +171,10 @@ export class CellRamp {
         Object.freeze([c[0], c[2], c[3]]),
       ]) as readonly (readonly WVec[])[]
     } else {
-      // Flat: single quad (first 3 vertices used as triangle for interpolation)
+      // Flat: single quad (all 4 corners), stored for rendering;
+      // HeightOffset only uses first 3 vertices for barycentric interpolation.
       this.polygons = Object.freeze([
-        Object.freeze([c[0], c[1], c[2]]),
+        Object.freeze([c[0], c[1], c[2], c[3]]),
       ]) as readonly (readonly WVec[])[]
     }
 
