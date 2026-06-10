@@ -182,6 +182,19 @@ const gpuError = document.getElementById('gpu-error') as HTMLDivElement
 // Babylon.js init
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// WebGL support check (must happen before Engine construction)
+// ---------------------------------------------------------------------------
+
+if (typeof WebGLRenderingContext === 'undefined') {
+  gpuError.style.display = 'flex'
+  throw new Error('WebGL is not available in this browser')
+}
+
+// ---------------------------------------------------------------------------
+// Canvas + Engine init
+// ---------------------------------------------------------------------------
+
 const canvas = document.createElement('canvas')
 canvas.style.width = '100%'
 canvas.style.height = '100%'
@@ -189,17 +202,19 @@ canvas.style.outline = 'none'
 canvas.style.touchAction = 'none'
 sandbox.appendChild(canvas)
 
+// Ensure the canvas has non-zero intrinsic size before Engine reads it.
+const sandboxRect = sandbox.getBoundingClientRect()
+canvas.width = Math.max(1, Math.floor(sandboxRect.width * window.devicePixelRatio))
+canvas.height = Math.max(1, Math.floor(sandboxRect.height * window.devicePixelRatio))
+
 const engine = new Engine(canvas, true, {
   preserveDrawingBuffer: true,
   stencil: true,
 })
 
-if (typeof WebGLRenderingContext === 'undefined') {
-  gpuError.style.display = 'flex'
-}
-
 const scene = new Scene(engine)
 scene.clearColor = new Color4(0.05, 0.07, 0.12, 1.0)
+scene.ambientColor = new Color3(0.35, 0.35, 0.4)
 
 // ---------------------------------------------------------------------------
 // Camera
@@ -209,13 +224,14 @@ const camera = new ArcRotateCamera(
   'camera',
   Math.PI / 4,
   Math.PI / 3,
-  80,
+  28,
   new Vector3(0, 0, 0),
   scene,
 )
 camera.lowerRadiusLimit = 5
-camera.upperRadiusLimit = 500
+camera.upperRadiusLimit = 200
 camera.attachControl(canvas, true)
+camera.wheelDeltaPercentage = 0.05
 
 // ---------------------------------------------------------------------------
 // Lighting
@@ -461,7 +477,7 @@ document.getElementById('regenerate')!.addEventListener('click', () => {
 document.getElementById('reset-camera')!.addEventListener('click', () => {
   camera.alpha = Math.PI / 4
   camera.beta = Math.PI / 3
-  camera.radius = 80
+  camera.radius = 28
   camera.target = new Vector3(0, heightScale * 0.5, 0)
 })
 
@@ -487,4 +503,5 @@ window.addEventListener('resize', () => {
 // Startup
 // ---------------------------------------------------------------------------
 
+engine.resize()
 rebuildScene()
