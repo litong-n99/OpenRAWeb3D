@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
-> **Last updated**: 2026-06-11
-> **Current phase**: Chapter 5 (UI System & Resource Management) — IN PROGRESS (4/16, 25%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 4/16 (25%, Phase A COMPLETE), Chapters 2-4 COMPLETE, Chapter 5 in progress
+> **Last updated**: 2026-06-12
+> **Current phase**: Chapter 5 (UI System & Resource Management) — IN PROGRESS (9/16, 56%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 9/16 (56%, Phases A+B COMPLETE), Chapters 2-4 COMPLETE, Chapter 5 in progress
 
 ---
 
@@ -16,12 +16,12 @@
 | **Chapter 4 planned files** | 37 (32 from OpenRA + 5 new; 34 originally planned + 3 dep files) |
 | **Chapter 4 status** | ALL PHASES COMPLETE: 37/37 (100%), 603+190+additional=750+ tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + Phase D (2/2) + Phase E (7/7) + Phase F (2/2) + Phase G (13/13) + Phase H (1/1) + Phase I (1/1) = 37 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
-| **Chapter 5 planned files** | 16 (5 Phases A-E, planning stage) |
-| **Chapter 5 status** | IN PROGRESS: 4/16 (25%), Phase A (FileSystem Foundation) COMPLETE |
+| **Chapter 5 planned files** | 16 (5 Phases A-E, Phases A+B complete) |
+| **Chapter 5 status** | IN PROGRESS: 9/16 (56%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE |
 | **Remaining chapters** | Chapters 6-8+ (networking, audio, game logic) |
-| **Overall project completion** | Chapters 2+3+4/8+ complete (100/100 rendering+actors+map), Chapter 5 in progress (4/16) |
+| **Overall project completion** | Chapters 2+3+4/8+ complete (100/100 rendering+actors+map), Chapter 5 in progress (9/16) |
 
-> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 25%, 1,430 impl + 1,961 test lines, 132 tests). Phases B-E pending.
+> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 25%, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, 56%, ~1,472 impl + ~1,653 test lines, 108 tests). Phases C-E pending.
 
 ---
 
@@ -129,7 +129,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Mods.Common/Pathfinder/` | 10 | 10 | 0 | 0 |
 | `OpenRA.Mods.Common/Traits/` | 3 | 3 | 0 | 0 |
 | `OpenRA.Mods.Common/Widgets/` | 0 | 0 | 0 | Chapter 5 Phase E (pending) |
-| `OpenRA.Mods.Cnc/` | 0 | 0 | 0 | Chapter 5 Phase B (pending) |
+| `OpenRA.Mods.Cnc/FileSystem/` | 5 | 5 | 0 | COMPLETE (Phase B, 108 tests) |
 | `utils/` | 1 | 1 | 0 | 0 |
 | Other modules | 0 | 0 | 0 | All |
 
@@ -182,6 +182,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch5 Phase B C&C Package Formats** (5 files) | migration-develop | migration-review | APPROVED (3 rounds, 0 BLOCKERs): PackageEntry.ts (332 lines, 30 tests), MixFile.ts (350 lines, 22 tests), BigFile.ts (268 lines, 19 tests), MegFile.ts (282 lines, 17 tests), Pak.ts (240 lines, 18 tests). ~1,472 impl + ~1,653 test lines, 108 tests. MixFile is documentation stub per ADR-5.1. |
 | 2026-06-12 | **Ch5 Phase A FileSystem Foundation** (4 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): IPackage.ts (188+337 lines, 21 tests), Folder.ts (198+337 lines, 24 tests), ZipFile.ts (371+518 lines, 37 tests), FileSystem.ts (673+769 lines, 50 tests). IReadOnlyPackage.ts refactored to 19-line re-export shim. ~1,430 impl + ~1,961 test lines, 132 tests. Deps: fflate. Commits `c9f6dd3`, `49aa8be`. |
 | 2026-06-11 | **Ch4 Phase I CoordinateTransformer** (1 file) | migration-develop | migration-review | APPROVED: CoordinateTransformer.ts (334+509 lines), WPos<->Vector3 conversion, LRU cache, batch Float32Array output. |
 | 2026-06-11 | **Ch4 Phase H MiniYAML Pipeline** (1 file) | migration-develop | migration-review | APPROVED: miniyaml-to-json.ts (762+962 lines), recursive descent parser, Vite plugin, build-time YAML->JSON compilation. |
@@ -663,13 +664,13 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 ## Chapter 5: UI System & Resource Management (IN PROGRESS)
 
 > **Migration Plan**: [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md)
-> **Created**: 2026-06-11 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (4/16 migrated, 25%), Phase A COMPLETE, Phases B-E pending
+> **Created**: 2026-06-11 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (9/16 migrated, 56%), Phases A+B COMPLETE, Phases C-E pending
 > **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 4 | 25% |
-| Pending | 12 | 75% |
+| Completed | 9 | 56% |
+| Pending | 7 | 44% |
 | **Total** | **16** | **100%** |
 | **From OpenRA** | **15** (plus 1 IReadOnlyPackage refactor) | |
 | **New files (no OpenRA equivalent)** | **0** | |
@@ -679,7 +680,7 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
 | Phase A | FileSystem Foundation (VFS) | 4 | Low-Medium | COMPLETE (4/4, 132 tests) |
-| Phase B | C&C Package Formats | 5 | Low-HIGH | PENDING |
+| Phase B | C&C Package Formats | 5 | Low-HIGH | COMPLETE (5/5, 108 tests) |
 | Phase C | MOD System Core | 2 | Low-Medium | PENDING |
 | Phase D | UI Widget Core | 4 | Low-Medium | PENDING (blocked by C) |
 | Phase E | World Interaction Bridge | 1 | HIGH | PENDING (blocked by C, D) |
@@ -740,16 +741,19 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 
 > **Note**: `IReadOnlyPackage.ts` was refactored from a 78-line stub (Ch4 Phase E) into a 19-line re-export shim pointing to `IPackage.ts`. Existing consumers (`MapCache.ts`, `MapDirectoryTracker.ts`) had their imports updated.
 
-### Phase B: C&C Package Formats (5 files, PENDING)
+### Phase B: C&C Package Formats (5 files, COMPLETE)
 
-| # | Target File | Class/Interface | Complexity | Lines (C#) | Notes |
-|:---:|:---|:---|:---:|:---:|:---|
-| B1 | `src/OpenRA.Mods.Cnc/FileSystem/PackageEntry.ts` | PackageEntry | Low | 118 | 32-bit rolling hash algorithm |
-| B2 | `src/OpenRA.Mods.Cnc/FileSystem/MixFile.ts` | MixFile, MixLoader | HIGH | 248 | Documentation stub per ADR-5.1 |
-| B3 | `src/OpenRA.Mods.Cnc/FileSystem/BigFile.ts` | BigFile, BigFileLoader | Low | 124 | Full runtime implementation |
-| B4 | `src/OpenRA.Mods.Cnc/FileSystem/MegFile.ts` | MegFile, MegFileLoader | Low | 141 | Full runtime implementation |
-| B5 | `src/OpenRA.Mods.Cnc/FileSystem/Pak.ts` | Pak, PakLoader | Low | 103 | Full runtime implementation |
-| **Total** | | | | **~734** | **~920 impl + ~890 test lines, ~79 tests** |
+**Status**: COMPLETE (5/5). Review: APPROVED (3 rounds, 0 BLOCKERs). No manual visual tests needed (pure infrastructure, no GPU/visual output).
+**Date**: 2026-06-12
+
+| # | Target File | Class/Interface | Complexity | Lines (C#) | Impl lines | Tests | Notes |
+|:---:|:---|:---|:---:|:---:|:---:|:---:|:---|
+| B1 | `src/OpenRA.Mods.Cnc/FileSystem/PackageEntry.ts` | PackageEntry | Low | 118 | 332 | 30 | 32-bit rolling hash algorithm |
+| B2 | `src/OpenRA.Mods.Cnc/FileSystem/MixFile.ts` | MixFile, MixLoader | HIGH | 248 | 350 | 22 | Documentation stub per ADR-5.1 |
+| B3 | `src/OpenRA.Mods.Cnc/FileSystem/BigFile.ts` | BigFile, BigFileLoader | Low | 124 | 268 | 19 | EA BIG format (BE + ASCIIZ) |
+| B4 | `src/OpenRA.Mods.Cnc/FileSystem/MegFile.ts` | MegFile, MegFileLoader | Low | 141 | 282 | 17 | MEG V3 format |
+| B5 | `src/OpenRA.Mods.Cnc/FileSystem/Pak.ts` | Pak, PakLoader | Low | 103 | 240 | 18 | PAK linked-list format |
+| **Total** | | | | **~734** | **~1,472** | **108** | **~1,653 test lines** |
 
 ### Phase C: MOD System Core (2 files, PENDING)
 
@@ -781,7 +785,7 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 | Phase | Files | Complexity | Est. Lines (impl+test) | Est. Tests | Depends On |
 |-------|:---:|:---|:---:|:---:|-----------|
 | A: FileSystem Foundation | 4 | Low-Medium | ~2,150 | ~91 | Nothing |
-| B: C&C Package Formats | 5 | Low-HIGH | ~1,810 | ~79 | Phase A |
+| B: C&C Package Formats | 5 | Low-HIGH | 3,125 (completed) | 108 (completed) | Phase A |
 | C: MOD System Core | 2 | Low-Medium | ~1,170 | ~52 | Phase A |
 | D: UI Widget Core | 4 | Low-Medium | ~2,820 | ~104 | Phase C |
 | E: World Interaction | 1 | HIGH | ~1,000 | ~38 | Phases C, D |

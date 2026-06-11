@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 5 -- UI System and Resource Management
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 6 (lines 853-940)
-> **Chapter Status**: Chapter 5 -- IN PROGRESS (4/16 migrated, 25%)
+> **Chapter Status**: Chapter 5 -- IN PROGRESS (9/16 migrated, 56%)
 > **Planning Date**: 2026-06-11
 > **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
 >
@@ -283,9 +283,9 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 ### 3.2 Phase B: C&C Package Formats
 
-**Status**: PENDING (0/5)
+**Status**: COMPLETE (5/5)
 **Complexity**: Low-HIGH (MixFile is HIGH; others are Low)
-**Blocked by**: Phase A (needs `IPackage`, `IPackageLoader`, `FileSystem` registration interfaces)
+**Blocked by**: Phase A (complete)
 **Blocks**: Phase C (ModData loads mod packages via these loaders)
 
 **Description**: Westwood Studios' classic RTS games (C&C, Red Alert, Dune 2000) use proprietary archive formats: MIX (hashed filenames with optional Blowfish encryption), BIG (4-byte entry count + filename table + data), MEG (header + index + data blocks), and PAK (raw concatenation with offset table). Per the architecture document recommendation, **MIX files are unpacked at build time into standard ZIP + directory structures**. The browser-side implementations of MixFile, BigFile, MegFile, and Pak serve as **validation/documentation stubs** that document the format structure and provide a controlled path for any runtime use in development/debugging.
@@ -294,7 +294,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.2.1 PackageEntry (Shared Data Structure)
 
-- [ ] **TODO-5.B.1** `src/OpenRA.Mods.Cnc/FileSystem/PackageEntry.ts` (118 lines C#) -- Entry metadata:
+- [x] **TODO-5.B.1** `src/OpenRA.Mods.Cnc/FileSystem/PackageEntry.ts` (118 lines C#) -- Entry metadata: ✅ COMPLETE
   - `PackageEntry` class: `offset: number`, `length: number`, `size: number` (decompressed), `filename: string`
   - Static `calculateHash(filename: string): number` -- Westwood 32-bit rolling hash algorithm (identical to OpenRA `PackageEntry.HashFilename`)
   - `toString(): string` -- `"filename: offset=0x1234, length=456"` format
@@ -303,7 +303,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.2.2 MixFile (Documentation Stub)
 
-- [ ] **TODO-5.B.2** `src/OpenRA.Mods.Cnc/FileSystem/MixFile.ts` (248 lines C#) -- MIX format documentation:
+- [x] **TODO-5.B.2** `src/OpenRA.Mods.Cnc/FileSystem/MixFile.ts` (248 lines C#) -- MIX format documentation: ✅ COMPLETE
   - `MixFile` class implements `IReadOnlyPackage`
   - **ADR-5.1 compliance**: `tryParsePackage()` returns `null` unconditionally -- build-time unpacking is the sole supported path
   - Contains full format specification as JSDoc + comments:
@@ -319,7 +319,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.2.3 BigFile
 
-- [ ] **TODO-5.B.3** `src/OpenRA.Mods.Cnc/FileSystem/BigFile.ts` (124 lines C#) -- BIG archive format:
+- [x] **TODO-5.B.3** `src/OpenRA.Mods.Cnc/FileSystem/BigFile.ts` (124 lines C#) -- BIG archive format: ✅ COMPLETE
   - `BigFile` class implements `IReadOnlyPackage`
   - Format: `[4 bytes BE: numEntries] [4 bytes BE: entrySize]` -> `[numEntries * entrySize bytes: string names]` -> `[numEntries: 4-byte BE offset + 4-byte BE size]` -> data blocks
   - Key difference from MIX: filenames are stored as plain strings, not hashed
@@ -330,7 +330,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.2.4 MegFile
 
-- [ ] **TODO-5.B.4** `src/OpenRA.Mods.Cnc/FileSystem/MegFile.ts` (141 lines C#) -- MEG archive format:
+- [x] **TODO-5.B.4** `src/OpenRA.Mods.Cnc/FileSystem/MegFile.ts` (141 lines C#) -- MEG archive format: ✅ COMPLETE
   - `MegFile` class implements `IReadOnlyPackage`
   - Similar to BIG but with different header layout
   - Format: `[variable: header block] [variable: filename strings] [variable: data blocks]`
@@ -341,7 +341,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.2.5 Pak
 
-- [ ] **TODO-5.B.5** `src/OpenRA.Mods.Cnc/FileSystem/Pak.ts` (103 lines C#) -- PAK archive format:
+- [x] **TODO-5.B.5** `src/OpenRA.Mods.Cnc/FileSystem/Pak.ts` (103 lines C#) -- PAK archive format: ✅ COMPLETE
   - `Pak` class implements `IReadOnlyPackage`
   - Format: `[variable: concatenated file data]` with an index at a known offset
   - `tryParsePackage()`: checks `.pak` extension
@@ -349,7 +349,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
   - `contents`: sorted filenames
   - `open(filename: string): Promise<ArrayBuffer | null>` -- standard extraction
 
-**Acceptance Criteria**:
+**Acceptance Criteria** (all met):
 - `PackageEntry.calculateHash()` produces identical results to OpenRA for all known C&C filenames
 - `MixFile.tryParsePackage()` returns `null` and logs actionable message directing to build-time tooling
 - `MixFile.ts` JSDoc contains complete format specification usable by a build-tool author
@@ -357,15 +357,21 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 - All five loaders register with `FileSystem` via `IPackageLoader` interface
 - Disposed packages release their `ArrayBuffer` references (check memory via `FinalizationRegistry` in tests)
 
-**Estimated Effort**:
-| File | Est. impl lines | Est. test lines | Est. tests |
+**Completion Summary**:
+
+| File | Impl lines (est. / actual) | Test lines (est. / actual) | Tests (est. / actual) |
 |:---|:---:|:---:|:---:|
-| PackageEntry.ts | 130 | 150 | 15 |
-| MixFile.ts | 320 | 200 | 18 |
-| BigFile.ts | 160 | 190 | 16 |
-| MegFile.ts | 170 | 190 | 16 |
-| Pak.ts | 140 | 160 | 14 |
-| **Total** | **~920** | **~890** | **~79** |
+| PackageEntry.ts | 130 / 332 | 150 / ~ | 15 / 30 |
+| MixFile.ts | 320 / 350 | 200 / ~ | 18 / 22 |
+| BigFile.ts | 160 / 268 | 190 / ~ | 16 / 19 |
+| MegFile.ts | 170 / 282 | 190 / ~ | 16 / 17 |
+| Pak.ts | 140 / 240 | 160 / ~ | 14 / 18 |
+| **Total** | **~920 / ~1,472** | **~890 / ~1,653** | **~79 / 108** |
+
+**Review**: APPROVED (3 rounds, 0 BLOCKERs). No manual visual tests needed (pure infrastructure, no GPU/visual output).
+**Commits**: initial implementation + 2 review fix rounds.
+
+> **Note**: MixFile.ts is a documentation stub per ADR-5.1: `tryParsePackage()` returns `null` unconditionally, directing callers to build-time MIX unpacking. BigFile, MegFile, and Pak have full runtime implementations. No WASM or crypto libraries shipped to the browser.
 
 ---
 
@@ -373,7 +379,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 **Status**: PENDING (0/2)
 **Complexity**: Low-Medium
-**Blocked by**: Phase A (FileSystem for package mounting), Phase B (C&C loaders for mod asset packages)
+**Blocked by**: Phase A (complete), Phase B (complete)
 **Blocks**: Phase D (WidgetLoader reads UI layouts from mod YAML via FileSystem), Phase E (interaction controller needs World + ModData)
 
 **Description**: The MOD System is the orchestration layer that ties assets, rules, UI, and game logic into a playable mod. `Manifest` parses `mod.yaml` (now pre-compiled to `mod.json` by the MiniYAML pipeline) into a structured configuration object. `ModData` coordinates all runtime subsystems: FileSystem, ObjectCreator, MapCache, WidgetLoader, and various asset loaders. The core paradigm shift is from .NET Assembly reflection (`Assembly.GetTypes()` / `Activator.CreateInstance()`) to ES6 Dynamic Import with a class registry.
@@ -915,7 +921,7 @@ This replaces OpenRA's `ModData.PackageLoaders` assembly-scanned array.
 | Phase | Files | Complexity | Est. Lines (impl+test) | Est. Tests | Depends On |
 |-------|:---:|:---|:---:|:---:|-----------|
 | A: FileSystem Foundation | 4 | Low-Medium | 3,391 (completed) | 132 (completed) | Nothing |
-| B: C&C Package Formats | 5 | Low-HIGH | ~1,810 | ~79 | Phase A |
+| B: C&C Package Formats | 5 | Low-HIGH | 3,125 (completed) | 108 (completed) | Phase A |
 | C: MOD System Core | 2 | Low-Medium | ~1,170 | ~52 | Phase A |
 | D: UI Widget Core | 4 | Low-Medium | ~2,820 | ~104 | Phase C |
 | E: World Interaction | 1 | HIGH | ~1,000 | ~38 | Phases C, D |

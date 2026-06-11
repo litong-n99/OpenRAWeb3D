@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 5 (UI System & Resource Management) -- IN PROGRESS (4/16, 25%)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 4/16 (25%)
+**Phase**: Chapter 5 (UI System & Resource Management) -- IN PROGRESS (9/16, 56%)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 9/16 (56%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -30,9 +30,9 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Pathfinding System (13 files, Phase G) | COMPLETE, 190 tests, HPA* + A* |
 | MiniYAML Pipeline (1 file, Phase H) | COMPLETE, build-time YAML->JSON |
 | CoordinateTransformer (1 file, Phase I) | COMPLETE, WPos<->Vector3 bridge |
-| **UI System & Resource Management (16 files)** | **IN PROGRESS (4/16, 25%), 5 Phases A-E** |
+| **UI System & Resource Management (16 files)** | **IN PROGRESS (9/16, 56%), 5 Phases A-E** |
 | FileSystem Foundation (4 files) | COMPLETE (IPackage, Folder, ZipFile, FileSystem), 132 tests |
-| C&C Package Formats (5 files) | Pending (MixFile stub, BigFile, MegFile, Pak, PackageEntry) |
+| C&C Package Formats (5 files) | COMPLETE (PackageEntry, MixFile stub, BigFile, MegFile, Pak), 108 tests, 3 review rounds |
 | MOD System Core (2 files) | Pending (Manifest, ModData) |
 | UI Widget Core (4 files) | Pending (Widget, ChromeMetrics, WidgetLoader, ChromeProvider) |
 | World Interaction Bridge (1 file) | Pending (WorldInteractionControllerWidget) |
@@ -114,8 +114,8 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
     Orders/                 ← Chapter 3: Order generation (empty, planned)
   OpenRA.Game/Manifest.ts     ← Chapter 5 Phase C: MOD manifest (pending)
   OpenRA.Game/ModData.ts      ← Chapter 5 Phase C: MOD runtime coordinator (pending)
-  OpenRA.Mods.Cnc/            ← Chapter 5 Phase B: C&C package formats (pending)
-    FileSystem/               ← Chapter 5 Phase B: PackageEntry, MixFile, BigFile, MegFile, Pak (pending)
+  OpenRA.Mods.Cnc/            ← Chapter 5 Phase B: C&C package formats (COMPLETE)
+    FileSystem/               ← Chapter 5 Phase B: PackageEntry (332 lines, 30 tests), MixFile (350 lines, 22 tests), BigFile (268 lines, 19 tests), MegFile (282 lines, 17 tests), Pak (240 lines, 18 tests)
   OpenRA.Mods.Common/         ← Chapter 4: Pathfinding + movement traits
     Pathfinder/             ← Phase G: Pathfinding System (10 files)
       IPathGraph.ts         ← migrated (216 lines) -- Phase G
@@ -368,7 +368,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md) | Chapter 3 actor system migration plan with TODO checklist (36 total: 17 Phase A primitives + 14 core + 5 support; 61 TODO items) |
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
-| [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, in progress, 25%) |
+| [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, in progress, 56%) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
