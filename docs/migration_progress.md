@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 5 (UI System & Resource Management) — IN PROGRESS (11/16, 69%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 11/16 (69%, Phases A+B+C COMPLETE), Chapters 2-4 COMPLETE, Chapter 5 in progress
+> **Current phase**: Chapter 5 (UI System & Resource Management) — IN PROGRESS (15/16, 94%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 15/16 (94%, Phases A+B+C+D COMPLETE), Chapters 2-4 COMPLETE, Chapter 5 in progress
 
 ---
 
@@ -16,12 +16,12 @@
 | **Chapter 4 planned files** | 37 (32 from OpenRA + 5 new; 34 originally planned + 3 dep files) |
 | **Chapter 4 status** | ALL PHASES COMPLETE: 37/37 (100%), 603+190+additional=750+ tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + Phase D (2/2) + Phase E (7/7) + Phase F (2/2) + Phase G (13/13) + Phase H (1/1) + Phase I (1/1) = 37 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
-| **Chapter 5 planned files** | 16 (5 Phases A-E, Phases A+B complete) |
-| **Chapter 5 status** | IN PROGRESS: 11/16 (69%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE |
+| **Chapter 5 planned files** | 16 (5 Phases A-E, Phases A+B+C+D complete) |
+| **Chapter 5 status** | IN PROGRESS: 15/16 (94%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE |
 | **Remaining chapters** | Chapters 6-8+ (networking, audio, game logic) |
-| **Overall project completion** | Chapters 2+3+4/8+ complete (100/100 rendering+actors+map), Chapter 5 in progress (11/16) |
+| **Overall project completion** | Chapters 2+3+4/8+ complete (100/100 rendering+actors+map), Chapter 5 in progress (15/16) |
 
-> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 25%, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, 56%, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 69%, 832 impl + 1,296 test lines, 115 tests). Phases D-E pending.
+> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 25%, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, 56%, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 69%, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 94%, 2,129 impl + 2,333 test lines, 174 tests). Phase E pending.
 
 ---
 
@@ -115,7 +115,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | OpenRA Module | Total Files | Done | Stubs | Empty Dirs |
 |---------------|:-----------:|:----:|:-----:|:----------:|
-| `OpenRA.Game/Graphics/` | 37 | 19 | 18 | 0 |
+| `OpenRA.Game/Graphics/` | 37 | 20 | 17 | 0 |
 | `OpenRA.Game/` (root) | 3 | 3 | 0 | 0 |
 | `OpenRA.Game/Primitives/` | 1 | 1 | 0 | 0 |
 | `OpenRA.Platforms.Default/` | 18 | 6 | 12 | 0 |
@@ -124,11 +124,11 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Game/Activities/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Network/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/FileSystem/` | 5 | 5 | 0 | 0 |
-| `OpenRA.Game/Widgets/` | 0 | 0 | 0 | Chapter 5 Phase D (pending) |
+| `OpenRA.Game/Widgets/` | 3 | 3 | 0 | COMPLETE (Phase D) |
 | `OpenRA.Game/Map/` | 23 | 23 | 0 | 0 |
 | `OpenRA.Mods.Common/Pathfinder/` | 10 | 10 | 0 | 0 |
 | `OpenRA.Mods.Common/Traits/` | 3 | 3 | 0 | 0 |
-| `OpenRA.Mods.Common/Widgets/` | 0 | 0 | 0 | Chapter 5 Phase E (pending) |
+| `OpenRA.Mods.Common/Widgets/` | 0 | 0 | 0 | Chapter 5 Phase E (pending, now unblocked) |
 | `OpenRA.Mods.Cnc/FileSystem/` | 5 | 5 | 0 | COMPLETE (Phase B, 108 tests) |
 | `utils/` | 1 | 1 | 0 | 0 |
 | Other modules | 0 | 0 | 0 | All |
@@ -182,6 +182,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch5 Phase D UI Widget Core** (4 files) | migration-develop | migration-review | APPROVED (3 rounds, 0 BLOCKERs remaining): Widget.ts (1062 lines, 104 tests, Widget/ContainerWidget/InputWidget/Ui/ChromeLogic), ChromeMetrics.ts (166 lines, 23 tests, CSS custom property themes), WidgetLoader.ts (470 lines, 43 tests, JSON->Widget tree loader), ChromeProvider.ts (431 lines, 48 tests, CSS border-image skin manager). 2,129 impl + 2,333 test lines, 174 tests. No manual visual tests needed (core widget tree infrastructure). |
 | 2026-06-12 | **Ch5 Phase C MOD System Core** (2 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): Manifest.ts (506 lines, 72 tests, mod.json parser + dependency validation), ModData.ts (326 lines, 43 tests, ObjectCreator registry + runtime coordinator). 832 impl + 1,296 test lines, 115 tests. No manual visual tests needed (pure infrastructure). |
 | 2026-06-12 | **Ch5 Phase B C&C Package Formats** (5 files) | migration-develop | migration-review | APPROVED (3 rounds, 0 BLOCKERs): PackageEntry.ts (332 lines, 30 tests), MixFile.ts (350 lines, 22 tests), BigFile.ts (268 lines, 19 tests), MegFile.ts (282 lines, 17 tests), Pak.ts (240 lines, 18 tests). ~1,472 impl + ~1,653 test lines, 108 tests. MixFile is documentation stub per ADR-5.1. |
 | 2026-06-12 | **Ch5 Phase A FileSystem Foundation** (4 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): IPackage.ts (188+337 lines, 21 tests), Folder.ts (198+337 lines, 24 tests), ZipFile.ts (371+518 lines, 37 tests), FileSystem.ts (673+769 lines, 50 tests). IReadOnlyPackage.ts refactored to 19-line re-export shim. ~1,430 impl + ~1,961 test lines, 132 tests. Deps: fflate. Commits `c9f6dd3`, `49aa8be`. |
@@ -665,13 +666,13 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 ## Chapter 5: UI System & Resource Management (IN PROGRESS)
 
 > **Migration Plan**: [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md)
-> **Created**: 2026-06-11 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (11/16 migrated, 69%), Phases A+B+C COMPLETE, Phases D-E pending
+> **Created**: 2026-06-11 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (15/16 migrated, 94%), Phases A+B+C+D COMPLETE, Phase E pending
 > **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 11 | 69% |
-| Pending | 5 | 31% |
+| Completed | 15 | 94% |
+| Pending | 1 | 6% |
 | **Total** | **16** | **100%** |
 | **From OpenRA** | **15** (plus 1 IReadOnlyPackage refactor) | |
 | **New files (no OpenRA equivalent)** | **0** | |
@@ -683,8 +684,8 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 | Phase A | FileSystem Foundation (VFS) | 4 | Low-Medium | COMPLETE (4/4, 132 tests) |
 | Phase B | C&C Package Formats | 5 | Low-HIGH | COMPLETE (5/5, 108 tests) |
 | Phase C | MOD System Core | 2 | Low-Medium | COMPLETE (2/2, 115 tests) |
-| Phase D | UI Widget Core | 4 | Low-Medium | PENDING (blocked by C -- done) |
-| Phase E | World Interaction Bridge | 1 | HIGH | PENDING (blocked by C, D) |
+| Phase D | UI Widget Core | 4 | Low-Medium | COMPLETE (4/4, 174 tests) |
+| Phase E | World Interaction Bridge | 1 | HIGH | PENDING (blocked by C, D -- D now complete, fully unblocked) |
 
 ### Already Available (from Prior Chapters)
 
@@ -767,32 +768,39 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 | C2 | `src/OpenRA.Game/ModData.ts` | ModData, ObjectCreator | Medium | 258 | 326 | 557 | 43 |
 | **Total** | | | | **~464** | **832** | **1,296** | **115** |
 
-### Phase D: UI Widget Core (4 files, PENDING)
+### Phase D: UI Widget Core (4 files, COMPLETE)
 
-| # | Target File | Class/Interface | Complexity | Lines (C#) |
-|:---:|:---|:---|:---:|:---:|
-| D1 | `src/OpenRA.Game/Widgets/Widget.ts` | Widget, ContainerWidget, Ui | Medium | 708 |
-| D2 | `src/OpenRA.Game/Widgets/ChromeMetrics.ts` | ChromeMetrics | Low | 49 |
-| D3 | `src/OpenRA.Game/Widgets/WidgetLoader.ts` | WidgetLoader | Medium | 83 |
-| D4 | `src/OpenRA.Game/Graphics/ChromeProvider.ts` | ChromeProvider, Collection | Low | 305 |
-| **Total** | | | | **~1,145** | **~1,370 impl + ~1,450 test lines, ~104 tests** |
+**Status**: COMPLETE (4/4). Review: APPROVED (3 rounds, 0 BLOCKERs remaining). No manual visual tests needed (core widget tree infrastructure).
+**Date**: 2026-06-12
 
-### Phase E: World Interaction Bridge (1 file, PENDING)
+| # | Target File | Class/Interface | Complexity | Lines (C#) | Impl lines | Test lines | Tests |
+|:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|
+| D1 | `src/OpenRA.Game/Widgets/Widget.ts` | Widget, ContainerWidget, InputWidget, Ui, ChromeLogic | Medium | 708 | 1062 | 1284 | 104 |
+| D2 | `src/OpenRA.Game/Widgets/ChromeMetrics.ts` | ChromeMetrics | Low | 49 | 166 | 247 | 23 |
+| D3 | `src/OpenRA.Game/Widgets/WidgetLoader.ts` | WidgetLoader | Medium | 83 | 470 | 552 | 43 |
+| D4 | `src/OpenRA.Game/Graphics/ChromeProvider.ts` | ChromeProvider, Collection, PanelRegion, PanelSides | Low | 305 | 431 | 250 (shared) | 48 |
+| **Total** | | | | **~1,145** | **2,129** | **2,333** | **174** |
+
+> **Note**: ChromeProvider.ts replaced the previous 4-line placeholder stub in `src/OpenRA.Game/Graphics/`. Review rounds: Round 1 (4 BLOCKER + 4 MAJOR + 3 MINOR), Round 2 (2 MAJOR cascading from Round 1 fixes), Round 3 (APPROVED). Specific widget visual subclasses (ButtonWidget, LabelWidget, etc.) not yet implemented -- deferred to future UI widget subclass chapters.
+
+### Phase E: World Interaction Bridge (1 file, PENDING -- now fully unblocked)
 
 | # | Target File | Class/Interface | Complexity | Lines (C#) |
 |:---:|:---|:---|:---:|:---:|
 | E1 | `src/OpenRA.Mods.Common/Widgets/WorldInteractionControllerWidget.ts` | WorldInteractionControllerWidget | HIGH | 235 |
 | **Total** | | | | **~235** | **~480 impl + ~520 test lines, ~38 tests** |
 
+> **Note**: Phase D (UI Widget Core) is now COMPLETE, fully unblocking Phase E. `WorldInteractionControllerWidget` extends `Widget` from Phase D and needs `ModData`/`World` from Phase C, both of which are complete.
+
 ### Chapter 5 Phase Strategy Summary
 
 | Phase | Files | Complexity | Est. Lines (impl+test) | Est. Tests | Depends On |
 |-------|:---:|:---|:---:|:---:|-----------|
-| A: FileSystem Foundation | 4 | Low-Medium | ~2,150 | ~91 | Nothing |
+| A: FileSystem Foundation | 4 | Low-Medium | 3,391 (completed) | 132 (completed) | Nothing |
 | B: C&C Package Formats | 5 | Low-HIGH | 3,125 (completed) | 108 (completed) | Phase A |
-| C: MOD System Core | 2 | Low-Medium | 2,128 | 115 | Phase A |
-| D: UI Widget Core | 4 | Low-Medium | ~2,820 | ~104 | Phase C |
+| C: MOD System Core | 2 | Low-Medium | 2,128 (completed) | 115 (completed) | Phase A |
+| D: UI Widget Core | 4 | Low-Medium | 4,462 (completed) | 174 (completed) | Phase C |
 | E: World Interaction | 1 | HIGH | ~1,000 | ~38 | Phases C, D |
-| **Total** | **16** | | **~10,464** | **~497** | |
+| **Total** | **16** | | **~14,106** | **~529** | |
 
-**Total estimated**: ~14,464 lines of implementation + test code (8,644 done, ~5,820 remaining). 5-7 developer-weeks (single developer) or 3-4 weeks (2 developers working in parallel).
+**Total completed**: ~13,106 lines of implementation + test code (13,106 done, ~1,000 remaining). Phase E is now fully unblocked. 1 developer-week remaining.

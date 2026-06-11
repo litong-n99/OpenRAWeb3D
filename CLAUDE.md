@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 5 (UI System & Resource Management) -- IN PROGRESS (11/16, 69%)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 11/16 (69%)
+**Phase**: Chapter 5 (UI System & Resource Management) -- IN PROGRESS (15/16, 94%)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 15/16 (94%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -30,12 +30,12 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Pathfinding System (13 files, Phase G) | COMPLETE, 190 tests, HPA* + A* |
 | MiniYAML Pipeline (1 file, Phase H) | COMPLETE, build-time YAML->JSON |
 | CoordinateTransformer (1 file, Phase I) | COMPLETE, WPos<->Vector3 bridge |
-| **UI System & Resource Management (16 files)** | **IN PROGRESS (11/16, 69%), 5 Phases A-E** |
+| **UI System & Resource Management (16 files)** | **IN PROGRESS (15/16, 94%), 5 Phases A-E** |
 | FileSystem Foundation (4 files) | COMPLETE (IPackage, Folder, ZipFile, FileSystem), 132 tests |
 | C&C Package Formats (5 files) | COMPLETE (PackageEntry, MixFile stub, BigFile, MegFile, Pak), 108 tests |
 | MOD System Core (2 files) | COMPLETE (Manifest, ModData), 115 tests, 2 review rounds |
-| UI Widget Core (4 files) | Pending (Widget, ChromeMetrics, WidgetLoader, ChromeProvider) |
-| World Interaction Bridge (1 file) | Pending (WorldInteractionControllerWidget) |
+| UI Widget Core (4 files) | COMPLETE (Widget, ChromeMetrics, WidgetLoader, ChromeProvider), 174 tests, 3 review rounds |
+| World Interaction Bridge (1 file) | Pending (WorldInteractionControllerWidget, now unblocked) |
 | Game logic, networking, audio | Not yet started (Chapters 6-8+)
 
 ## Directory Layout
@@ -69,7 +69,8 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       Palette.ts            ← migrated (477 lines, 381 test lines)
       PaletteReference.ts   ← migrated (91 lines, 89 test lines)
       Util.ts               ← migrated (558 lines, 511 test lines)
-      *.ts                  ← 16 remaining stubs (beyond Chapter 2 scope)
+      ChromeProvider.ts     ← migrated (431 lines, 48 tests) -- Phase D (replaces stub)
+      *.ts                  ← ~15 remaining stubs (beyond Chapter 2 scope)
     WPos.ts               ← migrated (180 lines, 24 tests) -- Phase A 3.1.1
     WVec.ts               ← migrated (230 lines, 35 tests) -- Phase A 3.1.1
     WAngle.ts             ← migrated (270 lines, 54 tests) -- Phase A 3.1.1
@@ -107,7 +108,10 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       Folder.ts               ← migrated (198 lines, 24 tests) -- Chapter 5 Phase A
       ZipFile.ts              ← migrated (371 lines, 37 tests) -- Chapter 5 Phase A
       FileSystem.ts           ← migrated (673 lines, 50 tests) -- Chapter 5 Phase A
-    Widgets/                  ← Chapter 5 Phase D: UI Widget core (pending)
+    Widgets/                  ← Chapter 5 Phase D: UI Widget core (COMPLETE)
+      Widget.ts              ← migrated (1062 lines, 104 tests) -- Phase D
+      ChromeMetrics.ts       ← migrated (166 lines, 23 tests) -- Phase D
+      WidgetLoader.ts        ← migrated (470 lines, 43 tests) -- Phase D
     Traits/                 ← Chapter 3: Trait interfaces and components (COMPLETE)
     Activities/             ← Chapter 3: Activity state machine (COMPLETE)
     GameRules/              ← Chapter 3: ActorInfo, WeaponInfo config (COMPLETE)
@@ -368,7 +372,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md) | Chapter 3 actor system migration plan with TODO checklist (36 total: 17 Phase A primitives + 14 core + 5 support; 61 TODO items) |
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
-| [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, in progress, 69%) |
+| [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 15/16 complete, 94%) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
