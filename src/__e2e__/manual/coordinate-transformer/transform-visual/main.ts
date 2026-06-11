@@ -74,7 +74,7 @@ new HemisphericLight('hemi', new Vector3(0.3, 1, 0.3), scene)
 // Reference Grid (5x5 cells, 1024 units each → 5 Babylon units)
 // ---------------------------------------------------------------------------
 
-const GRID_CELLS = 5
+const GRID_CELLS = 10
 const GRID_SIZE_BABYLON = GRID_CELLS // each cell = 1024 su = 1 Babylon unit
 
 let gridVisible = true
@@ -183,7 +183,7 @@ function buildReferenceGrid(): void {
 
   // Height reference line (vertical at origin corner)
   const heightRef = MeshBuilder.CreateLines('hRef', {
-    points: Array.from({ length: 9 }, (_, i) => new Vector3(GRID_SIZE_BABYLON + 0.5, i * 0.25, 0)),
+    points: Array.from({ length: 33 }, (_, i) => new Vector3(GRID_SIZE_BABYLON + 0.5, i * 0.25, 0)),
   }, scene)
   heightRef.color = new Color3(0.3, 0.7, 0.3)
   heightRef.alpha = 0.4
