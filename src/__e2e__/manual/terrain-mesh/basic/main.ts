@@ -3,9 +3,9 @@
  *
  * Verifies:
  * 1. Flat rectangular terrain renders as a continuous grid without cracks
- * 2. Ramp cells produce visible sloped geometry
- * 3. Isometric grid produces diamond-shaped terrain
- * 4. Camera can inspect from multiple angles
+ * 2. Ramp cells produce visible sloped geometry with quantifiable height
+ * 3. Isometric grid produces diamond-shaped terrain with expected vertex/tri counts
+ * 4. Wireframe mode reveals mesh topology without duplicate edges at boundaries
  */
 
 import {
@@ -150,8 +150,10 @@ function applySolidMaterial(mesh: Mesh): void {
 
 let currentMesh: Mesh | null = null
 let wireframeMode = false
+let currentMode: 'flat' | 'ramp' | 'iso' = 'flat'
 
 function showTerrain(mode: 'flat' | 'ramp' | 'iso'): void {
+  currentMode = mode
   if (currentMesh) {
     currentMesh.dispose()
     currentMesh = null
@@ -177,7 +179,30 @@ function showTerrain(mode: 'flat' | 'ramp' | 'iso'): void {
   } else {
     applySolidMaterial(currentMesh)
   }
+
+  // Update button active states
+  document.getElementById('btn-flat')!.classList.toggle('active', mode === 'flat')
+  document.getElementById('btn-ramp')!.classList.toggle('active', mode === 'ramp')
+  document.getElementById('btn-iso')!.classList.toggle('active', mode === 'iso')
 }
+
+function toggleWireframe(): void {
+  wireframeMode = !wireframeMode
+  if (currentMesh) {
+    if (wireframeMode) applyWireframeMaterial(currentMesh)
+    else applySolidMaterial(currentMesh)
+  }
+  document.getElementById('btn-wireframe')!.classList.toggle('active', wireframeMode)
+}
+
+// ---------------------------------------------------------------------------
+// UI Controls — Buttons
+// ---------------------------------------------------------------------------
+
+document.getElementById('btn-flat')!.addEventListener('click', () => showTerrain('flat'))
+document.getElementById('btn-ramp')!.addEventListener('click', () => showTerrain('ramp'))
+document.getElementById('btn-iso')!.addEventListener('click', () => showTerrain('iso'))
+document.getElementById('btn-wireframe')!.addEventListener('click', toggleWireframe)
 
 // ---------------------------------------------------------------------------
 // Keyboard Controls
@@ -196,30 +221,40 @@ window.addEventListener('keydown', (e) => {
       break
     case 'w':
     case 'W':
-      wireframeMode = !wireframeMode
-      if (currentMesh) {
-        if (wireframeMode) applyWireframeMaterial(currentMesh)
-        else applySolidMaterial(currentMesh)
-      }
+      toggleWireframe()
       break
   }
 })
 
 // ---------------------------------------------------------------------------
-// Stats Panel Update
+// Info Bar Update
 // ---------------------------------------------------------------------------
 
-const statsEl = document.getElementById('stats')!
+const infoUa = document.getElementById('info-ua')!
+const infoViewport = document.getElementById('info-viewport')!
+const infoEngine = document.getElementById('info-engine')!
+const infoMode = document.getElementById('info-mode')!
+const infoVerts = document.getElementById('info-verts')!
+const infoTris = document.getElementById('info-tris')!
+const infoFps = document.getElementById('info-fps')!
+const infoTime = document.getElementById('info-time')!
 
-function updateStats(): void {
-  if (!currentMesh) {
-    statsEl.textContent = 'No mesh'
-    return
+function updateInfoBar(): void {
+  infoUa.textContent = navigator.userAgent.split(' ').pop() ?? '-'
+  infoViewport.textContent = `${window.innerWidth}x${window.innerHeight}`
+  infoEngine.textContent = engine.webGLVersion === 2 ? 'WebGL 2.0' : 'WebGL 1.0'
+  infoMode.textContent = wireframeMode ? 'wireframe' : `${currentMode}/solid`
+
+  if (currentMesh) {
+    infoVerts.textContent = String(currentMesh.getTotalVertices())
+    infoTris.textContent = String((currentMesh.getIndices()?.length ?? 0) / 3)
+  } else {
+    infoVerts.textContent = '-'
+    infoTris.textContent = '-'
   }
-  const verts = currentMesh.getTotalVertices()
-  const tris = (currentMesh.getIndices()?.length ?? 0) / 3
-  const mode = wireframeMode ? 'wireframe' : 'solid'
-  statsEl.textContent = `Mode: ${mode} | Vertices: ${verts} | Triangles: ${tris} | FPS: ${Math.round(engine.getFps())}`
+
+  infoFps.textContent = String(Math.round(engine.getFps()))
+  infoTime.textContent = new Date().toISOString()
 }
 
 // ---------------------------------------------------------------------------
@@ -230,7 +265,7 @@ showTerrain('flat')
 
 engine.runRenderLoop(() => {
   scene.render()
-  updateStats()
+  updateInfoBar()
 })
 
 window.addEventListener('resize', () => {
@@ -245,12 +280,16 @@ window.addEventListener('resize', () => {
   getCurrentMesh: () => currentMesh,
   getVertexCount: () => currentMesh?.getTotalVertices() ?? 0,
   getTriangleCount: () => (currentMesh?.getIndices()?.length ?? 0) / 3,
-  showTerrain,
-  toggleWireframe: () => {
-    wireframeMode = !wireframeMode
-    if (currentMesh) {
-      if (wireframeMode) applyWireframeMaterial(currentMesh)
-      else applySolidMaterial(currentMesh)
+  getMaxVertexY: () => {
+    if (!currentMesh) return 0
+    const positions = currentMesh.getVerticesData('position')
+    if (!positions) return 0
+    let maxY = -Infinity
+    for (let i = 1; i < positions.length; i += 3) {
+      maxY = Math.max(maxY, positions[i])
     }
+    return maxY
   },
+  showTerrain,
+  toggleWireframe,
 }

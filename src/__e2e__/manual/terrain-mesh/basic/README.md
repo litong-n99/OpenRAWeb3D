@@ -1,27 +1,96 @@
 # Terrain Mesh — Basic Visual Test
 
-## Expected Results
+## 期望结果 (Expected Results)
 
-1. **Flat terrain (key `1`)**: A continuous 8x8 rectangular grid with no visible cracks between cells. The grid should appear as a flat plane at Y=0.
+1. **Flat 平面地形 (key `1`)**: 8x8 连续矩形网格，所有顶点 Y=0，形成完全平坦的平面。
+   - 可量化指标: **81 顶点** (9x9 网格点), **128 三角形** (8x8 cells x 2 tri/cell)
+   - 颜色: 淡绿色 (#80A060) 实体渲染
 
-2. **Ramp terrain (key `2`)**: A diagonal slope rising from SW to NE. The terrain should show visible height variation with smooth transitions between cells. No cracks should be visible at cell boundaries.
+2. **Ramp 斜坡地形 (key `2`)**: 对角线坡度从 SW 向 NE 上升，高度从 0 递增至 3 (maxTerrainHeight=4)。
+   - 可量化指标: **max vertex Y >= 0.5** (height level 3 在 grid 上产生可见高度)
+   - 可量化指标: 斜坡过渡区域无 Z-fighting，相邻 cell 高度差平滑连续
 
-3. **Isometric terrain (key `3`)**: A diamond-shaped 8x8 grid. The cells should form a staggered pattern characteristic of isometric projection.
+3. **Iso 等轴地形 (key `3`)**: 菱形(diamond)布局的 8x8 网格，呈现等轴投影特征。
+   - 可量化指标: **40-100 顶点** (菱形裁剪 + 共享边), **72-144 三角形**
+   - 可量化指标: 整体外轮廓宽高比约 **2:1** (水平:垂直)
 
-4. **Wireframe mode (key `W`)**: Toggles between solid shading and wireframe. In wireframe mode, the triangle mesh structure should be clearly visible, with shared edges between adjacent cells (no duplicate lines at boundaries).
+4. **无裂缝 (No cracks)**: 所有地形模式下相邻 cell 边界处顶点完全共享。
+   - 可量化指标: Wireframe 模式下放大至 2x zoom，cell 边界处仅显示**单条线** (非双线/重叠线)
 
-## Verification Steps
+5. **线框模式 (key `W`)**: 实体渲染与线框渲染可即时切换。
+   - 可量化指标: 切换延迟 < 100ms，线框颜色为亮绿色 (#66CC66)
 
-1. Load the page and verify a flat green grid appears.
-2. Press `2` — verify the terrain shows a diagonal slope.
-3. Press `3` — verify the terrain switches to diamond-shaped isometric layout.
-4. Press `W` — verify wireframe mode shows clean triangle edges without duplicate lines.
-5. Rotate camera (left drag) to inspect from below — verify no holes or cracks.
-6. Zoom in (scroll) to inspect cell boundaries — verify vertices are perfectly shared.
+---
 
-## Quantifiable Criteria
+## 检验流程
 
-- Flat 8x8 grid: exactly 81 vertices (9x9), 128 triangles (8x8x2)
-- Isometric 8x8 grid: 40-100 vertices (diamond shape, shared edges), 72-144 triangles
-- Ramp terrain: max vertex Y > 0 (visible height variation)
-- No cracks: wireframe shows single lines at cell boundaries (no double lines)
+### 1. 准备工作
+
+- 打开测试页面: `http://localhost:5173/test/terrain-mesh/basic/`
+- 确认环境信息栏显示 **"引擎: WebGL 2.0"**
+- 设置屏幕分辨率为 1920x1080 (1x 缩放)
+- 确认页面加载后默认显示 Flat 平面地形 (按钮 "Flat 平面" 高亮)
+
+### 2. 步骤一: Flat 平面地形验证
+
+- 操作: 点击 "Flat 平面" 按钮 (或按 `1`)
+- 观察点:
+  - 场景中央显示淡绿色平面网格
+  - 信息栏显示 "顶点: 81", "三角形: 128"
+  - 旋转摄像机从下方观察，确认无孔洞
+- 预期: ✅ 81 顶点, 128 三角形, Y=0 平面, 无裂缝
+
+### 3. 步骤二: Ramp 斜坡地形验证
+
+- 操作: 点击 "Ramp 斜坡" 按钮 (或按 `2`)
+- 观察点:
+  - 地形显示从西南(SW)向东北(NE)的对角线坡度
+  - 信息栏顶点数应 >= 81 (斜坡增加额外顶点)
+  - 最高处应有明显抬升
+- 预期: ✅ max vertex Y >= 0.5, 坡度平滑连续, 无裂缝
+
+### 4. 步骤三: Iso 等轴地形验证
+
+- 操作: 点击 "Iso 等轴" 按钮 (或按 `3`)
+- 观察点:
+  - 地形整体呈菱形(diamond)轮廓
+  - 信息栏顶点数在 40-100 范围内
+  - 三角形数在 72-144 范围内
+  - 水平宽度约为垂直高度的 2 倍
+- 预期: ✅ 菱形布局, 40-100 顶点, 72-144 三角形, 宽高比约 2:1
+
+### 5. 步骤四: Wireframe 线框模式验证
+
+- 操作: 点击 "Wireframe 切换" 按钮 (或按 `W`)
+- 观察点:
+  - 实体渲染即时切换为亮绿色线框
+  - 三角形网格结构清晰可见
+  - 相邻 cell 共享边处仅有一条线
+- 操作: 滚轮放大至 2x zoom，仔细观察 cell 边界
+- 预期: ✅ 切换延迟 < 100ms, 边界处单条线 (非双线)
+
+### 6. 步骤五: 无裂缝验证 (所有模式)
+
+- 操作: 依次按 `1`, `W`, `2`, `W`, `3`, `W` 在所有地形模式下观察线框
+- 观察点:
+  - 每个 cell 的四个角与相邻 cell 完全重合
+  - wireframe 模式下无重叠/双线
+  - 从下方仰视时无孔洞或穿透
+- 预期: ✅ 所有模式下边界顶点完全共享，wireframe 显示单一边线
+
+### 7. 边界/异常测试
+
+- **边界 A - 快速模式切换**: 快速连续按 `1` `2` `3` `1` `2` `3`
+  - 预期: ✅ 无崩溃、无内存泄漏、无渲染残留
+
+- **边界 B - 极端视角**: 将摄像机旋转至正上方 (俯视) 和正下方 (仰视)
+  - 预期: ✅ 地形始终可见，无背面剔除导致的消失
+
+- **边界 C - 最大/最小缩放**: 滚轮缩放至 camera.lowerRadiusLimit (2) 和 upperRadiusLimit (50)
+  - 预期: ✅ 近距离可见顶点级细节，远距离可见整体轮廓
+
+### 8. 结果判定
+
+- [ ] 所有期望结果通过 → **ACCEPTED**
+- [ ] 部分未通过 → 记录具体差异，提交 issue (附环境信息栏截图)
+- [ ] 测试环境异常 → 记录 UA/视口/引擎信息，检查 WebGL 支持

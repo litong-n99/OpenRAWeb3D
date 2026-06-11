@@ -1,62 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terrain Mesh — Basic Visual Test</title>
+  <title>地形系统 - 地形网格基础渲染 | 人工验收</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
-    #renderCanvas { width: 100vw; height: 100vh; display: block; }
-    #info {
-      position: absolute; top: 10px; left: 10px;
-      background: rgba(0,0,0,0.7); color: #fff;
-      padding: 12px 16px; border-radius: 4px;
-      font-size: 14px; line-height: 1.6;
-      pointer-events: none; user-select: none;
-      max-width: 320px;
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls { padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #0f3460; }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
     }
-    #info h3 { margin: 0 0 8px; font-size: 16px; }
-    #info code { background: rgba(255,255,255,0.15); padding: 1px 4px; border-radius: 2px; }
-    #stats {
-      position: absolute; bottom: 10px; left: 10px;
-      background: rgba(0,0,0,0.7); color: #fff;
-      padding: 8px 12px; border-radius: 4px;
-      font-size: 12px; font-family: monospace;
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 200px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
       pointer-events: none; user-select: none;
+      max-width: 340px;
     }
-    #expected {
-      position: absolute; top: 10px; right: 10px;
-      background: rgba(0,0,0,0.7); color: #fff;
-      padding: 12px 16px; border-radius: 4px;
-      font-size: 13px; line-height: 1.6;
-      pointer-events: none; user-select: none;
-      max-width: 280px;
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
     }
-    #expected h4 { margin: 0 0 6px; color: #8f8; }
-    #expected ul { margin: 4px 0; padding-left: 18px; }
-    #expected li { margin: 2px 0; }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .label { color: #888; }
+    #info-bar .value { color: #aaa; }
   </style>
 </head>
 <body>
-  <canvas id="renderCanvas"></canvas>
-  <div id="info">
-    <h3>Terrain Mesh — Basic Test</h3>
-    <div>Left drag: rotate camera</div>
-    <div>Right drag: pan</div>
-    <div>Scroll: zoom</div>
-    <div>Press <code>1</code> flat | <code>2</code> ramp | <code>3</code> isometric</div>
-    <div>Press <code>W</code> toggle wireframe</div>
+  <div id="header">
+    <h1>地形系统 - 地形网格基础渲染</h1>
+    <div class="subtitle">ID: terrain-mesh/basic | 期望结果见 README.md</div>
   </div>
-  <div id="stats">Loading...</div>
-  <div id="expected">
-    <h4>Expected Results</h4>
-    <ul>
-      <li>Flat: 81 vertices, 128 triangles</li>
-      <li>Ramp: visible height variation</li>
-      <li>Iso: diamond-shaped grid</li>
-      <li>No cracks at cell boundaries</li>
-      <li>Wireframe: single lines at edges</li>
-    </ul>
+  <div id="controls">
+    <label>地形模式:</label>
+    <button id="btn-flat" class="active">Flat 平面</button>
+    <button id="btn-ramp">Ramp 斜坡</button>
+    <button id="btn-iso">Iso 等轴</button>
+    <label style="margin-left:12px">显示:</label>
+    <button id="btn-wireframe">Wireframe 切换</button>
+    <span class="hint">快捷键: 1/2/3 切换地形, W 切换线框 | 左键旋转 右键平移 滚轮缩放</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>Flat 平面:</b> 8x8 连续网格, Y=0 平面, <span class="metric">81 顶点, 128 三角形</span></li>
+        <li><b>Ramp 斜坡:</b> 对角线坡度 SW→NE, <span class="metric">max vertex Y >= 0.5</span> (height level 3), 过渡平滑无裂缝</li>
+        <li><b>Iso 等轴:</b> 菱形网格布局, <span class="metric">40-100 顶点, 72-144 三角形</span>, 宽高比约 2:1</li>
+        <li><b>无裂缝:</b> Wireframe 模式下相邻 cell 边界仅显示<span class="metric">单条线</span> (非双线)</li>
+        <li><b>线框模式:</b> 按 W 切换, 三角形结构清晰可见, 共享边无重复线条</li>
+      </ul>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span><span class="label">UA:</span> <span class="value" id="info-ua">-</span></span>
+    <span><span class="label">视口:</span> <span class="value" id="info-viewport">-</span></span>
+    <span><span class="label">引擎:</span> <span class="value" id="info-engine">-</span></span>
+    <span><span class="label">模式:</span> <span class="value" id="info-mode">solid</span></span>
+    <span><span class="label">顶点:</span> <span class="value" id="info-verts">-</span></span>
+    <span><span class="label">三角形:</span> <span class="value" id="info-tris">-</span></span>
+    <span><span class="label">FPS:</span> <span class="value" id="info-fps">-</span></span>
+    <span><span class="label">时间:</span> <span class="value" id="info-time">-</span></span>
   </div>
   <script type="module" src="./main.ts"></script>
 </body>
