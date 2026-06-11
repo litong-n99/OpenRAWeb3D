@@ -177,21 +177,55 @@ When invoked to review a migrated file:
 
 ### Acceptance Test Review (Acceptance Tester's e2e test pages)
 
-When invoked to review acceptance test pages:
+When invoked to review acceptance test pages, you MUST review ALL THREE files that the Acceptance Tester generates per test page:
+
+| # | File | What to Review |
+|---|------|----------------|
+| 1 | `README.md` | 期望结果 + 检验流程 (see detailed checklist below) |
+| 2 | `main.ts` | Babylon.js scene setup, rendering correctness, performance |
+| 3 | `index.html` | Layout structure, accessibility, info bar completeness |
+
+#### Review Process
 
 1. **Read the Acceptance Test Submission Report** — understand what visual features are being verified
 2. **Read the migration docs** — verify test coverage aligns with planned visual verification points
-3. **Read the README.md** — check quantifiable expectations (at least 3, with specific metrics)
+3. **Read the README.md** — this is a PRIMARY review target (see §README.md Review Checklist below)
 4. **Read the main.ts** — review Babylon.js scene setup, rendering correctness, performance
 5. **Read the index.html** — verify layout includes: test title, expected results panel, sandbox, environment info bar
-6. **Produce the structured review** — covering the 5 dimensions adapted for e2e:
-   - **DOCS COMPLIANCE**: Test page matches module's expected behavior from migration docs
+6. **Produce the structured review** — covering the 5 dimensions adapted for e2e (applied to ALL THREE files):
+   - **DOCS COMPLIANCE**: Test page matches module's expected behavior from migration docs; README expectation items match actual code behavior
    - **FEATURE COMPLETENESS**: All visual/GPU-dependent features from the module are covered
    - **CODE EFFICIENCY**: No per-frame allocation, memory leaks, unnecessary GPU uploads
-   - **BUG DETECTION**: Visual correctness, color accuracy, canvas sizing, coordinate system errors (e.g., CreatePlane rotation direction, disableLighting + emissiveColor correctness)
-   - **CODE FORMAT & COMMENTS**: File header with OpenRA reference, JSDoc, quantifiable expectations
+   - **BUG DETECTION**: Visual correctness, color accuracy, canvas sizing, coordinate system errors (e.g., CreatePlane rotation direction, disableLighting + emissiveColor correctness); **README values (path length, node count, FPS thresholds, coordinates) match actual runtime output**
+   - **CODE FORMAT & COMMENTS**: File header with OpenRA reference, JSDoc, quantifiable expectations; README format follows acceptance-test-assistant template
 7. **Prioritize action items** — blockers first
 8. **Deliver verdict to Manager and Acceptance Tester**
+
+#### §README.md Review Checklist (MANDATORY)
+
+When reviewing README.md, you MUST verify ALL of the following:
+
+**A. 可量化期望结果 (Quantifiable Expectations)**
+- [ ] 至少 3 条可量化期望结果，每条包含具体度量值（颜色值、像素数、毫秒数、帧率、角度、百分比等）
+- [ ] 每条期望结果与 `main.ts` 中的实际渲染行为一致（交叉验证 README 声称值与代码中的实际参数）
+- [ ] 坐标系约定与项目文档一致（WAngle 方向、WPos↔Vector3 映射等）
+- [ ] 性能阈值合理且与场景复杂度匹配（如简单场景 FPS 55-60，复杂场景可适当降低）
+
+**B. 检验流程 (Verification Steps)**
+- [ ] 每步操作具体可执行（"点击 X 按钮"而非"测试 X 功能"）
+- [ ] 每步预期结果与期望结果章节一一对应（用 ✅ 标记关联）
+- [ ] 边界/异常测试覆盖至少 3 种场景（快速切换、极端值、资源耗尽等）
+- [ ] 结果判定包含明确的 ACCEPTED / 需修复 / 环境异常 三种路径
+
+**C. 运行时一致性 (Runtime Consistency)**
+- [ ] ⚠️ **CRITICAL**: 实际运行测试页面，对比 README 中的数值声明与页面实际显示值是否一致
+- [ ] 路径长度、节点数、FPS、缓存命中率等动态统计值需在多种操作场景下验证
+- [ ] 颜色值（hex）、坐标值、网格尺寸等静态参数与代码中的常量定义一致
+- [ ] 若 README 声称的数值与页面实际输出不符 → **BLOCKER**（必须修正 README 或代码使之一致）
+
+**D. 审核状态标记**
+- [ ] README.md 顶部/底部应包含审核状态行（`**审核状态**: ✅ 全部审核通过` 或 `⏳ 待审核`）
+- [ ] 若发现需修复项，审核状态应更新为 `⚠️ NEEDS FIXES` 并列出待修复项
 
 The same verdict rules apply (APPROVED / NEEDS FIXES / INCOMPLETE), the same 5-round limit applies, and the same re-review scope (changed items only) applies.
 

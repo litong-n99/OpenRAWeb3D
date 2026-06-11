@@ -17,6 +17,7 @@
     "vitest": "^4.1.8"
   },
   "dependencies": {
-    "@babylonjs/core": "^9.10.1"
+    "@babylonjs/core": "^9.10.1",
+    "fflate": "^0.8.3"
   }
 }
