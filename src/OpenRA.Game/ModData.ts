@@ -127,6 +127,9 @@ export class ObjectCreator {
 
   /**
    * 获取所有已注册的类名（只读）。
+   *
+   * NOTE: Allocates a new array per call. Acceptable — this is a
+   * startup-only API, not called in render or update loops.
    */
   get registeredNames(): readonly string[] {
     return [...this._registry.keys()]
@@ -242,6 +245,9 @@ export class ModData {
     // 当 WidgetLoader 就绪后可创建具体的 ILoadScreen 实例。
     // TODO-5.D.1: 实例化 LoadScreen 实现
     if (this.manifest.loadScreen && this.objectCreator) {
+      // NOTE: this.objectCreator always truthy here — it is created in the
+      // constructor and never nulled before init(). The guard is defensive
+      // for potential future refactoring.
       // 存根：当具体的 LoadScreen 类注册后，取消注释：
       // const screenType = this.manifest.loadScreen['type'] as string | undefined
       // if (screenType) {
@@ -284,6 +290,9 @@ export class ModData {
    * @param _type — 类型标识（类构造函数）
    * @returns 模块实例，如果无法创建则返回 undefined
    */
+  // NOTE: OpenRA's ModData.GetOrNull<T>() and GetSettings<T>() are deferred.
+  // They depend on modules TypeDictionary and SettingsModule, which are not
+  // yet migrated.  See OpenRA.Game/ModData.cs for reference.
   getOrCreate<T>(_type: unknown): T | undefined {
     // STUB: 完整实现需要:
     // 1. 检查 modules 字典中的已有实例

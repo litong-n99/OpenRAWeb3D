@@ -278,6 +278,97 @@ describe('Manifest', () => {
   })
 
   // -----------------------------------------------------------------------
+  // Metadata non-object edge cases (Fix 1 & 3)
+  // -----------------------------------------------------------------------
+
+  describe('Metadata — non-object produces defaults', () => {
+    it('handles Metadata as string without crash', () => {
+      const m = new Manifest('mod', { Metadata: 'not-an-object' })
+      expect(m.metadata.title).toBe('mod') // defaults to id
+      expect(m.metadata.version).toBe('1.0')
+      expect(m.metadata.author).toBeUndefined()
+    })
+
+    it('handles Metadata as number without crash', () => {
+      const m = new Manifest('mod', { Metadata: 123 })
+      expect(m.metadata.title).toBe('mod')
+      expect(m.metadata.version).toBe('1.0')
+    })
+
+    it('handles Metadata as array without crash', () => {
+      const m = new Manifest('mod', { Metadata: [1, 2, 3] })
+      expect(m.metadata.title).toBe('mod')
+      expect(m.metadata.version).toBe('1.0')
+    })
+
+    it('handles Metadata as null without crash', () => {
+      const m = new Manifest('mod', { Metadata: null })
+      expect(m.metadata.title).toBe('mod')
+      expect(m.metadata.version).toBe('1.0')
+    })
+
+    it('Hidden as string "false" is parsed as false', () => {
+      const m = new Manifest('mod', {
+        Metadata: { Title: 'T', Version: '1', Hidden: 'false' },
+      })
+      expect(m.metadata.hidden).toBe(false)
+    })
+
+    it('Hidden as string "true" is parsed as true', () => {
+      const m = new Manifest('mod', {
+        Metadata: { Title: 'T', Version: '1', Hidden: 'true' },
+      })
+      expect(m.metadata.hidden).toBe(true)
+    })
+
+    it('Hidden as non-boolean non-string converts to false', () => {
+      const m = new Manifest('mod', {
+        Metadata: { Title: 'T', Version: '1', Hidden: 1 },
+      })
+      expect(m.metadata.hidden).toBe(false)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // MapFolders edge cases (Fix 4)
+  // -----------------------------------------------------------------------
+
+  describe('MapFolders parsing', () => {
+    it('skips null values gracefully', () => {
+      const m = new Manifest('mod', {
+        MapFolders: { valid: 'path/ok', bad: null },
+      })
+      expect(m.mapFolders.size).toBe(1)
+      expect(m.mapFolders.get('valid')).toBe('path/ok')
+      expect(m.mapFolders.has('bad')).toBe(false)
+    })
+
+    it('skips object values gracefully', () => {
+      const m = new Manifest('mod', {
+        MapFolders: { valid: 'path/ok', bad: { nested: 'value' } },
+      })
+      expect(m.mapFolders.size).toBe(1)
+      expect(m.mapFolders.get('valid')).toBe('path/ok')
+      expect(m.mapFolders.has('bad')).toBe(false)
+    })
+
+    it('skips array values gracefully', () => {
+      const m = new Manifest('mod', {
+        MapFolders: { valid: 'path/ok', bad: ['item1', 'item2'] },
+      })
+      expect(m.mapFolders.size).toBe(1)
+      expect(m.mapFolders.has('bad')).toBe(false)
+    })
+
+    it('accepts numeric values and coerces to string', () => {
+      const m = new Manifest('mod', {
+        MapFolders: { depth: 3 },
+      })
+      expect(m.mapFolders.get('depth')).toBe('3')
+    })
+  })
+
+  // -----------------------------------------------------------------------
   // SupportsMapsFrom edge cases
   // -----------------------------------------------------------------------
 
@@ -321,6 +412,18 @@ describe('Manifest', () => {
       expect(new Manifest('mod', { LoadScreen: 'string' }).loadScreen).toBeNull()
       expect(new Manifest('mod', { LoadScreen: 123 }).loadScreen).toBeNull()
       expect(new Manifest('mod', {}).loadScreen).toBeNull()
+    })
+
+    it('defaults null for array', () => {
+      const m = new Manifest('mod', {
+        LoadScreen: [{ type: 'One' }, { type: 'Two' }],
+      })
+      expect(m.loadScreen).toBeNull()
+    })
+
+    it('defaults null for null', () => {
+      const m = new Manifest('mod', { LoadScreen: null })
+      expect(m.loadScreen).toBeNull()
     })
   })
 
@@ -374,6 +477,22 @@ describe('Manifest', () => {
       })
       expect(m.rendererConstants.fontSheetSize).toBe(512) // falls back to default
     })
+
+    it('preserves zero values as-is', () => {
+      const m = new Manifest('mod', {
+        RendererConstants: { FontSheetSize: 0, VertexBatchSize: 0 },
+      })
+      expect(m.rendererConstants.fontSheetSize).toBe(0)
+      expect(m.rendererConstants.vertexBatchSize).toBe(0)
+    })
+
+    it('preserves negative values as-is', () => {
+      const m = new Manifest('mod', {
+        RendererConstants: { FontSheetSize: -1, VertexBatchSize: -100 },
+      })
+      expect(m.rendererConstants.fontSheetSize).toBe(-1)
+      expect(m.rendererConstants.vertexBatchSize).toBe(-100)
+    })
   })
 
   // -----------------------------------------------------------------------
@@ -417,6 +536,18 @@ describe('Manifest', () => {
 
     it('ignores non-object FileSystem', () => {
       const m = new Manifest('mod', { FileSystem: 'string' })
+      expect(m.mounts).toEqual([])
+    })
+
+    it('treats FileSystem array as non-object → mounts = []', () => {
+      const m = new Manifest('mod', {
+        FileSystem: ['package1.mix', 'package2.mix'],
+      })
+      expect(m.mounts).toEqual([])
+    })
+
+    it('treats FileSystem null as non-object → mounts = []', () => {
+      const m = new Manifest('mod', { FileSystem: null })
       expect(m.mounts).toEqual([])
     })
   })

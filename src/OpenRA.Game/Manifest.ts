@@ -251,7 +251,13 @@ export class Manifest {
     this.id = id
 
     // ---- Metadata ----
-    const meta = (json['Metadata'] as Record<string, unknown>) ?? {}
+    const metaRaw = json['Metadata']
+    const meta: Record<string, unknown> =
+      metaRaw !== null &&
+      typeof metaRaw === 'object' &&
+      !Array.isArray(metaRaw)
+        ? (metaRaw as Record<string, unknown>)
+        : {}
     this.metadata = {
       title: String(meta['Title'] ?? id),
       version: String(meta['Version'] ?? '1.0'),
@@ -266,7 +272,14 @@ export class Manifest {
         ? { windowTitle: String(meta['WindowTitle']) }
         : {}),
       ...(meta['Hidden'] !== undefined
-        ? { hidden: Boolean(meta['Hidden']) }
+        ? {
+            hidden:
+              typeof meta['Hidden'] === 'boolean'
+                ? meta['Hidden']
+                : typeof meta['Hidden'] === 'string'
+                  ? (meta['Hidden'] as string).toLowerCase() === 'true'
+                  : false,
+          }
         : {}),
     }
 
@@ -304,7 +317,9 @@ export class Manifest {
     const mapFoldersRaw = (json['MapFolders'] as Record<string, unknown>) ?? {}
     this.mapFolders = new Map<string, string>()
     for (const [key, value] of Object.entries(mapFoldersRaw)) {
-      this.mapFolders.set(key, String(value))
+      if (typeof value === 'string' || typeof value === 'number') {
+        this.mapFolders.set(key, String(value))
+      }
     }
 
     // ---- MapCompatibility / SupportsMapsFrom ----
@@ -323,7 +338,9 @@ export class Manifest {
     // ---- LoadScreen ----
     const loadScreenRaw = json['LoadScreen']
     this.loadScreen =
-      loadScreenRaw && typeof loadScreenRaw === 'object'
+      loadScreenRaw !== null &&
+      typeof loadScreenRaw === 'object' &&
+      !Array.isArray(loadScreenRaw)
         ? (loadScreenRaw as Record<string, unknown>)
         : null
 
