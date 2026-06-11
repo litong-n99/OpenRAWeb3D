@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>世界交互 - 指针事件桥接 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #renderCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; }
+    #header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      padding: 12px 24px; background: rgba(22, 33, 62, 0.95); border-bottom: 1px solid #0f3460;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    #header h1 { margin: 0; font-size: 20px; white-space: nowrap; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; }
+    #modifier-indicators { display: flex; gap: 8px; }
+    .mod-key {
+      padding: 3px 10px; border-radius: 3px; font-size: 11px; background: #1a1a2e;
+      border: 1px solid #0f3460; color: #666; min-width: 30px; text-align: center;
+      transition: all 0.1s;
+    }
+    .mod-key.active { background: #4a9; color: #fff; border-color: #6cb; }
+
+    #controls {
+      position: fixed; bottom: 60px; left: 16px; z-index: 10;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    #controls button {
+      padding: 6px 14px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .hint-item { color: #888; font-size: 11px; margin-top: 4px; line-height: 1.6; }
+
+    #status-panel {
+      position: fixed; left: 16px; top: 80px; z-index: 10;
+      background: rgba(22, 33, 62, 0.92); border: 1px solid #0f3460; border-radius: 6px;
+      padding: 14px 18px; font-size: 13px; line-height: 1.8; max-width: 300px;
+    }
+    #status-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #status-panel .label { color: #888; }
+    #status-panel .value { color: #ddd; font-family: 'Consolas', monospace; font-size: 12px; }
+    #status-panel .value.highlight { color: #f9a825; }
+
+    #expected-panel {
+      position: fixed; top: 80px; right: 16px; z-index: 10;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7; max-width: 340px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+
+    #info-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+      padding: 8px 24px; background: rgba(15, 15, 26, 0.95); font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .lb { color: #888; }
+    #info-bar .vl { color: #aaa; }
+    #drag-box {
+      position: fixed; z-index: 5; pointer-events: none;
+      border: 2px dashed #4a9; background: rgba(68, 170, 153, 0.1);
+      display: none;
+    }
+    #entity-legend {
+      position: fixed; right: 16px; bottom: 80px; z-index: 10;
+      background: rgba(22, 33, 62, 0.92); border: 1px solid #0f3460; border-radius: 6px;
+      padding: 10px 14px; font-size: 12px; line-height: 1.7;
+    }
+    #entity-legend h4 { margin: 0 0 6px; color: #aad; font-size: 13px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #444; }
+  </style>
+</head>
+<body>
+  <canvas id="renderCanvas"></canvas>
+
+  <div id="header">
+    <div>
+      <h1>世界交互 - 指针事件桥接 (WorldInteractionControllerWidget)</h1>
+      <div class="subtitle">ID: world-interaction/bridge | 期望结果见 README.md</div>
+    </div>
+    <div id="modifier-indicators">
+      <span class="mod-key" id="mod-shift">Shift</span>
+      <span class="mod-key" id="mod-ctrl">Ctrl</span>
+      <span class="mod-key" id="mod-alt">Alt</span>
+    </div>
+  </div>
+
+  <div id="expected-panel">
+    <h4>期望结果 (Expected Results)</h4>
+    <ul>
+      <li><b>右键菜单抑制:</b> 在画布上右键单击，浏览器上下文菜单<span class="metric">不应出现</span></li>
+      <li><b>单击选择:</b> 点击彩色实体，状态面板显示<span class="metric">被点击的实体 ID</span>，在 100ms 内更新</li>
+      <li><b>拖拽框选:</b> 拖拽穿过多个实体，状态面板显示<span class="metric">框内所有实体 ID</span></li>
+      <li><b>双击同类选择:</b> 双击 Infantry 实体，所有 Infantry 实体<span class="metric">同时被选中</span> (300ms 内)</li>
+      <li><b>右键命令:</b> 右键实体 → <span class="metric">"Attack"</span> 命令，右键地面 → <span class="metric">"Move"</span> 命令</li>
+      <li><b>悬停轮询:</b> 鼠标滑过实体，状态面板轮询区<span class="metric">实时显示当前悬停实体</span></li>
+      <li><b>修饰键组合:</b> Shift+单击添加选择，Ctrl+单击切换选择</li>
+    </ul>
+  </div>
+
+  <div id="status-panel">
+    <h4>交互状态 (Interaction Status)</h4>
+    <div><span class="label">状态机:</span> <span class="value" id="st-state">IDLE</span></div>
+    <div><span class="label">拖拽框有效:</span> <span class="value" id="st-dragbox">-</span></div>
+    <div><span class="label">已选择:</span> <span class="value highlight" id="st-selection">(无)</span></div>
+    <div><span class="label">悬停中:</span> <span class="value" id="st-rollover">(无)</span></div>
+    <div style="margin-top:8px"><span class="label">最近动作:</span> <span class="value highlight" id="st-last-action">等待交互...</span></div>
+    <div><span class="label">最近命令:</span> <span class="value" id="st-last-order">-</span></div>
+  </div>
+
+  <div id="entity-legend">
+    <h4>场景实体图例 (Scene Legend)</h4>
+    <div class="legend-item"><span class="legend-swatch" style="background:#e53935"></span> Infantry (player) — 小红盒</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#1e88e5"></span> Vehicle (player) — 中蓝盒</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#2ea133"></span> Structure (player) — 大绿盒</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#b71c1c"></span> Infantry (enemy) — 小红盒</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#0d47a1"></span> Vehicle (enemy) — 中蓝盒</div>
+  </div>
+
+  <div id="drag-box"></div>
+
+  <div id="controls">
+    <button id="btn-reset-cam">重置相机 (R)</button>
+    <div class="hint-item">箭头键: 旋转 | 滚轮: 缩放</div>
+    <div class="hint-item">Shift+点击: 添加选择 | Ctrl+点击: 切换选择</div>
+  </div>
+
+  <div id="info-bar">
+    <span><span class="lb">UA:</span> <span class="vl" id="info-ua">-</span></span>
+    <span><span class="lb">视口:</span> <span class="vl" id="info-viewport">-</span></span>
+    <span><span class="lb">引擎:</span> <span class="vl" id="info-engine">-</span></span>
+    <span><span class="lb">FPS:</span> <span class="vl" id="info-fps">-</span></span>
+    <span><span class="lb">时间:</span> <span class="vl" id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
