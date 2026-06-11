@@ -227,7 +227,7 @@ describe('MapCache', () => {
   describe('computeUid determinism', () => {
     it('generates same UID for same package name', () => {
       const cache = new MapCache(createMockManifest())
-      const pkg = { name: '/maps/test.oramap', contents: [], openPackage: () => null }
+      const pkg = { name: '/maps/test.oramap', contents: [], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
 
       // @ts-expect-error — accessing private method
       const uid1 = cache.computeUid(pkg)
@@ -240,8 +240,8 @@ describe('MapCache', () => {
 
     it('generates different UIDs for different package names', () => {
       const cache = new MapCache(createMockManifest())
-      const pkg1 = { name: '/maps/a.oramap', contents: [], openPackage: () => null }
-      const pkg2 = { name: '/maps/b.oramap', contents: [], openPackage: () => null }
+      const pkg1 = { name: '/maps/a.oramap', contents: [], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
+      const pkg2 = { name: '/maps/b.oramap', contents: [], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
 
       // @ts-expect-error — accessing private method
       const uid1 = cache.computeUid(pkg1)

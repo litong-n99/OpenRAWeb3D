@@ -303,7 +303,10 @@ export class MapCache implements Iterable<MapPreview> {
     return {
       name,
       contents: [],
+      contains: () => false,
+      open: async () => null,
       openPackage: () => null,
+      dispose: () => {},
     }
   }
 
@@ -410,9 +413,12 @@ export class MapCache implements Iterable<MapPreview> {
       const pkg: IReadWritePackage = {
         name: resolvedName,
         contents: [],
+        contains: () => false,
+        open: async () => null,
         openPackage: () => null,
         update: () => {},
         delete: () => {},
+        dispose: () => {},
       }
       yield pkg
     }

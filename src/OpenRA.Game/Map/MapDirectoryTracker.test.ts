@@ -29,7 +29,10 @@ function createMockPackage(name: string, contents: string[] = []): IReadOnlyPack
   return {
     name,
     contents,
+    contains: (filename: string) => contents.includes(filename),
+    open: async () => null,
     openPackage: vi.fn(),
+    dispose: () => {},
   }
 }
 
