@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 5 -- UI System and Resource Management
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 6 (lines 853-940)
-> **Chapter Status**: Chapter 5 -- IN PROGRESS (9/16 migrated, 56%)
+> **Chapter Status**: Chapter 5 -- IN PROGRESS (11/16 migrated, 69%)
 > **Planning Date**: 2026-06-11
 > **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
 >
@@ -377,10 +377,11 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 ### 3.3 Phase C: MOD System Core
 
-**Status**: PENDING (0/2)
+**Status**: COMPLETE (2/2)
 **Complexity**: Low-Medium
 **Blocked by**: Phase A (complete), Phase B (complete)
 **Blocks**: Phase D (WidgetLoader reads UI layouts from mod YAML via FileSystem), Phase E (interaction controller needs World + ModData)
+**Review**: APPROVED (2 rounds, 0 BLOCKERs). No manual visual tests needed (pure infrastructure, no GPU/visual output).
 
 **Description**: The MOD System is the orchestration layer that ties assets, rules, UI, and game logic into a playable mod. `Manifest` parses `mod.yaml` (now pre-compiled to `mod.json` by the MiniYAML pipeline) into a structured configuration object. `ModData` coordinates all runtime subsystems: FileSystem, ObjectCreator, MapCache, WidgetLoader, and various asset loaders. The core paradigm shift is from .NET Assembly reflection (`Assembly.GetTypes()` / `Activator.CreateInstance()`) to ES6 Dynamic Import with a class registry.
 
@@ -393,7 +394,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.3.1 Manifest
 
-- [ ] **TODO-5.C.1** `src/OpenRA.Game/Manifest.ts` (206 lines C#) -- Mod configuration container:
+- [x] **TODO-5.C.1** `src/OpenRA.Game/Manifest.ts` (206 lines C#, 506 lines TS) -- Mod configuration container: ✅ COMPLETE
   - `ModMetadata` interface: `title: string`, `version: string`, `author?: string`, `description?: string`, `website?: string`
   - `Manifest` class:
     - Constructor from parsed `mod.json` object (pre-compiled from `mod.yaml`)
@@ -410,11 +411,13 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
     - `packageFormats: string[]` -- expected package formats (folder, oramap, zip)
     - Static `fromJSON(json: object): Manifest` -- factory from pre-compiled JSON
     - `validateDependencies(availableMods: Map<string, Manifest>): string[]` -- returns missing dependency IDs (empty array = all satisfied)
+    - `dispose(): void` -- cleanup method
+  - **Tests**: 72 tests, 739 test lines
   - **Build-time preprocessing note**: `mod.yaml` `Include` directives are resolved and inlined by the MiniYAML pipeline (already done, Chapter 4 Phase H). `mod.json` is the single output file.
 
 #### 3.3.2 ModData + ObjectCreator
 
-- [ ] **TODO-5.C.2** `src/OpenRA.Game/ModData.ts` (258 lines C#) -- Runtime mod coordinator:
+- [x] **TODO-5.C.2** `src/OpenRA.Game/ModData.ts` (258 lines C#, 326 lines TS) -- Runtime mod coordinator: ✅ COMPLETE
   - `ObjectCreator` class:
     - `registry: Map<string, Constructor<any>>` -- class name -> constructor mapping
     - `register(name: string, ctor: Constructor<any>): void` -- add to registry
@@ -436,6 +439,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
     - `loadRuleSet(): Promise<Ruleset>` -- stub for Chapter 7 (networking/game logic); reads rule JSON files
     - `loadSequenceSet(): Promise<SequenceSet>` -- stub for future sprite sequence loading
     - `dispose(): void` -- unmounts file system, clears caches
+  - **Tests**: 43 tests, 557 test lines
   - **Module registration pattern**:
     ```typescript
     // In each trait/widget/loader module:
@@ -454,12 +458,15 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 - `ModData.dispose()` releases FileSystem mounts and clears caches
 - Integration: ModData can load a real mod's `mod.json`, mount its packages, and expose files through `files.openAsync()`
 
-**Estimated Effort**:
-| File | Est. impl lines | Est. test lines | Est. tests |
+**Completion Summary**:
+
+| File | Impl lines (est. / actual) | Test lines (est. / actual) | Tests (est. / actual) |
 |:---|:---:|:---:|:---:|
-| Manifest.ts | 180 | 200 | 22 |
-| ModData.ts | 380 | 410 | 30 |
-| **Total** | **~560** | **~610** | **~52** |
+| Manifest.ts | 180 / 506 | 200 / 739 | 22 / 72 |
+| ModData.ts | 380 / 326 | 410 / 557 | 30 / 43 |
+| **Total** | **~560 / 832** | **~610 / 1,296** | **~52 / 115** |
+
+**Review**: APPROVED (2 rounds, 0 BLOCKERs). No manual visual tests needed (pure infrastructure, no GPU/visual output).
 
 ---
 
@@ -467,7 +474,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 **Status**: PENDING (0/4)
 **Complexity**: Low-Medium
-**Blocked by**: Phase C (WidgetLoader needs FileSystem + ModData for reading UI YAML layouts)
+**Blocked by**: Phase C (COMPLETE -- WidgetLoader needs FileSystem + ModData for reading UI YAML layouts)
 **Blocks**: Phase E (WorldInteractionControllerWidget extends Widget)
 
 **Description**: The Chrome UI Widget system is OpenRA's retained-mode GUI framework. `Widget` is the abstract base class defining the component tree contract (parent/children hierarchy, bounds, event dispatch, focus management). `Ui` is the static root manager holding the root `ContainerWidget` and modal window stack. `WidgetLoader` instantiates Widget trees from MiniYAML layouts (now pre-compiled to JSON via Phase H of Chapter 4). `ChromeProvider` manages UI skin resources (panel images, HiDPI variants, 9-slice regions). `ChromeMetrics` provides default theme values (colors, fonts, spacing).
@@ -922,9 +929,9 @@ This replaces OpenRA's `ModData.PackageLoaders` assembly-scanned array.
 |-------|:---:|:---|:---:|:---:|-----------|
 | A: FileSystem Foundation | 4 | Low-Medium | 3,391 (completed) | 132 (completed) | Nothing |
 | B: C&C Package Formats | 5 | Low-HIGH | 3,125 (completed) | 108 (completed) | Phase A |
-| C: MOD System Core | 2 | Low-Medium | ~1,170 | ~52 | Phase A |
+| C: MOD System Core | 2 | Low-Medium | 2,128 (completed) | 115 (completed) | Phases A, B |
 | D: UI Widget Core | 4 | Low-Medium | ~2,820 | ~104 | Phase C |
 | E: World Interaction | 1 | HIGH | ~1,000 | ~38 | Phases C, D |
-| **Total** | **16** | | **~8,950** | **~364** | |
+| **Total** | **16** | | **~10,464** | **~497** | |
 
-**Total estimated**: ~8,950 lines of implementation + test code. 5-7 developer-weeks (single developer) or 3-4 weeks (2 developers working in parallel on Phases B+C after Phase A completes).
+**Total estimated**: ~14,464 lines of implementation + test code (8,644 done, ~5,820 remaining). 5-7 developer-weeks (single developer) or 3-4 weeks (2 developers working in parallel on Phases B+C after Phase A completes).
