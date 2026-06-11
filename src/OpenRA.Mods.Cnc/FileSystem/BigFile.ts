@@ -79,6 +79,11 @@ class BigFile implements IReadOnlyPackage {
     this.name = name
     this._buffer = buffer
 
+    // Initialize fields before parsing — ensures dispose() is always safe
+    // even if signature validation throws before populating the index.
+    this._index = new Map<string, BigEntry>()
+    this._contents = []
+
     try {
       const dv = new DataView(buffer)
       let pos = 0
@@ -103,7 +108,6 @@ class BigFile implements IReadOnlyPackage {
       pos += 4
 
       // 解析条目
-      this._index = new Map<string, BigEntry>()
       for (let i = 0; i < entryCount; i++) {
         const entry = this._parseEntry(dv, pos)
         pos = entry.nextPos

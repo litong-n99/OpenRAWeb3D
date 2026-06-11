@@ -242,7 +242,7 @@ describe('MixFile.parseIndex (reference implementation)', () => {
     expect(resolved.has('unknown.shp')).toBe(false)
   })
 
-  it('prefers CRC32 over Classic when CRC32 has more matches', () => {
+  it('prefers Classic over CRC32 when both have equal matches', () => {
     const entries = new Map<number, PackageEntry>()
 
     const name1 = 'test.shp'
@@ -262,8 +262,38 @@ describe('MixFile.parseIndex (reference implementation)', () => {
 
     // CRC32 matches: other.shp (1 match)
     // Classic matches: test.shp (1 match)
-    // Tied — Classic is preferred (strict > check)
+    // Tied — Classic is preferred
     expect(resolved.size).toBe(1)
+    expect(resolved.has('test.shp')).toBe(true)
+  })
+
+  it('prefers CRC32 over Classic when CRC32 has more matches', () => {
+    const entries = new Map<number, PackageEntry>()
+
+    // Classic match for file A
+    const nameA = 'solo.shp'
+    const classicHashA = PackageEntry.hashFilename(nameA, PackageHashType.Classic)
+    entries.set(classicHashA, new PackageEntry(classicHashA, 0, 100))
+
+    // CRC32 matches for file B and file C
+    const nameB = 'duo_a.shp'
+    const nameC = 'duo_b.shp'
+    const crcHashB = PackageEntry.hashFilename(nameB, PackageHashType.CRC32)
+    const crcHashC = PackageEntry.hashFilename(nameC, PackageHashType.CRC32)
+    entries.set(crcHashB, new PackageEntry(crcHashB, 100, 200))
+    entries.set(crcHashC, new PackageEntry(crcHashC, 300, 150))
+
+    const globalFilenames = ['solo.shp', 'duo_a.shp', 'duo_b.shp']
+
+    const resolved = MixFile.parseIndex(entries, globalFilenames)
+
+    // CRC32 matches: duo_a.shp + duo_b.shp (2 matches)
+    // Classic matches: solo.shp (1 match)
+    // CRC32 has more matches → CRC32 index wins
+    expect(resolved.size).toBe(2)
+    expect(resolved.has('duo_a.shp')).toBe(true)
+    expect(resolved.has('duo_b.shp')).toBe(true)
+    expect(resolved.has('solo.shp')).toBe(false)
   })
 
   it('handles empty global filenames list', () => {

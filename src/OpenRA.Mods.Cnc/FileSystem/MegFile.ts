@@ -79,6 +79,11 @@ class MegFile implements IReadOnlyPackage {
     this.name = name
     this._buffer = buffer
 
+    // Initialize fields before parsing — ensures dispose() is always safe
+    // even if signature validation throws before populating the index.
+    this._contentsMap = new Map<string, MegEntry>()
+    this._contents = []
+
     try {
       const dv = new DataView(buffer)
       let pos = 0
@@ -124,7 +129,6 @@ class MegFile implements IReadOnlyPackage {
       }
 
       // 解析文件条目
-      this._contentsMap = new Map<string, MegEntry>()
       for (let i = 0; i < numFiles; i++) {
         // 跳过标志、crc、索引（10 字节）
         pos += 10
