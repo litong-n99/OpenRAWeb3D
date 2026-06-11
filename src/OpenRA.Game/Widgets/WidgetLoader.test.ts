@@ -520,3 +520,79 @@ describe('WidgetLoader edge cases', () => {
     expect(w.id).toBe('override')
   })
 })
+
+// ===========================================================================
+// Key Uniqueness by Suffix (MAJOR-10)
+// ===========================================================================
+
+describe('WidgetLoader key uniqueness by suffix', () => {
+  it('detects duplicate Id suffix across different types', () => {
+    const oc = makeObjectCreator()
+    const loader = new WidgetLoader(oc)
+
+    loader.loadLayout({ 'Container@MENU': {} })
+
+    // Same suffix "MENU" under different type should throw
+    expect(() =>
+      loader.loadLayout({ 'ScrollPanel@MENU': {} }),
+    ).toThrow(/duplicate Key/)
+  })
+
+  it('allows same type with different Id', () => {
+    const oc = makeObjectCreator()
+    const loader = new WidgetLoader(oc)
+
+    expect(() =>
+      loader.loadLayout({
+        'Container@A': {},
+        'Container@B': {},
+      }),
+    ).not.toThrow()
+    expect(loader.definitionCount).toBe(2)
+  })
+
+  it('detects duplicate for key without @', () => {
+    const oc = makeObjectCreator()
+    const loader = new WidgetLoader(oc)
+
+    loader.loadLayout({ 'Container': {} })
+    // Same key without @ → duplicate
+    expect(() =>
+      loader.loadLayout({ 'Container': {} }),
+    ).toThrow(/duplicate Key/)
+  })
+})
+
+// ===========================================================================
+// logicArgs Cleanup (MAJOR-6)
+// ===========================================================================
+
+describe('WidgetLoader logicArgs cleanup', () => {
+  it('removes logicArgs from args after postInit', () => {
+    const oc = makeObjectCreator()
+    const loader = new WidgetLoader(oc)
+    loader.registerWidget('Container', ContainerWidget)
+
+    const args: WidgetArgs = { someKey: 'someValue' }
+    const node: WidgetDefinitionNode = {
+      Logic: { TestLogic: { param: 'test' } },
+    }
+
+    loader.loadWidget(args, null, 'Container@W', node)
+    expect('logicArgs' in args).toBe(false)
+    expect(args['logicArgs']).toBeUndefined()
+    expect(args['someKey']).toBe('someValue') // other keys preserved
+  })
+
+  it('clears logicArgs even without Logic node', () => {
+    const oc = makeObjectCreator()
+    const loader = new WidgetLoader(oc)
+    loader.registerWidget('Container', ContainerWidget)
+
+    const args: WidgetArgs = {}
+    const node: WidgetDefinitionNode = { Width: 100 }
+
+    loader.loadWidget(args, null, 'Container@W', node)
+    expect('logicArgs' in args).toBe(false)
+  })
+})

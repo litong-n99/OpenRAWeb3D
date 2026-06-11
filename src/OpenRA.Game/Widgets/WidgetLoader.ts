@@ -117,8 +117,16 @@ export class WidgetLoader {
    */
   loadLayout(layoutJson: Record<string, WidgetDefinitionNode>): void {
     for (const [key, node] of Object.entries(layoutJson)) {
-      if (this._widgetDefinitions.has(key)) {
-        throw new Error(`Widget has duplicate Key '${key}'`)
+      // OpenRA checks uniqueness by suffix (Id after '@'), not full Type@Id.
+      // e.g., "Container@MENU" conflicts with "ScrollPanel@MENU".
+      const suffix = key.includes('@') ? key.slice(key.indexOf('@') + 1) : key
+      for (const [existingKey] of this._widgetDefinitions) {
+        const existingSuffix = existingKey.includes('@')
+          ? existingKey.slice(existingKey.indexOf('@') + 1)
+          : existingKey
+        if (existingSuffix === suffix) {
+          throw new Error(`Widget has duplicate Key '${key}'`)
+        }
       }
       this._widgetDefinitions.set(key, node)
     }
@@ -237,6 +245,7 @@ export class WidgetLoader {
     }
     args['logicArgs'] = logicArgs
     widget.postInit(args)
+    delete args['logicArgs']
 
     return widget
   }

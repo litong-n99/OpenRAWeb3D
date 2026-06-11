@@ -348,7 +348,7 @@ export class ChromeProvider {
 
   /** 获取面板 CSS border-image 规则。
    *
-   * 生成完整的 CSS border-image 属性值。
+   * 生成完整的 CSS border-image 属性值，支持 image-set() 实现 HiDPI。
    * 使用 hasSide() 确定哪些边应包含在图像切片中。
    *
    * @param collectionName — 集合名称
@@ -358,10 +358,46 @@ export class ChromeProvider {
     const slice = ChromeProvider.getPanelSliceCss(collectionName)
     if (!slice) return null
 
-    const image = ChromeProvider.getImage(collectionName)
-    if (!image) return null
+    const collection = ChromeProvider._collections.get(collectionName)
+    if (!collection) return null
 
-    return `url("${image}") ${slice} stretch`
+    const imageSource = ChromeProvider._buildImageSetCss(
+      collection.image,
+      collection.image2x,
+      collection.image3x,
+    )
+    if (!imageSource) return null
+
+    return `${imageSource} ${slice} stretch`
+  }
+
+  /** 构建 CSS image-set() 字符串用于 HiDPI。
+   *
+   * 当有多个分辨率可用时生成 `image-set(url(...) 1x, url(...) 2x, ...)`，
+   * 否则回退到普通的 `url(...)`。
+   *
+   * @param image1x — 1x 分辨率 URL
+   * @param image2x — 2x 分辨率 URL（可选）
+   * @param image3x — 3x 分辨率 URL（可选）
+   * @returns CSS 图像源字符串，如果所有图像均为 null 则返回 null
+   */
+  private static _buildImageSetCss(
+    image1x: string | null,
+    image2x: string | null,
+    image3x: string | null,
+  ): string | null {
+    // Collect available resolutions
+    const sources: { url: string; density: string }[] = []
+    if (image1x) sources.push({ url: image1x, density: '1x' })
+    if (image2x) sources.push({ url: image2x, density: '2x' })
+    if (image3x) sources.push({ url: image3x, density: '3x' })
+
+    if (sources.length === 0) return null
+    if (sources.length === 1) return `url("${sources[0].url}")`
+
+    // Multiple resolutions → use image-set()
+    const parts = sources.map((s) => `url("${s.url}") ${s.density}`)
+    return `image-set(${parts.join(', ')})`
   }
 
   // ---------------------------------------------------------------------------

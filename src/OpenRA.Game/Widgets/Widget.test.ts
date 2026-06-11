@@ -553,13 +553,16 @@ describe('Widget focus management', () => {
 describe('Widget event dispatch', () => {
   it('handleEventOuter dispatches children last-to-first (reverse Z-order)', () => {
     const parent = new TestWidget()
+    parent.bounds = { x: 0, y: 0, width: 200, height: 200 }
     const first = new SpyWidget()
+    first.bounds = { x: 0, y: 0, width: 200, height: 200 }
     const last = new SpyWidget()
+    last.bounds = { x: 0, y: 0, width: 200, height: 200 }
     last.shouldHandle = true
     parent.addChild(first)
     parent.addChild(last)
 
-    const event = makeEvent({ type: 'mousedown' })
+    const event = makeEvent({ type: 'mousedown', clientX: 50, clientY: 50 })
     const result = parent.handleEventOuter(event)
 
     // Last child (highest Z) should have been tried first and handled it
@@ -570,10 +573,12 @@ describe('Widget event dispatch', () => {
 
   it('handleEventOuter falls through to self if no child handles', () => {
     const parent = new SpyWidget()
+    parent.bounds = { x: 0, y: 0, width: 200, height: 200 }
     const child = new SpyWidget()
+    child.bounds = { x: 0, y: 0, width: 200, height: 200 }
     parent.addChild(child)
 
-    const event = makeEvent({ type: 'mousedown' })
+    const event = makeEvent({ type: 'mousedown', clientX: 50, clientY: 50 })
     parent.handleEventOuter(event)
 
     expect(child.handled).not.toBeNull() // child was tried
@@ -857,7 +862,8 @@ describe('Ui modal stack', () => {
     expect(Ui.windowList.length).toBe(2)
     // First window should have been hidden (hideChild removes from root)
     expect(Ui.root.children).not.toContain(first)
-    expect(becameHiddenSpy).toHaveBeenCalledOnce()
+    // OpenRA does NOT call BecameHidden() in OpenWindow — that fires in CloseWindow
+    expect(becameHiddenSpy).not.toHaveBeenCalled()
   })
 
   it('closeWindow pops top and restores previous', () => {
@@ -1069,5 +1075,253 @@ describe('Ui initialize and dispose', () => {
     expect(Ui._widgetLoader).toBeNull()
     expect(Ui.mouseFocusWidget).toBeNull()
     expect(Ui.keyboardFocusWidget).toBeNull()
+  })
+})
+
+// ===========================================================================
+// Widget Tick / TickOuter / Ui.Tick
+// ===========================================================================
+
+describe('Widget tick/tickOuter and Ui.tick', () => {
+  it('tickOuter calls tick on self, then children, then logicObjects', () => {
+    class TickTrackingLogic extends ChromeLogic {
+      ticked = false
+      tick(): void { this.ticked = true }
+    }
+
+    const root = new TestWidget()
+    const child = new TestWidget()
+    root.addChild(child)
+
+    const tickSpyRoot = vi.spyOn(root, 'tick')
+    const tickSpyChild = vi.spyOn(child, 'tick')
+    const logic = new TickTrackingLogic()
+    root.logicObjects = [logic]
+
+    root.tickOuter()
+
+    expect(tickSpyRoot).toHaveBeenCalledOnce()
+    expect(tickSpyChild).toHaveBeenCalledOnce()
+    expect(logic.ticked).toBe(true)
+  })
+
+  it('tickOuter respects visibility — skips invisible widgets', () => {
+    const root = new TestWidget()
+    root.visible = false
+    root.isVisible = () => false
+
+    const child = new TestWidget()
+    root.addChild(child)
+    const childTickSpy = vi.spyOn(child, 'tick')
+    const rootTickSpy = vi.spyOn(root, 'tick')
+
+    root.tickOuter()
+
+    expect(rootTickSpy).not.toHaveBeenCalled()
+    expect(childTickSpy).not.toHaveBeenCalled()
+  })
+
+  it('tickOuter calls logicObjects.tick for each logic', () => {
+    class TickLogic extends ChromeLogic {
+      tickCount = 0
+      tick(): void { this.tickCount++ }
+    }
+    const log1 = new TickLogic()
+    const log2 = new TickLogic()
+    const w = new TestWidget()
+    w.logicObjects = [log1, log2]
+    w.tickOuter()
+    expect(log1.tickCount).toBe(1)
+    expect(log2.tickCount).toBe(1)
+  })
+
+  it('Ui.tick calls root.tickOuter', () => {
+    const spy = vi.spyOn(Ui.root, 'tickOuter')
+    Ui.tick()
+    expect(spy).toHaveBeenCalledOnce()
+  })
+})
+
+// ===========================================================================
+// handleEventOuter — focus gating (BLOCKER-1)
+// ===========================================================================
+
+describe('handleEventOuter focus/bounds gating', () => {
+  it('mouseFocusWidget receives events even outside its bounds', () => {
+    const focusW = new SpyWidget()
+    focusW.bounds = { x: 100, y: 100, width: 50, height: 50 }
+    focusW.shouldHandle = true
+
+    // Take mouse focus
+    Ui.mouseFocusWidget = focusW
+
+    // Event outside bounds (0,0) — but focus widget should still receive it
+    const event = makeEvent({ type: 'mousedown', clientX: 0, clientY: 0 })
+    const result = focusW.handleEventOuter(event)
+
+    expect(result).toBe(true)
+    expect(focusW.handled).not.toBeNull()
+  })
+
+  it('clicks outside bounds are not dispatched (hit-test gating)', () => {
+    const w = new SpyWidget()
+    w.bounds = { x: 100, y: 100, width: 50, height: 50 }
+    w.shouldHandle = true
+
+    // Event outside bounds — no focus, should be rejected
+    const event = makeEvent({ type: 'mousedown', clientX: 0, clientY: 0 })
+    const result = w.handleEventOuter(event)
+
+    expect(result).toBe(false)
+    expect(w.handled).toBeNull()
+  })
+
+  it('clicks inside bounds are dispatched', () => {
+    const w = new SpyWidget()
+    w.bounds = { x: 100, y: 100, width: 50, height: 50 }
+    w.shouldHandle = true
+
+    const event = makeEvent({ type: 'mousedown', clientX: 120, clientY: 120 })
+    const result = w.handleEventOuter(event)
+
+    expect(result).toBe(true)
+    expect(w.handled).not.toBeNull()
+  })
+
+  it('invisible widget without focus rejects all events', () => {
+    const w = new SpyWidget()
+    w.bounds = { x: 0, y: 0, width: 200, height: 200 }
+    w.visible = false
+    w.isVisible = () => false
+    w.shouldHandle = true
+
+    const event = makeEvent({ type: 'mousedown', clientX: 50, clientY: 50 })
+    const result = w.handleEventOuter(event)
+
+    expect(result).toBe(false)
+    expect(w.handled).toBeNull()
+  })
+})
+
+// ===========================================================================
+// ContainerWidget handleEvent (BLOCKER-4)
+// ===========================================================================
+
+describe('ContainerWidget handleEvent (ClickThrough)', () => {
+  it('ClickThrough=true → returns false (events pass through)', () => {
+    const cw = new ContainerWidget()
+    cw.bounds = { x: 0, y: 0, width: 100, height: 100 }
+    cw.clickThrough = true
+
+    const event = makeEvent({ clientX: 50, clientY: 50 })
+    expect(cw.handleEvent(event)).toBe(false)
+  })
+
+  it('ClickThrough=false → returns true when point inside EventBounds', () => {
+    const cw = new ContainerWidget()
+    cw.bounds = { x: 0, y: 0, width: 100, height: 100 }
+    cw.clickThrough = false
+
+    const event = makeEvent({ clientX: 50, clientY: 50 })
+    expect(cw.handleEvent(event)).toBe(true)
+  })
+
+  it('ClickThrough=false → returns false when point outside EventBounds', () => {
+    const cw = new ContainerWidget()
+    cw.bounds = { x: 0, y: 0, width: 100, height: 100 }
+    cw.clickThrough = false
+
+    const event = makeEvent({ clientX: 200, clientY: 200 })
+    expect(cw.handleEvent(event)).toBe(false)
+  })
+
+  it('ClickThrough=false → true when point is in child bounds', () => {
+    const cw = new ContainerWidget()
+    cw.bounds = { x: 0, y: 0, width: 200, height: 200 }
+    cw.clickThrough = false
+
+    const child = new TestWidget()
+    child.bounds = { x: 50, y: 50, width: 100, height: 100 }
+    cw.addChild(child)
+
+    // Point inside child but outside container's direct bounds — EventBoundsContains
+    // checks children too
+    const event = makeEvent({ clientX: 70, clientY: 70 })
+    expect(cw.handleEvent(event)).toBe(true)
+  })
+})
+
+// ===========================================================================
+// mouseEntered / mouseExited (MAJOR-5)
+// ===========================================================================
+
+describe('Widget mouseEntered/mouseExited', () => {
+  it('Ui.handleInput calls mouseEntered/mouseExited on hover change', () => {
+    class HoverWidget extends TestWidget {
+      entered = false
+      exited = false
+      override mouseEntered(): void { this.entered = true }
+      override mouseExited(): void { this.exited = true }
+    }
+
+    const w = new HoverWidget()
+    w.bounds = { x: 0, y: 0, width: 100, height: 100 }
+
+    // Simulate mouse over the widget by setting mouseOverWidget beforehand
+    Ui.mouseOverWidget = w
+
+    // Move event that causes mouseOver to change away
+    vi.spyOn(Ui.root, 'handleEventOuter').mockReturnValue(false)
+    Ui.handleInput(makeEvent({ type: 'mousemove', clientX: 999, clientY: 999 }))
+
+    // wasMouseOver was w, now mouseOverWidget is null → mouseExited should be called
+    expect(w.exited).toBe(true)
+  })
+
+  it('mouseEntered and mouseExited are default no-ops', () => {
+    const w = new TestWidget()
+    expect(() => w.mouseEntered()).not.toThrow()
+    expect(() => w.mouseExited()).not.toThrow()
+  })
+})
+
+// ===========================================================================
+// getOrCreateElement caching (MAJOR-7)
+// ===========================================================================
+
+describe('Widget getOrCreateElement caching', () => {
+  class CachingWidget extends TestWidget {
+    override render(): HTMLElement {
+      const el = this.getOrCreateElement('span', 'caching-widget')
+      return el
+    }
+  }
+
+  it('getOrCreateElement returns same instance on repeated calls', () => {
+    const w = new CachingWidget()
+    const el1 = w.render()
+    const el2 = w.render()
+    expect(el1).toBe(el2)
+    expect(el1.tagName).toBe('SPAN')
+    expect(el1.classList.contains('caching-widget')).toBe(true)
+  })
+
+  it('ContainerWidget.render uses getOrCreateElement for caching', () => {
+    const cw = new ContainerWidget()
+    cw.id = 'cached'
+    const el1 = cw.render()
+    const el2 = cw.render()
+    expect(el1).toBe(el2)
+    expect(el1.id).toBe('widget-cached')
+  })
+
+  it('dispose removes cached element from DOM', () => {
+    const cw = new ContainerWidget()
+    const el = cw.render()
+    document.body.appendChild(el)
+    expect(document.body.contains(el)).toBe(true)
+
+    cw.dispose()
+    expect(document.body.contains(el)).toBe(false)
   })
 })

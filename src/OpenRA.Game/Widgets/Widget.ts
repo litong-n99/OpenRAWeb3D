@@ -185,7 +185,7 @@ export abstract class Widget {
   /** 默认光标（从 ChromeMetrics 加载）。OpenRA 对照: defaultCursor */
   private _defaultCursor: string | null = null
 
-  /** 缓存的 DOM 元素。 */
+  /** 缓存的 DOM 元素（由 getOrCreateElement 或子类设置）。 */
   private _element: HTMLElement | null = null
 
   /** 标识此 widget 是否已被 disposed。 */
@@ -224,6 +224,30 @@ export abstract class Widget {
   /** 此 widget 是否拥有键盘焦点。OpenRA 对照: Widget.HasKeyboardFocus */
   get hasKeyboardFocus(): boolean {
     return Ui.keyboardFocusWidget === this
+  }
+
+  // ---------------------------------------------------------------------------
+  // Per-frame tick
+  // OpenRA 对照: Widget.Tick / TickOuter / Ui.Tick
+  // ---------------------------------------------------------------------------
+
+  /** 每帧更新。子类可重写。
+   * OpenRA 对照: Widget.Tick() */
+  tick(): void {}
+
+  /** 递归 tick — 先自身，后可见子 widget，再 ChromeLogic.tick()。
+   *
+   * OpenRA 对照: Widget.TickOuter()
+   */
+  tickOuter(): void {
+    if (!this.isVisible()) return
+    this.tick()
+    for (const child of this.children) {
+      child.tickOuter()
+    }
+    for (const logic of this.logicObjects) {
+      logic.tick()
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -449,10 +473,27 @@ export abstract class Widget {
 
   /** 返回此 widget 的 DOM 元素。子类必须实现。
    *
-   * 元素缓存在内部；重复调用返回相同元素（除非 dispose 后）。
+   * 子类可以使用 getOrCreateElement() 实现元素缓存。
    * OpenRA 对照: Widget.Draw()
    */
   abstract render(): HTMLElement
+
+  /** 创建或返回缓存的 DOM 元素。
+   *
+   * 便利方法，子类可在 render() 中调用以实现元素缓存。
+   * dispose() 时自动从 DOM 中移除缓存元素。
+   *
+   * @param tagName — HTML 标签名
+   * @param className — 可选的 CSS 类名
+   * @returns 缓存或新创建的 DOM 元素
+   */
+  protected getOrCreateElement(tagName: string, className?: string): HTMLElement {
+    if (!this._element) {
+      this._element = document.createElement(tagName)
+      if (className) this._element.className = className
+    }
+    return this._element
+  }
 
   /** 渲染自己 + 递归渲染子 widget 的 DOM 树。
    *
@@ -504,6 +545,14 @@ export abstract class Widget {
   // - 如果没有子 widget 处理，则调用 handleEvent()
   // ---------------------------------------------------------------------------
 
+  /** 鼠标进入此 widget 时调用。子类可重写。
+   * OpenRA 对照: Widget.MouseEntered() */
+  mouseEntered(): void {}
+
+  /** 鼠标离开此 widget 时调用。子类可重写。
+   * OpenRA 对照: Widget.MouseExited() */
+  mouseExited(): void {}
+
   /** 处理事件（子类可重写）。
    *
    * 返回 true 表示事件已被消费，不应继续冒泡。
@@ -520,14 +569,17 @@ export abstract class Widget {
    * OpenRA 对照: Widget.HandleTextInputOuter(string)
    *
    * 分发顺序:
-   * 1. 检查是否可见（不可见 → 不处理）
+   * 1. 门控检查: HasMouseFocus || (IsVisible && EventBoundsContains)
    * 2. 从最后的子 widget 开始反向迭代（最高 Z 序优先）
    * 3. 第一个返回 true 的子 widget 捕获事件
    * 4. 如果没有子 widget 处理，委托给 handleEvent()
    */
   handleEventOuter(event: WidgetEvent): boolean {
-    // 不可见的 widget 不处理事件
-    if (!this.isVisible()) {
+    // 门控: 仅在有鼠标焦点或在事件边界内时处理事件
+    // 拖动场景中，拥有鼠标焦点的 widget 需要接收其边界外的事件
+    const posX = (event.clientX ?? 0) as number
+    const posY = (event.clientY ?? 0) as number
+    if (!(this.hasMouseFocus || (this.isVisible() && this._eventBoundsContains(posX, posY)))) {
       return false
     }
 
@@ -646,7 +698,7 @@ export abstract class Widget {
 
   /** 检查点是否在事件边界内（bounds 或任意子 widget 的 bounds）。
    * OpenRA 对照: Widget.EventBoundsContains(int2) */
-  private _eventBoundsContains(px: number, py: number): boolean {
+  protected _eventBoundsContains(px: number, py: number): boolean {
     if (boundsContains(this.bounds, px, py)) return true
 
     for (const child of this.children) {
@@ -735,6 +787,15 @@ export class ContainerWidget extends Widget {
     return null
   }
 
+  /** 容器事件处理: ClickThrough=false 时消费边界内的事件。
+   * OpenRA 对照: ContainerWidget.HandleMouseInput(MouseInput) */
+  override handleEvent(event: WidgetEvent): boolean {
+    if (this.clickThrough) return false
+    const x = (event.clientX ?? 0) as number
+    const y = (event.clientY ?? 0) as number
+    return this._eventBoundsContains(x, y)
+  }
+
   /** 容器支持克隆。OpenRA 对照: ContainerWidget.Clone() */
   override clone(): ContainerWidget {
     const c = new ContainerWidget()
@@ -755,13 +816,15 @@ export class ContainerWidget extends Widget {
     return c
   }
 
-  /** 返回容器 div 元素。 */
+  /** 返回容器 div 元素（通过 getOrCreateElement 缓存）。
+   * OpenRA 对照: ContainerWidget.Draw() */
   override render(): HTMLElement {
-    const el = document.createElement('div')
-    el.classList.add('container-widget')
+    const el = this.getOrCreateElement('div', 'container-widget')
     el.style.position = 'absolute'
     if (this.clickThrough) {
       el.style.pointerEvents = 'none'
+    } else {
+      el.style.pointerEvents = ''
     }
     if (this.id) {
       el.id = `widget-${this.id}`
@@ -798,6 +861,9 @@ export abstract class InputWidget extends Widget {
   get disabledStatus(): boolean {
     return this.isDisabled()
   }
+
+  // TODO-5.D.9: InputWidget.Clone() support requires factory/registry pattern.
+  // Widget.Clone() throws by default; InputWidget subclasses must override.
 }
 
 // ---------------------------------------------------------------------------
@@ -868,10 +934,10 @@ export class Ui {
 
     const window = Ui._widgetLoader.loadWidgetById(mergedArgs, Ui.root, id)
 
+    // NOTE: OpenRA's OpenWindow hides the previous window via HideChild
+    // but does NOT call BecameHidden() — that only fires in CloseWindow().
     if (Ui.windowList.length > 0) {
       Ui.root.hideChild(Ui.windowList[Ui.windowList.length - 1])
-      const hidden = Ui.windowList[Ui.windowList.length - 1]
-      hidden.becameHidden()
     }
 
     Ui.windowList.push(window)
@@ -940,6 +1006,18 @@ export class Ui {
   }
 
   // ---------------------------------------------------------------------------
+  // Per-frame tick
+  // OpenRA 对照: Ui.Tick()
+  // ---------------------------------------------------------------------------
+
+  /** 每帧 tick 整个 widget 树。
+   * 应在游戏主循环中每帧调用。
+   * OpenRA 对照: Ui.Tick() */
+  static tick(): void {
+    Ui.root.tickOuter()
+  }
+
+  // ---------------------------------------------------------------------------
   // Reset
   // OpenRA 对照: ResetAll / ResetTooltips
   // ---------------------------------------------------------------------------
@@ -1002,9 +1080,10 @@ export class Ui {
       handled = Ui.root.handleEventOuter(event)
     }
 
-    // 鼠标悬停变化通知（简化版 — 完整实现需要 MouseEntered/MouseExited 回调）
+    // 鼠标悬停变化通知
     if (wasMouseOver !== Ui.mouseOverWidget) {
-      // NOTE: MouseEntered/MouseExited 回调在子类中重写
+      wasMouseOver?.mouseExited()
+      Ui.mouseOverWidget?.mouseEntered()
     }
 
     return handled

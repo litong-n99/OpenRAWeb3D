@@ -496,3 +496,75 @@ describe('ChromeProvider edge cases', () => {
     expect(ChromeProvider.collections.get('missing')).toBeUndefined()
   })
 })
+
+// ===========================================================================
+// getPanelCss with image-set() HiDPI (MAJOR-8)
+// ===========================================================================
+
+describe('ChromeProvider.getPanelCss image-set() HiDPI', () => {
+  function setCollection(name: string, c: Collection): void {
+    ;(ChromeProvider as unknown as { _collections: Map<string, Collection> })._collections.set(name, c)
+  }
+
+  it('uses plain url() when only 1x image is available', () => {
+    const c = new Collection({
+      Image: 'chrome/dialog.png',
+      PanelRegion: [0, 0, 40, 15, 120, 80, 40, 15],
+    })
+    setCollection('plain', c)
+
+    const css = ChromeProvider.getPanelCss('plain')
+    expect(css).not.toBeNull()
+    expect(css!).toContain('url("chrome/dialog.png")')
+    expect(css!).not.toContain('image-set')
+    expect(css!).toContain('15 40 15 40 fill')
+    expect(css!).toContain('stretch')
+  })
+
+  it('uses image-set() when 1x and 2x images are available', () => {
+    const c = new Collection({
+      Image: 'chrome/dialog.png',
+      Image2x: 'chrome/dialog@2x.png',
+      PanelRegion: [0, 0, 40, 15, 120, 80, 40, 15],
+    })
+    setCollection('hidpi', c)
+
+    const css = ChromeProvider.getPanelCss('hidpi')
+    expect(css).not.toBeNull()
+    expect(css!).toContain('image-set(')
+    expect(css!).toContain('url("chrome/dialog.png") 1x')
+    expect(css!).toContain('url("chrome/dialog@2x.png") 2x')
+    expect(css!).toContain('stretch')
+  })
+
+  it('uses image-set() with all three resolutions', () => {
+    const c = new Collection({
+      Image: 'chrome/dialog.png',
+      Image2x: 'chrome/dialog@2x.png',
+      Image3x: 'chrome/dialog@3x.png',
+      PanelRegion: [0, 0, 40, 15, 120, 80, 40, 15],
+    })
+    setCollection('hidpi3', c)
+
+    const css = ChromeProvider.getPanelCss('hidpi3')
+    expect(css).not.toBeNull()
+    expect(css!).toContain('image-set(')
+    expect(css!).toContain('url("chrome/dialog.png") 1x')
+    expect(css!).toContain('url("chrome/dialog@2x.png") 2x')
+    expect(css!).toContain('url("chrome/dialog@3x.png") 3x')
+  })
+
+  it('returns null when no images are available', () => {
+    const c = new Collection({
+      PanelRegion: [0, 0, 40, 15, 120, 80, 40, 15],
+    })
+    setCollection('noimg', c)
+
+    const css = ChromeProvider.getPanelCss('noimg')
+    expect(css).toBeNull()
+  })
+
+  it('returns null for non-existent collection', () => {
+    expect(ChromeProvider.getPanelCss('nonexistent')).toBeNull()
+  })
+})
