@@ -109,8 +109,15 @@ function cellCornerToWPos(cell: CPos, cornerIndex: number, map: Map): WPos {
   const cornerOffset = ramp.corners[cornerIndex]
 
   // 基础高度 = map.height * cellHeightStep
-  // CellRamp.corners 已包含 Z offset，不要再重复加 base height
-  // 但 centerOfCell 对于 isometric 已包含高度，所以直接用 cornerOffset
+  // CellRamp.corners 已包含 Z offset（相对于 cell 基座），不要再重复加 base height
+  // 但 centerOfCell 对矩形网格返回 Z=0（不包含高度），对 isometric 已包含高度
+  // 因此矩形网格需要手动添加基座高度
+  if (map.grid.type === MapGridType.Rectangular) {
+    const baseHeight = map.height.get(cell) * 512
+    const centerWithHeight = new WPos(center.X, center.Y, baseHeight)
+    return WPos.add(centerWithHeight, cornerOffset)
+  }
+
   return WPos.add(center, cornerOffset)
 }
 
@@ -129,17 +136,8 @@ function cellCornerToVector3(cell: CPos, cornerIndex: number, map: Map): Vector3
 // Vertex Deduplication Key
 // ---------------------------------------------------------------------------
 
-/** 为 Vector3 生成 deduplication key。
- *
- * 使用整数坐标确保 bit-for-bit 相同的顶点被共享。
- * 这是防止 mesh cracks 的关键。
- */
-function vec3Key(v: Vector3): string {
-  // 使用足够精度来区分不同位置，但确保共享边完全匹配
-  // WORLD_SCALE = 1/1024, 所以原始 WPos 整数坐标映射后可能有浮点误差
-  // 我们直接基于 WPos 整数坐标生成 key，而不是转换后的 Vector3
-  return `${Math.round(v.x * 1e6)},${Math.round(v.y * 1e6)},${Math.round(v.z * 1e6)}`
-}
+// NOTE: getRectVertexIndex / setRectVertexIndex inlined into getOrCreateRectVertex
+// for performance. Dense Int32Array indexing replaces string deduplication map.
 
 // ---------------------------------------------------------------------------
 // Internal Mesh Builder State
@@ -149,12 +147,21 @@ function vec3Key(v: Vector3): string {
 interface MeshBuildState {
   /** 顶点位置数组 (动态增长)。 */
   positions: number[]
-  /** 顶点索引映射: key -> vertexIndex。 */
-  vertexMap: globalThis.Map<string, number>
+  /** 矩形网格顶点索引查找表 (密集 Int32Array，未设置 = -1)。
+   * 仅用于矩形网格，大小 = (width+1) * (height+1)。
+   * 替代 Map<string, number> 字符串 deduplication，避免大量字符串分配。
+   */
+  rectVertexIndices: Int32Array | null
+  /** 等轴网格顶点索引映射 (Map<string, number>，key = "x,y,z")。
+   * 仅用于等轴网格，因为顶点位置不规则。
+   */
+  isoVertexMap: globalThis.Map<string, number> | null
   /** 每个顶点相邻的三角形索引列表 (用于法线平均)。 */
   vertexTriangles: number[][]
-  /** 三角形列表 (每元素 = [v0, v1, v2])。 */
-  triangles: number[][]
+  /** 三角形索引数组 (flat，每3个值 = 1个三角形)。
+   * 替代 number[][] 避免每个三角形创建新数组。
+   */
+  triangleIndices: number[]
   /** 世界空间 UV 范围。 */
   worldWidth: number
   worldHeight: number
@@ -200,13 +207,7 @@ export class TerrainMeshBuilder {
 
     // 第四步：打包数组
     const positions = new Float32Array(state.positions)
-    const indices = new Uint32Array(state.triangles.length * 3)
-    for (let i = 0; i < state.triangles.length; i++) {
-      const tri = state.triangles[i]!
-      indices[i * 3 + 0] = tri[0]!
-      indices[i * 3 + 1] = tri[1]!
-      indices[i * 3 + 2] = tri[2]!
-    }
+    const indices = new Uint32Array(state.triangleIndices)
 
     return {
       positions,
@@ -214,7 +215,7 @@ export class TerrainMeshBuilder {
       normals: new Float32Array(normals),
       uvs: new Float32Array(uvs),
       vertexCount: state.positions.length / 3,
-      triangleCount: state.triangles.length,
+      triangleCount: state.triangleIndices.length / 3,
     }
   }
 
@@ -321,9 +322,14 @@ function createBuildState(map: Map): MeshBuildState {
 
   return {
     positions: [],
-    vertexMap: new globalThis.Map(),
+    rectVertexIndices: gridType === MapGridType.Rectangular
+      ? new Int32Array((w + 1) * (h + 1)).fill(-1)
+      : null,
+    isoVertexMap: gridType === MapGridType.RectangularIsometric
+      ? new globalThis.Map()
+      : null,
     vertexTriangles: [],
-    triangles: [],
+    triangleIndices: [],
     worldWidth,
     worldHeight,
     originX,
@@ -336,25 +342,53 @@ function createBuildState(map: Map): MeshBuildState {
 // ---------------------------------------------------------------------------
 
 /**
- * 获取或创建顶点，返回顶点索引。
+ * 获取或创建矩形网格顶点，返回顶点索引。
  *
- * 使用 deduplication map 确保相同位置的顶点共享。
+ * 使用密集 Int32Array 索引替代字符串 deduplication map。
  * 这是防止 mesh cracks 的关键。
+ *
+ * @param x — grid x 坐标 (0..width)
+ * @param y — grid y 坐标 (0..height)
+ * @param pos — Babylon.js 位置
+ * @param state — 构建状态
+ * @returns 顶点索引
+ */
+function getOrCreateRectVertex(x: number, y: number, pos: Vector3, state: MeshBuildState): number {
+  const w = state.rectVertexIndices!.length > 0
+    ? Math.round(Math.sqrt(state.rectVertexIndices!.length))
+    : 0
+  const idx = y * w + x
+  const existing = state.rectVertexIndices![idx]
+  if (existing >= 0) {
+    return existing
+  }
+
+  const index = state.positions.length / 3
+  state.positions.push(pos.x, pos.y, pos.z)
+  state.rectVertexIndices![idx] = index
+  state.vertexTriangles.push([])
+  return index
+}
+
+/**
+ * 获取或创建等轴网格顶点，返回顶点索引。
+ *
+ * 等轴网格顶点位置不规则，使用字符串 deduplication map。
  *
  * @param pos — Babylon.js 位置
  * @param state — 构建状态
  * @returns 顶点索引
  */
-function getOrCreateVertex(pos: Vector3, state: MeshBuildState): number {
-  const key = vec3Key(pos)
-  const existing = state.vertexMap.get(key)
+function getOrCreateIsoVertex(pos: Vector3, state: MeshBuildState): number {
+  const key = `${pos.x},${pos.y},${pos.z}`
+  const existing = state.isoVertexMap!.get(key)
   if (existing !== undefined) {
     return existing
   }
 
   const index = state.positions.length / 3
   state.positions.push(pos.x, pos.y, pos.z)
-  state.vertexMap.set(key, index)
+  state.isoVertexMap!.set(key, index)
   state.vertexTriangles.push([])
   return index
 }
@@ -377,6 +411,52 @@ function generateTerrainSurface(map: Map, state: MeshBuildState): void {
   } else {
     generateRectangularSurface(map, state)
   }
+
+  // TODO-4.F.9: 生成悬崖面（Riser）垂直四边形
+  // generateCliffFaces(map, state)
+}
+
+// ---------------------------------------------------------------------------
+// Cliff Face (Riser) Generation — TODO-4.F.9
+// ---------------------------------------------------------------------------
+
+/**
+ * 为高度不连续的 cell 边生成垂直 cliff 面四边形。
+ *
+ * OpenRA 对照: TerrainTileInfo.Riser 编码了 8 个方向的预期高度差。
+ *
+ * 对每个 cell 边，如果相邻 cell 有高度差：
+ * - 生成垂直 quad（2 个三角形）连接较低 cell 的边顶点到较高 cell 的边顶点
+ * - Cliff 面法线指向 cell 中心外侧
+ * - UV 使用垂直投影
+ *
+ * TODO-4.F.9: 完整实现 Riser 驱动的 cliff 面生成。
+ * 当前为 stub，等待 TerrainInfo Riser 数据集成。
+ *
+ * @param _map — Map 实例
+ * @param _state — 构建状态
+ */
+/**
+ * 为高度不连续的 cell 边生成垂直 cliff 面四边形。
+ *
+ * TODO-4.F.9: 完整实现 Riser 驱动的 cliff 面生成。
+ * 当前为 stub，等待 TerrainInfo Riser 数据集成。
+ *
+ * @param _map — Map 实例
+ * @param _state — 构建状态
+ */
+// @ts-expect-error — stub for TODO-4.F.9, called via commented-out invocation in generateTerrainSurface
+function generateCliffFaces(_map: Map, _state: MeshBuildState): void {
+  // Stub: Riser cliff face generation deferred to TODO-4.F.9
+  // Implementation plan:
+  // 1. Iterate all cell edges (4 per cell: top, right, bottom, left)
+  // 2. For each edge, check neighbor cell height difference
+  // 3. If height diff > 0, generate vertical quad:
+  //    - Lower edge vertices (2) at lower cell's height
+  //    - Upper edge vertices (2) at upper cell's height + corner offset
+  //    - 2 triangles forming the vertical face
+  // 4. Normals point outward from cell center
+  // 5. UVs use world-space vertical projection
 }
 
 /**
@@ -397,14 +477,12 @@ function generateRectangularSurface(map: Map, state: MeshBuildState): void {
       const ramp = map.grid.ramps[rampVal]
 
       // 获取 cell 的 4 个角点顶点索引
-      // TL = cell (x, y), corner 0
-      // TR = cell (x, y), corner 1
-      // BR = cell (x, y), corner 2
-      // BL = cell (x, y), corner 3
-      const vTL = getOrCreateVertex(cellCornerToVector3(cell, 0, map), state)
-      const vTR = getOrCreateVertex(cellCornerToVector3(cell, 1, map), state)
-      const vBR = getOrCreateVertex(cellCornerToVector3(cell, 2, map), state)
-      const vBL = getOrCreateVertex(cellCornerToVector3(cell, 3, map), state)
+      // 矩形网格顶点在 (x,y), (x+1,y), (x+1,y+1), (x,y+1)
+      // 使用密集 Int32Array 索引替代字符串 deduplication
+      const vTL = getOrCreateRectVertex(x, y, cellCornerToVector3(cell, 0, map), state)
+      const vTR = getOrCreateRectVertex(x + 1, y, cellCornerToVector3(cell, 1, map), state)
+      const vBR = getOrCreateRectVertex(x + 1, y + 1, cellCornerToVector3(cell, 2, map), state)
+      const vBL = getOrCreateRectVertex(x, y + 1, cellCornerToVector3(cell, 3, map), state)
 
       // 根据 split 模式生成三角形
       if (ramp.polygons.length === 2) {
@@ -459,11 +537,11 @@ function generateIsometricSurface(map: Map, state: MeshBuildState): void {
       const rampVal = map.ramp.get(cell)
       const ramp = map.grid.ramps[rampVal]
 
-      // 获取 cell 的 4 个角点
-      const vTL = getOrCreateVertex(cellCornerToVector3(cell, 0, map), state)
-      const vTR = getOrCreateVertex(cellCornerToVector3(cell, 1, map), state)
-      const vBR = getOrCreateVertex(cellCornerToVector3(cell, 2, map), state)
-      const vBL = getOrCreateVertex(cellCornerToVector3(cell, 3, map), state)
+      // 获取 cell 的 4 个角点 (等轴网格使用字符串 deduplication)
+      const vTL = getOrCreateIsoVertex(cellCornerToVector3(cell, 0, map), state)
+      const vTR = getOrCreateIsoVertex(cellCornerToVector3(cell, 1, map), state)
+      const vBR = getOrCreateIsoVertex(cellCornerToVector3(cell, 2, map), state)
+      const vBL = getOrCreateIsoVertex(cellCornerToVector3(cell, 3, map), state)
 
       // 根据 split 模式生成三角形
       if (ramp.polygons.length === 2) {
@@ -494,8 +572,8 @@ function generateIsometricSurface(map: Map, state: MeshBuildState): void {
  * @param state — 构建状态
  */
 function addTriangle(v0: number, v1: number, v2: number, state: MeshBuildState): void {
-  const triIndex = state.triangles.length
-  state.triangles.push([v0, v1, v2])
+  const triIndex = state.triangleIndices.length / 3
+  state.triangleIndices.push(v0, v1, v2)
   state.vertexTriangles[v0]!.push(triIndex)
   state.vertexTriangles[v1]!.push(triIndex)
   state.vertexTriangles[v2]!.push(triIndex)
@@ -523,11 +601,11 @@ function computeNormals(state: MeshBuildState): number[] {
   const normals = new Array<number>(vertexCount * 3).fill(0)
 
   // 第一步：计算每个三角形的面法线并累加到顶点
-  for (let ti = 0; ti < state.triangles.length; ti++) {
-    const tri = state.triangles[ti]!
-    const v0 = tri[0]!
-    const v1 = tri[1]!
-    const v2 = tri[2]!
+  const triCount = state.triangleIndices.length / 3
+  for (let ti = 0; ti < triCount; ti++) {
+    const v0 = state.triangleIndices[ti * 3 + 0]!
+    const v1 = state.triangleIndices[ti * 3 + 1]!
+    const v2 = state.triangleIndices[ti * 3 + 2]!
 
     // 获取顶点位置
     const p0x = state.positions[v0 * 3 + 0]!

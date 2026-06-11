@@ -393,13 +393,14 @@ export class TerrainMaterial {
   updateSplatMap(_changedCells: CPos[]): void {
     // TODO-4.F.4: 实现增量 splat map 更新
     // 目前重新生成整个 splat map
+    // NOTE: 先生成新的 splat map，成功后再 dispose 旧的，避免生成失败时丢失旧纹理
     const newSplatMap = this._generateSplatMap()
 
     if (this._useCustomShader && 'setTexture' in this.material) {
       ;(this.material as ShaderMaterial).setTexture('splatMap', newSplatMap)
     }
 
-    // 释放旧的 splat map
+    // 释放旧的 splat map (在生成成功后)
     if (this._splatMap) {
       this._splatMap.dispose()
     }
@@ -415,6 +416,11 @@ export class TerrainMaterial {
   setTerrainTexture(index: number, texture: Texture): void {
     if (index < 0 || index > 3) {
       throw new RangeError('Terrain texture index must be 0-3')
+    }
+
+    // Guard: 如果传入相同的 texture，不执行任何操作
+    if (this._terrainTextures[index] === texture) {
+      return
     }
 
     // 释放旧纹理
