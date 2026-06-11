@@ -9,6 +9,24 @@
  * - C# HandleMouseInput() 同步事件路由 → scene.onPointerObservable + POINTERDOWN/MOVE/UP 状态机
  * - OpenRA ApplyOrders() 同步命令 → 回调异步 dispatch (callbacks.applyOrder)
  * - 2D WorldRenderer.World.Selection.SetRollover → callbacks.setRollover
+ *
+ * 架构说明: 为何不继承 Widget
+ * OpenRA 的 WorldInteractionControllerWidget 继承 Widget 并参与 Widget 树
+ * (焦点管理、模态堆叠、MouseFocus 传递)。TS 版本采用 回调桥接模式
+ * (WorldInteractionCallbacks) 而非 Widget 继承，原因如下:
+ * 1. 输入源不同 — TS 使用 Babylon.js scene.onPointerObservable 接收 3D
+ *    画布事件，而非 DOM 事件路由链。Widget 树的 HandleMouseInput 递归
+ *    分发机制在此不适用。
+ * 2. 焦点管理由 Babylon.js 场景控制 — HasMouseFocus / TakeMouseFocus /
+ *    YieldMouseFocus 的原语是 scene.pick() + pointer observable, 而非
+ *    Widget 树的 DOM 焦点模型。
+ * 3. 选择状态存储在宿主应用中 — combineSelection / clearSelection /
+ *    setRollover 均为回调，而非 Widget 状态。这解耦了交互层与 UI 树。
+ * 4. 非 DOM 渲染 — Draw() 在 OpenRA 中用 RgbaColorRenderer 绘制 2D
+ *    选择框; TS 中用 3D frustum / HighlightLayer (TODO-5.E.VISUAL)。
+ *    只有 render() 返回一个 pointer-events:none 的透明 DOM 占位符。
+ * 此决策是有意为之的架构简化，待将来 Architect 审查后可能调整为
+ * 同时实现 Widget 接口和 Babylon.js 交互的双通道模式。
  */
 
 import { PointerEventTypes, Vector3, Matrix } from '@babylonjs/core'
@@ -162,6 +180,13 @@ export interface IGameWorld {
 //
 // Babylon.js PointerInfo.event is typed as IMouseEvent, which is a subset
 // of PointerEvent. We cast to this minimal interface for internal use.
+//
+// NOTE: The modifier fields (altKey, ctrlKey, shiftKey) on PointerEventLike
+// exist only for unit test mock injection (see injectPointerEvent). In
+// production, modifier state is obtained via the getModifierKeys() callback
+// which queries the actual input state, not the DOM event's modifier flags.
+// _handlePointerEvent ignores event.altKey/ctrlKey/shiftKey and uses
+// this._callbacks.getModifierKeys() instead.
 // ---------------------------------------------------------------------------
 
 interface PointerEventLike {
@@ -292,6 +317,19 @@ export class WorldInteractionControllerWidget {
 
   private _pointerObserver: unknown = null
 
+  // ---- Context menu suppression (TODO-5.E.CONTEXTMENU) ----
+  // NOTE: The contextmenu event listener reference is stored here for cleanup
+  // in dispose(). This prevents the browser's native right-click menu from
+  // appearing during gameplay.
+
+  private _contextMenuHandler: ((e: Event) => void) | null = null
+
+  // ---- Render element cache (MAJOR #8 fix) ----
+  // NOTE: render() may be called multiple times (e.g., on UI tree re-render).
+  // The element is cached to avoid DOM leaks.
+
+  private _element: HTMLElement | null = null
+
   // ---------------------------------------------------------------------------
   // Construction
   // ---------------------------------------------------------------------------
@@ -331,12 +369,28 @@ export class WorldInteractionControllerWidget {
    *
    * Uses scene.onPointerObservable to receive POINTERDOWN, POINTERMOVE,
    * and POINTERUP events. The observer is stored for cleanup in dispose().
+   *
+   * Also suppresses the browser's native context menu on the rendering
+   * canvas (right-clicking is used for issuing orders in RTS games).
+   *
+   * TODO-5.E.CONTEXTMENU: In a complete Widget tree integration, context
+   * menu suppression should be configurable per-Widget (e.g., to allow
+   * context menus on UI panels like chat/minimap). Currently, it is
+   * globally suppressed on the canvas.
    */
   private _initPointerEvents(): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this._pointerObserver = this.babylonScene.onPointerObservable.add((pointerInfo: any) => {
       this._handlePointerEvent(pointerInfo.type, pointerInfo.event)
     })
+
+    // Suppress browser context menu on the rendering canvas
+    const engine = this.babylonScene.getEngine()
+    const canvas = engine?.getRenderingCanvas?.() as HTMLCanvasElement | undefined
+    if (canvas) {
+      this._contextMenuHandler = (e: Event) => { e.preventDefault() }
+      canvas.addEventListener('contextmenu', this._contextMenuHandler)
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -359,6 +413,12 @@ export class WorldInteractionControllerWidget {
   private _handlePointerEvent(type: number, event: PointerEventLike): void {
     // Guard: skip if world is being disposed
     if (this.gameWorld.disposing) return
+
+    // TODO-5.E.CLICKTHROUGH: Check if pointer event target is a non-ClickThrough
+    // UI Widget before processing world interaction. In the full Widget tree,
+    // widgets with ClickThrough=false should intercept pointer events. Currently,
+    // all events pass through to world interaction (the render() element has
+    // pointer-events: none, and UI widgets are expected to render above it).
 
     const screenPos: ScreenPoint = {
       x: event.clientX,
@@ -409,19 +469,19 @@ export class WorldInteractionControllerWidget {
    */
   private _handleLeftDown(
     screenPos: ScreenPoint,
-    classicStyle: boolean,
-    actionButton: number,
+    _classicStyle: boolean,
+    _actionButton: number,
   ): void {
     // Classic style or left is not the action button → start drag immediately
     // (or modern style with left as action button: enter MAYBE_DRAG)
     this._dragStartScreen = screenPos
     this._isValidDragbox = false
     this._setState(STATE_MAYBE_DRAG)
-    // NOTE: _classicStyle and _actionButton are checked in _handleLeftUp
-    // for the click-vs-drag branching. The _handleLeftDown always enters
-    // MAYBE_DRAG; the distinction happens on _handleLeftUp.
-    void classicStyle
-    void actionButton
+    // NOTE: _classicStyle and _actionButton are passed from _handlePointerEvent
+    // but only used in _handleLeftUp for the click-vs-drag branching.
+    // _handleLeftDown always enters MAYBE_DRAG regardless of mouse style;
+    // the distinction between click and drag is resolved in _handleLeftUp
+    // based on deadzone and the mouse style/action button configuration.
   }
 
   // ---------------------------------------------------------------------------
@@ -619,8 +679,12 @@ export class WorldInteractionControllerWidget {
     const entities = this._callbacks.getSelectableEntities()
     const eligiblePlayers = this._callbacks.getEligiblePlayers()
 
-    // Find the entity at click position to get its selectionClass
-    const pickResult = this.babylonScene.pick(screenPos.x, screenPos.y)
+    // Find the entity at click position to get its selectionClass.
+    // Use a mesh filter predicate to ensure we only hit selectable entity
+    // meshes, not the ground or non-interactive meshes.
+    const pickResult = this.babylonScene.pick(screenPos.x, screenPos.y, (mesh) => {
+      return entities.some((e) => e.mesh === mesh && eligiblePlayers.includes(e.ownerId))
+    })
     if (!pickResult?.hit) return
 
     const hitEntity = entities.find(
@@ -628,7 +692,13 @@ export class WorldInteractionControllerWidget {
     )
     if (!hitEntity) return
 
-    // Select all on-screen entities of the same selectionClass
+    // Select all entities of the same selectionClass.
+    // NOTE: OpenRA's SelectionUtils.SelectActorsOnScreen limits selection to
+    // "actors currently visible on screen" via ScreenMap.ActorsInMouseBox
+    // with a viewport-sized bounding box. Our implementation selects ALL
+    // entities with matching selectionClass regardless of screen visibility.
+    // This deviation is intentional for now — on-screen filtering requires
+    // frustum culling which is deferred to TODO-5.E.FRUSTUM.
     const sameClass = entities.filter(
       (e) =>
         e.selectionClass === hitEntity.selectionClass &&
@@ -690,10 +760,16 @@ export class WorldInteractionControllerWidget {
    *
    * OpenRA 对照: SelectionUtils.SelectActorsInBoxWithDeadzone() (2D spatial index)
    *
-   * Uses entity screen-space projection to test containment within
-   * the screen rectangle. This is a simplified approach compared to
-   * 3D frustum culling; full frustum-based selection is deferred to
-   * TODO-5.E.FRUSTUM.
+   * When the screen rect is effectively a point (start and end within 1px),
+   * falls back to raycasting via _raycastAtScreenPoint() to find the entity
+   * under the cursor. This matches OpenRA's deadzone behavior where
+   * SelectActorsInBoxWithDeadzone falls back to
+   * SelectHighestPriorityActorAtPoint for zero-area / sub-deadzone rects.
+   *
+   * For non-zero-area rects, uses entity screen-space projection to test
+   * containment within the screen rectangle. This is a simplified approach
+   * compared to 3D frustum culling; full frustum-based selection is deferred
+   * to TODO-5.E.FRUSTUM.
    *
    * @param start — one corner of the screen rect
    * @param end — opposite corner of the screen rect
@@ -703,6 +779,19 @@ export class WorldInteractionControllerWidget {
     start: ScreenPoint,
     end: ScreenPoint,
   ): SelectableEntity[] {
+    // Deadzone fallback: when the drag rect is effectively a point (within
+    // 1px), use raycasting instead of screen-space projection. Screen-space
+    // projection via _worldToScreen requires all entities to be on-screen
+    // and visible, while raycasting finds exactly what's under the cursor
+    // regardless of screen position. This matches OpenRA's behavior in
+    // SelectActorsInBoxWithDeadzone which falls back to a spatial index
+    // point query when the drag box is below the deadzone threshold.
+    const dx = Math.abs(start.x - end.x)
+    const dy = Math.abs(start.y - end.y)
+    if (dx <= 1 && dy <= 1) {
+      return this._raycastAtScreenPoint(start)
+    }
+
     const eligiblePlayers = this._callbacks.getEligiblePlayers()
     const allEntities = this._callbacks.getSelectableEntities()
 
@@ -733,6 +822,39 @@ export class WorldInteractionControllerWidget {
     return inRect
   }
 
+  /**
+   * Find selectable entities at a screen point via raycasting.
+   *
+   * OpenRA 对照: ScreenMap.ActorsAtMouse() — 2D spatial index point query
+   *
+   * Uses scene.pick() with a mesh filter predicate to only hit selectable
+   * entity meshes owned by eligible players. Returns an array (at most one
+   * entity, since a single camera ray hits at most one mesh at a given
+   * pixel) for API consistency with _getEntitiesInScreenRect.
+   *
+   * @param screenPos — pixel coordinates on the canvas
+   * @returns selectable entities at the screen point (0 or 1 elements)
+   */
+  private _raycastAtScreenPoint(screenPos: ScreenPoint): SelectableEntity[] {
+    const entities = this._callbacks.getSelectableEntities()
+    const eligiblePlayers = this._callbacks.getEligiblePlayers()
+
+    const pickResult = this.babylonScene.pick(screenPos.x, screenPos.y, (mesh) => {
+      return entities.some((e) => e.mesh === mesh && eligiblePlayers.includes(e.ownerId))
+    })
+
+    if (pickResult?.hit && pickResult.pickedMesh) {
+      const hit = entities.find(
+        (e) => e.mesh === pickResult.pickedMesh && eligiblePlayers.includes(e.ownerId),
+      )
+      if (hit) {
+        return [hit]
+      }
+    }
+
+    return []
+  }
+
   // ---------------------------------------------------------------------------
   // Right-click order dispatch
   // ---------------------------------------------------------------------------
@@ -749,9 +871,15 @@ export class WorldInteractionControllerWidget {
     const worldPos = this._screenToWorld(screenPos)
     if (!worldPos) return
 
-    // Check if right-click hit an entity
-    const pickResult = this.babylonScene.pick(screenPos.x, screenPos.y)
+    // Check if right-click hit an entity.
+    // Use a mesh filter predicate to only hit selectable entity meshes,
+    // preventing misclassification (e.g., hitting the ground mesh when
+    // an enemy unit is actually under the cursor would incorrectly
+    // issue 'Move' instead of 'Attack').
     const entities = this._callbacks.getSelectableEntities()
+    const pickResult = this.babylonScene.pick(screenPos.x, screenPos.y, (mesh) => {
+      return entities.some((e) => e.mesh === mesh)
+    })
     const hitEntity = pickResult?.hit
       ? entities.find((e) => e.mesh === pickResult.pickedMesh)
       : undefined
@@ -872,9 +1000,13 @@ export class WorldInteractionControllerWidget {
    * interaction is handled via Babylon.js observables, so this element
    * has pointer-events: none to let clicks pass through to the canvas.
    *
+   * The element is cached and reused on subsequent calls to avoid DOM
+   * leaks — matching the Widget base class pattern.
+   *
    * OpenRA 对照: Draw() — but in 3D, we only need a placeholder DOM element
    */
   render(): HTMLElement {
+    if (this._element) return this._element
     const el = document.createElement('div')
     el.className = 'world-interaction-controller'
     el.style.position = 'absolute'
@@ -883,6 +1015,7 @@ export class WorldInteractionControllerWidget {
     el.style.width = '100%'
     el.style.height = '100%'
     el.style.pointerEvents = 'none' // ClickThrough: let events pass to canvas
+    this._element = el
     return el
   }
 
@@ -1005,6 +1138,16 @@ export class WorldInteractionControllerWidget {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.babylonScene.onPointerObservable.remove(this._pointerObserver as any)
       this._pointerObserver = null
+    }
+
+    // Remove context menu suppression listener
+    if (this._contextMenuHandler !== null) {
+      const engine = this.babylonScene.getEngine()
+      const canvas = engine?.getRenderingCanvas?.() as HTMLCanvasElement | undefined
+      if (canvas) {
+        canvas.removeEventListener('contextmenu', this._contextMenuHandler)
+      }
+      this._contextMenuHandler = null
     }
 
     this._setState(STATE_IDLE)

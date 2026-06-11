@@ -92,6 +92,22 @@ const mockPointerObservable = {
   remove: mockPointerObservableRemove,
 }
 
+// Mock canvas for contextmenu listener tracking (BLOCKER #3 fix)
+const mockCanvasEventListeners = new Map<string, Array<(e: Event) => void>>()
+const mockCanvas = {
+  addEventListener: vi.fn((type: string, handler: (e: Event) => void) => {
+    if (!mockCanvasEventListeners.has(type)) mockCanvasEventListeners.set(type, [])
+    mockCanvasEventListeners.get(type)!.push(handler)
+  }),
+  removeEventListener: vi.fn((type: string, handler: (e: Event) => void) => {
+    const listeners = mockCanvasEventListeners.get(type)
+    if (listeners) {
+      const index = listeners.indexOf(handler)
+      if (index >= 0) listeners.splice(index, 1)
+    }
+  }),
+}
+
 // ---------------------------------------------------------------------------
 // Helper: create mock Babylon.js objects
 // ---------------------------------------------------------------------------
@@ -104,6 +120,7 @@ function createMockScene() {
     getEngine: () => ({
       getRenderWidth: () => 1280,
       getRenderHeight: () => 720,
+      getRenderingCanvas: () => mockCanvas,
     }),
   }
 }
@@ -266,6 +283,9 @@ describe('WorldInteractionControllerWidget', () => {
     // Vector3.Project throws in mock env — _worldToScreen returns null via catch
     mockPointerObservableAdd.mockClear()
     mockPointerObservableRemove.mockClear()
+    mockCanvasEventListeners.clear()
+    mockCanvas.addEventListener.mockClear()
+    mockCanvas.removeEventListener.mockClear()
   })
 
   // ---------------------------------------------------------------------------
@@ -298,6 +318,13 @@ describe('WorldInteractionControllerWidget', () => {
       expect(w.state).toBe('idle')
       expect(w.isValidDragbox).toBe(false)
       expect(w.rollover).toEqual([])
+    })
+
+    it('registers contextmenu event listener on construction (BLOCKER #3)', () => {
+      const { callbacks } = createDefaultCallbacks()
+      new WorldInteractionControllerWidget(world, scene as any, camera as any, groundMesh as any, callbacks)
+
+      expect(mockCanvas.addEventListener).toHaveBeenCalledWith('contextmenu', expect.any(Function))
     })
   })
 
@@ -338,6 +365,15 @@ describe('WorldInteractionControllerWidget', () => {
       w.dispose()
       // Second dispose should not throw
       expect(() => w.dispose()).not.toThrow()
+    })
+
+    it('removes contextmenu event listener on dispose (BLOCKER #3)', () => {
+      const { callbacks } = createDefaultCallbacks()
+      const w = new WorldInteractionControllerWidget(world, scene as any, camera as any, groundMesh as any, callbacks)
+
+      w.dispose()
+
+      expect(mockCanvas.removeEventListener).toHaveBeenCalledWith('contextmenu', expect.any(Function))
     })
   })
 
@@ -1056,6 +1092,43 @@ describe('WorldInteractionControllerWidget', () => {
       // setRollover is called during mouse-over rollover
       expect(store.rollovers.length).toBeGreaterThanOrEqual(1)
     })
+
+    it('rollover contains entity when raycast hits an entity (MINOR #12)', () => {
+      const entity = createEntity('unit1', 'player1', 'Infantry', 10, { x: 10, y: 0, z: 10 })
+      const { callbacks, store } = createDefaultCallbacks({
+        selectableEntities: [entity],
+        eligiblePlayers: ['player1'],
+      })
+      const w = new WorldInteractionControllerWidget(world, scene as any, camera as any, groundMesh as any, callbacks)
+
+      // Mock scene.pick to return a hit on the entity mesh
+      // (predicate filter matches entity.mesh and eligible player)
+      mockScenePick.mockReturnValue(createPickHit(entity.mesh))
+
+      w.injectPointerEvent(PointerEventTypes.POINTERMOVE, screenPoint(300, 400), -1)
+
+      expect(store.rollovers.length).toBeGreaterThanOrEqual(1)
+      const lastRollover = store.rollovers[store.rollovers.length - 1]!
+      expect(lastRollover).toEqual([entity])
+    })
+
+    it('rollover is empty when raycast hits nothing', () => {
+      const entity = createEntity('unit1', 'player1', 'Infantry', 10, { x: 10, y: 0, z: 10 })
+      const { callbacks, store } = createDefaultCallbacks({
+        selectableEntities: [entity],
+        eligiblePlayers: ['player1'],
+      })
+      const w = new WorldInteractionControllerWidget(world, scene as any, camera as any, groundMesh as any, callbacks)
+
+      // Mock scene.pick to miss (returns null)
+      mockScenePick.mockReturnValue(createPickMiss())
+
+      w.injectPointerEvent(PointerEventTypes.POINTERMOVE, screenPoint(300, 400), -1)
+
+      expect(store.rollovers.length).toBeGreaterThanOrEqual(1)
+      const lastRollover = store.rollovers[store.rollovers.length - 1]!
+      expect(lastRollover).toEqual([])
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -1063,13 +1136,22 @@ describe('WorldInteractionControllerWidget', () => {
   // ---------------------------------------------------------------------------
 
   describe('Widget compatibility', () => {
-    it('extends Widget and has render method', () => {
+    it('provides render method that returns HTMLElement', () => {
       const { callbacks } = createDefaultCallbacks()
       const w = new WorldInteractionControllerWidget(world, scene as any, camera as any, groundMesh as any, callbacks)
 
       const el = w.render()
       expect(el).toBeInstanceOf(HTMLDivElement)
       expect(el.className).toBe('world-interaction-controller')
+    })
+
+    it('render() caches and reuses the same HTMLElement on subsequent calls', () => {
+      const { callbacks } = createDefaultCallbacks()
+      const w = new WorldInteractionControllerWidget(world, scene as any, camera as any, groundMesh as any, callbacks)
+
+      const el1 = w.render()
+      const el2 = w.render()
+      expect(el1).toBe(el2) // same object reference → cached
     })
 
     it('getCursor signature matches Widget base class', () => {
