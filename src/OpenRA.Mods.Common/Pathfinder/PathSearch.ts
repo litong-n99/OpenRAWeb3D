@@ -6,7 +6,7 @@
  * - C# sealed class + IDisposable → TypeScript class with dispose()
  * - C# IPriorityQueue<GraphConnection> → PriorityQueue<GraphConnection> with inline comparer
  * - C# Func<CPos, bool, int> heuristic → TypeScript function type
- * - C# static factory methods (deferred to batch 2, need Locomotor)
+ * - C# static factory methods → TypeScript static methods
  * - C# List<CPos> → CPos[] (TypeScript array)
  */
 
@@ -14,6 +14,16 @@ import { CPos } from '../../OpenRA.Game/CPos'
 import { PriorityQueue } from '../../OpenRA.Game/Primitives/PriorityQueue'
 import { CellInfo, CellStatus, type CellStatusValue } from './CellInfo'
 import { GraphConnection, PathGraph, type IPathGraph } from './IPathGraph'
+import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces'
+import type { IGameWorld } from '../../OpenRA.Game/World'
+import type { BlockedByActor } from '../Traits/BlockedByActor'
+import type { ILocomotor } from '../Traits/World/Locomotor'
+import { MapPathGraph } from './MapPathGraph'
+import { GridPathGraph } from './GridPathGraph'
+import { Grid } from './Grid'
+import { CellInfoLayerPool } from './CellInfoLayerPool'
+import { SparsePathGraph } from './SparsePathGraph'
+import { MapGridType } from '../../OpenRA.Game/Map/MapGridType'
 
 // ---------------------------------------------------------------------------
 // IRecorder interface
@@ -66,10 +76,377 @@ export const NoPath: CPos[] = []
  * Implements the A* algorithm with configurable heuristic weight.
  * Supports unidirectional and bidirectional search.
  *
- * NOTE: Factory methods (toTargetCell, toTargetCellByPredicate, etc.)
- * are deferred to batch 2 as they require Locomotor.
+ * Factory methods (toTargetCell, toTargetCellByPredicate, etc.)
+ * require Locomotor and are implemented below as static methods.
  */
 export class PathSearch {
+  // -------------------------------------------------------------------------
+  // Static factory methods
+  // -------------------------------------------------------------------------
+
+  /**
+   * Create a PathSearch from source cells to a target cell.
+   *
+   * OpenRA 对照: PathSearch.ToTargetCell(World, Locomotor, Actor, IEnumerable, CPos, BlockedByActor, int, ...)
+   *
+   * @param world — the game world
+   * @param locomotor — the locomotor defining movement rules
+   * @param actor — the actor doing the moving (null for theoretical)
+   * @param froms — starting cell positions
+   * @param target — target cell position
+   * @param check — blocking check level
+   * @param heuristicWeightPercentage — heuristic weight (100 = optimal)
+   * @param customCost — optional custom cost function
+   * @param ignoreActor — actor to ignore during blocking
+   * @param laneBias — whether to apply lane bias
+   * @param inReverse — whether search is in reverse
+   * @param heuristic — optional custom heuristic function
+   * @param grid — optional grid to restrict search (null = full map)
+   * @param recorder — optional search recorder
+   * @returns a new PathSearch instance
+   */
+  static toTargetCell(
+    world: IGameWorld,
+    locomotor: ILocomotor,
+    actor: IGameActor | null,
+    froms: CPos[],
+    target: CPos,
+    check: BlockedByActor,
+    heuristicWeightPercentage: number,
+    customCost: ((pos: CPos) => number) | null = null,
+    ignoreActor: IGameActor | null = null,
+    laneBias: boolean = true,
+    inReverse: boolean = false,
+    heuristic: ((pos: CPos, isAccessible: boolean) => number) | null = null,
+    grid: Grid | null = null,
+    recorder: IRecorder | null = null,
+  ): PathSearch {
+    let graph: IPathGraph
+    if (grid !== null) {
+      graph = new GridPathGraph(
+        locomotor,
+        actor,
+        world,
+        check,
+        customCost,
+        ignoreActor,
+        laneBias,
+        inReverse,
+        grid,
+      )
+    } else {
+      // STUB: LayerPool requires Map which is not fully available
+      // TODO-5.X: Use world.Map to create CellInfoLayerPool
+      const layerPool = new CellInfoLayerPool(
+        MapGridType.Rectangular,
+        { width: 128, height: 128 },
+      )
+      graph = new MapPathGraph(
+        layerPool,
+        locomotor,
+        actor,
+        world,
+        check,
+        customCost,
+        ignoreActor,
+        laneBias,
+        inReverse,
+      )
+    }
+
+    const actualHeuristic =
+      heuristic ?? PathSearch.defaultCostEstimator(locomotor, target)
+    const search = new PathSearch(
+      graph,
+      actualHeuristic,
+      heuristicWeightPercentage,
+      (loc: CPos) => CPos.equals(loc, target),
+      recorder,
+    )
+
+    PathSearch.addInitialCells(
+      world,
+      locomotor,
+      actor,
+      froms,
+      check,
+      customCost,
+      ignoreActor,
+      inReverse,
+      search,
+    )
+
+    return search
+  }
+
+  /**
+   * Create a PathSearch from source cells to any cell matching a predicate.
+   *
+   * OpenRA 对照: PathSearch.ToTargetCellByPredicate(World, Locomotor, Actor, IEnumerable, Func, BlockedByActor, ...)
+   *
+   * @param world — the game world
+   * @param locomotor — the locomotor defining movement rules
+   * @param actor — the actor doing the moving (null for theoretical)
+   * @param froms — starting cell positions
+   * @param targetPredicate — predicate identifying target cells
+   * @param check — blocking check level
+   * @param customCost — optional custom cost function
+   * @param ignoreActor — actor to ignore during blocking
+   * @param laneBias — whether to apply lane bias
+   * @param recorder — optional search recorder
+   * @returns a new PathSearch instance
+   */
+  static toTargetCellByPredicate(
+    world: IGameWorld,
+    locomotor: ILocomotor,
+    actor: IGameActor | null,
+    froms: CPos[],
+    targetPredicate: (pos: CPos) => boolean,
+    check: BlockedByActor,
+    customCost: ((pos: CPos) => number) | null = null,
+    ignoreActor: IGameActor | null = null,
+    laneBias: boolean = true,
+    recorder: IRecorder | null = null,
+  ): PathSearch {
+    // STUB: LayerPool requires Map which is not fully available
+    // TODO-5.X: Use world.Map to create CellInfoLayerPool
+    const layerPool = new CellInfoLayerPool(
+      MapGridType.Rectangular,
+      { width: 128, height: 128 },
+    )
+    const graph = new MapPathGraph(
+      layerPool,
+      locomotor,
+      actor,
+      world,
+      check,
+      customCost,
+      ignoreActor,
+      laneBias,
+      false,
+    )
+    const search = new PathSearch(
+      graph,
+      () => 0,
+      0,
+      targetPredicate,
+      recorder,
+    )
+
+    PathSearch.addInitialCells(
+      world,
+      locomotor,
+      actor,
+      froms,
+      check,
+      customCost,
+      ignoreActor,
+      false,
+      search,
+    )
+
+    return search
+  }
+
+  /**
+   * Create a PathSearch over a custom edge graph.
+   *
+   * OpenRA 对照: PathSearch.ToTargetCellOverGraph(Func, Locomotor, CPos, CPos, int, IRecorder)
+   *
+   * @param edges — function returning outgoing edges for a cell
+   * @param locomotor — the locomotor defining movement rules
+   * @param from — starting cell position
+   * @param target — target cell position
+   * @param estimatedSearchSize — estimated search size (for preallocation)
+   * @param recorder — optional search recorder
+   * @returns a new PathSearch instance
+   */
+  static toTargetCellOverGraph(
+    edges: (pos: CPos) => GraphConnection[] | null,
+    locomotor: ILocomotor,
+    from: CPos,
+    target: CPos,
+    estimatedSearchSize: number = 0,
+    recorder: IRecorder | null = null,
+  ): PathSearch {
+    const graph = new SparsePathGraph(edges, estimatedSearchSize)
+    const search = new PathSearch(
+      graph,
+      PathSearch.defaultCostEstimator(locomotor, target),
+      100,
+      (loc: CPos) => CPos.equals(loc, target),
+      recorder,
+    )
+
+    search.addInitialCell(from, null)
+
+    return search
+  }
+
+  /**
+   * Check if a cell allows movement.
+   *
+   * OpenRA 对照: PathSearch.CellAllowsMovement(World, Locomotor, CPos, Func)
+   *
+   * A cell allows movement if:
+   * - It is in the world
+   * - It is on the ground layer or on an enabled custom movement layer
+   * - It has not been excluded by the customCost function
+   *
+   * @param world — the game world
+   * @param locomotor — the locomotor
+   * @param cell — the cell to check
+   * @param customCost — optional custom cost function
+   * @returns true if the cell allows movement
+   */
+  static cellAllowsMovement(
+    _world: IGameWorld,
+    _locomotor: ILocomotor,
+    cell: CPos,
+    customCost: ((pos: CPos) => number) | null,
+  ): boolean {
+    // STUB: world.Map.Contains check — Map not fully available
+    // TODO-5.X: Replace with world.Map.Contains(cell)
+    const inWorld =
+      cell.X >= 0 && cell.X < 128 && cell.Y >= 0 && cell.Y < 128
+    if (!inWorld) {
+      return false
+    }
+
+    // Ground layer (0) is always allowed
+    // Custom layers require enabledForLocomotor check
+    // STUB: Custom movement layer check deferred
+    // TODO-5.X: Add custom movement layer check
+    const layerAllowed = cell.Layer === 0
+    if (!layerAllowed) {
+      return false
+    }
+
+    // Custom cost exclusion
+    if (customCost !== null) {
+      const cost = customCost(cell)
+      if (cost === PathGraph.PathCostForInvalidPath) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  /**
+   * Default cost estimator using diagonal distance heuristic.
+   *
+   * OpenRA 对照: PathSearch.DefaultCostEstimator(Locomotor, CPos)
+   *
+   * Uses the minimum terrain cost for horizontal movement and sqrt(2) times
+   * that for diagonal movement. Layers are ignored and incur no additional cost.
+   *
+   * @param locomotor — the locomotor
+   * @param destination — the destination cell (optional)
+   * @returns a heuristic function
+   */
+  static defaultCostEstimator(
+    locomotor: ILocomotor,
+    destination?: CPos,
+  ): (pos: CPos, isAccessibleOrDest: boolean | CPos) => number {
+    const estimator = PathSearch.defaultCostEstimatorBase(locomotor)
+    if (destination !== undefined) {
+      return (here: CPos, _isAccessibleOrDest: boolean | CPos): number =>
+        estimator(here, destination)
+    }
+    return (
+      here: CPos,
+      isAccessibleOrDest: boolean | CPos,
+    ): number => {
+      if (typeof isAccessibleOrDest === 'boolean') {
+        // This overload shouldn't be called without destination
+        return 0
+      }
+      return estimator(here, isAccessibleOrDest)
+    }
+  }
+
+  /**
+   * Base diagonal distance estimator.
+   *
+   * OpenRA 对照: PathSearch.DefaultCostEstimator(Locomotor)
+   *
+   * @param locomotor — the locomotor
+   * @returns a function computing estimated cost between two cells
+   */
+  private static defaultCostEstimatorBase(
+    locomotor: ILocomotor,
+  ): (here: CPos, destination: CPos) => number {
+    // Determine minimum terrain cost
+    let cellCost = Number.MAX_SAFE_INTEGER
+    for (const entry of locomotor.Info.TerrainSpeeds.values()) {
+      if (entry.cost < cellCost) {
+        cellCost = entry.cost
+      }
+    }
+    if (cellCost === Number.MAX_SAFE_INTEGER) {
+      cellCost = 100 // Default if no terrain speeds defined
+    }
+
+    const diagonalCellCost = Math.round(cellCost * Math.SQRT2)
+
+    return (here: CPos, destination: CPos): number => {
+      const dx = Math.abs(here.X - destination.X)
+      const dy = Math.abs(here.Y - destination.Y)
+      const diag = Math.min(dx, dy)
+      const straight = dx + dy
+
+      return cellCost * straight + (diagonalCellCost - 2 * cellCost) * diag
+    }
+  }
+
+  /**
+   * Add initial cells to a search.
+   *
+   * OpenRA 对照: PathSearch.AddInitialCells(World, Locomotor, Actor, IEnumerable, BlockedByActor, Func, Actor, bool, PathSearch)
+   *
+   * @param world — the game world
+   * @param locomotor — the locomotor
+   * @param actor — the actor
+   * @param froms — starting positions
+   * @param check — blocking check level
+   * @param customCost — custom cost function
+   * @param ignoreActor — actor to ignore
+   * @param inReverse — whether search is in reverse
+   * @param search — the PathSearch to add cells to
+   */
+  private static addInitialCells(
+    world: IGameWorld,
+    locomotor: ILocomotor,
+    actor: IGameActor | null,
+    froms: CPos[],
+    check: BlockedByActor,
+    customCost: ((pos: CPos) => number) | null,
+    ignoreActor: IGameActor | null,
+    inReverse: boolean,
+    search: PathSearch,
+  ): void {
+    for (const sl of froms) {
+      if (
+        PathSearch.cellAllowsMovement(world, locomotor, sl, customCost) &&
+        (!inReverse ||
+          (locomotor.movementCostToEnterCell(
+            actor,
+            sl,
+            check,
+            ignoreActor,
+            true,
+          ) as number) !== PathGraph.MovementCostForUnreachableCell)
+      ) {
+        search.addInitialCell(sl, customCost)
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Instance members
+  // -------------------------------------------------------------------------
+
   /** The graph being searched. */
   readonly Graph: IPathGraph
 

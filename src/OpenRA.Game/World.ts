@@ -456,6 +456,25 @@ const DEFAULT_TIMESTEP = 40
 const MAX_TICKS_PER_FRAME = 5
 
 // ---------------------------------------------------------------------------
+// IGameWorld — minimal interface for pathfinding (avoids circular imports)
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal world interface for pathfinding operations.
+ *
+ * OpenRA 对照: World (subset)
+ *
+ * STUB: This is a minimal interface for Phase G pathfinding.
+ * Full GameWorldManager implements this interface implicitly.
+ */
+export interface IGameWorld {
+  /** The game world tick counter. */
+  readonly worldTick: number
+  /** Whether the game is paused. */
+  readonly paused: boolean
+}
+
+// ---------------------------------------------------------------------------
 // GameWorldManager
 // ---------------------------------------------------------------------------
 

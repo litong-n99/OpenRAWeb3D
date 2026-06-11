@@ -87,9 +87,9 @@ export class CellInfoLayerPool {
 
     if (layer === undefined) {
       layer = new CellLayer<CellInfo>(this.gridType, this.size)
-    } else {
-      layer.clear()
     }
+    // CellInfo default is Unvisited; ensure all entries reflect this
+    layer.clear(CellInfo.unvisited())
 
     return layer
   }
