@@ -17,6 +17,7 @@
  */
 
 import {
+  Animation,
   Engine,
   Scene,
   ArcRotateCamera,
@@ -68,9 +69,6 @@ camera.lowerRadiusLimit = 2
 camera.upperRadiusLimit = 40
 
 new HemisphericLight('hemi', new Vector3(0.3, 1, 0.3), scene)
-
-// Smooth camera follow target
-let desiredTarget = new Vector3(5, 1, 5)
 
 // ---------------------------------------------------------------------------
 // Reference Grid (5x5 cells, 1024 units each → 5 Babylon units)
@@ -308,8 +306,21 @@ function updateFromSliders(): void {
   ghostSphere.position = new Vector3(vec3.x, 0.03, vec3.z)
   updateDropLine(vec3)
 
-  // Update camera follow target
-  desiredTarget = vec3.clone()
+  // Smoothly animate camera to look at the new sphere position
+  const targetAnim = new Animation(
+    'camTargetAnim',
+    'target',
+    60, // 60 FPS
+    Animation.ANIMATIONTYPE_VECTOR3,
+    Animation.ANIMATIONLOOPMODE_CONSTANT,
+  )
+  const keys = [
+    { frame: 0, value: camera.target.clone() },
+    { frame: 30, value: vec3.clone() }, // 0.5 seconds at 60fps
+  ]
+  targetAnim.setKeys(keys)
+  scene.stopAnimation(camera, 'target')
+  scene.beginDirectAnimation(camera, [targetAnim], 0, 60, false)
 
   // Do reverse conversion and verify round-trip (used for cache stats tracking)
   // Round-trip should approximately recover original WPos
@@ -438,8 +449,6 @@ buildReferenceGrid()
 updateFromSliders()
 
 engine.runRenderLoop(() => {
-  const lerpFactor = 0.1
-  camera.target = Vector3.Lerp(camera.target, desiredTarget, lerpFactor)
   scene.render()
   updateInfoBar()
 })
