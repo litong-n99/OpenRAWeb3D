@@ -13,9 +13,28 @@
       padding: 12px 16px; border-radius: 4px;
       font-size: 14px; line-height: 1.6;
       pointer-events: none; user-select: none;
+      max-width: 320px;
     }
     #info h3 { margin: 0 0 8px; font-size: 16px; }
     #info code { background: rgba(255,255,255,0.15); padding: 1px 4px; border-radius: 2px; }
+    #stats {
+      position: absolute; bottom: 10px; left: 10px;
+      background: rgba(0,0,0,0.7); color: #fff;
+      padding: 8px 12px; border-radius: 4px;
+      font-size: 12px; font-family: monospace;
+      pointer-events: none; user-select: none;
+    }
+    #expected {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(0,0,0,0.7); color: #fff;
+      padding: 12px 16px; border-radius: 4px;
+      font-size: 13px; line-height: 1.6;
+      pointer-events: none; user-select: none;
+      max-width: 280px;
+    }
+    #expected h4 { margin: 0 0 6px; color: #8f8; }
+    #expected ul { margin: 4px 0; padding-left: 18px; }
+    #expected li { margin: 2px 0; }
   </style>
 </head>
 <body>
@@ -26,6 +45,18 @@
     <div>Right drag: pan</div>
     <div>Scroll: zoom</div>
     <div>Press <code>1</code> flat | <code>2</code> ramp | <code>3</code> isometric</div>
+    <div>Press <code>W</code> toggle wireframe</div>
+  </div>
+  <div id="stats">Loading...</div>
+  <div id="expected">
+    <h4>Expected Results</h4>
+    <ul>
+      <li>Flat: 81 vertices, 128 triangles</li>
+      <li>Ramp: visible height variation</li>
+      <li>Iso: diamond-shaped grid</li>
+      <li>No cracks at cell boundaries</li>
+      <li>Wireframe: single lines at edges</li>
+    </ul>
   </div>
   <script type="module" src="./main.ts"></script>
 </body>

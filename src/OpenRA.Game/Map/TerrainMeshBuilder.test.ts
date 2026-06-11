@@ -518,7 +518,7 @@ describe('TerrainMeshBuilder.buildRaw — Isometric Flat Map', () => {
     }
   })
 
-  it('2x2 isometric map has exact vertex count', () => {
+  it('2x2 isometric map has stable non-zero vertex count', () => {
     // 2x2 isometric map: valid cells are those with X >= Y
     // CPos(0,0), CPos(1,0), CPos(1,1), CPos(2,0), CPos(2,1), CPos(2,2)
     // But map bounds limit to valid cells within the map

@@ -206,6 +206,23 @@ window.addEventListener('keydown', (e) => {
 })
 
 // ---------------------------------------------------------------------------
+// Stats Panel Update
+// ---------------------------------------------------------------------------
+
+const statsEl = document.getElementById('stats')!
+
+function updateStats(): void {
+  if (!currentMesh) {
+    statsEl.textContent = 'No mesh'
+    return
+  }
+  const verts = currentMesh.getTotalVertices()
+  const tris = (currentMesh.getIndices()?.length ?? 0) / 3
+  const mode = wireframeMode ? 'wireframe' : 'solid'
+  statsEl.textContent = `Mode: ${mode} | Vertices: ${verts} | Triangles: ${tris} | FPS: ${Math.round(engine.getFps())}`
+}
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
@@ -213,6 +230,7 @@ showTerrain('flat')
 
 engine.runRenderLoop(() => {
   scene.render()
+  updateStats()
 })
 
 window.addEventListener('resize', () => {
@@ -223,6 +241,7 @@ window.addEventListener('resize', () => {
 ;(window as any).__testHarness = {
   scene,
   camera,
+  engine,
   getCurrentMesh: () => currentMesh,
   getVertexCount: () => currentMesh?.getTotalVertices() ?? 0,
   getTriangleCount: () => (currentMesh?.getIndices()?.length ?? 0) / 3,

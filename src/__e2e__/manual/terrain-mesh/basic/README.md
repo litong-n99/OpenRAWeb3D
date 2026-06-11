@@ -22,6 +22,6 @@
 ## Quantifiable Criteria
 
 - Flat 8x8 grid: exactly 81 vertices (9x9), 128 triangles (8x8x2)
-- Isometric 8x8 grid: vertex count > 0, triangle count > 0
+- Isometric 8x8 grid: 40-100 vertices (diamond shape, shared edges), 72-144 triangles
 - Ramp terrain: max vertex Y > 0 (visible height variation)
 - No cracks: wireframe shows single lines at cell boundaries (no double lines)

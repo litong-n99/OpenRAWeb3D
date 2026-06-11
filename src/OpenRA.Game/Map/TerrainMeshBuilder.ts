@@ -168,6 +168,10 @@ interface MeshBuildState {
   /** 地图原点在 Babylon 空间中的偏移。 */
   originX: number
   originZ: number
+  /** 矩形网格宽度（cell 数），用于顶点索引计算。 */
+  gridWidth: number
+  /** 矩形网格高度（cell 数），用于顶点索引计算。 */
+  gridHeight: number
 }
 
 // ---------------------------------------------------------------------------
@@ -334,6 +338,8 @@ function createBuildState(map: Map): MeshBuildState {
     worldHeight,
     originX,
     originZ,
+    gridWidth: w,
+    gridHeight: h,
   }
 }
 
@@ -354,9 +360,8 @@ function createBuildState(map: Map): MeshBuildState {
  * @returns 顶点索引
  */
 function getOrCreateRectVertex(x: number, y: number, pos: Vector3, state: MeshBuildState): number {
-  const w = state.rectVertexIndices!.length > 0
-    ? Math.round(Math.sqrt(state.rectVertexIndices!.length))
-    : 0
+  // 使用 gridWidth + 1 作为行宽（顶点网格比 cell 网格大 1）
+  const w = state.gridWidth + 1
   const idx = y * w + x
   const existing = state.rectVertexIndices![idx]
   if (existing >= 0) {
@@ -429,15 +434,6 @@ function generateTerrainSurface(map: Map, state: MeshBuildState): void {
  * - 生成垂直 quad（2 个三角形）连接较低 cell 的边顶点到较高 cell 的边顶点
  * - Cliff 面法线指向 cell 中心外侧
  * - UV 使用垂直投影
- *
- * TODO-4.F.9: 完整实现 Riser 驱动的 cliff 面生成。
- * 当前为 stub，等待 TerrainInfo Riser 数据集成。
- *
- * @param _map — Map 实例
- * @param _state — 构建状态
- */
-/**
- * 为高度不连续的 cell 边生成垂直 cliff 面四边形。
  *
  * TODO-4.F.9: 完整实现 Riser 驱动的 cliff 面生成。
  * 当前为 stub，等待 TerrainInfo Riser 数据集成。
