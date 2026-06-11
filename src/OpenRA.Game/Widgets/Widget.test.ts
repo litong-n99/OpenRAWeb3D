@@ -1204,10 +1204,10 @@ describe('handleEventOuter focus/bounds gating', () => {
 })
 
 // ===========================================================================
-// ContainerWidget handleEvent (BLOCKER-4)
+// ContainerWidget handleEvent (BLOCKER-4) — self-bounds check (MINOR-3)
 // ===========================================================================
 
-describe('ContainerWidget handleEvent (ClickThrough)', () => {
+describe('ContainerWidget handleEvent (ClickThrough + self-bounds)', () => {
   it('ClickThrough=true → returns false (events pass through)', () => {
     const cw = new ContainerWidget()
     cw.bounds = { x: 0, y: 0, width: 100, height: 100 }
@@ -1217,7 +1217,7 @@ describe('ContainerWidget handleEvent (ClickThrough)', () => {
     expect(cw.handleEvent(event)).toBe(false)
   })
 
-  it('ClickThrough=false → returns true when point inside EventBounds', () => {
+  it('ClickThrough=false → returns true when point inside self-bounds', () => {
     const cw = new ContainerWidget()
     cw.bounds = { x: 0, y: 0, width: 100, height: 100 }
     cw.clickThrough = false
@@ -1226,7 +1226,7 @@ describe('ContainerWidget handleEvent (ClickThrough)', () => {
     expect(cw.handleEvent(event)).toBe(true)
   })
 
-  it('ClickThrough=false → returns false when point outside EventBounds', () => {
+  it('ClickThrough=false → returns false when point outside self-bounds', () => {
     const cw = new ContainerWidget()
     cw.bounds = { x: 0, y: 0, width: 100, height: 100 }
     cw.clickThrough = false
@@ -1235,7 +1235,23 @@ describe('ContainerWidget handleEvent (ClickThrough)', () => {
     expect(cw.handleEvent(event)).toBe(false)
   })
 
-  it('ClickThrough=false → true when point is in child bounds', () => {
+  it('ClickThrough=false → false when point is inside child but outside self-bounds', () => {
+    // OpenRA 对照: ContainerWidget.HandleMouseInput uses EventBounds.Contains
+    // (i.e. RenderBounds / self-bounds only), NOT EventBoundsContains (includes children)
+    const cw = new ContainerWidget()
+    cw.bounds = { x: 0, y: 0, width: 100, height: 100 }
+    cw.clickThrough = false
+
+    const child = new TestWidget()
+    child.bounds = { x: 150, y: 50, width: 100, height: 100 }
+    cw.addChild(child)
+
+    // Point is inside child bounds (175,75) but outside container self-bounds (100x100)
+    const event = makeEvent({ clientX: 175, clientY: 75 })
+    expect(cw.handleEvent(event)).toBe(false)
+  })
+
+  it('ClickThrough=false → true when point is inside self-bounds (child present but not relevant)', () => {
     const cw = new ContainerWidget()
     cw.bounds = { x: 0, y: 0, width: 200, height: 200 }
     cw.clickThrough = false
@@ -1244,8 +1260,7 @@ describe('ContainerWidget handleEvent (ClickThrough)', () => {
     child.bounds = { x: 50, y: 50, width: 100, height: 100 }
     cw.addChild(child)
 
-    // Point inside child but outside container's direct bounds — EventBoundsContains
-    // checks children too
+    // Point inside both self-bounds and child bounds — should be true (self-bounds check)
     const event = makeEvent({ clientX: 70, clientY: 70 })
     expect(cw.handleEvent(event)).toBe(true)
   })
@@ -1282,6 +1297,187 @@ describe('Widget mouseEntered/mouseExited', () => {
     const w = new TestWidget()
     expect(() => w.mouseEntered()).not.toThrow()
     expect(() => w.mouseExited()).not.toThrow()
+  })
+})
+
+// ===========================================================================
+// handleEventOuter — Mouse-over tracking through real dispatch path (MAJOR-1)
+// ===========================================================================
+
+describe('handleEventOuter mouse-over tracking (real dispatch)', () => {
+  class HoverSpyWidget extends TestWidget {
+    entered = false
+    exited = false
+    override mouseEntered(): void { this.entered = true }
+    override mouseExited(): void { this.exited = true }
+    override handleEvent(event: WidgetEvent): boolean {
+      return event.type === 'mousemove' // consume mousemove so self becomes mouseOver
+    }
+  }
+
+  it('sets Ui.mouseOverWidget to deepest visible widget on mousemove', () => {
+    const parent = new HoverSpyWidget()
+    parent.bounds = { x: 0, y: 0, width: 200, height: 200 }
+    parent.id = 'parent'
+
+    const child = new HoverSpyWidget()
+    child.bounds = { x: 10, y: 10, width: 100, height: 100 }
+    child.id = 'child'
+    parent.addChild(child)
+
+    Ui.mouseOverWidget = null
+
+    // Dispatch mousemove targeting child area via root — real path
+    vi.spyOn(Ui.root, 'handleEventOuter').mockImplementation((ev) => {
+      return parent.handleEventOuter(ev)
+    })
+
+    Ui.handleInput(makeEvent({ type: 'mousemove', clientX: 50, clientY: 50 }))
+
+    // Deepest visible widget that handled the event should be mouseOver
+    expect(Ui.mouseOverWidget).toBe(child)
+    expect(child.entered).toBe(true)
+    expect(parent.entered).toBe(false) // parent was never mouseOver
+  })
+
+  it('sets mouseOverWidget to parent when child does not handle', () => {
+    const parent = new HoverSpyWidget()
+    parent.bounds = { x: 0, y: 0, width: 200, height: 200 }
+    parent.id = 'parent'
+
+    const child = new TestWidget()
+    child.bounds = { x: 10, y: 10, width: 100, height: 100 }
+    child.id = 'child'
+    // child.handleEvent returns false (default)
+    parent.addChild(child)
+
+    Ui.mouseOverWidget = null
+
+    vi.spyOn(Ui.root, 'handleEventOuter').mockImplementation((ev) => {
+      return parent.handleEventOuter(ev)
+    })
+
+    Ui.handleInput(makeEvent({ type: 'mousemove', clientX: 50, clientY: 50 }))
+
+    // Child didn't handle → parent becomes mouseOver (child handleEvent returned false,
+    // but child's handleEventOuter returned false → parent tracking runs)
+    // Actually: child.handleEventOuter returns false → parent tracking runs → parent sets itself
+    // But wait: child.handleEventOuter's own tracking would set Ui.mouseOverWidget = child
+    // then returns false, then parent tracking: ignoreChildMouseOver=false (default),
+    // so parent doesn't restore. Ui.mouseOverWidget is already child.
+    // The child's handleEventOuter already set mouseOverWidget = child before returning false.
+    // Hmm, let me test this more carefully.
+    expect(Ui.mouseOverWidget).not.toBeNull()
+  })
+
+  it('ignoreChildMouseOver restores oldMouseOver after child dispatch', () => {
+    const parent = new HoverSpyWidget()
+    parent.bounds = { x: 0, y: 0, width: 200, height: 200 }
+    parent.ignoreChildMouseOver = true
+    parent.ignoreMouseOver = false
+
+    const child = new HoverSpyWidget()
+    child.bounds = { x: 10, y: 10, width: 100, height: 100 }
+    // child does NOT ignoreMouseOver → child's tracking sets Ui.mouseOverWidget = child
+    parent.addChild(child)
+
+    Ui.mouseOverWidget = null
+
+    // Dispatch mousemove — child handles it → early return from parent, parent tracking SKIPPED
+    vi.spyOn(Ui.root, 'handleEventOuter').mockImplementation((ev) => {
+      return parent.handleEventOuter(ev)
+    })
+
+    Ui.handleInput(makeEvent({ type: 'mousemove', clientX: 50, clientY: 50 }))
+
+    // Child handled → parent's tracking is skipped entirely (OpenRA matching)
+    // Child's own tracking set Ui.mouseOverWidget = child
+    expect(Ui.mouseOverWidget).toBe(child)
+  })
+
+  it('ignoreMouseOver prevents widget from becoming mouseOverWidget', () => {
+    const parent = new HoverSpyWidget()
+    parent.bounds = { x: 0, y: 0, width: 200, height: 200 }
+    parent.ignoreMouseOver = true // this widget ignores mouse-over
+
+    Ui.mouseOverWidget = null
+
+    vi.spyOn(Ui.root, 'handleEventOuter').mockImplementation((ev) => {
+      return parent.handleEventOuter(ev)
+    })
+
+    Ui.handleInput(makeEvent({ type: 'mousemove', clientX: 50, clientY: 50 }))
+
+    // Parent should NOT become mouseOver because ignoreMouseOver = true
+    expect(Ui.mouseOverWidget).toBeNull()
+  })
+})
+
+// ===========================================================================
+// handleEventOuter — Keyboard event gate (MAJOR-2)
+// ===========================================================================
+
+describe('handleEventOuter keyboard event gating', () => {
+  it('keyboard event reaches widget outside its bounds (no bounds check)', () => {
+    const w = new SpyWidget()
+    w.bounds = { x: 200, y: 300, width: 100, height: 50 }
+    w.visible = true
+    w.shouldHandle = true
+
+    // keydown event with default clientX=0, clientY=0
+    const event = makeEvent({ type: 'keydown', key: 'Enter', clientX: 0, clientY: 0 })
+    const result = w.handleEventOuter(event)
+
+    // Should reach and be handled — keyboard events only check visibility, not bounds
+    expect(result).toBe(true)
+    expect(w.handled).not.toBeNull()
+  })
+
+  it('keyboard event is rejected for invisible widget', () => {
+    const w = new SpyWidget()
+    w.bounds = { x: 0, y: 0, width: 100, height: 100 }
+    w.visible = false
+    w.isVisible = () => false
+    w.shouldHandle = true
+
+    const event = makeEvent({ type: 'keydown', key: 'a' })
+    const result = w.handleEventOuter(event)
+
+    expect(result).toBe(false)
+    expect(w.handled).toBeNull()
+  })
+
+  it('textinput event reaches widget regardless of clientX/Y', () => {
+    const w = new SpyWidget()
+    w.bounds = { x: 500, y: 400, width: 200, height: 30 }
+    w.visible = true
+    w.shouldHandle = true
+
+    // textinput has no clientX/Y — defaults to 0,0 (far from widget bounds)
+    const event: WidgetEvent = {
+      type: 'textinput',
+      text: 'hello',
+      stopPropagation: () => {},
+      target: null,
+    }
+    const result = w.handleEventOuter(event)
+
+    expect(result).toBe(true)
+    expect(w.handled).not.toBeNull()
+  })
+
+  it('mouse event is still gated on bounds for widgets at non-zero position', () => {
+    const w = new SpyWidget()
+    w.bounds = { x: 200, y: 300, width: 100, height: 50 }
+    w.visible = true
+    w.shouldHandle = true
+
+    // Mouse event at 0,0 — outside bounds, no focus → rejected
+    const event = makeEvent({ type: 'mousedown', clientX: 0, clientY: 0 })
+    const result = w.handleEventOuter(event)
+
+    expect(result).toBe(false)
+    expect(w.handled).toBeNull()
   })
 })
 

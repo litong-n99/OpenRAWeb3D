@@ -568,25 +568,65 @@ export abstract class Widget {
    * OpenRA 对照: Widget.HandleKeyPressOuter(KeyInput)
    * OpenRA 对照: Widget.HandleTextInputOuter(string)
    *
+   * 门控策略按事件类型区分:
+   * - 鼠标事件: HasMouseFocus || (IsVisible && EventBoundsContains)
+   * - 键盘/文本输入事件: IsVisible only（无边界检查，因 clientX/Y 默认为 0）
+   *
    * 分发顺序:
-   * 1. 门控检查: HasMouseFocus || (IsVisible && EventBoundsContains)
+   * 1. 门控检查（按事件类型）
    * 2. 从最后的子 widget 开始反向迭代（最高 Z 序优先）
-   * 3. 第一个返回 true 的子 widget 捕获事件
-   * 4. 如果没有子 widget 处理，委托给 handleEvent()
+   * 3. 第一个返回 true 的子 widget 捕获事件（跳过父级鼠标悬停跟踪）
+   * 4. 如果没有子 widget 处理，执行鼠标悬停跟踪 + 委托给 handleEvent()
    */
   handleEventOuter(event: WidgetEvent): boolean {
-    // 门控: 仅在有鼠标焦点或在事件边界内时处理事件
-    // 拖动场景中，拥有鼠标焦点的 widget 需要接收其边界外的事件
-    const posX = (event.clientX ?? 0) as number
-    const posY = (event.clientY ?? 0) as number
-    if (!(this.hasMouseFocus || (this.isVisible() && this._eventBoundsContains(posX, posY)))) {
-      return false
+    // 门控: 按事件类型区分
+    // OpenRA 对照: HandleMouseInputOuter → HasMouseFocus || (IsVisible && EventBoundsContains)
+    // OpenRA 对照: HandleKeyPressOuter / HandleTextInputOuter → IsVisible only
+    const isKeyboardEvent =
+      event.type === 'keydown' ||
+      event.type === 'keyup' ||
+      event.type === 'keypress' ||
+      event.type === 'textinput'
+
+    if (isKeyboardEvent) {
+      if (!this.isVisible()) {
+        return false
+      }
+    } else {
+      // 鼠标事件: 拖动场景中，拥有鼠标焦点的 widget 需要接收其边界外的事件
+      const posX = (event.clientX ?? 0) as number
+      const posY = (event.clientY ?? 0) as number
+      if (
+        !(
+          this.hasMouseFocus ||
+          (this.isVisible() && this._eventBoundsContains(posX, posY))
+        )
+      ) {
+        return false
+      }
     }
+
+    // 保存旧鼠标悬停，用于 IgnoreChildMouseOver 恢复
+    // OpenRA 对照: var oldMouseOver = Ui.MouseOverWidget
+    const oldMouseOver = Ui.mouseOverWidget
 
     // 反向迭代子 widget（最后添加的 = 最高 Z 序 = 先尝试）
     for (let i = this.children.length - 1; i >= 0; i--) {
       if (this.children[i].handleEventOuter(event)) {
         return true
+      }
+    }
+
+    // 鼠标悬停跟踪（仅对 mousemove 事件，且只在没有子 widget 处理时执行）
+    // OpenRA 对照: HandleMouseInputOuter 中的 MouseOverWidget 设置
+    if (event.type === 'mousemove') {
+      // 忽略子 widget 鼠标悬停变化时，恢复旧值
+      if (this.ignoreChildMouseOver) {
+        Ui.mouseOverWidget = oldMouseOver
+      }
+      // 如果还没有设置鼠标悬停且此 widget 不忽略鼠标悬停，则设为自身
+      if (Ui.mouseOverWidget === null && !this.ignoreMouseOver) {
+        Ui.mouseOverWidget = this
       }
     }
 
@@ -788,12 +828,18 @@ export class ContainerWidget extends Widget {
   }
 
   /** 容器事件处理: ClickThrough=false 时消费边界内的事件。
-   * OpenRA 对照: ContainerWidget.HandleMouseInput(MouseInput) */
+   *
+   * 注意: 使用 boundsContains (仅自身渲染边界)，而非 _eventBoundsContains
+   * （后者会递归检查子 widget）。匹配 OpenRA 的 EventBounds.Contains，
+   * 其中 EventBounds 指向 RenderBounds（不包含子 widget）。
+   *
+   * OpenRA 对照: ContainerWidget.HandleMouseInput(MouseInput)
+   */
   override handleEvent(event: WidgetEvent): boolean {
     if (this.clickThrough) return false
     const x = (event.clientX ?? 0) as number
     const y = (event.clientY ?? 0) as number
-    return this._eventBoundsContains(x, y)
+    return boundsContains(this.bounds, x, y)
   }
 
   /** 容器支持克隆。OpenRA 对照: ContainerWidget.Clone() */
