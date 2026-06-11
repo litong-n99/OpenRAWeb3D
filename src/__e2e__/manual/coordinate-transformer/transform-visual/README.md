@@ -1,5 +1,9 @@
 # CoordinateTransformer — WPos ↔ Vector3 转换可视化验证
 
+**审核状态**: ✅ 全部审核通过 (2026-06-11)  
+**审核轮次**: 1 轮 (初始审查 + 修复确认)  
+**修复项**: 5 项 (相机动画 / 网格范围 / 键盘冲突 / README 准确性 / 缓存预期)
+
 **OpenRA 对照**: `src/OpenRA.Game/CoordinateTransformer.ts` (新文件, 无直接 C# 对照)  
 **测试重点**: WPos → Vector3 坐标映射正确性、缓存命中率、实时交互、往返精度  
 **坐标系约定**:
