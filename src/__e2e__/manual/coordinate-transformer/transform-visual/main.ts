@@ -65,6 +65,11 @@ scene.clearColor = new Color4(0.08, 0.10, 0.14, 1)
 
 const camera = new ArcRotateCamera('cam', -Math.PI / 4, Math.PI / 4, 16, new Vector3(5, 1, 5), scene)
 camera.attachControl(canvas, true)
+
+// Disable camera keyboard input so arrow keys are free for WPos stepping
+// Mouse orbit/zoom remains functional
+camera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput')
+
 camera.lowerRadiusLimit = 2
 camera.upperRadiusLimit = 40
 
