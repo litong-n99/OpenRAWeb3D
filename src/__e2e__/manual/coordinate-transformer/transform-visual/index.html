@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>坐标转换 - WPos ↔ Vector3 转换可视化 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 380px; min-width: 380px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0; font-size: 16px; color: #8af; }
+    #left-panel h3 { margin: 8px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel .subtitle { color: #a0a0b0; font-size: 12px; margin-bottom: 4px; }
+
+    .coord-group { margin: 4px 0; padding: 8px 12px; background: rgba(13,17,23,0.5); border-radius: 6px; border: 1px solid #0f3460; }
+    .coord-group h4 { margin: 0 0 6px; font-size: 12px; color: #8af; }
+    .coord-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 12px; }
+    .coord-row label { width: 18px; color: #aab; text-align: center; flex-shrink: 0; }
+    .coord-row input[type="range"] { flex: 1; }
+    .coord-row .val { width: 48px; text-align: right; font-family: 'Consolas', monospace; color: #ddd; font-size: 11px; flex-shrink: 0; }
+    .coord-row .unit { width: 32px; color: #667; font-size: 10px; flex-shrink: 0; text-align: left; }
+
+    .conversion-display {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .conv-box {
+      padding: 10px; background: rgba(13,17,23,0.6); border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 11px;
+    }
+    .conv-box h5 { margin: 0 0 6px; font-size: 11px; color: #aab; }
+    .conv-box .value { font-family: 'Consolas', monospace; font-size: 15px; color: #eee; word-break: break-all; }
+    .conv-box .value.wpos { color: #8af; }
+    .conv-box .value.vec3 { color: #fa8; }
+
+    .cache-stats { margin-top: 4px; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+    .stat-row .label { color: #889; }
+    .stat-row .value { color: #eee; font-family: 'Consolas', monospace; }
+
+    #left-panel button {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      width: 100%; text-align: center;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #4a9; }
+
+    .preset-row { display: flex; gap: 6px; }
+    .preset-row button { flex: 1; font-size: 11px; }
+
+    #viewport {
+      flex: 1; position: relative; background: #0d1117;
+    }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 8px 16px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #333; }
+
+    #expected-overlay {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22,33,62,0.92); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 12px; line-height: 1.6;
+      max-width: 340px; pointer-events: none; user-select: none;
+    }
+    #expected-overlay h4 { margin: 0 0 6px; color: #8f8; font-size: 13px; }
+    #expected-overlay ul { margin: 4px 0; padding-left: 18px; }
+    #expected-overlay li { margin: 3px 0; }
+    #expected-overlay .metric { color: #aad; font-family: monospace; }
+
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. Coordinate Transformer</h2>
+      <div class="subtitle">ID: coordinate-transformer/transform-visual</div>
+
+      <h3>WPos 输入 (OpenRA 世界坐标)</h3>
+      <p style="font-size:10px;color:#667;margin:0">WPos(X,Y,Z): 1024 子单位/cell, Z=高度</p>
+
+      <div class="coord-group">
+        <h4>X 坐标 (水平东-西)</h4>
+        <div class="coord-row">
+          <label>X</label>
+          <input type="range" id="slider-x" min="0" max="10240" value="5120" step="64">
+          <span class="val" id="val-x">5120</span>
+          <span class="unit">su</span>
+        </div>
+      </div>
+      <div class="coord-group">
+        <h4>Y 坐标 (水平南-北)</h4>
+        <div class="coord-row">
+          <label>Y</label>
+          <input type="range" id="slider-y" min="0" max="10240" value="5120" step="64">
+          <span class="val" id="val-y">5120</span>
+          <span class="unit">su</span>
+        </div>
+      </div>
+      <div class="coord-group">
+        <h4>Z 坐标 (高度)</h4>
+        <div class="coord-row">
+          <label>Z</label>
+          <input type="range" id="slider-z" min="0" max="4096" value="512" step="32">
+          <span class="val" id="val-z">512</span>
+          <span class="unit">su</span>
+        </div>
+      </div>
+
+      <h3>转换结果</h3>
+      <div class="conversion-display">
+        <div class="conv-box">
+          <h5>WPos</h5>
+          <div class="value wpos" id="wpos-display">5120, 5120, 512</div>
+        </div>
+        <div class="conv-box">
+          <h5>Babylon.js Vector3</h5>
+          <div class="value vec3" id="vec3-display">5.000, 1.000, 5.000</div>
+        </div>
+      </div>
+      <div class="conv-box" style="margin-top:8px;">
+        <h5>往返误差 (Round-trip Delta)</h5>
+        <div class="value" id="rt-delta" style="color:#fa8;font-size:13px;">- su</div>
+      </div>
+
+      <h3>缓存统计 (Cache Stats)</h3>
+      <div class="cache-stats">
+        <div class="stat-row"><span class="label">wPosToVecCache:</span><span class="value" id="cache-wpos">0</span></div>
+        <div class="stat-row"><span class="label">缓存命中率:</span><span class="value" id="cache-vec">0%</span></div>
+        <div class="stat-row"><span class="label">查询总数:</span><span class="value" id="cache-cell">0</span></div>
+        <div class="stat-row"><span class="label">总计:</span><span class="value" id="cache-total">0</span></div>
+      </div>
+
+      <h3>预设位置</h3>
+      <div class="preset-row">
+        <button id="preset-origin">原点 (0,0,0)</button>
+        <button id="preset-center">地图中心 (5120,5120,0)</button>
+      </div>
+      <div class="preset-row">
+        <button id="preset-corner">角落 (10240,10240,0)</button>
+        <button id="preset-elevated">高处 (2560,7680,2048)</button>
+      </div>
+
+      <h3>操作</h3>
+      <button id="btn-toggle-grid">切换参考网格</button>
+      <button id="btn-clear-cache">清除缓存</button>
+      <p style="font-size:10px;color:#667;margin:2px 0;">左键拖拽旋转 | 右键平移 | 滚轮缩放</p>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#4af"></div>参考网格 (5x5 cells, scale=1024)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#f84"></div>WPos 位置球体</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#fff"></div>原点标记</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,255,255,0.2)"></div>坐标轴 (RGB=XYZ)</div>
+        </div>
+        <div id="expected-overlay">
+          <h4>期望结果 (Expected)</h4>
+          <ul>
+            <li>WPos(X,Y,Z) → Vector3(x,y,z) 映射:<br>
+              <span class="metric">x = X/1024</span>,
+              <span class="metric">y = Z/512</span>,
+              <span class="metric">z = Y/1024</span></li>
+            <li>拖动滑块时球体在 <span class="metric">50ms</span> 内更新位置</li>
+            <li>缓存命中率在重复查询时应 <span class="metric">> 50%</span></li>
+            <li>Vector3 位置在标签网格上<span class="metric">精准对齐</span></li>
+          </ul>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span style="color:#667">WORLD_SCALE=1/1024 | HEIGHT_SCALE=1/512</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
