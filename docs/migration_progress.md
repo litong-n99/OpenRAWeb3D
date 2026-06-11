@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-11
-> **Current phase**: Chapter 5 (UI System & Resource Management) — PLANNING (0/16, 0%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 0/16 (0%), Chapters 2-4 COMPLETE, Chapter 5 planning
+> **Current phase**: Chapter 5 (UI System & Resource Management) — IN PROGRESS (4/16, 25%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 4/16 (25%, Phase A COMPLETE), Chapters 2-4 COMPLETE, Chapter 5 in progress
 
 ---
 
@@ -17,11 +17,11 @@
 | **Chapter 4 status** | ALL PHASES COMPLETE: 37/37 (100%), 603+190+additional=750+ tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + Phase D (2/2) + Phase E (7/7) + Phase F (2/2) + Phase G (13/13) + Phase H (1/1) + Phase I (1/1) = 37 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, planning stage) |
-| **Chapter 5 status** | PLANNING: 0/16 (0%), migration plan created |
+| **Chapter 5 status** | IN PROGRESS: 4/16 (25%), Phase A (FileSystem Foundation) COMPLETE |
 | **Remaining chapters** | Chapters 6-8+ (networking, audio, game logic) |
-| **Overall project completion** | Chapters 2+3+4/8+ complete (100/100 rendering+actors+map), Chapter 5 planning (0/16) |
+| **Overall project completion** | Chapters 2+3+4/8+ complete (100/100 rendering+actors+map), Chapter 5 in progress (4/16) |
 
-> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: UI System & Resource Management migration plan created (16 files, 5 phases, ~8,950 est. lines).
+> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 25%, 1,430 impl + 1,961 test lines, 132 tests). Phases B-E pending.
 
 ---
 
@@ -123,7 +123,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Game/Traits/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Activities/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Network/` | 0 | 0 | 0 | All |
-| `OpenRA.Game/FileSystem/` | 1 | 1 | 0 | 0 |
+| `OpenRA.Game/FileSystem/` | 5 | 5 | 0 | 0 |
 | `OpenRA.Game/Widgets/` | 0 | 0 | 0 | Chapter 5 Phase D (pending) |
 | `OpenRA.Game/Map/` | 23 | 23 | 0 | 0 |
 | `OpenRA.Mods.Common/Pathfinder/` | 10 | 10 | 0 | 0 |
@@ -182,6 +182,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch5 Phase A FileSystem Foundation** (4 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): IPackage.ts (188+337 lines, 21 tests), Folder.ts (198+337 lines, 24 tests), ZipFile.ts (371+518 lines, 37 tests), FileSystem.ts (673+769 lines, 50 tests). IReadOnlyPackage.ts refactored to 19-line re-export shim. ~1,430 impl + ~1,961 test lines, 132 tests. Deps: fflate. Commits `c9f6dd3`, `49aa8be`. |
 | 2026-06-11 | **Ch4 Phase I CoordinateTransformer** (1 file) | migration-develop | migration-review | APPROVED: CoordinateTransformer.ts (334+509 lines), WPos<->Vector3 conversion, LRU cache, batch Float32Array output. |
 | 2026-06-11 | **Ch4 Phase H MiniYAML Pipeline** (1 file) | migration-develop | migration-review | APPROVED: miniyaml-to-json.ts (762+962 lines), recursive descent parser, Vite plugin, build-time YAML->JSON compilation. |
 | 2026-06-11 | **Ch4 Phase G Pathfinding System** (13 files) | migration-develop | migration-review | APPROVED (3 BLOCKERs + 5 MAJORs resolved): HierarchicalPathFinder (1524+535), PathSearch (828+724), DensePathGraph (477+443), MapPathGraph (165+259), GridPathGraph (137+380), SparsePathGraph (104+150), IPathGraph (216+163), CellInfo (166+132), Grid (237+210), CellInfoLayerPool (176+182), BlockedByActor (39+71), ICustomMovementLayer (69), Locomotor (261+221). ~4,399 impl + ~3,470 test lines, 190 tests. HPA* + A* + 4 path graph impls. |
@@ -659,16 +660,16 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 
 ---
 
-## Chapter 5: UI System & Resource Management (PLANNING)
+## Chapter 5: UI System & Resource Management (IN PROGRESS)
 
 > **Migration Plan**: [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md)
-> **Created**: 2026-06-11 | **Updated**: 2026-06-11 | **Status**: PLANNING (0/16 migrated, 0%), Phases A-E pending
+> **Created**: 2026-06-11 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (4/16 migrated, 25%), Phase A COMPLETE, Phases B-E pending
 > **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 0 | 0% |
-| Pending | 16 | 100% |
+| Completed | 4 | 25% |
+| Pending | 12 | 75% |
 | **Total** | **16** | **100%** |
 | **From OpenRA** | **15** (plus 1 IReadOnlyPackage refactor) | |
 | **New files (no OpenRA equivalent)** | **0** | |
@@ -677,9 +678,9 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
-| Phase A | FileSystem Foundation (VFS) | 4 | Low-Medium | PENDING |
-| Phase B | C&C Package Formats | 5 | Low-HIGH | PENDING (blocked by A) |
-| Phase C | MOD System Core | 2 | Low-Medium | PENDING (blocked by A) |
+| Phase A | FileSystem Foundation (VFS) | 4 | Low-Medium | COMPLETE (4/4, 132 tests) |
+| Phase B | C&C Package Formats | 5 | Low-HIGH | PENDING |
+| Phase C | MOD System Core | 2 | Low-Medium | PENDING |
 | Phase D | UI Widget Core | 4 | Low-Medium | PENDING (blocked by C) |
 | Phase E | World Interaction Bridge | 1 | HIGH | PENDING (blocked by C, D) |
 
@@ -688,7 +689,7 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 | Dependency | Source | Status |
 |:---|:---|:---|
 | MiniYAML -> JSON pipeline | `utils/miniyaml-to-json.ts` | COMPLETE (Ch4 Phase H) |
-| `IReadOnlyPackage` interface stub | `src/OpenRA.Game/FileSystem/IReadOnlyPackage.ts` | STUB (Ch4 Phase E, refactored in Ch5 Phase A) |
+| `IReadOnlyPackage` interface stub | `src/OpenRA.Game/FileSystem/IReadOnlyPackage.ts` | REFACTORED to re-export shim (Ch5 Phase A) |
 | `MapCache` | `src/OpenRA.Game/Map/MapCache.ts` | COMPLETE (Ch4 Phase E) |
 | `MapDirectoryTracker` | `src/OpenRA.Game/Map/MapDirectoryTracker.ts` | COMPLETE (Ch4 Phase E) |
 | Coordinate types (WPos, CPos, etc.) | `src/OpenRA.Game/` | COMPLETE (Ch3 Phase A) |
@@ -723,15 +724,21 @@ Phase A: FileSystem (4 files) -- FOUNDATION
         Phase E: World Interaction (1 file) -- LEAF
 ```
 
-### Phase A: FileSystem Foundation (4 files, PENDING)
+### Phase A: FileSystem Foundation (4 files, COMPLETE)
 
-| # | Target File | Class/Interface | Complexity | Lines (C#) | Est. impl | Est. test | Est. tests |
+**Status**: COMPLETE (4/4). Review: APPROVED (2 rounds, 0 BLOCKERs). No manual visual tests needed (pure infrastructure layer).
+**Commits**: `c9f6dd3` (initial), `49aa8be` (review fixes).
+**Date**: 2026-06-12
+
+| # | Target File | Class/Interface | Complexity | Lines (C#) | Impl lines | Test lines | Tests |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|
-| A1 | `src/OpenRA.Game/FileSystem/IPackage.ts` | IPackage, IReadOnlyPackage, IPackageLoader | Low (refactor of existing stub) | 42 | 80 | 60 | 10 |
-| A2 | `src/OpenRA.Game/FileSystem/Folder.ts` | Folder | Low | 110 | 140 | 180 | 18 |
-| A3 | `src/OpenRA.Game/FileSystem/ZipFile.ts` | ZipFile, ZipFileLoader | Low | 262 | 310 | 380 | 28 |
-| A4 | `src/OpenRA.Game/FileSystem/FileSystem.ts` | FileSystem, IReadOnlyFileSystem | Medium | 304 | 480 | 520 | 35 |
-| **Total** | | | | **~718** | **~1,010** | **~1,140** | **~91** |
+| A1 | `src/OpenRA.Game/FileSystem/IPackage.ts` | IPackage, IReadOnlyPackage, IPackageLoader | Low (refactor of existing stub) | 42 | 188 | 337 | 21 |
+| A2 | `src/OpenRA.Game/FileSystem/Folder.ts` | Folder | Low | 110 | 198 | 337 | 24 |
+| A3 | `src/OpenRA.Game/FileSystem/ZipFile.ts` | ZipFile, ZipFileLoader | Low | 262 | 371 | 518 | 37 |
+| A4 | `src/OpenRA.Game/FileSystem/FileSystem.ts` | FileSystem, IReadOnlyFileSystem | Medium | 304 | 673 | 769 | 50 |
+| **Total** | | | | **~718** | **1,430** | **1,961** | **132** |
+
+> **Note**: `IReadOnlyPackage.ts` was refactored from a 78-line stub (Ch4 Phase E) into a 19-line re-export shim pointing to `IPackage.ts`. Existing consumers (`MapCache.ts`, `MapDirectoryTracker.ts`) had their imports updated.
 
 ### Phase B: C&C Package Formats (5 files, PENDING)
 

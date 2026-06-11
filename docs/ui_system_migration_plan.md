@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 5 -- UI System and Resource Management
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 6 (lines 853-940)
-> **Chapter Status**: Chapter 5 -- PLANNING (0/16 migrated, 0%)
+> **Chapter Status**: Chapter 5 -- IN PROGRESS (4/16 migrated, 25%)
 > **Planning Date**: 2026-06-11
 > **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
 >
@@ -175,7 +175,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 ### 3.1 Phase A: File System Foundation
 
-**Status**: PENDING (0/4)
+**Status**: COMPLETE (4/4)
 **Complexity**: Low-Medium
 **Blocked by**: Nothing (foundation layer)
 **Blocks**: Phase B (C&C formats register with FileSystem), Phase C (ModData needs FileSystem for mounting), Phase D (WidgetLoader needs FileSystem for reading UI YAML)
@@ -192,7 +192,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.1.1 IPackage / IReadOnlyPackage (Full Implementation)
 
-- [ ] **TODO-5.A.1** `src/OpenRA.Game/FileSystem/IPackage.ts` (42 lines C#) -- Replace stub with full interface:
+- [x] **TODO-5.A.1** `src/OpenRA.Game/FileSystem/IPackage.ts` (42 lines C#, 188 lines TS) -- Replace stub with full interface: ✅ COMPLETE
   - `IReadOnlyPackage`: `name: string`, `contents: readonly string[]`, `contains(filename: string): boolean`, `open(filename: string, files: IReadOnlyFileSystem): Promise<ArrayBuffer | null>`, `openPackage(filename: string, files: IReadOnlyFileSystem): IReadOnlyPackage | null`
   - `IPackage` (extends `IReadOnlyPackage`): `update(filename: string, data: Uint8Array): void`, `delete(filename: string): void`
   - `IPackageLoader`: `tryParsePackage(filename: string, stream: ArrayBuffer): IReadOnlyPackage | null`
@@ -201,7 +201,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.1.2 Folder Package
 
-- [ ] **TODO-5.A.2** `src/OpenRA.Game/FileSystem/Folder.ts` (110 lines C#) -- HTTP-backed folder package:
+- [x] **TODO-5.A.2** `src/OpenRA.Game/FileSystem/Folder.ts` (110 lines C#, 198 lines TS) -- HTTP-backed folder package: ✅ COMPLETE
   - `Folder` class implements `IReadOnlyPackage`
   - Constructor takes `name: string` and optional `fileListing: Map<string, string>` (filename -> URL mapping)
   - `contents`: returns sorted array of keys from `fileListing`
@@ -214,7 +214,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.1.3 ZipFile Package
 
-- [ ] **TODO-5.A.3** `src/OpenRA.Game/FileSystem/ZipFile.ts` (262 lines C#) -- ZIP archive package via fflate:
+- [x] **TODO-5.A.3** `src/OpenRA.Game/FileSystem/ZipFile.ts` (262 lines C#, 371 lines TS) -- ZIP archive package via fflate: ✅ COMPLETE
   - `ZipFile` class implements `IReadOnlyPackage`
   - Constructor: asynchronously decompresses ZIP buffer using `fflate.unzipSync(new Uint8Array(buffer))` or `fflate.unzip()` + `AsyncWorker` for large files
   - `contents`: sorted array of entry filenames (from `fflate.Unzipped` keys)
@@ -230,7 +230,7 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 
 #### 3.1.4 FileSystem (VFS Manager)
 
-- [ ] **TODO-5.A.4** `src/OpenRA.Game/FileSystem/FileSystem.ts` (304 lines C#) -- Layered VFS manager + AssetManager:
+- [x] **TODO-5.A.4** `src/OpenRA.Game/FileSystem/FileSystem.ts` (304 lines C#, 673 lines TS) -- Layered VFS manager + AssetManager: ✅ COMPLETE
   - `IReadOnlyFileSystem` interface: `openAsync(filename: string): Promise<ArrayBuffer | null>`, `exists(filename: string): boolean`, `isMounted(filename: string): boolean`
   - `FileSystem` class implements `IReadOnlyFileSystem`:
     - `packageLoaders: IPackageLoader[]` -- ordered list (Folder loader, ZipFile loader, future: build-time unpacked loader)
@@ -264,14 +264,20 @@ This table formalizes the HTML/CSS vs Babylon.GUI boundary:
 - All I/O methods return `Promise` (no synchronous I/O)
 - Existing `MapCache` and `MapDirectoryTracker` continue to work after `IReadOnlyPackage` import path update
 
-**Estimated Effort**:
-| File | Est. impl lines | Est. test lines | Est. tests |
+**Completion Summary**:
+
+| File | Impl lines (est. / actual) | Test lines (est. / actual) | Tests (est. / actual) |
 |:---|:---:|:---:|:---:|
-| IPackage.ts | 80 | 60 | 10 |
-| Folder.ts | 140 | 180 | 18 |
-| ZipFile.ts | 310 | 380 | 28 |
-| FileSystem.ts | 480 | 520 | 35 |
-| **Total** | **~1,010** | **~1,140** | **~91** |
+| IPackage.ts | 80 / 188 | 60 / 337 | 10 / 21 |
+| Folder.ts | 140 / 198 | 180 / 337 | 18 / 24 |
+| ZipFile.ts | 310 / 371 | 380 / 518 | 28 / 37 |
+| FileSystem.ts | 480 / 673 | 520 / 769 | 35 / 50 |
+| **Total** | **~1,010 / 1,430** | **~1,140 / 1,961** | **~91 / 132** |
+
+**Review**: APPROVED (2 rounds, 0 BLOCKERs). No manual visual tests needed (pure infrastructure layer).
+**Commits**: `c9f6dd3` (initial implementation), `49aa8be` (review fixes).
+
+> **Note**: `IReadOnlyPackage.ts` was refactored from a 78-line stub (Ch4 Phase E) into a 19-line re-export shim pointing to `IPackage.ts`. Existing consumers (`MapCache.ts`, `MapDirectoryTracker.ts`) had their imports updated to the new path.
 
 ---
 
@@ -908,7 +914,7 @@ This replaces OpenRA's `ModData.PackageLoaders` assembly-scanned array.
 
 | Phase | Files | Complexity | Est. Lines (impl+test) | Est. Tests | Depends On |
 |-------|:---:|:---|:---:|:---:|-----------|
-| A: FileSystem Foundation | 4 | Low-Medium | ~2,150 | ~91 | Nothing |
+| A: FileSystem Foundation | 4 | Low-Medium | 3,391 (completed) | 132 (completed) | Nothing |
 | B: C&C Package Formats | 5 | Low-HIGH | ~1,810 | ~79 | Phase A |
 | C: MOD System Core | 2 | Low-Medium | ~1,170 | ~52 | Phase A |
 | D: UI Widget Core | 4 | Low-Medium | ~2,820 | ~104 | Phase C |

@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 5 (UI System & Resource Management) -- PLANNING (0/16, 0%)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 0/16 (0%)
+**Phase**: Chapter 5 (UI System & Resource Management) -- IN PROGRESS (4/16, 25%)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 4/16 (25%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -30,8 +30,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Pathfinding System (13 files, Phase G) | COMPLETE, 190 tests, HPA* + A* |
 | MiniYAML Pipeline (1 file, Phase H) | COMPLETE, build-time YAML->JSON |
 | CoordinateTransformer (1 file, Phase I) | COMPLETE, WPos<->Vector3 bridge |
-| **UI System & Resource Management (16 files)** | **PLANNING (0/16, 0%), 5 Phases A-E** |
-| FileSystem Foundation (4 files) | Pending (IPackage, Folder, ZipFile, FileSystem) |
+| **UI System & Resource Management (16 files)** | **IN PROGRESS (4/16, 25%), 5 Phases A-E** |
+| FileSystem Foundation (4 files) | COMPLETE (IPackage, Folder, ZipFile, FileSystem), 132 tests |
 | C&C Package Formats (5 files) | Pending (MixFile stub, BigFile, MegFile, Pak, PackageEntry) |
 | MOD System Core (2 files) | Pending (Manifest, ModData) |
 | UI Widget Core (4 files) | Pending (Widget, ChromeMetrics, WidgetLoader, ChromeProvider) |
@@ -101,8 +101,12 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       TerrainMaterial.ts  ← migrated (454 lines, 284 test lines) -- Phase F
       MapPreview.ts       ← stub (241 lines) -- deferred Chapter 5+
     CoordinateTransformer.ts  ← migrated (334 lines, 509 test lines) -- Phase I
-    FileSystem/               ← Chapter 5 Phase A: Virtual File System (pending)
-      IReadOnlyPackage.ts     ← stub (78 lines) -- will be refactored in Ch5 Phase A
+    FileSystem/               ← Chapter 5 Phase A: Virtual File System (COMPLETE)
+      IReadOnlyPackage.ts     ← re-export shim (19 lines) -- refactored in Ch5 Phase A
+      IPackage.ts             ← migrated (188 lines, 21 tests) -- Chapter 5 Phase A
+      Folder.ts               ← migrated (198 lines, 24 tests) -- Chapter 5 Phase A
+      ZipFile.ts              ← migrated (371 lines, 37 tests) -- Chapter 5 Phase A
+      FileSystem.ts           ← migrated (673 lines, 50 tests) -- Chapter 5 Phase A
     Widgets/                  ← Chapter 5 Phase D: UI Widget core (pending)
     Traits/                 ← Chapter 3: Trait interfaces and components (COMPLETE)
     Activities/             ← Chapter 3: Activity state machine (COMPLETE)
@@ -364,7 +368,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md) | Chapter 3 actor system migration plan with TODO checklist (36 total: 17 Phase A primitives + 14 core + 5 support; 61 TODO items) |
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
-| [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, planning, 0%) |
+| [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, in progress, 25%) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
