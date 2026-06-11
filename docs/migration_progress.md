@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-11
-> **Current phase**: Chapter 4 (Map System) — ALL PHASES COMPLETE (37/37, 100%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapters 2-4 COMPLETE, Phases A-I complete
+> **Current phase**: Chapter 5 (UI System & Resource Management) — PLANNING (0/16, 0%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 0/16 (0%), Chapters 2-4 COMPLETE, Chapter 5 planning
 
 ---
 
@@ -16,10 +16,12 @@
 | **Chapter 4 planned files** | 37 (32 from OpenRA + 5 new; 34 originally planned + 3 dep files) |
 | **Chapter 4 status** | ALL PHASES COMPLETE: 37/37 (100%), 603+190+additional=750+ tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + Phase D (2/2) + Phase E (7/7) + Phase F (2/2) + Phase G (13/13) + Phase H (1/1) + Phase I (1/1) = 37 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
-| **Remaining chapters** | Chapters 5-8+ (networking, audio, file system, mod system, UI) |
-| **Overall project completion** | Chapters 2+3/8+ complete, Chapter 4 ALL PHASES COMPLETE (rendering, actors, map system, pathfinding: 37/37) |
+| **Chapter 5 planned files** | 16 (5 Phases A-E, planning stage) |
+| **Chapter 5 status** | PLANNING: 0/16 (0%), migration plan created |
+| **Remaining chapters** | Chapters 6-8+ (networking, audio, game logic) |
+| **Overall project completion** | Chapters 2+3+4/8+ complete (100/100 rendering+actors+map), Chapter 5 planning (0/16) |
 
-> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge.
+> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: UI System & Resource Management migration plan created (16 files, 5 phases, ~8,950 est. lines).
 
 ---
 
@@ -122,10 +124,12 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Game/Activities/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Network/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/FileSystem/` | 1 | 1 | 0 | 0 |
+| `OpenRA.Game/Widgets/` | 0 | 0 | 0 | Chapter 5 Phase D (pending) |
 | `OpenRA.Game/Map/` | 23 | 23 | 0 | 0 |
 | `OpenRA.Mods.Common/Pathfinder/` | 10 | 10 | 0 | 0 |
 | `OpenRA.Mods.Common/Traits/` | 3 | 3 | 0 | 0 |
-| `OpenRA.Mods.Cnc/` | 0 | 0 | 0 | All |
+| `OpenRA.Mods.Common/Widgets/` | 0 | 0 | 0 | Chapter 5 Phase E (pending) |
+| `OpenRA.Mods.Cnc/` | 0 | 0 | 0 | Chapter 5 Phase B (pending) |
 | `utils/` | 1 | 1 | 0 | 0 |
 | Other modules | 0 | 0 | 0 | All |
 
@@ -652,3 +656,128 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 - **Total tests**: ~790+ (195+138+93+38+96+43+190 = Phase A-G; H+I additional).
 - **All review rounds**: 15+ rounds across 9 phases.
 - **Remaining deferred**: MapPreview stub, ActorInitializer, ActorReference (Chapter 5+).
+
+---
+
+## Chapter 5: UI System & Resource Management (PLANNING)
+
+> **Migration Plan**: [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md)
+> **Created**: 2026-06-11 | **Updated**: 2026-06-11 | **Status**: PLANNING (0/16 migrated, 0%), Phases A-E pending
+> **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed | 0 | 0% |
+| Pending | 16 | 100% |
+| **Total** | **16** | **100%** |
+| **From OpenRA** | **15** (plus 1 IReadOnlyPackage refactor) | |
+| **New files (no OpenRA equivalent)** | **0** | |
+
+### Chapter 5 Phases
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | FileSystem Foundation (VFS) | 4 | Low-Medium | PENDING |
+| Phase B | C&C Package Formats | 5 | Low-HIGH | PENDING (blocked by A) |
+| Phase C | MOD System Core | 2 | Low-Medium | PENDING (blocked by A) |
+| Phase D | UI Widget Core | 4 | Low-Medium | PENDING (blocked by C) |
+| Phase E | World Interaction Bridge | 1 | HIGH | PENDING (blocked by C, D) |
+
+### Already Available (from Prior Chapters)
+
+| Dependency | Source | Status |
+|:---|:---|:---|
+| MiniYAML -> JSON pipeline | `utils/miniyaml-to-json.ts` | COMPLETE (Ch4 Phase H) |
+| `IReadOnlyPackage` interface stub | `src/OpenRA.Game/FileSystem/IReadOnlyPackage.ts` | STUB (Ch4 Phase E, refactored in Ch5 Phase A) |
+| `MapCache` | `src/OpenRA.Game/Map/MapCache.ts` | COMPLETE (Ch4 Phase E) |
+| `MapDirectoryTracker` | `src/OpenRA.Game/Map/MapDirectoryTracker.ts` | COMPLETE (Ch4 Phase E) |
+| Coordinate types (WPos, CPos, etc.) | `src/OpenRA.Game/` | COMPLETE (Ch3 Phase A) |
+| `World.ts` / `GameWorldManager` | `src/OpenRA.Game/World.ts` | COMPLETE (Ch3 Phase C) |
+| `Actor.ts` / `GameActor` | `src/OpenRA.Game/Actor.ts` | COMPLETE (Ch3 Phase D) |
+| `Renderer.ts` + `WorldRenderer.ts` | `src/OpenRA.Game/` | COMPLETE (Ch2) |
+| CoordinateTransformer | `src/OpenRA.Game/CoordinateTransformer.ts` | COMPLETE (Ch4 Phase I) |
+| `fflate` (ZIP library) | npm dependency | Already installed (Ch4) |
+
+### Key Architecture Decisions (5 ADRs)
+
+| ADR | Decision |
+|-----|----------|
+| ADR-5.1 | MIX files unpacked at build time (not browser runtime) -- `MixFile.ts` is a documentation stub |
+| ADR-5.2 | Pure TypeScript Widget tree (not React-first); React bridge optional |
+| ADR-5.3 | Event bus for UI-to-World communication (no direct Widget-to-World calls) |
+| ADR-5.4 | Four-level asset cache: L1 memory (100MB LRU), L2 IndexedDB, L3 Cache API, L4 CDN |
+| ADR-5.5 | `IPackageLoader` registration pattern via explicit `FileSystem.registerLoader()` at import time |
+
+### Dependency Graph
+
+```
+Phase A: FileSystem (4 files) -- FOUNDATION
+  |
+  +--> Phase B: C&C Packages (5 files) -- can run parallel with Phase C
+  +--> Phase C: MOD System (2 files)
+              |
+              v
+        Phase D: UI Widget Core (4 files)
+              |
+              v
+        Phase E: World Interaction (1 file) -- LEAF
+```
+
+### Phase A: FileSystem Foundation (4 files, PENDING)
+
+| # | Target File | Class/Interface | Complexity | Lines (C#) | Est. impl | Est. test | Est. tests |
+|:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|
+| A1 | `src/OpenRA.Game/FileSystem/IPackage.ts` | IPackage, IReadOnlyPackage, IPackageLoader | Low (refactor of existing stub) | 42 | 80 | 60 | 10 |
+| A2 | `src/OpenRA.Game/FileSystem/Folder.ts` | Folder | Low | 110 | 140 | 180 | 18 |
+| A3 | `src/OpenRA.Game/FileSystem/ZipFile.ts` | ZipFile, ZipFileLoader | Low | 262 | 310 | 380 | 28 |
+| A4 | `src/OpenRA.Game/FileSystem/FileSystem.ts` | FileSystem, IReadOnlyFileSystem | Medium | 304 | 480 | 520 | 35 |
+| **Total** | | | | **~718** | **~1,010** | **~1,140** | **~91** |
+
+### Phase B: C&C Package Formats (5 files, PENDING)
+
+| # | Target File | Class/Interface | Complexity | Lines (C#) | Notes |
+|:---:|:---|:---|:---:|:---:|:---|
+| B1 | `src/OpenRA.Mods.Cnc/FileSystem/PackageEntry.ts` | PackageEntry | Low | 118 | 32-bit rolling hash algorithm |
+| B2 | `src/OpenRA.Mods.Cnc/FileSystem/MixFile.ts` | MixFile, MixLoader | HIGH | 248 | Documentation stub per ADR-5.1 |
+| B3 | `src/OpenRA.Mods.Cnc/FileSystem/BigFile.ts` | BigFile, BigFileLoader | Low | 124 | Full runtime implementation |
+| B4 | `src/OpenRA.Mods.Cnc/FileSystem/MegFile.ts` | MegFile, MegFileLoader | Low | 141 | Full runtime implementation |
+| B5 | `src/OpenRA.Mods.Cnc/FileSystem/Pak.ts` | Pak, PakLoader | Low | 103 | Full runtime implementation |
+| **Total** | | | | **~734** | **~920 impl + ~890 test lines, ~79 tests** |
+
+### Phase C: MOD System Core (2 files, PENDING)
+
+| # | Target File | Class/Interface | Complexity | Lines (C#) |
+|:---:|:---|:---|:---:|:---:|
+| C1 | `src/OpenRA.Game/Manifest.ts` | Manifest, ModMetadata | Low | 206 |
+| C2 | `src/OpenRA.Game/ModData.ts` | ModData, ObjectCreator | Medium | 258 |
+| **Total** | | | | **~464** | **~560 impl + ~610 test lines, ~52 tests** |
+
+### Phase D: UI Widget Core (4 files, PENDING)
+
+| # | Target File | Class/Interface | Complexity | Lines (C#) |
+|:---:|:---|:---|:---:|:---:|
+| D1 | `src/OpenRA.Game/Widgets/Widget.ts` | Widget, ContainerWidget, Ui | Medium | 708 |
+| D2 | `src/OpenRA.Game/Widgets/ChromeMetrics.ts` | ChromeMetrics | Low | 49 |
+| D3 | `src/OpenRA.Game/Widgets/WidgetLoader.ts` | WidgetLoader | Medium | 83 |
+| D4 | `src/OpenRA.Game/Graphics/ChromeProvider.ts` | ChromeProvider, Collection | Low | 305 |
+| **Total** | | | | **~1,145** | **~1,370 impl + ~1,450 test lines, ~104 tests** |
+
+### Phase E: World Interaction Bridge (1 file, PENDING)
+
+| # | Target File | Class/Interface | Complexity | Lines (C#) |
+|:---:|:---|:---|:---:|:---:|
+| E1 | `src/OpenRA.Mods.Common/Widgets/WorldInteractionControllerWidget.ts` | WorldInteractionControllerWidget | HIGH | 235 |
+| **Total** | | | | **~235** | **~480 impl + ~520 test lines, ~38 tests** |
+
+### Chapter 5 Phase Strategy Summary
+
+| Phase | Files | Complexity | Est. Lines (impl+test) | Est. Tests | Depends On |
+|-------|:---:|:---|:---:|:---:|-----------|
+| A: FileSystem Foundation | 4 | Low-Medium | ~2,150 | ~91 | Nothing |
+| B: C&C Package Formats | 5 | Low-HIGH | ~1,810 | ~79 | Phase A |
+| C: MOD System Core | 2 | Low-Medium | ~1,170 | ~52 | Phase A |
+| D: UI Widget Core | 4 | Low-Medium | ~2,820 | ~104 | Phase C |
+| E: World Interaction | 1 | HIGH | ~1,000 | ~38 | Phases C, D |
+| **Total** | **16** | | **~8,950** | **~364** | |
+
+**Total estimated**: ~8,950 lines of implementation + test code. 5-7 developer-weeks (single developer) or 3-4 weeks (2 developers working in parallel on Phases B+C after Phase A completes).
