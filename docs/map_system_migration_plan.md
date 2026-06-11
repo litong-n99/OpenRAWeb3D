@@ -1,8 +1,8 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 4 -- Map and Terrain System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 5 (lines 627-849)
-> **Chapter Status**: Chapter 4 -- Implementation Phase (19/34 migrated, 56%)
-> **Updated**: 2026-06-11 (Phase E COMPLETE: Map Support Files, 96 tests, review approved; Phase D also complete: Map.ts + MapBinParser.ts, 19/34, 56%)
+> **Chapter Status**: Chapter 4 -- Implementation Phase (21/34 migrated, 62%)
+> **Updated**: 2026-06-11 (Phase F COMPLETE: 3D Terrain Mesh Generation, 43 tests, review approved; Phases A-F all complete, 21/34, 62%)
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 1038%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -157,7 +157,7 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 | **Phase C (TerrainInfo)** | 1 file (COMPLETE, 93 tests) |
 | **Phase D (Map core)** | 2 files (Map.ts + MapBinParser.ts) |
 | **Phase E (Support files)** | 7 files (2 moved to Phase A) |
-| **Phase F (3D terrain, new)** | 2 files |
+| **Phase F (3D terrain, new)** | 2 files (COMPLETE) |
 | **Phase G (Pathfinding)** | 10 files |
 | **Phase H (MiniYAML pipeline, new)** | 1 file |
 | **Phase I (CoordinateTransformer, new)** | 1 file |
@@ -417,16 +417,18 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
 
 ---
 
-### 3.6 Phase F: 3D Terrain Mesh Generation
+### 3.6 Phase F: 3D Terrain Mesh Generation ✅ 已完成
 
-**Status**: Pending (0/2 -- new files)
+**Status**: COMPLETE (2/2 -- new files)
 **Complexity**: HIGH
-**Blocked by**: Phases A-D, Phase I (CoordinateTransformer)
+**Completed**: 2026-06-11
+**Review**: APPROVED (2 rounds, 0 BLOCKERs)
+**Blocked by**: Phases A-D -- satisfied
 **Blocks**: Visual map rendering
 
-**Description**: The critical paradigm-shift phase. 2D tile rendering becomes continuous 3D mesh with height displacement and texture splatting.
+**Description**: The critical paradigm-shift phase. 2D tile rendering becomes continuous 3D mesh with height displacement and texture splatting. `TerrainMeshBuilder` generates the actual 3D mesh geometry from CellRamp data, and `TerrainMaterial` provides the PBR material system with texture splatting.
 
-- [ ] **TODO-4.F.1** `src/OpenRA.Game/Map/TerrainMeshBuilder.ts` -- Generate terrain mesh:
+- [x] **TODO-4.F.1** `src/OpenRA.Game/Map/TerrainMeshBuilder.ts` (~713 lines TS, ~739 lines test, 32 tests) -- Generate terrain mesh:
   - Per-cell 4-corner vertex generation from height + CellRamp corner offsets
   - Index buffer with shared vertices between adjacent cells
   - Smooth normals via adjacent face averaging
@@ -435,7 +437,7 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
   - Both grid types supported
   - Target: 512x512 map under 1 second generation time
 
-- [ ] **TODO-4.F.2** `src/OpenRA.Game/Map/TerrainMaterial.ts` -- Texture splatting:
+- [x] **TODO-4.F.2** `src/OpenRA.Game/Map/TerrainMaterial.ts` (~454 lines TS, ~284 lines test, 11 tests) -- Texture splatting:
   - RGBA splat map from TerrainType classification (4 types per cell)
   - Up to 12 texture arrays (diffuse + normal per type)
   - Custom ShaderMaterial: vertex (world-space UV), fragment (splat-weighted blend + PBR)
@@ -443,6 +445,16 @@ HierarchicalPathFinder -->  HPAStar class (TS port) OR RecastNavigation NavMesh
   - Fallback StandardMaterial for dev/testing
 
 **Estimated Effort**: ~1,500 lines implementation + ~600 lines test (7-8 developer-days)
+
+**Actual Results**: ~1,167 lines implementation + ~1,023 lines test = ~2,190 total lines. TerrainMeshBuilder.ts (713 impl + 739 test, 32 tests), TerrainMaterial.ts (454 impl + 284 test, 11 tests). 2 review rounds, 0 BLOCKERs. E2E acceptance test page created at `src/__e2e__/manual/terrain-mesh/basic/`.
+
+| File | Lines (impl) | Lines (test) | Tests |
+|:---|:---:|:---:|:---:|
+| TerrainMeshBuilder.ts | 713 | 739 | 32 |
+| TerrainMaterial.ts | 454 | 284 | 11 |
+| **Total** | **1,167** | **1,023** | **43** |
+
+**Commits**: `9cbd7cc`, `ebdd5f6`, `2bb5009`
 
 ---
 
@@ -524,8 +536,7 @@ Chapter 3 Phase A (CPos, MPos, WPos, WVec, WAngle, WRot, CVec) -- ALREADY DONE
   |     |     +--> Phase D (Map.cs) <----------+------+
   |     |           |
   |     |           +--> Phase E (MapCache, MapPlayers, ...) ✅ COMPLETE
-  |     |           +--> Phase F (TerrainMeshBuilder, TerrainMaterial) [NEW]
-  |     |           |     +--> (depends on Phase I)
+  |     |           +--> Phase F (TerrainMeshBuilder, TerrainMaterial) ✅ COMPLETE
   |     |           +--> Phase G (Pathfinding: IPathGraph, PathSearch, HPA*, ...)
   |     |
   |     +--> Phase I (CoordinateTransformer) -- starts after Phase A
@@ -538,7 +549,7 @@ Chapter 3 Phase A (CPos, MPos, WPos, WVec, WAngle, WRot, CVec) -- ALREADY DONE
 ```
 Phase H (MiniYAML) -- independent, parallel
 Phase I (CoordXform) -- parallel with A/B
-Phase A -> Phase B -> Phase C -> Phase D -> Phase F -> Phase G
+Phase A -> Phase B -> Phase C -> Phase D -> Phase F ✅ COMPLETE -> Phase G
                                          |-> Phase E ✅ COMPLETE
 ```
 

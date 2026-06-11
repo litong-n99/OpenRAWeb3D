@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-11
-> **Current phase**: Chapter 4 (Map System) — Phase E COMPLETE (19/34, 56%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 19/34 (56%), Phases A-E complete
+> **Current phase**: Chapter 4 (Map System) — Phase F COMPLETE (21/34, 62%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 21/34 (62%), Phases A-F complete
 
 ---
 
@@ -14,10 +14,10 @@
 | **Chapter 3 planned files** | 31 in-scope + 2 deferrable + 5 support = 36 |
 | **Chapter 3 status** | Implementation complete: 36/36 (100%), Phases A-I complete |
 | **Chapter 4 planned files** | 34 (29 from OpenRA + 5 new) |
-| **Chapter 4 status** | Phase E COMPLETE: 19/34 (56%), 426+96+30+8=560 tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + Phase D (2/2) + Phase E (7/7) = 19 |
+| **Chapter 4 status** | Phase F COMPLETE: 21/34 (62%), 560+43=603 tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + Phase D (2/2) + Phase E (7/7) + Phase F (2/2) = 21 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Remaining chapters** | Chapters 5-8+ (networking, audio, file system, mod system, UI) |
-| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phases A-E complete (rendering, actors, map system: 19/34) |
+| **Overall project completion** | Chapters 2+3/8+ done, Chapter 4 Phases A-F complete (rendering, actors, map system: 21/34) |
 
 > **Note**: Chapter 2 is fully complete. Chapter 3 migration plan has been created at `docs/actor_system_migration_plan.md` covering the Game World & Actor System (31 in-scope + 2 deferrable + 5 support = 36 files, ~40 TODO items). Phase A (Coordinate System & Primitives) is complete: 17 files with full test coverage, ~2700 TS + ~2500 test lines, 1219 tests. Phase B (Trait System Core) is complete: 2 files, ~2380 TS + ~149 tests. Phase C (GameWorldManager) is complete: 1 file, ~1903 TS + 66 tests, 2 review rounds, 0 BLOCKERs. Phase D (GameActor) is complete: 1 file, ~1840 TS + 91 tests, 2 review rounds, 0 BLOCKERs. Phase E (ActorConfig) is complete: 1 file, ~916 TS + 64 tests, 2 review rounds, 0 BLOCKERs. Phase F (Activity System) is complete: 3 files (Activity.ts, CallFunc.ts, ActivityUtils.ts), ~899 TS + 73 tests, 2 review rounds, 0 BLOCKERs. Phase G (Player) is complete: 1 file, 1272 TS + 1407 test lines, 82 tests, 1 review round, 0 BLOCKERs. Phase H (Effects) is complete: 3 files, ~521 TS + ~687 test lines, 103 tests, 1 review round, 0 BLOCKERs. Phase I (ScreenMap) is complete: 1 file, ~350 TS + ~250 test lines, 1 review round, 0 BLOCKERs.
 
@@ -122,7 +122,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Game/Activities/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Network/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/FileSystem/` | 1 | 1 | 0 | 0 |
-| `OpenRA.Game/Map/` | 19 | 19 | 0 | 0 |
+| `OpenRA.Game/Map/` | 21 | 21 | 0 | 0 |
 | `OpenRA.Mods.Cnc/` | 0 | 0 | 0 | All |
 | Other modules | 0 | 0 | 0 | All |
 
@@ -175,6 +175,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-11 | **Phase F 3D Terrain Mesh Generation** (2 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): TerrainMeshBuilder.ts (713+739 lines, 32 tests), TerrainMaterial.ts (454+284 lines, 11 tests). ~1167 impl + ~1023 test lines, 43 tests. E2E acceptance test page at `src/__e2e__/manual/terrain-mesh/basic/`. Commits `9cbd7cc`, `ebdd5f6`, `2bb5009`. |
 | 2026-06-11 | **Phase E Map Support Files** (7 files) | migration-develop | migration-review | APPROVED: MapCache.ts (816+465, 30 tests), MapPlayers.ts (241+266, 12 tests), MapDirectoryTracker.ts (271+291, 15 tests), MapGenerationArgs.ts (84+156, 8 tests), PlayerReference.ts (163+165, 15 tests), TileReference.ts (103+83, 8 tests), MapPreview.ts stub (241), IReadOnlyPackage.ts stub (78). ~940 impl + ~1030 test lines, 96 tests. Commits `8c49914`, `92c8a33`, `f8a0664`, `e53b66f`. |
 | 2026-06-11 | **Phase D Map Core** (2 files) | migration-develop | migration-review | APPROVED: Map.ts (1699+1409, 30+ tests), MapBinParser.ts (325+290, 8 tests). ~2024 impl + ~1699 test lines. Binary map.bin parser, ZIP extraction, coordinate methods, CellLayer data planes. Commit `8c49914`. |
 | 2026-06-08 | **SpriteRenderer.ts fix** | migration-develop | migration-review | APPROVED: Resolved 5 issues (3 BLOCKER + 2 MAJOR) from lessons-learned audit. BLOCKER #1: CreatePlane->CreateGround, removed billboardMode. BLOCKER #2: Added emissiveTexture + emissiveColor for disableLighting. MAJOR #4: ToRef matrix variants + pre-allocated buffers for zero GC. MAJOR #5: alwaysSelectAsActiveMesh=true for frustum culling. Rotation: Z->Y axis for XZ ground plane. Commit `e96bc06`. |
@@ -434,13 +435,13 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 ## Chapter 4: Map & Terrain System (Phase E COMPLETE)
 
 > **Migration Plan**: [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md)
-> **Created**: 2026-06-04 | **Updated**: 2026-06-11 | **Status**: Phase E COMPLETE (19/34 migrated, 56%), Phases A-E all complete
+> **Created**: 2026-06-04 | **Updated**: 2026-06-11 | **Status**: Phase F COMPLETE (21/34 migrated, 62%), Phases A-F all complete
 > **Prerequisite**: Chapter 3 (Actor System) -- COMPLETE (36/36, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 19 | 56% |
-| Pending | 15 | 44% |
+| Completed | 21 | 62% |
+| Pending | 13 | 38% |
 | **Total planned** | **34** | **100%** |
 | **From OpenRA** | **29** | |
 | **New files (no OpenRA equivalent)** | **5** | |
@@ -455,7 +456,7 @@ Chapter 3 (Game World & Actor System) is now complete at 36/36 (100%):
 | Phase C | TerrainInfo / TileSet | 1 | Medium | COMPLETE (1/1, 93 tests) |
 | Phase D | Map.cs Core Container | 2 | HIGH | COMPLETE (2/2, 30+ tests) |
 | Phase E | Map Support Files | 7 (+2 stubs) | Low-Medium | COMPLETE (7/7, 96 tests) |
-| Phase F | 3D Terrain Mesh Generation | 2 (new) | HIGH | Pending |
+| Phase F | 3D Terrain Mesh Generation | 2 (new) | HIGH | COMPLETE (2/2, 43 tests) |
 | Phase G | Pathfinding System | 10 | HIGH | Pending |
 | Phase H | MiniYAML Pipeline | 1 (new) | HIGH | Pending |
 | Phase I | CoordinateTransformer | 1 (new) | Medium | Pending |
@@ -541,6 +542,20 @@ See map_system_migration_plan.md Section 3.1 for full details. 2,857 lines imple
 - MapPreview and IReadOnlyPackage stubbed for future chapters
 - ActorReference and ActorInitializer deferred to Chapter 5+ (per ADR-4.7)
 - Review: APPROVED | **Commits**: `8c49914`, `92c8a33`, `f8a0664`, `e53b66f`
+
+### Phase F Completed: 3D Terrain Mesh Generation (2 new files, 2026-06-11)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| TerrainMeshBuilder.ts | 713 | 739 | 32 | 3D terrain mesh generation from CellRamp data |
+| TerrainMaterial.ts | 454 | 284 | 11 | PBR texture splatting material system |
+| **Total** | **1,167** | **1,023** | **43** | |
+
+**Implementation details**:
+- `TerrainMeshBuilder`: Per-cell 4-corner vertex generation from height + CellRamp corner offsets. Shared vertices between adjacent cells. Smooth normals via adjacent face averaging. World-space UV for texture tiling. Cliff face quads where Riser non-zero between cells. Both rectangular and isometric grid types supported.
+- `TerrainMaterial`: RGBA splat map from TerrainType classification (4 types per cell). Custom ShaderMaterial with vertex shader (world-space UV) and fragment shader (splat-weighted blend + PBR). Fallback StandardMaterial for dev/testing.
+- E2E acceptance test page created at `src/__e2e__/manual/terrain-mesh/basic/` (index.html + main.ts + README.md)
+- Review: APPROVED (2 rounds, 0 BLOCKERs) | **Commits**: `9cbd7cc`, `ebdd5f6`, `2bb5009`
 
 ### Key Architecture Decisions (7 ADRs)
 

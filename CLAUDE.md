@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 4 (Map & Terrain System) -- Phase E complete (19/34, 56%)
-**Progress**: 27/27 rendering (100%), Chapter 3: 36/36 (100%), Chapter 4: 19/34 (56%)
+**Phase**: Chapter 4 (Map & Terrain System) -- Phase F complete (21/34, 62%)
+**Progress**: 27/27 rendering (100%), Chapter 3: 36/36 (100%), Chapter 4: 21/34 (62%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -20,13 +20,14 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Sprite & Texture System (8 core + 4 extra files) | Completed, reviewed |
 | Platform Abstraction (11 files) | Completed, reviewed |
 | **Actor System (36 files)** | COMPLETE (100%) |
-| **Map & Terrain System (34 files)** | **Phase E: 19/34 (56%), Phases A-E COMPLETE** |
+| **Map & Terrain System (34 files)** | **Phase F: 21/34 (62%), Phases A-F COMPLETE** |
 | CellLayer Infrastructure (8 files) | COMPLETE, 195/195 tests, 2 review rounds |
 | MapGrid + CellRamp (2+2 files) | COMPLETE, 138 tests, 1 review round |
 | TerrainInfo / TileSet (1 file) | COMPLETE, 93 tests, 2 review rounds |
 | Map Core (Map.ts + MapBinParser.ts) | COMPLETE, ~1699 test lines, 38+ tests |
 | Map Support Files (7 files) | COMPLETE, ~1030 test lines, 96 tests |
-| Remaining Map System (15 files) | Pending (Phases F-I) |
+| 3D Terrain Mesh Generation (2 files) | COMPLETE, ~1023 test lines, 43 tests |
+| Remaining Map System (13 files) | Pending (Phases G-I) |
 | Game logic, networking, audio, mod system | Not yet started
 
 ## Directory Layout
@@ -68,7 +69,7 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
     WRot.ts               ← migrated (310 lines, 32 tests) -- Phase A 3.1.1
     Exts.ts               ← migrated (67 lines, 10 tests) -- Phase A support + isqrtCeiling (Phase B)
     CVec.ts               ← migrated (271 lines, 40 tests) -- hashCode added Phase B
-    Map/                    ← Chapter 4: Map & Terrain System (19/34, 56%, Phases A-E COMPLETE)
+    Map/                    ← Chapter 4: Map & Terrain System (21/34, 62%, Phases A-F COMPLETE)
       MapGridType.ts      ← migrated -- Phase A prereq
       CellLayerBase.ts    ← migrated (213 lines, 281 test lines) -- Phase A
       CellLayer.ts        ← migrated (468 lines, 722 test lines) -- Phase A
@@ -88,6 +89,8 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       MapGenerationArgs.ts    ← migrated (84 lines, 156 test lines) -- Phase E
       PlayerReference.ts  ← migrated (163 lines, 165 test lines) -- Phase E
       TileReference.ts    ← migrated (103 lines, 83 test lines) -- Phase E
+      TerrainMeshBuilder.ts   ← migrated (713 lines, 739 test lines) -- Phase F
+      TerrainMaterial.ts  ← migrated (454 lines, 284 test lines) -- Phase F
       MapPreview.ts       ← stub (241 lines) -- deferred Chapter 5+
     FileSystem/
       IReadOnlyPackage.ts ← stub (78 lines) -- deferred Chapter 5+
