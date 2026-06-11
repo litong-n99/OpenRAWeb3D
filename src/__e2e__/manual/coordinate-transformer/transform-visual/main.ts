@@ -69,6 +69,9 @@ camera.upperRadiusLimit = 40
 
 new HemisphericLight('hemi', new Vector3(0.3, 1, 0.3), scene)
 
+// Smooth camera follow target
+let desiredTarget = new Vector3(5, 1, 5)
+
 // ---------------------------------------------------------------------------
 // Reference Grid (5x5 cells, 1024 units each → 5 Babylon units)
 // ---------------------------------------------------------------------------
@@ -305,6 +308,9 @@ function updateFromSliders(): void {
   ghostSphere.position = new Vector3(vec3.x, 0.03, vec3.z)
   updateDropLine(vec3)
 
+  // Update camera follow target
+  desiredTarget = vec3.clone()
+
   // Do reverse conversion and verify round-trip (used for cache stats tracking)
   // Round-trip should approximately recover original WPos
   const roundTripped = trackedVector3ToWPos(vec3)
@@ -432,6 +438,8 @@ buildReferenceGrid()
 updateFromSliders()
 
 engine.runRenderLoop(() => {
+  const lerpFactor = 0.1
+  camera.target = Vector3.Lerp(camera.target, desiredTarget, lerpFactor)
   scene.render()
   updateInfoBar()
 })
