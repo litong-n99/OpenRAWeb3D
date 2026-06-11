@@ -403,7 +403,7 @@ export abstract class DensePathGraph {
     movementCost: number,
   ): number {
     // Diagonal movement costs sqrt(2) times more than straight
-    const cellCost =
+    let cellCost =
       direction.X * direction.Y !== 0
         ? Math.round(movementCost * Math.SQRT2)
         : movementCost
@@ -414,7 +414,7 @@ export abstract class DensePathGraph {
       if (customCellCost === PathGraph.PathCostForInvalidPath) {
         return PathGraph.PathCostForInvalidPath
       }
-      return cellCost + customCellCost
+      cellCost += customCellCost
     }
 
     // Apply lane bias for smoother flow

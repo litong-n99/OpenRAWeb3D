@@ -106,7 +106,7 @@ const cellToVecCache = new Cache<string, Vector3>((key) => {
  * Mapping: OpenRA (X, Y, Z) → Babylon.js (X * WORLD_SCALE, Z * HEIGHT_SCALE, Y * WORLD_SCALE)
  *
  * @param wpos — OpenRA world position
- * @returns Babylon.js Vector3
+ * @returns A Vector3 that MUST NOT be mutated — it is a cached reference shared across callers.
  */
 export function wPosToVector3(wpos: WPos): Vector3 {
   const key = wpos.toString()
@@ -171,6 +171,8 @@ export function cellToVector3(cpos: CPos, height: number, grid: MapGrid): Vector
 /**
  * Raw cell-to-Vector3 conversion without caching.
  * Internal implementation shared by cached and uncached paths.
+ *
+ * @returns A new Vector3 at the cell center (not cached — caller must manage lifetime).
  */
 function cellCenterToVector3Raw(
   cX: number,
@@ -313,6 +315,8 @@ export function cellsToVertices(
  * Clear all internal caches.
  *
  * Call this when switching maps or when memory pressure is detected.
+ *
+ * @returns void — all cache entries are dropped and eligible for garbage collection.
  */
 export function clearCoordinateCaches(): void {
   wPosToVecCache.clear()
@@ -323,7 +327,7 @@ export function clearCoordinateCaches(): void {
 /**
  * Get the total number of cached entries across all caches.
  *
- * @returns total cached entry count
+ * @returns total cached entry count across wPosToVecCache, vecToWPosCache, and cellToVecCache.
  */
 export function getCacheSize(): number {
   return wPosToVecCache.size + vecToWPosCache.size + cellToVecCache.size

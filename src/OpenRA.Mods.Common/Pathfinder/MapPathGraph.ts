@@ -133,6 +133,9 @@ export class MapPathGraph extends DensePathGraph {
    * @returns true if the cell is within the map
    */
   protected override isValidNeighbor(neighbor: CPos): boolean {
+    if (neighbor.Layer < 0 || neighbor.Layer >= this.cellInfoForLayer.length) {
+      return false
+    }
     const layer = this.cellInfoForLayer[neighbor.Layer]
     if (layer === null) {
       return false

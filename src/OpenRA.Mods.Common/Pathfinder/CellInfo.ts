@@ -116,7 +116,8 @@ export class CellInfo {
    * @param costSoFar — cost from start to this node
    * @param estimatedTotalCost — estimated total cost to target
    * @param previousNode — previous node on the shortest path
-   * @param _unvisited — internal flag to bypass validation
+   * @param _unvisited — internal flag to bypass validation. NOT part of the public API;
+   *   only accessible within the module. Callers outside this file must use CellInfo.unvisited().
    */
   constructor(
     status: CellStatusValue,

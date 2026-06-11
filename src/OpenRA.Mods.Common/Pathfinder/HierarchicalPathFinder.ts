@@ -994,7 +994,7 @@ export class HierarchicalPathFinder {
   ): void {
     // Remove old abstract nodes for this grid
     const abstractNodes = new Set<number>()
-    oldGrid.copyAbstractCellsInto(abstractNodes as unknown as Set<CPos>)
+    oldGrid.copyAbstractCellsInto(abstractNodes)
     for (const oldAbstractNode of abstractNodes) {
       this.abstractGraph!.delete(oldAbstractNode)
     }
@@ -1013,7 +1013,7 @@ export class HierarchicalPathFinder {
       }
 
       const adjacentGridIndex = this.gridIndex(adjacentGrid)
-      this.gridInfos[adjacentGridIndex].copyAbstractCellsInto(abstractNodes as unknown as Set<CPos>)
+      this.gridInfos[adjacentGridIndex].copyAbstractCellsInto(abstractNodes)
       for (const [key, edges] of this.getAbstractEdgesForGrid(adjacentGrid.X, adjacentGrid.Y, customMovementLayers)) {
         this.abstractGraph!.set(key, edges)
         abstractNodes.delete(key)

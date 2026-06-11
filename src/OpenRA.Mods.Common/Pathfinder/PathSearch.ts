@@ -360,7 +360,7 @@ export class PathSearch {
     ): number => {
       if (typeof isAccessibleOrDest === 'boolean') {
         // This overload shouldn't be called without destination
-        return 0
+        throw new Error('defaultCostEstimator: destination is required when called without target')
       }
       return estimator(here, isAccessibleOrDest)
     }

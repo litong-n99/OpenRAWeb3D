@@ -4,7 +4,7 @@
  *
  * 核心范式转换:
  * - C# Func<CPos, List<GraphConnection>> → TypeScript function type
- * - C# Dictionary<CPos, CellInfo> → TypeScript Map<CPos, CellInfo>
+ * - C# Dictionary<CPos, CellInfo> → TypeScript Map<number, CellInfo> (keyed by Bits)
  * - C# this[CPos] indexer → getInfo()/setInfo() methods
  * - C# default(CellInfo) for missing keys → CellInfo.unvisited()
  */

@@ -229,6 +229,8 @@ export class WallAwareLocomotor implements ILocomotor {
     // Determine which overload was called.
     // Overload 1: (actor, srcNode, destNode, check, ignoreActor) — args[3] is IGameActor|null
     // Overload 2: (actor, destNode, check, ignoreActor, ignoreSelf) — args[3] is boolean
+    // Overload detection: if the 4th argument is boolean, it's the ignoreSelf parameter
+    // (overload without srcNode). BlockedByActor is always 0-3 numeric, never boolean.
     const isOverload2 = args.length >= 4 && typeof args[3] === 'boolean'
     const destNode = isOverload2 ? (args[0] as CPos) : (args[1] as CPos)
     if (this.isBlocked(destNode)) {

@@ -89,6 +89,8 @@ export class CellInfoLayerPool {
       layer = new CellLayer<CellInfo>(this.gridType, this.size)
     }
     // CellInfo default is Unvisited; ensure all entries reflect this
+    // Safe to share a single instance: CellInfo is immutable (all readonly fields).
+    // C# would create value-type copies; TypeScript shares the reference.
     layer.clear(CellInfo.unvisited())
 
     return layer
