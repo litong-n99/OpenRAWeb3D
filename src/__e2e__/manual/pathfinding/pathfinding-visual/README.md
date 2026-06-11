@@ -1,5 +1,9 @@
 # Pathfinding — HPA* Hierarchical Pathfinding Visual Test
 
+**审核状态**: ✅ 全部审核通过 (2026-06-11)  
+**审核轮次**: 2 轮 (初始审查 + 运行时验证)  
+**修复项**: 6 项 (HTML 转义 / 路径长度 26 节点 / 搜索节点统计口径 / 对角线切割 / 免责声明 / HPA* 路径球体)
+
 **OpenRA 对照**: `OpenRA.Mods.Common/Pathfinder/HierarchicalPathFinder.cs`, `PathSearch.cs`  
 **测试重点**: A* 基础路径查找、HPA* 层次抽象图、Domain 连通域、搜索空间对比  
 **坐标系约定**: 网格在 XZ 平面上，Y=0 为地面层，起始障碍物密度 0%
