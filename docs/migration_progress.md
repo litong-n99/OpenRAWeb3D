@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 5 (UI System & Resource Management) — IN PROGRESS (15/16, 94%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 15/16 (94%, Phases A+B+C+D COMPLETE), Chapters 2-4 COMPLETE, Chapter 5 in progress
+> **Current phase**: Chapter 5 (UI System & Resource Management) — COMPLETE (16/16, 100%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%, ALL PHASES A-E COMPLETE), Chapters 2-5 COMPLETE
 
 ---
 
@@ -16,12 +16,12 @@
 | **Chapter 4 planned files** | 37 (32 from OpenRA + 5 new; 34 originally planned + 3 dep files) |
 | **Chapter 4 status** | ALL PHASES COMPLETE: 37/37 (100%), 603+190+additional=750+ tests, Phase A (8/8) + Phase B (2/2) + Phase C (1/1) + Phase D (2/2) + Phase E (7/7) + Phase F (2/2) + Phase G (13/13) + Phase H (1/1) + Phase I (1/1) = 37 |
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
-| **Chapter 5 planned files** | 16 (5 Phases A-E, Phases A+B+C+D complete) |
-| **Chapter 5 status** | IN PROGRESS: 15/16 (94%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE |
+| **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
+| **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
 | **Remaining chapters** | Chapters 6-8+ (networking, audio, game logic) |
-| **Overall project completion** | Chapters 2+3+4/8+ complete (100/100 rendering+actors+map), Chapter 5 in progress (15/16) |
+| **Overall project completion** | Chapters 2+3+4+5/8+ complete (116/116 rendering+actors+map+UI), Chapters 6-8+ not yet started |
 
-> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 25%, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, 56%, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 69%, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 94%, 2,129 impl + 2,333 test lines, 174 tests). Phase E pending.
+> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
 
 ---
 
@@ -128,7 +128,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Game/Map/` | 23 | 23 | 0 | 0 |
 | `OpenRA.Mods.Common/Pathfinder/` | 10 | 10 | 0 | 0 |
 | `OpenRA.Mods.Common/Traits/` | 3 | 3 | 0 | 0 |
-| `OpenRA.Mods.Common/Widgets/` | 0 | 0 | 0 | Chapter 5 Phase E (pending, now unblocked) |
+| `OpenRA.Mods.Common/Widgets/` | 1 | 1 | 0 | COMPLETE (Phase E, WorldInteractionControllerWidget) |
 | `OpenRA.Mods.Cnc/FileSystem/` | 5 | 5 | 0 | COMPLETE (Phase B, 108 tests) |
 | `utils/` | 1 | 1 | 0 | 0 |
 | Other modules | 0 | 0 | 0 | All |
@@ -182,6 +182,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch5 Phase E World Interaction Bridge** (1 file) | migration-develop | migration-review | APPROVED (2 rounds, 12 findings: 3 BLOCKER + 5 MAJOR + 4 MINOR): WorldInteractionControllerWidget.ts (1157 lines, 55 tests, state machine IDLE->MAYBE_DRAG->CLICK|DRAGGING, single/double-click selection, drag-box selection with deadzone, right-click order dispatch via event bus, scene.onPointerObservable bridge). Does not extend Widget (standalone class, documented ADR). 1,157 impl + ~1,682 test lines. Chapter 5 now 100% COMPLETE (16/16). Commits `cff5dfd`, `42223f9`. |
 | 2026-06-12 | **Ch5 Phase D UI Widget Core** (4 files) | migration-develop | migration-review | APPROVED (3 rounds, 0 BLOCKERs remaining): Widget.ts (1062 lines, 104 tests, Widget/ContainerWidget/InputWidget/Ui/ChromeLogic), ChromeMetrics.ts (166 lines, 23 tests, CSS custom property themes), WidgetLoader.ts (470 lines, 43 tests, JSON->Widget tree loader), ChromeProvider.ts (431 lines, 48 tests, CSS border-image skin manager). 2,129 impl + 2,333 test lines, 174 tests. No manual visual tests needed (core widget tree infrastructure). |
 | 2026-06-12 | **Ch5 Phase C MOD System Core** (2 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): Manifest.ts (506 lines, 72 tests, mod.json parser + dependency validation), ModData.ts (326 lines, 43 tests, ObjectCreator registry + runtime coordinator). 832 impl + 1,296 test lines, 115 tests. No manual visual tests needed (pure infrastructure). |
 | 2026-06-12 | **Ch5 Phase B C&C Package Formats** (5 files) | migration-develop | migration-review | APPROVED (3 rounds, 0 BLOCKERs): PackageEntry.ts (332 lines, 30 tests), MixFile.ts (350 lines, 22 tests), BigFile.ts (268 lines, 19 tests), MegFile.ts (282 lines, 17 tests), Pak.ts (240 lines, 18 tests). ~1,472 impl + ~1,653 test lines, 108 tests. MixFile is documentation stub per ADR-5.1. |
@@ -663,16 +664,16 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 
 ---
 
-## Chapter 5: UI System & Resource Management (IN PROGRESS)
+## Chapter 5: UI System & Resource Management (COMPLETE)
 
 > **Migration Plan**: [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md)
-> **Created**: 2026-06-11 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (15/16 migrated, 94%), Phases A+B+C+D COMPLETE, Phase E pending
+> **Created**: 2026-06-11 | **Updated**: 2026-06-12 | **Status**: COMPLETE (16/16 migrated, 100%), ALL PHASES A-E COMPLETE
 > **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 15 | 94% |
-| Pending | 1 | 6% |
+| Completed | 16 | 100% |
+| Pending | 0 | 0% |
 | **Total** | **16** | **100%** |
 | **From OpenRA** | **15** (plus 1 IReadOnlyPackage refactor) | |
 | **New files (no OpenRA equivalent)** | **0** | |
@@ -685,7 +686,7 @@ Chapter 4 (Map & Terrain System) is now complete at 37/37 (100%):
 | Phase B | C&C Package Formats | 5 | Low-HIGH | COMPLETE (5/5, 108 tests) |
 | Phase C | MOD System Core | 2 | Low-Medium | COMPLETE (2/2, 115 tests) |
 | Phase D | UI Widget Core | 4 | Low-Medium | COMPLETE (4/4, 174 tests) |
-| Phase E | World Interaction Bridge | 1 | HIGH | PENDING (blocked by C, D -- D now complete, fully unblocked) |
+| Phase E | World Interaction Bridge | 1 | HIGH | COMPLETE (1/1, 55 tests), 2 review rounds |
 
 ### Already Available (from Prior Chapters)
 
@@ -783,14 +784,18 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 
 > **Note**: ChromeProvider.ts replaced the previous 4-line placeholder stub in `src/OpenRA.Game/Graphics/`. Review rounds: Round 1 (4 BLOCKER + 4 MAJOR + 3 MINOR), Round 2 (2 MAJOR cascading from Round 1 fixes), Round 3 (APPROVED). Specific widget visual subclasses (ButtonWidget, LabelWidget, etc.) not yet implemented -- deferred to future UI widget subclass chapters.
 
-### Phase E: World Interaction Bridge (1 file, PENDING -- now fully unblocked)
+### Phase E: World Interaction Bridge (1 file, COMPLETE)
 
-| # | Target File | Class/Interface | Complexity | Lines (C#) |
-|:---:|:---|:---|:---:|:---:|
-| E1 | `src/OpenRA.Mods.Common/Widgets/WorldInteractionControllerWidget.ts` | WorldInteractionControllerWidget | HIGH | 235 |
-| **Total** | | | | **~235** | **~480 impl + ~520 test lines, ~38 tests** |
+**Status**: COMPLETE (1/1). Review: APPROVED (2 rounds, 12 findings fixed: 3 BLOCKER, 5 MAJOR, 4 MINOR). No manual visual tests needed (callback-based bridge, unit-testable state machine with mocked Babylon.js scene/picking).
+**Commits**: `cff5dfd` (initial), `42223f9` (review fixes).
+**Date**: 2026-06-12
 
-> **Note**: Phase D (UI Widget Core) is now COMPLETE, fully unblocking Phase E. `WorldInteractionControllerWidget` extends `Widget` from Phase D and needs `ModData`/`World` from Phase C, both of which are complete.
+| # | Target File | Class/Interface | Complexity | Lines (C#) | Impl lines | Tests | Notes |
+|:---:|:---|:---|:---:|:---:|:---:|:---:|:---|
+| E1 | `src/OpenRA.Mods.Common/Widgets/WorldInteractionControllerWidget.ts` | WorldInteractionControllerWidget | HIGH | 235 | 1157 | 55 | ~1,682 test lines. State machine (IDLE->MAYBE_DRAG->CLICK|DRAGGING), single/double-click selection with modifiers, drag-box entity selection with deadzone, right-click order dispatch, mouse-over rollover, context menu suppression. Standalone class using scene.onPointerObservable -- does not extend Widget (documented architectural decision). |
+| **Total** | | | | **~235** | **1,157** | **55** | **~1,682 test lines** |
+
+> **Note**: Phase E is the terminal leaf node of Chapter 5. With all 16 files complete, Chapter 5 is now 100% resolved. The controller is a standalone class (does not extend Widget) because 3D interaction has no concept of 2D Widget bounds for hit-testing.
 
 ### Chapter 5 Phase Strategy Summary
 
@@ -800,7 +805,7 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 | B: C&C Package Formats | 5 | Low-HIGH | 3,125 (completed) | 108 (completed) | Phase A |
 | C: MOD System Core | 2 | Low-Medium | 2,128 (completed) | 115 (completed) | Phase A |
 | D: UI Widget Core | 4 | Low-Medium | 4,462 (completed) | 174 (completed) | Phase C |
-| E: World Interaction | 1 | HIGH | ~1,000 | ~38 | Phases C, D |
-| **Total** | **16** | | **~14,106** | **~529** | |
+| E: World Interaction | 1 | HIGH | ~2,839 (completed) | 55 (completed) | Phases C, D |
+| **Total** | **16** | | **~14,145** | **~584** | |
 
-**Total completed**: ~13,106 lines of implementation + test code (13,106 done, ~1,000 remaining). Phase E is now fully unblocked. 1 developer-week remaining.
+**Total completed**: ~14,145 lines of implementation + test code across all 16 files. Chapter 5 is now 100% complete.

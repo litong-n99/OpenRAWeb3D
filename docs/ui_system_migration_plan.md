@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 5 -- UI System and Resource Management
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 6 (lines 853-940)
-> **Chapter Status**: Chapter 5 -- IN PROGRESS (15/16 migrated, 94%)
+> **Chapter Status**: Chapter 5 -- COMPLETE (16/16 migrated, 100%)
 > **Planning Date**: 2026-06-11
 > **Prerequisite**: Chapter 4 (Map & Terrain System) -- COMPLETE (37/37, 100%)
 >
@@ -575,10 +575,12 @@ The TypeScript migration uses a **pure TypeScript Widget tree** (not React/Vue D
 
 ### 3.5 Phase E: World Interaction Bridge
 
-**Status**: PENDING (0/1)
+**Status**: COMPLETE (1/1)
 **Complexity**: HIGH
 **Blocked by**: Phase C (COMPLETE -- needs ModData + World), Phase D (COMPLETE -- extends Widget)
-**Blocks**: Nothing (leaf node -- this is the top of the UI chain, now fully unblocked)
+**Blocks**: Nothing (leaf node -- this is the top of the UI chain)
+**Review**: APPROVED (2 rounds, 12 findings fixed: 3 BLOCKER, 5 MAJOR, 4 MINOR)
+**Date**: 2026-06-12
 
 **Description**: `WorldInteractionControllerWidget` is the critical bridge between the UI layer and the 3D game world. It handles unit selection (single click, double-click for same-type, drag-box), right-click command issuing (`ApplyOrders()`), and cursor switching. In the 3D environment, the 2D screen-space selection logic must be translated to raycasting and frustum culling, with the selection box preview rendered via `HighlightLayer` or semi-transparent overlays.
 
@@ -591,7 +593,7 @@ The TypeScript migration uses a **pure TypeScript Widget tree** (not React/Vue D
 
 #### 3.5.1 WorldInteractionControllerWidget
 
-- [ ] **TODO-5.E.1** `src/OpenRA.Mods.Common/Widgets/WorldInteractionControllerWidget.ts` (235 lines C#) -- World interaction bridge:
+- [x] **TODO-5.E.1** `src/OpenRA.Mods.Common/Widgets/WorldInteractionControllerWidget.ts` (235 lines C#) -- World interaction bridge: COMPLETE, 55 tests
   - Extends `Widget`
   - **Event capture**: Registers `scene.onPointerObservable` with `POINTERDOWN`, `POINTERMOVE`, `POINTERUP` callbacks
   - **State machine**:
@@ -661,6 +663,20 @@ The TypeScript migration uses a **pure TypeScript Widget tree** (not React/Vue D
 |:---|:---:|:---:|:---:|
 | WorldInteractionControllerWidget.ts | 480 | 520 | 38 |
 | **Total** | **~480** | **~520** | **~38** |
+
+**Completion Summary**:
+
+| File | Impl lines (actual) | Test lines (actual) | Tests (actual) |
+|:---|:---:|:---:|:---:|
+| WorldInteractionControllerWidget.ts | 1,157 | ~1,682 | 55 |
+| **Total** | **1,157** | **~1,682** | **55** |
+
+**Review**: APPROVED (2 rounds, 12 findings fixed: 3 BLOCKER, 5 MAJOR, 4 MINOR). No manual visual tests needed (callback-based bridge, unit-testable state machine with mocked Babylon.js scene/picking).
+**Commits**: `cff5dfd` (initial implementation), `42223f9` (review fixes).
+
+**Architectural Decision**: `WorldInteractionControllerWidget` is a standalone class using `scene.onPointerObservable` -- it does **not** extend `Widget` despite its name. This is intentional: the 3D environment has no concept of a 2D "Widget bounds" rectangle for hit-testing, and coupling the interaction controller to the Widget tree lifecycle would create circular dependencies with the DOM overlay. The name is retained for OpenRA parity. Documented in the file header.
+
+> **Note**: Phase E is the terminal leaf node of Chapter 5. With all 16 files complete (100%), Chapter 5 is now fully resolved.
 
 ---
 
@@ -882,7 +898,7 @@ This replaces OpenRA's `ModData.PackageLoaders` assembly-scanned array.
 | B: C&C Package Formats | 5 | Low-HIGH | 3,125 (completed) | 108 (completed) | Phase A |
 | C: MOD System Core | 2 | Low-Medium | 2,128 (completed) | 115 (completed) | Phases A, B |
 | D: UI Widget Core | 4 | Low-Medium | 4,462 (completed) | 174 (completed) | Phase C |
-| E: World Interaction | 1 | HIGH | ~1,000 | ~38 | Phases C, D |
-| **Total** | **16** | | **~12,106** | **~529** | |
+| E: World Interaction | 1 | HIGH | ~2,839 (completed) | 55 (completed) | Phases C, D |
+| **Total** | **16** | | **~14,145** | **~584** | |
 
-**Total completed**: ~12,106 lines of implementation + test code (11,106 done, ~1,000 remaining). Phase E is now fully unblocked.
+**Total completed**: ~14,145 lines of implementation + test code across all 16 files. Chapter 5 is now 100% complete.
