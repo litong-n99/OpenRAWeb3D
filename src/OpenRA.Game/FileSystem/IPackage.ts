@@ -46,12 +46,16 @@ export interface IReadOnlyFileSystem {
   exists(filename: string): boolean
 
   /**
-   * 检查指定路径是否对应已挂载的包。
+   * 检查给定的文件名是否由已挂载的包所管理（即可从此 VFS 获取到）。
    *
-   * OpenRA 对照: IReadOnlyFileSystem.IsExternalFile(string)
+   * OpenRA 对照: Partially mapped from IReadOnlyFileSystem.IsExternalFile(string),
+   *   but with inverted semantics — OpenRA checks whether a path is *outside*
+   *   the mod mount (returns true for external files), while TS checks whether
+   *   a path is *inside* VFS management (found in explicitMounts or fileIndex).
+   *   This is a simplification for the browser read-only environment.
    *
    * @param filename — 文件路径（可能包含 | 前缀）
-   * @returns 如果文件引用的是外部包内容则返回 true
+   * @returns 如果文件在文件索引中或对应已挂载的显式包则返回 true
    */
   isMounted(filename: string): boolean
 }
@@ -68,7 +72,6 @@ export interface IReadOnlyFileSystem {
  * 表示一个包含命名文件的容器（目录、ZIP、ORAMAP 等）。
  * 所有 I/O 操作都是异步的（浏览器特性）。
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IReadOnlyPackage {
   /** 包的名称（通常是文件系统路径或 URL）。OpenRA 对照: IReadOnlyPackage.Name */
   readonly name: string
@@ -90,6 +93,11 @@ export interface IReadOnlyPackage {
    * 从包中打开文件并返回其内容。
    *
    * OpenRA 对照: IReadOnlyPackage.GetStream(string)
+   *
+   * **缓存安全约定**: 返回的 ArrayBuffer 必须是独立的副本，不得在多次调用间
+   * 共享或复用底层缓冲区。这是因为调用方（如 FileSystem）可能会缓存返回值，
+   * 而缓存条目必须与后续 `open()` 调用返回的值相互独立。实现者应确保每次调用
+   * 返回新的 ArrayBuffer。
    *
    * @param filename — 文件名
    * @param files — 文件系统上下文（传递给子包）

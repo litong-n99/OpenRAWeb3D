@@ -24,9 +24,6 @@ import { unzipSync } from 'fflate'
 /** PK ZIP 文件签名魔数 (0x04034b50，小端序)。OpenRA 对照: ZipFileLoader.ZipSignature */
 const ZIP_SIGNATURE = 0x04034b50
 
-/** 已知的归档文件扩展名（用于递归包解析）。OpenRA 对照: ZipFileLoader 中的扩展名匹配 */
-const ARCHIVE_EXTENSIONS = new Set(['.zip', '.oramap'])
-
 // ---------------------------------------------------------------------------
 // ZipFolder — ZIP 内的虚拟目录子包
 // ---------------------------------------------------------------------------
@@ -224,9 +221,9 @@ export class ZipFile implements IReadOnlyPackage {
    * @returns 子包，如果无法打开则返回 null
    */
   openPackage(filename: string, _files: IReadOnlyFileSystem): IReadOnlyPackage | null {
-    // 检查目录条目
-    const dirKey = filename + '/'
-    if (this._entries.has(dirKey) || this._hasDirectoryPrefix(dirKey)) {
+    // 检查是否作为目录存在（目录条目在构造时已从 _entries 中排除，
+    // 因此仅通过 _hasDirectoryPrefix 检查是否存在以此目录为前缀的文件）
+    if (this._hasDirectoryPrefix(filename + '/')) {
       return new ZipFolder(this, filename)
     }
 
@@ -235,7 +232,7 @@ export class ZipFile implements IReadOnlyPackage {
 
     // 检查是否是已知的归档格式
     const lower = filename.toLowerCase()
-    if (ARCHIVE_EXTENSIONS.has(lower) || lower.endsWith('.zip') || lower.endsWith('.oramap')) {
+    if (lower.endsWith('.zip') || lower.endsWith('.oramap')) {
       const entry = this._entries.get(filename)!
       // 注意：我们直接将原始数据传递给 FileSystem 进行递归解析
       // 这可以处理嵌套的 .oramap → .zip 的情况

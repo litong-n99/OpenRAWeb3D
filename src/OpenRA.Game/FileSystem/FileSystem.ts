@@ -234,6 +234,52 @@ export class FileSystem implements IReadOnlyFileSystem {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Mounting — URL (fetch-based)
+  // -----------------------------------------------------------------------
+
+  /**
+   * 从 URL 获取并挂载一个包。自动检测包格式。
+   *
+   * OpenRA 对照: FileSystem.Mount(string name, string explicitName = null)
+   *   原方法从本地文件系统加载；此版本通过 HTTP fetch 获取。
+   *
+   * 以 '~' 开头的名称被视为可选挂载 — 如果无法获取或解析，
+   * 不会抛出异常（静默返回）。
+   *
+   * @param name — 包的 URL 路径（可选 '~' 前缀表示可选挂载）
+   * @param explicitName — 可选的显式挂载名称（"modid|path" 引用用）
+   *
+   * @throws 如果获取或解析失败且 name 不以 '~' 开头
+   *
+   * TODO-5.A.4: 扩展 L2-L4 缓存（IndexedDB → Cache API → fetch 回退）
+   */
+  async mount(name: string, explicitName?: string): Promise<void> {
+    // 可选的 '~' 前缀 — 挂载失败时不抛出异常
+    const optional = name.startsWith('~')
+    if (optional) name = name.slice(1)
+
+    try {
+      const response = await fetch(name)
+      if (!response.ok) {
+        if (optional) return
+        throw new Error(`Failed to mount '${name}': HTTP ${response.status}`)
+      }
+      const data = await response.arrayBuffer()
+      const pkg = this.tryParsePackage(data, name)
+      if (!pkg) {
+        if (optional) return
+        throw new Error(
+          `Could not open package '${name}', format not recognized.`,
+        )
+      }
+      this.mountPackage(pkg, explicitName)
+    } catch (e) {
+      if (optional) return
+      throw e
+    }
+  }
+
   /**
    * 将包标记为 MOD 拥有的包（unmount 时不 dispose）。
    *
@@ -265,7 +311,7 @@ export class FileSystem implements IReadOnlyFileSystem {
     if (mountCount === undefined) return false
 
     if (mountCount <= 1) {
-      // 使 L1 缓存中与该包相关的文件失效
+      // 使 L1 缓存中与该包相关的文件失效，并从 fileIndex 中移除
       for (const filename of pkg.contents) {
         this._removeFromCache(filename)
         // 同时清除显式挂载键的缓存条目
@@ -274,20 +320,12 @@ export class FileSystem implements IReadOnlyFileSystem {
             this._removeFromCache(prefix + '|' + filename)
           }
         }
-      }
-
-      // 从 fileIndex 中移除所有条目
-      for (const packages of this._fileIndex.values()) {
-        const idx = packages.indexOf(pkg)
-        if (idx >= 0) {
-          packages.splice(idx, 1)
-        }
-      }
-
-      // 清理空的 fileIndex 条目
-      for (const [key, packages] of this._fileIndex) {
-        if (packages.length === 0) {
-          this._fileIndex.delete(key)
+        // 从 fileIndex 中定向移除（O(1) per file，避免全表扫描）
+        const packages = this._fileIndex.get(filename)
+        if (packages) {
+          const idx = packages.indexOf(pkg)
+          if (idx >= 0) packages.splice(idx, 1)
+          if (packages.length === 0) this._fileIndex.delete(filename)
         }
       }
 
@@ -369,12 +407,10 @@ export class FileSystem implements IReadOnlyFileSystem {
         result = await explicitPkg.open(subPath, this)
       }
       // 显式挂载失败 — 不回退到 fileIndex（避免使用无效的 '|' 字符）
-      if (pipeIdx > 0) {
-        if (result) {
-          this._addToCache(filename, result)
-        }
-        return result
+      if (result) {
+        this._addToCache(filename, result)
       }
+      return result
     }
 
     // 2. 通过 fileIndex 查找（最后挂载的 = 最高优先级）
