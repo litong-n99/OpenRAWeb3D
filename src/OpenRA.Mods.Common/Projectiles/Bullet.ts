@@ -42,6 +42,7 @@ import type {
   PlayerStub,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { Target } from '../../OpenRA.Game/Traits/Target.js'
+import type { WarheadArgs } from '../Warheads/Warhead.js'
 
 // ---------------------------------------------------------------------------
 // IProjectile — projectile interface (extends IEffect)
@@ -106,6 +107,9 @@ export interface ProjectileArgs {
   /** The weapon that fired this projectile.
    *
    * OpenRA 对照: ProjectileArgs.Weapon
+   *
+   * NOTE: Kept as WeaponStub for backward compatibility.
+   * TODO-8.C.CLEANUP-1: Replace with canonical WeaponInfo.
    */
   weapon: WeaponStub
 
@@ -134,65 +138,61 @@ export interface ProjectileArgs {
    * ADR-8.B.1: percentage modifiers applied to weapon range.
    */
   rangeModifiers?: number[]
+
+  /** Damage modifiers applied as percentages (from weapon/source actor).
+   *
+   * OpenRA 对照: ProjectileArgs.DamageModifiers
+   *
+   * ADR-8.C.1: Added for compatibility with canonical WarheadArgs.
+   */
+  damageModifiers?: number[]
 }
 
 /**
- * Minimal weapon stub for projectile usage.
+ * Backward-compatible weapon stub for projectile usage.
  *
  * OpenRA 对照: OpenRA.GameRules.WeaponInfo
  *
- * TODO-7.F.1: Replace with full WeaponConfig when weapons module is migrated.
+ * TODO-8.C.CLEANUP-1: Replace with canonical WeaponInfo from
+ * GameRules/WeaponInfo.ts once all projectile consumers are updated.
+ * Kept here for backward compatibility with existing projectile code.
+ *
+ * @deprecated Use WeaponInfo from ../../OpenRA.Game/GameRules/WeaponInfo.js
  */
 export interface WeaponStub {
   /** Impact the weapon at a target position.
    *
    * OpenRA 对照: WeaponInfo.Impact(Target, WarheadArgs)
-   */
-  impact(target: Target, warheadArgs: WarheadArgsStub): void
+   *
+   * Accepts both canonical WarheadArgs and legacy WarheadArgsStub
+   * for backward compatibility.
+   * TODO-8.C.CLEANUP-1: Restrict to WarheadArgs only. */
+  impact(target: Target, warheadArgs: WarheadArgs | WarheadArgsStub): void
 }
 
 /**
- * Minimal warhead arguments stub.
+ * Backward-compatible warhead arguments stub.
  *
  * OpenRA 对照: OpenRA.GameRules.WarheadArgs
  *
- * TODO-7.F.1: Replace with full WarheadArgs when weapons module is migrated.
+ * TODO-8.C.CLEANUP-1: Replace with canonical WarheadArgs from
+ * Warheads/Warhead.ts once all projectile consumers are updated.
+ * Kept here for backward compatibility with existing projectile code.
+ *
+ * @deprecated Use WarheadArgs from ../Warheads/Warhead.js
  */
 export interface WarheadArgsStub {
-  /** The source actor (firedBy).
-   *
-   * OpenRA 对照: WarheadArgs.FiredBy
-   */
+  /** The source actor (firedBy). */
   firedBy: IGameActor
-
-  /** The facing direction at impact.
-   *
-   * OpenRA 对照: WarheadArgs.Facing
-   */
+  /** The facing direction at impact. */
   facing: WAngle
-
-  /** Impact orientation (rotation at impact point).
-   *
-   * OpenRA 对照: WarheadArgs.ImpactOrientation
-   */
+  /** Impact orientation (rotation at impact point). */
   impactOrientation: WRot
-
-  /** Impact position.
-   *
-   * OpenRA 对照: WarheadArgs.ImpactPosition
-   */
+  /** Impact position. */
   impactPosition: WPos
-
-  /** The weapon that caused the impact.
-   *
-   * OpenRA 对照: WarheadArgs.Weapon
-   */
+  /** The weapon that caused the impact. */
   weapon: WeaponStub
-
-  /** Damage modifiers applied to warhead damage (e.g., falloff, range modifiers).
-   *
-   * OpenRA 对照: WarheadArgs.DamageModifiers
-   */
+  /** Damage modifiers applied to warhead damage. */
   damageModifiers?: number[]
 }
 
@@ -1271,12 +1271,14 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
       this.args.facing,
     )
 
-    const warheadArgs: WarheadArgsStub = {
-      firedBy: this.args.sourceActor,
-      facing: this.args.facing,
+    // ADR-8.C.2: Canonical WarheadArgs from Warhead.ts
+    const warheadArgs: WarheadArgs = {
+      sourceActor: this.args.sourceActor,
+      damageModifiers: this.args.damageModifiers ?? [],
+      source: this.args.source,
       impactOrientation,
       impactPosition: this.pos,
-      weapon: this.args.weapon,
+      weaponTarget: Target.fromPos(this.pos),
     }
 
     const impactTarget = Target.fromPos(this.pos)

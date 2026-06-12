@@ -30,6 +30,7 @@ import {
   type FrozenActorStub,
   type BitSetStub,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { WeaponInfo, ProjectileArgs } from '../../OpenRA.Game/GameRules/WeaponInfo.js'
 
 // ---------------------------------------------------------------------------
 // ImpactActorType enum (对应 OpenRA ImpactActorType)
@@ -71,20 +72,98 @@ export type DamageCalculationType =
 /**
  * Arguments passed to a warhead's doImpact method.
  *
- * OpenRA 对照: WarheadArgs record struct
+ * OpenRA 对照: WarheadArgs record struct (WeaponInfo.cs)
+ *
+ * Contains all context needed by warheads to apply effects:
+ * source actor, damage modifiers, weapon configuration, impact position,
+ * impact orientation, and targeting context.
+ *
+ * ADR-8.C.2: Extended from Phase A definition to include canonical
+ * C# fields: weapon, source, weaponTarget.
  */
 export interface WarheadArgs {
-  /** The actor that fired the weapon. */
+  /** The weapon that caused this impact (optional — C# default constructor).
+   *
+   * OpenRA 对照: WarheadArgs.Weapon */
+  weapon?: WeaponInfo
+
+  /** The actor that fired the weapon.
+   *
+   * OpenRA 对照: WarheadArgs.SourceActor */
   sourceActor: IGameActor
 
-  /** Sequential damage percentage modifiers (e.g., FirepowerMultiplier). */
+  /** Sequential damage percentage modifiers (e.g., FirepowerMultiplier).
+   *
+   * OpenRA 对照: WarheadArgs.DamageModifiers */
   damageModifiers: number[]
 
-  /** The orientation of the impact projectile. */
+  /** The source position of the impact (null if unknown).
+   *
+   * OpenRA 对照: WarheadArgs.Source */
+  source?: WPos | null
+
+  /** The orientation of the impact projectile.
+   *
+   * OpenRA 对照: WarheadArgs.ImpactOrientation */
   impactOrientation: WRot
 
-  /** The world-space position of the impact. */
+  /** The world-space position of the impact.
+   *
+   * OpenRA 对照: WarheadArgs.ImpactPosition */
   impactPosition: WPos
+
+  /** The target that was aimed at (optional — C# default constructor).
+   *
+   * OpenRA 对照: WarheadArgs.WeaponTarget */
+  weaponTarget?: Target
+}
+
+// ---------------------------------------------------------------------------
+// WarheadArgs factory functions (对应 OpenRA WarheadArgs constructors)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create WarheadArgs from ProjectileArgs, matching the C# constructor.
+ *
+ * OpenRA 对照: new WarheadArgs(ProjectileArgs args)
+ *
+ * Maps projectile-level arguments to warhead-level arguments.
+ * `impactOrientation` is left at `WRot.None` — the caller (projectile
+ * or armament) is responsible for setting it before calling doImpact().
+ *
+ * @param args — the projectile arguments to convert
+ * @returns a new WarheadArgs with fields set from projectile args
+ */
+export function createWarheadArgs(args: ProjectileArgs): WarheadArgs {
+  return {
+    weapon: args.weapon,
+    damageModifiers: args.damageModifiers ?? [],
+    impactPosition: args.passiveTarget,
+    source: args.source,
+    sourceActor: args.sourceActor,
+    weaponTarget: args.guidedTarget,
+    impactOrientation: WRot.None,
+  }
+}
+
+/**
+ * Copy WarheadArgs with optional overrides, matching the C# copy constructor.
+ *
+ * OpenRA 对照: new WarheadArgs(WarheadArgs args)
+ *
+ * Creates a shallow copy of the arguments with optional field overrides.
+ * Commonly used to update DamageModifiers before passing to a specific
+ * warhead.
+ *
+ * @param args — the warhead arguments to copy
+ * @param overrides — optional field overrides (merged onto the copy)
+ * @returns a new WarheadArgs with overrides applied
+ */
+export function copyWarheadArgs(
+  args: WarheadArgs,
+  overrides?: Partial<WarheadArgs>,
+): WarheadArgs {
+  return { ...args, ...overrides }
 }
 
 // ---------------------------------------------------------------------------
@@ -242,6 +321,12 @@ export type WarheadEffect =
  */
 export interface IWarhead {
   readonly delay: number
+  /** Load warhead configuration from a JSON object.
+   *
+   * OpenRA 对照: FieldLoader.Load(warhead, MiniYaml)
+   *
+   * ADR-8.C.3: Added for WeaponInfo.fromJSON() factory. */
+  loadFromJSON(json: Record<string, unknown>): void
   /** Checks if the warhead can affect the given actor. */
   isValidAgainst(victim: IGameActor, firedBy: IGameActor): boolean
   /** Checks if the warhead can affect the given frozen actor. */

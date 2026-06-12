@@ -3,13 +3,17 @@
  * OpenRA 对照: OpenRA.Game/Effects/DelayedImpact.cs
  *
  * 核心范式转换:
- * - C# IWarhead + WarheadArgs → stub interfaces (not yet migrated)
+ * - C# IWarhead + WarheadArgs → canonical IWarhead + WarheadArgs from Phase A/C
  * - C# World.AddFrameEndTask(Action<World>) → world.addFrameEndTask(() => void)
  * - C# w.Remove(this) + wh.DoImpact(target, args) → world.removeEffect(this)
  *   + warhead.doImpact(target, args) in same frameEndTask
  * - C# yield break (empty render) → return [] (empty array)
  * - Pre-decrement pattern matches C# exactly: --delay <= 0
  *   (delay=5 fires on tick 5, delay=1 fires on tick 1, delay=0 fires on tick 1)
+ *
+ * ADR-8.C.5: Updated to use canonical IWarhead and WarheadArgs from
+ * Phase A/C Warhead.ts. doImpact() now returns WarheadEffect[] which
+ * is discarded (matching C# behavior where the return is ignored).
  *
  * NOTE: This is a SIMPLE countdown timer — NOT a position-advancing
  * projectile. The original OpenRA DelayedImpact has no position tracking
@@ -29,49 +33,7 @@ import type { IEffect } from './IEffect.js'
 import type { GameWorldManager } from '../World.js'
 import type { WorldRendererStub, IRenderable } from '../Traits/TraitsInterfaces.js'
 import type { Target } from '../Traits/Target.js'
-
-// ---------------------------------------------------------------------------
-// IWarhead stub — TODO-3.H.3 pending full IWarhead migration
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal stub for IWarhead.
- *
- * OpenRA 对照: OpenRA.GameRules/IWarhead.cs
- * TODO-3.H.3: Replace with full IWarhead interface when GameRules is migrated.
- */
-export interface IWarhead {
-  /** Execute the warhead effect on a target.
-   *
-   * OpenRA 对照: IWarhead.DoImpact(Target, WarheadArgs)
-   */
-  doImpact(target: Target, args: WarheadArgs): void
-}
-
-// ---------------------------------------------------------------------------
-// WarheadArgs stub — TODO-3.H.3 pending full WarheadArgs migration
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal stub for WarheadArgs.
- *
- * OpenRA 对照: OpenRA.GameRules/WarheadArgs.cs
- * TODO-3.H.3: Replace with full WarheadArgs struct when GameRules is migrated.
- */
-export interface WarheadArgs {
-  /** Weapon that fired this warhead (minimal stub). */
-  weapon?: unknown
-  /** Facing direction of the firer. */
-  facing?: number
-  /** Damage modifier override. */
-  damageModifier?: number[]
-  /** Source actor. */
-  sourceActor?: unknown
-  /** Source weapon info. */
-  sourceWeapon?: unknown
-  /** Additional arguments (extensible). */
-  [key: string]: unknown
-}
+import type { IWarhead, WarheadArgs } from '../../OpenRA.Mods.Common/Warheads/Warhead.js'
 
 // ---------------------------------------------------------------------------
 // DelayedImpact
@@ -187,6 +149,9 @@ export class DelayedImpact implements IEffect {
    * if (--delay <= 0)
    *     world.AddFrameEndTask(w => { w.Remove(this); wh.DoImpact(target, args); });
    * ```
+   *
+   * ADR-8.C.5: doImpact() returns WarheadEffect[] which is discarded here,
+   * matching C# behavior where the return value is ignored in DelayedImpact.
    *
    * @param world — the game world manager
    */

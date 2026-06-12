@@ -11,11 +11,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  DelayedImpact,
-  type IWarhead,
-  type WarheadArgs,
-} from './DelayedImpact.js'
+import { DelayedImpact } from './DelayedImpact.js'
+import type { IWarhead, WarheadArgs } from '../../OpenRA.Mods.Common/Warheads/Warhead.js'
 import { Target } from '../Traits/Target.js'
 import type { IGameEffect } from './IEffect.js'
 import type { WorldRendererStub } from '../Traits/TraitsInterfaces.js'
@@ -52,15 +49,29 @@ function createStubWorldRenderer(): WorldRendererStub {
   return {}
 }
 
+import type { WarheadEffect } from '../../OpenRA.Mods.Common/Warheads/Warhead.js'
+import { WPos } from '../WPos.js'
+import { WRot } from '../WRot.js'
+
 function createStubWarhead(onImpact?: (target: Target, args: WarheadArgs) => void): IWarhead {
   return {
-    doImpact: vi.fn(onImpact),
+    delay: 0,
+    loadFromJSON: vi.fn(),
+    isValidAgainst: vi.fn().mockReturnValue(true),
+    isValidAgainstFrozen: vi.fn().mockReturnValue(false),
+    doImpact: vi.fn((_target: Target, _args: WarheadArgs): WarheadEffect[] => {
+      onImpact?.(_target, _args)
+      return []
+    }),
   }
 }
 
 function createStubArgs(overrides: Partial<WarheadArgs> = {}): WarheadArgs {
   return {
-    weapon: 'testWeapon',
+    sourceActor: { actorId: 1, isInWorld: true, isDead: false, disposed: false },
+    damageModifiers: [],
+    impactOrientation: WRot.None,
+    impactPosition: WPos.Zero,
     ...overrides,
   }
 }
@@ -182,7 +193,7 @@ describe('DelayedImpact', () => {
     it('passes target and args to warhead.doImpact()', () => {
       const warhead = createStubWarhead()
       const target = Target.Invalid
-      const args = createStubArgs({ weapon: 'rocket' })
+      const args = createStubArgs()
 
       const di = new DelayedImpact(1, warhead, target, args)
 
@@ -211,8 +222,13 @@ describe('DelayedImpact', () => {
     it('removes effect BEFORE calling doImpact (matches OpenRA order)', () => {
       const order: string[] = []
       const warhead: IWarhead = {
-        doImpact: vi.fn(() => {
+        delay: 0,
+        loadFromJSON: vi.fn(),
+        isValidAgainst: vi.fn().mockReturnValue(true),
+        isValidAgainstFrozen: vi.fn().mockReturnValue(false),
+        doImpact: vi.fn((): WarheadEffect[] => {
           order.push('doImpact')
+          return []
         }),
       }
 
@@ -300,7 +316,11 @@ describe('DelayedImpact', () => {
   describe('edge cases', () => {
     it('handles doImpact that throws — effect was already removed', () => {
       const warhead: IWarhead = {
-        doImpact: vi.fn(() => {
+        delay: 0,
+        loadFromJSON: vi.fn(),
+        isValidAgainst: vi.fn().mockReturnValue(true),
+        isValidAgainstFrozen: vi.fn().mockReturnValue(false),
+        doImpact: vi.fn((): WarheadEffect[] => {
           throw new Error('impact error')
         }),
       }
@@ -347,13 +367,18 @@ describe('DelayedImpact', () => {
         args: null,
       }
       const warhead: IWarhead = {
-        doImpact(target: Target, args: WarheadArgs) {
+        delay: 0,
+        loadFromJSON: vi.fn(),
+        isValidAgainst: vi.fn().mockReturnValue(true),
+        isValidAgainstFrozen: vi.fn().mockReturnValue(false),
+        doImpact(target: Target, args: WarheadArgs): WarheadEffect[] {
           captured.target = target
           captured.args = args
+          return []
         },
       }
       const target = Target.Invalid
-      const args = createStubArgs({ weapon: 'artillery' })
+      const args = createStubArgs()
 
       const di = new DelayedImpact(1, warhead, target, args)
       di.tick(world as any)
