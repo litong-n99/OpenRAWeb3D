@@ -1,10 +1,9 @@
 /**
- * RemainingWarheads.test.ts -- Combined unit tests for all other warheads
- *
- * Tests: TargetDamageWarhead, HealthPercentageDamageWarhead, FlashEffectWarhead,
- * ShakeScreenWarhead, ChangeOwnerWarhead, GrantExternalConditionWarhead,
- * LeaveSmudgeWarhead, DestroyResourceWarhead, CreateResourceWarhead,
- * CreateEffectWarhead, FireClusterWarhead, FlashTargetsInRadiusWarhead.
+ * RemainingWarheads.test.ts — Tests for all non-Damage, non-Spread warhead types
+ * Covers: TargetDamageWarhead, CreateEffectWarhead, FireClusterWarhead,
+ *   LeaveSmudgeWarhead, DestroyResourceWarhead, CreateResourceWarhead,
+ *   ChangeOwnerWarhead, GrantExternalConditionWarhead, FlashEffectWarhead,
+ *   ShakeScreenWarhead, HealthPercentageDamageWarhead, FlashTargetsInRadiusWarhead
  */
 
 import { describe, it, expect } from 'vitest'

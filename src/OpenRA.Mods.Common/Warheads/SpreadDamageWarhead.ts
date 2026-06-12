@@ -10,6 +10,8 @@
  * - C# WAngle.Yaw / Util.GetVerticalAngle → getVerticalAngle() / WVec.Yaw
  * - C# WRot impactOrientation → impactOrientation in WarheadArgs
  * - WVec.subtract → WPos.subtract (returns WVec correctly)
+ *
+ * TODO: Wire debug overlay: WarheadDebugOverlay.AddImpact() — C# equivalent deferred to debug visualization phase
  */
 
 import type { WPos } from '../../OpenRA.Game/WPos.js'
@@ -253,8 +255,8 @@ export class SpreadDamageWarhead extends DamageWarhead {
         return int2Lerp(
           this.falloff[i - 1],
           this.falloff[i],
-          distance,
-          inner,
+          distance - inner,
+          0,
           outer - inner,
         )
       }

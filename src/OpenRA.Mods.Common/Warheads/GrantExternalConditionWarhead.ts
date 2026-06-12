@@ -132,6 +132,7 @@ export class GrantExternalConditionWarhead extends Warhead {
    * because all logic is in doImpact.
    */
   override doImpactInWorld(): WarheadEffect[] {
+    console.warn('Unexpected direct call to doImpactInWorld — use doImpact() which handles logic directly')
     return []
   }
 }

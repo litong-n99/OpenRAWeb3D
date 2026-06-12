@@ -97,6 +97,9 @@ export class CreateResourceWarhead extends Warhead {
       // Random splatter amount: 1 to 255 (byte range)
       const randomAmount = Math.floor(Math.random() * 255) + 1
 
+      // NOTE: CanAddResource(), maxDensity, and GetResource() checks (C# lines
+      // 48-55) are deferred to the frame-end ResourceEffect handler. The handler
+      // must validate resource capacity before applying the effect.
       effects.push({
         type: 'resource',
         cell,

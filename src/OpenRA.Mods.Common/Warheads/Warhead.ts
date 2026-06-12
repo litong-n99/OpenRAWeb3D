@@ -362,6 +362,13 @@ export abstract class Warhead implements IWarhead {
   /** Whether this warhead triggers as an airburst. */
   isAirburst: boolean = false
 
+  /** Color used by debug overlay to visualize the warhead impact area (float3 RGB).
+   *
+   * OpenRA 对照: Warhead.DebugOverlayColor (float3)
+   * TODO: Wire to debug overlay rendering phase
+   */
+  debugOverlayColor: number[] = [0, 0, 0]
+
   // -----------------------------------------------------------------------
   // IWarhead compliance
   // -----------------------------------------------------------------------
@@ -479,10 +486,12 @@ export abstract class Warhead implements IWarhead {
     // Handle Set<string> directly
     if (targetTypes instanceof Set) {
       const st = targetTypes as Set<string>
-      const hasValid = [...st].some(t => this.validTargets.has(t))
-      if (!hasValid) return false
-      const hasInvalid = [...st].some(t => this.invalidTargets.has(t))
-      return !hasInvalid
+      let hasValidTarget = false
+      for (const t of st) {
+        if (this.validTargets.has(t)) hasValidTarget = true
+        if (this.invalidTargets.has(t)) return false
+      }
+      return hasValidTarget
     }
 
     // Handle array-like (iterate using symbol.iterator)
@@ -530,7 +539,7 @@ export abstract class Warhead implements IWarhead {
    *
    * OpenRA 对照: Player.RelationshipWith(Player)
    */
-  private _relationshipWith(
+  protected _relationshipWith(
     from: PlayerStub | undefined,
     to: PlayerStub | undefined,
   ): PlayerRelationship {

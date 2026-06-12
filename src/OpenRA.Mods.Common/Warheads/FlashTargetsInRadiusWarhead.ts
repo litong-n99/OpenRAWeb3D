@@ -39,6 +39,8 @@ type TargetInstance = Target
  * between flashes.
  */
 export class FlashTargetsInRadiusWarhead extends Warhead {
+  // `DamageCalculationType` field from C# (line 41) omitted — unused in DoImpact()
+
   // -----------------------------------------------------------------------
   // Config properties
   // -----------------------------------------------------------------------

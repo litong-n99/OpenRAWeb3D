@@ -109,6 +109,9 @@ export class ChangeOwnerWarhead extends Warhead {
 
       if (!firedBy.owner) continue
 
+      // NOTE: TemporaryOwnerManager trait existence check (C# lines 44-49) is
+      // deferred to the frame-end OwnerChangeEffect handler. When duration > 0,
+      // the handler must skip actors without TemporaryOwnerManager trait.
       effects.push({
         type: 'ownerChange',
         target: a,
@@ -131,6 +134,7 @@ export class ChangeOwnerWarhead extends Warhead {
    * because all logic is in doImpact.
    */
   override doImpactInWorld(): WarheadEffect[] {
+    console.warn('Unexpected direct call to doImpactInWorld — use doImpact() which handles logic directly')
     return []
   }
 }

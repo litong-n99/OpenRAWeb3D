@@ -25,6 +25,7 @@ import {
   type WarheadActorLike,
 } from './Warhead.js'
 import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { PlayerRelationship } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
 // CreateEffectWarhead (对应 OpenRA CreateEffectWarhead)
@@ -132,7 +133,7 @@ export class CreateEffectWarhead extends Warhead {
    * OpenRA 对照: CreateEffectWarhead.IsValidAgainst(Actor victim, Actor firedBy)
    */
   override isValidAgainst(victim: IGameActor, firedBy: IGameActor): boolean {
-    const relationship = this._getDuckRelationship(firedBy.owner, victim.owner)
+    const relationship = this._relationshipWith(firedBy.owner, victim.owner)
     if (!this._hasValidRelationship(relationship)) return false
 
     const targetTypes = (victim as unknown as WarheadActorLike).getEnabledTargetTypes?.()
@@ -343,24 +344,9 @@ export class CreateEffectWarhead extends Warhead {
   }
 
   /**
-   * Duck-typed relationship check between two player stubs.
-   */
-  private _getDuckRelationship(
-    from: unknown,
-    to: unknown,
-  ): number {
-    const fromAny = from as Record<string, unknown> | undefined
-    if (fromAny && typeof fromAny['relationshipWith'] === 'function') {
-      return (fromAny['relationshipWith'] as (o: unknown) => number)(to)
-    }
-    // Default: different players = Enemy
-    return from === to ? 4 /* Ally */ : 1 /* Enemy */
-  }
-
-  /**
    * Check if the warhead's valid relationships include the given one.
    */
-  private _hasValidRelationship(rel: number): boolean {
+  private _hasValidRelationship(rel: PlayerRelationship): boolean {
     return (this.validRelationships & rel) === rel
   }
 }

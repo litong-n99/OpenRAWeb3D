@@ -25,6 +25,20 @@ import {
 import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
+// Map-like interface for FireClusterWarhead cluster operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal duck-typed map interface used by _fireProjectileAtCell.
+ *
+ * Replaces `NonNullable<WarheadActorLike['world']>['map'] & {}` to avoid
+ * the `& {}` intersection type hack.
+ */
+interface ClusterMapLike {
+  centerOfCell(cell: CPos): WPos
+}
+
+// ---------------------------------------------------------------------------
 // Cluster target stub (duck-typed)
 // ---------------------------------------------------------------------------
 
@@ -197,7 +211,7 @@ export class FireClusterWarhead extends Warhead {
    * OpenRA 对照: FireClusterWarhead.FireProjectileAtCell()
    */
   private _fireProjectileAtCell(
-    map: NonNullable<WarheadActorLike['world']>['map'] & {},
+    map: ClusterMapLike,
     firedBy: IGameActor,
     target: ClusterTargetStub,
     targetCell: CPos,
@@ -211,6 +225,7 @@ export class FireClusterWarhead extends Warhead {
 
     // Check weapon validity against cell target
     // NOTE: Full WeaponInfo.IsValidAgainst check deferred; stub assumes valid
+    // TODO-8.C.1: Wire weapon validation once WeaponInfo is migrated in Phase C
 
     const facing = WPos.subtract(
       map.centerOfCell(targetCell),

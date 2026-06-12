@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { WPos } from '../../OpenRA.Game/WPos.js'
+import { WDist } from '../../OpenRA.Game/WDist.js'
 import { WAngle } from '../../OpenRA.Game/WAngle.js'
 import { WRot } from '../../OpenRA.Game/WRot.js'
 import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -175,15 +176,17 @@ describe('SpreadDamageWarhead', () => {
 
     it('precision at spread boundary: distance 399 vs 400', () => {
       // Between 300 (5%) and 400 (0%)
+      // Fix B1: with correct int2Lerp params, distance=399 interpolates to 0
       const at399 = warhead.getDamageFalloff(399)
       const at400 = warhead.getDamageFalloff(400)
-      expect(at399).toBe(5)
+      expect(at399).toBe(0)
       expect(at400).toBe(0)
     })
 
     it('precision test: distance 301 gives interpolated value', () => {
+      // Fix B1: at distance=301, correctly interpolated to 4 (was buggy=5)
       const result = warhead.getDamageFalloff(301)
-      expect(result).toBe(5)
+      expect(result).toBe(4)
     })
 
     it('handles single-element falloff', () => {
@@ -197,6 +200,25 @@ describe('SpreadDamageWarhead', () => {
       const wh = new SpreadDamageWarhead()
       wh.loadFromJSON({ Falloff: [] })
       expect(wh.getDamageFalloff(0)).toBe(0)
+    })
+
+    it('int2Lerp param fix: distance=150 with non-zero inner range', () => {
+      // Regression test for B1: getDamageFalloff() int2Lerp param mismatch
+      // when inner range is non-zero. C# uses int2.Lerp(a, b, distance-inner, outer-inner).
+      // With Spread as the step size and no explicit Range, effectiveRange = [0, 5120, 10240, 15360, 20480].
+      // distance=150 falls between step 0 and step 1.
+      const wh = new SpreadDamageWarhead()
+      wh.loadFromJSON({
+        Falloff: [100, 50, 25, 10, 0],
+      })
+      wh.spread = WDist.fromCells(5) // 5*1024 = 5120
+      // Recompute after setting spread
+      ;(wh as any)._computeEffectiveRange()
+      // effectiveRange = [0, 5120, 10240, 15360, 20480]
+      // inner=0, outer=5120. distance=150.
+      // int2Lerp(100, 50, 150-0, 0, 5120-0) = Math.trunc(100 + (50-100)*150/5120)
+      // = Math.trunc(100 + (-50)*150/5120) = Math.trunc(98.535...) = 98
+      expect(wh.getDamageFalloff(150)).toBe(98)
     })
   })
 

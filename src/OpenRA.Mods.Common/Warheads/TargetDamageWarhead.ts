@@ -6,6 +6,8 @@
  * - C# Spread = WDist.Zero → only target actor damaged by default
  * - C# World.FindActorsOnCircle for non-zero spread → duck-typed findActorsOnCircle()
  * - C# synchronous InflictDamage → deferred DamageEffect[] (ADR-8.1)
+ *
+ * TODO: Wire debug overlay: WarheadDebugOverlay.AddImpact() — C# equivalent deferred to debug visualization phase
  */
 
 import type { WPos } from '../../OpenRA.Game/WPos.js'
