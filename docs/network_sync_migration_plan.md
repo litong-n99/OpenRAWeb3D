@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 6 -- Network Sync and Game Logic
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 7 (lines 942-1053)
-> **Chapter Status**: Chapter 6 -- IMPLEMENTATION PHASE (6/26 migrated, ~23%). Phase A COMPLETE (4/4), Phase B COMPLETE (2/2), Phase C-E PENDING (0/20)
+> **Chapter Status**: Chapter 6 -- IMPLEMENTATION PHASE (8/26 migrated, ~31%). Phase A COMPLETE (4/4), Phase B COMPLETE (2/2), Phase C COMPLETE (2/2), Phases D-E PENDING (0/18)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
 >
@@ -141,8 +141,8 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 | 5b | *(generated output)* | `src/OpenRA.Game/sync-hashes.generated.ts` | Auto-generated hash functions | 0 (auto) | LOW | **B ✅** |
 | | | | | | | |
 | **Phase C: Ruleset Container & ActorInfo Integration (2 files)** | | | | | |
-| 6 | `OpenRA.Game/GameRules/Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | `Ruleset`, `RulesetCache` | 281 | MEDIUM | C |
-| 7 | *(extend existing)* | `src/OpenRA.Game/GameRules/ActorInfo.ts` | `ActorInfo` (extend) | 0 (ext) | MEDIUM | C |
+| 6 | `OpenRA.Game/GameRules/Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | `Ruleset`, `RulesetCache` | 281 | MEDIUM | **C ✅** |
+| 7 | *(extend existing)* | `src/OpenRA.Game/GameRules/ActorInfo.ts` | `ActorInfo` (extend) | 0 (ext) | MEDIUM | **C ✅** |
 | | | | | | | |
 | **Phase D: AI BotModule Core (10 files)** | | | | | |
 | 8 | `OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.ts` | `SquadManagerBotModule` | 634 | HIGH | D |
@@ -453,8 +453,9 @@ Commits: `52f6940` (initial Phase B), `a63d377` (fix boolean hash constants, exp
 
 ### 3.3 Phase C: Ruleset Container & ActorInfo Integration
 
-**Status**: PENDING (0/2)
+**Status**: COMPLETE (2/2)
 **Complexity**: MEDIUM
+**Implementation Date**: 2026-06-12
 **Blocked by**: Phase B (Sync metadata for trait fields), Phase A (Order/Network types referenced by Ruleset), Chapter 5 Phase C (ModData, Manifest), Chapter 4 Phase H (MiniYAML pipeline)
 **Blocks**: Phase D (AI needs Ruleset for actor configuration)
 
@@ -469,7 +470,7 @@ Commits: `52f6940` (initial Phase B), `a63d377` (fix boolean hash constants, exp
 
 #### 3.3.1 Ruleset Container
 
-- [ ] **TODO-6.C.1** `src/OpenRA.Game/GameRules/Ruleset.ts` (281 lines C#) -- Game rules container:
+- [x] **TODO-6.C.1** `src/OpenRA.Game/GameRules/Ruleset.ts` (863 lines TS, 1051 test lines, 55 tests) -- Game rules container ✅:
   - `actors: ReadonlyMap<string, ActorInfo>` -- all actor type definitions
   - `weapons: ReadonlyMap<string, WeaponInfo>` -- STUB: `WeaponInfo` interface with `name`, `reloadDelay`, `range`, `burst` fields; full migration deferred to Chapter 8 (Weapon System)
   - `voices: ReadonlyMap<string, SoundInfo>` -- STUB: `SoundInfo` interface (`name`, `volume`, `attenuation`); full migration deferred to Chapter 8 (Audio)
@@ -491,7 +492,7 @@ Commits: `52f6940` (initial Phase B), `a63d377` (fix boolean hash constants, exp
 
 #### 3.3.2 ActorInfo Extension
 
-- [ ] **TODO-6.C.2** Extend `src/OpenRA.Game/GameRules/ActorInfo.ts` -- Add ruleset integration:
+- [x] **TODO-6.C.2** Extend `src/OpenRA.Game/GameRules/ActorInfo.ts` (+152 lines TS, +308 test lines extension) -- Add ruleset integration ✅:
   - Add `rulesetLoadedHandlers: Array<(ruleset: Ruleset, actorInfo: ActorInfo) => void>` to ActorInfo
   - Add `onRulesetLoaded(handler)` registration for `IRulesetLoaded` trait semantics
   - Add `syncFields: Array<{name: string, customHash?: (val: any) => number}>` for `@VerifySync` metadata on traits
@@ -512,13 +513,45 @@ Commits: `52f6940` (initial Phase B), `a63d377` (fix boolean hash constants, exp
 
 **Estimated Effort**: ~1,800 lines implementation + ~1,500 lines test (6-7 developer-days)
 
+**Implementation Notes** (2026-06-12):
+
+Phase C was completed in 2 review rounds (Round 1: 1 MAJOR + 3 MINOR -> NEEDS FIXES; Round 2: All fixed -> APPROVED). 80 new tests total across 2 files (Ruleset.ts + ActorInfo.ts extension). `tsc --noEmit` clean. All 2 files: ~1,030 TS implementation lines + ~1,359 test lines.
+
+Key paradigm mappings realized during implementation:
+
+| OpenRA (C#) | TypeScript / Babylon.js |
+|-------------|------------------------|
+| `RulesetCache` global concurrent dictionary | `Map<string, Ruleset>` with explicit cache lifecycle (no concurrent access needed) |
+| `MiniYaml.Load()` from filesystem | Build-time `mod.json` (MiniYAML -> JSON pipeline from Ch4 Phase H) |
+| `FieldLoader` reflection-based YAML-to-object | `zod` schema validation on JSON input |
+| `MergeOrDefault<T>()` dictionary merge | TypeScript deep merge with `Map<string, T>` + child-overrides-parent priority |
+| `ActorInfoDictionary` frozen dictionary | `ReadonlyMap<string, ActorInfo>` |
+| `SoundInfo`, `MusicInfo`, `WeaponInfo` | TypeScript stub interfaces with `@todo` annotations (deferred to Chapters 7-8) |
+| `modelSequences` dictionary | Stub `ModelSequenceConfig` interface for future 3D model sequences |
+| C# `MiniYamlNode` trait merging | Build-time pre-flattened JSON with resolved inheritance chains (per ADR-6.6) |
+| `IRulesetLoaded.RulesetLoaded()` post-processing | `IRulesetLoaded` interface + `rulesetLoadedHandlers` registration array |
+| `^` abstract actor prefix + `Inherits:` chains | Build-time trait merge with child-overrides-parent priority + `-TraitName` removal |
+| `@` instance suffix (`Turreted@primary`) | Trait instance disambiguation via JSON key parsing |
+| `Ruleset.load()` async static factory | `static async load(manifest, fileSystem, mapRules?): Promise<Ruleset>` |
+
+Implementation statistics:
+
+| File | TS Lines | Test Lines | Tests | Review Round |
+|------|:--------:|:----------:|:-----:|:------------:|
+| `src/OpenRA.Game/GameRules/Ruleset.ts` | 863 | 1051 | 55 | APPROVED (R2) |
+| `src/OpenRA.Game/GameRules/ActorInfo.ts` (extension) | +152 | +308 | +25 | APPROVED (R2) |
+| `src/OpenRA.Game/ModData.ts` (update) | +29/-14 | — | — | APPROVED (R2) |
+| **Total** | **~1,030** | **~1,359** | **~80** | |
+
+Commits: `c4c98ea` (initial Phase C), `3652e65` (address review findings: 1 MAJOR + 3 MINOR fixed).
+
 ---
 
 ### 3.4 Phase D: AI BotModule Core
 
 **Status**: PENDING (0/10)
 **Complexity**: HIGH (SquadManager, BaseBuilder), MEDIUM (others)
-**Blocked by**: Phase C (Ruleset provides actor configs for AI), Chapter 3 (Actor, World, ITick, Player)
+**Blocked by**: ~~Phase C~~ (COMPLETE -- Ruleset now provides actor configs for AI), Chapter 3 (Actor, World, ITick, Player)
 **Blocks**: None (Phase D is a leaf in the dependency graph; Phase E depends on Phase D)
 
 **Description**: OpenRA's AI system uses a modular BotModule architecture where each module is an independent `ConditionalTrait` responsible for one aspect of AI behavior. Phase D migrates the 10 core modules that form the essential AI decision-making: squad management, base building, unit production, harvester logistics, superweapon use, resource mapping, and the squad subsystem (Squad, AttackOrFleeFuzzy, StateMachine, StateBase). The key paradigm shift: from imperative C# state machines (switch-case, if-else chains, mutable state flags) to a declarative **Behavior Tree** architecture where decisions are composed from reusable node types.
@@ -765,7 +798,7 @@ Chapter 3+4+5 (Prerequisites) — ALREADY COMPLETE
   |     |
   |     +--> Phase B (Sync + hash generator)
   |     |     |
-  |     |     +--> Phase C (Ruleset + ActorInfo extension)
+  |     |     +--> Phase C (Ruleset + ActorInfo extension) **[2/2 COMPLETE]**
   |     |           |
   |     |           +--> Phase D (AI BotModule Core: 10 files)
   |     |                 |
@@ -924,7 +957,7 @@ Phase A is the critical dependency for everything downstream. Phase B begins aft
 |:---:|:---|:---:|:---|:---|
 | 1-2 | Phase A | 4 | Network foundation (Order, Connection, OrderManager, UnitOrders) | Order.ts + UnitOrders.ts in parallel; Connection.ts after Order.ts serialization stable; OrderManager.ts last |
 | 2-3 | Phase B | 2 | Sync hash system (runtime + build generator) | Sync.ts starts when Order types stable; hash generator in parallel |
-| 3-4 | Phase C | 2 | Ruleset container + ActorInfo extend | Sequential (needs Phase B for sync metadata) |
+| 3-4 | Phase C | 2 | Ruleset container + ActorInfo extend | ~~Sequential (needs Phase B for sync metadata)~~ COMPLETE (2026-06-12) |
 | 4-6 | Phase D | 10 | AI core modules | Highly parallel: Squad system (4 files) || Base+Unit (3 files) || Harvester+Resource+Support (3 files) |
 | 6-8 | Phase E | 9 | AI extended modules | Highly parallel: all 9 files can develop concurrently once Phase D base patterns established |
 
@@ -934,7 +967,7 @@ Phase A is the critical dependency for everything downstream. Phase B begins aft
 
 1. **End of Week 2**: Phase A complete -- network layer functional. `OrderManager.Tick()` drives lockstep loop in Web Worker with `EchoConnection`. Unit tests pass with mocked WebSocket.
 2. **End of Week 3**: Phase B complete -- sync hash system functional. `Sync.hash()` computes deterministic frame hashes. Build generator produces `sync-hashes.generated.ts`.
-3. **End of Week 4**: Phase C complete -- ruleset loads from JSON. All C&C actor types parse successfully. Trait inheritance chains resolve correctly.
+3. **End of Week 4**: Phase C complete -- ruleset loads from JSON. All C&C actor types parse successfully. Trait inheritance chains resolve correctly. **ACHIEVED 2026-06-12**.
 4. **End of Week 6**: Phase D complete -- AI core functional. Behavior tree library stable. All 5 main BotModules produce correct decisions.
 5. **End of Week 8**: Phase E complete -- all AI modules migrated. Full AI suite functional. 21 AI files total.
 6. **Week 9**: Integration testing. Multi-client lockstep simulation with AI players. 1000-frame deterministic test across Chrome + Firefox.
