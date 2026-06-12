@@ -19,7 +19,7 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Chapter 8 planned files (Weapons & Combat)** | ~55 (5 Phases A-E planned), 0/55 migrated |
+| **Chapter 8 planned files (Weapons & Combat)** | 56 (57 with optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), 0/56 migrated, ~8,264 C# lines source |
 | **Chapter 9 planned files (Movement & Physics)** | ~30 (3 Phases A-C planned), 0/30 migrated |
 | **Chapter 10 planned files (Resource & Economy)** | ~15 (2 Phases A-B planned), 0/15 migrated |
 | **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 0/25 migrated |

@@ -141,21 +141,21 @@ Warheads are the impact-effect classes that apply damage and status effects. The
 
 | # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
 |:---:|:---|:---|:---:|:---:|
-| 1 | `Warheads/Warhead.cs` | `src/OpenRA.Mods.Common/Warheads/Warhead.ts` | 98 | LOW |
-| 2 | `Warheads/DamageWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/DamageWarhead.ts` | 94 | MEDIUM |
-| 3 | `Warheads/SpreadDamageWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/SpreadDamageWarhead.ts` | 143 | HIGH |
-| 4 | `Warheads/TargetDamageWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/TargetDamageWarhead.ts` | 67 | LOW |
-| 5 | `Warheads/CreateEffectWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/CreateEffectWarhead.ts` | 149 | MEDIUM |
-| 6 | `Warheads/FireClusterWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/FireClusterWarhead.ts` | 118 | MEDIUM |
-| 7 | `Warheads/LeaveSmudgeWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/LeaveSmudgeWarhead.ts` | 75 | LOW |
-| 8 | `Warheads/DestroyResourceWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/DestroyResourceWarhead.ts` | 66 | LOW |
-| 9 | `Warheads/CreateResourceWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/CreateResourceWarhead.ts` | 59 | LOW |
-| 10 | `Warheads/ChangeOwnerWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/ChangeOwnerWarhead.ts` | 57 | LOW |
-| 11 | `Warheads/GrantExternalConditionWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/GrantExternalConditionWarhead.ts` | 52 | LOW |
-| 12 | `Warheads/FlashEffectWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/FlashEffectWarhead.ts` | 35 | LOW |
-| 13 | `Warheads/ShakeScreenWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/ShakeScreenWarhead.ts` | 34 | LOW |
-| 14 | `Warheads/HealthPercentageDamageWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/HealthPercentageDamageWarhead.ts` | 28 | LOW |
-| 15 | `Warheads/FlashTargetsInRadiusWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/FlashTargetsInRadiusWarhead.ts` | 60 | LOW |
+| 1 | `OpenRA.Mods.Common/Warheads/Warhead.cs` | `src/OpenRA.Mods.Common/Warheads/Warhead.ts` | 98 | LOW |
+| 2 | `OpenRA.Mods.Common/Warheads/DamageWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/DamageWarhead.ts` | 94 | MEDIUM |
+| 3 | `OpenRA.Mods.Common/Warheads/SpreadDamageWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/SpreadDamageWarhead.ts` | 143 | HIGH |
+| 4 | `OpenRA.Mods.Common/Warheads/TargetDamageWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/TargetDamageWarhead.ts` | 67 | LOW |
+| 5 | `OpenRA.Mods.Common/Warheads/CreateEffectWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/CreateEffectWarhead.ts` | 149 | MEDIUM |
+| 6 | `OpenRA.Mods.Common/Warheads/FireClusterWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/FireClusterWarhead.ts` | 118 | MEDIUM |
+| 7 | `OpenRA.Mods.Common/Warheads/LeaveSmudgeWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/LeaveSmudgeWarhead.ts` | 75 | LOW |
+| 8 | `OpenRA.Mods.Common/Warheads/DestroyResourceWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/DestroyResourceWarhead.ts` | 66 | LOW |
+| 9 | `OpenRA.Mods.Common/Warheads/CreateResourceWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/CreateResourceWarhead.ts` | 59 | LOW |
+| 10 | `OpenRA.Mods.Common/Warheads/ChangeOwnerWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/ChangeOwnerWarhead.ts` | 57 | LOW |
+| 11 | `OpenRA.Mods.Common/Warheads/GrantExternalConditionWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/GrantExternalConditionWarhead.ts` | 52 | LOW |
+| 12 | `OpenRA.Mods.Common/Warheads/FlashEffectWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/FlashEffectWarhead.ts` | 35 | LOW |
+| 13 | `OpenRA.Mods.Common/Warheads/ShakeScreenWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/ShakeScreenWarhead.ts` | 34 | LOW |
+| 14 | `OpenRA.Mods.Common/Warheads/HealthPercentageDamageWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/HealthPercentageDamageWarhead.ts` | 28 | LOW |
+| 15 | `OpenRA.Mods.Common/Warheads/FlashTargetsInRadiusWarhead.cs` | `src/OpenRA.Mods.Common/Warheads/FlashTargetsInRadiusWarhead.ts` | 60 | LOW |
 
 **Warheads Total**: 15 files, ~1,135 C# lines
 
@@ -165,13 +165,13 @@ Projectiles are the in-flight munition objects that travel from source to target
 
 | # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
 |:---:|:---|:---|:---:|:---:|
-| 16 | `Projectiles/Missile.cs` | `src/OpenRA.Mods.Common/Projectiles/Missile.ts` | 980 | HIGH |
-| 17 | `Projectiles/AreaBeam.cs` | `src/OpenRA.Mods.Common/Projectiles/AreaBeam.ts` | 297 | MEDIUM |
-| 18 | `Projectiles/Railgun.cs` | `src/OpenRA.Mods.Common/Projectiles/Railgun.ts` | 257 | MEDIUM |
-| 19 | `Projectiles/LaserZap.cs` | `src/OpenRA.Mods.Common/Projectiles/LaserZap.ts` | 217 | MEDIUM |
-| 20 | `Projectiles/NukeLaunch.cs` | `src/OpenRA.Mods.Common/Projectiles/NukeLaunch.ts` | 173 | MEDIUM |
-| 21 | `Projectiles/GravityBomb.cs` | `src/OpenRA.Mods.Common/Projectiles/GravityBomb.ts` | 146 | LOW |
-| 22 | `Projectiles/InstantHit.cs` | `src/OpenRA.Mods.Common/Projectiles/InstantHit.ts` | 96 | LOW |
+| 16 | `OpenRA.Mods.Common/Projectiles/Missile.cs` | `src/OpenRA.Mods.Common/Projectiles/Missile.ts` | 980 | HIGH |
+| 17 | `OpenRA.Mods.Common/Projectiles/AreaBeam.cs` | `src/OpenRA.Mods.Common/Projectiles/AreaBeam.ts` | 297 | MEDIUM |
+| 18 | `OpenRA.Mods.Common/Projectiles/Railgun.cs` | `src/OpenRA.Mods.Common/Projectiles/Railgun.ts` | 257 | MEDIUM |
+| 19 | `OpenRA.Mods.Common/Projectiles/LaserZap.cs` | `src/OpenRA.Mods.Common/Projectiles/LaserZap.ts` | 217 | MEDIUM |
+| 20 | `OpenRA.Mods.Common/Projectiles/NukeLaunch.cs` | `src/OpenRA.Mods.Common/Projectiles/NukeLaunch.ts` | 173 | MEDIUM |
+| 21 | `OpenRA.Mods.Common/Projectiles/GravityBomb.cs` | `src/OpenRA.Mods.Common/Projectiles/GravityBomb.ts` | 146 | LOW |
+| 22 | `OpenRA.Mods.Common/Projectiles/InstantHit.cs` | `src/OpenRA.Mods.Common/Projectiles/InstantHit.ts` | 96 | LOW |
 
 **Projectiles Total**: 7 files, ~2,166 C# lines (Bullet already in Ch7: 397)
 
@@ -181,41 +181,69 @@ Configuration data classes that define weapons, sounds, and music from JSON rule
 
 | # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
 |:---:|:---|:---|:---:|:---:|
-| 23 | `GameRules/WeaponInfo.cs` | `src/OpenRA.Game/GameRules/WeaponInfo.ts` | 268 | MEDIUM |
-| 24 | `GameRules/SoundInfo.cs` | `src/OpenRA.Game/GameRules/SoundInfo.ts` | 97 | LOW |
-| -- | `GameRules/MusicInfo.cs` | `src/OpenRA.Game/GameRules/MusicInfo.ts` | 65 | LOW (optional) |
+| 23 | `OpenRA.Game/GameRules/WeaponInfo.cs` | `src/OpenRA.Game/GameRules/WeaponInfo.ts` | 268 | MEDIUM |
+| 24 | `OpenRA.Game/GameRules/SoundInfo.cs` | `src/OpenRA.Game/GameRules/SoundInfo.ts` | 97 | LOW |
+| -- | `OpenRA.Game/GameRules/MusicInfo.cs` | `src/OpenRA.Game/GameRules/MusicInfo.ts` | 65 | LOW (optional) |
 
-#### Phase D: Core Combat Traits (~17 files)
+#### Phase D: Core Combat Traits (17 files)
 
-The actor-side components that enable combat: Armament (weapon mount), Attack* variants (attack behavior), AutoTarget (target acquisition), HitShape (collision geometry), Armor (damage reduction).
-
-| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
-|:---:|:---|:---|:---:|:---:|
-| 25 | `Traits/Armament.cs` | `src/OpenRA.Mods.Common/Traits/Armament.ts` | 432 | HIGH |
-| 26 | `Traits/AutoTarget.cs` | `src/OpenRA.Mods.Common/Traits/AutoTarget.ts` | 485 | HIGH |
-| 27 | `Traits/AttackBase.cs` | `src/OpenRA.Mods.Common/Traits/AttackBase.ts` | -- | HIGH |
-| 28 | `Traits/AttackTurreted.cs` | `src/OpenRA.Mods.Common/Traits/AttackTurreted.ts` | -- | MEDIUM |
-| 29 | `Traits/AttackFrontal.cs` | `src/OpenRA.Mods.Common/Traits/AttackFrontal.ts` | -- | MEDIUM |
-| 30 | `Traits/AttackOmni.cs` | `src/OpenRA.Mods.Common/Traits/AttackOmni.ts` | -- | LOW |
-| 31 | `Traits/AttackMove.cs` | `src/OpenRA.Mods.Common/Traits/AttackMove.ts` | 179 | MEDIUM |
-| 32 | `Traits/AttackFollow.cs` | `src/OpenRA.Mods.Common/Traits/AttackFollow.ts` | -- | LOW |
-| 33 | `Traits/AttackCharges.cs` | `src/OpenRA.Mods.Common/Traits/AttackCharges.ts` | -- | LOW |
-| 34 | `Traits/AttackWander.cs` | `src/OpenRA.Mods.Common/Traits/AttackWander.ts` | -- | LOW |
-| 35 | `Traits/AttackGarrisoned.cs` | `src/OpenRA.Mods.Common/Traits/AttackGarrisoned.ts` | -- | LOW |
-| 36 | `Traits/HitShape.cs` | `src/OpenRA.Mods.Common/Traits/HitShape.ts` | 177 | MEDIUM |
-| 37 | `Traits/Armor.cs` | `src/OpenRA.Mods.Common/Traits/Armor.ts` | -- | LOW |
-| 38 | `Traits/AmmoPool.cs` | `src/OpenRA.Mods.Common/Traits/AmmoPool.ts` | 119 | LOW |
-| 39 | `Traits/ReloadAmmoPool.cs` | `src/OpenRA.Mods.Common/Traits/ReloadAmmoPool.ts` | 95 | LOW |
-| 40 | `Traits/RangeMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/RangeMultiplier.ts` | -- | LOW |
-| 41 | `Traits/FirepowerMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/FirepowerMultiplier.ts` | -- | LOW |
-
-#### Phase E: Combat-Related Support Traits (~15 files)
-
-Traits that modify, enhance, or react to combat events. These depend on the core combat traits from Phase D.
+The actor-side components that enable combat: Armament (weapon mount), Attack* variants (attack behavior), AutoTarget (target acquisition), HitShape (collision geometry), Armor (damage reduction). Note: Attack sub-variants live in `Traits/Attack/` subdirectory; multipliers live in `Traits/Multipliers/`.
 
 | # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
 |:---:|:---|:---|:---:|:---:|
-| 42+ | Various: FireWarheads, FireWarheadsOnDeath, FireProjectilesOnDeath, AttackSounds, DeathSounds, DamageMultiplier, ReloadDelayMultiplier, InaccuracyMultiplier, ExplosionOnDamageTransition, WithMuzzleOverlay, WithAttackAnimation, WithAttackOverlay, Turreted, AttackBomber, AttackAircraft | | ~500+ | LOW-MEDIUM |
+| 25 | `OpenRA.Mods.Common/Traits/Armament.cs` | `src/OpenRA.Mods.Common/Traits/Armament.ts` | 432 | HIGH |
+| 26 | `OpenRA.Mods.Common/Traits/AutoTarget.cs` | `src/OpenRA.Mods.Common/Traits/AutoTarget.ts` | 485 | HIGH |
+| 27 | `OpenRA.Mods.Common/Traits/Attack/AttackBase.cs` | `src/OpenRA.Mods.Common/Traits/Attack/AttackBase.ts` | 526 | HIGH |
+| 28 | `OpenRA.Mods.Common/Traits/Attack/AttackTurreted.cs` | `src/OpenRA.Mods.Common/Traits/Attack/AttackTurreted.ts` | 51 | LOW |
+| 29 | `OpenRA.Mods.Common/Traits/Attack/AttackFrontal.cs` | `src/OpenRA.Mods.Common/Traits/Attack/AttackFrontal.ts` | 48 | LOW |
+| 30 | `OpenRA.Mods.Common/Traits/Attack/AttackOmni.cs` | `src/OpenRA.Mods.Common/Traits/Attack/AttackOmni.ts` | 92 | LOW |
+| 31 | `OpenRA.Mods.Common/Traits/AttackMove.cs` | `src/OpenRA.Mods.Common/Traits/AttackMove.ts` | 179 | MEDIUM |
+| 32 | `OpenRA.Mods.Common/Traits/Attack/AttackFollow.cs` | `src/OpenRA.Mods.Common/Traits/Attack/AttackFollow.ts` | 466 | HIGH |
+| 33 | `OpenRA.Mods.Common/Traits/Attack/AttackCharges.cs` | `src/OpenRA.Mods.Common/Traits/Attack/AttackCharges.ts` | 77 | LOW |
+| 34 | `OpenRA.Mods.Common/Traits/AttackWander.cs` | `src/OpenRA.Mods.Common/Traits/AttackWander.ts` | 39 | LOW |
+| 35 | `OpenRA.Mods.Common/Traits/Attack/AttackGarrisoned.cs` | `src/OpenRA.Mods.Common/Traits/Attack/AttackGarrisoned.ts` | 235 | MEDIUM |
+| 36 | `OpenRA.Mods.Common/Traits/HitShape.cs` | `src/OpenRA.Mods.Common/Traits/HitShape.ts` | 177 | MEDIUM |
+| 37 | `OpenRA.Mods.Common/Traits/Armor.cs` | `src/OpenRA.Mods.Common/Traits/Armor.ts` | 30 | LOW |
+| 38 | `OpenRA.Mods.Common/Traits/AmmoPool.cs` | `src/OpenRA.Mods.Common/Traits/AmmoPool.ts` | 119 | LOW |
+| 39 | `OpenRA.Mods.Common/Traits/ReloadAmmoPool.cs` | `src/OpenRA.Mods.Common/Traits/ReloadAmmoPool.ts` | 95 | LOW |
+| 40 | `OpenRA.Mods.Common/Traits/Multipliers/RangeMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/Multipliers/RangeMultiplier.ts` | 33 | LOW |
+| 41 | `OpenRA.Mods.Common/Traits/Multipliers/FirepowerMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/Multipliers/FirepowerMultiplier.ts` | 31 | LOW |
+
+**Core Combat Traits Total**: 17 files, ~3,075 C# lines
+
+#### Phase E: Combat-Related Support Traits (15 files)
+
+Traits that modify, enhance, or react to combat events. These depend on the core combat traits from Phase D. Files span across Traits root, `Traits/Sound/`, `Traits/Multipliers/`, `Traits/Render/`, and `Traits/Air/` subdirectories.
+
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
+|:---:|:---|:---|:---:|:---:|
+| 42 | `OpenRA.Mods.Common/Traits/FireWarheads.cs` | `src/OpenRA.Mods.Common/Traits/FireWarheads.ts` | 86 | LOW |
+| 43 | `OpenRA.Mods.Common/Traits/FireWarheadsOnDeath.cs` | `src/OpenRA.Mods.Common/Traits/FireWarheadsOnDeath.ts` | 190 | MEDIUM |
+| 44 | `OpenRA.Mods.Common/Traits/FireProjectilesOnDeath.cs` | `src/OpenRA.Mods.Common/Traits/FireProjectilesOnDeath.ts` | 124 | LOW |
+| 45 | `OpenRA.Mods.Common/Traits/Sound/AttackSounds.cs` | `src/OpenRA.Mods.Common/Traits/Sound/AttackSounds.ts` | 80 | LOW |
+| 46 | `OpenRA.Mods.Common/Traits/Sound/DeathSounds.cs` | `src/OpenRA.Mods.Common/Traits/Sound/DeathSounds.ts` | 48 | LOW |
+| 47 | `OpenRA.Mods.Common/Traits/Multipliers/DamageMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/Multipliers/DamageMultiplier.ts` | 37 | LOW |
+| 48 | `OpenRA.Mods.Common/Traits/Multipliers/ReloadDelayMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/Multipliers/ReloadDelayMultiplier.ts` | 31 | LOW |
+| 49 | `OpenRA.Mods.Common/Traits/Multipliers/InaccuracyMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/Multipliers/InaccuracyMultiplier.ts` | 31 | LOW |
+| 50 | `OpenRA.Mods.Common/Traits/ExplosionOnDamageTransition.cs` | `src/OpenRA.Mods.Common/Traits/ExplosionOnDamageTransition.ts` | 78 | LOW |
+| 51 | `OpenRA.Mods.Common/Traits/Render/WithMuzzleOverlay.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithMuzzleOverlay.ts` | 118 | LOW |
+| 52 | `OpenRA.Mods.Common/Traits/Render/WithAttackAnimation.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithAttackAnimation.ts` | 96 | LOW |
+| 53 | `OpenRA.Mods.Common/Traits/Render/WithAttackOverlay.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithAttackOverlay.ts` | 107 | LOW |
+| 54 | `OpenRA.Mods.Common/Traits/Turreted.cs` | `src/OpenRA.Mods.Common/Traits/Turreted.ts` | 333 | MEDIUM |
+| 55 | `OpenRA.Mods.Common/Traits/Air/AttackBomber.cs` | `src/OpenRA.Mods.Common/Traits/Air/AttackBomber.ts` | 95 | LOW |
+| 56 | `OpenRA.Mods.Common/Traits/Air/AttackAircraft.cs` | `src/OpenRA.Mods.Common/Traits/Air/AttackAircraft.ts` | 69 | LOW |
+
+**Support Traits Total**: 15 files, ~1,523 C# lines
+
+**Chapter 8 Grand Total**: 56 files (57 with optional MusicInfo), ~8,264 C# lines (8,329 with MusicInfo)
+
+| Phase | Files | C# Lines | Description |
+|:---|:---:|:---:|:---|
+| A: Warheads | 15 | 1,135 | Impact-effect classes |
+| B: Projectiles | 7 | 2,166 | In-flight munition objects (Bullet already in Ch7) |
+| C: Weapon Config | 2 (+1 opt) | 365 (+65) | WeaponInfo, SoundInfo, MusicInfo |
+| D: Core Combat Traits | 17 | 3,075 | Armament, Attack*, AutoTarget, HitShape, Armor, etc. |
+| E: Support Traits | 15 | 1,523 | FireWarheads, Render overlays, Turreted, Multipliers, etc. |
 
 #### Chapter 8 Key Paradigm Shifts
 

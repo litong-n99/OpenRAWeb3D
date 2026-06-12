@@ -52,7 +52,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Projectiles (1 file) | COMPLETE (Bullet 1,463 lines, 56 tests, 2 review rounds) |
 | Sprite Traits (2+3 files) | COMPLETE (AnimationWithOffset 163, RenderSprites ~500, WithIdleOverlay ~413 lines; 120 tests, 2 review rounds) |
 | **Chapters 8-21 (14 chapters)** | **PLANNING (~365 files, 0 migrated)** |
-| Weapons & Combat (Ch8) | Planned (~55 files, 5 phases A-E) |
+| Weapons & Combat (Ch8) | Planned (56 files, 5 phases A-E, ~8,264 C# lines -- plan verified 2026-06-12) |
 | Movement & Physics (Ch9) | Planned (~30 files, 3 phases A-C) |
 | Resource & Economy (Ch10) | Planned (~15 files, 2 phases A-B) |
 | Production & Building (Ch11) | Planned (~25 files, 2 phases A-B) |
