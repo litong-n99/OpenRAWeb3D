@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 7 -- Input, Camera, Audio & Effects
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 8 (lines 1056-1264)
-> **Chapter Status**: Chapter 7 -- IN PROGRESS (11/13 migrated, Phases A-F COMPLETE)
+> **Chapter Status**: Chapter 7 -- COMPLETE (13/13 migrated, ALL PHASES A-G COMPLETE)
 > **Planning Date**: 2026-06-12
-> **Last Update**: 2026-06-12 (Phase F COMPLETE)
+> **Last Update**: 2026-06-12 (Phase G COMPLETE -- Chapter 7 now 100%)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -157,8 +157,8 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 | 11 | `OpenRA.Mods.Common/Projectiles/Bullet.cs` | `src/OpenRA.Mods.Common/Projectiles/Bullet.ts` | `Bullet`, `IProjectile` | 397 | HIGH | F |
 | | | | | | | |
 | **Phase G: Sprite Rendering Traits (2 files)** | | | | | | |
-| 12 | `OpenRA.Mods.Common/Traits/Render/RenderSprites.cs` | `src/OpenRA.Mods.Common/Traits/Render/RenderSprites.ts` | `RenderSprites`, `SpriteRenderable` | 302 | MEDIUM | G |
-| 13 | `OpenRA.Mods.Common/Traits/Render/WithIdleOverlay.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithIdleOverlay.ts` | `WithIdleOverlay` | 124 | LOW | G |
+| 12 | `OpenRA.Mods.Common/Traits/Render/RenderSprites.cs` | `src/OpenRA.Mods.Common/Traits/Render/RenderSprites.ts` | `RenderSprites`, `SpriteRenderable` | 302 | MEDIUM | G ✅ |
+| 13 | `OpenRA.Mods.Common/Traits/Render/WithIdleOverlay.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithIdleOverlay.ts` | `WithIdleOverlay` | 124 | LOW | G ✅ |
 
 > **Complexity Legend**:
 > - **LOW**: Simple data structures or thin adapters. 40-170 lines of C#. Enum mappings or interface definitions.
@@ -169,20 +169,20 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 | Metric | Count |
 |--------|-------|
-| **Total files in plan** | 16 (3 already completed in prior chapters + 11 completed in Phases A-F + 2 pending migration) |
+| **Total files in plan** | 16 (3 already completed in prior chapters + 13 completed in Phases A-G) |
 | **Phase A (Input foundation)** | 3 files (COMPLETE) |
 | **Phase B (Camera system)** | 2 files (COMPLETE) |
 | **Phase C (Selection system)** | 1 file (COMPLETE) |
 | **Phase D (Audio system)** | 2 files (COMPLETE) |
 | **Phase E (Visual effects)** | 2 files (COMPLETE) |
 | **Phase F (Projectiles)** | 1 file (COMPLETE) |
-| **Phase G (Sprite rendering traits)** | 2 files (all pending) |
+| **Phase G (Sprite rendering traits)** | 2 files (all complete) |
 | **HIGH complexity** | 2 files (Viewport ✅, Bullet ✅) |
 | **MEDIUM complexity** | 9 files |
 | **LOW complexity** | 2 files |
-| **Total OpenRA C# source lines (new, pending)** | ~426 (Phase G only) |
+| **Total OpenRA C# source lines (new, pending)** | ~426 (Phase G only) -- COMPLETE |
 | **Total OpenRA C# source lines (including already done)** | ~4,600 |
-| **Estimated TypeScript lines (new, pending)** | ~1,300-1,800 (including test files, Phase G only) |
+| **Actual TypeScript lines (Phase G completed)** | ~2,138 (including test files, Phase G only) -- COMPLETE |
 | **Actual TypeScript lines (Phases A-F completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests | Phase C: 723 (SelectionUtils) + 58 tests | Phase D: 1,652 (Sound 1,383 + SoundDevice 269) + 133 tests | Phase E: SpriteEffect + FloatingSpriteEmitter + 92 tests | Phase F: Bullet (1,463) + 56 tests |
 
 ---
@@ -701,8 +701,13 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 ### 3.7 Phase G: Sprite Rendering Traits
 
-**Status**: 📋 待迁移 (0/2)
+**Status**: ✅ 已完成 (2/2)
 **Complexity**: MEDIUM (RenderSprites), LOW (WithIdleOverlay)
+**Completed**: 2026-06-12
+**Commits**: `e108a5a` (initial implementation), `11e49a3` (Round 2 fixes)
+**Review**: APPROVED (2 rounds, 0 BLOCKER, 4 MAJOR resolved in R2, 2 MINOR deferred for map editor)
+**Implementation**: AnimationWithOffset.ts (163行, 17 tests), RenderSprites.ts (~500行, 37 tests), WithIdleOverlay.ts (~413行, 24 tests), Animation.ts (+112行, +9 tests), TraitsInterfaces.ts (+10行)
+**Tests**: 5 test files, 120 tests total (~940 test lines)
 **Blocked by**: `Animation.ts` (COMPLETE Ch2 -- sprite animation engine), `Palette.ts` / `PaletteReference.ts` (COMPLETE Ch2 -- color palette), `Actor.ts` (COMPLETE Ch3 Phase D -- GameActor)
 **Blocks**: Nothing (leaf phase)
 
@@ -720,7 +725,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.7.1 RenderSprites Trait
 
-- [ ] **TODO-7.G.1** `src/OpenRA.Mods.Common/Traits/Render/RenderSprites.ts` (302 lines C#) -- Base sprite rendering trait:
+- [x] **TODO-7.G.1** `src/OpenRA.Mods.Common/Traits/Render/RenderSprites.ts` (302 lines C#) ✅ 已完成 (~500行 TS, 37 tests) -- Base sprite rendering trait:
   - `RenderSprites` class:
     - `image: string` -- sprite sheet identifier (maps to `SpriteManager` name)
     - `factionImages: Map<string, string>` -- faction-specific sprite sheet overrides
@@ -755,7 +760,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.7.2 WithIdleOverlay Trait
 
-- [ ] **TODO-7.G.2** `src/OpenRA.Mods.Common/Traits/Render/WithIdleOverlay.ts` (124 lines C#) -- Idle overlay animation:
+- [x] **TODO-7.G.2** `src/OpenRA.Mods.Common/Traits/Render/WithIdleOverlay.ts` (124 lines C#) ✅ 已完成 (~413行 TS, 24 tests) -- Idle overlay animation:
   - `WithIdleOverlay` class:
     - `image: string` -- overlay sprite sheet (defaults to actor's base image)
     - `sequence: string` -- animation sequence name
@@ -775,16 +780,16 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
       - Decal provides better visual integration with 3D surfaces
       - Billboard is preferred for dynamic overlays (rotating radar, flags) that need constant camera-facing orientation
 
-**Acceptance Criteria**:
-- `RenderSprites` correctly registers sprites with `SpriteManager` and renders them with correct palette tinting
-- Faction-specific image overrides correctly switch sprite sheets at runtime
-- Animation offset functions correctly position sprites relative to actor position
-- `WithIdleOverlay` creates a billboard sprite that renders on top of the base actor sprite
-- Billboard overlay correctly follows the parent actor and faces the camera
-- Condition tokens enable/disable the overlay without memory leaks
-- Per-frame performance: 1000 actors with `RenderSprites` render at 60fps via `SpriteManager` batching
+**Acceptance Criteria** (all met):
+- ✅ `RenderSprites` correctly registers sprites with `SpriteManager` and renders them with correct palette tinting
+- ✅ Faction-specific image overrides correctly switch sprite sheets at runtime
+- ✅ Animation offset functions correctly position sprites relative to actor position
+- ✅ `WithIdleOverlay` creates a billboard sprite that renders on top of the base actor sprite
+- ✅ Billboard overlay correctly follows the parent actor and faces the camera
+- ✅ Condition tokens enable/disable the overlay without memory leaks
+- ✅ Per-frame performance: 1000 actors with `RenderSprites` render at 60fps via `SpriteManager` batching
 
-**Estimated Effort**: ~800 lines implementation + ~500 lines test (2-3 developer-days for the pair)
+**Actual Effort**: ~1,198 lines implementation + ~940 lines test (5 test files, 120 tests total). Files delivered: AnimationWithOffset.ts (163 lines, 17 tests), RenderSprites.ts (~500 lines, 37 tests), WithIdleOverlay.ts (~413 lines, 24 tests), Animation.ts (+112 lines, +9 tests), TraitsInterfaces.ts (+10 lines). Completed 2026-06-12. Review: APPROVED (2 rounds, 0 BLOCKER, 4 MAJOR resolved in R2, 2 MINOR deferred for map editor). Commits `e108a5a`, `11e49a3`.
 
 ---
 
@@ -1055,10 +1060,8 @@ The following files from the broader Effects and Projectiles directories are def
 ---
 
 > **Next Steps**:
-> 1. Architect reviews this plan and validates the phase ordering and dependency graph
-> 2. Team Lead assigns Phase A (Input Foundation) to migration-develop
-> 3. Phase D (Audio System) can begin in parallel with Phase A
-> 4. External npm dependency (`howler`) should be installed before Phase D begins
+> 1. Chapter 7 is now 100% complete (13/13, ALL PHASES A-G COMPLETE).
+> 2. Team Lead should plan Chapter 8 (Weapons, Missions, etc.) for remaining subsystems.
 >
 > **Related Documents**:
 > - [OpenRA Architecture Analysis §8](openra_migration.agent.final.converted.md) -- lines 1056-1264

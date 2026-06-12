@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (11/13, Phases A-F COMPLETE)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 11/13 (~85%, Phases A-F COMPLETE)
+> **Current phase**: Chapter 7 (Input, Camera, Audio & Effects) -- COMPLETE (13/13, ALL PHASES A-G COMPLETE)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%, ALL PHASES A-G COMPLETE)
 
 ---
 
@@ -18,10 +18,10 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Remaining chapters** | Chapters 7-8+(Ch7 Phases A-D complete, Phases E-G + Ch8 pending) |
-| **Overall project completion** | Chapters 2+3+4+5+6 complete (148/148 rendering+actors+map+UI+network+AI). Chapter 7: 11/13 (Phases A-F COMPLETE) |
+| **Remaining chapters** | Chapter 8+ (weapons, missions, etc.) not yet planned |
+| **Overall project completion** | Chapters 2+3+4+5+6+7 complete (162/162 rendering+actors+map+UI+network+AI+input+camera+audio+effects). |
 
-> **Note**: Chapters 2, 3, 4, 5, and 6 are fully complete. Chapter 7 Phase A (Input Foundation) is COMPLETE (3/13). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
+> **Note**: Chapters 2, 3, 4, 5, 6, and 7 are fully complete. Chapter 7 Phase A (Input Foundation): 3 files (IInputHandler, Keycode, InputHandler), 155 tests. Phase B (Camera): 2+1 files (Viewport, ViewportControllerWidget, HotkeyReference), 86 tests. Phase C (Selection): 1 file (SelectionUtils), 58 tests. Phase D (Audio): 2 files (Sound, SoundDevice), 133 tests. Phase E (Visual Effects): 2 files (SpriteEffect, FloatingSpriteEmitter), 92 tests. Phase F (Projectiles): 1 file (Bullet), 56 tests. Phase G (Sprite Traits): 2+3 files (RenderSprites, WithIdleOverlay, AnimationWithOffset, Animation extension, TraitsInterfaces extension), 120 tests. Chapter 7 now 100% complete.
 
 ---
 
@@ -190,6 +190,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch7 Phase G Sprite Rendering Traits** (2+3 files) | migration-develop | migration-review | APPROVED (R2): AnimationWithOffset.ts (163 lines, 17 tests), RenderSprites.ts (~500 lines, 37 tests), WithIdleOverlay.ts (~413 lines, 24 tests), Animation.ts (+112 lines, +9 tests), TraitsInterfaces.ts (+10 lines). ~1,198 impl + ~940 test lines, 120 tests. Commits `e108a5a`, `11e49a3`. Chapter 7 now 100% COMPLETE (13/13). |
 | 2026-06-12 | **Ch7 Phase F Projectiles** (1 file) | migration-develop | migration-review | APPROVED (R2): Bullet.ts (1,463 lines). 1 test file, 56 tests. Commits `bb5358c`, `1387d82`. Chapter 7: 11/13 (~85%). |
 | 2026-06-12 | **Ch7 Phase E Visual Effects** (2 files) | migration-develop | migration-review | APPROVED (2 rounds): SpriteEffect.ts + FloatingSpriteEmitter.ts. 2 test files, 92 tests. Commits `a0bf835`, `180e2a9`. Chapter 7: 10/13 (~77%). |
 | 2026-06-12 | **Ch7 Phase D Audio System** (2 files) | migration-develop | migration-review | APPROVED: Sound.ts (1,383 lines), SoundDevice.ts (269 lines). 2 test files, 133 tests. Commit `3f1b511`. Chapter 7: 8/13 (~62%). |
@@ -950,19 +951,19 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 
 ---
 
-## Chapter 7: Input, Camera, Audio & Effects (11/13, Phases A-F COMPLETE)
+## Chapter 7: Input, Camera, Audio & Effects (13/13, ALL PHASES A-G COMPLETE)
 
 > **Migration Plan**: [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md)
-> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (11/13, ~85%, Phases A-F COMPLETE)
+> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: COMPLETE (13/13, 100%, ALL PHASES A-G COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 11 | ~85% |
-| Pending | 2 | ~15% |
+| Completed | 13 | 100% |
+| Pending | 0 | 0% |
 | **Total** | **13** | **100%** |
 | **From OpenRA** | **13** | |
-| **New files (no OpenRA equivalent)** | **0** | |
+| **New files (no OpenRA equivalent)** | **1** (AnimationWithOffset.ts) | |
 
 ### Chapter 7 Phases
 
@@ -974,7 +975,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | Phase D | Audio System | 2 | MEDIUM | **COMPLETE (2/2, 133 tests)** |
 | Phase E | Visual Effects | 2 | MEDIUM | **COMPLETE (2/2, 92 tests)** |
 | Phase F | Projectiles | 1 | HIGH | **COMPLETE (1/1, 56 tests)** |
-| Phase G | Sprite Rendering Traits | 2 | MEDIUM-LOW | Pending |
+| Phase G | Sprite Rendering Traits | 2 | MEDIUM-LOW | **COMPLETE (2/2, 120 tests)** |
 
 ### Phase A Completed: Input Foundation (3 files, 2026-06-12)
 
@@ -1066,3 +1067,23 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 - `ProjectileFactory` class (new): Static factory methods for common projectile types. Projectile pooling with pre-created instance recycling. `activeProjectiles: Set<IProjectile>` registry for batch update and disposal.
 - Paradigm shift: C# CPU trajectory + position update -> TypeScript logic-layer `tick()` + `TransformNode.position` for visual. CPU-generated contrail line segments -> `TrailMesh` GPU-generated dynamic strip geometry. 2D grid-based collision -> `scene.pickWithRay()` raycast. `Render()` Z-order shadow/trail/body -> `ShadowGenerator` + `TrailMesh` + `Sprite` with renderingGroupId layers.
 - Review: APPROVED (R2) | **Commits**: `bb5358c`, `1387d82`
+
+### Phase G Completed: Sprite Rendering Traits (2+3 files, 2026-06-12)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| AnimationWithOffset.ts | 163 | -- | 17 | Extracted class: offset function, DisableFunc, render, screenBounds |
+| RenderSprites.ts | ~500 | -- | 37 | Base sprite rendering trait: AnimationWrapper, DamagePrefixes, NormalizeSequence |
+| WithIdleOverlay.ts | ~413 | -- | 24 | Idle overlay animation: billboard sprite, condition token, PauseOnLowPower |
+| Animation.ts (modified) | +112 | -- | +9 | Extended with IHasCenterPosition, IRenderable, IPaletteRef, Rectangle interfaces |
+| TraitsInterfaces.ts (modified) | +10 | -- | -- | Extended with DamageState enum, IFacing interface |
+| **Total** | **~1,198** | **~940** | **120** | |
+
+**Implementation details**:
+- `AnimationWithOffset.ts` (extracted from Animation.ts): Wraps an `Animation` with an offset function (for turrets, attachments), `DisableFunc` for visibility control, and rendering methods. `screenBounds()` computes screen-space bounding rectangles. `render()` produces `IRenderable` objects for the rendering pipeline.
+- `RenderSprites.ts` (~500 lines): Port of OpenRA's `RenderSprites.cs` (302 lines C#). Base trait implementing `ITick`, `IRender`, `INotifyOwnerChanged`, `INotifyEffectiveOwnerChanged`. Manages `AnimationWrapper` list with palette caching, per-tick animation updates, and `ScreenMap` invalidation on change. `DamagePrefixes` static array maps `DamageState` to sequence prefixes (`critical-`, `damaged-`, `scratched-`, `scuffed-`). `NormalizeSequence()` and `UnnormalizeSequence()` for damage-aware sequence selection. `MakeFacingFunc()` generates facing callbacks for other `With*` traits. `RenderSpritesInfo` configures image, faction overrides, palette, and player palette. `GetImage()` resolves sprite sheet name with faction-specific overrides.
+- `WithIdleOverlay.ts` (~413 lines): Port of OpenRA's `WithIdleOverlay.cs` (124 lines C#). Renders an independent animation overlay on top of the actor's base sprite (e.g., rotating radar dishes, waving flags). Supports `PauseOnLowPower` to freeze animation when low on power. `RequiresCondition` token for enabling/disabling the overlay. Uses `AnimationWithOffset` with a fixed `WVec.Zero` offset. Implements `ITick`, `IRender`, `INotifyOwnerChanged`, `INotifyEffectiveOwnerChanged`.
+- `Animation.ts` extension (+112 lines): Added `IHasCenterPosition` interface (used by `AnimationWithOffset.screenBounds/render`), `IRenderable` interface (sprite render output), `IPaletteRef` interface (palette reference with `getColor` and `name`), and `Rectangle` interface (screen-space bounds).
+- `TraitsInterfaces.ts` extension (+10 lines): Added `DamageState` enum (`Undamaged`, `Light`, `Medium`, `Heavy`, `Critical`, `Dead`) and `IFacing` interface (used by `RenderSprites.MakeFacingFunc`).
+- Paradigm shift: C# `RenderSprites` Trait managing `AnimationWithOffset` list -> `RenderSprites` class with `AnimationWrapper` inner class. C# `IEnumerable<IRenderable>` yield return -> array collection. C# `FrozenDictionary<string, string>` FactionImages -> `Record<string, string>`. C# `PaletteReference` -> `IPaletteRef`. C# `WithIdleOverlay` independent Animation + ZOffset -> Billboard `AnimationWithOffset` with visibility condition.
+- Review: APPROVED (2 rounds). Round 1: 0 BLOCKER, 4 MAJOR, 5 MINOR -> NEEDS FIXES. Round 2: All 4 MAJOR fixed, 2 MINOR deferred (TODO comments for map editor features: `RenderPreview()` and `IActorPreviewInitModifier`). | **Commits**: `e108a5a`, `11e49a3`

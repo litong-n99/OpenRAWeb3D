@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (11/13, Phases A-F COMPLETE)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 11/13 (~85%)
+**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- COMPLETE (13/13, ALL PHASES A-G COMPLETE)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -42,14 +42,14 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Ruleset Container (2 files) | COMPLETE (Phase C, ~1,030 impl + ~1,359 test lines, ~80 tests) |
 | AI BotModule Core (10 files) | COMPLETE (Phase D, ~5,769+390 impl lines, 2 review rounds) |
 | AI BotModule Extended (11 files) | COMPLETE (Phase E, ~4,463 impl + ~1,515 test lines, 119 tests, 2 rounds) |
-| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (11/13, ~85%, Phases A-F COMPLETE)** |
+| **Input, Camera, Audio & Effects (13 files)** | **COMPLETE (13/13, 100%, ALL PHASES A-G COMPLETE)** |
 | Input Foundation (3 files) | COMPLETE (IInputHandler 176, Keycode 544, InputHandler 617 lines, 155 tests) |
 | Camera System (2+1 files) | COMPLETE (Viewport 1,023, ViewportControllerWidget 868, HotkeyReference 360 lines, 86 tests) |
 | Selection System (1 file) | COMPLETE (SelectionUtils 723 lines, 58 tests, 3 review rounds) |
 | Audio System (2 files) | COMPLETE (Sound 1,383, SoundDevice 269 lines, 133 tests) |
 | Visual Effects (2 files) | COMPLETE (SpriteEffect + FloatingSpriteEmitter, 92 tests, 2 rounds) |
 | Projectiles (1 file) | COMPLETE (Bullet 1,463 lines, 56 tests, 2 review rounds) |
-| Sprite Traits (2 files) | Pending (Phase G) |
+| Sprite Traits (2+3 files) | COMPLETE (AnimationWithOffset 163, RenderSprites ~500, WithIdleOverlay ~413 lines; 120 tests, 2 review rounds) |
 | Remaining subsystems | Chapters 8+ (weapons, missions, etc.) not yet planned
 
 ## Directory Layout
@@ -76,7 +76,8 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       SheetBuilder.ts       ← migrated (502 lines, 367 test lines)
       HardwarePalette.ts    ← migrated (658 lines, 463 test lines)
       PlayerColorRemap.ts   ← migrated (154 lines, 191 test lines)
-      Animation.ts          ← migrated (558 lines, 451 test lines)
+      Animation.ts          ← migrated (558+112 lines, 451+9 test lines) -- Ch7 Phase G extension
+      AnimationWithOffset.ts ← migrated -- Ch7 Phase G (163 lines, 17 tests)
       CursorManager.ts      ← migrated (548 lines, 288 test lines)
       TerrainSpriteLayer.ts ← migrated (631 lines, 346 test lines)
       RgbaSpriteRenderer.ts ← migrated (161 lines, 462 test lines)
@@ -85,7 +86,7 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       Util.ts               ← migrated (558 lines, 511 test lines)
       ChromeProvider.ts     ← migrated (431 lines, 48 tests) -- Phase D (replaces stub)
       Viewport.ts           ← migrated (1023 lines, 742 test lines) -- Ch7 Phase B (CameraController)
-      *.ts                  ← ~14 remaining stubs (beyond Chapter 2 scope)
+      *.ts                  ← ~13 remaining stubs (beyond Chapter 2 scope; AnimationWithOffset migrated in Ch7 Phase G)
     Input/                    ← Chapter 7 Phase A+B: Input Foundation + Camera (COMPLETE)
       IInputHandler.ts      ← migrated (176 lines) -- Phase A
       Keycode.ts            ← migrated (544 lines) -- Phase A
@@ -171,6 +172,8 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
         Locomotor.ts        ← migrated (261 lines) -- Phase G
       Render/
         FloatingSpriteEmitter.ts  ← migrated -- Ch7 Phase E (126 lines C# -> TS, GPU particle emitter)
+        RenderSprites.ts       ← migrated -- Ch7 Phase G (~500 lines, 37 tests, base sprite rendering trait)
+        WithIdleOverlay.ts     ← migrated -- Ch7 Phase G (~413 lines, 24 tests, idle overlay animation)
     Widgets/                ← Chapter 5 Phase E: World Interaction Bridge + Chapter 7 Phase B/C
       WorldInteractionControllerWidget.ts  ← migrated (1157 lines, 55 tests) -- Phase E
       ViewportControllerWidget.ts  ← migrated (868 lines, 573 test lines) -- Ch7 Phase B
@@ -412,7 +415,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
 | [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 100% complete) |
 | [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (29 files, 5 phases A-E, 100% complete) |
-| [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md) | Chapter 7 input, camera, audio & effects migration plan (13 files, 7 phases A-G, Phases A-F COMPLETE) |
+| [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md) | Chapter 7 input, camera, audio & effects migration plan (13 files, 7 phases A-G, ALL PHASES COMPLETE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 

@@ -100,6 +100,9 @@ const DAMAGE_PREFIXES: readonly {
  * RenderSprites 特质配置。
  *
  * OpenRA 对照: RenderSpritesInfo : TraitInfo, IRenderActorPreviewInfo
+ *
+ * TODO: Implement RenderPreview() when map editor preview system is built
+ * (IRenderActorPreviewInfo). This is currently a deferred feature.
  */
 export class RenderSpritesInfo {
   /** 精灵序列集名称（默认使用 actor 名称）。
@@ -308,6 +311,9 @@ class AnimationWrapper {
  * - 处理调色板刷新和属主变更
  * - 每 tick 推进所有动画
  * - 渲染时收集所有可见动画的 IRenderable
+ *
+ * TODO: Implement IActorPreviewInitModifier when map editor init system is built.
+ * This interface allows modifying traits during actor preview initialization.
  *
  * 使用方式:
  * ```
