@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抛射体系统 - 生命周期与注册表 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { overscroll-behavior: none; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #app { display: flex; height: 100vh; }
+
+    /* Left Panel — Controls */
+    #left-panel {
+      width: 360px; min-width: 360px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 12px; display: flex; flex-direction: column; gap: 8px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0; font-size: 15px; color: #e94560; }
+    #left-panel h3 { margin: 6px 0 2px; font-size: 12px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 2px; }
+    #left-panel .subtitle { color: #a0a0b0; font-size: 11px; }
+
+    #left-panel button {
+      padding: 5px 10px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 11px; cursor: pointer;
+      text-align: center; width: 100%;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.primary { background: #0f3460; border-color: #e94560; color: #e94560; font-weight: bold; }
+    #left-panel button.primary:hover { background: #1a2a4e; }
+
+    .tc-row { display: flex; gap: 4px; align-items: center; }
+    .tc-row button { flex: 1; }
+    .tc-label { font-size: 10px; color: #889; width: 32px; flex-shrink: 0; }
+
+    /* Main Area */
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+
+    /* Viewport */
+    #viewport {
+      flex: 1; position: relative; background: #0d1117;
+      display: flex;
+    }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    /* Right Panel — Diagnostics */
+    #right-panel {
+      width: 340px; min-width: 340px;
+      background: #16213e; border-left: 1px solid #0f3460;
+      padding: 12px; display: flex; flex-direction: column; gap: 8px;
+      overflow-y: auto;
+    }
+    #right-panel h3 { margin: 4px 0; font-size: 12px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 2px; }
+
+    .tc-result { font-size: 11px; padding: 4px 6px; border-radius: 3px; min-height: 20px; line-height: 1.4; }
+
+    /* Diagnostics table */
+    #diag-body { font-family: 'Consolas', monospace; font-size: 11px; }
+    .diag-row {
+      display: flex; gap: 4px; padding: 2px 0; border-bottom: 1px solid rgba(15,52,96,0.5);
+      font-size: 10px;
+    }
+    .diag-name { color: #e94560; min-width: 80px; }
+    .diag-state { color: #eebb55; min-width: 50px; }
+    .diag-pos { color: #88aacc; min-width: 80px; }
+    .diag-destroyed { color: #aa6666; min-width: 40px; }
+    .diag-extra { color: #778; flex: 1; }
+
+    /* Event Log */
+    #event-log {
+      height: 220px; overflow-y: auto;
+      background: rgba(13,17,23,0.6); border: 1px solid #0f3460;
+      border-radius: 4px; padding: 4px; font-family: 'Consolas', monospace;
+    }
+    .log-row { font-size: 10px; padding: 1px 2px; display: flex; gap: 6px; border-bottom: 1px solid rgba(15,52,96,0.3); }
+    .log-tick { color: #889; min-width: 32px; }
+    .log-proj { color: #e94560; min-width: 70px; }
+    .log-detail { color: #aab; flex: 1; word-break: break-all; }
+    .log-state_change .log-detail { color: #eebb55; }
+    .log-impact .log-detail { color: #ff6644; }
+    .log-dispose .log-detail { color: #aa6666; }
+    .log-registry .log-detail { color: #88cc88; }
+    .log-error .log-detail { color: #ff3333; font-weight: bold; }
+    .log-info .log-detail { color: #667; }
+
+    /* Legend */
+    #overlay-legend {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 12px; font-size: 10px;
+      display: flex; flex-wrap: wrap; gap: 4px 12px; z-index: 15;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-swatch { width: 10px; height: 10px; border-radius: 2px; border: 1px solid #333; flex-shrink: 0; }
+
+    /* Expected overlay */
+    #expected-overlay {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22,33,62,0.92); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 12px; font-size: 10px; line-height: 1.4;
+      max-width: 280px; pointer-events: none; user-select: none; z-index: 15;
+    }
+    #expected-overlay h4 { margin: 0 0 4px; color: #8f8; font-size: 11px; }
+    #expected-overlay ul { margin: 3px 0; padding-left: 14px; }
+    #expected-overlay li { margin: 1px 0; }
+    #expected-overlay .metric { color: #aad; font-family: monospace; }
+
+    /* Info bar */
+    #info-bar {
+      height: 26px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 16px; align-items: center; padding: 0 12px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body ondragstart="return false;">
+  <div id="app">
+    <!-- Left Panel — Controls -->
+    <div id="left-panel">
+      <h2>A. 抛射体系统验收</h2>
+      <div class="subtitle">ID: projectiles/projectile-lifecycle | Chapter 8 Phase B</div>
+
+      <button id="btn-run-all" class="primary" style="margin-top:4px;">▶ 执行全部测试</button>
+      <button id="btn-reset">↺ 重置所有状态</button>
+
+      <h3>单个测试用例</h3>
+      <div class="tc-row">
+        <span class="tc-label">TC1</span>
+        <button id="btn-tc1">ProjectileRegistry 注册表</button>
+      </div>
+      <div class="tc-row">
+        <span class="tc-label">TC2</span>
+        <button id="btn-tc2">Missile 状态机</button>
+      </div>
+      <div class="tc-row">
+        <span class="tc-label">TC3</span>
+        <button id="btn-tc3">InstantHit 即时命中</button>
+      </div>
+      <div class="tc-row">
+        <span class="tc-label">TC4</span>
+        <button id="btn-tc4">GravityBomb 弹道</button>
+      </div>
+      <div class="tc-row">
+        <span class="tc-label">TC5</span>
+        <button id="btn-tc5">BeamRenderableShape 枚举</button>
+      </div>
+      <div class="tc-row">
+        <span class="tc-label">TC6</span>
+        <button id="btn-tc6">LaserZap 持续时长</button>
+      </div>
+
+      <h3>期望结果 (B. Expected)</h3>
+      <div style="font-size:10px; line-height:1.5; color:#aab;">
+        <div style="color:#8f8; margin-top:2px;">TC1. 注册表完整性</div>
+        <div style="margin-bottom:4px;">
+          8 种类型全注册: Bullet, Missile,<br>
+          GravityBomb, InstantHit, LaserZap,<br>
+          Railgun, AreaBeam, NukeLaunch ✅
+        </div>
+        <div style="color:#8f8;">TC2. Missile 状态流转</div>
+        <div style="margin-bottom:4px;">
+          Freefall → Homing → Hitting<br>
+          → OutOfFuel → Explode ✅
+        </div>
+        <div style="color:#8f8;">TC3. InstantHit 零飞行</div>
+        <div style="margin-bottom:4px;">
+          tick 0 触发 warhead 并自毁 ✅
+        </div>
+        <div style="color:#8f8;">TC4. GravityBomb 弹道</div>
+        <div style="margin-bottom:4px;">
+          欧拉积分, Z ≤ target.Z 触地 ✅
+        </div>
+        <div style="color:#8f8;">TC5. BeamRenderableShape</div>
+        <div style="margin-bottom:4px;">
+          Cylindrical=0, Flat=1 ✅
+        </div>
+        <div style="color:#8f8;">TC6. LaserZap 持续</div>
+        <div>
+          beamAlpha 随 ticks 线性衰减<br>
+          超过 duration 后 beamAlpha=0 ✅
+        </div>
+      </div>
+
+      <div style="margin-top:auto; font-size:9px; color:#445;">
+        鼠标拖拽旋转 | 滚轮缩放<br>
+        alpha=-PI/2 | LH坐标系<br>
+        WORLD_SCALE=1/1024 HEIGHT_SCALE=1/512
+      </div>
+    </div>
+
+    <!-- Main Area — Viewport -->
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#4f4;"></div>源位置 (发射点)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#f44;"></div>目标位置</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff4;"></div>Missile 轨迹点</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#5f5;"></div>GravityBomb 起点</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#f84;"></div>GravityBomb 轨迹 (渐变)</div>
+        </div>
+        <div id="expected-overlay">
+          <h4>检验清单</h4>
+          <ul>
+            <li>TC1: 控制台显示 8 种类型均注册？</li>
+            <li>TC2: 场景中黄色轨迹从绿点指向红点？</li>
+            <li>TC3: 事件日志 T0 显示武器触发+自毁？</li>
+            <li>TC4: 轨迹呈抛物线（弧线），最终触地？</li>
+            <li>TC5: BeamRenderableShape 值为 (0,1)？</li>
+            <li>TC6: beamAlpha 随 ticks 从 255 衰减到 0？</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Info Bar -->
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span style="color:#667">整数轨迹计算 | 25 TPS 逻辑层 | 确定性</span>
+      </div>
+    </div>
+
+    <!-- Right Panel — Diagnostics -->
+    <div id="right-panel">
+      <h3>测试结果</h3>
+      <div class="tc-result" id="tc1-summary" style="background:rgba(13,17,23,0.5);">-</div>
+      <div class="tc-result" id="tc2-summary" style="background:rgba(13,17,23,0.5);">-</div>
+      <div class="tc-result" id="tc3-summary" style="background:rgba(13,17,23,0.5);">-</div>
+      <div class="tc-result" id="tc4-summary" style="background:rgba(13,17,23,0.5);">-</div>
+      <div class="tc-result" id="tc5-summary" style="background:rgba(13,17,23,0.5);">-</div>
+      <div class="tc-result" id="tc6-summary" style="background:rgba(13,17,23,0.5);">-</div>
+
+      <h3>C. 活跃抛射体诊断</h3>
+      <div id="diag-body" style="min-height:40px;">
+        <div style="color:#667; padding:4px;">无活跃抛射体。点击上方按钮创建。</div>
+      </div>
+
+      <h3>D. 事件日志</h3>
+      <div id="event-log" style="flex:1;">
+        <div id="event-log-body" style="color:#667; padding:4px;">等待测试执行...</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
