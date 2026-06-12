@@ -326,6 +326,7 @@ buildBoundaryVisualization()
 let lastWPosUnderCursor: { x: number; y: number; z: number } | null = null
 let referenceWPosForDrift: { x: number; y: number; z: number } | null = null
 let currentZoom = 1.0
+let _isRightDragging = false
 
 /** Pick the terrain plane (y=0) at the given screen position */
 function pickTerrainAt(screenX: number, screenY: number): Vector3 | null {
@@ -633,6 +634,7 @@ canvas.addEventListener('contextmenu', (event) => {
 canvas.addEventListener('pointerdown', (event) => {
   if (event.button === 2) {  // right mouse button
     event.preventDefault()
+    _isRightDragging = true
   }
 })
 
@@ -643,6 +645,9 @@ canvas.addEventListener('pointerdown', (event) => {
 canvas.addEventListener('mousemove', (event) => {
   updateCursorReadout(event)
   updateEdgeZones(event)
+  if (_isRightDragging) {
+    event.preventDefault()
+  }
 })
 
 canvas.addEventListener('wheel', (event) => {
@@ -654,6 +659,16 @@ canvas.addEventListener('wheel', (event) => {
   const zoomDelta = event.deltaY < 0 ? 1.15 : 1 / 1.15
   zoomAtCursor(currentZoom * zoomDelta, screenX, screenY)
 }, { passive: false })
+
+canvas.addEventListener('pointerup', (event) => {
+  if (event.button === 2) {
+    _isRightDragging = false
+  }
+})
+
+canvas.addEventListener('pointerleave', () => {
+  _isRightDragging = false
+})
 
 // ---------------------------------------------------------------------------
 // Info Bar
