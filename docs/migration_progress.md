@@ -1,8 +1,9 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 7 (Input, Camera, Audio & Effects) -- COMPLETE (13/13, ALL PHASES A-G COMPLETE)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%, ALL PHASES A-G COMPLETE)
+> **Current phase**: PLANNING (14 new chapters planned, 250+ files remaining)
+> **Overall status**: Chapters 2-7 COMPLETE: 162/162 (100%). Chapters 8-21 PLANNED (0/250+ migrated).
+> **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
 
@@ -18,8 +19,21 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Remaining chapters** | Chapter 8+ (weapons, missions, etc.) not yet planned |
-| **Overall project completion** | Chapters 2+3+4+5+6+7 complete (162/162 rendering+actors+map+UI+network+AI+input+camera+audio+effects). |
+| **Chapter 8 planned files (Weapons & Combat)** | ~55 (5 Phases A-E planned), 0/55 migrated |
+| **Chapter 9 planned files (Movement & Physics)** | ~30 (3 Phases A-C planned), 0/30 migrated |
+| **Chapter 10 planned files (Resource & Economy)** | ~15 (2 Phases A-B planned), 0/15 migrated |
+| **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 0/25 migrated |
+| **Chapter 12 planned files (Shroud & Fog of War)** | ~15 (1 Phase A planned), 0/15 migrated |
+| **Chapter 13 planned files (Support Powers)** | ~15 (1 Phase A planned), 0/15 migrated |
+| **Chapter 14 planned files (Activity Implementations)** | ~26 (4 Phases A-D planned), 0/26 migrated |
+| **Chapter 15 planned files (Order Generators)** | ~11 (1 Phase A planned), 0/11 migrated |
+| **Chapter 16 planned files (UI Widget Extensions)** | ~40 (3 Phases A-C planned), 0/40 migrated |
+| **Chapter 17 planned files (Replay & Save)** | ~6 (1 Phase A planned), 0/6 migrated |
+| **Chapter 18 planned files (Server System)** | ~9 (1 Phase A planned), 0/9 migrated |
+| **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
+| **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
+| **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
+| **Overall project completion** | Chapters 2-7 complete (162/162). Chapters 8-21 planned (0/~365 migrated). Total project: ~527 files estimated. |
 
 > **Note**: Chapters 2, 3, 4, 5, 6, and 7 are fully complete. Chapter 7 Phase A (Input Foundation): 3 files (IInputHandler, Keycode, InputHandler), 155 tests. Phase B (Camera): 2+1 files (Viewport, ViewportControllerWidget, HotkeyReference), 86 tests. Phase C (Selection): 1 file (SelectionUtils), 58 tests. Phase D (Audio): 2 files (Sound, SoundDevice), 133 tests. Phase E (Visual Effects): 2 files (SpriteEffect, FloatingSpriteEmitter), 92 tests. Phase F (Projectiles): 1 file (Bullet), 56 tests. Phase G (Sprite Traits): 2+3 files (RenderSprites, WithIdleOverlay, AnimationWithOffset, Animation extension, TraitsInterfaces extension), 120 tests. Chapter 7 now 100% complete.
 
@@ -1087,3 +1101,151 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 - `TraitsInterfaces.ts` extension (+10 lines): Added `DamageState` enum (`Undamaged`, `Light`, `Medium`, `Heavy`, `Critical`, `Dead`) and `IFacing` interface (used by `RenderSprites.MakeFacingFunc`).
 - Paradigm shift: C# `RenderSprites` Trait managing `AnimationWithOffset` list -> `RenderSprites` class with `AnimationWrapper` inner class. C# `IEnumerable<IRenderable>` yield return -> array collection. C# `FrozenDictionary<string, string>` FactionImages -> `Record<string, string>`. C# `PaletteReference` -> `IPaletteRef`. C# `WithIdleOverlay` independent Animation + ZOffset -> Billboard `AnimationWithOffset` with visibility condition.
 - Review: APPROVED (2 rounds). Round 1: 0 BLOCKER, 4 MAJOR, 5 MINOR -> NEEDS FIXES. Round 2: All 4 MAJOR fixed, 2 MINOR deferred (TODO comments for map editor features: `RenderPreview()` and `IActorPreviewInitModifier`). | **Commits**: `e108a5a`, `11e49a3`
+
+---
+
+## Chapters 8-21: Remaining Systems (PLANNING)
+
+> **Planning Document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
+> **Created**: 2026-06-12
+> **Status**: PLANNING PHASE (0/~365 files migrated, 14 chapters planned)
+> **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Planned | ~365 | 100% of remaining |
+| In Progress | 0 | 0% |
+| Completed | 0 | 0% |
+
+### Chapter 8: Weapons & Combat System (PLANNING, ~55 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Warheads Foundation | 15 | LOW-HIGH | Not started |
+| Phase B | Projectiles System | 7 | HIGH-MEDIUM | Not started (Bullet already in Ch7) |
+| Phase C | Weapon Configuration Data | 2 | MEDIUM | Not started |
+| Phase D | Core Combat Traits | ~17 | HIGH-LOW | Not started |
+| Phase E | Combat Support Traits | ~15 | LOW-MEDIUM | Not started |
+
+### Chapter 9: Unit Movement & Physics (PLANNING, ~30 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Core Movement Trait (Mobile) | 4 | HIGHEST-LOW | Not started |
+| Phase B | Movement-Related Traits | ~10 | LOW-MEDIUM | Not started |
+| Phase C | Movement Activities (partial Ch14 overlap) | ~5 | HIGH-MEDIUM | Not started |
+
+### Chapter 10: Resource & Economy System (PLANNING, ~15 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Resource Infrastructure | 6 | HIGH-LOW | Not started |
+| Phase B | Economy Support Traits | ~9 | LOW-MEDIUM | Not started |
+
+### Chapter 11: Production & Building System (PLANNING, ~25 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Production Queue System | 5 | HIGH-LOW | Not started |
+| Phase B | Building System | ~20 | MEDIUM-HIGH | Not started |
+
+### Chapter 12: Shroud & Fog of War (PLANNING, ~15 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Shroud System | ~15 | HIGH-LOW | Not started |
+
+### Chapter 13: Support Powers (PLANNING, ~15 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Support Power Infrastructure | ~15 | HIGH-LOW | Not started |
+
+### Chapter 14: Activity Implementations (PLANNING, ~26 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Movement Activities | 6 | HIGH-LOW | Not started |
+| Phase B | Combat Activities | 4 | HIGH-LOW | Not started |
+| Phase C | Aircraft Activities | ~7 | MEDIUM | Not started |
+| Phase D | Economic & Other Activities | ~9 | LOW-MEDIUM | Not started |
+
+### Chapter 15: Order Generators (PLANNING, ~11 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | All Order Generators | ~11 | HIGH-LOW | Not started |
+
+### Chapter 16: UI Widget Extensions (PLANNING, ~40 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Production & Management Widgets | 5 | HIGH-LOW | Not started |
+| Phase B | Map & Observer Widgets | ~6 | MEDIUM-HIGH | Not started |
+| Phase C | Common UI Controls | ~29 | LOW-MEDIUM | Not started |
+
+### Chapter 17: Replay & Save System (PLANNING, ~6 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | All Replay & Save Files | ~6 | HIGH-LOW | Not started |
+
+### Chapter 18: Server System (PLANNING, ~9 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | All Server Files | ~9 | HIGHEST-LOW | Not started |
+
+### Chapter 19: Mod-Specific Content (C&C + D2K) (PLANNING, ~83 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | C&C Mod Traits | ~70 | HIGH-LOW | Not started |
+| Phase B | D2K Mod Traits | ~13 | HIGH-LOW | Not started |
+
+### Chapter 20: Scripting System (PLANNING, ~7 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | All Scripting Files | ~7 | HIGH-MEDIUM | Not started |
+
+### Chapter 21: Editor & Utilities (PLANNING, ~15 files)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Map Editor | ~5 | MEDIUM-HIGH | Not started |
+| Phase B | Utility Commands | ~10 | LOW | Not started |
+
+### Key Architecture Decisions (14 ADRs)
+
+| ADR | Chapter | Decision |
+|-----|---------|----------|
+| ADR-8.1 | Ch8 | Warhead effects deferred to frame-end execution |
+| ADR-8.2 | Ch8 | Projectile collision via `scene.pickWithRay()` |
+| ADR-8.3 | Ch8 | `renderingGroupId=1` for combat overlays |
+| ADR-8.4 | Ch8 | BoundingBox/BoundingSphere HitShape mapping |
+| ADR-9.1 | Ch9 | TransformNode as position authority for Mobile |
+| ADR-9.2 | Ch9 | Pathfinding integration via Ch4 Phase G BlockedByActor |
+| ADR-10.1 | Ch10 | Billboard sprites for resource rendering |
+| ADR-11.1 | Ch11 | Ghost mesh for building placement preview |
+| ADR-12.1 | Ch12 | RTT fog-of-war overlay with visibility bitfield |
+| ADR-12.2 | Ch12 | FrozenActor rendering with reduced opacity |
+| ADR-15.1 | Ch15 | OrderGenerator as Command pattern |
+| ADR-18.1 | Ch18 | Node.js game server with `ws` WebSocket |
+| ADR-18.2 | Ch18 | Web Worker hosted server for peer-hosted games |
+| ADR-19.1 | Ch19 | Voxel build-time conversion to glTF |
+| ADR-19.2 | Ch19 | Mod-specific code lazy loading via dynamic `import()` |
+| ADR-20.1 | Ch20 | Dual scripting strategy (JSON triggers + optional fengari Lua) |
+| ADR-20.2 | Ch20 | Build-time Lua precompilation where possible |
+
+### Phase Strategy (Dependency Order)
+
+| Priority | Phase | Chapters | Est. Weeks (1 dev) | Depends On |
+|:---:|:---|:---|:---:|-----------|
+| **1** | Core Gameplay | 8, 9, 10 | ~25 | Ch2-7 |
+| **2** | Game Loop Complete | 11, 14, 12 | ~16 | Phase 1 |
+| **3** | Extended Features | 13, 15, 17 | ~7 | Phase 1-2 |
+| **4** | Polish & Mods | 16, 18, 19 | ~16 | Phase 1-3 |
+| **5** | Stretch Goals | 20, 21 | ~8 | Phase 1-4 |
+
+**Total estimated**: ~72 weeks (single developer) or ~20-24 weeks (3-4 developers with parallel tracks)
