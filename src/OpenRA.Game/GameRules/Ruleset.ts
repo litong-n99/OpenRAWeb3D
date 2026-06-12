@@ -215,6 +215,22 @@ export const SYSTEM_ACTOR_NAMES: readonly string[] = Object.values(SystemActors)
  * `rulesetLoaded` callback is invoked, receiving a reference to the
  * fully-populated Ruleset. Weapon projectiles and warheads also receive
  * callbacks if they implement IRulesetLoaded<WeaponInfo>.
+ *
+ * ## Deferred Features
+ *
+ * @todo TODO-6.C.3: `Ruleset.Load()` with map override merging —
+ *   accepts per-map YAML/JSON overrides (mapRules, mapWeapons, mapVoices,
+ *   etc.) that merge with defaults via mergeOrDefault(). OpenRA 对照:
+ *   Ruleset.Load(ModData, fileSystem, tileSet, mapRules, mapWeapons,
+ *   mapVoices, mapNotifications, mapMusic, mapModelSequences).
+ *   Deferred: map YAML loading from .oramap not yet migrated.
+ *
+ * @todo TODO-6.C.4: `DefinesUnsafeCustomRules()` + `AnyFlaggedTraits()` —
+ *   server lobby validation checks that flag maps with unsafe custom
+ *   rules (weapon/voice/notification overrides, or non-ILobbyCustomRulesIgnore
+ *   trait overrides). OpenRA 对照: Ruleset.DefinesUnsafeCustomRules(ModData,
+ *   IReadOnlyFileSystem, ...). Deferred: depends on ObjectCreator.FindType()
+ *   for trait type lookup and server lobby infrastructure (not yet migrated).
  */
 export class Ruleset {
   // ---------------------------------------------------------------------------
@@ -226,9 +242,23 @@ export class Ruleset {
    * OpenRA 对照: Ruleset.Actors (ActorInfoDictionary)
    *
    * Includes system actors (player, editorplayer, world, editorworld)
-   * auto-added if not present in the loaded rules. Abstract actors
-   * (prefixed with '^') are INCLUDED for inheritance lookups
-   * but are excluded from the spawnable list.
+   * auto-added if not present in the loaded rules.
+   *
+   * ## Migration Caveat: Abstract actor storage
+   *
+   * In OpenRA C#, `ActorInfoDictionary` filters out abstract actors
+   * (prefixed with '^') via `MergeOrDefault`'s `filterNode` parameter,
+   * so they never enter the `Actors` dictionary at all. Inheritance
+   * is resolved earlier by the MiniYAML preprocessor which merges
+   * parent traits directly into child YAML nodes.
+   *
+   * In our TypeScript migration, we take a different approach:
+   * abstract actors ARE stored in this dictionary because
+   * `ActorConfig.fromJSON()` resolves inheritance at construction
+   * time via the `allConfigs` parameter — it needs ALL actor JSONs
+   * (including abstract ones) available during the second pass.
+   * Abstract actors are distinguished by `ActorConfig.isAbstract`
+   * and filtered from {@link spawnableActors}.
    */
   readonly actors: ReadonlyMap<string, ActorConfig>
 
@@ -490,6 +520,15 @@ export class Ruleset {
    * @param terrainInfo — terrain information (null for default ruleset)
    * @returns fully constructed Ruleset
    * @throws Error if any required JSON file cannot be parsed
+   *
+   * @todo TODO-6.C.3: Implement map override merging (OpenRA's
+   *   Ruleset.Load(ModData, fileSystem, tileSet, mapRules, mapWeapons,
+   *   mapVoices, mapNotifications, mapMusic, mapModelSequences)).
+   *   This variant accepts per-map YAML/JSON overrides that merge
+   *   with the default rules via mergeOrDefault(), matching the C#
+   *   pattern where child map overrides take priority over parent
+   *   mod defaults. Deferred because map YAML loading infrastructure
+   *   (mapRules parsing from .oramap) is not yet migrated.
    */
   static async loadAsync(
     manifest: Manifest,
@@ -594,22 +633,6 @@ export class Ruleset {
   // Private: JSON file loading helpers
   // =========================================================================
 
-  // TODO-6.C.3: Implement DefinesUnsafeCustomRules() — checks if a map
-  //   defines unsafe custom rules (weapon/voice/notification overrides,
-  //   or non-ILobbyCustomRulesIgnore trait overrides). Used by server
-  //   lobby validation to flag potentially unsafe custom maps.
-  //   OpenRA 对照: Ruleset.DefinesUnsafeCustomRules(ModData, IReadOnlyFileSystem, ...)
-  //
-  // TODO-6.C.4: Implement AnyFlaggedTraits() — iterates actor trait
-  //   overrides and checks whether any trait type does NOT implement
-  //   ILobbyCustomRulesIgnore. Returns true if unsafe traits found.
-  //   OpenRA 对照: Ruleset.AnyFlaggedTraits(ModData, IEnumerable<MiniYamlNode>)
-  //
-  // Both are deferred because they depend on:
-  // - ObjectCreator.FindType() for trait type lookup
-  // - ILobbyCustomRulesIgnore interface (defined in TraitsInterfaces.ts)
-  // - Server lobby infrastructure (not yet migrated)
-
   /**
    * Load actor configurations from all rules JSON files.
    *
@@ -648,14 +671,19 @@ export class Ruleset {
       const entries = Array.isArray(parsed) ? parsed : [parsed]
       for (const entry of entries) {
         if (entry && typeof entry === 'object' && typeof (entry as ActorJSON).name === 'string') {
-          const aJson = entry as ActorJSON
-          const name = aJson.name.toLowerCase()
+          const rawJson = entry as ActorJSON
+          const name = rawJson.name.toLowerCase()
 
           // Normalize inherits references to lowercase for case-insensitive
           // lookup in allConfigs. OpenRA treats actor names as
           // case-insensitive (YAML keys are lowercased).
-          if (aJson.inherits && Array.isArray(aJson.inherits)) {
-            aJson.inherits = aJson.inherits.map((p: string) => p.toLowerCase())
+          //
+          // NOTE: We create a shallow copy to avoid mutating the parsed
+          // JSON input. The original parsed object from JSON.parse must
+          // remain unmodified (MINOR-1 fix).
+          const aJson: ActorJSON = {
+            ...rawJson,
+            inherits: rawJson.inherits?.map((p: string) => p.toLowerCase()),
           }
 
           if (allJSONs.has(name)) {
