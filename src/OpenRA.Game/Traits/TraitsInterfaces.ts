@@ -1663,8 +1663,106 @@ export interface IBot {
 }
 
 // ---------------------------------------------------------------------------
-// Warhead
+// AI BotModule interfaces (Phase D)
 // ---------------------------------------------------------------------------
+
+/**
+ * Called when the bot is enabled (receives the IBot reference for order queuing).
+ *
+ * OpenRA 对照: IBotEnabled
+ */
+export interface IBotEnabled {
+  botEnabled(bot: IBot): void
+}
+
+/**
+ * Called each logic tick on enabled bot modules.
+ *
+ * OpenRA 对照: IBotTick
+ */
+export interface IBotTick {
+  botTick(bot: IBot): void
+}
+
+/**
+ * Called when an owned actor is damaged — allows AI to respond to attacks.
+ *
+ * OpenRA 对照: IBotRespondToAttack
+ */
+export interface IBotRespondToAttack {
+  respondToAttack(bot: IBot, self: IGameActor, e: AttackInfo): void
+}
+
+/**
+ * Called when the bot's base or defense center changes.
+ *
+ * OpenRA 对照: IBotPositionsUpdated
+ */
+export interface IBotPositionsUpdated {
+  updatedBaseCenter(newLocation: CPos): void
+  updatedDefenseCenter(newLocation: CPos): void
+}
+
+/**
+ * Called when the set of idle units around the base changes.
+ *
+ * OpenRA 对照: IBotNotifyIdleBaseUnits
+ */
+export interface IBotNotifyIdleBaseUnits {
+  updatedIdleBaseUnits(idleUnits: IGameActor[]): void
+}
+
+/**
+ * Allows bot modules to request production of specific unit types.
+ *
+ * OpenRA 对照: IBotRequestUnitProduction
+ */
+export interface IBotRequestUnitProduction {
+  requestUnitProduction(bot: IBot, requestedActor: string): void
+  requestedProductionCount(bot: IBot, requestedActor: string): number
+}
+
+/**
+ * Allows bot modules to pause unit production (e.g., when refinery count is low).
+ *
+ * OpenRA 对照: IBotRequestPauseUnitProduction
+ */
+export interface IBotRequestPauseUnitProduction {
+  readonly pauseUnitProduction: boolean
+}
+
+/**
+ * Allows bot modules to trigger base expansion.
+ *
+ * OpenRA 对照: IBotBaseExpansion
+ */
+export interface IBotBaseExpansion {
+  updateExpansionParams(bot: IBot, fallback: boolean, undeployEvenNoBase: boolean, mustUndeploy: IGameActor | null): void
+}
+
+/**
+ * Allows bot modules to suggest refinery placement locations.
+ *
+ * OpenRA 对照: IBotSuggestRefineryProduction
+ */
+export interface IBotSuggestRefineryProduction {
+  requestLocation(refineryLocation: CPos, conyardLocation: CPos, expandActor: IGameActor): void
+}
+
+/**
+ * ConditionalTraitInfo — trait info that can be enabled/disabled by conditions.
+ *
+ * OpenRA 对照: ConditionalTraitInfo abstract class
+ *
+ * In OpenRA, ConditionalTraitInfo extends TraitInfo and adds RequiresCondition.
+ * In TypeScript, this is a marker interface.
+ */
+export interface ConditionalTraitInfo extends ITraitInfo {
+  readonly requiresCondition?: string
+}
+
+// NOTE: ConditionalTrait class is defined after Component below,
+// because it extends Component.
 
 /**
  * Warhead trait — applies damage effects on impact.
@@ -2062,6 +2160,76 @@ export abstract class Component {
   dispose(): void {
     this._disposed = true
     this._actor = null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ConditionalTrait — abstract base for condition-enabled traits
+// ---------------------------------------------------------------------------
+
+/**
+ * ConditionalTrait — abstract base for traits that can be enabled/disabled.
+ *
+ * OpenRA 对照: ConditionalTrait<Info> abstract class
+ *
+ * Subclasses must:
+ * - Check isTraitDisabled before performing any actions
+ * - Override traitEnabled/traitDisabled for enable/disable lifecycle
+ * - Handle the requiresCondition expression
+ *
+ * NOTE: This extends Component so it integrates with the actor-trait system.
+ */
+export abstract class ConditionalTrait<TInfo extends ConditionalTraitInfo> extends Component {
+  /** User-facing configuration for this trait. */
+  readonly info: TInfo
+
+  /** Whether this trait is currently disabled by conditions. */
+  get isTraitDisabled(): boolean {
+    return !this._enabled
+  }
+
+  constructor(info: TInfo) {
+    super()
+    this.info = info
+  }
+
+  /**
+   * Check if the condition expression is currently satisfied.
+   *
+   * OpenRA 对照: TraitEnabled check (condition system evaluation)
+   *
+   * Simple condition check: if no condition expression, always enabled.
+   * For complex expressions (&&, ||, !, parentheses), use the full
+   * `evaluateConditionExpression` from Actor.ts.
+   *
+   * @param hasCondition — function to check if a named condition is active
+   * @returns true if conditions allow this trait to be enabled
+   */
+  protected checkConditions(hasCondition: (condition: string) => boolean): boolean {
+    if (!this.info.requiresCondition) return true
+    const expr = this.info.requiresCondition.trim()
+    if (expr.startsWith('!')) {
+      return !hasCondition(expr.substring(1).trim())
+    }
+    return hasCondition(expr)
+  }
+
+  /**
+   * Called when the trait is enabled (conditions satisfied).
+   *
+   * OpenRA 对照: TraitEnabled(Actor)
+   */
+  protected traitEnabled(_actor: IGameActor): void {
+    this._enabled = true
+  }
+
+  /**
+   * Called when the trait is disabled (conditions not satisfied).
+   *
+   * OpenRA 对照: TraitDisabled(Actor)
+   */
+  protected traitDisabled(_actor: IGameActor): void {
+    this._enabled = false
   }
 }
 
