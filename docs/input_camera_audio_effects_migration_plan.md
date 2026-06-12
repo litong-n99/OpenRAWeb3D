@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 7 -- Input, Camera, Audio & Effects
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 8 (lines 1056-1264)
-> **Chapter Status**: Chapter 7 -- IN PROGRESS (10/13 migrated, Phases A-E COMPLETE)
+> **Chapter Status**: Chapter 7 -- IN PROGRESS (11/13 migrated, Phases A-F COMPLETE)
 > **Planning Date**: 2026-06-12
-> **Last Update**: 2026-06-12 (Phase E COMPLETE)
+> **Last Update**: 2026-06-12 (Phase F COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -169,21 +169,21 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 | Metric | Count |
 |--------|-------|
-| **Total files in plan** | 16 (3 already completed in prior chapters + 8 completed in Phases A-E + 5 pending migration) |
+| **Total files in plan** | 16 (3 already completed in prior chapters + 11 completed in Phases A-F + 2 pending migration) |
 | **Phase A (Input foundation)** | 3 files (COMPLETE) |
 | **Phase B (Camera system)** | 2 files (COMPLETE) |
 | **Phase C (Selection system)** | 1 file (COMPLETE) |
 | **Phase D (Audio system)** | 2 files (COMPLETE) |
 | **Phase E (Visual effects)** | 2 files (COMPLETE) |
-| **Phase F (Projectiles)** | 1 file (all pending) |
+| **Phase F (Projectiles)** | 1 file (COMPLETE) |
 | **Phase G (Sprite rendering traits)** | 2 files (all pending) |
-| **HIGH complexity** | 2 files (Viewport, Bullet) |
+| **HIGH complexity** | 2 files (Viewport ✅, Bullet ✅) |
 | **MEDIUM complexity** | 9 files |
 | **LOW complexity** | 2 files |
-| **Total OpenRA C# source lines (new, pending)** | ~1,940 |
+| **Total OpenRA C# source lines (new, pending)** | ~426 (Phase G only) |
 | **Total OpenRA C# source lines (including already done)** | ~4,600 |
-| **Estimated TypeScript lines (new, pending)** | ~4,500-5,800 (including test files) |
-| **Actual TypeScript lines (Phases A-E completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests | Phase C: 723 (SelectionUtils) + 58 tests | Phase D: 1,652 (Sound 1,383 + SoundDevice 269) + 133 tests | Phase E: SpriteEffect + FloatingSpriteEmitter + 92 tests |
+| **Estimated TypeScript lines (new, pending)** | ~1,300-1,800 (including test files, Phase G only) |
+| **Actual TypeScript lines (Phases A-F completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests | Phase C: 723 (SelectionUtils) + 58 tests | Phase D: 1,652 (Sound 1,383 + SoundDevice 269) + 133 tests | Phase E: SpriteEffect + FloatingSpriteEmitter + 92 tests | Phase F: Bullet (1,463) + 56 tests |
 
 ---
 
@@ -617,9 +617,14 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 ### 3.6 Phase F: Projectiles
 
-**Status**: 📋 待迁移 (0/1)
+**Status**: ✅ 已完成 (1/1)
 **Complexity**: HIGH
-**Blocked by**: Phase E (Effects infrastructure for trail/impact effects), `CoordinateTransformer.ts` (COMPLETE Ch4 Phase I), `Animation.ts` (COMPLETE Ch2)
+**Completed**: 2026-06-12
+**Commits**: `bb5358c` (initial), `1387d82` (review fixes)
+**Review**: APPROVED (R2)
+**Implementation**: Bullet.ts (1,463行)
+**Tests**: 1 test file, 56 tests
+**Blocked by**: Phase E (Effects infrastructure for trail/impact effects) ✅, `CoordinateTransformer.ts` (COMPLETE Ch4 Phase I), `Animation.ts` (COMPLETE Ch2)
 **Blocks**: Nothing (leaf phase)
 
 **Description**: Phase F migrates the `Bullet` projectile class -- the most commonly used projectile type in OpenRA. The migration separates the visual representation (TrailMesh for contrails, Sprite for the projectile body) from the logic layer (trajectory update, collision detection). Trajectory computation (gravity-affected arc or straight line) stays in the game logic layer; visual effects use Babylon.js GPU-accelerated `TrailMesh` and ray-based collision detection replaces 2D grid queries.
@@ -633,7 +638,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.6.1 Bullet Projectile
 
-- [ ] **TODO-7.F.1** `src/OpenRA.Mods.Common/Projectiles/Bullet.ts` (397 lines C#) -- Bullet projectile:
+- [x] **TODO-7.F.1** `src/OpenRA.Mods.Common/Projectiles/Bullet.ts` (397 lines C#) ✅ 已完成 (1,463行 TS) -- Bullet projectile:
   - `IProjectile` interface (extends `IEffect`): `tick(world: World): void`, `render(worldRenderer: WorldRenderer): void`, `isDestroyed: boolean`
   - `Bullet` class implementing `IProjectile`:
     - Constructor parameters:
@@ -680,7 +685,17 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 - Projectile pooling recycles instances without visual artifacts or memory leaks
 - Performance: 200 simultaneous bullets maintain 60fps (GPU-accelerated trails)
 
-**Estimated Effort**: ~800 lines implementation + ~500 lines test (3 developer-days)
+**Acceptance Criteria** (all met):
+- ✅ Straight-line bullet travels from source to target at correct speed
+- ✅ Arcing bullet follows parabolic trajectory with correct gravity effect
+- ✅ Collision detection correctly identifies terrain hits along the projectile's path
+- ✅ `TrailMesh` generates smooth trailing geometry that follows the projectile
+- ✅ `ShadowGenerator` renders a correct ground shadow at the projectile's projected position
+- ✅ On impact, the projectile triggers an effect and marks itself as destroyed
+- ✅ Projectile pooling recycles instances without visual artifacts or memory leaks
+- ✅ Performance: 200 simultaneous bullets maintain 60fps (GPU-accelerated trails)
+
+**Actual Effort**: 1,463 lines implementation + 56 tests. Completed 2026-06-12. Review: APPROVED (R2). Commits `bb5358c`, `1387d82`.
 
 ---
 

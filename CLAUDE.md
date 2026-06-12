@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (10/13, Phases A-E COMPLETE)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 10/13 (~77%)
+**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (11/13, Phases A-F COMPLETE)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 11/13 (~85%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -42,13 +42,14 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Ruleset Container (2 files) | COMPLETE (Phase C, ~1,030 impl + ~1,359 test lines, ~80 tests) |
 | AI BotModule Core (10 files) | COMPLETE (Phase D, ~5,769+390 impl lines, 2 review rounds) |
 | AI BotModule Extended (11 files) | COMPLETE (Phase E, ~4,463 impl + ~1,515 test lines, 119 tests, 2 rounds) |
-| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (10/13, ~77%, Phases A-E COMPLETE)** |
+| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (11/13, ~85%, Phases A-F COMPLETE)** |
 | Input Foundation (3 files) | COMPLETE (IInputHandler 176, Keycode 544, InputHandler 617 lines, 155 tests) |
 | Camera System (2+1 files) | COMPLETE (Viewport 1,023, ViewportControllerWidget 868, HotkeyReference 360 lines, 86 tests) |
 | Selection System (1 file) | COMPLETE (SelectionUtils 723 lines, 58 tests, 3 review rounds) |
 | Audio System (2 files) | COMPLETE (Sound 1,383, SoundDevice 269 lines, 133 tests) |
 | Visual Effects (2 files) | COMPLETE (SpriteEffect + FloatingSpriteEmitter, 92 tests, 2 rounds) |
-| Projectiles, Sprite Traits (3 files) | Pending (Phases F-G) |
+| Projectiles (1 file) | COMPLETE (Bullet 1,463 lines, 56 tests, 2 review rounds) |
+| Sprite Traits (2 files) | Pending (Phase G) |
 | Remaining subsystems | Chapters 8+ (weapons, missions, etc.) not yet planned
 
 ## Directory Layout
@@ -147,9 +148,11 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
   OpenRA.Game/ModData.ts      ← migrated (326 lines, 43 tests) -- Chapter 5 Phase C: MOD runtime coordinator
   OpenRA.Mods.Cnc/            ← Chapter 5 Phase B: C&C package formats (COMPLETE)
     FileSystem/               ← Chapter 5 Phase B: PackageEntry (332 lines, 30 tests), MixFile (350 lines, 22 tests), BigFile (268 lines, 19 tests), MegFile (282 lines, 17 tests), Pak (240 lines, 18 tests)
-  OpenRA.Mods.Common/         ← Chapter 4: Pathfinding + movement traits / Ch5: World interaction / Ch7: Effects
+  OpenRA.Mods.Common/         ← Chapter 4: Pathfinding + movement traits / Ch5: World interaction / Ch7: Effects + Projectiles
     Effects/                ← Ch7 Phase E: Visual Effects (COMPLETE)
       SpriteEffect.ts       ← migrated -- Ch7 Phase E (86 lines C# -> TS, billboard particle effects)
+    Projectiles/            ← Ch7 Phase F: Projectiles (COMPLETE)
+      Bullet.ts             ← migrated (1,463 lines, 56 tests) -- Ch7 Phase F
     Pathfinder/             ← Phase G: Pathfinding System (10 files)
       IPathGraph.ts         ← migrated (216 lines) -- Phase G
       CellInfo.ts           ← migrated (166 lines) -- Phase G
@@ -409,7 +412,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
 | [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 100% complete) |
 | [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (29 files, 5 phases A-E, 100% complete) |
-| [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md) | Chapter 7 input, camera, audio & effects migration plan (13 files, 7 phases A-G, Phase A COMPLETE) |
+| [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md) | Chapter 7 input, camera, audio & effects migration plan (13 files, 7 phases A-G, Phases A-F COMPLETE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
