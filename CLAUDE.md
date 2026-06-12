@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (8/13, Phases A-D COMPLETE)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 8/13 (~62%)
+**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (10/13, Phases A-E COMPLETE)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 10/13 (~77%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -42,12 +42,13 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Ruleset Container (2 files) | COMPLETE (Phase C, ~1,030 impl + ~1,359 test lines, ~80 tests) |
 | AI BotModule Core (10 files) | COMPLETE (Phase D, ~5,769+390 impl lines, 2 review rounds) |
 | AI BotModule Extended (11 files) | COMPLETE (Phase E, ~4,463 impl + ~1,515 test lines, 119 tests, 2 rounds) |
-| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (8/13, ~62%, Phases A-D COMPLETE)** |
+| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (10/13, ~77%, Phases A-E COMPLETE)** |
 | Input Foundation (3 files) | COMPLETE (IInputHandler 176, Keycode 544, InputHandler 617 lines, 155 tests) |
 | Camera System (2+1 files) | COMPLETE (Viewport 1,023, ViewportControllerWidget 868, HotkeyReference 360 lines, 86 tests) |
 | Selection System (1 file) | COMPLETE (SelectionUtils 723 lines, 58 tests, 3 review rounds) |
 | Audio System (2 files) | COMPLETE (Sound 1,383, SoundDevice 269 lines, 133 tests) |
-| Effects, Projectiles, Sprite Traits (5 files) | Pending (Phases E-G) |
+| Visual Effects (2 files) | COMPLETE (SpriteEffect + FloatingSpriteEmitter, 92 tests, 2 rounds) |
+| Projectiles, Sprite Traits (3 files) | Pending (Phases F-G) |
 | Remaining subsystems | Chapters 8+ (weapons, missions, etc.) not yet planned
 
 ## Directory Layout
@@ -146,7 +147,9 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
   OpenRA.Game/ModData.ts      ← migrated (326 lines, 43 tests) -- Chapter 5 Phase C: MOD runtime coordinator
   OpenRA.Mods.Cnc/            ← Chapter 5 Phase B: C&C package formats (COMPLETE)
     FileSystem/               ← Chapter 5 Phase B: PackageEntry (332 lines, 30 tests), MixFile (350 lines, 22 tests), BigFile (268 lines, 19 tests), MegFile (282 lines, 17 tests), Pak (240 lines, 18 tests)
-  OpenRA.Mods.Common/         ← Chapter 4: Pathfinding + movement traits / Chapter 5: World interaction
+  OpenRA.Mods.Common/         ← Chapter 4: Pathfinding + movement traits / Ch5: World interaction / Ch7: Effects
+    Effects/                ← Ch7 Phase E: Visual Effects (COMPLETE)
+      SpriteEffect.ts       ← migrated -- Ch7 Phase E (86 lines C# -> TS, billboard particle effects)
     Pathfinder/             ← Phase G: Pathfinding System (10 files)
       IPathGraph.ts         ← migrated (216 lines) -- Phase G
       CellInfo.ts           ← migrated (166 lines) -- Phase G
@@ -158,11 +161,13 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       MapPathGraph.ts       ← migrated (165 lines) -- Phase G
       GridPathGraph.ts      ← migrated (137 lines) -- Phase G
       HierarchicalPathFinder.ts  ← migrated (1524 lines) -- Phase G
-    Traits/                 ← Phase G: Movement traits (3 files)
+    Traits/                 ← Phase G: Movement traits + Ch7 Phase E: Render traits (COMPLETE)
       BlockedByActor.ts     ← migrated (39 lines) -- Phase G
       ICustomMovementLayer.ts  ← migrated (69 lines) -- Phase G
       World/
         Locomotor.ts        ← migrated (261 lines) -- Phase G
+      Render/
+        FloatingSpriteEmitter.ts  ← migrated -- Ch7 Phase E (126 lines C# -> TS, GPU particle emitter)
     Widgets/                ← Chapter 5 Phase E: World Interaction Bridge + Chapter 7 Phase B/C
       WorldInteractionControllerWidget.ts  ← migrated (1157 lines, 55 tests) -- Phase E
       ViewportControllerWidget.ts  ← migrated (868 lines, 573 test lines) -- Ch7 Phase B

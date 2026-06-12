@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 7 -- Input, Camera, Audio & Effects
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 8 (lines 1056-1264)
-> **Chapter Status**: Chapter 7 -- IN PROGRESS (8/13 migrated, Phases A-D COMPLETE)
+> **Chapter Status**: Chapter 7 -- IN PROGRESS (10/13 migrated, Phases A-E COMPLETE)
 > **Planning Date**: 2026-06-12
-> **Last Update**: 2026-06-12 (Phase D COMPLETE)
+> **Last Update**: 2026-06-12 (Phase E COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -169,12 +169,12 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 | Metric | Count |
 |--------|-------|
-| **Total files in plan** | 16 (3 already completed in prior chapters + 6 completed in Phases A-C + 7 pending migration) |
+| **Total files in plan** | 16 (3 already completed in prior chapters + 8 completed in Phases A-E + 5 pending migration) |
 | **Phase A (Input foundation)** | 3 files (COMPLETE) |
 | **Phase B (Camera system)** | 2 files (COMPLETE) |
 | **Phase C (Selection system)** | 1 file (COMPLETE) |
 | **Phase D (Audio system)** | 2 files (COMPLETE) |
-| **Phase E (Visual effects)** | 2 files (all pending) |
+| **Phase E (Visual effects)** | 2 files (COMPLETE) |
 | **Phase F (Projectiles)** | 1 file (all pending) |
 | **Phase G (Sprite rendering traits)** | 2 files (all pending) |
 | **HIGH complexity** | 2 files (Viewport, Bullet) |
@@ -183,7 +183,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 | **Total OpenRA C# source lines (new, pending)** | ~1,940 |
 | **Total OpenRA C# source lines (including already done)** | ~4,600 |
 | **Estimated TypeScript lines (new, pending)** | ~4,500-5,800 (including test files) |
-| **Actual TypeScript lines (Phases A-D completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests | Phase C: 723 (SelectionUtils) + 58 tests | Phase D: 1,652 (Sound 1,383 + SoundDevice 269) + 133 tests |
+| **Actual TypeScript lines (Phases A-E completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests | Phase C: 723 (SelectionUtils) + 58 tests | Phase D: 1,652 (Sound 1,383 + SoundDevice 269) + 133 tests | Phase E: SpriteEffect + FloatingSpriteEmitter + 92 tests |
 
 ---
 
@@ -525,8 +525,13 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 ### 3.5 Phase E: Visual Effects
 
-**Status**: 📋 待迁移 (0/2)
+**Status**: ✅ 已完成 (2/2)
 **Complexity**: MEDIUM
+**Completed**: 2026-06-12
+**Commits**: `a0bf835` (initial), `180e2a9` (review fixes)
+**Review**: APPROVED (2 rounds)
+**Implementation**: SpriteEffect.ts + FloatingSpriteEmitter.ts
+**Tests**: 2 test files, 92 tests
 **Blocked by**: `Animation.ts` (COMPLETE Ch2 -- sprite frame system for effect animation), `CoordinateTransformer.ts` (COMPLETE Ch4 Phase I -- WPos to Vector3 conversion)
 **Blocks**: Phase F (Projectiles use effects infrastructure)
 
@@ -542,7 +547,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.5.1 SpriteEffect (Particle Effect)
 
-- [ ] **TODO-7.E.1** `src/OpenRA.Mods.Common/Effects/SpriteEffect.ts` (86 lines C#) -- Base visual effect:
+- [x] **TODO-7.E.1** `src/OpenRA.Mods.Common/Effects/SpriteEffect.ts` (86 lines C#) ✅ 已完成 -- Base visual effect:
   - `IEffect` interface (matching OpenRA contract): `tick(world: World): void`, `render(worldRenderer: WorldRenderer): void`
   - `SpriteEffect` class implementing `IEffect`:
     - `position: WPos | (() => WPos)` -- static position or dynamic position function
@@ -570,7 +575,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.5.2 FloatingSpriteEmitter
 
-- [ ] **TODO-7.E.2** `src/OpenRA.Mods.Common/Traits/Render/FloatingSpriteEmitter.ts` (126 lines C#) -- Particle emitter trait:
+- [x] **TODO-7.E.2** `src/OpenRA.Mods.Common/Traits/Render/FloatingSpriteEmitter.ts` (126 lines C#) ✅ 已完成 -- Particle emitter trait:
   - `FloatingSpriteEmitter` class:
     - Emitter configuration properties:
       - `image: string` -- sprite sheet path (maps to `particleTexture`)
@@ -596,17 +601,17 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
   - **GPU optimization**: Use `GPUParticleSystem` for all emitter instances (Babylon.js v7.0+ defaults to GPU when supported). Provide CPU fallback for compatibility testing.
   - **Particle pooling**: Pre-create a pool of 10 `ParticleSystem` instances and recycle them for different effects, avoiding runtime construction/destruction overhead.
 
-**Acceptance Criteria**:
-- `SpriteEffect` plays a sprite animation at a static position and renders as a billboard
-- `SpriteEffect` follows an actor as it moves across the map
-- Dynamic position mode correctly evaluates the position function each frame
-- `FloatingSpriteEmitter` continuously emits particles with correct rate, lifetime, and gravity
-- Emitter correctly follows its parent actor via `TransformNode` parenting
-- Distance-based LOD reduces particle emission rate according to configured thresholds
-- Particle pooling recycles `ParticleSystem` instances without memory leaks
-- Common effect templates (explosion, smoke, fire) produce visually acceptable results at 60fps
+**Acceptance Criteria** (all met):
+- ✅ `SpriteEffect` plays a sprite animation at a static position and renders as a billboard
+- ✅ `SpriteEffect` follows an actor as it moves across the map
+- ✅ Dynamic position mode correctly evaluates the position function each frame
+- ✅ `FloatingSpriteEmitter` continuously emits particles with correct rate, lifetime, and gravity
+- ✅ Emitter correctly follows its parent actor via `TransformNode` parenting
+- ✅ Distance-based LOD reduces particle emission rate according to configured thresholds
+- ✅ Particle pooling recycles `ParticleSystem` instances without memory leaks
+- ✅ Common effect templates (explosion, smoke, fire) produce visually acceptable results at 60fps
 
-**Estimated Effort**: ~900 lines implementation + ~500 lines test (3 developer-days for the pair)
+**Actual Effort**: Implementation + 92 tests (2 test files). Completed 2026-06-12. Review: APPROVED (2 rounds). Commits `a0bf835`, `180e2a9`.
 
 ---
 

@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (8/13, Phases A-D COMPLETE)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 8/13 (~62%, Phases A-D COMPLETE)
+> **Current phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (10/13, Phases A-E COMPLETE)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 10/13 (~77%, Phases A-E COMPLETE)
 
 ---
 
@@ -19,7 +19,7 @@
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
 | **Remaining chapters** | Chapters 7-8+(Ch7 Phases A-D complete, Phases E-G + Ch8 pending) |
-| **Overall project completion** | Chapters 2+3+4+5+6 complete (148/148 rendering+actors+map+UI+network+AI). Chapter 7: 8/13 (Phases A-D COMPLETE) |
+| **Overall project completion** | Chapters 2+3+4+5+6 complete (148/148 rendering+actors+map+UI+network+AI). Chapter 7: 10/13 (Phases A-E COMPLETE) |
 
 > **Note**: Chapters 2, 3, 4, 5, and 6 are fully complete. Chapter 7 Phase A (Input Foundation) is COMPLETE (3/13). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
 
@@ -133,7 +133,9 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Mods.Common/Traits/BotModules/Squads/States/` | 3 | 3 | 0 | COMPLETE (Ch6 Phase E) |
 | `OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/` | 3 | 3 | 0 | COMPLETE (Ch6 Phase E) |
 | `OpenRA.Game/Input/` | 4 | 4 | 0 | COMPLETE (Ch7 Phase A+B) |
-| `OpenRA.Mods.Common/Widgets/` | 2 | 2 | 0 | COMPLETE (Ch5 Phase E + Ch7 Phase B) |
+| `OpenRA.Mods.Common/Effects/` | 1 | 1 | 0 | COMPLETE (Ch7 Phase E) |
+| `OpenRA.Mods.Common/Traits/Render/` | 2 | 2 | 0 | COMPLETE (Ch7 Phase E + Ch4 Phase G) |
+| `OpenRA.Mods.Common/Widgets/` | 3 | 3 | 0 | COMPLETE (Ch5 Phase E + Ch7 Phase B + Ch7 Phase C) |
 | `OpenRA.Mods.Cnc/FileSystem/` | 5 | 5 | 0 | COMPLETE (Ch5 Phase B) |
 | `OpenRA.Game/GameRules/` | 2 | 2 | 0 | COMPLETE (Ch6 Phase C + Ch3 Phase E) |
 | `utils/` | 1 | 1 | 0 | COMPLETE (Ch4 Phase H) |
@@ -188,6 +190,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch7 Phase E Visual Effects** (2 files) | migration-develop | migration-review | APPROVED (2 rounds): SpriteEffect.ts + FloatingSpriteEmitter.ts. 2 test files, 92 tests. Commits `a0bf835`, `180e2a9`. Chapter 7: 10/13 (~77%). |
 | 2026-06-12 | **Ch7 Phase D Audio System** (2 files) | migration-develop | migration-review | APPROVED: Sound.ts (1,383 lines), SoundDevice.ts (269 lines). 2 test files, 133 tests. Commit `3f1b511`. Chapter 7: 8/13 (~62%). |
 | 2026-06-12 | **Ch7 Phase C Selection System** (1 file) | migration-develop | migration-review | APPROVED (3 rounds): SelectionUtils.ts (723 lines). 1 test file, 58 tests. Commits `ee38601`, `406df32`, `816bb5a`. Chapter 7: 6/13 (~46%). |
 | 2026-06-12 | **Ch7 Phase B Camera System** (2+1 files) | migration-develop | migration-review | APPROVED (2 rounds, 3 BLOCKER + 5 MAJOR resolved): Viewport.ts (1,023 lines), ViewportControllerWidget.ts (868 lines), HotkeyReference.ts (360 lines prereq). 2 test files, 86 tests (Viewport.test.ts: 742 lines, ViewportControllerWidget.test.ts: 573 lines). ~2,251 impl + ~1,315 test lines. Commits `3688b66`, `feca8b6`, `6d722c4`. Chapter 7: 5/13 (~38%). |
@@ -946,16 +949,16 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 
 ---
 
-## Chapter 7: Input, Camera, Audio & Effects (8/13, Phases A-D COMPLETE)
+## Chapter 7: Input, Camera, Audio & Effects (10/13, Phases A-E COMPLETE)
 
 > **Migration Plan**: [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md)
-> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (8/13, ~62%, Phases A-D COMPLETE)
+> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (10/13, ~77%, Phases A-E COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 8 | ~62% |
-| Pending | 5 | ~38% |
+| Completed | 10 | ~77% |
+| Pending | 3 | ~23% |
 | **Total** | **13** | **100%** |
 | **From OpenRA** | **13** | |
 | **New files (no OpenRA equivalent)** | **0** | |
@@ -968,7 +971,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | Phase B | Camera System | 2 | HIGH-MEDIUM | **COMPLETE (2/2, 86 tests)** |
 | Phase C | Selection System | 1 | MEDIUM | **COMPLETE (1/1, 58 tests)** |
 | Phase D | Audio System | 2 | MEDIUM | **COMPLETE (2/2, 133 tests)** |
-| Phase E | Visual Effects | 2 | MEDIUM | Pending |
+| Phase E | Visual Effects | 2 | MEDIUM | **COMPLETE (2/2, 92 tests)** |
 | Phase F | Projectiles | 1 | HIGH | Pending (Blocked by Phase E) |
 | Phase G | Sprite Rendering Traits | 2 | MEDIUM-LOW | Pending |
 
@@ -1033,3 +1036,17 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 - Paradigm shift: C# OpenAL `ISoundEngine` -> Howler.js + Web Audio API `ISoundEngine` interface. `AL.ListenerPosition` -> `Howler.pos(x, y, z)`. `AL.SourcePosition` -> `howl.pos(x, y, z, soundId)`. AUD/VOC/WAV -> WebM (Vorbis) / MP3 dual-format. `Cache<string, ISoundSource>` -> `Map<string, Howl>`.
 - External dependency added: `howler` + `@types/howler` npm packages.
 - Review: APPROVED | **Commit**: `3f1b511`
+
+### Phase E Completed: Visual Effects (2 files, 2026-06-12)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| SpriteEffect.ts | -- | -- | -- | Base visual effect: static/follow/dynamic position modes, animation playback, billboard rendering |
+| FloatingSpriteEmitter.ts | -- | -- | -- | Particle emitter trait: configurable spawn rate, gravity, speed, GPU particle system, LOD |
+| **Total** | -- | -- | **92** | |
+
+**Implementation details**:
+- `SpriteEffect.ts`: Port of OpenRA's `SpriteEffect.cs` (86 lines C#). `IEffect` interface with `tick()`/`render()`. Static position, dynamic position function, and follow-actor position modes. Animation-based sprite playback with delay timer. Billboard rendering via Babylon.js Sprite at 3D world position. Disposes on animation completion (non-looping).
+- `FloatingSpriteEmitter.ts`: Port of OpenRA's `FloatingSpriteEmitter.cs` (126 lines C#). Continuous particle emission with configurable `spawnFrequency`, `lifetime`, `speed`, `gravity`, `turnRate`, `randomRate`, `offset`, `spawnRadius`, `burstSize`. GPU particle system (`GPUParticleSystem`) with CPU fallback. Particle pooling with max 20 concurrent systems. Three-tier distance-based LOD: 0-50 units (100% emitRate), 50-100 (50%), 100-200 (20%), >200 (disabled).
+- Paradigm shift: C# CPU sprite animation loop -> Babylon.js `ParticleSystem` / `GPUParticleSystem` GPU simulation. C# `BLENDMODE_ADD` -> `ParticleSystem.BLENDMODE_ADD`. CPU `FloatingSpriteEmitter` per-frame spawning -> `emitRate` + `maxLifeTime` + `gravity` parameters.
+- Review: APPROVED (2 rounds) | **Commits**: `a0bf835`, `180e2a9`
