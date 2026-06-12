@@ -74,6 +74,22 @@ export interface BaseBuilderBotModuleInfo extends ConditionalTraitInfo {
   readonly maxRefineryPerIndice: number
   readonly productionMinCashRequirement: number
   readonly expansionTolerate: readonly number[]
+
+  // ---- OpenRA fields that were missing in original migration ----
+  /** Integer percentage of the total base that must be this type of building. */
+  readonly buildingFractions: ReadonlyMap<string, number>
+  /** Maximum limit for specific building types. */
+  readonly buildingLimits: ReadonlyMap<string, number>
+  /** Delay (in ticks) before AI can start building specific buildings. */
+  readonly buildingDelays: ReadonlyMap<string, number>
+  /** Terrain types considered water for base building purposes. */
+  readonly waterTerrainTypes: ReadonlySet<string>
+  /** Radius to check for water where naval structures can be built. */
+  readonly checkForWaterRadius: number
+  /** Expansion tolerate when force-expanding with the only MCV. */
+  readonly forceExpansionTolerate: readonly number[]
+  /** Decrease expansion tolerate by Cash / this value. */
+  readonly perExpansionTolerateOnCash: number
 }
 
 // ---------------------------------------------------------------------------
@@ -172,19 +188,51 @@ export class BaseBuilderBotModule
   private _positionsUpdatedModules: { updatedDefenseCenter(loc: { x: number; y: number }): void }[] = []
 
   // -----------------------------------------------------------------------
-  // Building indexes
+  // Building indexes (cached per tick — MAJOR fix for hot-path iteration)
   // -----------------------------------------------------------------------
 
+  /**
+   * Cached building queries by type key.
+   * Invalidated each tick to avoid iterating all actors on every getter access.
+   *
+   * OpenRA 对照: ActorIndex.OwnerAndNamesAndTrait (refreshed lazily)
+   */
+  private readonly _cachedBuildings = new Map<string, ActorLike[]>()
+  private _cachedTick: number = -1
+
+  private getTickSafe(): number {
+    return (this._world as unknown as { worldTick?: number }).worldTick ?? 0
+  }
+
+  private invalidateCacheIfStale(): void {
+    const tick = this.getTickSafe()
+    if (tick !== this._cachedTick) {
+      this._cachedBuildings.clear()
+      this._cachedTick = tick
+    }
+  }
+
+  private getCachedBuildings(types: ReadonlySet<string>): ActorLike[] {
+    this.invalidateCacheIfStale()
+    const key = Array.from(types).sort().join('|')
+    let result = this._cachedBuildings.get(key)
+    if (!result) {
+      result = this.filterOwnActorsByTypes(types)
+      this._cachedBuildings.set(key, result)
+    }
+    return result
+  }
+
   private get refineryBuildings(): ActorLike[] {
-    return this.filterOwnActorsByTypes(this.info.refineryTypes)
+    return this.getCachedBuildings(this.info.refineryTypes)
   }
 
   private get constructionYardBuildings(): ActorLike[] {
-    return this.filterOwnActorsByTypes(this.info.constructionYardTypes)
+    return this.getCachedBuildings(this.info.constructionYardTypes)
   }
 
   get productionBuildings(): ActorLike[] {
-    return this.filterOwnActorsByTypes(this.info.productionTypes)
+    return this.getCachedBuildings(this.info.productionTypes)
   }
 
   // -----------------------------------------------------------------------
@@ -331,10 +379,12 @@ export class BaseBuilderBotModule
       const yards = this.constructionYardBuildings
         .filter(a => !a.isDead)
         .sort((a, b) => {
-          const da = (a.location.x - this._defenseCenter!.x) ** 2 +
-            (a.location.y - this._defenseCenter!.y) ** 2
-          const db = (b.location.x - this._defenseCenter!.x) ** 2 +
-            (b.location.y - this._defenseCenter!.y) ** 2
+          const dxa = a.location.x - this._defenseCenter!.x
+          const dya = a.location.y - this._defenseCenter!.y
+          const da = dxa * dxa + dya * dya
+          const dxb = b.location.x - this._defenseCenter!.x
+          const dyb = b.location.y - this._defenseCenter!.y
+          const db = dxb * dxb + dyb * dyb
           return da - db
         })
       if (yards.length > 0) return yards[0].location

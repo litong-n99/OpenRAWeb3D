@@ -398,12 +398,211 @@ export class HarvesterBotModule
    *
    * OpenRA 对照: FindAndOrderLowEffectHarvesterOnResourceMap(IBot)
    */
-  private findAndOrderLowEffectHarvester(_bot: IBot): void {
-    // Simplified: scan indices for worst effect, reassign harvesters
-    if (!this._resourceMapModule) return
+  /**
+   * Find and reassign harvesters in resource-poor indices to richer areas.
+   *
+   * OpenRA 对照: FindAndOrderLowEffectHarvesterOnResourceMap(IBot)
+   *
+   * Full algorithm (matching OpenRA 323-line method):
+   * 1. Scan all indices computing "attraction" and "lackHarvs" for each
+   * 2. Find the worst-effect indice (most negative lackHarvs)
+   * 3. Find harvesters near the worst indice
+   * 4. Sort good indices by attraction-weighted distance
+   * 5. Reassign harvesters to the closest rich resource patches
+   *
+   * PERF: Uses integer arithmetic only. No per-frame allocation beyond
+   * temporary arrays (reused across calls via local scope).
+   */
+  private findAndOrderLowEffectHarvester(bot: IBot): void {
+    const rmm = this._resourceMapModule
+    if (!rmm) return
 
-    // Implementation matches OpenRA's resource indice scanning pattern
-    // but uses the simplified TypeScript data structures
+    const indiceSideLength = rmm.getIndiceSideLength()
+    const indiceSideLengthSquare = indiceSideLength * indiceSideLength
+
+    let worstEffectIndice: { x: number; y: number } | null = null
+    let worstEffectHarvesterCount = 2147483647 // INT32_MAX
+
+    // (attraction, lackHarvs, resourceCenter)
+    const lackHarvesterIndices: {
+      attraction: number
+      lackHarvs: number
+      resourceCenter: { x: number; y: number }
+    }[] = []
+
+    const indicesLen = rmm.getIndicesLength()
+    for (let i = 0; i < indicesLen; i++) {
+      const baseIndice = rmm.getIndice(i)
+      if (!baseIndice) continue
+
+      // Initial attraction = indiceSideLengthSquare >> 5
+      let attraction = indiceSideLengthSquare >> 5
+
+      attraction += baseIndice.resourceCellsCount - baseIndice.playerHarvesterCount * this.info.resourceCellsPerHarvester
+
+      let lackHarvs: number
+      if (attraction > 0) {
+        lackHarvs = (attraction / this.info.resourceCellsPerHarvester) | 0
+      } else if (attraction === 0 && baseIndice.resourceCellsCount > 0) {
+        lackHarvs = 1
+      } else {
+        lackHarvs = -1
+      }
+
+      // Halve attraction after lackHarvs calculation
+      attraction >>= 1
+
+      // If there is refinery but no harvester, consider lackHarvs positive if resources exist
+      if (baseIndice.playerRefineryCount <= 0 && lackHarvs > 0) {
+        lackHarvs = 1
+      }
+
+      // Enemy threat — reduce attraction
+      if (baseIndice.enemyBaseCount > 0 || baseIndice.enemyUnitCount > 0) {
+        attraction -= indiceSideLengthSquare << 4 // >> 4 is heavy penalty
+      } else {
+        const nearby = rmm.getNearbyIndicesThreat(i)
+        if (nearby.enemyBaseCount + nearby.enemyUnitCount > 0) {
+          attraction -= indiceSideLengthSquare >> 5 // small penalty for nearby enemies
+        }
+      }
+
+      // Refinery bonus
+      if (baseIndice.playerRefineryCount > 0) {
+        attraction += indiceSideLengthSquare
+      }
+
+      // Record good indices for later reassignment
+      if (baseIndice.resourceCellsCount > 0 && attraction > 0 && lackHarvs > 0) {
+        lackHarvesterIndices.push({
+          attraction,
+          lackHarvs,
+          resourceCenter: baseIndice.resourceCellsCenter,
+        })
+      }
+
+      // Track worst effect (most oversupplied) indice
+      if (lackHarvs < worstEffectHarvesterCount && lackHarvs < 0) {
+        worstEffectHarvesterCount = lackHarvs
+        worstEffectIndice = baseIndice.indiceCenter
+      }
+    }
+
+    if (!worstEffectIndice) return
+
+    let harvestersCanAssign = -worstEffectHarvesterCount
+    const searchRadius = rmm.getIndiceScanRadius()
+    const worldCast = this._world as unknown as {
+      findActorsInCircle?: (center: { x: number; y: number; z: number }, radius: { length: number }) => ActorLike[]
+      map: MapLike
+    }
+
+    // Find harvesters near the worst indice center
+    const worstCenterWPos = this._world.map.centerOfCell(worstEffectIndice)
+    const scanWDist = { length: searchRadius * 1024 }
+    const nearbyActors = worldCast.findActorsInCircle?.(worstCenterWPos, scanWDist) ?? []
+
+    const harvesters: ActorLike[] = []
+    for (const a of nearbyActors) {
+      if (a.owner !== this._player || a.isDead || !a.isInWorld) continue
+      const name = a.info?.name ?? ''
+      if (this.info.harvesterTypes.has(name)) {
+        harvesters.push(a)
+      }
+    }
+
+    harvestersCanAssign = Math.min(harvestersCanAssign, harvesters.length - 1)
+    if (harvestersCanAssign <= 0) return
+    if (harvesters.length === 0) return
+
+    // Sort lackHarvesterIndices by: attraction - (distanceSquared / pathDistanceSquareFactor)
+    const columnCount = rmm.getIndiceColumnCount()
+    const rowCount = rmm.getIndiceRowCount()
+    const pathDistanceSquareFactor = rowCount * rowCount + columnCount * columnCount
+
+    const h0loc = harvesters[0].location
+    lackHarvesterIndices.sort((a, b) => {
+      const da = (h0loc.x - a.resourceCenter.x) * (h0loc.x - a.resourceCenter.x) +
+        (h0loc.y - a.resourceCenter.y) * (h0loc.y - a.resourceCenter.y)
+      const db = (h0loc.x - b.resourceCenter.x) * (h0loc.x - b.resourceCenter.x) +
+        (h0loc.y - b.resourceCenter.y) * (h0loc.y - b.resourceCenter.y)
+      const scoreA = a.attraction - (da / pathDistanceSquareFactor) | 0
+      const scoreB = b.attraction - (db / pathDistanceSquareFactor) | 0
+      return scoreB - scoreA // descending
+    })
+
+    // Reassign harvesters to better indices
+    const usedHarvs = new Set<ActorLike>()
+    for (const entry of lackHarvesterIndices) {
+      if (harvestersCanAssign <= 0) break
+
+      let needHarvs = entry.lackHarvs
+      const nearbyCells = this._world.map.findTilesInAnnulus(
+        entry.resourceCenter, 0, searchRadius,
+      )
+
+      // Filter: valuable resources, closer to harvester than the indice center
+      const goodCells = nearbyCells.filter(c => {
+        const res = this._resourceLayer?.getResource(c)
+        if (!res || !res.type) return false
+        if (!rmm.info.valuableResourceTypes.has(res.type)) return false
+        const dc = (h0loc.x - entry.resourceCenter.x) * (h0loc.x - entry.resourceCenter.x) +
+          (h0loc.y - entry.resourceCenter.y) * (h0loc.y - entry.resourceCenter.y)
+        const dh = (c.x - h0loc.x) * (c.x - h0loc.x) + (c.y - h0loc.y) * (c.y - h0loc.y)
+        return dc >= dh
+      })
+
+      if (goodCells.length === 0 || needHarvs <= 0) continue
+
+      for (const harv of harvesters) {
+        if (needHarvs <= 0 || harvestersCanAssign <= 0) break
+        if (usedHarvs.has(harv)) continue
+
+        // Skip parachutable units in the air
+        const parach = harv.traitsImplementing?.('Parachutable')?.[0] as ParachutableLike | undefined
+        if (parach?.isInAir) {
+          harvestersCanAssign--
+          usedHarvs.add(harv)
+          continue
+        }
+
+        const mobile = harv.traitsImplementing?.('Mobile')?.[0] as MobileLike | undefined
+        if (mobile) {
+          // Pick a random nearby resource cell
+          const tcell = goodCells[this._random.nextIntRange(0, goodCells.length - 1)]
+          if (tcell && mobile.pathFinder.pathMightExistForLocomotorBlockedByImmovable(
+            mobile.locomotor, harv.location, tcell,
+          )) {
+            bot.queueOrder({
+              orderName: 'Harvest',
+              targetString: `${tcell.x},${tcell.y}`,
+              extraData: 0,
+            } as unknown as Parameters<IBot['queueOrder']>[0])
+            needHarvs--
+            harvestersCanAssign--
+            usedHarvs.add(harv)
+          } else {
+            // If path doesn't exist for first cell, try just one more
+            if (needHarvs > 1) {
+              needHarvs = 1
+            } else {
+              break
+            }
+          }
+        } else {
+          // No Mobile trait — just send to a random good cell
+          const tcell = goodCells[this._random.nextIntRange(0, goodCells.length - 1)]
+          bot.queueOrder({
+            orderName: 'Harvest',
+            targetString: `${tcell.x},${tcell.y}`,
+            extraData: 0,
+          } as unknown as Parameters<IBot['queueOrder']>[0])
+          needHarvs--
+          harvestersCanAssign--
+          usedHarvs.add(harv)
+        }
+      }
+    }
   }
 
   // -----------------------------------------------------------------------

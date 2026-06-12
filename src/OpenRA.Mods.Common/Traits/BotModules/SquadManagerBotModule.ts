@@ -170,6 +170,20 @@ export class SquadManagerBotModule
   }
 
   // -----------------------------------------------------------------------
+  // Cached PRNG (reused across ticks — avoids per-frame allocation)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Cached deterministic PRNG instance.
+   *
+   * OpenRA 对照: world.LocalRandom (a single MersenneTwister instance)
+   *
+   * NOTE: Cached and reused across ticks to avoid allocation in hot paths.
+   * Each call to worldRandom() returns this SAME instance.
+   */
+  private readonly _cachedWorldRandom: SimplePrng
+
+  // -----------------------------------------------------------------------
   // Constructor
   // -----------------------------------------------------------------------
 
@@ -182,6 +196,7 @@ export class SquadManagerBotModule
     super(info)
     this.world = world
     this.player = player
+    this._cachedWorldRandom = new SimplePrng(random.next())
     this._constructionYardBuildings = this.buildConstructionYardIndex()
 
     // Randomize initial tick counters (OpenRA: randomize in TraitEnabled)
@@ -795,12 +810,14 @@ export class SquadManagerBotModule
   // -----------------------------------------------------------------------
 
   /**
-   * Get a world-local random generator.
-   * Uses SimplePrng seeded from world tick (deterministic).
+   * Get the cached world-local random generator.
+   *
+   * OpenRA 对照: world.LocalRandom (returns the SAME MersenneTwister instance)
+   *
+   * Uses a single cached SimplePrng instance — no per-frame allocation.
    */
   private worldRandom(): SimplePrng {
-    const tick = (this.world as unknown as { worldTick?: number }).worldTick ?? 0
-    return new SimplePrng(tick + this.squads.length * 7919)
+    return this._cachedWorldRandom
   }
 
   /**

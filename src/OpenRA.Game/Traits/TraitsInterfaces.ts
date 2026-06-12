@@ -2198,20 +2198,98 @@ export abstract class ConditionalTrait<TInfo extends ConditionalTraitInfo> exten
    *
    * OpenRA 对照: TraitEnabled check (condition system evaluation)
    *
-   * Simple condition check: if no condition expression, always enabled.
-   * For complex expressions (&&, ||, !, parentheses), use the full
-   * `evaluateConditionExpression` from Actor.ts.
+   * Full condition expression evaluator supporting:
+   * - Named conditions (e.g., "building")
+   * - Negation with `!` (e.g., "!disabled")
+   * - Conjunction with `&&` (e.g., "building && powered")
+   * - Disjunction with `||` (e.g., "building || deployed")
+   * - Parenthesized groups (e.g., "(A && B) || C")
    *
    * @param hasCondition — function to check if a named condition is active
    * @returns true if conditions allow this trait to be enabled
    */
   protected checkConditions(hasCondition: (condition: string) => boolean): boolean {
     if (!this.info.requiresCondition) return true
-    const expr = this.info.requiresCondition.trim()
-    if (expr.startsWith('!')) {
-      return !hasCondition(expr.substring(1).trim())
+    return ConditionalTrait._evaluateConditionExpression(
+      this.info.requiresCondition.trim(),
+      hasCondition,
+    )
+  }
+
+  /**
+   * Recursive descent expression evaluator for condition strings.
+   *
+   * Precedence (lowest to highest):
+   *   1. `||`  (disjunction)
+   *   2. `&&`  (conjunction)
+   *   3. `!`   (negation, prefix)
+   *   4. `(...)`  (parenthesized group)
+   *   5. name  (terminal — condition lookup)
+   *
+   * @param expr — the condition expression string (WHITESPACE-TRIMMED by caller)
+   * @param hasCondition — the condition lookup function
+   * @returns the boolean result of evaluating this expression
+   */
+  private static _evaluateConditionExpression(
+    expr: string,
+    hasCondition: (condition: string) => boolean,
+  ): boolean {
+    // --- || (lowest precedence) ---
+    {
+      let depth = 0
+      for (let i = 0; i < expr.length - 1; i++) {
+        const c = expr[i]
+        if (c === '(') depth++
+        else if (c === ')') depth--
+        else if (depth === 0 && c === '|' && expr[i + 1] === '|') {
+          return ConditionalTrait._evaluateConditionExpression(
+            expr.substring(0, i).trim(),
+            hasCondition,
+          ) || ConditionalTrait._evaluateConditionExpression(
+            expr.substring(i + 2).trim(),
+            hasCondition,
+          )
+        }
+      }
     }
-    return hasCondition(expr)
+
+    // --- && ---
+    {
+      let depth = 0
+      for (let i = 0; i < expr.length - 1; i++) {
+        const c = expr[i]
+        if (c === '(') depth++
+        else if (c === ')') depth--
+        else if (depth === 0 && c === '&' && expr[i + 1] === '&') {
+          return ConditionalTrait._evaluateConditionExpression(
+            expr.substring(0, i).trim(),
+            hasCondition,
+          ) && ConditionalTrait._evaluateConditionExpression(
+            expr.substring(i + 2).trim(),
+            hasCondition,
+          )
+        }
+      }
+    }
+
+    // --- ! (prefix negation) ---
+    if (expr.startsWith('!')) {
+      return !ConditionalTrait._evaluateConditionExpression(
+        expr.substring(1).trim(),
+        hasCondition,
+      )
+    }
+
+    // --- ( ... ) parenthesized group ---
+    if (expr.startsWith('(') && expr.endsWith(')')) {
+      return ConditionalTrait._evaluateConditionExpression(
+        expr.substring(1, expr.length - 1).trim(),
+        hasCondition,
+      )
+    }
+
+    // --- terminal: named condition ---
+    return expr.length > 0 ? hasCondition(expr) : true
   }
 
   /**
