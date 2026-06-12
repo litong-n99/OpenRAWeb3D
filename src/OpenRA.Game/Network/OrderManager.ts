@@ -750,15 +750,15 @@ export class OrderManager {
    * Considers: replay speed, tick scale, game save loading, and world timestep.
    */
   get suggestedTimestep(): number {
-    if (!this.world) return 40 // Default: 25 TPS
+    if (!this.world) return 40 // Default: 25 TPS (stub for Ui.Timestep)
 
-    if (this.world.isGameStarted) return 1 // Fast-forward during save loading
-    if (this.world.isReplay) return this.world.worldTick // Replay speed
+    if (this.world.isLoadingGameSave) return 1 // Fast-forward during save loading
+    if (this.world.isReplay) return this.world.replayTimestep // Replay speed
     if (this._tickScale !== 1) {
-      return Math.max(Math.floor(this._tickScale * 40), 1)
+      return Math.max(Math.floor(this._tickScale * this.world.timestep), 1)
     }
 
-    return 40 // Default: 25 TPS (World.Timestep equivalent)
+    return this.world.timestep // World.Timestep equivalent
   }
 
   // -----------------------------------------------------------------------

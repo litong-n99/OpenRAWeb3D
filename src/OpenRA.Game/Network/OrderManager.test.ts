@@ -11,6 +11,7 @@ import type {
   ClientStub,
   LobbyInfoStub,
   GlobalSettingsStub,
+  WorldStub,
 } from './UnitOrders'
 
 // ---------------------------------------------------------------------------
@@ -439,9 +440,93 @@ describe('OrderManager server errors', () => {
 // ---------------------------------------------------------------------------
 
 describe('OrderManager suggestedTimestep', () => {
+  const defaultWorldStub: WorldStub = {
+    isReplay: false,
+    paused: false,
+    predictedPaused: false,
+    localPlayer: null,
+    players: [],
+    actors: new Map(),
+    lobbyInfo: null,
+    orderValidators: [],
+    isGameOver: false,
+    isGameStarted: true,
+    isLoadingGameSave: false,
+    timestep: 40,
+    replayTimestep: 0,
+    worldTick: 100,
+    worldActor: null as unknown as WorldStub['worldActor'],
+    getActorById: () => undefined,
+    actorsHavingTrait: () => [],
+  }
+
   it('returns default 40ms (25 TPS) when no world', () => {
     const om = new OrderManager(mockConnection(), () => 0, 0)
     expect(om.suggestedTimestep).toBe(40)
+    om.dispose()
+  })
+
+  it('returns world.timestep in normal state (not replay, not loading save)', () => {
+    const om = new OrderManager(mockConnection(), () => 0, 0)
+    om.world = { ...defaultWorldStub, timestep: 33 }
+    expect(om.suggestedTimestep).toBe(33)
+    om.dispose()
+  })
+
+  it('returns 1 during game save loading (fast-forward)', () => {
+    const om = new OrderManager(mockConnection(), () => 0, 0)
+    om.world = { ...defaultWorldStub, isLoadingGameSave: true }
+    expect(om.suggestedTimestep).toBe(1)
+    om.dispose()
+  })
+
+  it('returns world.replayTimestep when in replay mode', () => {
+    const om = new OrderManager(mockConnection(), () => 0, 0)
+    om.world = { ...defaultWorldStub, isReplay: true, replayTimestep: 200 }
+    expect(om.suggestedTimestep).toBe(200)
+    om.dispose()
+  })
+
+  it('applies tick scale to world.timestep when tickScale !== 1', () => {
+    const om = new OrderManager(mockConnection(), () => 0, 0)
+    om.world = { ...defaultWorldStub, timestep: 40 }
+    // tickScale = 2.0: expect floor(2.0 * 40) = 80
+    om.receiveTickScale(2.0)
+    expect(om.suggestedTimestep).toBe(80)
+    om.dispose()
+  })
+
+  it('floors tick scale result and ensures minimum of 1', () => {
+    const om = new OrderManager(mockConnection(), () => 0, 0)
+    om.world = { ...defaultWorldStub, timestep: 40 }
+    // tickScale = 0.02: expect max(floor(0.02 * 40), 1) = max(0, 1) = 1
+    om.receiveTickScale(0.02)
+    expect(om.suggestedTimestep).toBe(1)
+    om.dispose()
+  })
+
+  it('isLoadingGameSave takes priority over isReplay (returns 1)', () => {
+    const om = new OrderManager(mockConnection(), () => 0, 0)
+    om.world = {
+      ...defaultWorldStub,
+      isReplay: true,
+      isLoadingGameSave: true,
+      replayTimestep: 150,
+    }
+    expect(om.suggestedTimestep).toBe(1)
+    om.dispose()
+  })
+
+  it('isReplay takes priority over tickScale', () => {
+    const om = new OrderManager(mockConnection(), () => 0, 0)
+    om.receiveTickScale(0.5)
+    om.world = {
+      ...defaultWorldStub,
+      isReplay: true,
+      replayTimestep: 100,
+      timestep: 40,
+    }
+    expect(om.suggestedTimestep).toBe(100)
     om.dispose()
   })
 })
