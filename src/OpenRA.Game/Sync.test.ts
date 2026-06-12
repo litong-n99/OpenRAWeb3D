@@ -547,6 +547,18 @@ describe('sync hash registry', () => {
     registerSyncHash('DupType', () => 99)
     expect(Sync.hash(mock)).toBe(99)
   })
+
+  it('lookupSyncHash returns the same function as registered', () => {
+    const hashFn = () => 42
+    registerSyncHash('LookupTest', hashFn as (obj: ISync) => number)
+    const found = Sync.lookupSyncHash('LookupTest')
+    expect(found).toBeDefined()
+    expect(found!(makeSyncMock('LookupTest'))).toBe(42)
+  })
+
+  it('lookupSyncHash returns undefined for unregistered class name', () => {
+    expect(Sync.lookupSyncHash('NeverRegistered')).toBeUndefined()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -819,6 +831,33 @@ describe('Sync.runUnsynced', () => {
         // Do nothing — but no world means no check
       })
     }).not.toThrow()
+  })
+
+  it('detects desync in world with initial zero hash (sentinel guard)', () => {
+    // This is the edge case that motivated the -1 sentinel:
+    // If the world hash starts at 0, the old sync !== 0 guard would
+    // incorrectly skip the post-check. The -1 sentinel ensures that
+    // a legitimate hash of 0 is still verified.
+    let hashCounter = 0
+    const zeroWorld: ISyncWorldRef = {
+      actors: [
+        {
+          disposed: false,
+          isInWorld: true,
+          computeSyncHash: () => {
+            hashCounter++
+            return hashCounter === 1 ? 0 : 42 // first call=0, second=42
+          },
+        },
+      ],
+    }
+
+    // hash starts at 0, changes to 42 during fn() → must throw
+    expect(() => {
+      Sync.runUnsynced(zeroWorld, () => {
+        // hash changes on the post-check call
+      })
+    }).toThrow(/RunUnsynced: sync-changing code/)
   })
 })
 

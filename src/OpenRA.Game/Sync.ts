@@ -452,6 +452,20 @@ export const Sync = {
   },
 
   /**
+   * Look up a generated sync hash function by class name.
+   *
+   * Used by generated code (sync-hashes.generated.ts) for nested ISync fields.
+   * Exported to avoid exposing the private registry.
+   *
+   * @param className — the constructor name of the ISync class
+   * @returns the registered hash function, or undefined if not found
+   */
+  lookupSyncHash(className: string): ((obj: ISync) => number) | undefined {
+    _ensureCustomHashFunctions()
+    return _syncHashFunctions.get(className)
+  },
+
+  /**
    * Compute a combined frame hash over all ISync-participating actors in
    * the world.
    *
@@ -516,10 +530,12 @@ export const Sync = {
 
     // Snapshot sync hash on first (outermost) entry only.
     // Nested entries do not re-snapshot.
+    // Use -1 as sentinel for "no snapshot taken" (hash is always >= 0).
+    const NO_SNAPSHOT = -1
     const sync =
       Sync._unsyncDepth === 1 && checkSyncHash && world !== null
         ? Sync.computeFrameHash(world)
-        : 0
+        : NO_SNAPSHOT
 
     // try/finally ensures unsyncCount is decremented even if fn() throws.
     // This matches C#'s try/finally pattern exactly.
@@ -529,8 +545,13 @@ export const Sync = {
       Sync._unsyncDepth--
 
       // On outermost exit: verify sync hash has not changed.
-      // Skip check if world is null or the last snapshot was not taken.
-      if (Sync._unsyncDepth === 0 && checkSyncHash && world !== null && sync !== 0) {
+      // Skip check if no snapshot was taken (sentinel value).
+      if (
+        Sync._unsyncDepth === 0 &&
+        checkSyncHash &&
+        world !== null &&
+        sync !== NO_SNAPSHOT
+      ) {
         const postSync = Sync.computeFrameHash(world)
         if (sync !== postSync) {
           throw new Error(

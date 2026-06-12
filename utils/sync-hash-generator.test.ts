@@ -707,10 +707,12 @@ describe('generated output structure', () => {
   })
 
   it('boolean hash constants match C# behavior', () => {
-    // C#: true → 0x555, false → 0xaaa
-    // (The IL loads 0xaaa, then if brtrue, pops and loads 0x555)
-    expect(0x555).toBe(1365) // true maps to 0x555
-    expect(0xaaa).toBe(2730) // false maps to 0xaaa
+    // C# EmitSyncOpcodes for bool (Sync.cs:63-71):
+    //   Ldc_I4 0xaaa; Brtrue l; Pop; Ldc_I4 0x555; MarkLabel l; Xor
+    //   TRUE  → Brtrue jumps to l, stack has 0xaaa → hashes as 0xaaa (2730)
+    //   FALSE → falls through, pops 0xaaa, pushes 0x555 → hashes as 0x555 (1365)
+    expect(0xaaa).toBe(2730) // true maps to 0xaaa
+    expect(0x555).toBe(1365) // false maps to 0x555
   })
 
   it('null hash value for nullable fields is 0', () => {
