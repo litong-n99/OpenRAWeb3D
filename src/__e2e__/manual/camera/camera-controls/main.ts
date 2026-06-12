@@ -623,20 +623,62 @@ canvas.addEventListener('dblclick', (event) => {
 
 // ---------------------------------------------------------------------------
 // Prevent browser context menu and gesture navigation on right-click drag
-// contextmenu → blocks right-click popup menu
-// pointerdown with button===2 → blocks Chromium back/forward swipe gesture
+// Chromium handles gesture nav at window level — we MUST intercept there
+// Strategy: canvas pointer capture + window capture-phase pointermove
 // ---------------------------------------------------------------------------
 
+// Canvas-level: block context menu
 canvas.addEventListener('contextmenu', (event) => {
   event.preventDefault()
+  event.stopPropagation()
 })
 
+// Canvas-level: start tracking right-click drag, capture pointer to canvas
 canvas.addEventListener('pointerdown', (event) => {
   if (event.button === 2) {  // right mouse button
     event.preventDefault()
+    event.stopPropagation()
     _isRightDragging = true
+    canvas.setPointerCapture(event.pointerId)
   }
 }, { passive: false })
+
+// Canvas-level: prevent gesture during drag
+canvas.addEventListener('pointermove', (event) => {
+  if (_isRightDragging) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+}, { passive: false })
+
+// WINDOW-level capture phase: intercept BEFORE browser gesture engine
+window.addEventListener('pointermove', (event) => {
+  if (_isRightDragging) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+}, { passive: false, capture: true })
+
+window.addEventListener('pointerup', (_event) => {
+  if (_isRightDragging) {
+    _isRightDragging = false
+  }
+}, { capture: true })
+
+// Canvas-level cleanup
+canvas.addEventListener('pointerup', (event) => {
+  if (event.button === 2) {
+    _isRightDragging = false
+  }
+}, { passive: false })
+
+canvas.addEventListener('pointerleave', () => {
+  _isRightDragging = false
+})
+
+canvas.addEventListener('lostpointercapture', () => {
+  _isRightDragging = false
+})
 
 // ---------------------------------------------------------------------------
 // Mouse Events for Edge Detection & Cursor Readout
@@ -645,12 +687,7 @@ canvas.addEventListener('pointerdown', (event) => {
 canvas.addEventListener('mousemove', (event) => {
   updateCursorReadout(event)
   updateEdgeZones(event)
-  if (_isRightDragging) {
-    event.preventDefault()
-    // DEBUG: uncomment to verify gesture prevention is active
-    // console.debug('[gesture] prevented at mousemove', event.movementX, event.movementY)
-  }
-}, { passive: false })
+})
 
 canvas.addEventListener('wheel', (event) => {
   event.preventDefault()
@@ -661,16 +698,6 @@ canvas.addEventListener('wheel', (event) => {
   const zoomDelta = event.deltaY < 0 ? 1.15 : 1 / 1.15
   zoomAtCursor(currentZoom * zoomDelta, screenX, screenY)
 }, { passive: false })
-
-canvas.addEventListener('pointerup', (event) => {
-  if (event.button === 2) {
-    _isRightDragging = false
-  }
-}, { passive: false })
-
-canvas.addEventListener('pointerleave', () => {
-  _isRightDragging = false
-})
 
 // ---------------------------------------------------------------------------
 // Info Bar

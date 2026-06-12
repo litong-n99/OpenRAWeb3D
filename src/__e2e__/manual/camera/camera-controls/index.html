@@ -6,6 +6,7 @@
   <title>相机系统 - 坐标/缩放/滚屏/边界 | 人工验收</title>
   <style>
     * { box-sizing: border-box; }
+    html, body { overscroll-behavior: none; }
     body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
     #app { display: flex; height: 100vh; }
 
@@ -186,7 +187,7 @@
 
     <div id="main-area">
       <div id="viewport">
-        <canvas id="renderCanvas" style="touch-action: none;"></canvas>
+        <canvas id="renderCanvas" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
         <div id="crosshair"></div>
         <div id="edge-top" class="edge-zone" style="height:15px;"></div>
         <div id="edge-bottom" class="edge-zone" style="height:15px;"></div>
