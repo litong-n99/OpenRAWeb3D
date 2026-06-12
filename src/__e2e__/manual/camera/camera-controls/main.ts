@@ -112,11 +112,15 @@ camera.orthoBottom = -BASE_ORTHO_SIZE
 camera.orthoLeft = -BASE_ORTHO_SIZE
 camera.orthoRight = BASE_ORTHO_SIZE
 
-// Disable default ArcRotateCamera controls — implemented as custom RTS-style controls
-// Left-click drag = camera pan (RTS convention, grab-and-drag along terrain)
-// Middle-click drag = orbit rotation
-// Scroll wheel = zoom
+// Babylon.js ArcRotateCamera default controls:
+// Left-click drag = orbit rotation
+// Scroll wheel = zoom (handled by Babylon.js)
+// Shift + Left-click drag = camera pan (custom implementation below)
 camera.inputs.clear()
+camera.attachControl(canvas, true)
+
+// Lock panning axis to XZ plane (used by Babylon.js default pan, not our custom one)
+camera.panningAxis = new Vector3(1, 0, 0)
 
 // Radius limits (for perspective mode)
 camera.lowerRadiusLimit = 3
@@ -322,13 +326,8 @@ let lastWPosUnderCursor: { x: number; y: number; z: number } | null = null
 let referenceWPosForDrift: { x: number; y: number; z: number } | null = null
 let currentZoom = 1.0
 let _isPanning = false
-let _isOrbiting = false
-let _panRefWorld: Vector3 | null = null
-let _panRefTarget = Vector3.Zero()
-let _orbitRefScreenX = 0
-let _orbitRefScreenY = 0
-let _orbitRefAlpha = 0
-let _orbitRefBeta = 0
+let _panLastX = 0
+let _panLastY = 0
 
 /** Pick the terrain plane (y=0) at the given screen position */
 function pickTerrainAt(screenX: number, screenY: number): Vector3 | null {
@@ -624,10 +623,9 @@ canvas.addEventListener('dblclick', (event) => {
 })
 
 // ---------------------------------------------------------------------------
-// Custom Camera Controls (RTS-style)
-// Left-click drag = camera pan (grab-and-drag along terrain plane)
-// Middle-click drag = orbit rotation
-// Scroll wheel = zoom (handled below)
+// Camera Pan: Shift + Left-Click Drag
+// Uses Shift modifier to avoid conflict with Babylon.js ArcRotateCamera orbit
+// (left-click without Shift = orbit, handled by AttachControl)
 // ---------------------------------------------------------------------------
 
 // Block browser context menu on right-click
@@ -635,63 +633,48 @@ canvas.addEventListener('contextmenu', (event) => {
   event.preventDefault()
 })
 
-// Shared cleanup for all drag states
-const endDrag = () => {
-  _isPanning = false
-  _isOrbiting = false
-  _panRefWorld = null
-}
-
-// Pointer down: start pan (left button) or orbit (middle button)
+// Track Shift+Left-drag for camera pan
 canvas.addEventListener('pointerdown', (event) => {
-  const rect = canvas.getBoundingClientRect()
-  if (event.button === 0) {  // left button = pan (RTS convention)
-    const sx = event.clientX - rect.left
-    const sy = event.clientY - rect.top
-    const worldHit = pickTerrainAt(sx, sy)
-    if (worldHit) {
-      _isPanning = true
-      _panRefWorld = worldHit
-      _panRefTarget = camera.target.clone()
-      canvas.setPointerCapture(event.pointerId)
-      event.preventDefault()
-    }
-  } else if (event.button === 1) {  // middle button = orbit
-    _isOrbiting = true
-    _orbitRefScreenX = event.clientX
-    _orbitRefScreenY = event.clientY
-    _orbitRefAlpha = camera.alpha
-    _orbitRefBeta = camera.beta
+  if (event.button === 0 && event.shiftKey) {
+    event.preventDefault()
+    event.stopPropagation()
+    _isPanning = true
+    _panLastX = event.clientX
+    _panLastY = event.clientY
     canvas.setPointerCapture(event.pointerId)
-    event.preventDefault()
   }
-})
+}, { passive: false })
 
-// Pointer move: pan or orbit
+// Move camera target during Shift+Left drag
 canvas.addEventListener('pointermove', (event) => {
-  if (_isPanning && _panRefWorld) {
-    const rect = canvas.getBoundingClientRect()
-    const sx = event.clientX - rect.left
-    const sy = event.clientY - rect.top
-    const worldNow = pickTerrainAt(sx, sy)
-    if (worldNow) {
-      const worldDelta = _panRefWorld.subtract(worldNow)
-      camera.target = clampToMapBounds(_panRefTarget.add(worldDelta))
-      event.preventDefault()
-    }
-  } else if (_isOrbiting) {
-    const dx = event.clientX - _orbitRefScreenX
-    const dy = event.clientY - _orbitRefScreenY
-    camera.alpha = _orbitRefAlpha - dx * 0.01
-    camera.beta = Math.max(0.05, Math.min(Math.PI / 2 - 0.05, _orbitRefBeta + dy * 0.01))
+  if (_isPanning) {
+    const dx = event.clientX - _panLastX
+    const dy = event.clientY - _panLastY
+    _panLastX = event.clientX
+    _panLastY = event.clientY
+
+    // Convert screen delta to world pan:
+    //   alpha=-PI/2 → screen-right = world+X, screen-up = toward -Z
+    //   panScale adapts to current zoom level (faster pan when zoomed out)
+    const panScale = (1 / currentZoom) * 0.05
+    camera.target.addInPlace(new Vector3(-dx * panScale, 0, dy * panScale))
+
+    // Clamp to map bounds
+    camera.target = clampToMapBounds(camera.target)
     event.preventDefault()
   }
-})
+}, { passive: false })
 
-// Pointer up / leave / lost capture: end all drag states
-canvas.addEventListener('pointerup', endDrag)
-canvas.addEventListener('pointerleave', endDrag)
-canvas.addEventListener('lostpointercapture', endDrag)
+// End pan on pointer release
+canvas.addEventListener('pointerup', (event) => {
+  if (_isPanning && event.button === 0) {
+    _isPanning = false
+  }
+}, { passive: false })
+
+canvas.addEventListener('lostpointercapture', () => {
+  _isPanning = false
+})
 
 // ---------------------------------------------------------------------------
 // Mouse Events for Edge Detection & Cursor Readout
