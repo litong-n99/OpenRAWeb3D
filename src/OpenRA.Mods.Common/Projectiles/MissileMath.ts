@@ -1,0 +1,230 @@
+/**
+ * MissileMath.ts — 导弹轨迹数学函数（纯函数，从 Missile.cs 提取，可独立测试）
+ * OpenRA 对照: OpenRA.Mods.Common/Projectiles/Missile.cs static methods
+ *
+ * 核心范式转换:
+ * - C# 静态/实例方法 in Missile class → TypeScript 独立纯函数模块
+ * - C# int 整数运算 → TypeScript number (JS float, 但所有计算保持整数)
+ *
+ * 所有函数都是纯函数，无副作用，无 Babylon.js 依赖。
+ */
+
+import { WAngle } from '../../OpenRA.Game/WAngle.js'
+import { WVec } from '../../OpenRA.Game/WVec.js'
+import { WRot } from '../../OpenRA.Game/WRot.js'
+
+// ---------------------------------------------------------------------------
+// loopRadius
+// ---------------------------------------------------------------------------
+
+/** Compute the loop radius for a given speed and rotation rate.
+ *
+ * OpenRA 对照: Missile.LoopRadius(int speed, int rot)
+ *
+ * @param speed — current speed in WDist units per tick
+ * @param rot — vertical rate of turn in facing units per tick
+ * @returns loop radius in WDist units
+ */
+export function loopRadius(speed: number, rot: number): number {
+  if (rot <= 0) return speed * 6400
+  return Math.trunc((speed * 6400) / (157 * rot))
+}
+
+// ---------------------------------------------------------------------------
+// willClimbWithinDistance
+// ---------------------------------------------------------------------------
+
+export function willClimbWithinDistance(
+  vFacing: number,
+  lpRadius: number,
+  predClfDist: number,
+  diffClfMslHgt: number,
+): boolean {
+  const missDist = Math.trunc((lpRadius * WAngle.fromFacing(vFacing).sin()) / 1024)
+  const missHgt = Math.trunc((lpRadius * (1024 - WAngle.fromFacing(vFacing).cos())) / 1024)
+  const hgtChg = Math.trunc(((predClfDist - missDist) * WAngle.fromFacing(vFacing).tan()) / 1024)
+  return hgtChg + missHgt >= diffClfMslHgt
+}
+
+// ---------------------------------------------------------------------------
+// isNearInclineTop
+// ---------------------------------------------------------------------------
+
+export function isNearInclineTop(
+  vFacing: number,
+  lpRadius: number,
+  predClfDist: number,
+): boolean {
+  if (vFacing < 0) return false
+  const horizontalRange = Math.trunc((lpRadius * (1024 - WAngle.fromFacing(vFacing).sin())) / 1024)
+  return predClfDist <= horizontalRange
+}
+
+// ---------------------------------------------------------------------------
+// willClimbAroundInclineTop
+// ---------------------------------------------------------------------------
+
+export function willClimbAroundInclineTop(
+  vFacing: number,
+  lpRadius: number,
+  predClfDist: number,
+  diffClfMslHgt: number,
+): boolean {
+  const rotAngle = WAngle.fromFacing(Math.max(0, 64 - vFacing))
+  const radiusVec = new WVec(lpRadius, 0, 0).rotate(
+    new WRot(WAngle.Zero, WAngle.Zero, rotAngle),
+  )
+
+  const topX = predClfDist - radiusVec.X
+  const topY = diffClfMslHgt + 64 - radiusVec.Y
+  const topZ = 0 - radiusVec.Z
+
+  return topX * topX + topY * topY + topZ * topZ <= lpRadius * lpRadius
+}
+
+// ---------------------------------------------------------------------------
+// bisectionSearch
+// ---------------------------------------------------------------------------
+
+export function bisectionSearch(
+  lowerBound: number,
+  upperBound: number,
+  testCriterion: (value: number) => boolean,
+): number {
+  while (upperBound - lowerBound > 1) {
+    const middle = Math.trunc((upperBound + lowerBound) / 2)
+    if (testCriterion(middle)) {
+      lowerBound = middle
+    } else {
+      upperBound = middle
+    }
+  }
+  return lowerBound
+}
+
+// ---------------------------------------------------------------------------
+// increaseAltitude
+// ---------------------------------------------------------------------------
+
+export function increaseAltitude(
+  vFacing: number,
+  lpRadius: number,
+  predClfDist: number,
+  diffClfMslHgt: number,
+  relTarHorDist: number,
+  verticalRateOfTurn: number,
+  hasAcceleration: boolean,
+): number {
+  let desiredVFacing = vFacing
+
+  if (vFacing < 0) {
+    desiredVFacing = verticalRateOfTurn
+  } else if (
+    isNearInclineTop(vFacing, lpRadius, predClfDist) &&
+    willClimbAroundInclineTop(vFacing, lpRadius, predClfDist, diffClfMslHgt)
+  ) {
+    desiredVFacing = 0
+  } else if (!willClimbWithinDistance(vFacing, lpRadius, predClfDist, diffClfMslHgt)) {
+    for (let vFac = Math.min(vFacing + verticalRateOfTurn - 1, 63); vFac >= vFacing; vFac--) {
+      if (
+        !willClimbWithinDistance(vFac, lpRadius, predClfDist, diffClfMslHgt) &&
+        !(
+          predClfDist <= Math.trunc((lpRadius * (1024 - WAngle.fromFacing(vFac).sin())) / 1024) &&
+          willClimbAroundInclineTop(vFac, lpRadius, predClfDist, diffClfMslHgt)
+        )
+      ) {
+        desiredVFacing = vFac + 1
+        break
+      }
+    }
+  }
+
+  if (hasAcceleration) {
+    const predAttHght =
+      Math.trunc((lpRadius * (1024 - WAngle.fromFacing(vFacing).cos())) / 1024) - diffClfMslHgt
+    const slowDown =
+      (desiredVFacing !== 0 &&
+        (predClfDist <= Math.trunc((lpRadius * (1024 - WAngle.fromFacing(vFacing).sin())) / 1024) ||
+          relTarHorDist <=
+            2 * Math.trunc((lpRadius * (2048 - WAngle.fromFacing(vFacing).sin())) / 1024) - predClfDist)) ||
+      (desiredVFacing === 0 &&
+        relTarHorDist <=
+          Math.trunc((lpRadius * WAngle.fromFacing(vFacing).sin()) / 1024) +
+            isqrt(Math.max(0, predAttHght * (2 * lpRadius - predAttHght))))
+    void slowDown
+  }
+
+  return desiredVFacing
+}
+
+// ---------------------------------------------------------------------------
+// isqrt
+// ---------------------------------------------------------------------------
+
+function isqrt(n: number): number {
+  if (n <= 0) return 0
+  let x = n
+  let y = Math.trunc((x + 1) / 2)
+  while (y < x) {
+    x = y
+    y = Math.trunc((x + Math.trunc(n / x)) / 2)
+  }
+  return x
+}
+
+// ---------------------------------------------------------------------------
+// normaliseFacing
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalise a facing delta to the range of 0..255.
+ *
+ * OpenRA 对照: Util.NormalizeFacing(int f)
+ */
+export function normaliseFacing(facing: number): number {
+  if (facing >= 0) return facing & 0xFF
+  const negative = (-facing) & 0xFF
+  return negative === 0 ? 0 : 256 - negative
+}
+
+// ---------------------------------------------------------------------------
+// tickFacing
+// ---------------------------------------------------------------------------
+
+export function tickFacing(
+  facing: number,
+  desiredFacing: number,
+  rateOfTurn: number,
+): number {
+  const leftTurn = (facing - desiredFacing) & 0xFF
+  const rightTurn = (desiredFacing - facing) & 0xFF
+  if (Math.min(leftTurn, rightTurn) < rateOfTurn) {
+    return desiredFacing & 0xFF
+  }
+  if (rightTurn < leftTurn) {
+    return (facing + rateOfTurn) & 0xFF
+  }
+  return (facing - rateOfTurn) & 0xFF
+}
+
+// ---------------------------------------------------------------------------
+// clamp
+// ---------------------------------------------------------------------------
+
+export function clamp(value: number, min: number, max: number): number {
+  if (value < min) return min
+  if (value > max) return max
+  return value
+}
+
+// ---------------------------------------------------------------------------
+// applyPercentageModifiers
+// ---------------------------------------------------------------------------
+
+export function applyPercentageModifiers(value: number, modifiers: number[]): number {
+  let result = value
+  for (const m of modifiers) {
+    result = Math.trunc((result * m) / 100)
+  }
+  return result
+}
