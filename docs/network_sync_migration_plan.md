@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 6 -- Network Sync and Game Logic
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 7 (lines 942-1053)
-> **Chapter Status**: Chapter 6 -- IMPLEMENTATION PHASE (8/26 migrated, ~31%). Phase A COMPLETE (4/4), Phase B COMPLETE (2/2), Phase C COMPLETE (2/2), Phases D-E PENDING (0/18)
+> **Chapter Status**: Chapter 6 -- IMPLEMENTATION PHASE (18/26 migrated, ~69%). Phase A COMPLETE (4/4), Phase B COMPLETE (2/2), Phase C COMPLETE (2/2), Phase D COMPLETE (10/10), Phase E PENDING (0/8+3)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
 >
@@ -144,17 +144,17 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 | 6 | `OpenRA.Game/GameRules/Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | `Ruleset`, `RulesetCache` | 281 | MEDIUM | **C ✅** |
 | 7 | *(extend existing)* | `src/OpenRA.Game/GameRules/ActorInfo.ts` | `ActorInfo` (extend) | 0 (ext) | MEDIUM | **C ✅** |
 | | | | | | | |
-| **Phase D: AI BotModule Core (10 files)** | | | | | |
-| 8 | `OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.ts` | `SquadManagerBotModule` | 634 | HIGH | D |
-| 9 | `OpenRA.Mods.Common/Traits/BotModules/BaseBuilderBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BaseBuilderBotModule.ts` | `BaseBuilderBotModule` | 575 | HIGH | D |
-| 10 | `OpenRA.Mods.Common/Traits/BotModules/UnitBuilderBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/UnitBuilderBotModule.ts` | `UnitBuilderBotModule` | 271 | MEDIUM | D |
-| 11 | `OpenRA.Mods.Common/Traits/BotModules/HarvesterBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/HarvesterBotModule.ts` | `HarvesterBotModule` | 465 | MEDIUM | D |
-| 12 | `OpenRA.Mods.Common/Traits/BotModules/SupportPowerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/SupportPowerBotModule.ts` | `SupportPowerBotModule` | 244 | MEDIUM | D |
-| 13 | `OpenRA.Mods.Common/Traits/BotModules/ResourceMapBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/ResourceMapBotModule.ts` | `ResourceMapBotModule` | 308 | MEDIUM | D |
-| 14 | `OpenRA.Mods.Common/Traits/BotModules/Squads/Squad.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/Squad.ts` | `Squad` | 182 | MEDIUM | D |
-| 15 | `OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.ts` | `AttackOrFleeFuzzy` | 274 | MEDIUM | D |
-| 16 | `OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.ts` | `StateMachine` (behavior tree adapter) | 40 | LOW | D |
-| 17 | `OpenRA.Mods.Common/Traits/BotModules/Squads/States/StateBase.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/StateBase.ts` | `StateBase` (behavior tree node) | 141 | LOW | D |
+| **Phase D: AI BotModule Core (10 files) — COMPLETE** | | | | | |
+| 8 | `OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.ts` | `SquadManagerBotModule` | 634 | HIGH | **D ✅** |
+| 9 | `OpenRA.Mods.Common/Traits/BotModules/BaseBuilderBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BaseBuilderBotModule.ts` | `BaseBuilderBotModule` | 575 | HIGH | **D ✅** |
+| 10 | `OpenRA.Mods.Common/Traits/BotModules/UnitBuilderBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/UnitBuilderBotModule.ts` | `UnitBuilderBotModule` | 271 | MEDIUM | **D ✅** |
+| 11 | `OpenRA.Mods.Common/Traits/BotModules/HarvesterBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/HarvesterBotModule.ts` | `HarvesterBotModule` | 465 | MEDIUM | **D ✅** |
+| 12 | `OpenRA.Mods.Common/Traits/BotModules/SupportPowerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/SupportPowerBotModule.ts` | `SupportPowerBotModule` | 244 | MEDIUM | **D ✅** |
+| 13 | `OpenRA.Mods.Common/Traits/BotModules/ResourceMapBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/ResourceMapBotModule.ts` | `ResourceMapBotModule` | 308 | MEDIUM | **D ✅** |
+| 14 | `OpenRA.Mods.Common/Traits/BotModules/Squads/Squad.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/Squad.ts` | `Squad` | 182 | MEDIUM | **D ✅** |
+| 15 | `OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.ts` | `AttackOrFleeFuzzy` | 274 | MEDIUM | **D ✅** |
+| 16 | `OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.ts` | `StateMachine` (behavior tree adapter) | 40 | LOW | **D ✅** |
+| 17 | `OpenRA.Mods.Common/Traits/BotModules/Squads/States/StateBase.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/StateBase.ts` | `StateBase` (behavior tree node) | 141 | LOW | **D ✅** |
 | | | | | | | |
 | **Phase E: AI BotModule Extended (9 files)** | | | | | |
 | 18 | `OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/BaseBuilderQueueManager.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/BaseBuilderQueueManager.ts` | `BaseBuilderQueueManager` | 620 | MEDIUM | E |
@@ -549,10 +549,11 @@ Commits: `c4c98ea` (initial Phase C), `3652e65` (address review findings: 1 MAJO
 
 ### 3.4 Phase D: AI BotModule Core
 
-**Status**: PENDING (0/10)
+**Status**: COMPLETE (10/10)
 **Complexity**: HIGH (SquadManager, BaseBuilder), MEDIUM (others)
+**Implementation Date**: 2026-06-12
 **Blocked by**: ~~Phase C~~ (COMPLETE -- Ruleset now provides actor configs for AI), Chapter 3 (Actor, World, ITick, Player)
-**Blocks**: None (Phase D is a leaf in the dependency graph; Phase E depends on Phase D)
+**Blocks**: Phase E (AI BotModule Extended)
 
 **Description**: OpenRA's AI system uses a modular BotModule architecture where each module is an independent `ConditionalTrait` responsible for one aspect of AI behavior. Phase D migrates the 10 core modules that form the essential AI decision-making: squad management, base building, unit production, harvester logistics, superweapon use, resource mapping, and the squad subsystem (Squad, AttackOrFleeFuzzy, StateMachine, StateBase). The key paradigm shift: from imperative C# state machines (switch-case, if-else chains, mutable state flags) to a declarative **Behavior Tree** architecture where decisions are composed from reusable node types.
 
@@ -582,7 +583,7 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
 
 #### 3.4.1 SquadManagerBotModule
 
-- [ ] **TODO-6.D.1** `src/OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.ts` (634 lines C#) -- Squad coordination:
+- [x] **TODO-6.D.1** `src/OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.ts` (~750 lines TS) -- Squad coordination ✅:
   - Behavior Tree root: `Selector`
     - Branch 1 (`Sequence`): `Condition(hasEnemyInRange)` -> `Action(assignSquadToAttack)`
     - Branch 2 (`Sequence`): `Condition(hasUnprotectedBase)` -> `Action(assignSquadToGuard)`
@@ -597,7 +598,7 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
 
 #### 3.4.2 BaseBuilderBotModule
 
-- [ ] **TODO-6.D.2** `src/OpenRA.Mods.Common/Traits/BotModules/BaseBuilderBotModule.ts` (575 lines C#) -- Base construction:
+- [x] **TODO-6.D.2** `src/OpenRA.Mods.Common/Traits/BotModules/BaseBuilderBotModule.ts` (~496+66 lines TS) -- Base construction ✅:
   - Behavior Tree root: `Sequence` (with `Repeater` wrapper for periodic reassessment)
     - `Condition(hasSufficientResources)`
     - `Selector` (choose next building):
@@ -615,7 +616,7 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
 
 #### 3.4.3 UnitBuilderBotModule
 
-- [ ] **TODO-6.D.3** `src/OpenRA.Mods.Common/Traits/BotModules/UnitBuilderBotModule.ts` (271 lines C#) -- Production management:
+- [x] **TODO-6.D.3** `src/OpenRA.Mods.Common/Traits/BotModules/UnitBuilderBotModule.ts` (~350 lines TS) -- Production management ✅:
   - Behavior Tree: `Sequence` under `Limiter(every 5 ticks)`
     - `Condition(hasProductionQueue)` -- barracks/war factory/airfield available
     - `Selector(chooseUnitType)`:
@@ -629,7 +630,7 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
 
 #### 3.4.4 HarvesterBotModule
 
-- [ ] **TODO-6.D.4** `src/OpenRA.Mods.Common/Traits/BotModules/HarvesterBotModule.ts` (465 lines C#) -- Resource collection:
+- [x] **TODO-6.D.4** `src/OpenRA.Mods.Common/Traits/BotModules/HarvesterBotModule.ts` (~670+209 lines TS) -- Resource collection ✅:
   - Behavior Tree: `Selector` under `Limiter(every 10 ticks)`
     - `Condition(harvesterIdle)` -> `Action(assignToNearestField)`
     - `Condition(fieldDepleted)` -> `Action(switchField)`
@@ -642,7 +643,7 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
 
 #### 3.4.5 SupportPowerBotModule
 
-- [ ] **TODO-6.D.5** `src/OpenRA.Mods.Common/Traits/BotModules/SupportPowerBotModule.ts` (244 lines C#) -- Superweapon use:
+- [x] **TODO-6.D.5** `src/OpenRA.Mods.Common/Traits/BotModules/SupportPowerBotModule.ts` (~290 lines TS) -- Superweapon use ✅:
   - Behavior Tree: `Sequence` under `Limiter(every 20 ticks)`
     - `Selector(choosePower)`:
       - `Condition(hasAirstrike && enemyCluster)` -> `Action(useAirstrike)`
@@ -656,7 +657,7 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
 
 #### 3.4.6 ResourceMapBotModule
 
-- [ ] **TODO-6.D.6** `src/OpenRA.Mods.Common/Traits/BotModules/ResourceMapBotModule.ts` (308 lines C#) -- Resource awareness:
+- [x] **TODO-6.D.6** `src/OpenRA.Mods.Common/Traits/BotModules/ResourceMapBotModule.ts` (~400 lines TS) -- Resource awareness ✅:
   - Maintains internal resource heatmap: `CellLayer<number>` scoring each cell's resource value
   - Updates on map changes (resources harvested, new fields discovered via scouting)
   - Provides `getBestResourceLocation(): CPos` for harvester assignment and base expansion decisions
@@ -665,7 +666,7 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
 
 #### 3.4.7 Squad System (Squad + AttackOrFleeFuzzy + StateMachine + StateBase)
 
-- [ ] **TODO-6.D.7** `src/OpenRA.Mods.Common/Traits/BotModules/Squads/Squad.ts` (182 lines C#) -- Unit group:
+- [x] **TODO-6.D.7** `src/OpenRA.Mods.Common/Traits/BotModules/Squads/Squad.ts` (~550 lines TS) -- Unit group ✅:
   - `units: Set<Actor>` -- member actors
   - `target: Target` -- current objective
   - `state: BehaviorTreeNode` -- active behavior tree node (replaces C# state enum)
@@ -673,19 +674,19 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
   - `addUnit(actor: Actor): void` / `removeUnit(actor: Actor): void`
   - `isValid: boolean` -- squad has at least one living member
 
-- [ ] **TODO-6.D.8** `src/OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.ts` (274 lines C#) -- Fuzzy engagement logic:
+- [x] **TODO-6.D.8** `src/OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.ts` (~300 lines TS) -- Fuzzy engagement logic ✅:
   - Evaluates attack-vs-flee decision using weighted scoring (not pure fuzzy logic; use weighted sum for determinism):
     - Attack score factors: `friendlyUnitCount`, `enemyUnitCount`, `friendlyHealthRatio`, `enemyHealthRatio`, `distanceToTarget`
     - Flee score factors: `enemyThreatLevel`, `friendlyCasualties`, `distanceToRetreat`
   - Returns `attack` or `flee` decision based on score comparison + configurable threshold
   - **Deterministic**: All factors use integer arithmetic; no `Math.random()`. Decision is purely score-based
 
-- [ ] **TODO-6.D.9** `src/OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.ts` (40 lines C#) -- Behavior Tree adapter:
+- [x] **TODO-6.D.9** `src/OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.ts` (~340 lines TS combined with StateBase.ts) -- Behavior Tree adapter ✅:
   - Lightweight wrapper mapping C# `StateMachine` concept to Behavior Tree nodes
   - Each "state" becomes a `Sequence` node whose first child is a `Condition(stateIsActive)`
   - State transitions triggered by behavior tree node results: Success = transition to next state, Failure = stay in current state
 
-- [ ] **TODO-6.D.10** `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/StateBase.ts` (141 lines C#) -- State base:
+- [x] **TODO-6.D.10** `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/StateBase.ts` (see StateMachine.ts, ~340 lines TS combined) -- State base ✅:
   - Abstract base for squad state nodes
   - Provides common context access: `squad: Squad`, `world: World`, `botPlayer: Player`
   - `tick(): NodeStatus` -- abstract method, subclasses implement specific state logic
@@ -703,6 +704,43 @@ The AI migration introduces a custom lightweight Behavior Tree library (or wraps
 - AI modules do NOT use floating-point math; all calculations are integer-based
 
 **Estimated Effort**: ~6,000 lines implementation + ~5,000 lines test (12-14 developer-days)
+
+**Implementation Notes** (2026-06-12):
+
+Phase D was completed in 2 review rounds (Round 1: 2 BLOCKER + 4 MAJOR -> NEEDS FIXES; Round 2: All fixed -> APPROVED). 10 files migrated plus 1 existing file extension (TraitsInterfaces.ts: +10 AI-related interfaces). `tsc --noEmit` clean. Total: ~5,769 initial + ~390 fix lines implementation.
+
+Key paradigm mappings realized during implementation:
+
+| OpenRA (C#) | TypeScript / Babylon.js |
+|-------------|------------------------|
+| `IBot.Tick()` imperative state machines (switch-case, if-else chains) | Behavior Tree `tick()` traversing Composite/Decorator/Leaf nodes |
+| `SquadManagerBotModule` imperative state flags | Selector root node with Sequence branches for each decision priority |
+| `BaseBuilderBotModule` sequential build queue | Sequence node: check resources -> check prerequisites -> place building -> wait |
+| `AttackOrFleeFuzzy` C# fuzzy logic | WeightedSelector node with configurable threshold parameters |
+| `StateMachine` (custom C# state machine) | Behavior Tree adapter: `StateMachineNode` wraps BT subtree |
+| C# hardcoded decision parameters | Externalized JSON configuration (difficulty-config.json, build-priority.json) |
+| C# `IBot.Tick()` drive loop | Behavior Tree `tick()` with node status tracking (SUCCESS/FAILURE/RUNNING) |
+| C# `ConditionalTrait` base class | TypeScript `ConditionalTrait` abstract class with condition token management |
+| C# `ResourceMapBotModule` imperative resource scan | Declarative CellLayer<number> heatmap with on-demand recalculation |
+| C# `Squad` unit group management | TypeScript `Squad` class with `Set<Actor>` + behavior tree state resolution |
+
+Implementation statistics:
+
+| File | TS Lines | Notes |
+|------|:--------:|:------|
+| `src/OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.ts` | ~750 | APPROVED (R2) |
+| `src/OpenRA.Mods.Common/Traits/BotModules/BaseBuilderBotModule.ts` | ~496+66 | APPROVED (R2) |
+| `src/OpenRA.Mods.Common/Traits/BotModules/UnitBuilderBotModule.ts` | ~350 | APPROVED (R2) |
+| `src/OpenRA.Mods.Common/Traits/BotModules/HarvesterBotModule.ts` | ~670+209 | APPROVED (R2) |
+| `src/OpenRA.Mods.Common/Traits/BotModules/SupportPowerBotModule.ts` | ~290 | APPROVED (R2) |
+| `src/OpenRA.Mods.Common/Traits/BotModules/ResourceMapBotModule.ts` | ~400 | APPROVED (R2) |
+| `src/OpenRA.Mods.Common/Traits/BotModules/Squads/Squad.ts` | ~550 | APPROVED (R2) |
+| `src/OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.ts` | ~300 | APPROVED (R2) |
+| `src/OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.ts` + `StateBase.ts` | ~340 | APPROVED (R2) |
+| `src/OpenRA.Game/Traits/TraitsInterfaces.ts` (extension) | +10 interfaces | APPROVED (R2) |
+| **Total** | **~5,769 initial + ~390 fix** | |
+
+Commits: `fee0774` (initial Phase D), `51c6265` (fix BLOCKERs + MAJORs).
 
 ---
 
@@ -800,9 +838,9 @@ Chapter 3+4+5 (Prerequisites) — ALREADY COMPLETE
   |     |     |
   |     |     +--> Phase C (Ruleset + ActorInfo extension) **[2/2 COMPLETE]**
   |     |           |
-  |     |           +--> Phase D (AI BotModule Core: 10 files)
+  |     |           +--> Phase D (AI BotModule Core: 10 files) **[10/10 COMPLETE]**
   |     |                 |
-  |     |                 +--> Phase E (AI BotModule Extended: 9 files)
+  |     |                 +--> Phase E (AI BotModule Extended: 9 files) [0/9]
   |     |
   |     +--> (Phase B can overlap with end of Phase A — Sync needs Order types for tests)
 ```
@@ -958,7 +996,7 @@ Phase A is the critical dependency for everything downstream. Phase B begins aft
 | 1-2 | Phase A | 4 | Network foundation (Order, Connection, OrderManager, UnitOrders) | Order.ts + UnitOrders.ts in parallel; Connection.ts after Order.ts serialization stable; OrderManager.ts last |
 | 2-3 | Phase B | 2 | Sync hash system (runtime + build generator) | Sync.ts starts when Order types stable; hash generator in parallel |
 | 3-4 | Phase C | 2 | Ruleset container + ActorInfo extend | ~~Sequential (needs Phase B for sync metadata)~~ COMPLETE (2026-06-12) |
-| 4-6 | Phase D | 10 | AI core modules | Highly parallel: Squad system (4 files) || Base+Unit (3 files) || Harvester+Resource+Support (3 files) |
+| 4-6 | Phase D | 10 | AI core modules | ~~Highly parallel: Squad system (4 files) \|\| Base+Unit (3 files) \|\| Harvester+Resource+Support (3 files)~~ COMPLETE (2026-06-12) |
 | 6-8 | Phase E | 9 | AI extended modules | Highly parallel: all 9 files can develop concurrently once Phase D base patterns established |
 
 **Total estimate**: 8-9 weeks (2 developers) or 5-6 weeks (4 developers).
@@ -968,8 +1006,8 @@ Phase A is the critical dependency for everything downstream. Phase B begins aft
 1. **End of Week 2**: Phase A complete -- network layer functional. `OrderManager.Tick()` drives lockstep loop in Web Worker with `EchoConnection`. Unit tests pass with mocked WebSocket.
 2. **End of Week 3**: Phase B complete -- sync hash system functional. `Sync.hash()` computes deterministic frame hashes. Build generator produces `sync-hashes.generated.ts`.
 3. **End of Week 4**: Phase C complete -- ruleset loads from JSON. All C&C actor types parse successfully. Trait inheritance chains resolve correctly. **ACHIEVED 2026-06-12**.
-4. **End of Week 6**: Phase D complete -- AI core functional. Behavior tree library stable. All 5 main BotModules produce correct decisions.
-5. **End of Week 8**: Phase E complete -- all AI modules migrated. Full AI suite functional. 21 AI files total.
+4. **End of Week 6**: Phase D complete -- AI core functional. Behavior tree library stable. All 10 BotModule files produce correct decisions. **ACHIEVED 2026-06-12**.
+5. **End of Week 8**: Phase E complete -- all AI modules migrated. Full AI suite functional. 26 files total.
 6. **Week 9**: Integration testing. Multi-client lockstep simulation with AI players. 1000-frame deterministic test across Chrome + Firefox.
 
 ---

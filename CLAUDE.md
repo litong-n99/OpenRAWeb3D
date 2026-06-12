@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 6 (Network Sync & Game Logic) -- EXECUTION PHASE (Phase A+B+C complete: 8/26, ~31%)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 8/26 (~31%)
+**Phase**: Chapter 6 (Network Sync & Game Logic) -- EXECUTION PHASE (Phases A+B+C+D complete: 18/26, ~69%)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 18/26 (~69%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -36,11 +36,11 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | MOD System Core (2 files) | COMPLETE (Manifest, ModData), 115 tests, 2 review rounds |
 | UI Widget Core (4 files) | COMPLETE (Widget, ChromeMetrics, WidgetLoader, ChromeProvider), 174 tests, 3 review rounds |
 | World Interaction Bridge (1 file) | COMPLETE (WorldInteractionControllerWidget, 1157 lines, 55 tests, 2 review rounds) |
-| **Network Sync & Game Logic (26 files)** | **EXECUTION PHASE (8/26 migrated, ~31%). Phases A+B+C COMPLETE** |
+| **Network Sync & Game Logic (26 files)** | **EXECUTION PHASE (18/26 migrated, ~69%). Phases A+B+C+D COMPLETE** |
 | Order & Connection System (4 files) | COMPLETE (Phase A, ~3,461 impl + ~1,867 test lines, 115 tests) |
 | Sync Hash System (3 files) | COMPLETE (Phase B, ~1,204 impl + ~1,779 test lines, 132 tests) |
 | Ruleset Container (2 files) | COMPLETE (Phase C, ~1,030 impl + ~1,359 test lines, ~80 tests) |
-| AI BotModule Core (10 files) | Pending (Phase D, plan complete) |
+| AI BotModule Core (10 files) | COMPLETE (Phase D, ~5,769+390 impl lines, 2 review rounds) |
 | AI BotModule Extended (8+3 files) | Pending (Phase E, plan complete) |
 | Game logic, networking, audio | Chapter 6 plan ready; Chapters 7-8+ (audio, weapons, etc.) not yet planned
 
@@ -381,7 +381,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
 | [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 100% complete) |
-| [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (26 files, 5 phases A-E, DESIGN PHASE) |
+| [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (26 files, 5 phases A-E, Phases A-D COMPLETE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
