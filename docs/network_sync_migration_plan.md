@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 6 -- Network Sync and Game Logic
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 7 (lines 942-1053)
-> **Chapter Status**: Chapter 6 -- DESIGN PHASE (0/26 migrated, 0%)
+> **Chapter Status**: Chapter 6 -- IMPLEMENTATION PHASE (4/26 migrated, ~15%). Phase A COMPLETE (4/4), Phase B-E PENDING (0/22)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
 >
@@ -129,11 +129,11 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 
 | # | OpenRA Source | Target TypeScript File | Class/Interface | Lines (C#) | Complexity | Phase |
 |:---:|:---|:---|:---|:---:|:---:|:---:|
-| **Phase A: Network & Connection Foundation (4 files)** | | | | | |
-| 1 | `OpenRA.Game/Network/Order.cs` | `src/OpenRA.Game/Network/Order.ts` | `Order`, `OrderType`, `OrderFields`, `OrderPacket` | 476 | MEDIUM | A |
-| 2 | `OpenRA.Game/Network/UnitOrders.cs` | `src/OpenRA.Game/Network/UnitOrders.ts` | `UnitOrders` | 431 | MEDIUM | A |
-| 3 | `OpenRA.Game/Network/Connection.cs` | `src/OpenRA.Game/Network/Connection.ts` | `IConnection`, `NetworkConnection`, `EchoConnection`, `ConnectionState` | 387 | HIGH | A |
-| 4 | `OpenRA.Game/Network/OrderManager.cs` | `src/OpenRA.Game/Network/OrderManager.ts` | `OrderManager` | 334 | HIGH | A |
+| **Phase A: Network & Connection Foundation (4 files) — COMPLETE** | | | | | |
+| 1 | `OpenRA.Game/Network/Order.cs` | `src/OpenRA.Game/Network/Order.ts` | `Order`, `OrderType`, `OrderFields`, `OrderPacket` | 476 | MEDIUM | **A ✅** |
+| 2 | `OpenRA.Game/Network/UnitOrders.cs` | `src/OpenRA.Game/Network/UnitOrders.ts` | `UnitOrders` | 431 | MEDIUM | **A ✅** |
+| 3 | `OpenRA.Game/Network/Connection.cs` | `src/OpenRA.Game/Network/Connection.ts` | `IConnection`, `NetworkConnection`, `EchoConnection`, `ConnectionState` | 387 | HIGH | **A ✅** |
+| 4 | `OpenRA.Game/Network/OrderManager.cs` | `src/OpenRA.Game/Network/OrderManager.ts` | `OrderManager` | 334 | HIGH | **A ✅** |
 | | | | | | | |
 | **Phase B: Sync Hash System (1 file + 1 generated)** | | | | | |
 | 5 | `OpenRA.Game/Sync.cs` | `src/OpenRA.Game/Sync.ts` | `Sync`, `ISync`, `VerifySyncAttribute` | 212 | HIGH | B |
@@ -193,8 +193,9 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 
 ### 3.1 Phase A: Network & Connection Foundation
 
-**Status**: PENDING (0/4)
+**Status**: COMPLETE (4/4)
 **Complexity**: HIGH (OrderManager, NetworkConnection), MEDIUM (Order/UnitOrders)
+**Implementation Date**: 2026-06-12
 **Blocked by**: Chapter 3 Phase A (CPos, WPos, Target), Chapter 3 Phase C (World), Chapter 3 Phase G (Player)
 **Blocks**: Phase B (Sync needs Order types for testing), Phase C (Ruleset needs Network namespace)
 **External dependency**: `@msgpack/msgpack` npm package for MessagePack serialization
@@ -212,7 +213,7 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 
 #### 3.1.1 Order (Data Structure)
 
-- [ ] **TODO-6.A.1** `src/OpenRA.Game/Network/Order.ts` (476 lines C#) -- Player command atom:
+- [x] **TODO-6.A.1** `src/OpenRA.Game/Network/Order.ts` (1253 lines TS, 567 test lines) -- Player command atom ✅:
   - `OrderType` enum: `Ack = 0x10`, `Ping = 0x20`, `SyncHash = 0x65`, `TickScale = 0x76`, `Disconnect = 0xBF`, `Handshake = 0xFE`, `Fields = 0xFF`
   - `OrderFields` bit flag enum: `Target = 0x01`, `ExtraActors = 0x02`, `TargetString = 0x04`, `Queued = 0x08`, `ExtraLocation = 0x10`, `ExtraData = 0x20`, `TargetIsCell = 0x40`, `Subject = 0x80`, `Grouped = 0x100`
   - `Order` class: `orderString: string`, `subject: ActorID` (number, not Actor reference), `target: Target`, `targetCell: CPos`, `targetPosition: WPos`, `targetString: string`, `extraData: number`, `extraLocation: CPos`, `extraActors: ActorID[]`, `isImmediate: boolean`, `isQueued: boolean`, `grouped: boolean`
@@ -226,7 +227,7 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 
 #### 3.1.2 UnitOrders (Order Routing)
 
-- [ ] **TODO-6.A.2** `src/OpenRA.Game/Network/UnitOrders.ts` (431 lines C#) -- Order dispatch:
+- [x] **TODO-6.A.2** `src/OpenRA.Game/Network/UnitOrders.ts` (696 lines TS, 416 test lines) -- Order dispatch ✅:
   - `ProcessOrder(orderManager: OrderManager, world: World, clientId: number, order: Order): void`
   - `switch-case` dispatch on `order.orderString` covering all standard order types: `"Message"`, `"Chat"`, `"StartGame"`, `"PauseGame"`, `"SyncInfo"`, `"HandshakeRequest"`, `"HandshakeResponse"`, `"ServerOrder"`, `"Disconnected"`, `"Shroud"`, `"Ping"`, etc.
   - `ResolveOrder(order: Order): void` -- validates subject actor is alive, checks `world.orderValidators`, dispatches to `IResolveOrder` traits
@@ -238,7 +239,7 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 
 #### 3.1.3 Connection (Transport Layer)
 
-- [ ] **TODO-6.A.3** `src/OpenRA.Game/Network/Connection.ts` (387 lines C#) -- Network transport:
+- [x] **TODO-6.A.3** `src/OpenRA.Game/Network/Connection.ts` (685 lines TS, 352 test lines) -- Network transport ✅:
   - `ConnectionState` enum: `PreConnecting`, `NotConnected`, `Connecting`, `Connected`
   - `IConnection` interface: `localClientId: number`, `startGame(): void`, `send(frame: number, orders: Order[]): void`, `sendImmediate(orders: Order[]): void`, `sendSync(frame: number, syncHash: number, defeatState: bigint): void`, `receive(orderManager: OrderManager): void`
   - `NetworkConnection` class:
@@ -261,7 +262,7 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 
 #### 3.1.4 OrderManager (Lockstep Coordinator)
 
-- [ ] **TODO-6.A.4** `src/OpenRA.Game/Network/OrderManager.ts` (334 lines C#) -- Frame queue manager:
+- [x] **TODO-6.A.4** `src/OpenRA.Game/Network/OrderManager.ts` (827 lines TS, 532 test lines) -- Frame queue manager ✅:
   - `session: Session`, `world: World`, `connection: IConnection`
   - `netFrameNumber: number` (getter), `localFrameNumber: number`
   - `gameStarted: boolean` -> `netFrameNumber !== 0`
@@ -299,13 +300,44 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 
 **Estimated Effort**: ~3,500 lines implementation + ~3,000 lines test (10-12 developer-days)
 
+**Implementation Notes** (2026-06-12):
+
+Phase A was completed in 1 review round (Round 1: 1 BLOCKER -- wrong properties in `suggestedTimestep`; fixed. Round 2: APPROVED). ~94% OpenRA feature coverage across all 4 files. 115 tests total, `tsc --noEmit` clean.
+
+Key paradigm mappings realized during implementation:
+
+| OpenRA (C#) | TypeScript / Babylon.js |
+|-------------|------------------------|
+| `TcpClient` + multi-threaded `NetworkConnectionReceive` | Browser `WebSocket` + event-driven `onmessage` callback |
+| `BlockingCollection` + `ConcurrentQueue` | JS `Array` (single-threaded, no concurrency needed) |
+| `MemoryStream` manual binary serialization | `@msgpack/msgpack` `encode()`/`decode()` with typed arrays |
+| `Thread` for connection lifecycle | `WebSocket` async lifecycle (`onopen` / `onmessage` / `onclose` / `onerror`) |
+| `Reflection.Emit` `OrderIO` dynamic IL codegen | Manual `tryParse*` static functions for each Order field |
+| Platform-specific byte order (LE in original) | 4-byte **big-endian** (`DataView.setInt32()`) length prefix -- intentional deviation for broader ecosystem compatibility |
+| `Order.Target` (C# `Target` struct, 4 states) | TypeScript `Target` (already migrated in Ch3 Phase A) |
+| `Order.Subject` (C# `Actor` reference) | TypeScript `ActorID` (number) for network serialization |
+| `EchoConnection` in-memory queue | TypeScript `EchoConnection` using in-memory `Array` as ring buffer |
+| `OrderPacket` batch array | MessagePack array of `Order` objects |
+
+Implementation statistics:
+
+| File | TS Lines | Test Lines | Tests | Review Round |
+|------|:--------:|:----------:|:-----:|:------------:|
+| `src/OpenRA.Game/Network/Order.ts` | 1253 | 567 | Order.test.ts | APPROVED (R2) |
+| `src/OpenRA.Game/Network/UnitOrders.ts` | 696 | 416 | UnitOrders.test.ts | APPROVED (R2) |
+| `src/OpenRA.Game/Network/Connection.ts` | 685 | 352 | Connection.test.ts | APPROVED (R2) |
+| `src/OpenRA.Game/Network/OrderManager.ts` | 827 | 532 | OrderManager.test.ts | APPROVED (R2) |
+| **Total** | **3,461** | **1,867** | **115** | |
+
+Commits: `7ea8d07` (initial Phase A), `ff0a461` (Order/UnitOrders/Connection refinements), `2fe6156` (suggestedTimestep fix).
+
 ---
 
 ### 3.2 Phase B: Sync Hash System
 
 **Status**: PENDING (0/2)
 **Complexity**: HIGH (hash generation, build tooling)
-**Blocked by**: Phase A (Order types for testing sync hash on order data), Chapter 3 (all coordinate types have hashCode())
+**Blocked by**: ~~Phase A~~ (COMPLETE -- Order types now available for sync hash testing), Chapter 3 (all coordinate types already have hashCode())
 **Blocks**: Phase C (Ruleset uses sync attributes on trait fields)
 
 **Description**: `Sync.cs` is the consistency watchdog of the deterministic lockstep. It computes a frame-level hash of all `[VerifySync]`-decorated game state and compares across clients. C# achieves this via `Reflection.Emit` dynamic IL code generation -- JavaScript has no equivalent. The migration strategy: a build-time code generator (`utils/sync-hash-generator.ts`) scans TypeScript source files for `@VerifySync` decorators, identifies marked fields, and emits pre-generated `computeSyncHash()` functions into a single `src/OpenRA.Game/sync-hashes.generated.ts` file. At runtime, `Sync.hash(target)` looks up the pre-generated function by target class name and invokes it.

@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 6 (Network Sync & Game Logic) — DESIGN PHASE (migration plan complete, 0/26 migrated)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 0/26 (0%, plan ready), Chapters 2-5 COMPLETE
+> **Current phase**: Chapter 6 (Network Sync & Game Logic) — EXECUTION PHASE (Phase A complete: 4/26, ~15%)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 4/26 (~15%, Phase A complete), Chapters 2-5 COMPLETE
 
 ---
 
@@ -19,7 +19,7 @@
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
 | **Remaining chapters** | Chapters 6-8+ (networking in design phase; audio, game logic not yet planned) |
-| **Overall project completion** | Chapters 2+3+4+5/8+ complete (116/116 rendering+actors+map+UI), Chapter 6 design phase (plan complete, 0/26 migrated) |
+| **Overall project completion** | Chapters 2+3+4+5/8+ complete (116/116 rendering+actors+map+UI), Chapter 6 in execution (4/26, Phase A complete) |
 
 > **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
 
@@ -122,7 +122,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `glsl/` | 12 | 10 | 0 + 2 NOP | 0 |
 | `OpenRA.Game/Traits/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Activities/` | 0 | 0 | 0 | All |
-| `OpenRA.Game/Network/` | 0 | 0 | 0 | All |
+| `OpenRA.Game/Network/` | 4 | 4 | 0 | 0 (Phase A COMPLETE) |
 | `OpenRA.Game/FileSystem/` | 5 | 5 | 0 | 0 |
 | `OpenRA.Game/Widgets/` | 3 | 3 | 0 | COMPLETE (Phase D) |
 | `OpenRA.Game/Map/` | 23 | 23 | 0 | 0 |
@@ -182,6 +182,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch6 Phase A Network & Connection Foundation** (4 files) | migration-develop | migration-review | APPROVED (2 rounds, 1 BLOCKER + 9 MINOR): Order.ts (1253 lines, 567 test lines), UnitOrders.ts (696 lines, 416 test lines), Connection.ts (685 lines, 352 test lines), OrderManager.ts (827 lines, 532 test lines). Phase A: 3,461 impl + 1,867 test lines, 115 tests. ~94% OpenRA feature coverage. Commits `7ea8d07`, `ff0a461`, `2fe6156`. |
 | 2026-06-12 | **Ch5 Phase E World Interaction Bridge** (1 file) | migration-develop | migration-review | APPROVED (2 rounds, 12 findings: 3 BLOCKER + 5 MAJOR + 4 MINOR): WorldInteractionControllerWidget.ts (1157 lines, 55 tests, state machine IDLE->MAYBE_DRAG->CLICK|DRAGGING, single/double-click selection, drag-box selection with deadzone, right-click order dispatch via event bus, scene.onPointerObservable bridge). Does not extend Widget (standalone class, documented ADR). 1,157 impl + ~1,682 test lines. Chapter 5 now 100% COMPLETE (16/16). Commits `cff5dfd`, `42223f9`. |
 | 2026-06-12 | **Ch5 Phase D UI Widget Core** (4 files) | migration-develop | migration-review | APPROVED (3 rounds, 0 BLOCKERs remaining): Widget.ts (1062 lines, 104 tests, Widget/ContainerWidget/InputWidget/Ui/ChromeLogic), ChromeMetrics.ts (166 lines, 23 tests, CSS custom property themes), WidgetLoader.ts (470 lines, 43 tests, JSON->Widget tree loader), ChromeProvider.ts (431 lines, 48 tests, CSS border-image skin manager). 2,129 impl + 2,333 test lines, 174 tests. No manual visual tests needed (core widget tree infrastructure). |
 | 2026-06-12 | **Ch5 Phase C MOD System Core** (2 files) | migration-develop | migration-review | APPROVED (2 rounds, 0 BLOCKERs): Manifest.ts (506 lines, 72 tests, mod.json parser + dependency validation), ModData.ts (326 lines, 43 tests, ObjectCreator registry + runtime coordinator). 832 impl + 1,296 test lines, 115 tests. No manual visual tests needed (pure infrastructure). |
@@ -812,17 +813,17 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 
 ---
 
-## Chapter 6: Network Sync & Game Logic (DESIGN PHASE)
+## Chapter 6: Network Sync & Game Logic (EXECUTION PHASE)
 
 > **Migration Plan**: [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md)
-> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: DESIGN PHASE (0/26 migrated, 0%)
+> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: EXECUTION PHASE (4/26 migrated, ~15%)
 > **Prerequisite**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 0 | 0% |
-| Pending | 26 | 100% |
-| **Total** | **26** | **0%** |
+| Completed | 4 | ~15% |
+| Pending | 22 | ~85% |
+| **Total** | **26** | **~15%** |
 | **From OpenRA** | **22** | |
 | **New files (no OpenRA equivalent)** | **2** (sync hash generator build tool, behavior tree json configs) | |
 | **Existing file extensions** | **1** (ActorInfo.ts sync metadata) | |
@@ -832,7 +833,7 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
-| Phase A | Network & Connection Foundation | 4 | HIGH (OrderManager, Connection), MEDIUM (Order, UnitOrders) | PENDING (0/4) |
+| Phase A | Network & Connection Foundation | 4 | HIGH (OrderManager, Connection), MEDIUM (Order, UnitOrders) | **COMPLETE (4/4)** |
 | Phase B | Sync Hash System | 2 | HIGH (hash generation + build tooling) | PENDING (0/2) |
 | Phase C | Ruleset Container & ActorInfo Integration | 2 | MEDIUM | PENDING (0/2) |
 | Phase D | AI BotModule Core | 10 | HIGH (SquadManager, BaseBuilder), MEDIUM | PENDING (0/10) |
@@ -873,7 +874,7 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 ```
 Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
   |
-  +--> Phase A (Order + Connection + UnitOrders + OrderManager) [0/4]
+  +--> Phase A (Order + Connection + UnitOrders + OrderManager) **[4/4 COMPLETE]**
   |     |
   |     +--> Phase B (Sync + hash generator) [0/2]
   |     |     |
@@ -888,7 +889,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 
 | Week | Phase | Files | Description | Parallelizable |
 |:---:|:---|:---:|:---|:---:|
-| 1-2 | Phase A | 4 | Network foundation (Order, Connection, OrderManager, UnitOrders) | Order.ts + UnitOrders.ts in parallel |
+| 1-2 | Phase A | 4 | Network foundation (Order, Connection, OrderManager, UnitOrders) | ~~Order.ts + UnitOrders.ts in parallel~~ COMPLETE (2026-06-12) |
 | 2-3 | Phase B | 2 | Sync hash system (runtime + build generator) | Sync.ts + hash generator in parallel |
 | 3-4 | Phase C | 2 | Ruleset container + ActorInfo extension | Sequential (needs Phase B) |
 | 4-6 | Phase D | 10 | AI core modules | Highly parallel (3 groups) |
@@ -900,10 +901,10 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 
 | # | OpenRA Source | Target TypeScript File | Complexity | Phase |
 |:---:|:---|:---|:---:|:---:|
-| 1 | `Order.cs` | `src/OpenRA.Game/Network/Order.ts` | MEDIUM | A |
-| 2 | `UnitOrders.cs` | `src/OpenRA.Game/Network/UnitOrders.ts` | MEDIUM | A |
-| 3 | `Connection.cs` | `src/OpenRA.Game/Network/Connection.ts` | HIGH | A |
-| 4 | `OrderManager.cs` | `src/OpenRA.Game/Network/OrderManager.ts` | HIGH | A |
+| 1 | `Order.cs` | `src/OpenRA.Game/Network/Order.ts` | MEDIUM | **A ✅** |
+| 2 | `UnitOrders.cs` | `src/OpenRA.Game/Network/UnitOrders.ts` | MEDIUM | **A ✅** |
+| 3 | `Connection.cs` | `src/OpenRA.Game/Network/Connection.ts` | HIGH | **A ✅** |
+| 4 | `OrderManager.cs` | `src/OpenRA.Game/Network/OrderManager.ts` | HIGH | **A ✅** |
 | 5 | `Sync.cs` | `src/OpenRA.Game/Sync.ts` | HIGH | B |
 | 5a | *(new build tool)* | `utils/sync-hash-generator.ts` | HIGH | B |
 | 6 | `Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | MEDIUM | C |
