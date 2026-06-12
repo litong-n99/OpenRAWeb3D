@@ -366,8 +366,8 @@ describe('selectionPriority', () => {
 // ---------------------------------------------------------------------------
 
 describe('calculateActorSelectionPriority', () => {
-  it('incorporates pixel distance into priority via left shift', () => {
-    // Formula: priority - (pixelDistance << 16)
+  it('incorporates pixel distance into priority via multiplication', () => {
+    // Formula: (basePriority - pixelDistance) * 65536
     const result = SelectionUtils.calculateActorSelectionPriority(
       ACTOR_1,
       5,   // 5 pixels away
@@ -375,10 +375,12 @@ describe('calculateActorSelectionPriority', () => {
       PLAYER_A,  // owner = viewer → no penalty
       enemyRelationship,
     )
-    expect(result).toBe(10 - (5 << 16))
+    // (10 - 5) * 65536 = 327680
+    expect(result).toBe((10 - 5) * 65536)
   })
 
-  it('returns priority unchanged when distance is 0', () => {
+  it('returns basePriority * 65536 when distance is 0', () => {
+    // Formula: (10 - 0) * 65536 = 655360
     const result = SelectionUtils.calculateActorSelectionPriority(
       ACTOR_1,
       0,
@@ -386,13 +388,14 @@ describe('calculateActorSelectionPriority', () => {
       PLAYER_A,
       enemyRelationship,
     )
-    expect(result).toBe(10)
+    expect(result).toBe(10 * 65536)
   })
 
   it('distance dominates priority modifiers', () => {
-    // Actor 1 with dist=1 vs Actor 2 with dist=2:
-    // ACTOR_1: 10 - (1 << 16) = 10 - 65536
-    // Even with priority 20, dist=2: 20 - (2 << 16) = 20 - 131072
+    // ACTOR_1 priority=10, dist=1: (10 - 1) * 65536 = 589824
+    // ACTOR_2 priority=20, dist=2: (20 - 2) * 65536 = 1179648
+    // So ACTOR_2 (higher priority, more distant) still wins because
+    // priority (20-2=18) > (10-1=9) after distance subtraction
     const pri1 = SelectionUtils.calculateActorSelectionPriority(
       ACTOR_1,  // priority 10
       1,
@@ -407,10 +410,13 @@ describe('calculateActorSelectionPriority', () => {
       PLAYER_A,
       enemyRelationship,
     )
-    expect(pri1).toBeGreaterThan(pri2)
+    // pri2 = (20-2)*65536 = 1179648, pri1 = (10-1)*65536 = 589824
+    expect(pri2).toBeGreaterThan(pri1)
   })
 
   it('combines relationship penalty with pixel distance', () => {
+    // priority=10, enemy penalty=-90, dist=3
+    // (10 - 90 - 3) * 65536 = -83 * 65536
     const result = SelectionUtils.calculateActorSelectionPriority(
       ACTOR_1,
       3,
@@ -418,7 +424,7 @@ describe('calculateActorSelectionPriority', () => {
       PLAYER_B,   // viewer != owner → enemy penalty -90
       enemyRelationship,
     )
-    expect(result).toBe(10 - 90 - (3 << 16))
+    expect(result).toBe((10 - 90 - 3) * 65536)
   })
 })
 
@@ -427,38 +433,37 @@ describe('calculateActorSelectionPriority', () => {
 // ---------------------------------------------------------------------------
 
 describe('withHighestSelectionPriority', () => {
-  it('selects the actor closest to the click point', () => {
-    // Both actors same owner/type; ACTOR_1 is "closer" (dist=1 vs dist=2)
+  it('selects the actor with the highest combined priority (per-actor distance)', () => {
+    // ACTOR_1 dist=1, ACTOR_2 dist=2
+    // ACTOR_1: (10 - 1) * 65536 = 589824
+    // ACTOR_2: (20 - 2) * 65536 = 1179648
     const result = SelectionUtils.withHighestSelectionPriority(
       [ACTOR_1, ACTOR_2],
-      1,   // distance for ACTOR_1 is smaller in this scenario
+      (a) => a.actorId === 1 ? 1 : 2,  // per-actor distances
       makeModifiers(),
       PLAYER_A,
       enemyRelationship,
     )
-    // Since we're calling with the same pixelDistance for all actors,
-    // ACTOR_2 with higher base priority (20) wins when distance is equal
     expect(result).not.toBeNull()
-    // Both get same pixelDistance in this call → ACTOR_2 wins on priority
     expect(result!.actorId).toBe(2)
   })
 
-  it('picks the actor with the highest combined priority', () => {
-    // ACTOR_2 has base priority 20, ACTOR_1 has 10
+  it('picks the actor with the highest combined priority (all distance 0)', () => {
+    // All at distance 0: ACTOR_2 priority=20 wins over ACTOR_1=10, ACTOR_4=5
     const result = SelectionUtils.withHighestSelectionPriority(
       [ACTOR_1, ACTOR_2, ACTOR_4],
-      0,
+      () => 0,
       makeModifiers(),
       PLAYER_A,
       enemyRelationship,
     )
-    expect(result!.actorId).toBe(2)  // priority 20 > 10 > 5
+    expect(result!.actorId).toBe(2)
   })
 
   it('returns null for empty input', () => {
     const result = SelectionUtils.withHighestSelectionPriority(
       [],
-      0,
+      () => 0,
       makeModifiers(),
       PLAYER_A,
       enemyRelationship,
@@ -469,7 +474,7 @@ describe('withHighestSelectionPriority', () => {
   it('works with single actor', () => {
     const result = SelectionUtils.withHighestSelectionPriority(
       [ACTOR_1],
-      5,
+      () => 5,
       makeModifiers(),
       PLAYER_A,
       enemyRelationship,
@@ -677,22 +682,22 @@ describe('selectActorsInWorld', () => {
 // ---------------------------------------------------------------------------
 
 describe('selectHighestPriorityActorAtPoint', () => {
-  it('delegates to withHighestSelectionPriority', () => {
+  it('delegates to withHighestSelectionPriority with per-actor distances', () => {
     const result = SelectionUtils.selectHighestPriorityActorAtPoint(
       [ACTOR_1, ACTOR_2],
-      3,
+      () => 3,   // all actors at same pixel distance
       makeModifiers(),
       PLAYER_A,
       enemyRelationship,
     )
-    // Same pixelDistance → higher base priority wins
+    // Same pixelDistance → higher base priority (ACTOR_2=20) wins
     expect(result!.actorId).toBe(2)
   })
 
   it('returns null for empty candidates', () => {
     const result = SelectionUtils.selectHighestPriorityActorAtPoint(
       [],
-      0,
+      () => 0,
       makeModifiers(),
       PLAYER_A,
       enemyRelationship,
@@ -719,7 +724,7 @@ describe('selectActorsInBoxWithDeadzone', () => {
       4,     // deadzone
       BOX_ACTORS,
       [],    // fallback candidates (not used)
-      0,
+      () => 0,
       makeModifiers(),
       null,
       enemyRelationship,
@@ -737,7 +742,7 @@ describe('selectActorsInBoxWithDeadzone', () => {
       4,
       BOX_ACTORS,
       [BOX_ACTORS[0]],  // fallback: only ACTOR_1
-      5,
+      () => 5,
       makeModifiers(),
       null,
       enemyRelationship,
@@ -755,7 +760,7 @@ describe('selectActorsInBoxWithDeadzone', () => {
       4,
       BOX_ACTORS,
       [BOX_ACTORS[1]],  // fallback: ACTOR_2
-      5,
+      () => 5,
       makeModifiers(),
       null,
       enemyRelationship,
@@ -772,13 +777,13 @@ describe('selectActorsInBoxWithDeadzone', () => {
       4,
       BOX_ACTORS,
       [BOX_ACTORS[0], BOX_ACTORS[2]],  // fallback: two actors at this point
-      5,
+      () => 5,
       makeModifiers(),
       null,
       enemyRelationship,
     )
     // Falls back to point selection → withHighestSelectionPriority
-    // Same priority (10) → picks first one
+    // Same priority (10) → picks first one found (actorId 1)
     expect(result).toHaveLength(1)
   })
 
@@ -789,7 +794,7 @@ describe('selectActorsInBoxWithDeadzone', () => {
       4,
       BOX_ACTORS,
       [],    // no fallback candidates
-      5,
+      () => 5,
       makeModifiers(),
       null,
       enemyRelationship,

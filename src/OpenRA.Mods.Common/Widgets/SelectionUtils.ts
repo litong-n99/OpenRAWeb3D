@@ -174,15 +174,20 @@ const RELATIONSHIP_PENALTY = {
 } as const
 
 /**
- * Bit-shift for incorporating pixel distance into priority.
+ * Multiplier for incorporating pixel distance into priority (2^16).
  *
  * OpenRA 对照: SelectableExts.CalculateActorSelectionPriority()
- * Formula: selectionPriority - (pixelDistance << 16)
+ * Formula: (selectionPriority - pixelDistance) * 65536
  *
- * The left shift of 16 ensures that even tiny pixel distances override all
- * priority modifiers, making proximity the dominant factor for ambiguous clicks.
+ * The C# original uses `(priority - (long)pixelDistance) << 16` where
+ * `-` has higher precedence than `<<`. We use multiplication by 65536
+ * to avoid JavaScript's 32-bit integer << limit while producing the
+ * same result. The large multiplier ensures that even ~1px distance
+ * differences override all priority modifiers (priority ranges from
+ * ~[priority-90, MAX_SAFE_INTEGER]), making proximity the dominant
+ * factor for resolving ambiguous clicks.
  */
-const PIXEL_DISTANCE_SHIFT = 16
+const PIXEL_DISTANCE_MULTIPLIER = 65536  // 1 << 16
 
 // ---------------------------------------------------------------------------
 // SelectionUtils — 单元选择工具
@@ -344,18 +349,25 @@ export class SelectionUtils {
 
   /**
    * Compute the combined selection priority for an actor incorporating pixel
-   * distance from the click point.
+   * distance from the click point to the actor's screen position.
    *
    * OpenRA 对照: SelectableExts.CalculateActorSelectionPriority()
    *
-   * Formula: `selectionPriority(modifiers) - (pixelDistance << 16)`
+   * Formula: `(selectionPriority(modifiers) - pixelDistance) * 65536`
    *
-   * The large shift (<< 16) ensures that even tiny pixel distances (~1px)
-   * override all priority modifiers (priority ranges ~[0, MaxSafeInt - 90]),
-   * making proximity the dominant factor for resolving ambiguous clicks.
+   * **Important**: In C#, `-` has higher precedence than `<<`, so the
+   * original `info.SelectionPriority(modifiers) - (long)pixelDistance << 16`
+   * evaluates as `(priority - pixelDistance) << 16`. We use `* 65536`
+   * (equivalent to `<< 16` without JavaScript's 32-bit integer truncation)
+   * to produce the same result.
+   *
+   * The large multiplier (65536 = 2^16) ensures that even ~1px distance
+   * differences override all priority modifiers, making proximity the
+   * dominant factor for resolving ambiguous clicks.
    *
    * @param actor — the actor to compute priority for
-   * @param pixelDistance — distance from click point to actor center (pixels)
+   * @param pixelDistance — distance from click point to this actor's screen
+   *   projection center (pixels), computed per-actor by the caller
    * @param modifiers — current modifier key state
    * @param viewer — the viewer player
    * @param relationshipWith — relationship computation function
@@ -374,12 +386,12 @@ export class SelectionUtils {
       viewer,
       relationshipWith,
     )
-    // NOTE: TypeScript handles bigint differently from C# long.
-    // For pixel distances up to ~10000 (well beyond any screen),
-    // pixelDistance << 16 fits safely within Number.MIN_SAFE_INTEGER.
-    // If pixelDistance exceeds 2^37 (highly unlikely for screen coords),
-    // the shift could overflow, but this is not a practical concern.
-    return basePriority - (pixelDistance << PIXEL_DISTANCE_SHIFT)
+    // Formula: (basePriority - pixelDistance) * 65536
+    // This matches OpenRA's C# operator precedence where `-` binds before `<<`.
+    // Using * 65536 instead of << 16 avoids JavaScript's 32-bit integer
+    // truncation on the << operator, preserving float precision for
+    // sub-pixel distance differences.
+    return (basePriority - pixelDistance) * PIXEL_DISTANCE_MULTIPLIER
   }
 
   // ---------------------------------------------------------------------------
@@ -391,11 +403,16 @@ export class SelectionUtils {
    *
    * OpenRA 对照: SelectableExts.WithHighestSelectionPriority()
    *
-   * Uses Array.reduce() for single-pass max-finding (O(n), no allocation
-   * beyond the result reference).
+   * Each actor's pixel distance from the click point is computed individually
+   * via the `getPixelDistance` callback, matching OpenRA's per-ActorBoundsPair
+   * distance calculation (center of bounding box → distance to selectionPixel).
+   *
+   * Uses single-pass linear scan (O(n), no allocation beyond the result
+   * reference).
    *
    * @param actors — candidate actors (non-empty)
-   * @param pixelDistance — distance from click point to each actor's center
+   * @param getPixelDistance — callback returning pixel distance from click
+   *   point to each actor's screen projection center
    * @param modifiers — current modifier key state
    * @param viewer — the viewer player
    * @param relationshipWith — relationship computation function
@@ -403,7 +420,7 @@ export class SelectionUtils {
    */
   static withHighestSelectionPriority(
     actors: readonly SelectionActorInfo[],
-    pixelDistance: number,
+    getPixelDistance: (actor: SelectionActorInfo) => number,
     modifiers: SelectionModifiers,
     viewer: SelectionPlayerInfo | null,
     relationshipWith: (viewer: SelectionPlayerInfo, other: SelectionPlayerInfo) => number,
@@ -416,7 +433,7 @@ export class SelectionUtils {
     for (const actor of actors) {
       const priority = SelectionUtils.calculateActorSelectionPriority(
         actor,
-        pixelDistance,
+        getPixelDistance(actor),
         modifiers,
         viewer,
         relationshipWith,
@@ -605,10 +622,22 @@ export class SelectionUtils {
    *
    * In OpenRA, this uses ScreenMap.ActorsAtMouse(a). In the 3D migration,
    * the caller provides the set of actors hit by the raycast at the screen
-   * point.
+   * point, along with a function to compute each actor's screen distance.
    *
-   * @param candidates — actors at the screen point (from scene.pick / raycast)
-   * @param pixelDistance — distance from click to each actor's screen projection
+   * ## Required pre-filters (OpenRA parity)
+   *
+   * OpenRA applies these filters before priority ranking. The caller MUST
+   * ensure `candidates` already satisfies them:
+   * 1. `HasTraitInfo<ISelectableInfo>()` — actor must have a selectable trait
+   *    info. Callers should exclude actors without ISelectableInfo.
+   * 2. `Owner.IsAlliedWith(RenderPlayer) || !FogObscures(actor)` — enemy
+   *    actors hidden by fog are excluded. Since fog-of-war is TODO-3.G,
+   *    FogObscures currently always returns false (all actors visible).
+   *
+   * @param candidates — actors at the screen point (from scene.pick / raycast),
+   *   already filtered by HasTraitInfo<ISelectableInfo> and fog visibility
+   * @param getPixelDistance — callback returning per-actor pixel distance
+   *   from the click point to the actor's screen projection center
    * @param modifiers — current modifier key state
    * @param viewer — the viewer player (for relationship penalty)
    * @param relationshipWith — relationship computation function
@@ -616,14 +645,14 @@ export class SelectionUtils {
    */
   static selectHighestPriorityActorAtPoint(
     candidates: readonly SelectionActorInfo[],
-    pixelDistance: number,
+    getPixelDistance: (actor: SelectionActorInfo) => number,
     modifiers: SelectionModifiers,
     viewer: SelectionPlayerInfo | null,
     relationshipWith: (viewer: SelectionPlayerInfo, other: SelectionPlayerInfo) => number,
   ): SelectionActorInfo | null {
     return SelectionUtils.withHighestSelectionPriority(
       candidates,
-      pixelDistance,
+      getPixelDistance,
       modifiers,
       viewer,
       relationshipWith,
@@ -639,22 +668,35 @@ export class SelectionUtils {
    * - If the diagonal of the box is <= deadzone: shrink box to a point
    *   (the end point becomes both corners).
    * - If start == end (zero-area box): delegate to
-   *   selectHighestPriorityActorAtPoint().
-   * - Otherwise: filter all candidates by subsetWithHighestSelectionPriority().
+   *   selectHighestPriorityActorAtPoint() using fallbackCandidates.
+   * - Otherwise: filter boxCandidates by subsetWithHighestSelectionPriority().
+   *
+   * ## Required pre-filters (OpenRA parity)
+   *
+   * OpenRA applies these filters before priority ranking. The caller MUST
+   * ensure both `boxCandidates` and `fallbackCandidates` already satisfy:
+   * 1. `HasTraitInfo<ISelectableInfo>()` — only actors with selectable info
+   *    are eligible. Actors without this trait info should be excluded.
+   * 2. `Owner.IsAlliedWith(RenderPlayer) || !FogObscures(actor)` — enemy
+   *    actors hidden by fog are excluded. FogObscures is TODO-3.G
+   *    (fog-of-war not yet migrated; currently all actors are visible).
    *
    * In the 3D migration:
    * - `boxCandidates` is the set of actors whose bounding boxes intersect
    *   the frustum constructed from the 4 corners of the screen rectangle.
    *   This frustum construction is done by the caller (WICW).
-   * - `pixelDistance` for the point-fallback case is computed by the caller
-   *   from screen coordinates to actor screen projections.
+   * - `getPixelDistance` for the point-fallback case is computed per-actor
+   *   by the caller from screen coordinates to actor screen projections.
    *
    * @param boxStart — one corner of the selection box (screen pixels)
    * @param boxEnd — opposite corner of the selection box (screen pixels)
    * @param deadzone — minimum drag distance in pixels (default 4)
-   * @param boxCandidates — all actors in the box frustum
-   * @param fallbackCandidates — actors at the fallback point (for degenerate box)
-   * @param pixelDistance — pixel distance for the fallback point query
+   * @param boxCandidates — all actors in the box frustum, pre-filtered
+   *   by ISelectableInfo and fog visibility
+   * @param fallbackCandidates — actors at the fallback point (for degenerate
+   *   box), pre-filtered by ISelectableInfo and fog visibility
+   * @param getPixelDistance — callback returning per-actor pixel distance
+   *   for the point-fallback case
    * @param modifiers — current modifier key state
    * @param viewer — the viewer player
    * @param relationshipWith — relationship computation function
@@ -666,7 +708,7 @@ export class SelectionUtils {
     deadzone: number,
     boxCandidates: readonly SelectionActorInfo[],
     fallbackCandidates: readonly SelectionActorInfo[],
-    pixelDistance: number,
+    getPixelDistance: (actor: SelectionActorInfo) => number,
     modifiers: SelectionModifiers,
     viewer: SelectionPlayerInfo | null,
     relationshipWith: (viewer: SelectionPlayerInfo, other: SelectionPlayerInfo) => number,
@@ -686,7 +728,7 @@ export class SelectionUtils {
     if (effectiveStart.x === boxEnd.x && effectiveStart.y === boxEnd.y) {
       const best = SelectionUtils.selectHighestPriorityActorAtPoint(
         fallbackCandidates,
-        pixelDistance,
+        getPixelDistance,
         modifiers,
         viewer,
         relationshipWith,
