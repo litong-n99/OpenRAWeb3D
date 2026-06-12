@@ -126,6 +126,14 @@ export interface ProjectileArgs {
    * OpenRA 对照: world.SharedRandom
    */
   random: MersenneTwisterStub
+
+  /** Range modifiers applied as percentages (from weapon/source actor).
+   *
+   * OpenRA 对照: ProjectileArgs.RangeModifiers
+   *
+   * ADR-8.B.1: percentage modifiers applied to weapon range.
+   */
+  rangeModifiers?: number[]
 }
 
 /**
@@ -180,6 +188,12 @@ export interface WarheadArgsStub {
    * OpenRA 对照: WarheadArgs.Weapon
    */
   weapon: WeaponStub
+
+  /** Damage modifiers applied to warhead damage (e.g., falloff, range modifiers).
+   *
+   * OpenRA 对照: WarheadArgs.DamageModifiers
+   */
+  damageModifiers?: number[]
 }
 
 // ---------------------------------------------------------------------------

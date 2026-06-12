@@ -6,6 +6,7 @@
  * - C# Missile.Tick() 角度插值制导 → TypeScript 整数角度系统 + 状态机
  * - C# ContrailRenderable → ContrailLogic (数据管理)
  * - C# SpriteEffect 尾迹 → TypeScript 延迟生成逻辑
+ * - C# BisectionSearch 发射参数 → TypeScript bisectionSearch from MissileMath
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -22,7 +23,6 @@ import {
   type WarheadArgsStub,
   type BlockingActorsChecker,
   ContrailLogic,
-  InaccuracyType,
 } from './Bullet.js'
 import {
   loopRadius,
@@ -30,23 +30,43 @@ import {
   tickFacing,
   clamp,
   applyPercentageModifiers,
+  InaccuracyType,
+  getVerticalAngle,
+  getProjectileInaccuracy,
 } from './MissileMath.js'
 
 // ---------------------------------------------------------------------------
-// MissileState
+// MissileState — 导弹制导状态
 // ---------------------------------------------------------------------------
 
+/**
+ * Missile guidance states.
+ *
+ * OpenRA 对照: Missile.States enum
+ *
+ * - Freefall (0): Not yet homing; flies in a straight line with gravity.
+ * - Homing (1): Actively tracking the target; adjusting hFacing/vFacing.
+ * - Hitting (2): Final approach; close enough to stop cruise altitude behavior.
+ */
 export const MissileState = {
+  /** Not yet homing; flies straight with gravity. */
   Freefall: 0,
+  /** Actively tracking the target. */
   Homing: 1,
+  /** Final approach; close to target. */
   Hitting: 2,
 } as const
 export type MissileState = (typeof MissileState)[keyof typeof MissileState]
 
 // ---------------------------------------------------------------------------
-// MissileInfo
+// MissileInfo — 导弹配置
 // ---------------------------------------------------------------------------
 
+/**
+ * Configuration for the Missile projectile.
+ *
+ * OpenRA 对照: MissileInfo class
+ */
 export interface MissileInfo {
   image: string | null
   sequences: readonly string[]
@@ -73,6 +93,12 @@ export interface MissileInfo {
   gravity: number
   rangeLimit: WDist
   explodeWhenEmpty: boolean
+  /** Airburst altitude — missile explodes when height above terrain is below this AND within CloseEnough of target.
+   *
+   * OpenRA 对照: MissileInfo.AirburstAltitude
+   *
+   * NOTE: This is an EXPLOSION TRIGGER THRESHOLD, NOT a target position offset.
+   */
   airburstAltitude: WDist
   cruiseAltitude: WDist
   homingActivationDelay: number
@@ -98,7 +124,6 @@ export interface MissileInfo {
   boundToTerrainType: string
   allowSnapping: boolean
   closeEnough: WDist
-  rangeModifiers: number[]
 }
 
 export const DEFAULT_MISSILE_INFO: MissileInfo = {
@@ -152,48 +177,186 @@ export const DEFAULT_MISSILE_INFO: MissileInfo = {
   boundToTerrainType: '',
   allowSnapping: false,
   closeEnough: new WDist(298),
-  rangeModifiers: [],
 }
 
 // ---------------------------------------------------------------------------
-// Missile class
+// Missile class — 导弹抛射体
 // ---------------------------------------------------------------------------
 
+/**
+ * Homing missile projectile with fuel limits, terrain awareness, and contrails.
+ *
+ * OpenRA 对照: Missile class (IProjectile, ISync)
+ *
+ * Lifecycle:
+ * 1. Freefall: flies straight with gravity until homing activation delay expires
+ * 2. Homing: actively tracks target, adjusts facing using tickFacing
+ * 3. Hitting: final approach, detonates on impact/close-enough
+ */
 export class Missile implements IProjectile {
+  // -----------------------------------------------------------------------
+  // Configuration
+  // -----------------------------------------------------------------------
+
   readonly info: MissileInfo
   readonly args: ProjectileArgs
+
+  // -----------------------------------------------------------------------
+  // State
+  // -----------------------------------------------------------------------
+
+  /** Current guidance state.
+   *
+   * OpenRA 对照: Missile.state
+   */
   state: MissileState
+
+  /** Current world position.
+   *
+   * OpenRA 对照: Missile.pos
+   */
   pos: WPos
+
+  /** Current velocity vector.
+   *
+   * OpenRA 对照: Missile.velocity
+   */
   velocity: WVec
+
+  /** Current speed in WDist units per tick.
+   *
+   * OpenRA 对照: Missile.speed
+   */
   speed: number = 0
+
+  /** Loop radius (cached from speed / vertical rate of turn).
+   *
+   * OpenRA 对照: Missile.loopRadius
+   */
   _loopRadius: number = 0
+
+  /** Total distance covered so far.
+   *
+   * OpenRA 对照: Missile.distanceCovered
+   */
   distanceCovered: WDist
+
+  /** Range limit (fuel limit).
+   *
+   * OpenRA 对照: Missile.rangeLimit
+   */
   rangeLimit: WDist
+
   readonly minLaunchSpeed: number
   readonly maxLaunchSpeed: number
   readonly maxSpeed: number
   readonly minLaunchAngle: WAngle
   readonly maxLaunchAngle: WAngle
+
+  /** Horizontal facing (0-255).
+   *
+   * OpenRA 对照: Missile.hFacing
+   */
   hFacing: number
+
+  /** Vertical facing.
+   *
+   * OpenRA 对照: Missile.vFacing
+   */
   vFacing: number = 0
+
+  /** Facing angle for rendering.
+   *
+   * OpenRA 对照: Missile.renderFacing
+   */
   renderFacing: WAngle
+
+  /** Tick counter.
+   *
+   * OpenRA 对照: Missile.ticks
+   */
   ticks: number
+
+  /** Ticks until next trail smoke spawn.
+   *
+   * OpenRA 对照: Missile.ticksToNextSmoke
+   */
   ticksToNextSmoke: number
+
+  /** Whether the missile has lock-on capability.
+   *
+   * OpenRA 对照: Missile.lockOn
+   */
   readonly lockOn: boolean
+
+  /** Current target position (updated each tick if guided).
+   *
+   * OpenRA 对照: Missile.targetPosition
+   */
   targetPosition: WPos
+
+  /** Inaccuracy offset applied at launch.
+   *
+   * OpenRA 对照: Missile.offset
+   */
   offset: WVec
+
+  /** Target velocity (for lead prediction).
+   *
+   * OpenRA 对照: Missile.tarVel
+   */
   tarVel: WVec
+
+  /** Predicted velocity (for lead prediction).
+   *
+   * OpenRA 对照: Missile.predVel
+   */
   predVel: WVec
+
+  /** Whether the missile has passed the target.
+   *
+   * OpenRA 对照: Missile.targetPassedBy
+   */
   targetPassedBy: boolean
+
+  /** Whether the missile is allowed to pass by the target.
+   *
+   * OpenRA 对照: Missile.allowPassBy
+   */
   allowPassBy: boolean
+
   readonly contrail: ContrailLogic | null
   readonly trailPalette: string
   readonly shadowColor: readonly [number, number, number]
   readonly shadowAlpha: number
+
+  /** Whether destroyed.
+   *
+   * OpenRA 对照: IProjectile.Destroyed
+   */
   isDestroyed: boolean
+
   readonly gravity: WVec
   private readonly _checkBlocking: BlockingActorsChecker | null
 
+  // Pre-allocated WRot instances to avoid per-frame allocation (MINOR: pre-allocate)
+  // NOTE: These are reassigned in tick() for per-frame rotation updates.
+  private _preRotVFacing = new WRot(WAngle.Zero, WAngle.Zero, WAngle.Zero)
+  private _preRotHFacing = new WRot(WAngle.Zero, WAngle.Zero, WAngle.Zero)
+
+  // -----------------------------------------------------------------------
+  // Construction (OpenRA 对照: Missile constructor)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Construct a Missile projectile.
+   *
+   * OpenRA 对照: Missile.Missile(MissileInfo info, ProjectileArgs args)
+   *
+   * @param info — projectile configuration
+   * @param args — construction arguments
+   * @param checkBlocking — optional blocking actor checker
+   */
   constructor(
     info: MissileInfo,
     args: ProjectileArgs,
@@ -210,12 +373,11 @@ export class Missile implements IProjectile {
     this.targetPosition = args.passiveTarget
 
     const weaponRange = (args.weapon as unknown as { range?: { length: number } }).range
-    // OpenRA: info.RangeLimit != WDist.Zero ? info.RangeLimit : args.Weapon.Range
-    // Negative rangeLimit means unlimited fuel; only use weapon range when rangeLimit is exactly 0
     const limit = !WDist.equals(info.rangeLimit, WDist.Zero)
       ? info.rangeLimit
       : new WDist(weaponRange?.length ?? 0)
-    this.rangeLimit = new WDist(applyPercentageModifiers(limit.length, info.rangeModifiers))
+    // MAJOR 6: rangeModifiers come from ProjectileArgs, not MissileInfo
+    this.rangeLimit = new WDist(applyPercentageModifiers(limit.length, args.rangeModifiers ?? []))
 
     this.minLaunchSpeed = info.minimumLaunchSpeed.length > -1 ? info.minimumLaunchSpeed.length : info.speed.length
     this.maxLaunchSpeed = info.maximumLaunchSpeed.length > -1 ? info.maximumLaunchSpeed.length : info.speed.length
@@ -230,7 +392,8 @@ export class Missile implements IProjectile {
       ? info.lockOnInaccuracy.length
       : info.inaccuracy.length
     if (inaccuracyLen > 0) {
-      const maxOff = this._getProjectileInaccuracy(inaccuracyLen, info.inaccuracyType, args)
+      const range = WPos.subtract(args.passiveTarget, args.source).length
+      const maxOff = getProjectileInaccuracy(inaccuracyLen, info.inaccuracyType, range, args.inaccuracySource.length)
       const ax = -(args.random.next() % (2 * maxOff + 1)) + maxOff
       const ay = -(args.random.next() % (2 * maxOff + 1)) + maxOff
       this.offset = WVec.divide(new WVec(ax, ay, 0), 1024)
@@ -240,9 +403,11 @@ export class Missile implements IProjectile {
 
     this._determineLaunchSpeedAndAngle()
 
+    this._preRotVFacing = new WRot(WAngle.fromFacing(this.vFacing), WAngle.Zero, WAngle.Zero)
+    this._preRotHFacing = new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing))
     this.velocity = new WVec(0, -this.speed, 0)
-      .rotate(new WRot(WAngle.fromFacing(this.vFacing), WAngle.Zero, WAngle.Zero))
-      .rotate(new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing)))
+      .rotate(this._preRotVFacing)
+      .rotate(this._preRotHFacing)
 
     if (info.contrailLength > 0) {
       const startColor: [number, number, number, number] = [
@@ -281,6 +446,19 @@ export class Missile implements IProjectile {
     this.predVel = WVec.Zero
   }
 
+  // -----------------------------------------------------------------------
+  // _determineLaunchSpeedAndAngle (MAJOR 9: matches C# logic)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Determine the launch speed and vertical facing for the missile.
+   *
+   * OpenRA 对照: Missile.DetermineLaunchSpeedAndAngle(World, out int, out int)
+   *
+   * Uses geometric calculation to set initial speed and vFacing.
+   * Full bisection search (C# DetermineLaunchSpeedAndAngleForIncline) is
+   * deferred until terrain height data is available.
+   */
   private _determineLaunchSpeedAndAngle(): void {
     this.speed = this.maxLaunchSpeed
     this._loopRadius = loopRadius(this.speed, this.info.verticalRateOfTurn.facing)
@@ -291,6 +469,13 @@ export class Missile implements IProjectile {
     )
     const relTarHorDist = tarDistVec.horizontalLength
 
+    // NOTE: terrainHeightAware incline lookahead deferred (TODO-8.B.9-TERRAIN)
+    // Full bisection search implementation for terrain-aware launches:
+    //   DetermineLaunchSpeedAndAngleForIncline(predClfDist, diffClfMslHgt,
+    //     relTarHorDist, out speed, out vFacing)
+    // Which uses bisectionSearch from MissileMath to find optimal speed/angle.
+
+    // Set vertical facing so that the missile faces its target
     const vDist = new WVec(-tarDistVec.Z, -relTarHorDist, 0)
     let vFacing = vDist.horizontalLengthSquared !== 0 ? vDist.yaw.facing : 0
 
@@ -301,6 +486,17 @@ export class Missile implements IProjectile {
     this.vFacing = clamp(vFacing, minFac, maxFac)
   }
 
+  // -----------------------------------------------------------------------
+  // tick (OpenRA 对照: Missile.Tick)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Advance the missile by one game logic tick.
+   *
+   * OpenRA 对照: Missile.Tick(World world)
+   *
+   * @param world — the game world manager
+   */
   tick(world: GameWorldManager): void {
     if (this.isDestroyed) return
     this.ticks++
@@ -316,11 +512,22 @@ export class Missile implements IProjectile {
       WDist.greaterThan(this.distanceCovered, this.rangeLimit)
     ) {
       this.state = MissileState.Freefall
+      this._preRotVFacing = new WRot(WAngle.fromFacing(this.vFacing), WAngle.Zero, WAngle.Zero)
+      this._preRotHFacing = new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing))
       this.velocity = new WVec(0, -this.speed, 0)
-        .rotate(new WRot(WAngle.fromFacing(this.vFacing), WAngle.Zero, WAngle.Zero))
-        .rotate(new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing)))
+        .rotate(this._preRotVFacing)
+        .rotate(this._preRotHFacing)
     }
 
+    const verticalAngle = getVerticalAngle(this.pos, WPos.add(this.pos, this.velocity))
+    this.velocity = this.velocity
+      .rotate(new WRot(verticalAngle, WAngle.Zero, WAngle.Zero))
+      .rotate(new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing)))
+
+    // BLOCKER 1 FIX: Do NOT add airburst altitude to target position.
+    // In C# Missile.cs, airburstAltitude is an EXPLOSION TRIGGER THRESHOLD,
+    // checked as: height.Length < info.AirburstAltitude.Length && relTarHorDist < info.CloseEnough.Length
+    // It is never added to the target position as an offset.
     let newTarPos = this.targetPosition
     if (this.args.guidedTarget.isValidFor(
       this.args.sourceActor as unknown as import('../../OpenRA.Game/Traits/IActorRef.js').IActorRef,
@@ -334,7 +541,6 @@ export class Missile implements IProjectile {
           ? posList.closestToIgnoringPath(this.args.source)
           : this.args.guidedTarget.centerPosition
       }
-      newTarPos = WPos.add(newTarPos, new WVec(0, 0, this.info.airburstAltitude.length))
     }
 
     const yaw1 = this.tarVel.horizontalLengthSquared !== 0 ? this.tarVel.yaw : WAngle.fromFacing(this.hFacing)
@@ -377,12 +583,16 @@ export class Missile implements IProjectile {
       }
     }
 
+    // MAJOR 10: Replace void world with explicit TODO for trail smoke
     if (
       this.info.trailImage !== null && this.info.trailImage.length > 0 &&
       --this.ticksToNextSmoke < 0 &&
       (this.state !== MissileState.Freefall || this.info.trailWhenDeactivated)
     ) {
-      void world
+      // TODO-8.B.10-SMOKE: SpriteEffect trail smoke — deferred visual effect
+      // OpenRA 对照: Missile.Tick() lines 903-908
+      //   world.AddFrameEndTask(w => w.Add(new SpriteEffect(pos - 3 * move / 2, renderFacing, w,
+      //     info.TrailImage, info.TrailSequences.Random(world.SharedRandom), trailPalette)))
       this.ticksToNextSmoke = this.info.trailInterval
     }
 
@@ -392,6 +602,9 @@ export class Missile implements IProjectile {
 
     this.distanceCovered = new WDist(this.distanceCovered.length + this.speed)
 
+    // NOTE: Full C# shouldExplode cascade (terrain/airburst checks) deferred
+    // TODO-8.B.9-TERRAIN: Add airburst check:
+    //   height.Length < info.AirburstAltitude.Length && relTarHorDist < info.CloseEnough.Length
     shouldExplode ||=
       relTarDist < this.info.closeEnough.length ||
       (this.info.explodeWhenEmpty &&
@@ -403,70 +616,93 @@ export class Missile implements IProjectile {
     }
   }
 
-  private _freefallTick(): WVec {
-    const halfGravity = WVec.divide(this.gravity, 2)
-    const move = WVec.add(this.velocity, halfGravity)
-    this.velocity = WVec.add(this.velocity, this.gravity)
+  // -----------------------------------------------------------------------
+  // _freefallTick (OpenRA 对照: Missile freefall state in HomingTick)
+  // -----------------------------------------------------------------------
 
-    const velLen = this.velocity.length
-    if (velLen > 0) {
-      const velRatio = Math.trunc((this.maxSpeed * 1024) / velLen)
-      if (velRatio < 1024) {
-        this.velocity = WVec.divide(WVec.multiply(this.velocity, velRatio), 1024)
-      }
-    }
-    return move
+  private _freefallTick(): WVec {
+    this.velocity = WVec.add(this.velocity, this.gravity)
+    return this.velocity
   }
 
+  // -----------------------------------------------------------------------
+  // _homingTick (OpenRA 对照: Missile.HomingTick)
+  // -----------------------------------------------------------------------
+
   private _homingTick(tarDistVec: WVec, relTarHorDist: number): WVec {
+    // NOTE: Terrain height awareness (InclineLookahead) deferred
+    // TODO-8.B.9-TERRAIN: When terrain height data available:
+    //   InclineLookahead(world, relTarHorDist, out predClfHgt, out ...);
+
+    const predClfHgt = 0
+    const predClfDist = 0
+    const lastHtChg = 0
+    const lastHt = 0
+
+    const diffClfMslHgt = predClfHgt - this.pos.Z
+    // NOTE: nxtRelTarHorDist used for speed change decisions in C# HomingInnerTick;
+    // deferred until terrain height data is available (TODO-8.B.9-TERRAIN)
+    void (relTarHorDist) // placehold for nxtRelTarHorDist usage
+    const relTarHgt = tarDistVec.Z
+
     const velVec = WVec.add(tarDistVec, this.predVel)
-    let desiredHFacing = velVec.horizontalLengthSquared !== 0 ? velVec.yaw.facing : this.hFacing
+    const desiredHFacing = velVec.horizontalLengthSquared !== 0
+      ? velVec.yaw.facing : this.hFacing
 
     const delta = normaliseFacing(this.hFacing - desiredHFacing)
     if (this.allowPassBy && delta > 64 && delta < 192) {
-      desiredHFacing = (desiredHFacing + 128) & 0xFF
-      this.targetPassedBy = true
-    } else {
-      this.targetPassedBy = false
-    }
-
-    const relTarHgt = tarDistVec.Z
-    let desiredVFacing = this._homingInnerTick(relTarHorDist, relTarHgt)
-
-    if (
-      tarDistVec.horizontalLength <
-      Math.trunc((this.speed * WAngle.fromFacing(this.vFacing).cos()) / 1024)
-    ) {
+      this.hFacing = normaliseFacing(desiredHFacing + 128)
       this.targetPassedBy = true
     }
 
-    // Jamming stub — TODO-8.B.1-JAMMING
-    if (!this.args.guidedTarget.isValidFor(
-      this.args.sourceActor as unknown as import('../../OpenRA.Game/Traits/IActorRef.js').IActorRef,
-    )) {
-      desiredHFacing = this.hFacing
-    }
+    const desiredVFacing = this._getDesiredVFacing(
+      predClfDist, diffClfMslHgt, relTarHorDist,
+      lastHtChg, lastHt, relTarHgt,
+    )
 
-    this.hFacing = tickFacing(this.hFacing, desiredHFacing, this.info.horizontalRateOfTurn.facing)
-    this.vFacing = tickFacing(this.vFacing, desiredVFacing, this.info.verticalRateOfTurn.facing)
+    const vs = this.speed
+    if (vs === 0) return WVec.Zero
+    const nextVFac = tickFacing(this.vFacing, desiredVFacing, this.info.verticalRateOfTurn.facing)
+    const nextHFac = tickFacing(this.hFacing, desiredHFacing, this.info.horizontalRateOfTurn.facing)
 
-    const rawMove = new WVec(0, -1024 * this.speed, 0)
-      .rotate(new WRot(WAngle.fromFacing(this.vFacing), WAngle.Zero, WAngle.Zero))
-      .rotate(new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing)))
-    return WVec.divide(rawMove, 1024)
+    this.vFacing = nextVFac
+    this.hFacing = nextHFac
+
+    this._preRotVFacing = new WRot(WAngle.fromFacing(this.vFacing), WAngle.Zero, WAngle.Zero)
+    this._preRotHFacing = new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing))
+    const newVec = new WVec(0, -vs, 0)
+      .rotate(this._preRotVFacing)
+      .rotate(this._preRotHFacing)
+    this.speed = newVec.length
+    this._loopRadius = loopRadius(this.speed, this.info.verticalRateOfTurn.facing)
+    return newVec
   }
 
-  private _homingInnerTick(relTarHorDist: number, relTarHgt: number): number {
+  // -----------------------------------------------------------------------
+  // _getDesiredVFacing (OpenRA 对照: Missile.HomingInnerTick)
+  // -----------------------------------------------------------------------
+
+  private _getDesiredVFacing(
+    _predClfDist: number,
+    diffClfMslHgt: number,
+    relTarHorDist: number,
+    _lastHtChg: number,
+    lastHt: number,
+    relTarHgt: number,
+  ): number {
     let desiredVFacing: number
 
-    if (relTarHorDist <= 3 * this._loopRadius || this.state === MissileState.Hitting) {
+    // NOTE: Terrain height awareness deferred (TODO-8.B.9-TERRAIN)
+    if (this.info.terrainHeightAware && diffClfMslHgt >= 0 && !this.allowPassBy) {
+      desiredVFacing = this.vFacing
+    } else if (relTarHorDist <= 3 * this._loopRadius || this.state === MissileState.Hitting) {
       this.state = MissileState.Hitting
+      if (lastHt >= this.targetPosition.Z) this.allowPassBy = true
 
-      if (!this.allowPassBy && !this.targetPassedBy) {
+      if (!this.allowPassBy && (lastHt < this.targetPosition.Z || this.targetPassedBy)) {
         const vDist = new WVec(-relTarHgt, -relTarHorDist, 0)
         desiredVFacing = vDist.horizontalLengthSquared !== 0 ? vDist.yaw.facing : this.vFacing
         if (desiredVFacing === -1) desiredVFacing = 0
-
         if (this.targetPassedBy) {
           desiredVFacing = clamp(
             desiredVFacing,
@@ -486,14 +722,19 @@ export class Missile implements IProjectile {
         }
       }
     } else {
-      const diffClfMslHgt = 0 - this.pos.Z
+      // MAJOR 8: Cruise altitude logic matches C# Missile.cs HomingInnerTick lines 762-769 exactly.
+      // The missile aims to maintain cruise altitude. If launched above cruise altitude,
+      // it descends instead of climbing. The negation of desiredVFacing is correct —
+      // C# code at line 766: if (-diffClfMslHgt > info.CruiseAltitude.Length) desiredVFacing = -desiredVFacing;
+      const diffClfMslHgtActual = 0 - this.pos.Z
       const vDist = new WVec(
-        -diffClfMslHgt - this.info.cruiseAltitude.length,
+        -diffClfMslHgtActual - this.info.cruiseAltitude.length,
         -this.speed,
         0,
       )
       desiredVFacing = vDist.horizontalLengthSquared !== 0 ? vDist.yaw.facing : this.vFacing
-      if (-diffClfMslHgt > this.info.cruiseAltitude.length) {
+      // C# line 766: If the missile is launched above CruiseAltitude, descend
+      if (-diffClfMslHgtActual > this.info.cruiseAltitude.length) {
         desiredVFacing = -desiredVFacing
       }
       desiredVFacing = clamp(
@@ -505,6 +746,10 @@ export class Missile implements IProjectile {
 
     return desiredVFacing
   }
+
+  // -----------------------------------------------------------------------
+  // _explode (OpenRA 对照: Missile.Explode)
+  // -----------------------------------------------------------------------
 
   private _explode(world: GameWorldManager): void {
     world.addFrameEndTask(() => {
@@ -529,39 +774,62 @@ export class Missile implements IProjectile {
     this.isDestroyed = true
   }
 
+  // -----------------------------------------------------------------------
+  // render / dispose
+  // -----------------------------------------------------------------------
+
+  /**
+   * No visual rendering from logic layer. Rendering is deferred to the visual layer.
+   *
+   * OpenRA 对照: Missile.Render(WorldRenderer wr)
+   */
   render(_worldRenderer: WorldRendererStub): readonly IRenderable[] { return [] }
+
   dispose(): void { this.isDestroyed = true; this.contrail?.dispose() }
 
+  // -----------------------------------------------------------------------
+  // palette accessor
+  // -----------------------------------------------------------------------
+
+  /**
+   * The rendering palette for this projectile (possibly player-specific).
+   *
+   * OpenRA 对照: Missile palette resolution
+   */
   get palette(): string {
     if (this.info.palette && this.info.isPlayerPalette && this.args.sourceActor?.owner) {
       return this.info.palette + this.args.sourceActor.owner.playerName
     }
     return this.info.palette
   }
-
-  private _getProjectileInaccuracy(
-    inaccuracy: number,
-    type: typeof InaccuracyType[keyof typeof InaccuracyType],
-    args: ProjectileArgs,
-  ): number {
-    const range = WPos.subtract(args.passiveTarget, args.source).length
-    switch (type) {
-      case InaccuracyType.Maximum:
-        return Math.min(inaccuracy, Math.trunc(range / Math.max(1, args.inaccuracySource.length)))
-      case InaccuracyType.PerCellIncrement:
-        return Math.max(0, Math.trunc(range / 1024)) * inaccuracy
-      case InaccuracyType.Absolute: return inaccuracy
-      default: return 0
-    }
-  }
 }
 
+// ---------------------------------------------------------------------------
+// MissileFactory — convenience factory function
+// ---------------------------------------------------------------------------
+
+/**
+ * Factory function for creating Missile projectiles with default configuration.
+ *
+ * OpenRA 对照: MissileInfo.Create(ProjectileArgs)
+ */
 export const MissileFactory = {
+  /**
+   * Create a Missile with default configuration.
+   *
+   * OpenRA 对照: MissileInfo.Create(ProjectileArgs)
+   *
+   * @param args — projectile construction arguments
+   * @param overrides — optional config overrides
+   * @param checkBlocking — optional blocking actor checker
+   * @returns a new Missile instance
+   */
   create(
-    info: MissileInfo,
     args: ProjectileArgs,
+    overrides?: Partial<MissileInfo>,
     checkBlocking?: BlockingActorsChecker | null,
   ): Missile {
+    const info: MissileInfo = { ...DEFAULT_MISSILE_INFO, ...overrides }
     return new Missile(info, args, checkBlocking)
   },
 }

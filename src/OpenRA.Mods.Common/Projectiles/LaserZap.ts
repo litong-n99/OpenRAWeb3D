@@ -5,6 +5,7 @@
  * 核心范式转换:
  * - C# BeamRenderable (屏幕空间线段) → Babylon.js LinesMesh (世界空间线段, deferred)
  * - C# damageDuration → TypeScript 相同逻辑
+ * - C# SpriteEffect launchEffect → deferred TODO marker (MAJOR 10)
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -20,10 +21,18 @@ import {
   type ProjectileArgs,
   type WarheadArgsStub,
   type BlockingActorsChecker,
-  InaccuracyType,
 } from './Bullet.js'
 import { BeamRenderableShape } from './BeamRenderableShape.js'
 import type { BeamRenderableShape as BeamShapeType } from './BeamRenderableShape.js'
+import {
+  InaccuracyType,
+  getVerticalAngle,
+  getProjectileInaccuracy,
+} from './MissileMath.js'
+
+// ---------------------------------------------------------------------------
+// LaserZapInfo
+// ---------------------------------------------------------------------------
 
 export interface LaserZapInfo {
   width: WDist
@@ -79,6 +88,10 @@ export const DEFAULT_LASER_ZAP_INFO: LaserZapInfo = {
   launchEffectPalette: 'effect',
 }
 
+// ---------------------------------------------------------------------------
+// LaserZap class
+// ---------------------------------------------------------------------------
+
 export class LaserZap implements IProjectile {
   readonly info: LaserZapInfo
   readonly args: ProjectileArgs
@@ -109,7 +122,8 @@ export class LaserZap implements IProjectile {
     this.target = args.passiveTarget
 
     if (WDist.greaterThan(info.inaccuracy, WDist.Zero)) {
-      const maxOff = this._getProjectileInaccuracy(info, args)
+      const range = WPos.subtract(args.passiveTarget, args.source).length
+      const maxOff = getProjectileInaccuracy(info.inaccuracy.length, info.inaccuracyType, range, args.inaccuracySource.length)
       const ax = -(args.random.next() % (2 * maxOff + 1)) + maxOff
       const ay = -(args.random.next() % (2 * maxOff + 1)) + maxOff
       this.target = WPos.add(this.target, new WVec(Math.trunc(ax / 1024), Math.trunc(ay / 1024), 0))
@@ -122,6 +136,10 @@ export class LaserZap implements IProjectile {
       info.launchEffectSequence !== null && info.launchEffectSequence.length > 0
   }
 
+  // -----------------------------------------------------------------------
+  // tick (OpenRA 对照: LaserZap.Tick)
+  // -----------------------------------------------------------------------
+
   tick(world: GameWorldManager): void {
     if (this.isDestroyed) return
 
@@ -129,8 +147,11 @@ export class LaserZap implements IProjectile {
     const currentSourceFn = (this.args as unknown as Record<string, unknown>).currentSource as (() => WPos) | undefined
     this.source = currentSourceFn?.() ?? this.args.source
 
+    // MAJOR 10: Replace void world with explicit TODO for launch visual effect
     if (this.hasLaunchEffect && this.ticks === 0) {
-      void world
+      // TODO-8.B.10-EFFECTS: SpriteEffect launch visual — deferred rendering effect
+      // OpenRA 对照: LaserZap code creates a SpriteEffect at the source position
+      // Requires Animation + World context integration.
     }
 
     if (this.info.trackTarget && this.args.guidedTarget.isValidFor(
@@ -161,9 +182,10 @@ export class LaserZap implements IProjectile {
       const warheadArgs: WarheadArgsStub = {
         firedBy: this.args.sourceActor,
         facing: this.args.facing,
+        // MAJOR 12: use shared getVerticalAngle from MissileMath
         impactOrientation: new WRot(
           WAngle.Zero,
-          this._getVerticalAngle(this.source, this.target),
+          getVerticalAngle(this.source, this.target),
           muzzleFacingFn?.() ?? this.args.facing,
         ),
         impactPosition: this.target,
@@ -179,8 +201,16 @@ export class LaserZap implements IProjectile {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // render / dispose
+  // -----------------------------------------------------------------------
+
   render(_worldRenderer: WorldRendererStub): readonly IRenderable[] { return [] }
   dispose(): void { this.isDestroyed = true }
+
+  // -----------------------------------------------------------------------
+  // beamAlpha
+  // -----------------------------------------------------------------------
 
   get beamAlpha(): number {
     if (this.info.duration <= 0) return 0
@@ -188,32 +218,11 @@ export class LaserZap implements IProjectile {
     if (remaining <= 0) return 0
     return Math.trunc((remaining * this.color[3]!) / this.info.duration)
   }
-
-  private _getVerticalAngle(from: WPos, to: WPos): WAngle {
-    const delta = WPos.subtract(to, from)
-    const horizontalDelta = delta.horizontalLength
-    if (horizontalDelta === 0) return WAngle.Zero
-    return new WVec(-delta.Z, -horizontalDelta, 0).yaw
-  }
-
-  private _getProjectileInaccuracy(
-    info: LaserZapInfo,
-    args: ProjectileArgs,
-  ): number {
-    const range = WPos.subtract(args.passiveTarget, args.source).length
-    const type = info.inaccuracyType
-    switch (type) {
-      case InaccuracyType.Maximum:
-        return Math.min(info.inaccuracy.length, Math.trunc(range / Math.max(1, args.inaccuracySource.length)))
-      case InaccuracyType.PerCellIncrement:
-        return Math.max(0, Math.trunc(range / 1024)) * info.inaccuracy.length
-      case InaccuracyType.Absolute:
-        return info.inaccuracy.length
-      default:
-        return 0
-    }
-  }
 }
+
+// ---------------------------------------------------------------------------
+// LaserZapFactory
+// ---------------------------------------------------------------------------
 
 export const LaserZapFactory = {
   create(

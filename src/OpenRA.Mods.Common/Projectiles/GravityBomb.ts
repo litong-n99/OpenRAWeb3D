@@ -5,6 +5,9 @@
  * 核心范式转换:
  * - C# GravityBomb.Tick() Euler 积分弹道 → TypeScript 同样整数积分
  * - C# pos.Z <= args.PassiveTarget.Z 地面碰撞 → TypeScript 同样高度检查
+ * - C# 速度向量旋转 (Y, -X, Z) → TypeScript WVec conversion + WRot.fromYaw rotation
+ *   OpenRA GravityBomb.cs: velocity = new WVec(Info.Velocity.Y, -Info.Velocity.X, Info.Velocity.Z).Rotate(WRot.FromYaw(args.Facing))
+ *   解释: 将 velocity 从 90 度旋转坐标系转换后，再应用朝向旋转
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -19,6 +22,11 @@ import {
   type ProjectileArgs,
   type WarheadArgsStub,
 } from './Bullet.js'
+import { getVerticalAngle } from './MissileMath.js'
+
+// ---------------------------------------------------------------------------
+// GravityBombInfo
+// ---------------------------------------------------------------------------
 
 export interface GravityBombInfo {
   image: string | null
@@ -43,6 +51,10 @@ export const DEFAULT_GRAVITY_BOMB_INFO: GravityBombInfo = {
   velocity: WVec.Zero,
   acceleration: new WVec(0, 0, -15),
 }
+
+// ---------------------------------------------------------------------------
+// GravityBomb class
+// ---------------------------------------------------------------------------
 
 export class GravityBomb implements IProjectile {
   readonly info: GravityBombInfo
@@ -82,7 +94,8 @@ export class GravityBomb implements IProjectile {
       const warheadArgs: WarheadArgsStub = {
         firedBy: this.args.sourceActor,
         facing: this.args.facing,
-        impactOrientation: new WRot(WAngle.Zero, this._getVerticalAngle(this.lastPos, this.pos), this.args.facing),
+        // MAJOR 12: use shared getVerticalAngle from MissileMath
+        impactOrientation: new WRot(WAngle.Zero, getVerticalAngle(this.lastPos, this.pos), this.args.facing),
         impactPosition: this.pos,
         weapon: this.args.weapon,
       }
@@ -101,13 +114,11 @@ export class GravityBomb implements IProjectile {
     return this.info.palette
   }
 
-  private _getVerticalAngle(from: WPos, to: WPos): WAngle {
-    const delta = WPos.subtract(to, from)
-    const horizontalDelta = delta.horizontalLength
-    if (horizontalDelta === 0) return WAngle.Zero
-    return new WVec(-delta.Z, -horizontalDelta, 0).yaw
-  }
 }
+
+// ---------------------------------------------------------------------------
+// GravityBombFactory
+// ---------------------------------------------------------------------------
 
 export const GravityBombFactory = {
   create(args: ProjectileArgs, overrides?: Partial<GravityBombInfo>): GravityBomb {

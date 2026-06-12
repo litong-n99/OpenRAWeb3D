@@ -7,6 +7,8 @@
  * - C# world.FindActorsOnLine → FindActorsOnLineCallback 回调
  * - C# BeamRenderable → Babylon.js LinesMesh (deferred)
  * - C# int2.Lerp 衰减计算 → TypeScript 线性插值
+ * - C# args.RangeModifiers → ProjectileArgs.rangeModifiers (MAJOR 6, 7)
+ * - C# args.DamageModifiers.Append(falloff) → WarheadArgsStub.damageModifiers (MAJOR 4)
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -22,10 +24,15 @@ import {
   type ProjectileArgs,
   type WarheadArgsStub,
   type BlockingActorsChecker,
-  InaccuracyType,
 } from './Bullet.js'
 import { BeamRenderableShape } from './BeamRenderableShape.js'
 import type { BeamRenderableShape as BeamShapeType } from './BeamRenderableShape.js'
+import {
+  InaccuracyType,
+  getVerticalAngle,
+  getProjectileInaccuracy,
+  applyPercentageModifiers,
+} from './MissileMath.js'
 
 // ---------------------------------------------------------------------------
 // FindActorsOnLineCallback
@@ -60,7 +67,6 @@ export interface AreaBeamInfo {
   zOffset: number
   color: readonly [number, number, number, number]
   usePlayerColor: boolean
-  rangeModifiers: number[]
 }
 
 export const DEFAULT_AREA_BEAM_INFO: AreaBeamInfo = {
@@ -81,15 +87,21 @@ export const DEFAULT_AREA_BEAM_INFO: AreaBeamInfo = {
   zOffset: 0,
   color: [255, 0, 0, 255],
   usePlayerColor: false,
-  rangeModifiers: [],
 }
 
 // ---------------------------------------------------------------------------
-// Extended args types for beam projectiles
+// ExtendedProjectileArgs — shared interface for beam projectiles (MINOR: define proper interface)
 // ---------------------------------------------------------------------------
 
-interface ExtendedProjectileArgs extends ProjectileArgs {
+/**
+ * Extended projectile args for beam-type projectiles that need current source tracking.
+ *
+ * OpenRA 对照: args.CurrentSource(), args.DamageModifiers
+ */
+export interface ExtendedProjectileArgs extends ProjectileArgs {
+  /** Callback for current source position (from turret/muzzle). */
   currentSource?: () => WPos
+  /** Damage modifiers from source actor traits. */
   damageModifiers?: number[]
 }
 
@@ -97,6 +109,11 @@ interface ExtendedProjectileArgs extends ProjectileArgs {
 // AreaBeam class
 // ---------------------------------------------------------------------------
 
+/**
+ * Beam projectile with travelling head/tail and periodic line damage.
+ *
+ * OpenRA 对照: AreaBeam class (IProjectile, ISync)
+ */
 export class AreaBeam implements IProjectile {
   readonly info: AreaBeamInfo
   readonly args: ProjectileArgs
@@ -117,6 +134,11 @@ export class AreaBeam implements IProjectile {
   private readonly _checkBlocking: BlockingActorsChecker | null
   private readonly _findActorsOnLine: FindActorsOnLineCallback | null
 
+  /**
+   * Whether the beam is fully complete (head and tail both arrived).
+   *
+   * OpenRA 对照: AreaBeam.IsBeamComplete
+   */
   get isBeamComplete(): boolean {
     return (
       !this.isHeadTravelling &&
@@ -126,6 +148,16 @@ export class AreaBeam implements IProjectile {
     )
   }
 
+  /**
+   * Construct an AreaBeam projectile.
+   *
+   * OpenRA 对照: AreaBeam.AreaBeam(AreaBeamInfo, ProjectileArgs, Color)
+   *
+   * @param info — beam configuration
+   * @param args — projectile construction arguments
+   * @param checkBlocking — optional blocking actor checker
+   * @param findActorsOnLine — optional line-damage actor finder
+   */
   constructor(
     info: AreaBeamInfo,
     args: ProjectileArgs,
@@ -152,7 +184,8 @@ export class AreaBeam implements IProjectile {
 
     this.target = args.passiveTarget
     if (WDist.greaterThan(info.inaccuracy, WDist.Zero)) {
-      const maxOff = this._getProjectileInaccuracy(info.inaccuracy, info.inaccuracyType, args)
+      const range = WPos.subtract(args.passiveTarget, args.source).length
+      const maxOff = getProjectileInaccuracy(info.inaccuracy.length, info.inaccuracyType, range, args.inaccuracySource.length)
       const ax = -(args.random.next() % (2 * maxOff + 1)) + maxOff
       const ay = -(args.random.next() % (2 * maxOff + 1)) + maxOff
       this.target = WPos.add(this.target, new WVec(Math.trunc(ax / 1024), Math.trunc(ay / 1024), 0))
@@ -175,8 +208,10 @@ export class AreaBeam implements IProjectile {
     const headDist = WPos.subtract(this.target, this.headPos).length
     this.length = Math.max(Math.trunc(headDist / this.speed.length), 1)
 
+    // MAJOR 6 + MAJOR 7: rangeModifiers from ProjectileArgs, apply percentage modifiers
     const weaponRange = (args.weapon as unknown as Record<string, unknown>).range as { length: number } | undefined
-    this.weaponRange = new WDist(weaponRange?.length ?? 0)
+    const rawRange = weaponRange?.length ?? 0
+    this.weaponRange = new WDist(applyPercentageModifiers(rawRange, args.rangeModifiers ?? []))
 
     this.isHeadTravelling = true
     this.isTailTravelling = false
@@ -185,6 +220,18 @@ export class AreaBeam implements IProjectile {
     this.tailTicks = 0
   }
 
+  // -----------------------------------------------------------------------
+  // tick (OpenRA 对照: AreaBeam.Tick)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Advance the beam by one game logic tick.
+   *
+   * OpenRA 对照: AreaBeam.Tick(World world)
+   *
+   * MAJOR 4: Falloff modifier is applied as a damage modifier to WarheadArgs,
+   * matching C# AreaBeam.Tick() lines 250-260.
+   */
   tick(world: GameWorldManager): void {
     if (this.isDestroyed) return
 
@@ -237,19 +284,28 @@ export class AreaBeam implements IProjectile {
       }
     }
 
+    // MAJOR 4 FIX: Apply falloff modifier to WarheadArgs as damage modifier
+    // OpenRA C# AreaBeam.Tick() lines 250-260:
+    //   var adjustedModifiers = args.DamageModifiers.Append(GetFalloff((args.Source - a.CenterPosition).Length));
+    //   var warheadArgs = new WarheadArgs(args) { ..., DamageModifiers = adjustedModifiers.ToArray() };
     if (this.headTicks % this.info.damageInterval === 0 && this._findActorsOnLine) {
       const actors = this._findActorsOnLine(world, this.tailPos, this.headPos, this.info.width)
       for (const a of actors) {
         const actorCenter = (a as unknown as Record<string, unknown>).centerPosition as WPos | undefined
         const dist = WPos.subtract(this.args.source, actorCenter ?? new WPos(0, 0, 0)).length
         const falloffMod = this._getFalloff(dist)
-        void falloffMod
+
+        const extArgs = this.args as unknown as ExtendedProjectileArgs
+        const baseModifiers = extArgs.damageModifiers ?? []
+        const adjustedModifiers = [...baseModifiers, falloffMod]
+
         const warheadArgs: WarheadArgsStub = {
           firedBy: this.args.sourceActor,
           facing: this.args.facing,
-          impactOrientation: new WRot(WAngle.Zero, this._getVerticalAngle(this.args.source, this.target), this.args.facing),
+          impactOrientation: new WRot(WAngle.Zero, getVerticalAngle(this.args.source, this.target), this.args.facing),
           impactPosition: actorCenter ?? this.headPos,
           weapon: this.args.weapon,
+          damageModifiers: adjustedModifiers,
         }
         this.args.weapon.impact(Target.fromPos(actorCenter ?? this.headPos), warheadArgs)
       }
@@ -260,8 +316,16 @@ export class AreaBeam implements IProjectile {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // render / dispose
+  // -----------------------------------------------------------------------
+
   render(_worldRenderer: WorldRendererStub): readonly IRenderable[] { return [] }
   dispose(): void { this.isDestroyed = true }
+
+  // -----------------------------------------------------------------------
+  // _trackTarget (OpenRA 对照: AreaBeam.TrackTarget)
+  // -----------------------------------------------------------------------
 
   private _trackTarget(): void {
     if (!this.continueTracking) return
@@ -279,10 +343,18 @@ export class AreaBeam implements IProjectile {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // _stopTargeting (OpenRA 对照: AreaBeam.StopTargeting)
+  // -----------------------------------------------------------------------
+
   private _stopTargeting(): void {
     this.continueTracking = false
     this.isTailTravelling = true
   }
+
+  // -----------------------------------------------------------------------
+  // _getFalloff (OpenRA 对照: AreaBeam.GetFalloff)
+  // -----------------------------------------------------------------------
 
   private _getFalloff(distance: number): number {
     let inner = this.info.range[0]!.length
@@ -300,33 +372,29 @@ export class AreaBeam implements IProjectile {
     if (div <= 0) return a
     return Math.trunc(a + ((b - a) * mu) / div)
   }
-
-  private _getProjectileInaccuracy(
-    inaccuracy: WDist,
-    type: typeof InaccuracyType[keyof typeof InaccuracyType],
-    args: ProjectileArgs,
-  ): number {
-    const range = WPos.subtract(args.passiveTarget, args.source).length
-    switch (type) {
-      case InaccuracyType.Maximum:
-        return Math.min(inaccuracy.length, Math.trunc(range / Math.max(1, args.inaccuracySource.length)))
-      case InaccuracyType.PerCellIncrement: {
-        return Math.max(0, Math.trunc(range / 1024)) * inaccuracy.length
-      }
-      case InaccuracyType.Absolute: return inaccuracy.length
-      default: return 0
-    }
-  }
-
-  private _getVerticalAngle(from: WPos, to: WPos): WAngle {
-    const delta = WPos.subtract(to, from)
-    const horizontalDelta = delta.horizontalLength
-    if (horizontalDelta === 0) return WAngle.Zero
-    return new WVec(-delta.Z, -horizontalDelta, 0).yaw
-  }
 }
 
+// ---------------------------------------------------------------------------
+// AreaBeamFactory
+// ---------------------------------------------------------------------------
+
+/**
+ * Factory function for creating AreaBeam projectiles with default configuration.
+ *
+ * OpenRA 对照: AreaBeamInfo.Create(ProjectileArgs)
+ */
 export const AreaBeamFactory = {
+  /**
+   * Create an AreaBeam with default configuration.
+   *
+   * OpenRA 对照: AreaBeamInfo.Create(ProjectileArgs)
+   *
+   * @param args — projectile construction arguments
+   * @param overrides — optional config overrides
+   * @param checkBlocking — optional blocking actor checker
+   * @param findActorsOnLine — optional line-damage actor finder
+   * @returns a new AreaBeam instance
+   */
   create(
     args: ProjectileArgs,
     overrides?: Partial<AreaBeamInfo>,

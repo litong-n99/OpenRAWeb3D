@@ -111,18 +111,18 @@ describe('Railgun', () => {
   it('beamAlpha degrades over time', () => {
     const info = { ...DEFAULT_RAILGUN_INFO, beamAlphaDeltaPerTick: -10 }
     const rail = new Railgun(createProjArgs(), info)
-    expect(rail.beamAlpha).toBe(128) // default alpha
+    expect(rail.beamAlpha).toBe(255) // default alpha (beamColor[3] = 255, [R=128, G=255, B=255, A=255])
     const world = createMockWorld()
     rail.tick(world)
-    expect(rail.beamAlpha).toBe(118) // 128 + (-10)
+    expect(rail.beamAlpha).toBe(245) // 255 + (-10)
   })
 
   it('helixAlpha degrades over time', () => {
     const info = { ...DEFAULT_RAILGUN_INFO, helixAlphaDeltaPerTick: -10 }
     const rail = new Railgun(createProjArgs(), info)
-    expect(rail.helixAlpha).toBe(128)
+    expect(rail.helixAlpha).toBe(255) // default alpha (helixColor[3] = 255, [R=128, G=255, B=255, A=255])
     rail.tick(createMockWorld())
-    expect(rail.helixAlpha).toBe(118)
+    expect(rail.helixAlpha).toBe(245) // 255 + (-10)
   })
 
   it('does not tick when destroyed', () => {

@@ -6,6 +6,7 @@
  * - C# NukeLaunch(IProjectile, ISpatiallyPartitionable) → TypeScript 同接口
  * - C# WPos.LerpQuadratic → TypeScript 相同插值
  * - C# 独立构造参数 → NukeLaunchConfig 专用接口
+ * - C# SpriteEffect trail → deferred TODO marker (MAJOR 10)
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -32,26 +33,51 @@ import {
 // NukeLaunchConfig
 // ---------------------------------------------------------------------------
 
+/**
+ * Configuration for the NukeLaunch projectile.
+ *
+ * OpenRA 对照: NukeLaunch constructor parameters
+ */
 export interface NukeLaunchConfig {
+  /** The player that fired this nuke. */
   firedBy: PlayerStub
+  /** Sprite image for the nuke visual. */
   image: string | null
+  /** The weapon to impact on detonation. */
   weapon: WeaponStub
+  /** Palette for weapon rendering. */
   weaponPalette: string
+  /** Sequence name for ascent animation. */
   upSequence: string
+  /** Sequence name for descent animation. */
   downSequence: string
+  /** Launch position. */
   launchPos: WPos
+  /** Target position (detonation point). */
   targetPos: WPos
+  /** Altitude above target at which to detonate. */
   detonationAltitude: WDist
+  /** Whether to remove the projectile from world on detonation. */
   removeOnDetonation: boolean
+  /** Vertical velocity (ascent/descent). */
   velocity: WDist
+  /** Delay before launch (ticks). */
   launchDelay: number
+  /** Total flight time (ticks). */
   impactDelay: number
+  /** Skip ascent phase (start at apex). */
   skipAscent: boolean
+  /** Trail smoke image. */
   trailImage: string | null
+  /** Trail smoke animation sequences. */
   trailSequences: readonly string[]
+  /** Palette for trail rendering. */
   trailPalette: string
+  /** Whether trail uses player palette. */
   trailUsePlayerPalette: boolean
+  /** Delay before trail spawns. */
   trailDelay: number
+  /** Interval between trail particles. */
   trailInterval: number
 }
 
@@ -148,7 +174,9 @@ export class NukeLaunch implements IProjectile, ISpatiallyPartitionable {
       this.config.trailImage !== null && this.config.trailImage.length > 0 &&
       --this.trailTicks < 0
     ) {
-      void world
+      // TODO-8.B.10-EFFECTS: SpriteEffect trail smoke — deferred visual effect
+      // OpenRA 对照: NukeLaunch creates SpriteEffect trail particles
+      // Requires Animation + World context integration.
       this.trailTicks = this.config.trailInterval
     }
 

@@ -7,6 +7,7 @@
  * - C# BlocksProjectiles.AnyBlockingActorsBetween → BlockingActorsChecker 回调
  * - C# Target.CenterPosition / ValidFor → TypeScript Target 对应方法
  * - C# 无视觉渲染 → TypeScript render() 返回空数组
+ * - C# Util.GetVerticalAngle / Util.GetProjectileInaccuracy → MissileMath.ts 共享函数
  */
 
 // ---------------------------------------------------------------------------
@@ -26,8 +27,12 @@ import {
   type ProjectileArgs,
   type WarheadArgsStub,
   type BlockingActorsChecker,
-  InaccuracyType,
 } from './Bullet.js'
+import {
+  InaccuracyType,
+  getVerticalAngle,
+  getProjectileInaccuracy,
+} from './MissileMath.js'
 
 // ---------------------------------------------------------------------------
 // InstantHitInfo — projectile configuration
@@ -48,7 +53,13 @@ export interface InstantHitInfo {
   blockable: boolean
   /** Width of projectile for collision. */
   width: WDist
-  /** Scan radius for blocking actors (-1 = auto-scale). */
+  /** Scan radius for blocking actors (-1 = auto-scale from weapon range).
+   *
+   * OpenRA 对照: InstantHitInfo.BlockerScanRadius
+   *
+   * MINOR: When negative, auto-scale to weapon range; otherwise use the specified value.
+   * TODO: Integrate weapon range lookup for auto-scaling.
+   */
   blockerScanRadius: WDist
 }
 
@@ -80,6 +91,10 @@ export class InstantHit implements IProjectile {
    * Construct an InstantHit projectile.
    *
    * OpenRA 对照: InstantHit.InstantHit(InstantHitInfo, ProjectileArgs)
+   *
+   * @param info — projectile configuration
+   * @param args — construction arguments
+   * @param checkBlocking — optional blocking actor checker
    */
   constructor(
     info: InstantHitInfo,
@@ -94,21 +109,33 @@ export class InstantHit implements IProjectile {
     if (this._isWeaponTargetActorCenter()) {
       this.target = args.guidedTarget
     } else if (WDist.greaterThan(info.inaccuracy, WDist.Zero)) {
-      const maxInaccuracyOffset = this._getProjectileInaccuracy(
-        info.inaccuracy,
+      // MAJOR 13: use shared getProjectileInaccuracy from MissileMath
+      const range = WPos.subtract(args.passiveTarget, args.source).length
+      const maxInaccuracyOffset = getProjectileInaccuracy(
+        info.inaccuracy.length,
         info.inaccuracyType,
-        args,
+        range,
+        args.inaccuracySource.length,
       )
       const inaccuracyOffset = this._applyInaccuracy(args, maxInaccuracyOffset)
       this.target = Target.fromPos(WPos.add(args.passiveTarget, inaccuracyOffset))
     } else {
       this.target = Target.fromPos(args.passiveTarget)
     }
+
+    // MINOR: blockerScanRadius handling
+    // When blockerScanRadius is -1 (default), the scan radius should auto-scale
+    // to the weapon range. This requires weapon range lookup (deferred).
+    // OpenRA C#: if (Info.BlockerScanRadius > WDist.Zero) { ... use explicit value ... }
+    // else { ... auto-scale from weapon range ... }
+    // TODO-8.B.12-SCANRADIUS: Implement auto-scaling for blockerScanRadius
   }
 
   /** Tick — apply warheads and self-destruct in a single tick.
    *
    * OpenRA 对照: InstantHit.Tick(World world)
+   *
+   * @param world — the game world manager
    */
   tick(world: GameWorldManager): void {
     if (this.isDestroyed) return
@@ -141,9 +168,10 @@ export class InstantHit implements IProjectile {
     const warheadArgs: WarheadArgsStub = {
       firedBy: this.args.sourceActor,
       facing: this.args.facing,
+      // MAJOR 12: use shared getVerticalAngle from MissileMath
       impactOrientation: new WRot(
         WAngle.Zero,
-        this._getVerticalAngle(this.args.source, impactPos),
+        getVerticalAngle(this.args.source, impactPos),
         this.args.facing,
       ),
       impactPosition: impactPos,
@@ -175,41 +203,10 @@ export class InstantHit implements IProjectile {
     return (this.args.weapon as unknown as Record<string, unknown>).targetActorCenter === true
   }
 
-  private _getProjectileInaccuracy(
-    inaccuracy: WDist,
-    type: typeof InaccuracyType[keyof typeof InaccuracyType],
-    args: ProjectileArgs,
-  ): number {
-    const range = WPos.subtract(args.passiveTarget, args.source).length
-    switch (type) {
-      case InaccuracyType.Maximum:
-        return Math.min(
-          inaccuracy.length,
-          Math.trunc(range / Math.max(1, args.inaccuracySource.length)),
-        )
-      case InaccuracyType.PerCellIncrement: {
-        const cells = Math.max(0, Math.trunc(range / 1024))
-        return cells * inaccuracy.length
-      }
-      case InaccuracyType.Absolute:
-        return inaccuracy.length
-      default:
-        return 0
-    }
-  }
-
   private _applyInaccuracy(args: ProjectileArgs, maxInaccuracyOffset: number): WVec {
     const ax = -(args.random.next() % (2 * maxInaccuracyOffset + 1)) + maxInaccuracyOffset
     const ay = -(args.random.next() % (2 * maxInaccuracyOffset + 1)) + maxInaccuracyOffset
     return new WVec(Math.trunc(ax / 1024), Math.trunc(ay / 1024), 0)
-  }
-
-  private _getVerticalAngle(from: WPos, to: WPos): WAngle {
-    const delta = WPos.subtract(to, from)
-    const horizontalDelta = delta.horizontalLength
-    if (horizontalDelta === 0) return WAngle.Zero
-    const verticalVector = new WVec(-delta.Z, -horizontalDelta, 0)
-    return verticalVector.yaw
   }
 }
 
@@ -217,7 +214,22 @@ export class InstantHit implements IProjectile {
 // InstantHitFactory
 // ---------------------------------------------------------------------------
 
+/**
+ * Factory function for creating InstantHit projectiles with default configuration.
+ *
+ * OpenRA 对照: InstantHitInfo.Create(ProjectileArgs)
+ */
 export const InstantHitFactory = {
+  /**
+   * Create an InstantHit with default configuration.
+   *
+   * OpenRA 对照: InstantHitInfo.Create(ProjectileArgs)
+   *
+   * @param args — projectile construction arguments
+   * @param overrides — optional config overrides
+   * @param checkBlocking — optional blocking actor checker
+   * @returns a new InstantHit instance
+   */
   create(
     args: ProjectileArgs,
     overrides?: Partial<InstantHitInfo>,
