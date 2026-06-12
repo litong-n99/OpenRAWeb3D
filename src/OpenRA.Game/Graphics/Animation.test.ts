@@ -7,8 +7,16 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Animation } from './Animation'
-import type { ISpriteSequence, ISequenceSet, WAngle } from './Animation'
+import type {
+  ISpriteSequence,
+  ISequenceSet,
+  WAngle,
+  IPaletteRef,
+  IWorldRenderer,
+} from './Animation'
 import type { Sprite } from './Sprite'
+import { WPos } from '../WPos'
+import { WVec } from '../WVec'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -447,5 +455,201 @@ describe('getRandomExistingSequence', () => {
 
     const result = anim.getRandomExistingSequence(['none'], () => 0)
     expect(result).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+
+describe('render', () => {
+  let palette: IPaletteRef
+  let mockSprite: Sprite
+
+  beforeEach(() => {
+    palette = { name: 'test-pal', textureIndex: 0, hasColorShift: false }
+    mockSprite = createMockSprite()
+  })
+
+  it('returns empty array when currentSequence is null', () => {
+    const seqSet = createMockSequenceSet()
+    const anim = new Animation(seqSet, 'actor')
+    const result = anim.render(new WPos(0, 0, 0), WVec.Zero, 0, palette)
+    expect(result).toEqual([])
+  })
+
+  it('returns IRenderable with correct pos when currentSequence exists', () => {
+    const seq = createMockSequence(8, 40)
+    const seqSet = createMockSequenceSet({ idle: seq })
+    const anim = new Animation(seqSet, 'actor')
+    anim.playRepeating('idle')
+
+    const pos = new WPos(100, 200, 300)
+    const result = anim.render(pos, WVec.Zero, 0, palette)
+
+    expect(result.length).toBeGreaterThanOrEqual(1)
+    expect(result[0]!.pos.X).toBe(100)
+    expect(result[0]!.pos.Y).toBe(200)
+    expect(result[0]!.pos.Z).toBe(300)
+    expect(result[0]!.type).toBe('sprite')
+  })
+
+  it('returns IRenderable with correct offset applied', () => {
+    const seq = createMockSequence(8, 40)
+    const seqSet = createMockSequenceSet({ idle: seq })
+    const anim = new Animation(seqSet, 'actor')
+    anim.playRepeating('idle')
+
+    const offset = new WVec(5, 10, 15)
+    const result = anim.render(new WPos(0, 0, 0), offset, 0, palette)
+
+    expect(result.length).toBeGreaterThanOrEqual(1)
+    expect(result[0]!.offset.X).toBe(5)
+    expect(result[0]!.offset.Y).toBe(10)
+    expect(result[0]!.offset.Z).toBe(15)
+  })
+
+  it('returns IRenderable with correct zOffset', () => {
+    const seq = createMockSequence(8, 40)
+    // Override sequence zOffset
+    ;(seq as any).zOffset = 7
+    const seqSet = createMockSequenceSet({ idle: seq })
+    const anim = new Animation(seqSet, 'actor')
+    anim.playRepeating('idle')
+
+    const result = anim.render(new WPos(0, 0, 0), WVec.Zero, 3, palette)
+
+    // zOffset = seq.zOffset + param zOffset = 7 + 3 = 10
+    expect(result[0]!.zOffset).toBe(10)
+  })
+
+  it('returns IRenderable with correct palette reference', () => {
+    const seq = createMockSequence(8, 40)
+    const seqSet = createMockSequenceSet({ idle: seq })
+    const anim = new Animation(seqSet, 'actor')
+    anim.playRepeating('idle')
+
+    const myPalette: IPaletteRef = {
+      name: 'custom-palette',
+      textureIndex: 5,
+      hasColorShift: true,
+    }
+    const result = anim.render(new WPos(0, 0, 0), WVec.Zero, 0, myPalette)
+
+    expect(result[0]!.palette).toBe(myPalette)
+    expect(result[0]!.palette.name).toBe('custom-palette')
+  })
+
+  it('includes shadow renderable when sequence has shadow (getShadow returns non-null)', () => {
+    const shadowSprite = { ...mockSprite, size: { x: 16, y: 16, z: 0 } }
+    const seq: ISpriteSequence = {
+      name: 'shadow-seq',
+      length: 4,
+      tick: 40,
+      scale: 1,
+      zOffset: 0,
+      shadowZOffset: -2,
+      ignoreWorldTint: false,
+      bounds: { x: 0, y: 0, width: 32, height: 32 },
+      getSprite: vi.fn(() => mockSprite),
+      getSpriteWithRotation: vi.fn(() => ({ sprite: mockSprite, rotation: 0 })),
+      getAlpha: vi.fn(() => 1),
+      getShadow: vi.fn(() => shadowSprite),
+    }
+    const seqSet = createMockSequenceSet({ 'shadow-seq': seq })
+    const anim = new Animation(seqSet, 'actor')
+    anim.playRepeating('shadow-seq')
+
+    const result = anim.render(new WPos(0, 0, 0), WVec.Zero, 0, palette)
+
+    expect(result.length).toBe(2)
+    expect(result[0]!.type).toBe('sprite')
+    expect(result[1]!.type).toBe('shadow')
+    // Shadow uses shadowZOffset + param zOffset
+    expect(result[1]!.zOffset).toBe(-2)
+    expect(result[1]!.isDecoration).toBe(true)
+    expect(result[1]!.sprite).toBe(shadowSprite)
+  })
+
+  it('does NOT include shadow when getShadow returns null', () => {
+    const seq = createMockSequence(4, 40)
+    // getShadow already returns null by default in createMockSequence
+    const seqSet = createMockSequenceSet({ noshadow: seq })
+    const anim = new Animation(seqSet, 'actor')
+    anim.playRepeating('noshadow')
+
+    const result = anim.render(new WPos(0, 0, 0), WVec.Zero, 0, palette)
+
+    expect(result.length).toBe(1)
+    expect(result[0]!.type).toBe('sprite')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ScreenBounds
+// ---------------------------------------------------------------------------
+
+describe('screenBounds', () => {
+  function createMockWorldRenderer(
+    screenPos: { x: number; y: number } = { x: 50, y: 100 },
+    screenOff: { x: number; y: number } = { x: 5, y: 10 },
+  ): IWorldRenderer {
+    return {
+      screenPxPosition: vi.fn().mockReturnValue({ x: screenPos.x, y: screenPos.y }),
+      screenPxOffset: vi.fn().mockReturnValue({ x: screenOff.x, y: screenOff.y }),
+      screenVectorComponents: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0 }),
+    }
+  }
+
+  it('returns zero Rectangle when currentSequence is null', () => {
+    const seqSet = createMockSequenceSet()
+    const anim = new Animation(seqSet, 'actor')
+    const wr = createMockWorldRenderer()
+
+    const result = anim.screenBounds(wr, new WPos(0, 0, 0), WVec.Zero)
+    expect(result).toEqual({ x: 0, y: 0, width: 0, height: 0 })
+  })
+
+  it('returns correct bounds calculated from sequence bounds + center + offset', () => {
+    const seq: ISpriteSequence = {
+      name: 'bounds-test',
+      length: 4,
+      tick: 40,
+      scale: 2,
+      zOffset: 0,
+      shadowZOffset: 0,
+      ignoreWorldTint: false,
+      bounds: { x: -16, y: -24, width: 32, height: 48 },
+      getSprite: vi.fn(() => createMockSprite()),
+      getSpriteWithRotation: vi.fn(() => ({ sprite: createMockSprite(), rotation: 0 })),
+      getAlpha: vi.fn(() => 1),
+      getShadow: vi.fn(() => null),
+    }
+    const seqSet = createMockSequenceSet({ 'bounds-test': seq })
+    const anim = new Animation(seqSet, 'actor')
+    anim.playRepeating('bounds-test')
+
+    const wr = createMockWorldRenderer(
+      { x: 100, y: 200 }, // screenPxPosition result
+      { x: 10, y: 20 },   // screenPxOffset result
+    )
+
+    const result = anim.screenBounds(
+      wr,
+      new WPos(1000, 2000, 0),
+      new WVec(5, 10, 0),
+    )
+
+    // Expected: xy.x + off.x + trunc(bounds.x * scale),
+    //           xy.y + off.y + trunc(bounds.y * scale),
+    //           trunc(bounds.width * scale), trunc(bounds.height * scale)
+    // = 100 + 10 + trunc(-16 * 2) = 100 + 10 + (-32) = 78
+    // = 200 + 20 + trunc(-24 * 2) = 200 + 20 + (-48) = 172
+    // width = trunc(32 * 2) = 64
+    // height = trunc(48 * 2) = 96
+    expect(result.x).toBe(78)
+    expect(result.y).toBe(172)
+    expect(result.width).toBe(64)
+    expect(result.height).toBe(96)
   })
 })

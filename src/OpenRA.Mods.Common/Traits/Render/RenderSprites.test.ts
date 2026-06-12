@@ -12,7 +12,7 @@ import { AnimationWithOffset } from '../../../OpenRA.Game/Graphics/AnimationWith
 import type { Animation, IRenderable, IPaletteRef, IWorldRenderer } from '../../../OpenRA.Game/Graphics/Animation.js'
 import { WVec } from '../../../OpenRA.Game/WVec.js'
 import { WPos } from '../../../OpenRA.Game/WPos.js'
-import { DamageState, type IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { DamageState, type IGameActor, type IFacing } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -318,11 +318,13 @@ describe('RenderSprites', () => {
 
     it('should collect renderables from visible animations', () => {
       const anim = createMockAnimation()
+      const expectedPos = new WPos(100, 200, 50)
+      const expectedPalette = createMockPalette('test-palette')
       const mockRenderable = {
-        pos: new WPos(0, 0, 0),
+        pos: expectedPos,
         offset: WVec.Zero,
         zOffset: 0,
-        palette: createMockPalette(),
+        palette: expectedPalette,
         sprite: null,
         scale: 1,
         alpha: 1,
@@ -343,8 +345,10 @@ describe('RenderSprites', () => {
       const wr = createMockWorldRenderer()
       const result = rs.render(actor, wr)
 
-      // render should call Animation.render via the animation wrapper
-      expect(result.length).toBeGreaterThanOrEqual(1)
+      expect(result.length).toBe(1)
+      expect(result[0]!.pos).toEqual(expectedPos)
+      expect(result[0]!.palette.name).toBe('test-palette')
+      expect(result[0]!.type).toBe('sprite')
     })
 
     it('should skip invisible animations', () => {
@@ -365,16 +369,51 @@ describe('RenderSprites', () => {
       expect(result).toEqual([])
     })
 
+    it('should produce specific renderable properties when enabled', () => {
+      const anim = createMockAnimation()
+      const expectedRenderable = {
+        pos: new WPos(50, 60, 70),
+        offset: new WVec(1, 2, 3),
+        zOffset: 5,
+        palette: { name: 'enabled-pal', textureIndex: 0, hasColorShift: false },
+        sprite: null,
+        scale: 2,
+        alpha: 0.8,
+        rotation: Math.PI / 4,
+        isDecoration: true,
+        type: 'shadow' as const,
+      } as IRenderable
+      const renderSpy = anim.render as ReturnType<typeof vi.fn>
+      renderSpy.mockReturnValue([expectedRenderable])
+
+      const disableFn = () => false // enabled
+      const awo = new AnimationWithOffset(anim, null, disableFn, null)
+      rs.add(awo, 'enabled-pal', false)
+      rs.setPaletteResolver((name: string) => createMockPalette(name))
+
+      const actor = createMockRenderActor()
+      const wr = createMockWorldRenderer()
+      const result = rs.render(actor, wr)
+
+      expect(result.length).toBe(1)
+      expect(result[0]!.pos.X).toBe(50)
+      expect(result[0]!.pos.Y).toBe(60)
+      expect(result[0]!.pos.Z).toBe(70)
+      expect(result[0]!.offset.X).toBe(1)
+      expect(result[0]!.palette.name).toBe('enabled-pal')
+      expect(result[0]!.type).toBe('shadow')
+      expect(result[0]!.scale).toBe(2)
+      expect(result[0]!.alpha).toBe(0.8)
+    })
+
     it('should resolve EffectiveOwner with disguise', () => {
       const anim = createMockAnimation()
       const renderSpy = anim.render as ReturnType<typeof vi.fn>
       renderSpy.mockReturnValue([])
       const awo = new AnimationWithOffset(anim, null, null, null)
       rs.add(awo, 'player-pal', true)
-      rs.setPaletteResolver((name: string) => {
-        // Verify the palette name includes the effective owner
-        return createMockPalette(name)
-      })
+      const paletteSpy = vi.fn((name: string) => createMockPalette(name))
+      rs.setPaletteResolver(paletteSpy)
 
       const disguisedOwner = {
         playerName: 'disguised',
@@ -385,7 +424,9 @@ describe('RenderSprites', () => {
       })
       const wr = createMockWorldRenderer()
       rs.render(actor, wr)
-      // Palette should use disguised owner's InternalName
+
+      // Palette resolver should be called with player-pal + disguised owner InternalName
+      expect(paletteSpy).toHaveBeenCalledWith('player-paldisguised-internal')
     })
   })
 
@@ -596,26 +637,61 @@ describe('RenderSprites', () => {
   describe('renderAnimations (static)', () => {
     it('should produce renderables from AnimationWithOffset.Render', () => {
       const anim = createMockAnimation()
+      const expectedPos = new WPos(10, 20, 30)
       const mockRenderable = {
-        pos: new WPos(0, 0, 0),
-        zOffset: 0,
-      } as unknown as IRenderable
+        pos: expectedPos,
+        offset: WVec.Zero,
+        zOffset: 3,
+        palette: createMockPalette('test-pal'),
+        sprite: null,
+        scale: 1,
+        alpha: 1,
+        rotation: 0,
+        isDecoration: false,
+        type: 'sprite' as const,
+      } as IRenderable
       const renderSpy = anim.render as ReturnType<typeof vi.fn>
       renderSpy.mockReturnValue([mockRenderable])
 
       const awo = new AnimationWithOffset(anim, null, null, null)
-      // First add via public API to get a proper wrapper
+      // Add via public API and render first to resolve PaletteReference
       rs.add(awo, 'test-pal', false)
-      rs.setPaletteResolver(() => createMockPalette())
+      rs.setPaletteResolver((name: string) => createMockPalette(name))
 
       const actor = createMockRenderActor()
-      // Test that renderAnimations can be called with proper args
-      expect(() => RenderSprites.renderAnimations(
-        (rs as any)._anims as any[],
-        actor,
-      )).not.toThrow()
-      // The wrapper won't have a PaletteReference unless we render first
-      // So renderables may be empty. This tests the static method itself.
+      // First call render() to resolve palettes and set PaletteReference
+      rs.render(actor, createMockWorldRenderer())
+
+      // Now renderAnimations should produce actual renderables
+      const anims = (rs as any)._anims as Array<any>
+      const result = RenderSprites.renderAnimations(anims, actor)
+
+      expect(result.length).toBe(1)
+      expect(result[0]!.pos).toEqual(expectedPos)
+      expect(result[0]!.zOffset).toBe(3)
+      expect(result[0]!.palette.name).toBe('test-pal')
+      expect(result[0]!.type).toBe('sprite')
+    })
+
+    it('should skip invisible animations in renderAnimations', () => {
+      const anim = createMockAnimation()
+      const renderSpy = anim.render as ReturnType<typeof vi.fn>
+      renderSpy.mockReturnValue([])
+
+      const awo = new AnimationWithOffset(anim, null, () => true, null) // disabled
+      rs.add(awo, 'test-pal', false)
+      rs.setPaletteResolver((name: string) => createMockPalette(name))
+
+      // Render to resolve palettes
+      const actor = createMockRenderActor()
+      rs.render(actor, createMockWorldRenderer())
+
+      // The wrapper should have PaletteReference but be invisible
+      const anims = (rs as any)._anims as Array<any>
+      const result = RenderSprites.renderAnimations(anims, actor)
+
+      // Disabled animations produce no renderables from renderAnimations
+      expect(result).toEqual([])
     })
   })
 
@@ -639,6 +715,31 @@ describe('RenderSprites', () => {
       expect(prefixes[1]!.damageState).toBe(DamageState.Heavy)
       expect(prefixes[2]!.damageState).toBe(DamageState.Medium)
       expect(prefixes[3]!.damageState).toBe(DamageState.Light)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // makeFacingFunc
+  // -----------------------------------------------------------------------
+
+  describe('makeFacingFunc', () => {
+    it('returns () => 0 when facing is null', () => {
+      const func = RenderSprites.makeFacingFunc(null)
+      expect(func()).toBe(0)
+    })
+
+    it('returns () => facing.facing.angle for valid IFacing', () => {
+      const mockWAngle = { angle: 256 }
+      const mockFacing = {
+        turnSpeed: { angle: 64 } as any,
+        facing: mockWAngle as any,
+        orientation: { yaw: 0, pitch: 0, roll: 0 } as any,
+      } as IFacing
+      const func = RenderSprites.makeFacingFunc(mockFacing)
+      expect(func()).toBe(256)
+      // Verify it dynamically reads the current facing value
+      mockWAngle.angle = 512
+      expect(func()).toBe(512)
     })
   })
 })

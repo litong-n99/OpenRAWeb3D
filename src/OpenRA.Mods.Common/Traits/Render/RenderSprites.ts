@@ -39,6 +39,7 @@ import type {
   IRender,
   INotifyOwnerChanged,
   INotifyEffectiveOwnerChanged,
+  IFacing,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { DamageState } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { PlayerStub } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -329,6 +330,23 @@ export class RenderSprites
   /** DamagePrefixes 公开副本（供 NormalizeSequence 外部调用）。 */
   static readonly DamagePrefixes = DAMAGE_PREFIXES
 
+  // -----------------------------------------------------------------------
+  // MakeFacingFunc（对应 OpenRA RenderSprites.MakeFacingFunc）
+  // -----------------------------------------------------------------------
+
+  /**
+   * 创建 facing 回调函数（供其他 With* 渲染特质使用）。
+   *
+   * OpenRA 对照: RenderSprites.MakeFacingFunc(Actor self)
+   *
+   * @param facing — IFacing 特质（null = 无旋转，始终返回 0）
+   * @returns 一个 () => number 回调，返回当前 facing 角度
+   */
+  static makeFacingFunc(facing: IFacing | null): () => number {
+    if (!facing) return () => 0
+    return () => facing.facing.angle
+  }
+
   /** 特质配置信息。
    *
    * OpenRA 对照: RenderSprites.Info
@@ -503,14 +521,19 @@ export class RenderSprites
    */
   render(self: IRenderActor, _wr: IWorldRenderer): readonly IRenderable[] {
     // Refresh palettes if needed
-    if (this._shouldRefreshPalettes && this._getPaletteFn) {
-      this._shouldRefreshPalettes = false
-      for (const a of this._anims) {
-        if (a.PaletteReference === null) {
-          const owner = this._resolveEffectiveOwner(self)
-          a.cachePalette(this._getPaletteFn, owner)
+    if (this._shouldRefreshPalettes) {
+      if (this._getPaletteFn) {
+        this._shouldRefreshPalettes = false
+        for (const a of this._anims) {
+          if (a.PaletteReference === null) {
+            const owner = this._resolveEffectiveOwner(self)
+            a.cachePalette(this._getPaletteFn, owner)
+          }
         }
       }
+      // NOTE: If _getPaletteFn is not yet set (early lifecycle / testing),
+      // _shouldRefreshPalettes remains true so resolution is retried on
+      // the next render() call once the resolver becomes available.
     }
 
     return RenderSprites.renderAnimations(this._anims, self)
