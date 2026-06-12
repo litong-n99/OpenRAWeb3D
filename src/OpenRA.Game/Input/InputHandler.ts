@@ -185,8 +185,11 @@ export class DefaultInputHandler implements IInputHandler {
  * - 滚轮事件 preventDefault (防止页面滚动)
  */
 export class InputManager {
-  // 注意: 实际集成需要 @babylonjs/core 的 DeviceSourceManager
-  // 当前阶段提供接口和事件管道结构，实际的 DSM 连接在运行时集成阶段完成
+  // @todo TODO-7.A.2: 集成 Babylon.js DeviceSourceManager 用于高级输入设备
+  // （手柄、VR 控制器等）。当前阶段使用原生 DOM 事件（keydown/keyup/pointerdown/
+  // pointermove/pointerup/wheel）提供键盘和鼠标支持。
+  // DSM 集成将在 InputManager 上增加 registerDeviceObservers() 方法，
+  // 将 DeviceSourceManager.onInputChangedObservable 转换为 IInputHandler 事件。
 
   private _handler: IInputHandler
   private _disposed = false
@@ -258,15 +261,15 @@ export class InputManager {
    * @param element — 之前绑定的 HTML 元素 (必须与 attach 时相同)
    */
   detach(element?: HTMLElement): void {
-    // 如果没有提供 element，监听器引用仍然会被清空;
-    // 但实际的 DOM 移除需要相同元素。调用者负责传递正确的元素。
-    if (element) {
-      if (this._onKeyDown) element.removeEventListener('keydown', this._onKeyDown)
-      if (this._onKeyUp) element.removeEventListener('keyup', this._onKeyUp)
-      if (this._onPointerDown) element.removeEventListener('pointerdown', this._onPointerDown)
-      if (this._onPointerMove) element.removeEventListener('pointermove', this._onPointerMove)
-      if (this._onPointerUp) element.removeEventListener('pointerup', this._onPointerUp)
-      if (this._onWheel) element.removeEventListener('wheel', this._onWheel)
+    // 如果没有提供 element，默认使用上次 attach 时保存的元素引用。
+    const target = element ?? this._attachedElement
+    if (target) {
+      if (this._onKeyDown) target.removeEventListener('keydown', this._onKeyDown)
+      if (this._onKeyUp) target.removeEventListener('keyup', this._onKeyUp)
+      if (this._onPointerDown) target.removeEventListener('pointerdown', this._onPointerDown)
+      if (this._onPointerMove) target.removeEventListener('pointermove', this._onPointerMove)
+      if (this._onPointerUp) target.removeEventListener('pointerup', this._onPointerUp)
+      if (this._onWheel) target.removeEventListener('wheel', this._onWheel)
     }
 
     this._attachedElement = null
@@ -280,6 +283,10 @@ export class InputManager {
 
   /**
    * 获取当前鼠标位置 (像素坐标)。
+   *
+   * 注意: 返回的是内部可变对象的引用 (避免 per-frame 分配)。
+   * 调用者不应修改返回对象的属性。TypeScript readonly 修饰符仅提供
+   * 编译时保护，运行时无强制。
    */
   get mousePosition(): { readonly x: number; readonly y: number } {
     return this._mousePosition
@@ -456,8 +463,12 @@ export class InputManager {
 
     this._handler.onKeyInput(keyInput)
 
-    // 防止默认行为 (游戏应完全控制输入)
-    event.preventDefault()
+    // 防止默认行为 (游戏应完全控制非修饰键输入)。
+    // 修饰键 (Shift/Ctrl/Alt/Meta) 不调用 preventDefault 以保留浏览器
+    // 辅助功能 (如 Alt 菜单栏激活) 和 IME 组合键支持。
+    if (!this._isModifierKey(keyCode)) {
+      event.preventDefault()
+    }
   }
 
   private _handleKeyUp(event: KeyboardEvent): void {
@@ -493,7 +504,9 @@ export class InputManager {
     }
 
     this._handler.onKeyInput(keyInput)
-    event.preventDefault()
+    if (!this._isModifierKey(keyCode)) {
+      event.preventDefault()
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -599,22 +612,36 @@ export class InputManager {
   // 辅助方法
   // -----------------------------------------------------------------------
 
-  /** 更新内部指针位置并返回新位置 (canvas-relative 像素坐标)。 */
+  /** 更新内部指针位置并返回新位置 (canvas-relative 像素坐标)。
+   *
+   * 使用 getBoundingClientRect() 计算 canvas 相对坐标，
+   * 比依赖 offsetX/Y 更可靠 (后者在测试环境中为默认值 0)。
+   */
   private _updatePointerPosition(event: PointerEvent): { x: number; y: number } {
-    // 优先使用 event.offsetX/Y (浏览器原生元素相对坐标)
-    // 如果 offsetX/Y 不可用 (如测试环境), 使用 clientX/Y 减去元素边界
-    const hasOffset = typeof event.offsetX === 'number' && (event.offsetX !== 0 || event.offsetY !== 0)
-    if (hasOffset) {
-      this._mousePosition = { x: event.offsetX, y: event.offsetY }
-    } else if (this._attachedElement) {
+    if (this._attachedElement) {
       const rect = this._attachedElement.getBoundingClientRect()
       this._mousePosition = {
         x: event.clientX - rect.left,
         y: event.clientY - rect.top,
       }
     } else {
-      this._mousePosition = { x: event.clientX, y: event.clientY }
+      // 没有绑定元素时的回退路径 (例如 dispose 后残留事件)
+      this._mousePosition = {
+        x: event.offsetX ?? event.clientX,
+        y: event.offsetY ?? event.clientY,
+      }
     }
     return this._mousePosition
+  }
+
+  /** 判断是否为修饰键 (Shift/Ctrl/Alt/Meta)。
+   *
+   * 修饰键不调用 preventDefault 以保留浏览器辅助功能和 IME 组合键。
+   */
+  private _isModifierKey(keyCode: KeyCode): boolean {
+    return keyCode === KeyCode.LSHIFT || keyCode === KeyCode.RSHIFT
+        || keyCode === KeyCode.LCTRL  || keyCode === KeyCode.RCTRL
+        || keyCode === KeyCode.LALT   || keyCode === KeyCode.RALT
+        || keyCode === KeyCode.LGUI   || keyCode === KeyCode.RGUI
   }
 }

@@ -727,8 +727,9 @@ export function keyCodeFromKeyboardEvent(event: KeyboardEvent): KeyCode {
  * @returns 对应的 KeyCode，无效则返回 KeyCode.UNKNOWN
  */
 export function keyCodeFromSDLK(sdlKey: number): KeyCode {
-  // 直接查找: 检查 sdlKey 是否是一个合法的 KeyCode 值
-  // 遍历所有已知的 KeyCode 值进行匹配
+  // O(n) 线性扫描 ~230 个 KeyCode 值。
+  // 性能: 此函数仅在热键配置加载时调用 (离线路径), 不在每帧热路径上。
+  // 可接受 ~230 次比较的常数级开销。
   for (const value of Object.values(KeyCode) as KeyCode[]) {
     if (value === sdlKey) {
       return value
