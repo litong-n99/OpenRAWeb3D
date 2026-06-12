@@ -531,21 +531,33 @@ export class ViewportControllerWidget extends Widget {
       return true
     }
 
-    // 跳转到边缘热键 (通过快速滚动到地图边界实现)
+    // 跳转到边缘热键 — 使用中心点设置确保边界裁剪生效
     if (this.jumpToTopEdgeKey.isActivatedBy(e)) {
-      this.viewport.scroll({ x: 0, y: -999999 }, true)
+      this.viewport.centerFloat2({
+        x: this.viewport.centerLocation.x,
+        y: this.viewport.mapRectBounds.Top + this.viewport.viewportSize.y / 2,
+      })
       return true
     }
     if (this.jumpToBottomEdgeKey.isActivatedBy(e)) {
-      this.viewport.scroll({ x: 0, y: 999999 }, true)
+      this.viewport.centerFloat2({
+        x: this.viewport.centerLocation.x,
+        y: this.viewport.mapRectBounds.Bottom - this.viewport.viewportSize.y / 2,
+      })
       return true
     }
     if (this.jumpToLeftEdgeKey.isActivatedBy(e)) {
-      this.viewport.scroll({ x: -999999, y: 0 }, true)
+      this.viewport.centerFloat2({
+        x: this.viewport.mapRectBounds.Left + this.viewport.viewportSize.x / 2,
+        y: this.viewport.centerLocation.y,
+      })
       return true
     }
     if (this.jumpToRightEdgeKey.isActivatedBy(e)) {
-      this.viewport.scroll({ x: 999999, y: 0 }, true)
+      this.viewport.centerFloat2({
+        x: this.viewport.mapRectBounds.Right - this.viewport.viewportSize.x / 2,
+        y: this.viewport.centerLocation.y,
+      })
       return true
     }
 
@@ -573,22 +585,36 @@ export class ViewportControllerWidget extends Widget {
     return false
   }
 
+  /**
+   * 处理地图滚屏热键 (箭头键等)。
+   *
+   * OpenRA 对照: ViewportControllerWidget.HandleMapScrollKey()
+   *
+   * 与 HotkeyReference.isActivatedBy() 不同，滚屏热键只需要按键匹配，
+   * 不需要修饰键匹配 (这样 Ctrl+ArrowUp 也能滚屏，如果热键是 ArrowUp)。
+   * 但如果热键本身要求修饰键 (如 Ctrl+ArrowUp)，则要求修饰键完全匹配，
+   * 以避免将浏览器快捷键 (如 Ctrl/Alt 修饰键) 错误解释为游戏输入。
+   */
   private handleMapScrollKey(
     hotkey: HotkeyReference,
     direction: ScrollDirection,
     keyInput: KeyInput,
   ): boolean {
-    let isHotkey = false
     const keyValue = hotkey.getValue()
+    const isHotkey = keyInput.key === keyValue.key
 
-    if (keyInput.key === keyValue.key) {
-      isHotkey = keyInput.key === keyValue.key
-      this.keyboardDirections = ScrollDirectionExts.set(
-        this.keyboardDirections,
-        direction,
-        keyInput.event === KeyInputEvent.Down &&
-          (isHotkey || keyValue.modifiers === 0),
-      )
+    if (isHotkey) {
+      // If the modifiers don't match (e.g. the key is Ctrl/Alt/... and we
+      // can't tell if it's the modifiers *or* game input, then we skip so we
+      // don't eat the modifier keys used by browser).
+      if (keyValue.modifiers === Modifiers.None || keyInput.modifiers === keyValue.modifiers) {
+        this.keyboardDirections = ScrollDirectionExts.set(
+          this.keyboardDirections,
+          direction,
+          keyInput.event === KeyInputEvent.Down &&
+            (isHotkey || keyValue.modifiers === Modifiers.None),
+        )
+      }
     }
 
     return isHotkey
@@ -734,6 +760,30 @@ export class ViewportControllerWidget extends Widget {
   // 事件转换
   // ---------------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------------
+  // 修饰键提取 (浏览器 KeyboardEvent/PointerEvent → Modifiers 位标志)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * 从浏览器事件提取修饰键位标志。
+   *
+   * OpenRA 对照: KeyboardEvent.ctrlKey/shiftKey/altKey/metaKey → Modifiers flags
+   */
+  private static extractModifiers(
+    event: import('../../OpenRA.Game/Widgets/Widget').WidgetEvent,
+  ): number {
+    let mods = Modifiers.None
+    if (event.ctrlKey) mods |= Modifiers.Ctrl
+    if (event.shiftKey) mods |= Modifiers.Shift
+    if (event.altKey) mods |= Modifiers.Alt
+    if (event.metaKey) mods |= Modifiers.Meta
+    return mods
+  }
+
+  // ---------------------------------------------------------------------------
+  // 事件转换
+  // ---------------------------------------------------------------------------
+
   private eventToMouseInput(
     event: import('../../OpenRA.Game/Widgets/Widget').WidgetEvent,
   ): MouseInput | null {
@@ -782,7 +832,7 @@ export class ViewportControllerWidget extends Widget {
       button: mouseButton,
       location: { x: clientX as number, y: clientY as number },
       delta: { x: (deltaX as number) ?? 0, y: (deltaY as number) ?? 0 },
-      modifiers: Modifiers.None,
+      modifiers: ViewportControllerWidget.extractModifiers(event),
       multiTapCount: 0,
     }
   }
@@ -796,7 +846,7 @@ export class ViewportControllerWidget extends Widget {
       event:
         event.type === 'keydown' ? KeyInputEvent.Down : KeyInputEvent.Up,
       key: (event.keyCode as number) ?? 0,
-      modifiers: Modifiers.None,
+      modifiers: ViewportControllerWidget.extractModifiers(event),
       multiTapCount: 0,
       unicodeChar: '',
       isRepeat: (event.repeat as boolean) ?? false,

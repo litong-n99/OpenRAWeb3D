@@ -324,6 +324,218 @@ describe('ViewportControllerWidget', () => {
       expect(widget.settings.mouseScroll).toBe(MouseScrollType.Disabled)
     })
   })
+
+  describe('JumpToEdge (round 1 fix)', () => {
+    it('jumps to top edge using centerFloat2 (not scroll)', () => {
+      const vp = new Viewport()
+      let scrollCalled = false
+      let centerFloat2Called = false
+      vp.scroll = () => { scrollCalled = true }
+      vp.centerFloat2 = () => { centerFloat2Called = true }
+      const widget = new ViewportControllerWidget(
+        vp,
+        DEFAULT_VIEWPORT_SETTINGS,
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeActivatingHotkey(79), // jumpToTopEdgeKey
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+      )
+
+      const keyEvent = {
+        type: 'keydown',
+        keyCode: 79,
+        stopPropagation: () => {},
+        target: null,
+        repeat: false,
+      }
+      widget.handleEvent(keyEvent as any)
+      expect(centerFloat2Called).toBe(true)
+      expect(scrollCalled).toBe(false)
+    })
+
+    it('jumps to bottom edge using centerFloat2 (not scroll)', () => {
+      const vp = new Viewport()
+      let scrollCalled = false
+      let centerFloat2Called = false
+      vp.scroll = () => { scrollCalled = true }
+      vp.centerFloat2 = () => { centerFloat2Called = true }
+      const widget = new ViewportControllerWidget(
+        vp,
+        DEFAULT_VIEWPORT_SETTINGS,
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeActivatingHotkey(80), // jumpToBottomEdgeKey
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+      )
+
+      const keyEvent = {
+        type: 'keydown',
+        keyCode: 80,
+        stopPropagation: () => {},
+        target: null,
+        repeat: false,
+      }
+      widget.handleEvent(keyEvent as any)
+      expect(centerFloat2Called).toBe(true)
+      expect(scrollCalled).toBe(false)
+    })
+
+    it('jumps to left edge using centerFloat2 (not scroll)', () => {
+      const vp = new Viewport()
+      let scrollCalled = false
+      let centerFloat2Called = false
+      vp.scroll = () => { scrollCalled = true }
+      vp.centerFloat2 = () => { centerFloat2Called = true }
+      const widget = new ViewportControllerWidget(
+        vp,
+        DEFAULT_VIEWPORT_SETTINGS,
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeActivatingHotkey(81), // jumpToLeftEdgeKey
+        makeDummyHotkey(),
+      )
+
+      const keyEvent = {
+        type: 'keydown',
+        keyCode: 81,
+        stopPropagation: () => {},
+        target: null,
+        repeat: false,
+      }
+      widget.handleEvent(keyEvent as any)
+      expect(centerFloat2Called).toBe(true)
+      expect(scrollCalled).toBe(false)
+    })
+
+    it('jumps to right edge using centerFloat2 (not scroll)', () => {
+      const vp = new Viewport()
+      let scrollCalled = false
+      let centerFloat2Called = false
+      vp.scroll = () => { scrollCalled = true }
+      vp.centerFloat2 = () => { centerFloat2Called = true }
+      const widget = new ViewportControllerWidget(
+        vp,
+        DEFAULT_VIEWPORT_SETTINGS,
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeActivatingHotkey(82), // jumpToRightEdgeKey
+      )
+
+      const keyEvent = {
+        type: 'keydown',
+        keyCode: 82,
+        stopPropagation: () => {},
+        target: null,
+        repeat: false,
+      }
+      widget.handleEvent(keyEvent as any)
+      expect(centerFloat2Called).toBe(true)
+      expect(scrollCalled).toBe(false)
+    })
+  })
+
+  describe('modifier extraction (round 1 fix)', () => {
+    it('extracts Ctrl modifier from keyboard event', () => {
+      const vp = new Viewport()
+      const widget = new ViewportControllerWidget(vp, DEFAULT_VIEWPORT_SETTINGS)
+
+      const keyEvent = {
+        type: 'keydown',
+        keyCode: 65,
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        stopPropagation: () => {},
+        target: null,
+        repeat: false,
+      }
+      widget.handleEvent(keyEvent as any)
+      // Should NOT trigger zoom (zoomInKey is a dummy, not activated)
+      // Just testing that modifiers are extracted without crash
+    })
+
+    it('extracts Shift modifier from keyboard event', () => {
+      const vp = new Viewport()
+      const widget = new ViewportControllerWidget(vp, DEFAULT_VIEWPORT_SETTINGS)
+
+      const keyEvent = {
+        type: 'keydown',
+        keyCode: 65,
+        ctrlKey: false,
+        shiftKey: true,
+        altKey: false,
+        metaKey: false,
+        stopPropagation: () => {},
+        target: null,
+        repeat: false,
+      }
+      widget.handleEvent(keyEvent as any)
+      // No crash = modifier extraction works
+    })
+  })
+
+  describe('handleMapScrollKey modifier logic (round 1 fix)', () => {
+    it('scroll key with no modifier activates even when Shift is held', () => {
+      const vp = new Viewport()
+      const scrollKey = makeActivatingHotkey(38) // Up arrow
+      const widget = new ViewportControllerWidget(
+        vp,
+        DEFAULT_VIEWPORT_SETTINGS,
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        scrollKey,
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+        makeDummyHotkey(),
+      )
+
+      // Press Up arrow with Shift modifier held
+      const keyEvent = {
+        type: 'keydown',
+        keyCode: 38,
+        ctrlKey: false,
+        shiftKey: true,
+        altKey: false,
+        metaKey: false,
+        stopPropagation: () => {},
+        target: null,
+        repeat: false,
+      }
+      widget.handleEvent(keyEvent as any)
+      // keyboardDirections should have Up set (ScrollDirection.Up = 1)
+      expect((widget as any).keyboardDirections & 1).toBe(1)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------

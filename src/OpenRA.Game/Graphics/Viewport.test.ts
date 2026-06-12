@@ -309,6 +309,36 @@ describe('Viewport coordinate transforms', () => {
       expect(result.y).toBeCloseTo(540, -1)
     })
   })
+
+  describe('viewToWorld', () => {
+    it('returns CPos for viewport center', () => {
+      const center = { x: 960, y: 540 }
+      const cpos = vp.viewToWorld(center)
+      expect(cpos).toHaveProperty('X')
+      expect(cpos).toHaveProperty('Y')
+    })
+
+    it('returns different CPos for screen corners', () => {
+      const tl = vp.viewToWorld({ x: 0, y: 0 })
+      const br = vp.viewToWorld({ x: 1920, y: 1080 })
+      // Top-left should map to smaller cell coords than bottom-right
+      expect(tl.X + tl.Y).toBeLessThanOrEqual(br.X + br.Y)
+    })
+
+    it('returns a CPos even for out-of-bounds view coords', () => {
+      const farPoint = vp.viewToWorld({ x: -9999, y: -9999 })
+      expect(farPoint).toHaveProperty('X')
+      expect(farPoint).toHaveProperty('Y')
+    })
+
+    it('is stable when called multiple times', () => {
+      const center = { x: 960, y: 540 }
+      const c1 = vp.viewToWorld(center)
+      const c2 = vp.viewToWorld(center)
+      expect(c1.X).toBe(c2.X)
+      expect(c1.Y).toBe(c2.Y)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -634,6 +664,24 @@ describe('Viewport properties', () => {
   it('cameraMode defaults to Orthographic', () => {
     const vp = new Viewport(makeOptions())
     expect(vp.cameraMode).toBe(ViewportCameraMode.Orthographic)
+  })
+
+  it('centerPosition returns projected WPos of viewport center', () => {
+    const vp = new Viewport(makeOptions())
+    const pos = vp.centerPosition
+    expect(pos).toHaveProperty('x')
+    expect(pos).toHaveProperty('y')
+    expect(pos).toHaveProperty('z')
+    expect(pos.z).toBe(0)
+  })
+
+  it('centerPosition changes when center location changes', () => {
+    const vp = new Viewport(makeOptions())
+    const pos1 = vp.centerPosition
+    vp.centerFloat2({ x: 500, y: 500 })
+    const pos2 = vp.centerPosition
+    expect(pos2.x).not.toBe(pos1.x)
+    expect(pos2.y).not.toBe(pos1.y)
   })
 
   it('getScissorBounds returns full viewport rectangle', () => {

@@ -21,15 +21,13 @@
  * 参考: src/__e2e__/manual/hardware-palette/color-accuracy/main.ts 的相机调试过程
  */
 
-import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { Vector3, Matrix } from '@babylonjs/core/Maths/math.vector'
 import { Camera } from '@babylonjs/core/Cameras/camera'
 import type { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera'
 import type { Engine } from '@babylonjs/core/Engines/engine'
 import type { Scene } from '@babylonjs/core/scene'
-import type { Matrix } from '@babylonjs/core/Maths/math.vector'
 
-import { PPos } from '../MPos'
-import type { MPos } from '../MPos'
+import { PPos, MPos } from '../MPos'
 import type { CPos } from '../CPos'
 import { MapGridType } from '../Map/MapGridType'
 import { ProjectedCellRegion } from '../Map/ProjectedCellRegion'
@@ -254,6 +252,18 @@ export class Viewport implements IViewport {
     return this._centerLocation
   }
 
+  /**
+   * 当前视口中心的世界位置 (WPos)。
+   *
+   * OpenRA 对照: Viewport.CenterPosition => worldRenderer.ProjectedPosition(CenterLocation.ToInt2())
+   */
+  get centerPosition(): WPos {
+    return this.wr.projectedPosition({
+      x: Math.round(this._centerLocation.x),
+      y: Math.round(this._centerLocation.y),
+    })
+  }
+
   get zoom(): number { return this._zoom }
   get minZoom(): number { return this._minZoom }
   get maxZoom(): number { return this._maxZoom }
@@ -447,6 +457,145 @@ export class Viewport implements IViewport {
       y: (this._zoom / this.uiScale) *
         (worldPos.y - this._centerLocation.y + halfView.y),
     }
+  }
+
+  /**
+   * 视口像素坐标 → 世界 cell 坐标 (CPos)。
+   *
+   * OpenRA 对照: Viewport.ViewToWorld(int2 view) — OpenRA.cs:262-327
+   *
+   * 这是主要的光标到 Cell 坐标映射方法。先通过视口像素计算世界像素，
+   * 然后生成候选 cell 列表，进行粗筛选，再通过 CellRamp 多边形包含测试
+   * 找到精确匹配。如果鼠标不在 cell 上 (如悬崖边缘)，则返回最近的 cell。
+   *
+   * @param view — 视口像素坐标
+   * @returns 对应的 CPos (world cell 坐标)
+   */
+  viewToWorld(view: Int2): CPos {
+    const world = this.viewToWorldPxInt2(view)
+
+    // Generate candidate cells that could contain the cursor point
+    const candidates = this.candidateMouseoverCells(world, this.map)
+
+    // Ramp-aware polygon containment check (OpenRA lines 268-281)
+    //
+    // TODO-7.B.1.3: 完整 CellRamp 多边形包含测试
+    // 当前实现跳过 ramp 数据 (需要 Map.Grid.Ramps[] 和 Map.Ramp[])，直接退回到
+    // 基于距离的最近 cell 查找。
+    // 完成 ramp 系统迁移后，需要:
+    //   for (const uv of candidates) {
+    //     const p = map.centerOfCell(uv.toCPos(map.grid.type))
+    //     const s = wr.screenPxPosition(p)
+    //     if (Math.abs(s.x - world.x) <= tileSize.width && Math.abs(s.y - world.y) <= tileSize.height) {
+    //       const rampIdx = map.ramp?.get(uv) ?? 0
+    //       const ramp = map.grid.ramps[rampIdx]
+    //       const pos = map.centerOfCell(uv.toCPos(map.grid.type))
+    //       const adjusted = { x: pos.x, y: pos.y, z: pos.z - ramp.centerHeightOffset }
+    //       const screen = ramp.corners.map(c => wr.screenPxPosition({ x: adjusted.x + c.x, y: adjusted.y + c.y, z: adjusted.z + c.z }))
+    //       if (polygonContains(screen, world)) return uv.toCPos(map.grid.type)
+    //     }
+    //   }
+
+    // Coarse filter: find all candidate cells within tile size distance,
+    // then return the closest one by screen distance
+    if (candidates.length > 0) {
+      // Find closest cell by screen distance (OpenRA lines 284-296)
+      let bestCell: CPos | null = null
+      let bestDist = Infinity
+      for (const uv of candidates) {
+        const cell = uv.toCPos(this.map.grid.type)
+        const p = this.map.centerOfCell(cell)
+        const s = this.wr.screenPxPosition(p)
+        const dx = Math.abs(s.x - world.x)
+        const dy = Math.abs(s.y - world.y)
+
+        // Coarse filter (OpenRA lines 273)
+        if (dx <= this.tileSize.width && dy <= this.tileSize.height) {
+          const dist = dx * dx + dy * dy
+          if (dist < bestDist) {
+            bestDist = dist
+            bestCell = cell
+          }
+        }
+      }
+
+      if (bestCell !== null) return bestCell
+
+      // No cell within coarse filter — find overall closest (OpenRA lines 284-296)
+      for (const uv of candidates) {
+        const cell = uv.toCPos(this.map.grid.type)
+        const p = this.map.centerOfCell(cell)
+        const s = this.wr.screenPxPosition(p)
+        const dx = Math.abs(s.x - world.x)
+        const dy = Math.abs(s.y - world.y)
+        const dist = dx * dx + dy * dy
+        if (dist < bestDist) {
+          bestDist = dist
+          bestCell = cell
+        }
+      }
+
+      if (bestCell !== null) return bestCell
+    }
+
+    // Fallback: project the world-px to a cell position (OpenRA line 299)
+    const projectedPos = this.wr.projectedPosition(world)
+    return this.map.cellContaining(projectedPos).toMPos(this.map.grid.type).toCPos(this.map.grid.type)
+  }
+
+  /**
+   * 生成可能包含鼠标光标的候选 cell 列表。
+   *
+   * OpenRA 对照: Viewport.CandidateMouseoverCells(int2 world) — OpenRA.cs:303-327
+   *
+   * @param world — 世界像素坐标
+   * @param map — 地图接口
+   * @returns 候选 MPos 数组
+   */
+  private candidateMouseoverCells(
+    world: Int2,
+    map: IViewportMap,
+  ): MPos[] {
+    const tileScale = map.grid.tileScale / 2
+    const minPos = this.wr.projectedPosition(world)
+
+    let a: MPos
+    let b: MPos
+
+    if (map.grid.type === MapGridType.RectangularIsometric) {
+      // TODO: this generates too many cells (OpenRA's own comment)
+      a = map
+        .cellContaining({
+          x: minPos.x - tileScale,
+          y: minPos.y,
+          z: 0,
+        })
+        .toMPos(map.grid.type)
+      b = map
+        .cellContaining({
+          x: minPos.x + tileScale,
+          y: minPos.y + tileScale,
+          z: 0,
+        })
+        .toMPos(map.grid.type)
+    } else {
+      a = map.cellContaining(minPos).toMPos(map.grid.type)
+      b = map
+        .cellContaining({
+          x: minPos.x,
+          y: minPos.y + tileScale,
+          z: 0,
+        })
+        .toMPos(map.grid.type)
+    }
+
+    const result: MPos[] = []
+    for (let v = b.V; v >= a.V; v--) {
+      for (let u = b.U; u >= a.U; u--) {
+        result.push(new MPos(u, v))
+      }
+    }
+    return result
   }
 
   /**
@@ -780,7 +929,7 @@ export class Viewport implements IViewport {
     const ray = this.bjsScene.createPickingRay(
       viewX,
       viewY,
-      null as unknown as Matrix,
+      Matrix.Identity(),
       this.bjsCamera,
     )
 
