@@ -414,7 +414,7 @@ describe('calculateActorSelectionPriority', () => {
     expect(pri2).toBeGreaterThan(pri1)
   })
 
-  it('combines relationship penalty with pixel distance', () => {
+  it('combines relationship penalty with pixel distance (applyPenalty=true, default)', () => {
     // priority=10, enemy penalty=-90, dist=3
     // (10 - 90 - 3) * 65536 = -83 * 65536
     const result = SelectionUtils.calculateActorSelectionPriority(
@@ -423,8 +423,24 @@ describe('calculateActorSelectionPriority', () => {
       makeModifiers(),
       PLAYER_B,   // viewer != owner → enemy penalty -90
       enemyRelationship,
+      true,       // applyPenalty=true (default for box-select path)
     )
     expect(result).toBe((10 - 90 - 3) * 65536)
+  })
+
+  it('skips relationship penalty with applyPenalty=false (point-click path)', () => {
+    // Point-click uses ActorInfo.SelectionPriority → NO relationship penalty
+    // priority=10, dist=3, NO penalty
+    // (10 - 3) * 65536 = 7 * 65536 = 458752
+    const result = SelectionUtils.calculateActorSelectionPriority(
+      ACTOR_1,
+      3,
+      makeModifiers(),
+      PLAYER_B,   // viewer != owner, but penalty suppressed
+      enemyRelationship,
+      false,      // applyPenalty=false: matches ActorInfo.SelectionPriority
+    )
+    expect(result).toBe((10 - 3) * 65536)
   })
 })
 

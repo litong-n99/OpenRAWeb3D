@@ -353,7 +353,18 @@ export class SelectionUtils {
    *
    * OpenRA 对照: SelectableExts.CalculateActorSelectionPriority()
    *
-   * Formula: `(selectionPriority(modifiers) - pixelDistance) * 65536`
+   * Formula: `(BaseSelectionPriority(modifiers) - pixelDistance) * 65536`
+   *
+   * **Key distinction from box-selection**: OpenRA's point-click priority
+   * uses `ActorInfo.SelectionPriority()` which applies ONLY modifier boosts
+   * (Ctrl/Alt), WITHOUT relationship penalties. Box-selection uses
+   * `Actor.SelectionPriority()` which applies BOTH modifier boosts AND
+   * relationship penalties (Ally -30, Neutral -60, Enemy -90).
+   *
+   * When `applyPenalty` is `true` (default, for backward compatibility),
+   * relationship penalties are included. When `false` (used by
+   * withHighestSelectionPriority for point-click), only modifier boosts
+   * are applied — matching OpenRA's ActorInfo.SelectionPriority().
    *
    * **Important**: In C#, `-` has higher precedence than `<<`, so the
    * original `info.SelectionPriority(modifiers) - (long)pixelDistance << 16`
@@ -361,16 +372,14 @@ export class SelectionUtils {
    * (equivalent to `<< 16` without JavaScript's 32-bit integer truncation)
    * to produce the same result.
    *
-   * The large multiplier (65536 = 2^16) ensures that even ~1px distance
-   * differences override all priority modifiers, making proximity the
-   * dominant factor for resolving ambiguous clicks.
-   *
    * @param actor — the actor to compute priority for
    * @param pixelDistance — distance from click point to this actor's screen
    *   projection center (pixels), computed per-actor by the caller
    * @param modifiers — current modifier key state
-   * @param viewer — the viewer player
+   * @param viewer — the viewer player (null to skip relationship penalty)
    * @param relationshipWith — relationship computation function
+   * @param applyPenalty — whether to apply relationship penalties
+   *   (false for point-click matching ActorInfo.SelectionPriority)
    * @returns combined priority (higher = more likely to be selected)
    */
   static calculateActorSelectionPriority(
@@ -379,11 +388,17 @@ export class SelectionUtils {
     modifiers: SelectionModifiers,
     viewer: SelectionPlayerInfo | null,
     relationshipWith: (viewer: SelectionPlayerInfo, other: SelectionPlayerInfo) => number,
+    applyPenalty: boolean = true,
   ): number {
+    // Point-click: use ActorInfo.SelectionPriority → no relationship penalty
+    // Box-select: use Actor.SelectionPriority → with relationship penalty
+    // When applyPenalty=false, pass null viewer to skip the penalty check
+    const effectiveViewer = applyPenalty ? viewer : null
+
     const basePriority = SelectionUtils.selectionPriority(
       actor,
       modifiers,
-      viewer,
+      effectiveViewer,
       relationshipWith,
     )
     // Formula: (basePriority - pixelDistance) * 65536
@@ -403,6 +418,12 @@ export class SelectionUtils {
    *
    * OpenRA 对照: SelectableExts.WithHighestSelectionPriority()
    *
+   * Uses `ActorInfo.SelectionPriority()` — NO relationship penalties applied.
+   * This matches OpenRA's point-click behavior where `CalculateActorSelectionPriority`
+   * calls the ActorInfo extension (modifier boost only), not the Actor extension
+   * (which adds relationship penalties). Box-selection uses
+   * `subsetWithHighestSelectionPriority()` which applies relationship penalties.
+   *
    * Each actor's pixel distance from the click point is computed individually
    * via the `getPixelDistance` callback, matching OpenRA's per-ActorBoundsPair
    * distance calculation (center of bounding box → distance to selectionPixel).
@@ -414,8 +435,9 @@ export class SelectionUtils {
    * @param getPixelDistance — callback returning pixel distance from click
    *   point to each actor's screen projection center
    * @param modifiers — current modifier key state
-   * @param viewer — the viewer player
-   * @param relationshipWith — relationship computation function
+   * @param viewer — the viewer player (for Ctrl/Alt boost; NOT for relationship penalty)
+   * @param relationshipWith — relationship computation function (NOT used; point-click
+   *   uses ActorInfo.SelectionPriority which excludes relationship penalties)
    * @returns the actor with the highest priority, or null if the set is empty
    */
   static withHighestSelectionPriority(
@@ -437,6 +459,7 @@ export class SelectionUtils {
         modifiers,
         viewer,
         relationshipWith,
+        false,  // applyPenalty=false: matches ActorInfo.SelectionPriority (no penalties)
       )
       if (priority > bestPriority) {
         bestPriority = priority
