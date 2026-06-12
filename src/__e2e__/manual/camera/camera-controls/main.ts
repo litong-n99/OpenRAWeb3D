@@ -636,7 +636,7 @@ canvas.addEventListener('pointerdown', (event) => {
     event.preventDefault()
     _isRightDragging = true
   }
-})
+}, { passive: false })
 
 // ---------------------------------------------------------------------------
 // Mouse Events for Edge Detection & Cursor Readout
@@ -647,8 +647,10 @@ canvas.addEventListener('mousemove', (event) => {
   updateEdgeZones(event)
   if (_isRightDragging) {
     event.preventDefault()
+    // DEBUG: uncomment to verify gesture prevention is active
+    // console.debug('[gesture] prevented at mousemove', event.movementX, event.movementY)
   }
-})
+}, { passive: false })
 
 canvas.addEventListener('wheel', (event) => {
   event.preventDefault()
@@ -664,7 +666,7 @@ canvas.addEventListener('pointerup', (event) => {
   if (event.button === 2) {
     _isRightDragging = false
   }
-})
+}, { passive: false })
 
 canvas.addEventListener('pointerleave', () => {
   _isRightDragging = false
