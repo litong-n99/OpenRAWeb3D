@@ -1034,11 +1034,10 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
     )
 
     if (this._shouldExplode(world)) {
-      if (this.contrail && this.contrail.isVisible) {
-        // NOTE: In OpenRA, ContrailFader is a separate effect that smoothly
-        // fades out the contrail. We'll schedule it here.
-        // world.addFrameEndTask(() => world.addEffect(new ContrailFader(this.pos, this.contrail!)))
-      }
+      // TODO-7.F.1: ContrailFader — when ContrailFader effect is migrated,
+      // schedule self-removal after fade-out:
+      //   if (this.contrail && this.contrail.isVisible)
+      //     world.addFrameEndTask(() => world.addEffect(new ContrailFader(this.pos, this.contrail!)))
       this._explode(world)
     }
   }
@@ -1118,11 +1117,11 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
     const shouldBounce = this.remainingBounces > 0
 
     if (flightLengthReached && shouldBounce) {
-      // Check map bounds and invalid bounce terrain
-      // NOTE: When Map is fully integrated with GameWorldManager, use:
-      //   const cell = world.map.cellContaining(this.pos)
-      //   if (!world.map.contains(cell)) return true
-      //   if (this.info.invalidBounceTerrain.has(world.map.getTerrainInfo(cell).type)) return true
+      // TODO-7.F.1: Map bounds + invalid bounce terrain check
+      // OpenRA 对照: ShouldExplode() lines 287-292
+      //   const cell = world.Map.CellContaining(pos)
+      //   if (!world.Map.Contains(cell)) return true
+      //   if (info.InvalidBounceTerrain.Contains(world.Map.GetTerrainInfo(cell).Type)) return true
 
       // Check for valid targets at bounce position
       if (
@@ -1152,9 +1151,10 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
         this.target,
         WVec.divide(bounceVec, 100),
       )
-      // NOTE: Adjust target height to terrain
-      // const dat = world.map.distanceAboveTerrain(this.target)
-      // this.target = WPos.subtractVec(this.target, new WVec(0, 0, -dat.length))
+      // TODO-7.F.1: Adjust bounce target height to terrain
+      // OpenRA 对照: ShouldExplode() lines 298-299
+      //   const dat = world.Map.DistanceAboveTerrain(target)
+      //   target += new WVec(0, 0, -dat.Length)
 
       this.length = Math.max(
         Math.trunc(WPos.subtract(this.target, this.pos).length / this.speed.length),
@@ -1163,7 +1163,9 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
 
       this.ticks = 0
       this.source = this.pos
-      // NOTE: Game.Sound.Play(SoundType.World, this.info.bounceSound, this.source)
+      // TODO-7.F.1: Bounce sound playback — requires Sound module (Phase D)
+      // OpenRA 对照: ShouldExplode() line 304
+      //   Game.Sound.Play(SoundType.World, info.BounceSound, source)
       this.remainingBounces--
     }
 
@@ -1172,9 +1174,9 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
       return true
     }
 
-    // NOTE: Below terrain check
-    // When Map is integrated:
-    // if (world.map.distanceAboveTerrain(this.pos).length < 0) return true
+    // TODO-7.F.1: Below terrain check (driving into cell with higher height level)
+    // OpenRA 对照: ShouldExplode() line 313
+    //   if (world.Map.DistanceAboveTerrain(pos).Length < 0) return true
 
     // After first bounce, check for targets each tick
     if (
@@ -1241,7 +1243,7 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
    *
    * @param world — the game world manager
    */
-  private _explode(world: GameWorldManager): void {
+  protected _explode(world: GameWorldManager): void {
     this.isDestroyed = true
 
     world.addFrameEndTask(() => {
@@ -1345,9 +1347,13 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
    * @returns the vertical pitch angle
    */
   private _getVerticalAngle(from: WPos, to: WPos): WAngle {
+    // OpenRA 对照: Util.GetVerticalAngle(WPos from, WPos to)
+    //   → new WVec(-delta.Z, -horizontalDelta, 0).Yaw
     const delta = WPos.subtract(to, from)
-    if (delta.horizontalLengthSquared === 0) return WAngle.Zero
-    return WAngle.arcTan(delta.Z, delta.length, 4)
+    const horizontalDelta = delta.horizontalLength
+    if (horizontalDelta === 0) return WAngle.Zero
+    const verticalVector = new WVec(-delta.Z, -horizontalDelta, 0)
+    return verticalVector.yaw
   }
 
   // -----------------------------------------------------------------------
