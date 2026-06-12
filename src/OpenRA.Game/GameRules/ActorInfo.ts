@@ -104,7 +104,78 @@ export interface TraitConfig {
    * OpenRA 对照: NotBefore<T> — resolved via GetGenericArguments()
    */
   readonly notBefore: string[]
+
+  /** Optional callback invoked when the ruleset is fully loaded.
+   * Allows traits to resolve cross-references (e.g., looking up other
+   * actor types, weapon definitions, or terrain info).
+   *
+   * OpenRA 对照: IRulesetLoaded.RulesetLoaded(Ruleset, ActorInfo)
+   */
+  readonly rulesetLoaded?: RulesetLoadedHandler
+
+  /** Sync field metadata for @VerifySync-annotated trait fields.
+   * Populated at build time by sync-hash-generator.ts.
+   * Each entry describes a field whose value contributes to the
+   * deterministic frame sync hash.
+   *
+   * OpenRA 对照: [VerifySync] attribute on TraitInfo fields
+   */
+  readonly syncFields?: readonly SyncFieldMeta[]
 }
+
+// ---------------------------------------------------------------------------
+// SyncFieldMeta — metadata for a @VerifySync-annotated field
+// OpenRA 对照: [VerifySync] attribute
+// ---------------------------------------------------------------------------
+
+/**
+ * Metadata describing a field that participates in sync hash computation.
+ *
+ * OpenRA 对照: ISync interface + [VerifySync] attribute
+ *
+ * Populated at build time by the sync hash generator scanning
+ * for /** @VerifySync *`/` JSDoc annotations on trait property declarations.
+ */
+export interface SyncFieldMeta {
+  /** Field name as declared in the trait class. */
+  readonly name: string
+
+  /** Optional custom hash function name. If provided, the build-time
+   * generator uses this named function instead of the default
+   * type-based hash algorithm.
+   *
+   * OpenRA 对照: (no direct equivalent — C# uses type-specific IL)
+   */
+  readonly customHash?: string
+}
+
+// ---------------------------------------------------------------------------
+// IRulesetRef — minimal ruleset reference for IRulesetLoaded handlers
+// OpenRA 对照: (avoid circular dependency between ActorInfo.ts and Ruleset.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal ruleset reference passed to IRulesetLoaded callbacks.
+ *
+ * Avoids circular dependency with Ruleset.ts. The full Ruleset class
+ * structurally satisfies this interface.
+ */
+export interface IRulesetRef {
+  readonly actors: ReadonlyMap<string, ActorConfig>
+}
+
+/**
+ * Callback type for IRulesetLoaded trait handlers.
+ *
+ * OpenRA 对照: IRulesetLoaded.RulesetLoaded(Ruleset rules, TInfo info)
+ *
+ * @param ruleset — the fully populated ruleset (via IRulesetRef)
+ * @param actorInfo — the ActorConfig this trait belongs to
+ */
+export type RulesetLoadedHandler = (
+  ruleset: IRulesetRef,
+  actorInfo: ActorConfig,
+) => void
 
 // ---------------------------------------------------------------------------
 // ActorJSON — raw JSON shape for fromJSON input
@@ -265,6 +336,20 @@ export class ActorConfig {
    */
   private readonly _byInterface: ReadonlyMap<string, readonly TraitConfig[]>
 
+  /** Registered IRulesetLoaded handlers collected from trait configs.
+   *
+   * OpenRA 对照: (traits implementing IRulesetLoaded, stored and invoked
+   *   by Ruleset constructor)
+   *
+   * This array is deliberately non-enumerable so that deepFreeze() skips
+   * it during the immutability step. The array remains mutable so that
+   * onRulesetLoaded() can register additional handlers before the
+   * Ruleset constructor invokes notifyRulesetLoaded().
+   */
+  // Assigned via Object.defineProperty in constructor (non-enumerable, to
+  // prevent deepFreeze from freezing the mutable handler array).
+  private readonly _rulesetLoadedHandlers!: RulesetLoadedHandler[]
+
   // -----------------------------------------------------------------------
   // Constructor (programmatic — matches OpenRA ActorInfo(string, TraitInfo[]))
   // -----------------------------------------------------------------------
@@ -320,6 +405,25 @@ export class ActorConfig {
     }
     this._byName = byName
     this._byInterface = byInterface
+
+    // Initialize _rulesetLoadedHandlers as a non-enumerable property so that
+    // deepFreeze() skips it (it only recurses into enumerable properties via
+    // Object.keys()). The array itself remains mutable for onRulesetLoaded().
+    //
+    // OpenRA 对照: (traits implementing IRulesetLoaded — these are identified
+    //   at Ruleset construction time via TraitInfos<IRulesetLoaded>())
+    const handlers: RulesetLoadedHandler[] = []
+    for (const t of this.traitConfigs) {
+      if (t.rulesetLoaded) {
+        handlers.push(t.rulesetLoaded)
+      }
+    }
+    Object.defineProperty(this, '_rulesetLoadedHandlers', {
+      value: handlers,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    })
 
     // Deep freeze for immutability
     deepFreeze(this)
@@ -506,6 +610,54 @@ export class ActorConfig {
    */
   traitsInConstructOrder(): readonly TraitConfig[] {
     return this.traitConfigs
+  }
+
+  // -----------------------------------------------------------------------
+  // IRulesetLoaded support (对应 OpenRA IRulesetLoaded.RulesetLoaded())
+  // -----------------------------------------------------------------------
+
+  /**
+   * Register a handler to be called when the ruleset is fully loaded.
+   *
+   * OpenRA 对照: (traits implementing IRulesetLoaded — they are
+   *   automatically discovered and invoked)
+   *
+   * Trait-level rulesetLoaded callbacks are automatically collected
+   * during construction. Use this method to register additional
+   * handlers from external code before the Ruleset is created.
+   *
+   * NOTE: Due to deepFreeze, `_rulesetLoadedHandlers` is stored as a
+   * non-enumerable property and remains mutable. This allows
+   * registration even after the ActorConfig is frozen.
+   *
+   * @param handler — callback that receives the Ruleset ref and this ActorConfig
+   */
+  onRulesetLoaded(handler: RulesetLoadedHandler): void {
+    this._rulesetLoadedHandlers.push(handler)
+  }
+
+  /**
+   * Invoke all registered IRulesetLoaded handlers.
+   *
+   * Called by the Ruleset constructor after all dictionaries are populated.
+   * Wraps each handler call with error context for diagnostics.
+   *
+   * OpenRA 对照: Ruleset constructor — foreach actor, foreach trait in
+   *   TraitInfos<IRulesetLoaded>(), t.RulesetLoaded(this, a)
+   *
+   * @param ruleset — the fully constructed Ruleset (satisfies IRulesetRef)
+   * @internal — called by Ruleset constructor only
+   */
+  notifyRulesetLoaded(ruleset: IRulesetRef): void {
+    for (const handler of this._rulesetLoadedHandlers) {
+      try {
+        handler(ruleset, this)
+      } catch (e) {
+        throw new Error(
+          `Actor type ${this.name}: ${e instanceof Error ? e.message : String(e)}`,
+        )
+      }
+    }
   }
 
   // -----------------------------------------------------------------------

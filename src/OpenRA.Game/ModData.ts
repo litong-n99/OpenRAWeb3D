@@ -19,6 +19,8 @@ import type { IReadOnlyFileSystem } from './FileSystem/IPackage.js'
 import type { FileSystem } from './FileSystem/FileSystem.js'
 import { MapCache } from './Map/MapCache.js'
 import type { Manifest } from './Manifest.js'
+import { Ruleset } from './GameRules/Ruleset.js'
+import type { ITerrainInfo } from './Map/Map.js'
 
 // ---------------------------------------------------------------------------
 // Constructor type — 类构造函数签名
@@ -60,17 +62,6 @@ export interface ILoadScreen {
    * 释放加载屏幕资源。
    * OpenRA 对照: ILoadScreen.Dispose()
    */
-  dispose(): void
-}
-
-// ---------------------------------------------------------------------------
-// Ruleset — 规则集存根
-// 完整类型定义见 Chapter 7
-// ---------------------------------------------------------------------------
-
-/** 规则集存根。OpenRA 对照: OpenRA.Ruleset */
-export interface Ruleset {
-  readonly modData: ModData
   dispose(): void
 }
 
@@ -266,15 +257,39 @@ export class ModData {
 
   /**
    * 从文件系统加载规则集。
-   * STUB — 完整实现见 Chapter 7（Game Logic & Networking）。
    *
    * OpenRA 对照: ModData.DefaultRules (Lazy<Ruleset>)
+   *
+   * Loads the ruleset from the mod's file system via Ruleset.loadAsync().
+   * The terrainInfo parameter is null for the default ruleset (no preferred
+   * tileset). Use loadRuleSetForTileSet() to load with a specific terrain.
    *
    * @returns 规则集，如果无法加载则返回 null
    */
   async loadRuleSet(): Promise<Ruleset | null> {
-    // STUB: 完整实现需要 RuleLoader 和 YAML→Ruleset 管道
-    return null
+    try {
+      return await Ruleset.loadAsync(this.manifest, this.modFiles)
+    } catch (e) {
+      console.error(`[ModData] Failed to load ruleset: ${e instanceof Error ? e.message : String(e)}`)
+      return null
+    }
+  }
+
+  /**
+   * 从文件系统加载带有指定地形集的规则集。
+   *
+   * OpenRA 对照: ModData.DefaultRules + LoadDefaultsForTileSet
+   *
+   * @param terrainInfo — 地形信息（从 TileSet 或 TerrainInfo 加载）
+   * @returns 规则集，如果无法加载则返回 null
+   */
+  async loadRuleSetForTileSet(terrainInfo: ITerrainInfo): Promise<Ruleset | null> {
+    try {
+      return await Ruleset.loadAsync(this.manifest, this.modFiles, terrainInfo)
+    } catch (e) {
+      console.error(`[ModData] Failed to load ruleset for tileset '${terrainInfo.id}': ${e instanceof Error ? e.message : String(e)}`)
+      return null
+    }
   }
 
   // ---------------------------------------------------------------------------
