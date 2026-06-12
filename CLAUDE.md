@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (3/13, Phase A COMPLETE)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 3/13 (23%)
+**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (5/13, Phases A-B COMPLETE)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 5/13 (~38%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -42,9 +42,10 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Ruleset Container (2 files) | COMPLETE (Phase C, ~1,030 impl + ~1,359 test lines, ~80 tests) |
 | AI BotModule Core (10 files) | COMPLETE (Phase D, ~5,769+390 impl lines, 2 review rounds) |
 | AI BotModule Extended (11 files) | COMPLETE (Phase E, ~4,463 impl + ~1,515 test lines, 119 tests, 2 rounds) |
-| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (3/13, 23%, Phase A COMPLETE)** |
+| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (5/13, ~38%, Phases A-B COMPLETE)** |
 | Input Foundation (3 files) | COMPLETE (IInputHandler 176, Keycode 544, InputHandler 617 lines, 155 tests) |
-| Camera, Selection, Audio, Effects, Projectiles, Sprite Traits (10 files) | Pending (Phases B-G) |
+| Camera System (2+1 files) | COMPLETE (Viewport 1,023, ViewportControllerWidget 868, HotkeyReference 360 lines, 86 tests) |
+| Selection, Audio, Effects, Projectiles, Sprite Traits (8 files) | Pending (Phases C-G) |
 | Remaining subsystems | Chapters 8+ (weapons, missions, etc.) not yet planned
 
 ## Directory Layout
@@ -79,11 +80,13 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       PaletteReference.ts   ← migrated (91 lines, 89 test lines)
       Util.ts               ← migrated (558 lines, 511 test lines)
       ChromeProvider.ts     ← migrated (431 lines, 48 tests) -- Phase D (replaces stub)
-      *.ts                  ← ~15 remaining stubs (beyond Chapter 2 scope)
-    Input/                    ← Chapter 7 Phase A: Input Foundation (COMPLETE)
+      Viewport.ts           ← migrated (1023 lines, 742 test lines) -- Ch7 Phase B (CameraController)
+      *.ts                  ← ~14 remaining stubs (beyond Chapter 2 scope)
+    Input/                    ← Chapter 7 Phase A+B: Input Foundation + Camera (COMPLETE)
       IInputHandler.ts      ← migrated (176 lines) -- Phase A
       Keycode.ts            ← migrated (544 lines) -- Phase A
       InputHandler.ts       ← migrated (617 lines) -- Phase A
+      HotkeyReference.ts    ← migrated (360 lines) -- Ch7 Phase B prereq
     Network/                  ← Chapter 6 Phase A: Network & Connection Foundation (COMPLETE)
       Order.ts              ← migrated (1253 lines, 567 test lines)
       UnitOrders.ts         ← migrated (696 lines, 416 test lines)
@@ -157,6 +160,7 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
         Locomotor.ts        ← migrated (261 lines) -- Phase G
     Widgets/                ← Chapter 5 Phase E: World Interaction Bridge (COMPLETE)
       WorldInteractionControllerWidget.ts  ← migrated (1157 lines, 55 tests) -- Phase E
+      ViewportControllerWidget.ts  ← migrated (868 lines, 573 test lines) -- Ch7 Phase B
   OpenRA.Platforms.Default/ ← Platform abstraction (6 migrated, 7 NOP, 5 stubs)
       Shader.ts             ← migrated (417 lines, 572 test lines)
       FrameBuffer.ts        ← migrated (415 lines, 649 test lines)

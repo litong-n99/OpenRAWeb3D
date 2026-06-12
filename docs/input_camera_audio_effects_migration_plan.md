@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 7 -- Input, Camera, Audio & Effects
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 8 (lines 1056-1264)
-> **Chapter Status**: Chapter 7 -- IN PROGRESS (3/13 migrated, Phase A COMPLETE)
+> **Chapter Status**: Chapter 7 -- IN PROGRESS (5/13 migrated, Phases A-B COMPLETE)
 > **Planning Date**: 2026-06-12
-> **Last Update**: 2026-06-12 (Phase A COMPLETE)
+> **Last Update**: 2026-06-12 (Phase B COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -169,10 +169,10 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 | Metric | Count |
 |--------|-------|
-| **Total files in plan** | 16 (3 already completed in prior chapters + 3 completed in Phase A + 10 pending migration) |
+| **Total files in plan** | 16 (3 already completed in prior chapters + 5 completed in Phases A-B + 8 pending migration) |
 | **Phase A (Input foundation)** | 3 files (COMPLETE) |
-| **Phase B (Camera system)** | 2 files (all pending) |
-| **Phase C (Selection system)** | 1 file (all pending) |
+| **Phase B (Camera system)** | 2 files (COMPLETE) |
+| **Phase C (Selection system)** | 1 file (pending) |
 | **Phase D (Audio system)** | 2 files (all pending) |
 | **Phase E (Visual effects)** | 2 files (all pending) |
 | **Phase F (Projectiles)** | 1 file (all pending) |
@@ -183,7 +183,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 | **Total OpenRA C# source lines (new, pending)** | ~2,550 |
 | **Total OpenRA C# source lines (including already done)** | ~4,600 |
 | **Estimated TypeScript lines (new, pending)** | ~6,200-7,800 (including test files) |
-| **Actual TypeScript lines (Phase A completed)** | 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests |
+| **Actual TypeScript lines (Phases A+B completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests |
 
 ---
 
@@ -268,12 +268,17 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 ### 3.2 Phase B: Camera System
 
-**Status**: 📋 待迁移 (0/2)
+**Status**: ✅ 已完成 (2/2)
 **Complexity**: HIGH (Viewport), MEDIUM (ViewportControllerWidget)
-**Blocked by**: Phase A (Input Foundation -- for camera control events), `WorldRenderer.ts` (COMPLETE Ch2 -- for `ScreenPxPosition`/`ProjectedCell`), `CoordinateTransformer.ts` (COMPLETE Ch4 Phase I)
+**Completed**: 2026-06-12
+**Commits**: `3688b66` (Viewport), `feca8b6` (ViewportControllerWidget), `6d722c4` (HotkeyReference prereq)
+**Review**: APPROVED (2 rounds, 3 BLOCKER + 5 MAJOR resolved)
+**Implementation**: Viewport.ts (1,023行), ViewportControllerWidget.ts (868行), HotkeyReference.ts (360行 prereq) = 2,251行
+**Tests**: 2 test files, 86 tests (Viewport.test.ts: 742 lines, ViewportControllerWidget.test.ts: 573 lines = ~1,315 test lines)
+**Blocked by**: Phase A (Input Foundation -- for camera control events) ✅, `WorldRenderer.ts` (COMPLETE Ch2), `CoordinateTransformer.ts` (COMPLETE Ch4 Phase I)
 **Blocks**: Phase C (Selection needs camera coordinate transforms)
 
-**Description**: Phase B migrates OpenRA's 2D orthographic viewport management to Babylon.js `ArcRotateCamera`. The `Viewport` class manages the camera target (`CenterLocation`), zoom level, viewport size, and map boundary clamping. The `ViewportControllerWidget` handles user-facing camera controls: hotkey bindings, edge scrolling, mouse-wheel zoom, and cursor context switching. The core challenge is mapping OpenRA's three-layer coordinate system (screen -> viewport -> world) to Babylon.js's unified 3D world coordinate system with GPU-managed projection/unprojection.
+**Description**: Phase B migrates OpenRA's 2D orthographic viewport management to Babylon.js `ArcRotateCamera`. The `Viewport` class manages the camera target (`CenterLocation`), zoom level, viewport size, and map boundary clamping. The `ViewportControllerWidget` handles user-facing camera controls: hotkey bindings, edge scrolling, mouse-wheel zoom, and cursor context switching. A new prereq file `HotkeyReference.ts` was added to support configurable hotkey bindings. The core challenge is mapping OpenRA's three-layer coordinate system (screen -> viewport -> world) to Babylon.js's unified 3D world coordinate system with GPU-managed projection/unprojection.
 
 **Paradigm Shifts**:
 - C# CPU-computed `ViewToWorldPx(int2)` (pixel math) -> `Vector3.Unproject()` + terrain plane intersection (GPU-backed)
@@ -281,12 +286,12 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 - C# `mapBounds` clamping -> custom `clampTarget(target: Vector3): Vector3` with map boundary check
 - C# `GetBlockedDirections()` scroll edge detection -> comparing `camera.target` against map min/max bounds
 - C# `EdgeScrollThreshold` (15px default) -> checking pointer position against canvas edge in `onPointerMove`
-- C# hotkey-based scroll (`ScrollUpKey` etc.) -> `DeviceSourceManager` keyboard observer with configurable key bindings
+- C# hotkey-based scroll (`ScrollUpKey` etc.) -> `DeviceSourceManager` keyboard observer with configurable key bindings (via `HotkeyReference` class)
 - C# `ToggleZoom()` min/max toggle -> `camera.radius` or `orthoTop` interpolation with easing
 
 #### 3.2.1 Viewport (Camera Controller)
 
-- [ ] **TODO-7.B.1** `src/OpenRA.Game/Graphics/Viewport.ts` (441 lines C#) -- RTS camera controller:
+- [x] **TODO-7.B.1** `src/OpenRA.Game/Graphics/Viewport.ts` (441 lines C#) ✅ 已完成 (1,023行 TS) -- RTS camera controller:
   - `CameraController` class (renamed from `Viewport` to avoid confusion with screen viewport):
     - Constructor: `(camera: ArcRotateCamera, mapBounds: { minX: number, maxX: number, minZ: number, maxZ: number }, engine: Engine)`
     - `centerLocation: Vector3` -- maps to `camera.target`. Defaults to map center.
@@ -294,32 +299,29 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
     - `viewportSize: { width: number, height: number }` -- read from `engine.getRenderWidth/Height()`
     - `minZoom: number` (default 1.0), `maxZoom: number` (default 2.0)
     - `MapBounds: { minX, maxX, minZ, maxZ }` -- geographic limits
-  - Methods:
-    - `viewToWorldPx(v: { x: number, y: number }): Vector3` -- converts viewport pixel coordinates to world position. Implementation: `scene.createPickingRay(v.x, v.y, Matrix.Identity(), camera)` then intersect with terrain plane at y=0 (or terrain height). Returns `Vector3` with interpolated terrain height.
-    - `viewToWorld(v: { x: number, y: number }): PPos` -- calls `viewToWorldPx()` then delegates to `worldRenderer.ProjectedCell()` for projected cell coordinates.
-    - `adjustZoom(dz: number): void` -- ortho mode: scale `orthoTop/Bottom/Left/Right` by `2^-dz`; perspective mode: `radius *= 2^-dz`. Clamp to `[minZoom, maxZoom]`.
-    - `adjustZoom(dz: number, center: { x: number, y: number }): void` -- zoom toward a screen point. Records world position under `center` before zoom, adjusts zoom, then re-centers so the same world position remains under `center`. This is the "zoom to mouse" behavior.
-    - `toggleZoom(): void` -- switches between `minZoom` and `maxZoom` with linear interpolation (or snap).
-    - `getBlockedDirections(): ScrollDirection` -- returns bitmask of blocked scroll directions by comparing `camera.target` against map bounds.
-    - `clampTarget(): void` -- clamps `camera.target.x` to `[mapBounds.minX, mapBounds.maxX]` and `camera.target.z` to `[mapBounds.minZ, mapBounds.maxZ]`. Called every frame in `onBeforeRenderObservable`.
-    - `updateViewportSize(): void` -- updates `viewportSize` from engine dimensions on resize.
-  - Properties:
-    - `terrainMousePosition: WPos` -- getter: `viewToWorldPx(mousePos)` then `ProjectedPosition` to `WPos`. This is the primary method for determining where the player is pointing.
-    - `cameraMode: CameraMode` enum (`Orthographic`, `Perspective`) -- toggles between modes
-  - **Design decision**: The class should be named `CameraController` to clearly distinguish from Babylon.js's own `Viewport` concept. The `Viewport` alias type can be kept for API compatibility.
-  - **LH coordinate system constraint** (from existing Viewport.ts header): Babylon.js uses `Matrix.LookAtLH`. The ArcRotateCamera must use `alpha = -PI/2` (camera on -Z side) to ensure screen-right = world+X. All world position calculations must be validated against this constraint.
+  - Methods (all implemented):
+    - `viewToWorldPx(v)`: converts viewport pixel coordinates to world position via `scene.createPickingRay()` + terrain plane intersection
+    - `viewToWorld(v)`: calls `viewToWorldPx()` then delegates to projected cell coordinates
+    - `adjustZoom(dz)`: exponential zoom scaling; clamp to `[minZoom, maxZoom]`
+    - `adjustZoom(dz, center)`: zoom toward a screen point (zoom-to-mouse)
+    - `toggleZoom()`: switches between `minZoom` and `maxZoom`
+    - `getBlockedDirections()`: bitmask of blocked scroll directions from map boundary comparison
+    - `clampTarget()`: clamps camera target to map bounds; called every frame in `onBeforeRenderObservable`
+    - `updateViewportSize()`: updates viewport dimensions on resize
+  - Properties: `terrainMousePosition` (WPos getter), `cameraMode` (Orthographic/Perspective enum toggle)
+  - **LH coordinate system constraint**: Babylon.js uses `Matrix.LookAtLH`. ArcRotateCamera uses `alpha = -PI/2` (camera on -Z side) ensuring screen-right = world+X.
+  - **Actual implementation**: 1,023 lines implementation + 742 lines test. Full ArcRotateCamera wrapper with dual ortho/perspective mode, zoom-to-cursor, boundary clamping, bookmark system, and scroll direction detection.
 
 #### 3.2.2 ViewportControllerWidget
 
-- [ ] **TODO-7.B.2** `src/OpenRA.Mods.Common/Widgets/ViewportControllerWidget.ts` (506 lines C#) -- Camera control widget:
+- [x] **TODO-7.B.2** `src/OpenRA.Mods.Common/Widgets/ViewportControllerWidget.ts` (506 lines C#) ✅ 已完成 (868行 TS) -- Camera control widget:
   - `ViewportControllerWidget` class:
     - Inherits from `Widget` (already migrated in Ch5 Phase D)
     - `cameraController: CameraController` -- reference to the Phase B.1 controller
     - `inputManager: InputManager` -- reference to Phase A `InputManager`
-  - Hotkey configuration (declarative, from YAML/JSON):
-    - `ZoomInKey: KeyCode` (default `PageUp` or `=`)
-    - `ZoomOutKey: KeyCode` (default `PageDown` or `-`)
-    - `ScrollUpKey: KeyCode`, `ScrollDownKey: KeyCode`, `ScrollLeftKey: KeyCode`, `ScrollRightKey: KeyCode` (defaults: arrow keys)
+  - Hotkey configuration (declarative, from JSON/manifest):
+    - `ZoomInKey: KeyCode` (via `HotkeyReference`), `ZoomOutKey: KeyCode`
+    - `ScrollUpKey: KeyCode`, `ScrollDownKey: KeyCode`, `ScrollLeftKey: KeyCode`, `ScrollRightKey: KeyCode`
     - `JumpToTopEdgeKey: KeyCode`, `JumpToBottomEdgeKey: KeyCode`, etc.
     - `BookmarkSaveKeyPrefix: string`, `BookmarkRestoreKeyPrefix: string`
   - Input mode configuration:
@@ -327,25 +329,34 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
     - `edgeScrollThreshold: number` (default 15 pixels)
     - `smoothScroll: boolean` (default true) -- enables smooth camera panning
     - `scrollSpeed: number` -- pixels per second for arrow key / edge scroll
-  - Behavior methods:
-    - `handleKeyInput(input: KeyInput): void` -- dispatches to hotkey actions
-    - `handleMouseInput(input: MouseInput): void` -- handles edge scroll + mouse wheel zoom
-    - `handleEdgeScroll(): void` -- checks if pointer is within `edgeScrollThreshold` of canvas edge, scrolls camera in that direction
-    - `updateCursor(): void` -- switches cursor icon based on scroll direction (directional arrow cursors)
-    - `saveBookmark(slot: number): void` / `restoreBookmark(slot: number): void` -- jump to saved map positions
-  - **Integration note**: `WorldInteractionControllerWidget` (already migrated in Ch5) handles unit selection. `ViewportControllerWidget` only handles camera movement. Both consume the same input stream but for different purposes. Input routing must ensure camera controls do not interfere with selection controls and vice versa.
+  - Behavior methods (all implemented):
+    - `handleKeyInput(input)`: dispatches to hotkey actions via `HotkeyReference`
+    - `handleMouseInput(input)`: handles edge scroll + mouse wheel zoom
+    - `handleEdgeScroll()`: checks pointer proximity to canvas edge, scrolls camera
+    - `updateCursor()`: directional arrow cursors based on scroll direction
+    - `saveBookmark(slot)` / `restoreBookmark(slot)`: jump to saved map positions
+  - **Integration note**: `WorldInteractionControllerWidget` (already migrated in Ch5) handles unit selection. `ViewportControllerWidget` only handles camera movement. Both consume the same input stream but for different purposes. Input routing ensures camera controls do not interfere with selection controls.
+  - **Actual implementation**: 868 lines implementation + 573 lines test. Full Widget integration with existing Ch5 Widget infrastructure, HotkeyReference-based configurable bindings, edge scrolling with directional cursor feedback.
 
-**Acceptance Criteria**:
-- `viewToWorldPx()` returns correct world position for all four screen corners (verifiable by projecting world positions back to screen)
-- `adjustZoom(dz, center)` correctly zooms toward the specified screen point (world position under cursor unchanged after zoom)
-- Map boundary clamping prevents camera target from leaving map bounds in all 8 scroll directions
-- `cameraMode` toggle correctly switches between orthographic and perspective modes
-- Edge scrolling activates when pointer is within `edgeScrollThreshold` pixels of canvas edge
-- All hotkeys are configurable and work in both orthographic and perspective modes
-- `terrainMousePosition` correctly returns the world position under the cursor
-- Camera controller respects the LH coordinate system constraint (screen-right = world+X)
+#### 3.2.3 HotkeyReference (Prerequisite)
 
-**Estimated Effort**: ~1,200 lines implementation + ~800 lines test (4-5 developer-days for the pair)
+- **`src/OpenRA.Game/Input/HotkeyReference.ts`** (new prereq file, 360 lines) -- Configurable hotkey binding:
+  - `HotkeyReference` class wrapping a `Func<KeyCode>` that can be rebound at runtime
+  - Enables declarative hotkey configuration in `ViewportControllerWidget` and other Widgets
+  - Integrates with `KeyCode` enum and `KeyInput` event system from Phase A
+
+**Acceptance Criteria** (all met):
+- ✅ `viewToWorldPx()` returns correct world position for all four screen corners
+- ✅ `adjustZoom(dz, center)` correctly zooms toward the specified screen point
+- ✅ Map boundary clamping prevents camera target from leaving map bounds in all 8 scroll directions
+- ✅ `cameraMode` toggle correctly switches between orthographic and perspective modes
+- ✅ Edge scrolling activates when pointer is within `edgeScrollThreshold` pixels of canvas edge
+- ✅ All hotkeys are configurable and work in both orthographic and perspective modes
+- ✅ `terrainMousePosition` correctly returns the world position under the cursor
+- ✅ Camera controller respects the LH coordinate system constraint (screen-right = world+X)
+- ✅ HotkeyReference allows runtime rebinding without recompilation
+
+**Actual Effort**: 2,251 lines implementation (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + ~1,315 lines test (86 tests). Completed 2026-06-12. Review: 2 rounds, 3 BLOCKER + 5 MAJOR resolved.
 
 ---
 
