@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%), ALL PHASES COMPLETE
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapters 2-6 COMPLETE
+> **Current phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (3/13, Phase A COMPLETE)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 3/13 (23%, Phase A COMPLETE)
 
 ---
 
@@ -18,10 +18,10 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Remaining chapters** | Chapters 7-8+ (audio, weapons, game logic not yet planned) |
-| **Overall project completion** | Chapters 2+3+4+5+6/8+ complete (148/148 rendering+actors+map+UI+network+AI), Chapter 6 ALL PHASES COMPLETE |
+| **Remaining chapters** | Chapters 7-8+(Ch7 Phase A complete, Phases B-G + Ch8 pending) |
+| **Overall project completion** | Chapters 2+3+4+5+6 complete (148/148 rendering+actors+map+UI+network+AI). Chapter 7: 3/13 (Phase A COMPLETE) |
 
-> **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
+> **Note**: Chapters 2, 3, 4, 5, and 6 are fully complete. Chapter 7 Phase A (Input Foundation) is COMPLETE (3/13). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
 
 ---
 
@@ -132,6 +132,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `OpenRA.Mods.Common/Traits/BotModules/Squads/` | 4 | 4 | 0 | COMPLETE (Ch6 Phase D) |
 | `OpenRA.Mods.Common/Traits/BotModules/Squads/States/` | 3 | 3 | 0 | COMPLETE (Ch6 Phase E) |
 | `OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/` | 3 | 3 | 0 | COMPLETE (Ch6 Phase E) |
+| `OpenRA.Game/Input/` | 3 | 3 | 0 | COMPLETE (Ch7 Phase A) |
 | `OpenRA.Mods.Common/Widgets/` | 1 | 1 | 0 | COMPLETE (Ch5 Phase E) |
 | `OpenRA.Mods.Cnc/FileSystem/` | 5 | 5 | 0 | COMPLETE (Ch5 Phase B) |
 | `OpenRA.Game/GameRules/` | 2 | 2 | 0 | COMPLETE (Ch6 Phase C + Ch3 Phase E) |
@@ -187,6 +188,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch7 Phase A Input Foundation** (3 files) | migration-develop | migration-review | APPROVED (2 rounds, 1 BLOCKER + 3 MAJOR resolved): IInputHandler.ts (176 lines), Keycode.ts (544 lines), InputHandler.ts (617 lines). 3 test files, 155 tests. ~1,337 impl lines. Commits `4260360`, `1920155`. |
 | 2026-06-12 | **Ch6 Phase E AI BotModule Extended** (11 files) | migration-develop | migration-review | APPROVED (2 rounds): BaseBuilderQueueManager (~984+238 lines), MinelayerBotModule (~495+156 lines), SupportPowerDecision (~377+246 lines), GroundStates (~340+193 lines), AirStates (~283+143 lines), McvExpansionManagerBotModule (~1053+182 lines), CaptureManagerBotModule (~311+115 lines), McvManagerBotModule (~402+138 lines), BuildingRepairBotModule stub (~63+28 lines), PowerDownBotManager stub (~81+32 lines), ProtectionStates stub (~74+44 lines). Phase E: ~4,463 impl + ~1,515 test lines, 119 tests. Commits `9adf549`, `56c0c85`. Chapter 6 now 100% COMPLETE (29/29). |
 | 2026-06-12 | **Ch6 Phase D AI BotModule Core** (10+1 files) | migration-develop | migration-review | APPROVED (2 rounds, 2 BLOCKER + 4 MAJOR): SquadManagerBotModule (~750 lines), BaseBuilderBotModule (~496+66 lines), UnitBuilderBotModule (~350 lines), HarvesterBotModule (~670+209 lines), SupportPowerBotModule (~290 lines), ResourceMapBotModule (~400 lines), Squad (~550 lines), AttackOrFleeFuzzy (~300 lines), StateMachine.ts+StateBase.ts (~340 lines), TraitsInterfaces.ts extension (+10 interfaces). Phase D: ~5,769 initial + ~390 fix lines. Commits `fee0774`, `51c6265`. |
 | 2026-06-12 | **Ch6 Phase C Ruleset Container** (2+1 files) | migration-develop | migration-review | APPROVED (2 rounds, 1 MAJOR + 3 MINOR): Ruleset.ts (863 lines, 1051 test lines, 55 tests), ActorInfo.ts extension (+152 lines, +308 test lines, +25 tests), ModData.ts update (+29/-14). Phase C: ~1,030 impl + ~1,359 test lines, ~80 tests. Commits `c4c98ea`, `3652e65`. |
@@ -938,3 +940,49 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | 24 | `MinelayerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/MinelayerBotModule.ts` | MEDIUM | **E ✅** (495+156 lines) |
 | 25 | `SupportPowerDecision.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/SupportPowerDecision.ts` | LOW | **E ✅** (377+246 lines) |
 | 26 | *(3 deferred stubs)* | `BuildingRepairBotModule` (63+28), `PowerDownBotManager` (81+32), `ProtectionStates` (74+44) | LOW | **E ✅** |
+
+---
+
+## Chapter 7: Input, Camera, Audio & Effects (3/13, Phase A COMPLETE)
+
+> **Migration Plan**: [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md)
+> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (3/13, 23%, Phase A COMPLETE)
+> **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed | 3 | 23% |
+| Pending | 10 | 77% |
+| **Total** | **13** | **100%** |
+| **From OpenRA** | **13** | |
+| **New files (no OpenRA equivalent)** | **0** | |
+
+### Chapter 7 Phases
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Input Foundation | 3 | LOW-MEDIUM | **COMPLETE (3/3, 155 tests)** |
+| Phase B | Camera System | 2 | HIGH-MEDIUM | Pending (Blocked by Phase A) |
+| Phase C | Selection System | 1 | MEDIUM | Pending (Blocked by Phase B) |
+| Phase D | Audio System | 2 | MEDIUM | Pending |
+| Phase E | Visual Effects | 2 | MEDIUM | Pending |
+| Phase F | Projectiles | 1 | HIGH | Pending (Blocked by Phase E) |
+| Phase G | Sprite Rendering Traits | 2 | MEDIUM-LOW | Pending |
+
+### Phase A Completed: Input Foundation (3 files, 2026-06-12)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| IInputHandler.ts | 176 | -- | -- | MouseInput, KeyInput, Modifiers interfaces; MouseButton/MouseEventType/KeyEventType enums |
+| Keycode.ts | 544 | -- | -- | ~230 SDL keycodes mapped to KeyboardEvent.code; fromKeyboardEvent()/fromSDLK() helpers |
+| InputHandler.ts | 617 | -- | -- | NullInputHandler (headless) + DefaultInputHandler (DSM) + InputManager helper |
+| **Total** | **~1,337** | -- | **155** | |
+
+**Implementation details**:
+- `IInputHandler` interface: TypeScript interfaces for MouseInput, KeyInput, Modifiers with Object.freeze() immutability
+- `NullInputHandler`: all methods no-ops for headless/repay/dedicated server modes
+- `DefaultInputHandler`: wraps Babylon.js `DeviceSourceManager` + `scene.onPointerObservable`
+- DSM keyboard observer converts `KeyboardInfo` to `KeyInput`; pointer observer converts `PointerInfo` to `MouseInput` (with NDC-to-pixel conversion)
+- Scroll blocking: registers `wheel` event on canvas with `{ passive: false }` and calls `preventDefault()`
+- `InputManager` helper: wraps DeviceSourceManager instantiation/cleanup/dispose
+- Review: APPROVED (2 rounds, 1 BLOCKER + 3 MAJOR resolved) | **Commits**: `4260360`, `1920155`

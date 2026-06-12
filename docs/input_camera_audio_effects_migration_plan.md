@@ -1,8 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 7 -- Input, Camera, Audio & Effects
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 8 (lines 1056-1264)
-> **Chapter Status**: Chapter 7 -- DESIGN PHASE (0/13 migrated)
+> **Chapter Status**: Chapter 7 -- IN PROGRESS (3/13 migrated, Phase A COMPLETE)
 > **Planning Date**: 2026-06-12
+> **Last Update**: 2026-06-12 (Phase A COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -168,8 +169,8 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 | Metric | Count |
 |--------|-------|
-| **Total files in plan** | 16 (3 already completed in prior chapters + 13 pending migration) |
-| **Phase A (Input foundation)** | 3 files (all pending) |
+| **Total files in plan** | 16 (3 already completed in prior chapters + 3 completed in Phase A + 10 pending migration) |
+| **Phase A (Input foundation)** | 3 files (COMPLETE) |
 | **Phase B (Camera system)** | 2 files (all pending) |
 | **Phase C (Selection system)** | 1 file (all pending) |
 | **Phase D (Audio system)** | 2 files (all pending) |
@@ -179,9 +180,10 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 | **HIGH complexity** | 2 files (Viewport, Bullet) |
 | **MEDIUM complexity** | 9 files |
 | **LOW complexity** | 2 files |
-| **Total OpenRA C# source lines (new, pending)** | ~3,200 |
+| **Total OpenRA C# source lines (new, pending)** | ~2,550 |
 | **Total OpenRA C# source lines (including already done)** | ~4,600 |
-| **Estimated TypeScript lines (new)** | ~8,000-10,000 (including test files) |
+| **Estimated TypeScript lines (new, pending)** | ~6,200-7,800 (including test files) |
+| **Actual TypeScript lines (Phase A completed)** | 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests |
 
 ---
 
@@ -189,8 +191,13 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 ### 3.1 Phase A: Input Foundation
 
-**Status**: 📋 待迁移 (0/3)
+**Status**: ✅ 已完成 (3/3)
 **Complexity**: LOW-MEDIUM
+**Completed**: 2026-06-12
+**Commits**: `4260360` (initial), `1920155` (review fixes)
+**Review**: APPROVED (2 rounds, 1 BLOCKER + 3 MAJOR resolved)
+**Implementation**: IInputHandler.ts (176行), Keycode.ts (544行), InputHandler.ts (617行) = 1,337行
+**Tests**: 3 test files, 155 tests
 **Blocked by**: Nothing (standalone phase)
 **Blocks**: Phase B (Camera needs input events), Phase C (Selection needs input events)
 **External dependency**: None (Babylon.js DSM built into `@babylonjs/core`)
@@ -207,7 +214,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.1.1 IInputHandler Interface + Input Types
 
-- [ ] **TODO-7.A.1** `src/OpenRA.Game/Input/IInputHandler.ts` (84 lines C#) -- Input handler contract:
+- [x] **TODO-7.A.1** `src/OpenRA.Game/Input/IInputHandler.ts` (84 lines C#) ✅ 已完成 (176行 TS) -- Input handler contract:
   - `MouseInput` interface: `event: MouseEventType` enum (`Down`, `Move`, `Up`, `Scroll`), `button: MouseButton` flags enum, `location: { x: number, y: number }` (pixel coords), `delta: { x: number, y: number }`, `modifiers: Modifiers`, `multiTapCount: number`
   - `KeyInput` interface: `event: KeyEventType` enum (`Down`, `Up`), `key: KeyCode`, `modifiers: Modifiers`
   - `Modifiers` interface: `shift: boolean`, `alt: boolean`, `ctrl: boolean`, `meta: boolean`
@@ -220,7 +227,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.1.2 InputHandler Implementations
 
-- [ ] **TODO-7.A.2** `src/OpenRA.Game/Input/InputHandler.ts` (53 lines C#) -- Handler implementations:
+- [x] **TODO-7.A.2** `src/OpenRA.Game/Input/InputHandler.ts` (53 lines C#) ✅ 已完成 (617行 TS) -- Handler implementations:
   - `NullInputHandler` class implementing `IInputHandler`: all methods are no-ops. Used for dedicated server, replay playback, and headless testing modes.
   - `DefaultInputHandler` class implementing `IInputHandler`:
     - Constructor takes `DeviceSourceManager` + `Scene` (for `onPointerObservable`)
@@ -239,7 +246,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.1.3 Keycode Enum
 
-- [ ] **TODO-7.A.3** `src/OpenRA.Game/Input/Keycode.ts` (513 lines C#) -- SDL keycode mapping:
+- [x] **TODO-7.A.3** `src/OpenRA.Game/Input/Keycode.ts` (513 lines C#) ✅ 已完成 (544行 TS) -- SDL keycode mapping:
   - `KeyCode` enum with ~230 members covering: letter keys (`A`-`Z`), number keys (`0`-`9`), function keys (`F1`-`F15`), navigation keys (`Up`, `Down`, `Left`, `Right`), modifier keys (`Shift`, `Ctrl`, `Alt`, `Meta`), special keys (`Escape`, `Enter`, `Space`, `Tab`, `Backspace`, `Delete`, `Insert`, `Home`, `End`, `PageUp`, `PageDown`), numpad keys (`NumPad0`-`NumPad9`), mouse buttons (`Mouse1`-`Mouse5`)
   - Static helper: `KeyCode.fromKeyboardEvent(event: KeyboardEvent): KeyCode` -- maps `event.code` string to enum value
   - Static helper: `KeyCode.fromSDLK(sdlKey: number): KeyCode` -- maps numeric SDL keycode to enum (for legacy/configuration compatibility)
@@ -255,7 +262,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 - Input dispatch occurs within `scene.onBeforeRenderObservable` for frame-aligned processing
 - `InputManager.dispose()` cleanly removes all event listeners without leaks
 
-**Estimated Effort**: ~900 lines implementation + ~600 lines test (2-3 developer-days)
+**Actual Effort**: 1,337 lines implementation + 155 tests (3 test files). Completed 2026-06-12. Review: 2 rounds, 1 BLOCKER + 3 MAJOR resolved.
 
 ---
 

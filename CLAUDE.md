@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%)
+**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (3/13, Phase A COMPLETE)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 3/13 (23%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -42,7 +42,10 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Ruleset Container (2 files) | COMPLETE (Phase C, ~1,030 impl + ~1,359 test lines, ~80 tests) |
 | AI BotModule Core (10 files) | COMPLETE (Phase D, ~5,769+390 impl lines, 2 review rounds) |
 | AI BotModule Extended (11 files) | COMPLETE (Phase E, ~4,463 impl + ~1,515 test lines, 119 tests, 2 rounds) |
-| Game logic, networking, audio | Chapters 7-8+ (audio, weapons, etc.) not yet planned
+| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (3/13, 23%, Phase A COMPLETE)** |
+| Input Foundation (3 files) | COMPLETE (IInputHandler 176, Keycode 544, InputHandler 617 lines, 155 tests) |
+| Camera, Selection, Audio, Effects, Projectiles, Sprite Traits (10 files) | Pending (Phases B-G) |
+| Remaining subsystems | Chapters 8+ (weapons, missions, etc.) not yet planned
 
 ## Directory Layout
 
@@ -77,6 +80,15 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       Util.ts               ← migrated (558 lines, 511 test lines)
       ChromeProvider.ts     ← migrated (431 lines, 48 tests) -- Phase D (replaces stub)
       *.ts                  ← ~15 remaining stubs (beyond Chapter 2 scope)
+    Input/                    ← Chapter 7 Phase A: Input Foundation (COMPLETE)
+      IInputHandler.ts      ← migrated (176 lines) -- Phase A
+      Keycode.ts            ← migrated (544 lines) -- Phase A
+      InputHandler.ts       ← migrated (617 lines) -- Phase A
+    Network/                  ← Chapter 6 Phase A: Network & Connection Foundation (COMPLETE)
+      Order.ts              ← migrated (1253 lines, 567 test lines)
+      UnitOrders.ts         ← migrated (696 lines, 416 test lines)
+      Connection.ts         ← migrated (685 lines, 352 test lines)
+      OrderManager.ts       ← migrated (827 lines, 532 test lines)
     WPos.ts               ← migrated (180 lines, 24 tests) -- Phase A 3.1.1
     WVec.ts               ← migrated (230 lines, 35 tests) -- Phase A 3.1.1
     WAngle.ts             ← migrated (270 lines, 54 tests) -- Phase A 3.1.1
@@ -381,7 +393,8 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
 | [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 100% complete) |
-| [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (26 files, 5 phases A-E, Phases A-D COMPLETE) |
+| [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (29 files, 5 phases A-E, 100% complete) |
+| [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md) | Chapter 7 input, camera, audio & effects migration plan (13 files, 7 phases A-G, Phase A COMPLETE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
