@@ -618,6 +618,10 @@ export class WeaponInfo {
    *
    * ADR-8.C.5: Uses canonical DelayedImpact from Effects/.
    *
+   * NOTE: The closure captures object references to `target` and `args`.
+   * Callers must not mutate these objects after calling `impact()`.
+   * (In C#, Target is a struct that is implicitly copied.)
+   *
    * @param target — the target to impact
    * @param args — warhead arguments (source actor, damage modifiers, etc.)
    */

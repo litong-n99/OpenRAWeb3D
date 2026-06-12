@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 8 -- Weapons & Combat System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.5 (WeaponInfo/Combat) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (22/56 migrated, Phases A+B COMPLETE)
+> **Chapter Status**: IN PROGRESS (25/56 migrated, Phases A+B+C COMPLETE)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%)
 >
@@ -118,9 +118,9 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 | 22 | `OpenRA.Mods.Common/Projectiles/InstantHit.cs` | `src/OpenRA.Mods.Common/Projectiles/InstantHit.ts` | `InstantHit` | 96 | LOW | B |
 
 | **Phase C: Weapon Configuration Data** | | | | | |
-| 23 | `OpenRA.Game/GameRules/WeaponInfo.cs` | `src/OpenRA.Game/GameRules/WeaponInfo.ts` | `WeaponInfo` | 268 | MEDIUM | C |
-| 24 | `OpenRA.Game/GameRules/SoundInfo.cs` | `src/OpenRA.Game/GameRules/SoundInfo.ts` | `SoundInfo` | 97 | LOW | C |
-| 25 | `OpenRA.Game/GameRules/MusicInfo.cs` | `src/OpenRA.Game/GameRules/MusicInfo.ts` | `MusicInfo` | 65 | LOW | C (optional) |
+| 23 | `OpenRA.Game/GameRules/WeaponInfo.cs` | `src/OpenRA.Game/GameRules/WeaponInfo.ts` | `WeaponInfo` | 268 | MEDIUM | C ✅ COMPLETE |
+| 24 | `OpenRA.Game/GameRules/SoundInfo.cs` | `src/OpenRA.Game/GameRules/SoundInfo.ts` | `SoundInfo` | 97 | LOW | C ✅ COMPLETE |
+| 25 | `OpenRA.Game/GameRules/MusicInfo.cs` | `src/OpenRA.Game/GameRules/MusicInfo.ts` | `MusicInfo` | 65 | LOW | C ✅ COMPLETE (optional) |
 
 | **Phase D: Core Combat Traits** | | | | | |
 | 26 | `OpenRA.Mods.Common/Traits/Armament.cs` | `src/OpenRA.Mods.Common/Traits/Armament.ts` | `Armament` | 432 | HIGH | D |
@@ -182,7 +182,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 |:---|:---:|:---:|:---|
 | A: Warheads | 15 | 1,135 | Impact-effect classes |
 | B: Projectiles | 7 | 2,166 | In-flight munition objects (Bullet already in Ch7) |
-| C: Weapon Config | 2 (+1 opt) | 365 (+65) | WeaponInfo, SoundInfo, MusicInfo |
+| C: Weapon Config | 2 (+1 opt) COMPLETE | 365 (+65) | WeaponInfo, SoundInfo, MusicInfo |
 | D: Core Combat Traits | 17 | 3,075 | Armament, Attack*, AutoTarget, HitShape, Armor, etc. |
 | E: Support Traits | 15 | 1,523 | FireWarheads, Render overlays, Turreted, Multipliers, etc. |
 
@@ -459,10 +459,11 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 ### 3.3 Phase C: Weapon Configuration Data
 
-**Status**: 📋 待迁移 (0/2 migrated, +1 optional) -- NOW UNBLOCKED (Phases A+B COMPLETE)
+**Status**: ✅ COMPLETE (2/2 + 1 optional migrated, 115 tests)
+**Review**: APPROVED (1 round, 0 BLOCKERs). Commit `ab3b3d4` — feat(weapons): Phase C — Weapon Configuration Data (WeaponInfo, SoundInfo, MusicInfo)
 **Complexity**: Medium (WeaponInfo parses from JSON rules)
 **Blocked by**: Phase A (WeaponInfo references warhead types) -- COMPLETE, Phase B (WeaponInfo references projectile types) -- COMPLETE
-**Blocks**: Phase D (Armament loads WeaponInfo for each weapon slot), Phase E (support traits reference weapon definitions)
+**Blocks**: Phase D (Armament loads WeaponInfo for each weapon slot) -- NOW UNBLOCKED, Phase E (support traits reference weapon definitions)
 
 **Description**: Configuration data classes that define weapons, sounds, and music from JSON rule files. `WeaponInfo` is the central config hub -- it specifies the warhead, projectile, burst count, range, reload time, and target validation for each weapon. `SoundInfo` defines attack/death sound configurations. `MusicInfo` (optional) defines background music tracks. These classes are consumed by the Ruleset system (Ch6 Phase C) and loaded from JSON at world creation.
 
@@ -474,7 +475,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.3.1 WeaponInfo
 
-- [ ] **TODO-8.C.1** `src/OpenRA.Game/GameRules/WeaponInfo.ts` (268 lines C#) -- Weapon configuration data:
+- [x] **TODO-8.C.1** `src/OpenRA.Game/GameRules/WeaponInfo.ts` (268 lines C#) -- Weapon configuration data:
   - `projectile: string` -- projectile type name (resolved at runtime)
   - `warhead: string` -- primary warhead type name
   - `burst: number` -- shots per firing cycle (default 1)
@@ -494,7 +495,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.3.2 SoundInfo
 
-- [ ] **TODO-8.C.2** `src/OpenRA.Game/GameRules/SoundInfo.ts` (97 lines C#) -- Sound configuration data:
+- [x] **TODO-8.C.2** `src/OpenRA.Game/GameRules/SoundInfo.ts` (97 lines C#) -- Sound configuration data:
   - Attack/notification sound definitions for weapons and events
   - `audibleDistance: WDist` -- maximum hearing range
   - Volume and pitch variation ranges
@@ -503,22 +504,22 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.3.3 MusicInfo (Optional)
 
-- [ ] **TODO-8.C.3** `src/OpenRA.Game/GameRules/MusicInfo.ts` (65 lines C#) -- Background music configuration:
+- [x] **TODO-8.C.3** `src/OpenRA.Game/GameRules/MusicInfo.ts` (65 lines C#) -- Background music configuration:
   - `filename: string` -- audio file reference
   - `length: number` -- track length in ticks
   - `extension: string` -- audio format
   - `exists: boolean` -- file availability check
   - Integration with Ch7 Phase D `Sound` for music playback with crossfade support
 
-**Phase C Summary**: 2 (+1 optional) files, ~430 C# lines, estimated ~1,200 TS implementation + ~900 test lines
+**Phase C Summary**: 2 core + 1 optional files, ~365 (+65 opt) C# lines. Implemented: 11 files total (3 impl + 1 shared + modifications to Warhead.ts, DelayedImpact.ts, Bullet.ts + 4 test files), 115 new tests. Reviewed: APPROVED (1 round, 0 BLOCKERs). Commit: `ab3b3d4`. Shared module: `WarheadRegistry.ts` (warhead factory registry). Test breakdown: WeaponInfo.test.ts (52 tests), SoundInfo.test.ts (45 tests), MusicInfo.test.ts (18 tests).
 
 ---
 
 ### 3.4 Phase D: Core Combat Traits
 
-**Status**: 📋 待迁移 (0/17 migrated)
+**Status**: 📋 待迁移 (0/17 migrated) -- NOW UNBLOCKED (Phases A+B+C COMPLETE)
 **Complexity**: Low-HIGH (AttackBase 526 lines HIGH, Armor 30 lines LOW)
-**Blocked by**: Phase A (Armament references warhead types), Phase C (Armament references WeaponInfo)
+**Blocked by**: Phase A (Armament references warhead types) -- COMPLETE, Phase C (Armament references WeaponInfo) -- COMPLETE
 **Blocks**: Phase E (support traits react to combat events), Chapter 14 (Attack activities)
 
 **Description**: The actor-side components that enable combat. `Armament` is the weapon mount -- it manages reload state, burst cycling, and firing logic. `AttackBase` is the abstract base for attack behavior, handling target validation, firing arc checks, and `AttackActivity` creation. `AutoTarget` implements autonomous target acquisition with priority and stance systems. `HitShape` defines collision geometry for damage application. `Armor` provides damage reduction via type-based multipliers. Multiplier traits (`RangeMultiplier`, `FirepowerMultiplier`) modify base combat stats. `AmmoPool` and `ReloadAmmoPool` manage limited ammunition.

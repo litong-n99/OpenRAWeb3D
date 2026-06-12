@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 8 Phase B COMPLETE (Weapons & Combat -- in progress)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%). Chapter 8: 22/56 (39%, Phases A+B COMPLETE). Chapters 9-21: 0/~310 (0%, PLANNING)
+**Phase**: Chapter 8 Phase C COMPLETE (Weapons & Combat -- in progress)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%). Chapter 8: 25/56 (45%, Phases A+B+C COMPLETE). Chapters 9-21: 0/~310 (0%, PLANNING)
 **Planning Doc**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
@@ -52,7 +52,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Projectiles (1 file) | COMPLETE (Bullet 1,463 lines, 56 tests, 2 review rounds) |
 | Sprite Traits (2+3 files) | COMPLETE (AnimationWithOffset 163, RenderSprites ~500, WithIdleOverlay ~413 lines; 120 tests, 2 review rounds) |
 | **Chapters 8-21 (14 chapters)** | **IN PROGRESS (Ch8 Phases A+B COMPLETE: 22/56)** |
-| Weapons & Combat (Ch8) | IN PROGRESS (56 files, 5 phases A-E, ~8,264 C# lines -- Phase A COMPLETE: 15/15, 143 tests, commits `d9f6c34` / `9b25839`; Phase B COMPLETE: 7/7, 186 tests, commits `0f02230` / `28b4602`) |
+| Weapons & Combat (Ch8) | IN PROGRESS (56 files, 5 phases A-E, ~8,264 C# lines -- Phase A COMPLETE: 15/15, 143 tests, commits `d9f6c34` / `9b25839`; Phase B COMPLETE: 7/7, 186 tests, commits `0f02230` / `28b4602`; Phase C COMPLETE: 2+1/2+1, 115 tests, commit `ab3b3d4`) |
 | Movement & Physics (Ch9) | Planned (~30 files, 3 phases A-C) |
 | Resource & Economy (Ch10) | Planned (~15 files, 2 phases A-B) |
 | Production & Building (Ch11) | Planned (~25 files, 2 phases A-B) |
@@ -158,13 +158,18 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       WidgetLoader.ts        ← migrated (470 lines, 43 tests) -- Phase D
     Traits/                 ← Chapter 3: Trait interfaces and components (COMPLETE)
     Activities/             ← Chapter 3: Activity state machine (COMPLETE)
-    GameRules/              ← Chapter 3: ActorInfo, WeaponInfo config (COMPLETE)
+    GameRules/              ← Chapter 3+6+8: ActorInfo, WeaponInfo, SoundInfo, MusicInfo, Ruleset config (COMPLETE)
+      ActorInfo.ts         ← migrated (64 tests) -- Chapter 3 Phase E
+      Ruleset.ts            ← migrated (55 tests) -- Chapter 6 Phase C
+      WeaponInfo.ts         ← migrated (52 tests) -- Chapter 8 Phase C
+      SoundInfo.ts          ← migrated (45 tests) -- Chapter 8 Phase C
+      MusicInfo.ts          ← migrated (18 tests) -- Chapter 8 Phase C
     Orders/                 ← Chapter 3: Order generation (empty, planned)
   OpenRA.Game/Manifest.ts     ← migrated (506 lines, 72 tests) -- Chapter 5 Phase C: MOD manifest
   OpenRA.Game/ModData.ts      ← migrated (326 lines, 43 tests) -- Chapter 5 Phase C: MOD runtime coordinator
   OpenRA.Mods.Cnc/            ← Chapter 5 Phase B: C&C package formats (COMPLETE)
     FileSystem/               ← Chapter 5 Phase B: PackageEntry (332 lines, 30 tests), MixFile (350 lines, 22 tests), BigFile (268 lines, 19 tests), MegFile (282 lines, 17 tests), Pak (240 lines, 18 tests)
-  OpenRA.Mods.Common/         ← Chapter 4: Pathfinding + movement traits / Ch5: World interaction / Ch7: Effects + Projectiles
+  OpenRA.Mods.Common/         ← Chapter 4: Pathfinding + movement traits / Ch5: World interaction / Ch7: Effects + Projectiles / Ch8: Weapons & Combat
     Effects/                ← Ch7 Phase E: Visual Effects (COMPLETE)
       SpriteEffect.ts       ← migrated -- Ch7 Phase E (86 lines C# -> TS, billboard particle effects)
     Projectiles/            ← Ch7 Phase F + Ch8 Phase B: Projectiles (COMPLETE)
@@ -179,6 +184,12 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       MissileMath.ts        ← migrated (23 tests) -- Ch8 Phase B shared
       ProjectileRegistry.ts ← migrated -- Ch8 Phase B shared
       BeamRenderableShape.ts← migrated -- Ch8 Phase B shared
+    Warheads/               ← Ch8 Phase A+C: Warhead effects + registry (COMPLETE)
+      Warhead.ts            ← migrated -- Ch8 Phase A (abstract base)
+      DamageWarhead.ts      ← migrated -- Ch8 Phase A
+      SpreadDamageWarhead.ts← migrated -- Ch8 Phase A
+      WarheadRegistry.ts    ← migrated -- Ch8 Phase C (shared, warhead factory registry)
+      *.ts                  ← 11 additional warheads (TODO-8.A.4 through TODO-8.A.15)
     Pathfinder/             ← Phase G: Pathfinding System (10 files)
       IPathGraph.ts         ← migrated (216 lines) -- Phase G
       CellInfo.ts           ← migrated (166 lines) -- Phase G
@@ -441,7 +452,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 100% complete) |
 | [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (29 files, 5 phases A-E, 100% complete) |
 | [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md) | Chapter 7 input, camera, audio & effects migration plan (13 files, 7 phases A-G, ALL PHASES COMPLETE) |
-| [docs/chapter8_weapons_combat_migration_plan.md](docs/chapter8_weapons_combat_migration_plan.md) | Chapter 8 weapons & combat system migration plan with TODO checklist (56 files, 5 phases A-E, Phase A COMPLETE: 15/15, 143 tests; Phase B COMPLETE: 7/7, 186 tests) |
+| [docs/chapter8_weapons_combat_migration_plan.md](docs/chapter8_weapons_combat_migration_plan.md) | Chapter 8 weapons & combat system migration plan with TODO checklist (56 files, 5 phases A-E, Phase A COMPLETE: 15/15, 143 tests; Phase B COMPLETE: 7/7, 186 tests; Phase C COMPLETE: 2+1/2+1, 115 tests) |
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-21 remaining systems migration plan (~365 files, 14 chapters, PLANNING PHASE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |

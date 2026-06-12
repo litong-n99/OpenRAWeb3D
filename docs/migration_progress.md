@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
-> **Last updated**: 2026-06-12
-> **Current phase**: Chapter 8 Phase B COMPLETE (22/56 migrated)
-> **Overall status**: Chapters 2-7 COMPLETE: 162/162 (100%). Chapter 8: 22/56 (39%, Phases A+B COMPLETE). Chapters 9-21 PLANNED (0/~310 migrated).
+> **Last updated**: 2026-06-13
+> **Current phase**: Chapter 8 Phase C COMPLETE (25/56 migrated)
+> **Overall status**: Chapters 2-7 COMPLETE: 162/162 (100%). Chapter 8: 25/56 (45%, Phases A+B+C COMPLETE). Chapters 9-21 PLANNED (0/~310 migrated).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -19,7 +19,7 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Chapter 8 planned files (Weapons & Combat)** | 56 (57 with optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), **22/56 migrated (Phases A+B COMPLETE)**, ~8,264 C# lines source |
+| **Chapter 8 planned files (Weapons & Combat)** | 56 (57 with optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), **25/56 migrated (Phases A+B+C COMPLETE)**, ~8,264 C# lines source |
 | **Chapter 9 planned files (Movement & Physics)** | ~30 (3 Phases A-C planned), 0/30 migrated |
 | **Chapter 10 planned files (Resource & Economy)** | ~15 (2 Phases A-B planned), 0/15 migrated |
 | **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 0/25 migrated |
@@ -204,6 +204,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-13 | **Ch8 Phase C Weapon Configuration Data** (2+1 files) | migration-develop | migration-review | APPROVED (R1, 0 BLOCKERs): WeaponInfo.ts (52 tests), SoundInfo.ts (45 tests), MusicInfo.ts (18 tests) + shared: WarheadRegistry.ts + modifications: Warhead.ts (WarheadArgs extended), DelayedImpact.ts (canonical types), Bullet.ts (imports), DelayedImpact.test.ts. 11 files total (~2,923 insertions, ~100 deletions), 115 new tests. Commit `ab3b3d4`. Chapter 8: 25/56 (45%). |
 | 2026-06-12 | **Ch8 Phase B Projectiles System** (7 files) | migration-develop | migration-review | APPROVED (R2): Missile.ts (32 tests), AreaBeam.ts (12 tests), Railgun.ts (13 tests), LaserZap.ts (12 tests), NukeLaunch.ts (11 tests), GravityBomb.ts (15 tests), InstantHit.ts (14 tests) + shared: MissileMath.ts (23 tests), ProjectileRegistry.ts, BeamRenderableShape.ts. 17 files total (9 source + 8 test), 186 tests, ~4,483 lines. R1: 2 BLOCKER, 8 MAJOR, 5 MINOR -> NEEDS FIXES. R2: All fixed -> APPROVED. Commits `0f02230`, `28b4602`. Chapter 8: 22/56 (39%). |
 | 2026-06-12 | **Ch8 Phase A Warheads Foundation** (15 files) | migration-develop | migration-review | APPROVED (R2): Warhead.ts, DamageWarhead.ts, SpreadDamageWarhead.ts, TargetDamageWarhead.ts, CreateEffectWarhead.ts, FireClusterWarhead.ts, LeaveSmudgeWarhead.ts, DestroyResourceWarhead.ts, CreateResourceWarhead.ts, ChangeOwnerWarhead.ts, GrantExternalConditionWarhead.ts, FlashEffectWarhead.ts, ShakeScreenWarhead.ts, HealthPercentageDamageWarhead.ts, FlashTargetsInRadiusWarhead.ts. 15 impl + 4 test files = 19 files, 143 tests. R1: 1 BLOCKER (int2Lerp numerical bug), 7 MAJOR, 6 MINOR. R2: All fixed. Commits `d9f6c34`, `9b25839`. Chapter 8: 15/56 (27%). |
 | 2026-06-12 | **Ch7 Phase G Sprite Rendering Traits** (2+3 files) | migration-develop | migration-review | APPROVED (R2): AnimationWithOffset.ts (163 lines, 17 tests), RenderSprites.ts (~500 lines, 37 tests), WithIdleOverlay.ts (~413 lines, 24 tests), Animation.ts (+112 lines, +9 tests), TraitsInterfaces.ts (+10 lines). ~1,198 impl + ~940 test lines, 120 tests. Commits `e108a5a`, `11e49a3`. Chapter 7 now 100% COMPLETE (13/13). |
@@ -1119,14 +1120,14 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | In Progress | 0 | 0% |
 | Completed | 0 | 0% |
 
-### Chapter 8: Weapons & Combat System (IN PROGRESS, 22/56 migrated, Phases A+B COMPLETE)
+### Chapter 8: Weapons & Combat System (IN PROGRESS, 25/56 migrated, Phases A+B+C COMPLETE)
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
 | Phase A | Warheads Foundation | 15 | LOW-HIGH | **COMPLETE (15/15, 143 tests)** |
 | Phase B | Projectiles System | 7 | HIGH-MEDIUM | **COMPLETE (7/7, 186 tests)** |
-| Phase C | Weapon Configuration Data | 2 | MEDIUM | Not started |
-| Phase D | Core Combat Traits | ~17 | HIGH-LOW | Not started |
+| Phase C | Weapon Configuration Data | 2 (+1 opt) | MEDIUM | **COMPLETE (2/2 + 1 optional, 115 tests)** |
+| Phase D | Core Combat Traits | ~17 | HIGH-LOW | NOW UNBLOCKED |
 | Phase E | Combat Support Traits | ~15 | LOW-MEDIUM | Not started |
 
 ### Chapter 9: Unit Movement & Physics (PLANNING, ~30 files)
