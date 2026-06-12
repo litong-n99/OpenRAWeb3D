@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 6 (Network Sync & Game Logic) -- DESIGN PHASE (migration plan complete, 0/26 migrated)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 0/26 (0%)
+**Phase**: Chapter 6 (Network Sync & Game Logic) -- EXECUTION PHASE (Phase A+B complete: 6/26, ~23%)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 6/26 (~23%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |

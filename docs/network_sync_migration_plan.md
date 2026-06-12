@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 6 -- Network Sync and Game Logic
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 7 (lines 942-1053)
-> **Chapter Status**: Chapter 6 -- IMPLEMENTATION PHASE (4/26 migrated, ~15%). Phase A COMPLETE (4/4), Phase B-E PENDING (0/22)
+> **Chapter Status**: Chapter 6 -- IMPLEMENTATION PHASE (6/26 migrated, ~23%). Phase A COMPLETE (4/4), Phase B COMPLETE (2/2), Phase C-E PENDING (0/20)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
 >
@@ -135,9 +135,10 @@ Refer to **Section 7** in `docs/openra_migration.agent.final.converted.md` (line
 | 3 | `OpenRA.Game/Network/Connection.cs` | `src/OpenRA.Game/Network/Connection.ts` | `IConnection`, `NetworkConnection`, `EchoConnection`, `ConnectionState` | 387 | HIGH | **A ✅** |
 | 4 | `OpenRA.Game/Network/OrderManager.cs` | `src/OpenRA.Game/Network/OrderManager.ts` | `OrderManager` | 334 | HIGH | **A ✅** |
 | | | | | | | |
-| **Phase B: Sync Hash System (1 file + 1 generated)** | | | | | |
-| 5 | `OpenRA.Game/Sync.cs` | `src/OpenRA.Game/Sync.ts` | `Sync`, `ISync`, `VerifySyncAttribute` | 212 | HIGH | B |
-| 5a | *(new, build tooling)* | `utils/sync-hash-generator.ts` | `SyncHashGenerator` | 0 (new) | HIGH | B |
+| **Phase B: Sync Hash System (1 file + 1 generated + 1 auto-generated) — COMPLETE** | | | | | |
+| 5 | `OpenRA.Game/Sync.cs` | `src/OpenRA.Game/Sync.ts` | `Sync`, `ISync`, `VerifySyncAttribute` | 212 | HIGH | **B ✅** |
+| 5a | *(new, build tooling)* | `utils/sync-hash-generator.ts` | `SyncHashGenerator` | 0 (new) | HIGH | **B ✅** |
+| 5b | *(generated output)* | `src/OpenRA.Game/sync-hashes.generated.ts` | Auto-generated hash functions | 0 (auto) | LOW | **B ✅** |
 | | | | | | | |
 | **Phase C: Ruleset Container & ActorInfo Integration (2 files)** | | | | | |
 | 6 | `OpenRA.Game/GameRules/Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | `Ruleset`, `RulesetCache` | 281 | MEDIUM | C |
@@ -335,9 +336,10 @@ Commits: `7ea8d07` (initial Phase A), `ff0a461` (Order/UnitOrders/Connection ref
 
 ### 3.2 Phase B: Sync Hash System
 
-**Status**: PENDING (0/2)
+**Status**: COMPLETE (2/2)
 **Complexity**: HIGH (hash generation, build tooling)
-**Blocked by**: ~~Phase A~~ (COMPLETE -- Order types now available for sync hash testing), Chapter 3 (all coordinate types already have hashCode())
+**Implementation Date**: 2026-06-12
+**Blocked by**: ~~Phase A~~ (COMPLETE — Order types now available for sync hash testing), Chapter 3 (all coordinate types already have hashCode())
 **Blocks**: Phase C (Ruleset uses sync attributes on trait fields)
 
 **Description**: `Sync.cs` is the consistency watchdog of the deterministic lockstep. It computes a frame-level hash of all `[VerifySync]`-decorated game state and compares across clients. C# achieves this via `Reflection.Emit` dynamic IL code generation -- JavaScript has no equivalent. The migration strategy: a build-time code generator (`utils/sync-hash-generator.ts`) scans TypeScript source files for `@VerifySync` decorators, identifies marked fields, and emits pre-generated `computeSyncHash()` functions into a single `src/OpenRA.Game/sync-hashes.generated.ts` file. At runtime, `Sync.hash(target)` looks up the pre-generated function by target class name and invokes it.
@@ -351,7 +353,7 @@ Commits: `7ea8d07` (initial Phase A), `ff0a461` (Order/UnitOrders/Connection ref
 
 #### 3.2.1 Sync Runtime
 
-- [ ] **TODO-6.B.1** `src/OpenRA.Game/Sync.ts` (212 lines C#) -- Sync hash engine:
+- [x] **TODO-6.B.1** `src/OpenRA.Game/Sync.ts` (569 lines TS, 958 test lines, 96 tests) — Sync hash engine ✅:
   - `VerifySync` decorator: `function VerifySync(target: any, propertyKey: string): void` -- uses `Reflect.defineMetadata('sync:field', true, target.constructor, propertyKey)` to mark fields for hash inclusion
   - `ISync` interface: empty marker interface (classes implementing `ISync` declare themselves as sync-participating)
   - `syncHashFunctions: Map<string, (obj: ISync) => number>` -- populated automatically by `sync-hashes.generated.ts` at module load
@@ -381,7 +383,7 @@ Commits: `7ea8d07` (initial Phase A), `ff0a461` (Order/UnitOrders/Connection ref
 
 #### 3.2.2 Sync Hash Generator (Build Tooling)
 
-- [ ] **TODO-6.B.2** `utils/sync-hash-generator.ts` (new, ~500 lines) -- Build-time code generator:
+- [x] **TODO-6.B.2** `utils/sync-hash-generator.ts` (611 lines TS, 821 test lines, 33 tests) — Build-time code generator ✅:
   - Scans `src/` directory for TypeScript files containing `@VerifySync` decorator usage
   - Parses TypeScript AST via `typescript` compiler API
   - For each class implementing `ISync`:
@@ -397,6 +399,14 @@ Commits: `7ea8d07` (initial Phase A), `ff0a461` (Order/UnitOrders/Connection ref
   - Integration with Vite: runs as Vite plugin before build; regenerates on source file change in dev mode
   - **Error messages**: If `@VerifySync` decorator is on a class not implementing `ISync`, emit build warning
 
+#### 3.2.3 Auto-Generated Sync Hashes
+
+- [x] **TODO-6.B.3** `src/OpenRA.Game/sync-hashes.generated.ts` (24 lines, auto-generated) — Generated hash registry ✅:
+  - Auto-generated by `utils/sync-hash-generator.ts` from `@VerifySync`-decorated fields
+  - Contains `registerSyncHash(ClassName, computeSyncHash)` calls for all ISync classes
+  - Regenerated at build time; committed to VCS for auditability
+  - Currently registers hash functions for all migrated ISync classes
+
 **Acceptance Criteria**:
 - Build-time hash generator correctly discovers all `@VerifySync`-decorated fields across all source files
 - Generated `computeSyncHash()` functions produce identical output for identical input
@@ -409,6 +419,35 @@ Commits: `7ea8d07` (initial Phase A), `ff0a461` (Order/UnitOrders/Connection ref
 - Unit tests for `runUnsynced()` with mock World providing sync hash
 
 **Estimated Effort**: ~1,500 lines implementation + ~1,200 lines test (5-6 developer-days)
+
+**Implementation Notes** (2026-06-12):
+
+Phase B was completed in 2 review rounds (Round 1: 2 MAJOR + 3 MINOR -> NEEDS FIXES; Round 2: All fixed -> APPROVED). 132 tests total across 2 files + 1 auto-generated file. `tsc --noEmit` clean. All 3 files: 1,204 TS implementation lines + 1,779 test lines.
+
+Key paradigm mappings realized during implementation:
+
+| OpenRA (C#) | TypeScript / Babylon.js |
+|-------------|------------------------|
+| `Reflection.Emit` DynamicMethod IL generation | Build-time AST scanning + pre-generated `computeSyncHash()` functions |
+| `[AttributeUsage]` for `[VerifySync]` attribute | JSDoc `/** @VerifySync */` marker with `Reflect.defineMetadata('sync:field', true, ...)` |
+| C# XOR hash combination: `hash ^ fieldHash` | FNV-1a style: `(hash ^ fieldHash) * 0x01000193 >>> 0` (32-bit unsigned) |
+| `FrozenDictionary<Type, MethodInfo>` hash registry | `Map<string, (obj: ISync) => number>` populated at import time |
+| `ConcurrentCache<Type, Func<object, int>>` | Simple `Map` lookup (single-threaded, no concurrent access) |
+| C# `CustomHashFunctions` static dictionary | TypeScript `customSyncHashFunctions: Map<string, (obj: any) => number>` |
+| C# `RunUnsynced<T>()` with `unsyncDepth` counter | TypeScript `runUnsynced<T>(world, fn)` with identical counter + pre/post sync hash snapshot |
+| C# boolean hash: `true ? 111 : 207` | TypeScript boolean hash: `true ? 111 : 207` (identical constants preserved) |
+| Runtime hash lookup via `typeof(T)` | Build-time registration: `Sync.registerSyncHash('ClassName', computeSyncHash)` |
+
+Implementation statistics:
+
+| File | TS Lines | Test Lines | Tests | Review Round |
+|------|:--------:|:----------:|:-----:|:------------:|
+| `src/OpenRA.Game/Sync.ts` | 569 | 958 | 96 | APPROVED (R2) |
+| `utils/sync-hash-generator.ts` | 611 | 821 | 33 | APPROVED (R2) |
+| `src/OpenRA.Game/sync-hashes.generated.ts` | 24 | — | — | Auto-generated |
+| **Total** | **1,204** | **1,779** | **132** | |
+
+Commits: `52f6940` (initial Phase B), `a63d377` (fix boolean hash constants, export lookupSyncHash, improve runUnsynced guard).
 
 ---
 
