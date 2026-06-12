@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (6/13, Phases A-C COMPLETE)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 6/13 (~46%)
+**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (8/13, Phases A-D COMPLETE)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 8/13 (~62%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -42,11 +42,12 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Ruleset Container (2 files) | COMPLETE (Phase C, ~1,030 impl + ~1,359 test lines, ~80 tests) |
 | AI BotModule Core (10 files) | COMPLETE (Phase D, ~5,769+390 impl lines, 2 review rounds) |
 | AI BotModule Extended (11 files) | COMPLETE (Phase E, ~4,463 impl + ~1,515 test lines, 119 tests, 2 rounds) |
-| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (6/13, ~46%, Phases A-C COMPLETE)** |
+| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (8/13, ~62%, Phases A-D COMPLETE)** |
 | Input Foundation (3 files) | COMPLETE (IInputHandler 176, Keycode 544, InputHandler 617 lines, 155 tests) |
 | Camera System (2+1 files) | COMPLETE (Viewport 1,023, ViewportControllerWidget 868, HotkeyReference 360 lines, 86 tests) |
 | Selection System (1 file) | COMPLETE (SelectionUtils 723 lines, 58 tests, 3 review rounds) |
-| Audio, Effects, Projectiles, Sprite Traits (7 files) | Pending (Phases D-G) |
+| Audio System (2 files) | COMPLETE (Sound 1,383, SoundDevice 269 lines, 133 tests) |
+| Effects, Projectiles, Sprite Traits (5 files) | Pending (Phases E-G) |
 | Remaining subsystems | Chapters 8+ (weapons, missions, etc.) not yet planned
 
 ## Directory Layout
@@ -93,6 +94,9 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       UnitOrders.ts         ← migrated (696 lines, 416 test lines)
       Connection.ts         ← migrated (685 lines, 352 test lines)
       OrderManager.ts       ← migrated (827 lines, 532 test lines)
+    Sound/                    ← Chapter 7 Phase D: Audio System (COMPLETE)
+      Sound.ts              ← migrated (1383 lines, ~110 tests) -- Phase D
+      SoundDevice.ts        ← migrated (269 lines, ~23 tests) -- Phase D
     WPos.ts               ← migrated (180 lines, 24 tests) -- Phase A 3.1.1
     WVec.ts               ← migrated (230 lines, 35 tests) -- Phase A 3.1.1
     WAngle.ts             ← migrated (270 lines, 54 tests) -- Phase A 3.1.1

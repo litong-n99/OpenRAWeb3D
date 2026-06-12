@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (6/13, Phases A-C COMPLETE)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 6/13 (~46%, Phases A-C COMPLETE)
+> **Current phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (8/13, Phases A-D COMPLETE)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 8/13 (~62%, Phases A-D COMPLETE)
 
 ---
 
@@ -18,8 +18,8 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Remaining chapters** | Chapters 7-8+(Ch7 Phase A complete, Phases B-G + Ch8 pending) |
-| **Overall project completion** | Chapters 2+3+4+5+6 complete (148/148 rendering+actors+map+UI+network+AI). Chapter 7: 6/13 (Phases A-C COMPLETE) |
+| **Remaining chapters** | Chapters 7-8+(Ch7 Phases A-D complete, Phases E-G + Ch8 pending) |
+| **Overall project completion** | Chapters 2+3+4+5+6 complete (148/148 rendering+actors+map+UI+network+AI). Chapter 7: 8/13 (Phases A-D COMPLETE) |
 
 > **Note**: Chapters 2, 3, 4, 5, and 6 are fully complete. Chapter 7 Phase A (Input Foundation) is COMPLETE (3/13). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
 
@@ -188,6 +188,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch7 Phase D Audio System** (2 files) | migration-develop | migration-review | APPROVED: Sound.ts (1,383 lines), SoundDevice.ts (269 lines). 2 test files, 133 tests. Commit `3f1b511`. Chapter 7: 8/13 (~62%). |
 | 2026-06-12 | **Ch7 Phase C Selection System** (1 file) | migration-develop | migration-review | APPROVED (3 rounds): SelectionUtils.ts (723 lines). 1 test file, 58 tests. Commits `ee38601`, `406df32`, `816bb5a`. Chapter 7: 6/13 (~46%). |
 | 2026-06-12 | **Ch7 Phase B Camera System** (2+1 files) | migration-develop | migration-review | APPROVED (2 rounds, 3 BLOCKER + 5 MAJOR resolved): Viewport.ts (1,023 lines), ViewportControllerWidget.ts (868 lines), HotkeyReference.ts (360 lines prereq). 2 test files, 86 tests (Viewport.test.ts: 742 lines, ViewportControllerWidget.test.ts: 573 lines). ~2,251 impl + ~1,315 test lines. Commits `3688b66`, `feca8b6`, `6d722c4`. Chapter 7: 5/13 (~38%). |
 | 2026-06-12 | **Ch7 Phase A Input Foundation** (3 files) | migration-develop | migration-review | APPROVED (2 rounds, 1 BLOCKER + 3 MAJOR resolved): IInputHandler.ts (176 lines), Keycode.ts (544 lines), InputHandler.ts (617 lines). 3 test files, 155 tests. ~1,337 impl lines. Commits `4260360`, `1920155`. |
@@ -945,16 +946,16 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 
 ---
 
-## Chapter 7: Input, Camera, Audio & Effects (6/13, Phases A-C COMPLETE)
+## Chapter 7: Input, Camera, Audio & Effects (8/13, Phases A-D COMPLETE)
 
 > **Migration Plan**: [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md)
-> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (6/13, ~46%, Phases A-C COMPLETE)
+> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: IN PROGRESS (8/13, ~62%, Phases A-D COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 6 | ~46% |
-| Pending | 7 | ~54% |
+| Completed | 8 | ~62% |
+| Pending | 5 | ~38% |
 | **Total** | **13** | **100%** |
 | **From OpenRA** | **13** | |
 | **New files (no OpenRA equivalent)** | **0** | |
@@ -966,7 +967,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | Phase A | Input Foundation | 3 | LOW-MEDIUM | **COMPLETE (3/3, 155 tests)** |
 | Phase B | Camera System | 2 | HIGH-MEDIUM | **COMPLETE (2/2, 86 tests)** |
 | Phase C | Selection System | 1 | MEDIUM | **COMPLETE (1/1, 58 tests)** |
-| Phase D | Audio System | 2 | MEDIUM | Pending |
+| Phase D | Audio System | 2 | MEDIUM | **COMPLETE (2/2, 133 tests)** |
 | Phase E | Visual Effects | 2 | MEDIUM | Pending |
 | Phase F | Projectiles | 1 | HIGH | Pending (Blocked by Phase E) |
 | Phase G | Sprite Rendering Traits | 2 | MEDIUM-LOW | Pending |
@@ -1017,3 +1018,18 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 - Paradigm shift: 2D `ScreenMap.ActorsInMouseBox()` spatial index queries replaced by pre-filtered candidates from `WorldInteractionControllerWidget` (which handles 3D raycasting/frustum queries).
 - Review: APPROVED (3 rounds) | **Commits**: `ee38601`, `406df32`, `816bb5a`
 - Phase C unblocks nothing (leaf phase)
+
+### Phase D Completed: Audio System (2 files, 2026-06-12)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| SoundDevice.ts | 269 | 368 | ~23 | ISoundEngine interface, ISound, ISoundSource, WebAudioEngine wrapper |
+| Sound.ts | 1,383 | 1,553 | ~110 | Sound manager: sound pool, volume chain, PlayPredefined, music/video management |
+| **Total** | **~1,652** | **~1,921** | **133** | |
+
+**Implementation details**:
+- `SoundDevice.ts` (ISoundEngine + WebAudioEngine): `availableDevices()`, `addSoundSourceFromMemory()`, `play2D()`, `play3D()`, `setListenerPosition()`, `setSoundPosition()`, `setSoundVolume()`, `stopSound()`, `pauseSound()`/`resumeSound()`. Wraps Howler.js global with `Howler.autoUnlock = true` for browser autoplay policy. Distance model: `inverse` (matching OpenAL's `AL_INVERSE_DISTANCE`). Format support: WebM (primary) + MP3 (fallback). `ISound` interface: `id`, `source`, `playing`, `volume`, `looping`.
+- `Sound.ts` (Sound manager, 1,383 lines): Full port of OpenRA's `Sound.cs` (481 lines C#). `Sound` class with `soundEngine: ISoundEngine`, `sounds: Map<string, ISoundSource>`, `currentSounds: Map<number, ISound>`, `currentNotifications: Map<string, ISound>`. Volume chain: `SoundVolume × soundVolumeModifier × volumeModifier × pool.VolumeModifier`. `play()` for 2D/3D sound with position. `playPredefined()` with voice/notification routing, variant selection, prefix matching. `SoundPool` class with `InterruptType`: `Overlap` (always play), `Interrupt` (stop existing), `DoNotPlay` (skip if active). `PlayMusic()`/`StopMusic()`/`PauseMusic()`/`PlayMusicThen()` with Tick-based completion detection. `PlayVideo()`/`StopVideo()`/`PauseVideo()` with proper resource cleanup. `SoundType` enum: `World = 0`, `UI = 1`. `DisableWorldSounds` for minimap/replay modes.
+- Paradigm shift: C# OpenAL `ISoundEngine` -> Howler.js + Web Audio API `ISoundEngine` interface. `AL.ListenerPosition` -> `Howler.pos(x, y, z)`. `AL.SourcePosition` -> `howl.pos(x, y, z, soundId)`. AUD/VOC/WAV -> WebM (Vorbis) / MP3 dual-format. `Cache<string, ISoundSource>` -> `Map<string, Howl>`.
+- External dependency added: `howler` + `@types/howler` npm packages.
+- Review: APPROVED | **Commit**: `3f1b511`

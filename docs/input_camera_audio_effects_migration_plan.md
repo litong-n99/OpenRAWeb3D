@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 7 -- Input, Camera, Audio & Effects
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 8 (lines 1056-1264)
-> **Chapter Status**: Chapter 7 -- IN PROGRESS (6/13 migrated, Phases A-C COMPLETE)
+> **Chapter Status**: Chapter 7 -- IN PROGRESS (8/13 migrated, Phases A-D COMPLETE)
 > **Planning Date**: 2026-06-12
-> **Last Update**: 2026-06-12 (Phase C COMPLETE)
+> **Last Update**: 2026-06-12 (Phase D COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -173,17 +173,17 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 | **Phase A (Input foundation)** | 3 files (COMPLETE) |
 | **Phase B (Camera system)** | 2 files (COMPLETE) |
 | **Phase C (Selection system)** | 1 file (COMPLETE) |
-| **Phase D (Audio system)** | 2 files (all pending) |
+| **Phase D (Audio system)** | 2 files (COMPLETE) |
 | **Phase E (Visual effects)** | 2 files (all pending) |
 | **Phase F (Projectiles)** | 1 file (all pending) |
 | **Phase G (Sprite rendering traits)** | 2 files (all pending) |
 | **HIGH complexity** | 2 files (Viewport, Bullet) |
 | **MEDIUM complexity** | 9 files |
 | **LOW complexity** | 2 files |
-| **Total OpenRA C# source lines (new, pending)** | ~2,550 |
+| **Total OpenRA C# source lines (new, pending)** | ~1,940 |
 | **Total OpenRA C# source lines (including already done)** | ~4,600 |
-| **Estimated TypeScript lines (new, pending)** | ~6,200-7,800 (including test files) |
-| **Actual TypeScript lines (Phases A-C completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests | Phase C: 723 (SelectionUtils) + 58 tests |
+| **Estimated TypeScript lines (new, pending)** | ~4,500-5,800 (including test files) |
+| **Actual TypeScript lines (Phases A-D completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests | Phase C: 723 (SelectionUtils) + 58 tests | Phase D: 1,652 (Sound 1,383 + SoundDevice 269) + 133 tests |
 
 ---
 
@@ -426,8 +426,13 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 ### 3.4 Phase D: Audio System
 
-**Status**: 📋 待迁移 (0/2)
+**Status**: ✅ 已完成 (2/2)
 **Complexity**: MEDIUM
+**Completed**: 2026-06-12
+**Commit**: `3f1b511`
+**Review**: APPROVED
+**Implementation**: Sound.ts (1,383行), SoundDevice.ts (269行) = 1,652行
+**Tests**: 2 test files, 133 tests (Sound.test.ts: ~110 tests/1,553行, SoundDevice.test.ts: ~23 tests/368行)
 **Blocked by**: Chapter 3 Phase A (WPos for 3D positioning), `FileSystem.ts` (COMPLETE Ch5 Phase A -- for audio file loading)
 **Blocks**: Nothing (independent subsystem)
 **External dependency**: `howler` npm package (Howler.js v2.x for 3D spatial audio)
@@ -445,7 +450,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.4.1 SoundEngine Interface
 
-- [ ] **TODO-7.D.1** `src/OpenRA.Game/Sound/SoundDevice.ts` (46 lines C#) -- Audio engine interface:
+- [x] **TODO-7.D.1** `src/OpenRA.Game/Sound/SoundDevice.ts` (46 lines C#) ✅ 已完成 (269行 TS) -- Audio engine interface:
   - `ISoundEngine` interface:
     - `availableDevices(): string[]` -- enumerates available audio output devices (limited browser support; returns `['default']` for most browsers)
     - `addSoundSourceFromMemory(name: string, data: ArrayBuffer): ISoundSource` -- decodes audio data, creates `Howl` instance
@@ -469,7 +474,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 #### 3.4.2 Sound Manager
 
-- [ ] **TODO-7.D.2** `src/OpenRA.Game/Sound/Sound.ts` (481 lines C#) -- Central audio manager:
+- [x] **TODO-7.D.2** `src/OpenRA.Game/Sound/Sound.ts` (481 lines C#) ✅ 已完成 (1,383行 TS) -- Central audio manager:
   - `Sound` class:
     - `soundEngine: ISoundEngine` -- injected dependency (DI), defaults to `WebAudioEngine`
     - `sounds: Map<string, ISoundSource>` -- loaded sound cache
@@ -502,19 +507,19 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
     - `activeCount(name: string): number`
     - `volumeModifier: number` -- per-pool volume scaling
 
-**Acceptance Criteria**:
-- `play(type, name)` loads and plays a 2D sound from cache with correct volume
-- `play(type, name, position)` plays a 3D spatialized sound with correct position
-- `setListenerPosition(position)` correctly updates listener and 3D sounds respond with distance attenuation
-- `playPredefined()` with `Interrupt` stops existing sound and starts new one
-- `playPredefined()` with `DoNotPlay` returns null if sound already playing
-- Volume chain multiplication produces correct final volume for all layers
-- `DisableWorldSounds = true` mutes only `World` type sounds, `UI` sounds continue playing
-- Audio format fallback: WebM plays in Chrome/Firefox, MP3 fallback works in Safari
-- Browser autoplay policy: audio unlocks on first user interaction via `Howler.autoUnlock`
-- `dispose()` releases all Howl instances and AudioContext
+**Acceptance Criteria** (all met):
+- ✅ `play(type, name)` loads and plays a 2D sound from cache with correct volume
+- ✅ `play(type, name, position)` plays a 3D spatialized sound with correct position
+- ✅ `setListenerPosition(position)` correctly updates listener and 3D sounds respond with distance attenuation
+- ✅ `playPredefined()` with `Interrupt` stops existing sound and starts new one
+- ✅ `playPredefined()` with `DoNotPlay` returns null if sound already playing
+- ✅ Volume chain multiplication produces correct final volume for all layers
+- ✅ `DisableWorldSounds = true` mutes only `World` type sounds, `UI` sounds continue playing
+- ✅ Audio format fallback: WebM plays in Chrome/Firefox, MP3 fallback works in Safari
+- ✅ Browser autoplay policy: audio unlocks on first user interaction via `Howler.autoUnlock`
+- ✅ `dispose()` releases all Howl instances and AudioContext
 
-**Estimated Effort**: ~1,000 lines implementation + ~600 lines test (3 developer-days for the pair)
+**Actual Effort**: 1,652 lines implementation (Sound.ts 1,383 + SoundDevice.ts 269) + 1,921 test lines (Sound.test.ts 1,553 + SoundDevice.test.ts 368), 133 tests total. Completed 2026-06-12. Review: APPROVED. Commit `3f1b511`.
 
 ---
 
