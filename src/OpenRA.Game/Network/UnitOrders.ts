@@ -10,7 +10,7 @@
  * - C# static KickVoteTarget → module-level mutable state
  */
 
-import { Order, OrderPacket, NULL_ACTOR_ID } from './Order'
+import { Order, OrderPacket, OrderType, NULL_ACTOR_ID } from './Order'
 import type { IGameActor } from '../Traits/TraitsInterfaces'
 import type { IResolveOrder } from '../Traits/TraitsInterfaces'
 import type { IValidateOrder } from '../Traits/TraitsInterfaces'
@@ -109,6 +109,8 @@ export interface OrderManagerStub {
   receiveSync(frame: number, syncHash: number, defeatState: bigint): void
   /** Receive disconnect notification. */
   receiveDisconnect(clientId: number, frame: number): void
+  /** Receive tick scale adjustment from server. */
+  receiveTickScale(tickScale: number): void
 }
 
 /**
@@ -161,6 +163,21 @@ export interface WorldStub {
   readonly orderValidators: readonly IValidateOrder[]
   readonly isGameOver: boolean
   readonly isGameStarted: boolean
+  /** Whether the world is fast-forwarding through a loaded game save.
+   *
+   * OpenRA 对照: World.IsLoadingGameSave
+   */
+  readonly isLoadingGameSave: boolean
+  /** The configured game simulation timestep in milliseconds (default 40).
+   *
+   * OpenRA 对照: World.Timestep
+   */
+  readonly timestep: number
+  /** The replay playback timestep in milliseconds (0 = paused).
+   *
+   * OpenRA 对照: World.ReplayTimestep
+   */
+  readonly replayTimestep: number
   readonly worldTick: number
   readonly worldActor: IGameActor
   getActorById(id: number): IGameActor | undefined
@@ -221,6 +238,8 @@ export let kickVoteTarget: number | null = null
 
 // ---------------------------------------------------------------------------
 // Notification key constants (对应 C# FluentReference constants)
+// NOTE: 'notification-joined' and 'notification-lobby-disconnected' are
+// declared inline where used; export as constants when needed by mod code.
 // ---------------------------------------------------------------------------
 
 const GameStarted = 'notification-game-has-started'
@@ -457,10 +476,36 @@ function initDefaultHandlers(): void {
 
   // "HandshakeRequest" — respond to server handshake
   // OpenRA 对照: ProcessOrder case "HandshakeRequest"
-  registerHandler('HandshakeRequest', (_om, _world, _clientId, _order) => {
-    // NOTE: Full handshake response requires settings, mod config, profiles.
-    // Simplified stub for Phase A.
+  registerHandler('HandshakeRequest', (om, _world, _clientId, _order) => {
+    // NOTE: Full production handshake response requires settings, mod config,
+    // profiles, and auth signatures. This simplified implementation issues a
+    // placeholder HandshakeResponse to allow the connection handshake to
+    // complete. The server may reject this for production games.
     // TODO-6.A.2: Implement full HandshakeRequest/HandshakeResponse logic
+    //   including mod switching, player profile, and auth token signing.
+    const response = {
+      client: {
+        name: 'Player',
+        preferredColor: '#FFFFFF',
+        color: '#FFFFFF',
+        faction: 'Random',
+        spawnPoint: 0,
+        team: 0,
+        state: 0, // ClientState.Invalid
+      },
+      mod: 'cnc',
+      version: 'release-20230225',
+      password: '',
+      fingerprint: null,
+      ordersProtocol: 1,
+    }
+    const respOrder = Order.fromTargetString(
+      'HandshakeResponse',
+      JSON.stringify(response),
+      true,
+    )
+    respOrder.type = OrderType.Handshake
+    om.issueOrder(respOrder)
     return true
   })
 
@@ -586,7 +631,8 @@ export function processOrder(
  * OpenRA 对照: UnitOrders.ResolveOrder(Order, World, OrderManager, int)
  *
  * Validates that the subject actor is alive and that all order validators
- * pass before dispatching to actor traits that implement IResolveOrder.
+ * pass, then calls ResolveOrder directly on the subject actor (matching
+ * OpenRA's `order.Subject.ResolveOrder(order)` pattern).
  */
 function resolveOrder(
   order: Order,
@@ -615,23 +661,22 @@ function resolveOrder(
       return
   }
 
-  // Dispatch to actor traits implementing IResolveOrder
-  const resolvers = world.actorsHavingTrait<IResolveOrder>(
-    'resolveOrder',
-  ) as readonly (IResolveOrder & IGameActor)[]
-
-  for (const resolver of resolvers) {
-    if (resolver === subject || resolver.actorId === subject.actorId) {
-      try {
-        // NOTE: Order.targetString is string|null but OrderStub expects string.
-        // Cast through unknown to satisfy the interface contract.
-        resolver.resolveOrder(subject, order as unknown as Parameters<typeof resolver.resolveOrder>[1])
-      } catch (e) {
-        console.debug(
-          `Error resolving order ${order.orderString} on actor ${subject.actorId}: ${String(e)}`,
-        )
-      }
-    }
+  // Call ResolveOrder directly on the subject actor (matches OpenRA:
+  // `order.Subject.ResolveOrder(order)`). The subject itself implements
+  // IResolveOrder; we do NOT scan all actors.
+  // NOTE: Order.targetString is string|null but OrderStub expects string.
+  // Cast through unknown to satisfy the interface contract.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resolvableSubject = subject as unknown as IResolveOrder
+    resolvableSubject.resolveOrder(
+      subject,
+      order as unknown as Parameters<typeof resolvableSubject.resolveOrder>[1],
+    )
+  } catch (e) {
+    console.debug(
+      `Error resolving order ${order.orderString} on actor ${subject.actorId}: ${String(e)}`,
+    )
   }
 }
 

@@ -16,6 +16,7 @@ import {
   tryParseDisconnect,
   tryParseSync,
   tryParseAck,
+  tryParseTickScale,
   tryParseOrderPacket,
   serializeSync,
   NO_ORDERS,
@@ -489,29 +490,47 @@ export class NetworkConnection implements IConnection {
    * Send raw binary data through the WebSocket, including any queued sync packets.
    *
    * OpenRA 对照: NetworkConnection.Send(byte[])
+   *
+   * Each sub-packet is prefixed with a 4-byte big-endian Int32 length prefix
+   * so the server can split concatenated packets on the stream.
    */
   private sendRaw(packet: Uint8Array): void {
     if (!this._ws || this._ws.readyState !== WebSocket.OPEN) return
 
     try {
-      // Calculate total size including queued sync packets
-      const syncSize = this._queuedSyncPackets.length * 17 // 17 bytes per sync packet
-      const totalSize = packet.length + syncSize
-      const combined = new Uint8Array(totalSize)
-
-      // Copy order packet
-      combined.set(packet, 0)
-
-      // Append sync packets
-      let offset = packet.length
+      // Calculate total size: 4b length prefix per sub-packet + data
+      let totalSize = 4 + packet.length // 4-byte length + main packet
+      const syncDatas: Uint8Array[] = []
       for (const s of this._queuedSyncPackets) {
         const syncData = serializeSync(s.frame, s.syncHash, s.defeatState)
-        combined.set(syncData, offset)
-        offset += syncData.length
-        this._sentSync.push(s)
+        syncDatas.push(syncData)
+        totalSize += 4 + syncData.length // 4-byte length + sync packet
       }
 
+      const combined = new Uint8Array(totalSize)
+      const view = new DataView(combined.buffer)
+      let offset = 0
+
+      // Write main order packet with 4-byte length prefix (big-endian)
+      view.setInt32(offset, packet.length, false) // false = big-endian (network byte order)
+      offset += 4
+      combined.set(packet, offset)
+      offset += packet.length
+
+      // Write each sync packet with 4-byte length prefix
+      for (const syncData of syncDatas) {
+        view.setInt32(offset, syncData.length, false) // false = big-endian
+        offset += 4
+        combined.set(syncData, offset)
+        offset += syncData.length
+      }
+
+      // Record sync packets to local sent queue
+      for (const s of this._queuedSyncPackets) {
+        this._sentSync.push(s)
+      }
       this._queuedSyncPackets.length = 0
+
       this._ws.send(combined.buffer)
     } catch (_e) {
       // Drop on the floor; disconnect will be detected by onclose
@@ -542,8 +561,8 @@ export class NetworkConnection implements IConnection {
     while (this._receivedPackets.length > 0) {
       const p = this._receivedPackets.shift()!
 
-      // Try to parse as disconnect
-      const disconnect = tryParseDisconnect(p.data)
+      // Try to parse as disconnect (only accepted from server, fromClient=0)
+      const disconnect = tryParseDisconnect(p.data, p.fromClient)
       if (disconnect) {
         orderManager.receiveDisconnect(
           disconnect.clientId,
@@ -563,8 +582,15 @@ export class NetworkConnection implements IConnection {
         continue
       }
 
-      // Try to parse as ack
-      const ack = tryParseAck(p.data)
+      // Try to parse as tick scale (only accepted from server)
+      const tickScale = tryParseTickScale(p.data, p.fromClient)
+      if (tickScale !== null) {
+        orderManager.receiveTickScale(tickScale)
+        continue
+      }
+
+      // Try to parse as ack (only accepted from server, fromClient=0)
+      const ack = tryParseAck(p.data, p.fromClient)
       if (ack) {
         if (ack.count > this._sentOrders.length) {
           throw new Error(
@@ -589,6 +615,7 @@ export class NetworkConnection implements IConnection {
           frame: ack.frame,
           orders: packet,
         })
+        continue
       }
 
       // Try to parse as order packet
@@ -605,10 +632,15 @@ export class NetworkConnection implements IConnection {
           orders: orderPacket.packet,
         })
         }
+        continue
       }
 
-      // We don't throw on unknown packets — they may be from newer protocol versions
-      // or be ping/tick-scale types not yet implemented.
+      // Unknown packet type — log for debugging but don't throw
+      // (may be from newer protocol versions or extensions)
+      console.debug(
+        `[Connection] Unknown packet from client ${p.fromClient} ` +
+        `(length=${p.data.length}, typeByte=${p.data.length >= 5 ? '0x' + p.data[4].toString(16) : 'none'})`,
+      )
 
       if (this._disposed) return
     }

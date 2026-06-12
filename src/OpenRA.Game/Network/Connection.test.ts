@@ -76,6 +76,7 @@ function mockOrderManagerStub(): OrderManagerStub & {
     _receivedOrders: [] as Array<{ clientId: number; data: { frame: number; orders: OrderPacket } }>,
     _receivedSyncs: [] as Array<{ frame: number; syncHash: number; defeatState: bigint }>,
     _receivedDisconnects: [] as Array<{ clientId: number; frame: number }>,
+    _receivedTickScales: [] as number[],
   }
 
   return {
@@ -114,6 +115,9 @@ function mockOrderManagerStub(): OrderManagerStub & {
     },
     receiveDisconnect(clientId: number, frame: number): void {
       calls._receivedDisconnects.push({ clientId, frame })
+    },
+    receiveTickScale(tickScale: number): void {
+      calls._receivedTickScales.push(tickScale)
     },
     ...calls,
   }

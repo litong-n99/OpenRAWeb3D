@@ -83,6 +83,7 @@ function mockOrderManager(overrides: Partial<OrderManagerStub> = {}): OrderManag
     receiveOrders: overrides.receiveOrders ?? vi.fn(),
     receiveSync: overrides.receiveSync ?? vi.fn(),
     receiveDisconnect: overrides.receiveDisconnect ?? vi.fn(),
+    receiveTickScale: overrides.receiveTickScale ?? vi.fn(),
   }
 }
 
@@ -116,6 +117,9 @@ function mockWorld(overrides: Partial<WorldStub> = {}): WorldStub {
     orderValidators: overrides.orderValidators ?? [],
     isGameOver: overrides.isGameOver ?? false,
     isGameStarted: overrides.isGameStarted ?? false,
+    isLoadingGameSave: overrides.isLoadingGameSave ?? false,
+    timestep: overrides.timestep ?? 40,
+    replayTimestep: overrides.replayTimestep ?? 0,
     worldTick: overrides.worldTick ?? 0,
     worldActor: overrides.worldActor ?? mockIGameActor(),
     getActorById: overrides.getActorById ?? ((_id: number) => undefined),
