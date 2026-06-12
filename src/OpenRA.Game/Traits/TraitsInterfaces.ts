@@ -2212,6 +2212,23 @@ export abstract class ConditionalTrait<TInfo extends ConditionalTraitInfo> exten
     return !this._enabled
   }
 
+  /** Whether this trait is currently paused (not disabled, but no ammo).
+   *
+   *  OpenRA 对照: PausableConditionalTrait.IsTraitPaused
+   *
+   *  Paused traits are enabled but cannot act (e.g., weapon has no ammo).
+   *  Subclasses should set this to true/false as ammo state changes.
+   */
+  protected _paused: boolean = false
+
+  /** Whether this trait is currently paused (enabled but unable to act).
+   *
+   *  OpenRA 对照: PausableConditionalTrait.IsTraitPaused
+   */
+  get isTraitPaused(): boolean {
+    return this._paused
+  }
+
   constructor(info: TInfo) {
     super()
     this.info = info

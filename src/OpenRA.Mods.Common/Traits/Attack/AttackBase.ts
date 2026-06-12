@@ -22,7 +22,6 @@ import {
 import type { IFacing } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { Target, TargetType } from '../../../OpenRA.Game/Traits/Target.js'
 import { WPos } from '../../../OpenRA.Game/WPos.js'
-// WVec unused directly but needed for Target signature compatibility
 import { WDist } from '../../../OpenRA.Game/WDist.js'
 import { WAngle } from '../../../OpenRA.Game/WAngle.js'
 import type { Armament } from '../Armament.js'
@@ -369,7 +368,7 @@ export abstract class AttackBase
     for (const armament of this.armaments) {
       const checkIsValid = checkForCenterTargetingWeapons
         ? (armament.weapon?.targetActorCenter ?? false)
-        : true
+        : !armament.isTraitPaused
       const reloadingStateIsValid = !reloadingIsInvalid || !armament.isReloading
 
       if (
@@ -413,6 +412,7 @@ export abstract class AttackBase
     let min = WDist.MaxValue
     for (const armament of this.armaments) {
       if (armament.isTraitDisabled) continue
+      if (armament.isTraitPaused) continue
       const range = armament.weapon?.minRange ?? WDist.Zero
       if (WDist.lessThan(range, min)) min = range
     }
@@ -430,6 +430,7 @@ export abstract class AttackBase
     let max = WDist.Zero
     for (const armament of this.armaments) {
       if (armament.isTraitDisabled) continue
+      if (armament.isTraitPaused) continue
       const range = armament.maxRange()
       if (WDist.greaterThan(range, max)) max = range
     }
@@ -447,6 +448,7 @@ export abstract class AttackBase
     let min = WDist.MaxValue
     for (const armament of this.armaments) {
       if (armament.isTraitDisabled) continue
+      if (armament.isTraitPaused) continue
       if (!armament.weapon?.isValidAgainst(target, null, armament as unknown as IGameActor)) continue
       const range = armament.weapon.minRange
       if (WDist.lessThan(range, min)) min = range
@@ -471,6 +473,7 @@ export abstract class AttackBase
 
       const range = armament.maxRange()
       if (WDist.greaterThan(range, maxFallback)) maxFallback = range
+      if (armament.isTraitPaused) continue
       if (WDist.greaterThan(range, max)) max = range
     }
 
@@ -578,9 +581,15 @@ export abstract class AttackBase
   /** Check if the target is reachable (in range, or can move into range).
    *
    *  OpenRA 对照: AttackBase.IsReachableTarget(Target, bool)
+   *
+   *  @param target — the target to check
+   *  @param allowMove — whether movement can be used to close distance
+   *  @param self — the attacking actor (for centerPosition)
    */
-  isReachableTarget(target: Target, allowMove: boolean): boolean {
-    const centerPos = WPos.Zero // Will be filled by actor center at runtime
+  isReachableTarget(target: Target, allowMove: boolean, self?: IGameActor): boolean {
+    const centerPos = self
+      ? ((self as unknown as { centerPosition?: WPos }).centerPosition ?? WPos.Zero)
+      : WPos.Zero
 
     return (
       this.hasAnyValidWeapons(target) &&

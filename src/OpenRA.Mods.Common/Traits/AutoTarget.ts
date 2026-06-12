@@ -316,6 +316,9 @@ export class AutoTarget
     // Don't retaliate against heals
     if (attackInfo.damage.value < 0) return
 
+    // TODO-8.D.DEFER-PASSENGER: If attacker is in transport, attack the transport instead
+    // const passenger = attacker.traitOrDefault?.('Passenger') as ...
+    // if (passenger?.transport) attacker = passenger.transport
     let attacker = attackInfo.attacker
     if (!attacker || attacker.disposed) return
 
@@ -342,7 +345,7 @@ export class AutoTarget
     )
     if (!hasValidWeapon) return
 
-    // Don't retaliate against friendly fire
+    // TODO-8.D.DEFER-FRIENDLYFIRE: Don't retaliate against friendly fire
     // (duck-typed check, always allow retaliation for now)
 
     // Respect auto attack priorities for higher stances
@@ -525,6 +528,8 @@ export class AutoTarget
     if (activePriorities.length === 0) return chosenTarget
 
     // Get nearby actors via duck-typed world query
+    // TODO-8.D.DEFER-FROZENACTOR: Also scan FrozenActorLayer for frozen-actors-in-circle
+    // TODO-8.D.DEFER-AUTOTARGET-PREVENTSAUTO: Check IDisableEnemyAutoTarget per target
     const centerPos =
       (self as unknown as { centerPosition?: WPos }).centerPosition ?? WPos.Zero
     const worldActors = this.getActorsInRange(self, centerPos, scanRange)
@@ -698,15 +703,24 @@ export class AutoTarget
    */
   private getActorsInRange(
     self: IGameActor,
-    _pos: WPos,
-    _range: WDist,
+    pos: WPos,
+    range: WDist,
   ): Target[] {
     // Duck-typed world query
     const world = (self as unknown as { world?: { actors?: Iterable<IGameActor> } }).world
     if (!world?.actors) return []
 
+    // TODO-8.D.PERF: Replace linear scan with spatial index (Ch9 pathfinding grid integration)
+    const rangeLenSq = range.length * range.length
     const actors: Target[] = []
     for (const actor of world.actors) {
+      // Skip self
+      if ((actor as unknown as { actorId?: number }).actorId ===
+          (self as unknown as { actorId?: number }).actorId) continue
+      // Basic range filtering by WPos distance
+      const actorCenter = (actor as unknown as { centerPosition?: WPos }).centerPosition
+      if (actorCenter && WPos.subtract(actorCenter, pos).horizontalLengthSquared > rangeLenSq) continue
+
       actors.push(Target.fromActor(actor as unknown as never))
     }
     return actors

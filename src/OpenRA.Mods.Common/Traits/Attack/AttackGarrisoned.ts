@@ -131,9 +131,10 @@ export class AttackGarrisoned extends AttackFollow implements ITick {
    *  OpenRA 对照: AttackGarrisoned.Tick(Actor)
    */
   tick(_self: IGameActor): void {
-    // TODO-8.D.DEFER-GARRISONED: Full implementation deferred
-    throw new Error(
-      'AttackGarrisoned.tick(): Not yet implemented. ' +
+    // TODO-8.D.DEFER-GARRISONED: Full implementation deferred.
+    // Cargo/Passenger traits are planned for Ch11 (Production & Building).
+    console.warn(
+      'TODO-8.D.DEFER-GARRISONED: AttackGarrisoned.tick() not yet implemented. ' +
       'Cargo/Passenger traits are planned for Ch11 (Production & Building).',
     )
   }
@@ -147,9 +148,10 @@ export class AttackGarrisoned extends AttackFollow implements ITick {
    *  OpenRA 对照: AttackGarrisoned.DoAttack(Actor, Target)
    */
   override doAttack(_self: IGameActor, _target: Target): void {
-    // TODO-8.D.DEFER-GARRISONED: Full implementation deferred
-    throw new Error(
-      'AttackGarrisoned.doAttack(): Not yet implemented. ' +
+    // TODO-8.D.DEFER-GARRISONED: Full implementation deferred.
+    // Cargo/Passenger traits are planned for Ch11 (Production & Building).
+    console.warn(
+      'TODO-8.D.DEFER-GARRISONED: AttackGarrisoned.doAttack() not yet implemented. ' +
       'Cargo/Passenger traits are planned for Ch11 (Production & Building).',
     )
   }

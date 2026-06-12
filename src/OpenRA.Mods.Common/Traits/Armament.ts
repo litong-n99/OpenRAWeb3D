@@ -44,22 +44,7 @@ import {
   isINotifyAttack,
   isINotifyBurstComplete,
 } from './CombatInterfaces.js'
-
-// ---------------------------------------------------------------------------
-// Helper: applyPercentageModifiers
-// ---------------------------------------------------------------------------
-
-/** Apply percentage modifiers sequentially using integer math.
- *
- *  OpenRA 对照: Util.ApplyPercentageModifiers(int, int[])
- */
-function applyPercentageModifiers(base: number, percentages: number[]): number {
-  let result = base
-  for (const p of percentages) {
-    result = Math.trunc((result * p) / 100)
-  }
-  return result
-}
+import { applyPercentageModifiers } from '../Projectiles/MissileMath.js'
 
 // NOTE: facingWithinTolerance is defined in AttackBase.ts for shared use
 // by attack variants. Armament does not perform facing checks itself.
@@ -460,6 +445,7 @@ export class Armament
    *  OpenRA 对照: Armament.CanFire(Actor, Target)
    */
   canFire(self: IGameActor, target: Target): boolean {
+    if (this.isTraitPaused) return false
     if (this.isReloading) return false
 
     if (this.turret) {
@@ -568,7 +554,7 @@ export class Armament
     const args: ProjectileArgs = {
       weapon: this.weapon!,
       facing: muzzleFacing.yaw,
-      currentMuzzleFacing: () => muzzleFacing.yaw,
+      currentMuzzleFacing: () => this.calculateMuzzleOrientation(self, barrel).yaw,
       damageModifiers: this.damageModifiers,
       inaccuracyModifiers: this.inaccuracyModifiers,
       rangeModifiers: this.rangeModifiers,

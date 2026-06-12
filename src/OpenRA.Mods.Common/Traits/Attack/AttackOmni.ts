@@ -103,20 +103,18 @@ export class AttackOmniSetTarget implements IActivityNotifyStanceChanged {
      */
     tick(_self: IGameActor): boolean {
       // Recalculate target (hidden targets invalidated)
-      this.target = Target.Invalid
-
-      const selfAny = this.self as unknown as {
-        centerPosition?: { X: number; Y: number; Z: number }
-      }
-      const centerPos = selfAny.centerPosition
+      // OpenRA 对照: target = target.RecalculateInvalidatingHiddenTargets(self.Owner)
+      this.target = (this.target as unknown as {
+        recalculateInvalidatingHiddenTargets?: (owner: unknown) => Target
+      }).recalculateInvalidatingHiddenTargets?.(
+        (this.self as unknown as { owner?: unknown }).owner,
+      ) ?? this.target
 
       if (this.isCanceling || !this.target.isValidFor(this.self as unknown as never)) {
         return true
       }
 
-      const reachable = centerPos
-        ? this.attack.isReachableTarget(this.target, this.allowMove)
-        : false
+      const reachable = this.attack.isReachableTarget(this.target, this.allowMove, this.self)
 
       if (!reachable) return true
 

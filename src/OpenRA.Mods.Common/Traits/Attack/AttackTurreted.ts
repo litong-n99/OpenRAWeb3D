@@ -8,7 +8,7 @@
  * - canAttack checks that all turrets can face target
  */
 
-import { Target } from '../../../OpenRA.Game/Traits/Target.js'
+import { Target, TargetType } from '../../../OpenRA.Game/Traits/Target.js'
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { AttackFollow, AttackFollowInfo } from './AttackFollow.js'
 
@@ -96,7 +96,7 @@ export class AttackTurreted extends AttackFollow {
    *  OpenRA 对照: AttackTurreted.CanAttack(Actor, Target)
    */
   canAttack(self: IGameActor, target: Target): boolean {
-    if (target.type === 0 /* TargetType.Invalid */) return false
+    if (target.type === TargetType.Invalid) return false
 
     // Bring all turrets to bear on the target
     let turretReady = false

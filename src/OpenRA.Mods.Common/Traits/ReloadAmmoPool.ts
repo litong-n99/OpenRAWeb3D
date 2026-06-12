@@ -20,22 +20,7 @@ import type { Target } from '../../OpenRA.Game/Traits/Target.js'
 import type { INotifyAttack, Barrel } from './CombatInterfaces.js'
 import { isIReloadAmmoModifier } from './CombatInterfaces.js'
 import { AmmoPool } from './AmmoPool.js'
-
-// ---------------------------------------------------------------------------
-// Helper: applyPercentageModifiers
-// ---------------------------------------------------------------------------
-
-/** Apply percentage modifiers sequentially using integer math.
- *
- *  OpenRA 对照: Util.ApplyPercentageModifiers(int, int[])
- */
-function applyPercentageModifiers(base: number, percentages: number[]): number {
-  let result = base
-  for (const p of percentages) {
-    result = Math.trunc((result * p) / 100)
-  }
-  return result
-}
+import { applyPercentageModifiers } from '../Projectiles/MissileMath.js'
 
 // ---------------------------------------------------------------------------
 // ReloadAmmoPoolInfo
@@ -144,6 +129,7 @@ export class ReloadAmmoPool
    */
   tick(self: IGameActor): void {
     if (this.isTraitDisabled) return
+    if (this.isTraitPaused) return
 
     this.reload(self)
   }

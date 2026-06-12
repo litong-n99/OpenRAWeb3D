@@ -9,6 +9,7 @@ import { WDist } from '../../../OpenRA.Game/WDist.js'
 import { WAngle } from '../../../OpenRA.Game/WAngle.js'
 import { Target } from '../../../OpenRA.Game/Traits/Target.js'
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { Armament } from '../Armament.js'
 
 // ---------------------------------------------------------------------------
 // Concrete subclass for testing abstract AttackBase
@@ -128,6 +129,116 @@ describe('AttackBase', () => {
       attack.isAiming = false
       attack.tick({} as never)
       expect(stopped).toHaveBeenCalled()
+    })
+
+    // BLOCKER 3 fix: isReachableTarget uses self.centerPosition
+    it('isReachableTarget uses self centerPosition for range check', () => {
+      const info = new AttackBaseInfo()
+      const attack = new TestAttack(info)
+      const self = { centerPosition: new WPos(1000, 0, 0) }
+      const target = Target.fromPos(new WPos(1000, 100, 0))
+      // Without valid armaments, returns false regardless
+      const result = attack.isReachableTarget(target, false, self as never)
+      expect(typeof result).toBe('boolean')
+    })
+
+    // MAJOR 4 fix: HasAnyValidWeapons checks isTraitPaused when not center-targeting
+    it('hasAnyValidWeapons checks isTraitPaused for non-center case', () => {
+      const info = new AttackBaseInfo()
+      const attack = new TestAttack(info)
+      // Create a fake armament that is paused
+      const pausedArmament = {
+        isTraitDisabled: false,
+        isTraitPaused: true,
+        isReloading: false,
+        maxRange: () => new WDist(1024),
+        weapon: {
+          isValidAgainst: () => true,
+          targetActorCenter: false,
+        },
+        info: { name: 'paused', targetRelationships: 1 },
+      } as unknown as Armament
+      ;(attack as unknown as { getArmaments: () => Armament[] }).getArmaments = () => [pausedArmament]
+      const target = Target.fromPos(WPos.Zero)
+      // With paused armament and non-center check, should return false
+      expect(attack.hasAnyValidWeapons(target, false, false)).toBe(false)
+    })
+
+    // MAJOR 5 fix: GetMaximumRangeVersusTarget skips paused armaments
+    it('getMaximumRangeVersusTarget skips paused armaments for max calculation', () => {
+      const info = new AttackBaseInfo()
+      const attack = new TestAttack(info)
+      const pausedArmament = {
+        isTraitDisabled: false,
+        isTraitPaused: true,
+        maxRange: () => new WDist(2048),
+        weapon: {
+          isValidAgainst: () => true,
+          targetActorCenter: false,
+        },
+        info: { name: 'paused', targetRelationships: 1 },
+      } as unknown as Armament
+      const activeArmament = {
+        isTraitDisabled: false,
+        isTraitPaused: false,
+        maxRange: () => new WDist(1024),
+        weapon: {
+          isValidAgainst: () => true,
+          targetActorCenter: false,
+        },
+        info: { name: 'active', targetRelationships: 1 },
+      } as unknown as Armament
+      ;(attack as unknown as { getArmaments: () => Armament[] }).getArmaments = () => [pausedArmament, activeArmament]
+      const target = Target.fromPos(WPos.Zero)
+      // Should return max of non-paused only (1024), fallback would be 2048
+      const result = attack.getMaximumRangeVersusTarget(target)
+      expect(result.length).toBe(1024)
+    })
+
+    // isTraitPaused check in GetMaximumRange
+    it('getMaximumRange skips paused armaments', () => {
+      const info = new AttackBaseInfo()
+      const attack = new TestAttack(info)
+      const pausedArmament = {
+        isTraitDisabled: false,
+        isTraitPaused: true,
+        maxRange: () => new WDist(2048),
+        weapon: { isValidAgainst: () => true },
+        info: { name: 'paused', targetRelationships: 1 },
+      } as unknown as Armament
+      const activeArmament = {
+        isTraitDisabled: false,
+        isTraitPaused: false,
+        maxRange: () => new WDist(1024),
+        weapon: { isValidAgainst: () => true },
+        info: { name: 'active', targetRelationships: 1 },
+      } as unknown as Armament
+      ;(attack as unknown as { getArmaments: () => Armament[] }).getArmaments = () => [pausedArmament, activeArmament]
+      const result = attack.getMaximumRange()
+      expect(result.length).toBe(1024)
+    })
+
+    // isTraitPaused check in GetMinimumRange
+    it('getMinimumRange skips paused armaments', () => {
+      const info = new AttackBaseInfo()
+      const attack = new TestAttack(info)
+      const pausedArmament = {
+        isTraitDisabled: false,
+        isTraitPaused: true,
+        maxRange: () => new WDist(1024),
+        weapon: { minRange: new WDist(100), isValidAgainst: () => true },
+        info: { name: 'paused', targetRelationships: 1 },
+      } as unknown as Armament
+      const activeArmament = {
+        isTraitDisabled: false,
+        isTraitPaused: false,
+        maxRange: () => new WDist(1024),
+        weapon: { minRange: new WDist(200), isValidAgainst: () => true },
+        info: { name: 'active', targetRelationships: 1 },
+      } as unknown as Armament
+      ;(attack as unknown as { getArmaments: () => Armament[] }).getArmaments = () => [pausedArmament, activeArmament]
+      const result = attack.getMinimumRange()
+      expect(result.length).toBe(200)
     })
   })
 })

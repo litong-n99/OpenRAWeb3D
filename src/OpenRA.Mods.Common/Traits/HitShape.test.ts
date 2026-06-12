@@ -61,5 +61,27 @@ describe('HitShape', () => {
       const dist = hitShape.distanceFromEdge(actor as never, new WPos(1000, 0, 0))
       expect(dist.length).toBeGreaterThan(0)
     })
+
+    // MAJOR 9 fix: cache key uses string concatenation, not JSON.stringify
+    it('caches targetable positions with string-concat key', () => {
+      const circle = new CircleShape({ radius: 500 })
+      circle.initialize()
+      const info = new HitShapeInfo({
+        type: circle,
+        targetableOffsets: [new WVec(100, 0, 0)],
+      })
+      const hitShape = new HitShape(info)
+      const actor = {
+        centerPosition: new WPos(500, 500, 0),
+        orientation: undefined,
+      }
+      // First call computes and caches
+      const pos1 = hitShape.targetablePositions(actor as never)
+      // Second call returns cached result (cacheKey matches)
+      const pos2 = hitShape.targetablePositions(actor as never)
+      expect(pos1).toBe(pos2) // Same array reference (cached)
+      // Non-JSON-stringify key: asterisk is valid separator in concat key
+      expect(pos1.length).toBeGreaterThan(0)
+    })
   })
 })

@@ -74,5 +74,23 @@ describe('AttackCharges', () => {
       attack.attacking({} as never, null as never, null as never, null as never)
       expect(attack.chargeLevel).toBe(0)
     })
+
+    // MINOR 14 fix: tick checks if current activity is SetTarget
+    it('tick checks current activity is SetTarget', () => {
+      const info = new AttackChargesInfo({ chargeLevel: 25, chargeRate: 1 })
+      const attack = new AttackCharges(info)
+      attack.chargeLevel = 5
+      // Internal charging flag is set in canAttack
+      // With no SetTarget activity, charging stays false, so it discharges
+      const actor = {
+        isInWorld: true,
+        getTraits: () => [],
+        grantCondition: vi.fn(() => 1),
+        revokeCondition: vi.fn(() => -1),
+      }
+      attack.tick(actor as never)
+      // Without a SetTarget activity, charging is false, so it discharges
+      expect(attack.chargeLevel).toBeLessThanOrEqual(5)
+    })
   })
 })

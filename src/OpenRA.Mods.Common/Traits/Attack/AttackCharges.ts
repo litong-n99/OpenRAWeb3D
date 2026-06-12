@@ -10,7 +10,7 @@
 
 import { Target } from '../../../OpenRA.Game/Traits/Target.js'
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
-import { AttackOmni, AttackOmniInfo } from './AttackOmni.js'
+import { AttackOmni, AttackOmniInfo, AttackOmniSetTarget } from './AttackOmni.js'
 import type { INotifyAttack, Barrel } from '../CombatInterfaces.js'
 
 // ---------------------------------------------------------------------------
@@ -98,7 +98,9 @@ export class AttackCharges extends AttackOmni implements INotifyAttack {
    */
   override tick(self: IGameActor): void {
     // Stop charging when we lose our target
-    // Check if current activity is a SetTarget
+    // OpenRA 对照: charging &= self.CurrentActivity is SetTarget
+    const currentActivity = (self as unknown as { currentActivity?: unknown }).currentActivity
+    this.charging &&= currentActivity instanceof AttackOmniSetTarget
 
     const delta = this.charging ? this.info.chargeRate : -this.info.dischargeRate
     this.chargeLevel = Math.max(
@@ -130,7 +132,7 @@ export class AttackCharges extends AttackOmni implements INotifyAttack {
    */
   override canAttack(self: IGameActor, target: Target): boolean {
     this.charging =
-      super.canAttack(self, target) && this.isReachableTarget(target, true)
+      super.canAttack(self, target) && this.isReachableTarget(target, true, self)
     return this.chargeLevel >= this.info.chargeLevel && this.charging
   }
 

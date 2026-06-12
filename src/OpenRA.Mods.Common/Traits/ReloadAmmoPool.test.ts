@@ -97,5 +97,21 @@ describe('ReloadAmmoPool', () => {
       trait.attacking(actor as never, null as never, null as never, null as never)
       expect(trait.remainingTicks).toBe(50)
     })
+
+    // MAJOR 7 fix: tick skips reload when paused
+    it('tick skips reload when trait is paused', () => {
+      const ammoInfo = new AmmoPoolInfo({ ammo: 5, initialAmmo: 1, name: 'primary' })
+      const ammoPool = new AmmoPool(ammoInfo)
+      const info = new ReloadAmmoPoolInfo({ delay: 50, count: 1, ammoPool: 'primary' })
+      const trait = new ReloadAmmoPool(info)
+      trait.ammoPool = ammoPool
+      trait.remainingTicks = 0
+      const internal = trait as unknown as { _paused: boolean }
+      internal._paused = true
+      const actor = mockActor()
+      trait.tick(actor as never)
+      // Ammo should NOT increase because trait is paused
+      expect(ammoPool.currentAmmoCount).toBe(1)
+    })
   })
 })

@@ -288,15 +288,15 @@ export class HitShape
       centerPosition?: WPos
       orientation?: WRot
     }
-    return JSON.stringify({
-      cp: posAccess.centerPosition?.toString(),
-      or: posAccess.orientation?.toString(),
-      to: this.turret
-        ? (this.turret as { localOrientation?: WRot }).localOrientation?.toString()
-        : null,
-      tOff: this.turret
-        ? (this.turret as { offset?: WVec }).offset?.toString()
-        : null,
-    })
+    const cp = posAccess.centerPosition?.toString() ?? ''
+    const or = posAccess.orientation?.toString() ?? ''
+    const to = this.turret
+      ? (this.turret as { localOrientation?: WRot }).localOrientation?.toString() ?? ''
+      : ''
+    const tOff = this.turret
+      ? (this.turret as { offset?: WVec }).offset?.toString() ?? ''
+      : ''
+    // NOTE: Concatenation used instead of JSON.stringify for hot-path perf
+    return `${cp}|${or}|${to}|${tOff}`
   }
 }

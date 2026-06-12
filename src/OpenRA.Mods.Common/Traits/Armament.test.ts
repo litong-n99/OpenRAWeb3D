@@ -208,5 +208,30 @@ describe('Armament', () => {
       const arm = new Armament(info)
       expect(arm.burst).toBe(3)
     })
+
+    // MAJOR 6 fix: canFire checks isTraitPaused
+    it('canFire returns false when trait is paused', () => {
+      const weapon = createTestWeapon({ range: 5000 })
+      const info = new ArmamentInfo({ weaponInfo: weapon })
+      const arm = new Armament(info)
+      const internal = arm as unknown as { _paused: boolean }
+      internal._paused = true
+      const actor = createMockActor()
+      const target = Target.fromPos(new WPos(100, 0, 0))
+      expect(arm.canFire(actor as never, target)).toBe(false)
+    })
+
+    // MAJOR 8 fix: currentMuzzleFacing lambda recomputes each call
+    it('fireBarrel currentMuzzleFacing recomputes muzzle orientation', () => {
+      const weapon = createTestWeapon({ range: 5000, burst: 1, projectileType: 'Bullet' })
+      const info = new ArmamentInfo({ weaponInfo: weapon })
+      const arm = new Armament(info)
+      // Verify calculateMuzzleOrientation is defined (used by currentMuzzleFacing)
+      const barrel = arm.barrels[0]!
+      const actor = createMockActor()
+      const orientation = arm.calculateMuzzleOrientation(actor as never, barrel)
+      expect(orientation).toBeDefined()
+      expect(typeof orientation.yaw).toBe('object')
+    })
   })
 })

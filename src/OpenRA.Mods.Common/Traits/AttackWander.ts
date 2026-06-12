@@ -76,9 +76,10 @@ export class AttackWander {
    *  OpenRA 对照: Wanders.Tick() + AttackWander.DoAction()
    */
   tickIdle(_self: IGameActor): void {
-    // TODO-8.D.DEFER-WANDERS: Implement when Wanders is available
-    throw new Error(
-      'AttackWander.tickIdle(): Not yet implemented. ' +
+    // TODO-8.D.DEFER-WANDERS: Implement when Wanders is available.
+    // Wanders trait is planned for Chapter 14 (Activities).
+    console.warn(
+      'TODO-8.D.DEFER-WANDERS: AttackWander.tickIdle() not yet implemented. ' +
       'Wanders trait is planned for Chapter 14 (Activities).',
     )
   }

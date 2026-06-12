@@ -483,13 +483,19 @@ export class AttackFollowActivity {
       if (this.attack.isTraitDisabled) return false
 
       // Recalculate target
-      this.target = Target.Invalid
+      // OpenRA 对照: target = target.Recalculate(self.Owner, out var targetIsHiddenActor)
+      this.target = (this.target as unknown as {
+        recalculate?: (owner: unknown, out: { targetIsHiddenActor: boolean }) => Target
+      }).recalculate?.(
+        (self as unknown as { owner?: unknown }).owner,
+        { targetIsHiddenActor: false },
+      ) ?? this.target
       this.attack.setRequestedTarget(this.target, this.forceAttack)
       this.hasTicked = true
 
       // Check reachability
       if (!this.target.isValidFor(self as unknown as never)) return true
-      if (!this.attack.isReachableTarget(this.target, this.allowMove)) return true
+      if (!this.attack.isReachableTarget(this.target, this.allowMove, self)) return true
 
       // Do attack
       this.attack.doAttack(self, this.target)
