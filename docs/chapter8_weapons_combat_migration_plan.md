@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 8 -- Weapons & Combat System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.5 (WeaponInfo/Combat) + Section 4.3 (Traits)
-> **Chapter Status**: PLANNING (0/56 migrated)
+> **Chapter Status**: IN PROGRESS (15/56 migrated, Phase A COMPLETE)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%)
 >
@@ -192,8 +192,9 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 ### 3.1 Phase A: Warheads Foundation
 
-**Status**: 📋 待迁移 (0/15 migrated)
+**Status**: ✅ 已完成 (15/15 migrated, 143 tests)
 **Complexity**: Low-Medium (base class LOW, spread damage HIGH)
+**Review**: APPROVED (2 review rounds). Commits `d9f6c34` (initial), `9b25839` (Round 2 fixes)
 **Blocked by**: Chapter 3 (World, Actor, TraitDictionary, ITick) -- COMPLETE
 **Blocks**: Phase B (Projectiles trigger warheads on impact), Phase C (WeaponInfo references warhead types), Phase D (Armament selects warhead)
 
@@ -208,7 +209,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.1 Warhead (Base Class)
 
-- [ ] **TODO-8.A.1** `src/OpenRA.Mods.Common/Warheads/Warhead.ts` (98 lines C#) -- Abstract base class for all warhead effects:
+- [x] **TODO-8.A.1** `src/OpenRA.Mods.Common/Warheads/Warhead.ts` (98 lines C#) -- Abstract base class for all warhead effects:
   - Abstract base implementing `IWarhead` interface with `impact()` method
   - `getEffectiveDamage()` virtual method for damage calculation override
   - `getDamageModifiers()` virtual method for per-target damage type modifiers
@@ -218,7 +219,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.2 DamageWarhead
 
-- [ ] **TODO-8.A.2** `src/OpenRA.Mods.Common/Warheads/DamageWarhead.ts` (94 lines C#) -- Damage calculation framework:
+- [x] **TODO-8.A.2** `src/OpenRA.Mods.Common/Warheads/DamageWarhead.ts` (94 lines C#) -- Damage calculation framework:
   - Extends `Warhead` with `damage` property (integer damage amount)
   - `damageTypes: Set<string>` -- damage type classification (e.g., "Bullet", "Explosion", "Fire")
   - `versus: Map<string, number>` -- damage multiplier vs each armor type
@@ -228,7 +229,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.3 SpreadDamageWarhead
 
-- [ ] **TODO-8.A.3** `src/OpenRA.Mods.Common/Warheads/SpreadDamageWarhead.ts` (143 lines C#) -- Area-of-effect damage warhead:
+- [x] **TODO-8.A.3** `src/OpenRA.Mods.Common/Warheads/SpreadDamageWarhead.ts` (143 lines C#) -- Area-of-effect damage warhead:
   - Extends `DamageWarhead` with `spread: WDist` property (blast radius)
   - `falloff: number[]` array controlling damage reduction with distance (100%, 50%, 25%, 0%)
   - `range: WDist[]` thresholds corresponding to each falloff level
@@ -240,7 +241,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.4 TargetDamageWarhead
 
-- [ ] **TODO-8.A.4** `src/OpenRA.Mods.Common/Warheads/TargetDamageWarhead.ts` (67 lines C#) -- Single-target damage warhead:
+- [x] **TODO-8.A.4** `src/OpenRA.Mods.Common/Warheads/TargetDamageWarhead.ts` (67 lines C#) -- Single-target damage warhead:
   - Extends `DamageWarhead` -- applies damage to exactly one target (no spread)
   - `doImpact(target, firedBy)` -- direct damage to target actor's Health trait
   - No spatial query needed (simpler than SpreadDamageWarhead)
@@ -248,7 +249,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.5 CreateEffectWarhead
 
-- [ ] **TODO-8.A.5** `src/OpenRA.Mods.Common/Warheads/CreateEffectWarhead.ts` (149 lines C#) -- Spawns visual effect on impact:
+- [x] **TODO-8.A.5** `src/OpenRA.Mods.Common/Warheads/CreateEffectWarhead.ts` (149 lines C#) -- Spawns visual effect on impact:
   - Spawns explosion animation/sprite effect at impact position
   - `explosion: string` -- sequence name for explosion sprite
   - `impactSound: string` -- sound to play on impact
@@ -260,7 +261,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.6 FireClusterWarhead
 
-- [ ] **TODO-8.A.6** `src/OpenRA.Mods.Common/Warheads/FireClusterWarhead.ts` (118 lines C#) -- Multipoint cluster damage:
+- [x] **TODO-8.A.6** `src/OpenRA.Mods.Common/Warheads/FireClusterWarhead.ts` (118 lines C#) -- Multipoint cluster damage:
   - Extends `DamageWarhead` with `projectileCount: number` (sub-explosion count)
   - `randomMultiplier: number` -- random offset distance for sub-explosions
   - `doImpact(target, firedBy)` -- spawns N sub-damage instances at random positions around impact point
@@ -270,7 +271,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.7 LeaveSmudgeWarhead
 
-- [ ] **TODO-8.A.7** `src/OpenRA.Mods.Common/Warheads/LeaveSmudgeWarhead.ts` (75 lines C#) -- Visual terrain scorching:
+- [x] **TODO-8.A.7** `src/OpenRA.Mods.Common/Warheads/LeaveSmudgeWarhead.ts` (75 lines C#) -- Visual terrain scorching:
   - `smudgeType: string[]` -- smudge terrain overlay types to apply
   - `size: CVec` -- smudge footprint dimensions in cells (default 1x1)
   - `doImpact(target, firedBy)` -- marks cells within footprint with smudge terrain type
@@ -279,7 +280,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.8 DestroyResourceWarhead
 
-- [ ] **TODO-8.A.8** `src/OpenRA.Mods.Common/Warheads/DestroyResourceWarhead.ts` (66 lines C#) -- Resource destruction on impact:
+- [x] **TODO-8.A.8** `src/OpenRA.Mods.Common/Warheads/DestroyResourceWarhead.ts` (66 lines C#) -- Resource destruction on impact:
   - `size: CVec` -- affected resource area dimensions
   - `doImpact(target, firedBy)` -- reduces/removes resources from cells within footprint
   - Integration with Chapter 10 resource layer (stub interface until Chapter 10 is ready)
@@ -287,7 +288,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.9 CreateResourceWarhead
 
-- [ ] **TODO-8.A.9** `src/OpenRA.Mods.Common/Warheads/CreateResourceWarhead.ts` (59 lines C#) -- Resource creation on impact:
+- [x] **TODO-8.A.9** `src/OpenRA.Mods.Common/Warheads/CreateResourceWarhead.ts` (59 lines C#) -- Resource creation on impact:
   - `addsResourceType: string` -- resource type to spawn
   - `size: CVec` -- affected resource area dimensions
   - `doImpact(target, firedBy)` -- adds resources to cells within footprint
@@ -296,7 +297,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.10 ChangeOwnerWarhead
 
-- [ ] **TODO-8.A.10** `src/OpenRA.Mods.Common/Warheads/ChangeOwnerWarhead.ts` (57 lines C#) -- Ownership transfer on impact:
+- [x] **TODO-8.A.10** `src/OpenRA.Mods.Common/Warheads/ChangeOwnerWarhead.ts` (57 lines C#) -- Ownership transfer on impact:
   - `captureRange: WDist` -- radius for ownership change effect
   - `doImpact(target, firedBy)` -- transfers ownership of actors in range to firing player
   - Valid targets filter (buildings, vehicles, infantry)
@@ -304,7 +305,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.11 GrantExternalConditionWarhead
 
-- [ ] **TODO-8.A.11** `src/OpenRA.Mods.Common/Warheads/GrantExternalConditionWarhead.ts` (52 lines C#) -- Condition application on impact:
+- [x] **TODO-8.A.11** `src/OpenRA.Mods.Common/Warheads/GrantExternalConditionWarhead.ts` (52 lines C#) -- Condition application on impact:
   - `condition: string` -- condition token to grant
   - `duration: number` -- condition duration in ticks
   - `range: WDist` -- effect radius
@@ -314,7 +315,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.12 FlashEffectWarhead
 
-- [ ] **TODO-8.A.12** `src/OpenRA.Mods.Common/Warheads/FlashEffectWarhead.ts` (35 lines C#) -- Screen flash on impact:
+- [x] **TODO-8.A.12** `src/OpenRA.Mods.Common/Warheads/FlashEffectWarhead.ts` (35 lines C#) -- Screen flash on impact:
   - `duration: number` -- flash duration in ticks
   - `doImpact(target, firedBy)` -- triggers screen flash effect
   - Camera-based fullscreen color overlay via Babylon.js PostProcess or HTML overlay div
@@ -322,7 +323,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.13 ShakeScreenWarhead
 
-- [ ] **TODO-8.A.13** `src/OpenRA.Mods.Common/Warheads/ShakeScreenWarhead.ts` (34 lines C#) -- Camera shake on impact:
+- [x] **TODO-8.A.13** `src/OpenRA.Mods.Common/Warheads/ShakeScreenWarhead.ts` (34 lines C#) -- Camera shake on impact:
   - `intensity: number` and `duration: number` for camera shake
   - `multiplier: number` -- shake intensity scaling
   - `doImpact(target, firedBy)` -- triggers camera shake via Camera position offset animation
@@ -331,7 +332,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.14 HealthPercentageDamageWarhead
 
-- [ ] **TODO-8.A.14** `src/OpenRA.Mods.Common/Warheads/HealthPercentageDamageWarhead.ts` (28 lines C#) -- Percentage-based damage:
+- [x] **TODO-8.A.14** `src/OpenRA.Mods.Common/Warheads/HealthPercentageDamageWarhead.ts` (28 lines C#) -- Percentage-based damage:
   - Extends `DamageWarhead` with `spread: WDist` and percentage calculation override
   - `doImpact(target, firedBy)` -- damage = target max health * percentage / 100
   - `getEffectiveDamage()` override to compute percentage-based damage
@@ -339,14 +340,14 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.1.15 FlashTargetsInRadiusWarhead
 
-- [ ] **TODO-8.A.15** `src/OpenRA.Mods.Common/Warheads/FlashTargetsInRadiusWarhead.ts` (60 lines C#) -- Target flash on impact:
+- [x] **TODO-8.A.15** `src/OpenRA.Mods.Common/Warheads/FlashTargetsInRadiusWarhead.ts` (60 lines C#) -- Target flash on impact:
   - `range: WDist` -- radius for target flash effect
   - `duration: number` -- flash duration in ticks
   - `doImpact(target, firedBy)` -- applies temporary flash/white tint to sprites of actors in range
   - Sprite color modulation via Babylon.js material emissive or color property
   - Auto-revert after duration expires
 
-**Phase A Summary**: 15 files, ~1,135 C# lines, estimated ~4,500 TS implementation + ~3,000 test lines
+**Phase A Summary**: 15 files, ~1,135 C# lines source. Implemented: 19 files (15 impl + 4 test), 143 tests. Reviewed: APPROVED (2 rounds). Commits: `d9f6c34` (initial), `9b25839` (Round 2 fixes). Round 1: 1 BLOCKER (int2Lerp numerical bug), 7 MAJOR, 6 MINOR → NEEDS FIXES. Round 2: All fixed → APPROVED.
 
 ---
 

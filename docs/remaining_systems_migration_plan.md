@@ -135,7 +135,9 @@ The remaining ~250+ files are organized into 14 chapters (8-21), each representi
 
 **Prerequisites**: Chapters 2-7 (all complete)
 
-#### Phase A: Warheads Foundation (15 files)
+#### Phase A: Warheads Foundation (15 files) -- COMPLETE (15/15, 143 tests)
+
+**Status**: APPROVED (2 review rounds, 2026-06-12). Commits: `d9f6c34` (initial), `9b25839` (Round 2 fixes).
 
 Warheads are the impact-effect classes that apply damage and status effects. They form the foundation that projectiles trigger upon reaching their target.
 
@@ -237,13 +239,13 @@ Traits that modify, enhance, or react to combat events. These depend on the core
 
 **Chapter 8 Grand Total**: 56 files (57 with optional MusicInfo), ~8,264 C# lines (8,329 with MusicInfo)
 
-| Phase | Files | C# Lines | Description |
-|:---|:---:|:---:|:---|
-| A: Warheads | 15 | 1,135 | Impact-effect classes |
-| B: Projectiles | 7 | 2,166 | In-flight munition objects (Bullet already in Ch7) |
-| C: Weapon Config | 2 (+1 opt) | 365 (+65) | WeaponInfo, SoundInfo, MusicInfo |
-| D: Core Combat Traits | 17 | 3,075 | Armament, Attack*, AutoTarget, HitShape, Armor, etc. |
-| E: Support Traits | 15 | 1,523 | FireWarheads, Render overlays, Turreted, Multipliers, etc. |
+| Phase | Files | C# Lines | Description | Status |
+|:---|:---:|:---:|:---|:---:|
+| A: Warheads | 15 | 1,135 | Impact-effect classes | **COMPLETE** (15/15, 143 tests) |
+| B: Projectiles | 7 | 2,166 | In-flight munition objects (Bullet already in Ch7) | Pending |
+| C: Weapon Config | 2 (+1 opt) | 365 (+65) | WeaponInfo, SoundInfo, MusicInfo | Pending |
+| D: Core Combat Traits | 17 | 3,075 | Armament, Attack*, AutoTarget, HitShape, Armor, etc. | Pending |
+| E: Support Traits | 15 | 1,523 | FireWarheads, Render overlays, Turreted, Multipliers, etc. | Pending |
 
 #### Chapter 8 Key Paradigm Shifts
 
