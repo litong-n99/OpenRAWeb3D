@@ -621,11 +621,19 @@ canvas.addEventListener('dblclick', (event) => {
 })
 
 // ---------------------------------------------------------------------------
-// Prevent browser context menu on right-click (required for right-drag panning)
+// Prevent browser context menu and gesture navigation on right-click drag
+// contextmenu → blocks right-click popup menu
+// pointerdown with button===2 → blocks Chromium back/forward swipe gesture
 // ---------------------------------------------------------------------------
 
 canvas.addEventListener('contextmenu', (event) => {
   event.preventDefault()
+})
+
+canvas.addEventListener('pointerdown', (event) => {
+  if (event.button === 2) {  // right mouse button
+    event.preventDefault()
+  }
 })
 
 // ---------------------------------------------------------------------------
