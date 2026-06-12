@@ -60,6 +60,28 @@ vi.mock('../../OpenRA.Game/Input/IInputHandler', () => ({
 }))
 
 // ---------------------------------------------------------------------------
+// Mock Keycode (needed by HotkeyReference)
+// ---------------------------------------------------------------------------
+
+vi.mock('../../OpenRA.Game/Input/Keycode', () => {
+  const KeyCode: Record<string, number> = {
+    UNKNOWN: 0,
+    RETURN: 13,
+    ESCAPE: 27,
+    BACKSPACE: 8,
+    TAB: 9,
+    SPACE: 32,
+    PAGEUP: 1073741899, // SDL value
+    PAGEDOWN: 1073741902, // SDL value
+    LEFT: 1073741904,
+    RIGHT: 1073741903,
+    UP: 1073741906,
+    DOWN: 1073741905,
+  }
+  return { KeyCode, keyName: (_code: number) => 'Unknown' }
+})
+
+// ---------------------------------------------------------------------------
 // Imports (after all mocks)
 // ---------------------------------------------------------------------------
 
@@ -68,28 +90,32 @@ import {
   MouseScrollType,
   WorldTooltipType,
   DEFAULT_VIEWPORT_SETTINGS,
-  type IHotkeyReference,
   type IViewportSettings,
 } from './ViewportControllerWidget'
 
 import { Viewport } from '../../OpenRA.Game/Graphics/Viewport'
+import { HotkeyReference, Hotkey } from '../../OpenRA.Game/Input/HotkeyReference'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeDummyHotkey(keyCode: number = 0): IHotkeyReference {
-  return {
-    getValue: () => ({ key: keyCode as import('../../OpenRA.Game/Input/Keycode').KeyCode, modifiers: 0 }),
-    isActivatedBy: () => false,
-  }
+/**
+ * Create a dummy (inactive) HotkeyReference — its getValue() returns
+ * Hotkey.Invalid (key=KeyCode.UNKNOWN=0, modifiers=0).
+ * No real keyboard event will match it.
+ */
+function makeDummyHotkey(): HotkeyReference {
+  return HotkeyReference.Invalid
 }
 
-function makeActivatingHotkey(keyCode: number): IHotkeyReference {
-  return {
-    getValue: () => ({ key: keyCode as import('../../OpenRA.Game/Input/Keycode').KeyCode, modifiers: 0 }),
-    isActivatedBy: () => true,
-  }
+/**
+ * Create a HotkeyReference that activates when the key code matches.
+ * Uses a static Hotkey with modifiers=0, matching the default KeyInput
+ * produced by `eventToKeyInput` (which always has Modifiers.None).
+ */
+function makeActivatingHotkey(keyCode: number): HotkeyReference {
+  return new HotkeyReference(new Hotkey(keyCode, 0))
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +139,6 @@ describe('ViewportControllerWidget', () => {
 
     it('registers viewportTick callback (verify via tick)', () => {
       const vp = new Viewport()
-      // Spy on the tick callback mechanism by monkey-patching
       let called = false
       const origOnViewportTick = vp.onViewportTick.bind(vp)
       vp.onViewportTick = (cb: () => void) => {
@@ -149,19 +174,17 @@ describe('ViewportControllerWidget', () => {
   describe('lifecycle', () => {
     it('unregisters viewportTick on removed()', () => {
       const vp = new Viewport()
-      // Track number of active callbacks
       let callbackCount = 0
       vp.onViewportTick(() => { callbackCount++ })
-      expect(callbackCount).toBe(0) // not yet ticked
+      expect(callbackCount).toBe(0)
 
       const widget = new ViewportControllerWidget(vp)
-      // widget registered its own callback — now there should be 2 callbacks
       vp.tick()
-      expect(callbackCount).toBe(1) // original callback fired
+      expect(callbackCount).toBe(1)
 
       widget.removed()
       vp.tick()
-      expect(callbackCount).toBe(2) // only original callback fires (widget's is unregistered)
+      expect(callbackCount).toBe(2)
     })
   })
 
@@ -236,13 +259,9 @@ describe('ViewportControllerWidget', () => {
       widget.bookmarkSaveKeyPrefix = 'SaveBookmark'
       widget.bookmarkRestoreKeyPrefix = 'RestoreBookmark'
 
-      // NOTE: widget.initialize() triggers ChromeMetrics which requires
-      // full widget runtime setup. Test internal state directly.
-      // In actual usage, these arrays are created in initialize().
       expect(widget.bookmarkKeyCount).toBe(4)
       expect(widget.bookmarkSaveKeyPrefix).toBe('SaveBookmark')
       expect(widget.bookmarkRestoreKeyPrefix).toBe('RestoreBookmark')
-      // Before initialize(), bookmark arrays have default/empty values
       expect((widget as any).bookmarkPositions).toHaveLength(0)
     })
 

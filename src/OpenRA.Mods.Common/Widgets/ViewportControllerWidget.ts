@@ -3,7 +3,7 @@
  * OpenRA 对照: OpenRA.Mods.Common/Widgets/ViewportControllerWidget.cs (506 lines)
  *
  * 核心范式转换:
- * - C# HotkeyReference + Hotkey.IsActivatedBy() → TS 简化热键接口 (KeyCode 匹配)
+ * - C# HotkeyReference + Hotkey.IsActivatedBy() → TS HotkeyReference + Hotkey 类
  * - C# SDL2 鼠标事件轮询 → TS 浏览器事件驱动的 Widget 框架
  * - C# Game.Settings.Game.ViewportEdgeScroll → TS IViewportSettings 接口
  * - C# ScrollDirection + ScrollOffsets → TS 相同位标志 + 方向偏移表
@@ -33,7 +33,7 @@ import {
   type KeyInput,
 } from '../../OpenRA.Game/Input/IInputHandler'
 
-import type { KeyCode } from '../../OpenRA.Game/Input/Keycode'
+import { HotkeyReference } from '../../OpenRA.Game/Input/HotkeyReference'
 
 // ---------------------------------------------------------------------------
 // MouseScrollType 枚举 (对应 OpenRA MouseScrollType)
@@ -72,24 +72,6 @@ export const WorldTooltipType = {
   Resource: 4,
 } as const
 export type WorldTooltipType = (typeof WorldTooltipType)[keyof typeof WorldTooltipType]
-
-// ---------------------------------------------------------------------------
-// IHotkeyReference — 热键引用最小接口
-// ---------------------------------------------------------------------------
-
-/**
- * 热键引用接口 (简化版，完整实现等待 HotkeyManager 迁移)。
- *
- * OpenRA 对照: HotkeyReference class
- *
- * TODO-7.B.2.1: HotkeyManager 迁移后替换为完整实现。
- */
-export interface IHotkeyReference {
-  /** 获取热键的键位值 */
-  getValue(): { key: KeyCode; modifiers: number }
-  /** 检查给定输入是否激活此热键 */
-  isActivatedBy(input: KeyInput): boolean
-}
 
 // ---------------------------------------------------------------------------
 // IViewportSettings — 视口设置最小接口
@@ -203,16 +185,16 @@ export class ViewportControllerWidget extends Widget {
   // 公共热键配置
   // ---------------------------------------------------------------------------
 
-  zoomInKey: IHotkeyReference
-  zoomOutKey: IHotkeyReference
-  scrollUpKey: IHotkeyReference
-  scrollDownKey: IHotkeyReference
-  scrollLeftKey: IHotkeyReference
-  scrollRightKey: IHotkeyReference
-  jumpToTopEdgeKey: IHotkeyReference
-  jumpToBottomEdgeKey: IHotkeyReference
-  jumpToLeftEdgeKey: IHotkeyReference
-  jumpToRightEdgeKey: IHotkeyReference
+  zoomInKey: HotkeyReference
+  zoomOutKey: HotkeyReference
+  scrollUpKey: HotkeyReference
+  scrollDownKey: HotkeyReference
+  scrollLeftKey: HotkeyReference
+  scrollRightKey: HotkeyReference
+  jumpToTopEdgeKey: HotkeyReference
+  jumpToBottomEdgeKey: HotkeyReference
+  jumpToLeftEdgeKey: HotkeyReference
+  jumpToRightEdgeKey: HotkeyReference
 
   bookmarkSaveKeyPrefix: string | null = null
   bookmarkRestoreKeyPrefix: string | null = null
@@ -234,8 +216,8 @@ export class ViewportControllerWidget extends Widget {
   private keyboardDirections: ScrollDirection = ScrollDirection.None
   private edgeDirections: ScrollDirection = ScrollDirection.None
   private lastScrollTime: number = 0
-  private saveBookmarkHotkeys: IHotkeyReference[] = []
-  private restoreBookmarkHotkeys: IHotkeyReference[] = []
+  private saveBookmarkHotkeys: HotkeyReference[] = []
+  private restoreBookmarkHotkeys: HotkeyReference[] = []
   private bookmarkPositions: ({ x: number; y: number; z: number } | null)[] = []
   private viewportTickRegistered: boolean = false
 
@@ -259,16 +241,16 @@ export class ViewportControllerWidget extends Widget {
   constructor(
     viewport: Viewport,
     settings?: Partial<IViewportSettings>,
-    zoomInKey?: IHotkeyReference,
-    zoomOutKey?: IHotkeyReference,
-    scrollUpKey?: IHotkeyReference,
-    scrollDownKey?: IHotkeyReference,
-    scrollLeftKey?: IHotkeyReference,
-    scrollRightKey?: IHotkeyReference,
-    jumpToTopEdgeKey?: IHotkeyReference,
-    jumpToBottomEdgeKey?: IHotkeyReference,
-    jumpToLeftEdgeKey?: IHotkeyReference,
-    jumpToRightEdgeKey?: IHotkeyReference,
+    zoomInKey?: HotkeyReference,
+    zoomOutKey?: HotkeyReference,
+    scrollUpKey?: HotkeyReference,
+    scrollDownKey?: HotkeyReference,
+    scrollLeftKey?: HotkeyReference,
+    scrollRightKey?: HotkeyReference,
+    jumpToTopEdgeKey?: HotkeyReference,
+    jumpToBottomEdgeKey?: HotkeyReference,
+    jumpToLeftEdgeKey?: HotkeyReference,
+    jumpToRightEdgeKey?: HotkeyReference,
   ) {
     super()
 
@@ -320,11 +302,8 @@ export class ViewportControllerWidget extends Widget {
   // 占位热键 (TODO: HotkeyManager 迁移后移除)
   // ---------------------------------------------------------------------------
 
-  private createDummyHotkey(): IHotkeyReference {
-    return {
-      getValue: () => ({ key: 0 as KeyCode, modifiers: 0 }),
-      isActivatedBy: () => false,
-    }
+  private createDummyHotkey(): HotkeyReference {
+    return HotkeyReference.Invalid
   }
 
   // ---------------------------------------------------------------------------
@@ -350,7 +329,7 @@ export class ViewportControllerWidget extends Widget {
   private createBookmarkHotkeys(
     prefix: string | null,
     count: number,
-  ): IHotkeyReference[] {
+  ): HotkeyReference[] {
     if (!prefix) return []
     return Array.from({ length: count }, () => this.createDummyHotkey())
   }
@@ -595,7 +574,7 @@ export class ViewportControllerWidget extends Widget {
   }
 
   private handleMapScrollKey(
-    hotkey: IHotkeyReference,
+    hotkey: HotkeyReference,
     direction: ScrollDirection,
     keyInput: KeyInput,
   ): boolean {
