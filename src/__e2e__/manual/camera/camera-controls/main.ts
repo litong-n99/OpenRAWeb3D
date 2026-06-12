@@ -621,6 +621,14 @@ canvas.addEventListener('dblclick', (event) => {
 })
 
 // ---------------------------------------------------------------------------
+// Prevent browser context menu on right-click (required for right-drag panning)
+// ---------------------------------------------------------------------------
+
+canvas.addEventListener('contextmenu', (event) => {
+  event.preventDefault()
+})
+
+// ---------------------------------------------------------------------------
 // Mouse Events for Edge Detection & Cursor Readout
 // ---------------------------------------------------------------------------
 
