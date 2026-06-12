@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 6 (Network Sync & Game Logic) — EXECUTION PHASE (Phase A+B+C+D complete: 18/26, ~69%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 18/26 (~69%), Chapters 2-5 COMPLETE
+> **Current phase**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%), ALL PHASES COMPLETE
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapters 2-6 COMPLETE
 
 ---
 
@@ -18,8 +18,8 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Remaining chapters** | Chapters 6-8+ (networking in design phase; audio, game logic not yet planned) |
-| **Overall project completion** | Chapters 2+3+4+5/8+ complete (116/116 rendering+actors+map+UI), Chapter 6 in execution (18/26, Phases A+B+C+D complete) |
+| **Remaining chapters** | Chapters 7-8+ (audio, weapons, game logic not yet planned) |
+| **Overall project completion** | Chapters 2+3+4+5+6/8+ complete (148/148 rendering+actors+map+UI+network+AI), Chapter 6 ALL PHASES COMPLETE |
 
 > **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
 
@@ -122,15 +122,20 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | `glsl/` | 12 | 10 | 0 + 2 NOP | 0 |
 | `OpenRA.Game/Traits/` | 0 | 0 | 0 | All |
 | `OpenRA.Game/Activities/` | 0 | 0 | 0 | All |
-| `OpenRA.Game/Network/` | 4 | 4 | 0 | 0 (Phase A COMPLETE) |
-| `OpenRA.Game/FileSystem/` | 5 | 5 | 0 | 0 |
-| `OpenRA.Game/Widgets/` | 3 | 3 | 0 | COMPLETE (Phase D) |
-| `OpenRA.Game/Map/` | 23 | 23 | 0 | 0 |
-| `OpenRA.Mods.Common/Pathfinder/` | 10 | 10 | 0 | 0 |
-| `OpenRA.Mods.Common/Traits/` | 3 | 3 | 0 | 0 |
-| `OpenRA.Mods.Common/Widgets/` | 1 | 1 | 0 | COMPLETE (Phase E, WorldInteractionControllerWidget) |
-| `OpenRA.Mods.Cnc/FileSystem/` | 5 | 5 | 0 | COMPLETE (Phase B, 108 tests) |
-| `utils/` | 1 | 1 | 0 | 0 |
+| `OpenRA.Game/Network/` | 4 | 4 | 0 | COMPLETE (Ch6 Phase A) |
+| `OpenRA.Game/FileSystem/` | 5 | 5 | 0 | COMPLETE (Ch5 Phase A) |
+| `OpenRA.Game/Widgets/` | 3 | 3 | 0 | COMPLETE (Ch5 Phase D) |
+| `OpenRA.Game/Map/` | 23 | 23 | 0 | COMPLETE (Ch4) |
+| `OpenRA.Mods.Common/Pathfinder/` | 10 | 10 | 0 | COMPLETE (Ch4 Phase G) |
+| `OpenRA.Mods.Common/Traits/` | 3 | 3 | 0 | COMPLETE (Ch4 Phase G) |
+| `OpenRA.Mods.Common/Traits/BotModules/` | 14 | 14 | 0 | COMPLETE (Ch6 Phases D+E) |
+| `OpenRA.Mods.Common/Traits/BotModules/Squads/` | 4 | 4 | 0 | COMPLETE (Ch6 Phase D) |
+| `OpenRA.Mods.Common/Traits/BotModules/Squads/States/` | 3 | 3 | 0 | COMPLETE (Ch6 Phase E) |
+| `OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/` | 3 | 3 | 0 | COMPLETE (Ch6 Phase E) |
+| `OpenRA.Mods.Common/Widgets/` | 1 | 1 | 0 | COMPLETE (Ch5 Phase E) |
+| `OpenRA.Mods.Cnc/FileSystem/` | 5 | 5 | 0 | COMPLETE (Ch5 Phase B) |
+| `OpenRA.Game/GameRules/` | 2 | 2 | 0 | COMPLETE (Ch6 Phase C + Ch3 Phase E) |
+| `utils/` | 1 | 1 | 0 | COMPLETE (Ch4 Phase H) |
 | Other modules | 0 | 0 | 0 | All |
 
 ---
@@ -182,6 +187,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-12 | **Ch6 Phase E AI BotModule Extended** (11 files) | migration-develop | migration-review | APPROVED (2 rounds): BaseBuilderQueueManager (~984+238 lines), MinelayerBotModule (~495+156 lines), SupportPowerDecision (~377+246 lines), GroundStates (~340+193 lines), AirStates (~283+143 lines), McvExpansionManagerBotModule (~1053+182 lines), CaptureManagerBotModule (~311+115 lines), McvManagerBotModule (~402+138 lines), BuildingRepairBotModule stub (~63+28 lines), PowerDownBotManager stub (~81+32 lines), ProtectionStates stub (~74+44 lines). Phase E: ~4,463 impl + ~1,515 test lines, 119 tests. Commits `9adf549`, `56c0c85`. Chapter 6 now 100% COMPLETE (29/29). |
 | 2026-06-12 | **Ch6 Phase D AI BotModule Core** (10+1 files) | migration-develop | migration-review | APPROVED (2 rounds, 2 BLOCKER + 4 MAJOR): SquadManagerBotModule (~750 lines), BaseBuilderBotModule (~496+66 lines), UnitBuilderBotModule (~350 lines), HarvesterBotModule (~670+209 lines), SupportPowerBotModule (~290 lines), ResourceMapBotModule (~400 lines), Squad (~550 lines), AttackOrFleeFuzzy (~300 lines), StateMachine.ts+StateBase.ts (~340 lines), TraitsInterfaces.ts extension (+10 interfaces). Phase D: ~5,769 initial + ~390 fix lines. Commits `fee0774`, `51c6265`. |
 | 2026-06-12 | **Ch6 Phase C Ruleset Container** (2+1 files) | migration-develop | migration-review | APPROVED (2 rounds, 1 MAJOR + 3 MINOR): Ruleset.ts (863 lines, 1051 test lines, 55 tests), ActorInfo.ts extension (+152 lines, +308 test lines, +25 tests), ModData.ts update (+29/-14). Phase C: ~1,030 impl + ~1,359 test lines, ~80 tests. Commits `c4c98ea`, `3652e65`. |
 | 2026-06-12 | **Ch6 Phase B Sync Hash System** (3 files) | migration-develop | migration-review | APPROVED (2 rounds, 2 MAJOR + 3 MINOR): Sync.ts (569 lines, 958 test lines, 96 tests), sync-hash-generator.ts (611 lines, 821 test lines, 33 tests), sync-hashes.generated.ts (24 lines, auto-generated). Phase B: 1,204 impl + 1,779 test lines, 132 tests. Commits `52f6940`, `a63d377`. |
@@ -816,19 +822,19 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 
 ---
 
-## Chapter 6: Network Sync & Game Logic (EXECUTION PHASE)
+## Chapter 6: Network Sync & Game Logic (ALL PHASES COMPLETE)
 
 > **Migration Plan**: [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md)
-> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: EXECUTION PHASE (18/26 migrated, ~69%)
+> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: COMPLETE (29/29, 100%)
 > **Prerequisite**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed | 18 | ~69% |
-| Pending | 8+3 | ~31% |
-| **Total** | **26** | **100%** |
-| **From OpenRA** | **22** | |
+| Completed | 29 | 100% |
+| **Total** | **29** | **100%** |
+| **From OpenRA** | **24** | |
 | **New files (no OpenRA equivalent)** | **2** (sync hash generator build tool, behavior tree json configs) | |
+| **Auto-generated output** | **1** (sync-hashes.generated.ts) | |
 | **Existing file extensions** | **1** (ActorInfo.ts sync metadata) | |
 | **Deferred stubs** | **3** (BuildingRepairBotModule, PowerDownBotManager, ProtectionStates) | |
 
@@ -840,7 +846,7 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 | Phase B | Sync Hash System | 3 | HIGH (hash generation + build tooling) | **COMPLETE (3/3)** |
 | Phase C | Ruleset Container & ActorInfo Integration | 2 | MEDIUM | **COMPLETE (2/2)** |
 | Phase D | AI BotModule Core | 10 | HIGH (SquadManager, BaseBuilder), MEDIUM | **COMPLETE (10/10)** |
-| Phase E | AI BotModule Extended | 8 (+3 stubs) | MEDIUM, LOW | PENDING (0/8+3) |
+| Phase E | AI BotModule Extended | 11 (8 impl + 3 stubs) | MEDIUM, LOW | **COMPLETE (11/11)** |
 
 ### Key Architecture Decisions (8 ADRs)
 
@@ -885,20 +891,20 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
   |     |           |
   |     |           +--> Phase D (AI BotModule Core: 10 files) **[10/10 COMPLETE]**
   |     |                 |
-  |     |                 +--> Phase E (AI BotModule Extended: 8+3 files) [0/8+3]
+  |     |                 +--> Phase E (AI BotModule Extended: 11 files) **[11/11 COMPLETE]**
 ```
 
 ### Phase Strategy
 
-| Week | Phase | Files | Description | Parallelizable |
+| Week | Phase | Files | Description | Status |
 |:---:|:---|:---:|:---|:---:|
-| 1-2 | Phase A | 4 | Network foundation (Order, Connection, OrderManager, UnitOrders) | ~~Order.ts + UnitOrders.ts in parallel~~ COMPLETE (2026-06-12) |
-| 2-3 | Phase B | 3 | Sync hash system (runtime + build generator) | ~~Sync.ts + hash generator in parallel~~ COMPLETE (2026-06-12) |
-| 3-4 | Phase C | 2 | Ruleset container + ActorInfo extension | ~~Sequential (needs Phase B)~~ COMPLETE (2026-06-12) |
-| 4-6 | Phase D | 10 | AI core modules | ~~Highly parallel~~ COMPLETE (2026-06-12) |
-| 6-8 | Phase E | 8+3 | AI extended modules | Highly parallel |
+| 1-2 | Phase A | 4 | Network foundation (Order, Connection, OrderManager, UnitOrders) | COMPLETE (2026-06-12) |
+| 2-3 | Phase B | 3 | Sync hash system (runtime + build generator) | COMPLETE (2026-06-12) |
+| 3-4 | Phase C | 2 | Ruleset container + ActorInfo extension | COMPLETE (2026-06-12) |
+| 4-6 | Phase D | 10 | AI core modules | COMPLETE (2026-06-12) |
+| 6-8 | Phase E | 11 | AI extended modules | COMPLETE (2026-06-12) |
 
-**Total estimate**: 8-9 weeks (2 developers) or 5-6 weeks (4 developers).
+**All phases complete**. Total: 29 files across 5 phases.
 
 ### Chapter 6 File Inventory
 
@@ -923,12 +929,12 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | 15 | `AttackOrFleeFuzzy.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.ts` | MEDIUM | **D ✅** |
 | 16 | `StateMachine.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.ts` | LOW | **D ✅** |
 | 17 | `StateBase.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/StateBase.ts` | LOW | **D ✅** |
-| 18 | `BaseBuilderQueueManager.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/BaseBuilderQueueManager.ts` | MEDIUM | E |
-| 19 | `GroundStates.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/GroundStates.ts` | MEDIUM | E |
-| 20 | `AirStates.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/AirStates.ts` | MEDIUM | E |
-| 21 | `McvExpansionManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/McvExpansionManagerBotModule.ts` | HIGH | E |
-| 22 | `CaptureManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/CaptureManagerBotModule.ts` | LOW | E |
-| 23 | `McvManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/McvManagerBotModule.ts` | LOW | E |
-| 24 | `MinelayerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/MinelayerBotModule.ts` | MEDIUM | E |
-| 25 | `SupportPowerDecision.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/SupportPowerDecision.ts` | LOW | E |
-| 26 | *(3 deferred stubs)* | `BuildingRepairBotModule`, `PowerDownBotManager`, `ProtectionStates` | LOW | E |
+| 18 | `BaseBuilderQueueManager.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/BaseBuilderQueueManager.ts` | MEDIUM | **E ✅** (984+238 lines) |
+| 19 | `GroundStates.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/GroundStates.ts` | MEDIUM | **E ✅** (340+193 lines) |
+| 20 | `AirStates.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/AirStates.ts` | MEDIUM | **E ✅** (283+143 lines) |
+| 21 | `McvExpansionManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/McvExpansionManagerBotModule.ts` | HIGH | **E ✅** (1053+182 lines) |
+| 22 | `CaptureManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/CaptureManagerBotModule.ts` | LOW | **E ✅** (311+115 lines) |
+| 23 | `McvManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/McvManagerBotModule.ts` | LOW | **E ✅** (402+138 lines) |
+| 24 | `MinelayerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/MinelayerBotModule.ts` | MEDIUM | **E ✅** (495+156 lines) |
+| 25 | `SupportPowerDecision.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/SupportPowerDecision.ts` | LOW | **E ✅** (377+246 lines) |
+| 26 | *(3 deferred stubs)* | `BuildingRepairBotModule` (63+28), `PowerDownBotManager` (81+32), `ProtectionStates` (74+44) | LOW | **E ✅** |
