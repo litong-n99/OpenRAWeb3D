@@ -28,6 +28,7 @@ import type {
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { AttackInfo } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { CPos } from '../../../OpenRA.Game/CPos.js'
+import { isqrt } from '../../../OpenRA.Game/Exts.js'
 import type { ResourceMapBotModuleInfo, ResourceIndice } from './ResourceMapBotModule.js'
 import type { SimplePrng } from './Squads/Squad.js'
 
@@ -664,7 +665,8 @@ export class McvExpansionManagerBotModule
 
       if (sourceCell.x !== targetCell.x || sourceCell.y !== targetCell.y) {
         const theta = tryMaintainRange
-        const deta = Math.sqrt((targetCell.x - sourceCell.x) ** 2 + (targetCell.y - sourceCell.y) ** 2) - tryMaintainRange
+        // NOTE: integer sqrt for deterministic cross-platform behavior
+        const deta = isqrt((targetCell.x - sourceCell.x) ** 2 + (targetCell.y - sourceCell.y) ** 2) - tryMaintainRange
         sortedCells = [...cells]
         sortedCells.sort((a, b) => {
           const da = (a.x - targetCell.x) ** 2 + (a.y - targetCell.y) ** 2

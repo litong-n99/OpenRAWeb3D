@@ -75,6 +75,9 @@ export class McvManagerBotModule
   private _notifyPositionsUpdated: IBotPositionsUpdated[] = []
   private _requestUnitProduction: IBotRequestUnitProdLike[] = []
 
+  /** Deterministic PRNG stored at construction. */
+  private readonly _random: SimplePrng
+
   // -----------------------------------------------------------------------
   // Constructor
   // -----------------------------------------------------------------------
@@ -89,6 +92,7 @@ export class McvManagerBotModule
     this.world = world
     this.player = player
     this.info = info
+    this._random = random
     this._scanInterval = random.nextIntRange(info.scanForNewMcvInterval, info.scanForNewMcvInterval * 2)
   }
 
@@ -223,10 +227,12 @@ export class McvManagerBotModule
     const cells = this.world.map?.findTilesInAnnulus?.(baseCenter, minRange, maxRange) ?? []
 
     let sortedCells: { x: number; y: number }[]
-    if (baseCenter.x !== baseCenter.x || baseCenter.y !== baseCenter.y) {
+    const hasValidBase = this.getConstructionYardActors().length > 0
+    if (!hasValidBase) {
+      // No conyards → no valid base center, just copy cells
       sortedCells = [...cells]
     } else {
-      // Sort by distance to target (which is same as center here, so shuffle)
+      // Sort by distance to target (target === baseCenter here, shuffle suffices)
       sortedCells = this.shuffleArray([...cells])
     }
 
@@ -328,15 +334,8 @@ export class McvManagerBotModule
     return arr
   }
 
-  /** Cached PRNG */
-  private _cachedRandom: SimplePrng | null = null
   private botRandom(): SimplePrng {
-    if (!this._cachedRandom) {
-      this._cachedRandom = {
-        nextIntRange: (min, max) => min >= max ? min : min + ((Math.abs((Math.imul(48271, min + 1) | 0)) % (max - min + 1))),
-      } as SimplePrng
-    }
-    return this._cachedRandom
+    return this._random
   }
 
   // -----------------------------------------------------------------------

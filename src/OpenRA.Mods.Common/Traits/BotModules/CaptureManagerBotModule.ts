@@ -88,6 +88,7 @@ export class CaptureManagerBotModule
     this.world = world
     this.player = player
     this.info = info
+    this._random = random
 
     this._maximumCaptureTargetOptions = Math.max(1, info.maximumCaptureTargetOptions)
     this._minCaptureDelayTicks = random.nextIntRange(0, info.minimumCaptureDelay)
@@ -259,20 +260,11 @@ export class CaptureManagerBotModule
   // Utility
   // -----------------------------------------------------------------------
 
-  /** Cached PRNG — no per-frame allocation. */
-  private _cachedRandom: SimplePrng | null = null
+  /** Deterministic PRNG stored at construction — NO per-frame allocation. */
+  private readonly _random: SimplePrng
 
   private botRandom(): SimplePrng {
-    if (!this._cachedRandom) {
-      this._cachedRandom = {
-        nextIntRange: (min, max) => {
-          if (min >= max) return min
-          // Simple deterministic fallback
-          return min + (((Date.now() & 0x7FFFFFFF) % (max - min + 1)))
-        },
-      } as SimplePrng
-    }
-    return this._cachedRandom
+    return this._random
   }
 
   // -----------------------------------------------------------------------

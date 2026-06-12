@@ -20,6 +20,7 @@
 
 import type { SimplePrng } from '../Squads/Squad.js'
 import type { BaseBuilderBotModuleInfo } from '../BaseBuilderBotModule.js'
+import { isqrt } from '../../../../OpenRA.Game/Exts.js'
 
 // ---------------------------------------------------------------------------
 // Enums (对应 OpenRA WaterCheck / BuildingType)
@@ -688,12 +689,13 @@ export class BaseBuilderQueueManager {
         // Select variant based on facing angle
         const cx = target.x - center.x
         const cy = target.y - center.y
-        const length = Math.sqrt(cx * cx + cy * cy)
+        // NOTE: integer sqrt for deterministic cross-platform behavior
+        const length = isqrt(cx * cx + cy * cy)
         if (length > 0) {
           const facings = buildingVariantInfo.facings
           // Compute desireFacing using arcsin approximation for integer determinism
-          const absCx = Math.abs(cx)
-          const arcsinApprox = absCx * 1024 / (length > 0 ? length : 1)
+          const absCx = cx < 0 ? -cx : cx
+          const arcsinApprox = absCx * 1024 / length
           let desireFacingAngle = this.wAngleArcSin(arcsinApprox)
 
           if (cx > 0 && cy >= 0) desireFacingAngle = 512 - desireFacingAngle

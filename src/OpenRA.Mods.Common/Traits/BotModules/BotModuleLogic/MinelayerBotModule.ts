@@ -99,6 +99,9 @@ export class MinelayerBotModule
   /** Cached pathfinder. */
   private _pathFinder: PathFinderLike | null = null
 
+  /** Deterministic PRNG stored at construction. */
+  private readonly _random: SimplePrng
+
   // -----------------------------------------------------------------------
   // Constructor
   // -----------------------------------------------------------------------
@@ -113,6 +116,7 @@ export class MinelayerBotModule
     this.world = world
     this.player = player
     this.info = info
+    this._random = random
 
     this._conflictPositionQueue = new Array(MinelayerBotModule.MAX_POSITION_CACHE_LENGTH).fill(null)
     this._favoritePositions = new Array(MinelayerBotModule.MAX_POSITION_CACHE_LENGTH).fill(null)
@@ -430,15 +434,8 @@ export class MinelayerBotModule
     return result
   }
 
-  /** Cached PRNG. */
-  private _cachedRandom: SimplePrng | null = null
   private botRandom(): SimplePrng {
-    if (!this._cachedRandom) {
-      this._cachedRandom = {
-        nextIntRange: (min, max) => min >= max ? min : min + ((Math.abs((Math.imul(48271, min + 1) | 0)) % (max - min + 1))),
-      } as SimplePrng
-    }
-    return this._cachedRandom
+    return this._random
   }
 
   // -----------------------------------------------------------------------
