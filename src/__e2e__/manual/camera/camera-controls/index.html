@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>相机系统 - 坐标/缩放/滚屏/边界 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 380px; min-width: 380px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0; font-size: 16px; color: #e94560; }
+    #left-panel h3 { margin: 8px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel .subtitle { color: #a0a0b0; font-size: 12px; margin-bottom: 4px; }
+
+    .info-box {
+      padding: 8px 12px; background: rgba(13,17,23,0.5); border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 11px; line-height: 1.5;
+    }
+    .info-box .label { color: #889; }
+    .info-box .value { color: #eee; font-family: 'Consolas', monospace; }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+    .stat-grid .s-label { color: #889; font-size: 11px; }
+    .stat-grid .s-value { color: #ddd; font-family: 'Consolas', monospace; font-size: 12px; text-align: right; }
+
+    #left-panel button {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      text-align: center;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #e94560; color: #e94560; }
+
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; }
+
+    .slider-group { margin: 4px 0; }
+    .slider-group label { font-size: 11px; color: #aab; display: block; margin-bottom: 2px; }
+    .slider-group input[type="range"] { width: 100%; }
+
+    #viewport {
+      flex: 1; position: relative; background: #0d1117;
+    }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    /* Edge scroll zone indicators */
+    .edge-zone {
+      position: absolute; pointer-events: none; z-index: 10;
+      background: rgba(233, 69, 96, 0.15);
+      border: 1px dashed rgba(233, 69, 96, 0.4);
+      transition: opacity 0.15s;
+    }
+    .edge-zone.active { background: rgba(233, 69, 96, 0.3); border-color: rgba(233, 69, 96, 0.8); }
+    #edge-top { top: 0; left: 0; right: 0; }
+    #edge-bottom { bottom: 0; left: 0; right: 0; }
+    #edge-left { left: 0; top: 0; bottom: 0; }
+    #edge-right { right: 0; top: 0; bottom: 0; }
+
+    /* Crosshair */
+    #crosshair {
+      position: absolute; top: 50%; left: 50%;
+      width: 24px; height: 24px;
+      margin-left: -12px; margin-top: -12px;
+      pointer-events: none; z-index: 20;
+    }
+    #crosshair::before, #crosshair::after {
+      content: ''; position: absolute; background: rgba(255,255,255,0.7);
+    }
+    #crosshair::before { top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-0.5px); }
+    #crosshair::after { left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-0.5px); }
+
+    /* Legend overlay */
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 6px 14px; z-index: 15;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #333; flex-shrink: 0; }
+
+    /* Expected results overlay */
+    #expected-overlay {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22,33,62,0.92); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px; line-height: 1.5;
+      max-width: 320px; pointer-events: none; user-select: none; z-index: 15;
+    }
+    #expected-overlay h4 { margin: 0 0 6px; color: #8f8; font-size: 12px; }
+    #expected-overlay ul { margin: 4px 0; padding-left: 16px; }
+    #expected-overlay li { margin: 2px 0; }
+    #expected-overlay .metric { color: #aad; font-family: monospace; }
+
+    /* Info bar */
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+
+    .coord-flash { animation: coord-flash 0.3s ease-out; }
+    @keyframes coord-flash { 0% { color: #e94560; } 100% { color: #eee; } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. 相机系统验收测试</h2>
+      <div class="subtitle">ID: camera/camera-controls | 期望结果见 README.md</div>
+
+      <h3>相机状态</h3>
+      <div class="info-box">
+        <div class="stat-grid">
+          <span class="s-label">模式:</span><span class="s-value" id="stat-mode">正射 (Ortho)</span>
+          <span class="s-label">Alpha:</span><span class="s-value" id="stat-alpha">-PI/2</span>
+          <span class="s-label">Beta:</span><span class="s-value" id="stat-beta">PI/3</span>
+          <span class="s-label">缩放倍率:</span><span class="s-value" id="stat-zoom">1.00x</span>
+          <span class="s-label">相机目标:</span><span class="s-value" id="stat-target">(0,0,0)</span>
+          <span class="s-label">orthoTop:</span><span class="s-value" id="stat-ortho">-</span>
+          <span class="s-label">边缘方向:</span><span class="s-value" id="stat-edge-dir">无</span>
+        </div>
+      </div>
+
+      <h3>光标处世界坐标</h3>
+      <div class="info-box">
+        <div class="stat-grid">
+          <span class="s-label">WPos (X, Y, Z):</span><span class="s-value" id="cursor-wpos">-</span>
+          <span class="s-label">Vector3 (x, y, z):</span><span class="s-value" id="cursor-vec3">-</span>
+          <span class="s-label">屏幕像素:</span><span class="s-value" id="cursor-screen">-</span>
+          <span class="s-label">Zoom固定误差:</span><span class="s-value" id="cursor-drift">-</span>
+        </div>
+      </div>
+
+      <h3>期望结果 (B. Expected)</h3>
+      <div class="info-box" style="font-size:11px; line-height:1.5;">
+        <div style="color:#8f8; margin-bottom:4px;">E1. 坐标系方向</div>
+        <div style="color:#aab;">
+          红色(+X)标记在白色(原点)<b>右侧</b>。<br>
+          蓝色(+Z)标记在白色(原点)<b>下方</b>。<br>
+          屏幕右=世界+X ✅
+        </div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E2. 缩放到光标</div>
+        <div style="color:#aab;">
+          对交叉准星缩放时，WPos漂移<br>
+          <b>&lt; ±2 su</b> (1024 su/cell)
+        </div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E3. 边缘滚动 &amp; 边界</div>
+        <div style="color:#aab;">
+          鼠标距边缘 <b>≤15px</b> 时红色边框高亮。<br>
+          相机在边界处停止，不越界。
+        </div>
+      </div>
+
+      <h3>操作</h3>
+      <button id="btn-toggle-mode">切换 正射/透视 模式</button>
+      <div class="btn-row" style="margin-top:4px;">
+        <button id="btn-zoom-in">放大 (+)</button>
+        <button id="btn-zoom-out">缩小 (-)</button>
+      </div>
+      <div class="btn-row" style="margin-top:2px;">
+        <button id="btn-zoom-reset">重置缩放 (1x)</button>
+        <button id="btn-reset-cam">重置相机</button>
+      </div>
+      <div class="slider-group" style="margin-top:6px;">
+        <label>缩放倍率: <span id="zoom-slider-val">1.00</span>x</label>
+        <input type="range" id="zoom-slider" min="0.5" max="3" step="0.05" value="1">
+      </div>
+      <button id="btn-toggle-grid" style="margin-top:4px;">切换参考网格</button>
+      <button id="btn-toggle-bounds" style="margin-top:2px;">切换边界可视化</button>
+      <button id="btn-toggle-edge-zones" style="margin-top:2px;">切换边缘滚动区域</button>
+      <div style="font-size:10px; color:#667; margin-top:6px;">
+        鼠标左键拖拽以环绕观察 | 滚轮缩放<br>
+        靠近边缘 (≤15px) 查看滚屏区域
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="crosshair"></div>
+        <div id="edge-top" class="edge-zone" style="height:15px;"></div>
+        <div id="edge-bottom" class="edge-zone" style="height:15px;"></div>
+        <div id="edge-left" class="edge-zone" style="width:15px;"></div>
+        <div id="edge-right" class="edge-zone" style="width:15px;"></div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#fff;"></div>原点 (WPos 0,0,0)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#f44;"></div>+X 标记 (世界右)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#44f;"></div>+Z 标记 (WPos.Y+ = 南)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#4f4;"></div>+Y (高度) 标记</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,255,255,0.3);"></div>地图边界</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:rgba(233,69,96,0.4);"></div>边缘滚屏区域 (15px)</div>
+        </div>
+        <div id="expected-overlay">
+          <h4>检验清单</h4>
+          <ul>
+            <li>红色标记在白色标记<b>右侧</b>？</li>
+            <li>蓝色标记在白色标记<b>下方</b>？</li>
+            <li>滚动缩放时交叉准星处 WPos <span class="metric">±2 su</span>？</li>
+            <li>鼠标距边缘 <span class="metric">≤15px</span> 时红色边框出现？</li>
+            <li>边界处相机/网格停止，不越界？</li>
+            <li>正射↔透视切换后标记位置一致？</li>
+          </ul>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span style="color:#667">alpha=-PI/2 | LH坐标系 | WORLD_SCALE=1/1024</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
