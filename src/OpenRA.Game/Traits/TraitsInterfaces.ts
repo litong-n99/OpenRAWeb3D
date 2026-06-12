@@ -828,6 +828,18 @@ export interface INotifyDamage {
 }
 
 /**
+ * Called when the actor's damage state changes (e.g., Light -> Heavy).
+ *
+ * OpenRA 对照: INotifyDamageStateChanged
+ *
+ * Handlers can respond by swapping animations to damage variants
+ * (e.g., WithIdleOverlay replaces its overlay with a damage-prefixed sequence).
+ */
+export interface INotifyDamageStateChanged {
+  damageStateChanged(actor: IGameActor, attackInfo: AttackInfo): void
+}
+
+/**
  * Called when the actor is selected by the player.
  *
  * OpenRA 对照: INotifySelected

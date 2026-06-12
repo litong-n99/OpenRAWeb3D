@@ -26,6 +26,8 @@
  */
 
 import type { Sprite } from './Sprite'
+import type { WPos } from '../WPos'
+import type { WVec } from '../WVec'
 
 // ---------------------------------------------------------------------------
 // 最小化依赖接口（完整迁移前的前向声明）
@@ -52,17 +54,97 @@ export interface IPaletteRef {
   readonly hasColorShift: boolean
 }
 
-/** 可渲染对象前向声明（迁移自 IRenderable） */
+/** 可渲染对象（迁移自 IRenderable / SpriteRenderable）。
+ *
+ * 携带精灵渲染所需全部数据。WorldRenderer 负责将其转换为 Babylon.js
+ * 渲染组件（Mesh/ThinInstance/SpriteManager）。
+ *
+ * OpenRA 对照: IRenderable, SpriteRenderable
+ */
 export interface IRenderable {
-  readonly pos: any   // WPos
+  /** 世界空间位置。
+   *
+   * OpenRA 对照: SpriteRenderable.Pos (WPos)
+   */
+  readonly pos: WPos
+
+  /** 相对位置的偏移向量。
+   *
+   * OpenRA 对照: SpriteRenderable.Offset (WVec)
+   */
+  readonly offset: WVec
+
+  /** Z 排序偏移（越大越靠前）。
+   *
+   * OpenRA 对照: SpriteRenderable.ZOffset
+   */
   readonly zOffset: number
+
+  /** 调色板引用。
+   *
+   * OpenRA 对照: SpriteRenderable.Palette (PaletteReference)
+   */
+  readonly palette: IPaletteRef
+
+  /** 当前帧精灵（null 表示序列为空）。
+   *
+   * OpenRA 对照: SpriteRenderable.Sprite
+   */
+  readonly sprite: Sprite | null
+
+  /** 渲染缩放。
+   *
+   * OpenRA 对照: SpriteRenderable.Scale
+   */
+  readonly scale: number
+
+  /** 透明度 (0-1, 1=完全不透明)。
+   *
+   * OpenRA 对照: SpriteRenderable.Alpha
+   */
+  readonly alpha: number
+
+  /** 精灵旋转角（弧度）。
+   *
+   * OpenRA 对照: SpriteRenderable.Rotation
+   */
+  readonly rotation: number
+
+  /** 是否为装饰物。
+   *
+   * OpenRA 对照: SpriteRenderable.IsDecoration
+   */
+  readonly isDecoration: boolean
+
+  /** 渲染类型: sprite = 主精灵, shadow = 影子。
+   *
+   * OpenRA 对照: 隐式（SpriteRenderable 本身或 ShadowRenderable）
+   */
+  readonly type: 'sprite' | 'shadow'
 }
 
-/** 世界渲染器前向声明 */
+/** 世界渲染器前向声明（新增 ScreenPxPosition / ScreenPxOffset 方法）。
+ *
+ * OpenRA 对照: WorldRenderer
+ */
 export interface IWorldRenderer {
-  screenPxPosition(pos: any): Int2
-  screenPxOffset(offset: any): Int2
-  screenVectorComponents(offset: any): { x: number; y: number; z: number }
+  /** 将世界位置转换为屏幕像素坐标。
+   *
+   * OpenRA 对照: WorldRenderer.ScreenPxPosition(WPos)
+   */
+  screenPxPosition(pos: WPos): Int2
+
+  /** 将世界偏移转换为屏幕像素偏移。
+   *
+   * OpenRA 对照: WorldRenderer.ScreenPxOffset(WVec)
+   */
+  screenPxOffset(offset: WVec): Int2
+
+  /** 将世界偏移转换为屏幕空间分量。
+   *
+   * OpenRA 对照: WorldRenderer.ScreenVectorComponents(WVec)
+   */
+  screenVectorComponents(offset: WVec): { x: number; y: number; z: number }
 }
 
 /** 精灵序列接口 */
@@ -554,5 +636,122 @@ export class Animation {
     if (available.length === 0) return ''
     const index = Math.floor(random() * available.length)
     return available[index]!
+  }
+
+  // -----------------------------------------------------------------------
+  // Render（对应 OpenRA Animation.Render(WPos, WVec, int, PaletteReference)）
+  //
+  // OpenRA 对照: Animation.cs:59-113
+  // -----------------------------------------------------------------------
+
+  /**
+   * 在指定世界位置渲染当前帧。
+   *
+   * OpenRA 对照: Animation.Render(WPos pos, WVec offset, int zOffset, PaletteReference palette)
+   *
+   * 生成一个或多个 IRenderable 对象（主精灵 + 可选的影子）。
+   * WorldRenderer 负责将这些可渲染对象转换为 Babylon.js 网格。
+   *
+   * @param pos — 世界空间位置
+   * @param offset — 位置偏移
+   * @param zOffset — 额外 Z 排序偏移
+   * @param palette — 调色板引用
+   * @returns 可渲染对象数组（1-2 个: 主精灵 + 可选影子）
+   */
+  render(
+    pos: WPos,
+    offset: WVec,
+    zOffset: number,
+    palette: IPaletteRef,
+  ): IRenderable[] {
+    const seq = this.currentSequence
+    if (!seq) return []
+
+    const alpha = seq.getAlpha(this.currentFrame)
+    const { sprite, rotation } = seq.getSpriteWithRotation(this.currentFrame, this._facingFunc())
+    const results: IRenderable[] = []
+
+    // Main sprite renderable
+    results.push({
+      pos,
+      offset,
+      zOffset: seq.zOffset + zOffset,
+      palette,
+      sprite,
+      scale: seq.scale,
+      alpha,
+      rotation,
+      isDecoration: this.isDecoration,
+      type: 'sprite',
+    })
+
+    // Shadow renderable (if sequence defines one)
+    const shadow = seq.getShadow(this.currentFrame, this._facingFunc())
+    if (shadow) {
+      results.push({
+        pos,
+        offset,
+        zOffset: seq.shadowZOffset + zOffset,
+        palette,
+        sprite: shadow,
+        scale: seq.scale,
+        alpha: 1,
+        rotation,
+        isDecoration: true, // shadows are always decoration
+        type: 'shadow',
+      })
+    }
+
+    return results
+  }
+
+  /**
+   * 在指定世界位置渲染当前帧（无偏移，zOffset=0）。
+   *
+   * OpenRA 对照: Animation.Render(WPos pos, PaletteReference palette)
+   *
+   * @param pos — 世界空间位置
+   * @param palette — 调色板引用
+   * @returns 可渲染对象数组
+   */
+  renderFlat(pos: WPos, palette: IPaletteRef): IRenderable[] {
+    return this.render(pos, { X: 0, Y: 0, Z: 0 } as WVec, 0, palette)
+  }
+
+  // -----------------------------------------------------------------------
+  // ScreenBounds（对应 OpenRA Animation.ScreenBounds）
+  //
+  // OpenRA 对照: Animation.cs:102-112
+  // -----------------------------------------------------------------------
+
+  /**
+   * 计算当前帧在屏幕上的包围矩形。
+   *
+   * OpenRA 对照: Animation.ScreenBounds(WorldRenderer wr, WPos pos, WVec offset)
+   *
+   * @param wr — 世界渲染器（用于坐标转换）
+   * @param pos — 世界空间位置
+   * @param offset — 位置偏移
+   * @returns 屏幕空间矩形
+   */
+  screenBounds(
+    wr: IWorldRenderer,
+    pos: WPos,
+    offset: WVec,
+  ): Rectangle {
+    const seq = this.currentSequence
+    if (!seq) return { x: 0, y: 0, width: 0, height: 0 }
+
+    const scale = seq.scale
+    const xy = wr.screenPxPosition(pos)
+    const off = wr.screenPxOffset(offset)
+    const cb = seq.bounds
+
+    return {
+      x: xy.x + off.x + Math.trunc(cb.x * scale),
+      y: xy.y + off.y + Math.trunc(cb.y * scale),
+      width: Math.trunc(cb.width * scale),
+      height: Math.trunc(cb.height * scale),
+    }
   }
 }
