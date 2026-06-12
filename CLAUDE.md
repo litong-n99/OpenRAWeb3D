@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (5/13, Phases A-B COMPLETE)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 5/13 (~38%)
+**Phase**: Chapter 7 (Input, Camera, Audio & Effects) -- IN PROGRESS (6/13, Phases A-C COMPLETE)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 6/13 (~46%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -42,10 +42,11 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Ruleset Container (2 files) | COMPLETE (Phase C, ~1,030 impl + ~1,359 test lines, ~80 tests) |
 | AI BotModule Core (10 files) | COMPLETE (Phase D, ~5,769+390 impl lines, 2 review rounds) |
 | AI BotModule Extended (11 files) | COMPLETE (Phase E, ~4,463 impl + ~1,515 test lines, 119 tests, 2 rounds) |
-| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (5/13, ~38%, Phases A-B COMPLETE)** |
+| **Input, Camera, Audio & Effects (13 files)** | **IN PROGRESS (6/13, ~46%, Phases A-C COMPLETE)** |
 | Input Foundation (3 files) | COMPLETE (IInputHandler 176, Keycode 544, InputHandler 617 lines, 155 tests) |
 | Camera System (2+1 files) | COMPLETE (Viewport 1,023, ViewportControllerWidget 868, HotkeyReference 360 lines, 86 tests) |
-| Selection, Audio, Effects, Projectiles, Sprite Traits (8 files) | Pending (Phases C-G) |
+| Selection System (1 file) | COMPLETE (SelectionUtils 723 lines, 58 tests, 3 review rounds) |
+| Audio, Effects, Projectiles, Sprite Traits (7 files) | Pending (Phases D-G) |
 | Remaining subsystems | Chapters 8+ (weapons, missions, etc.) not yet planned
 
 ## Directory Layout
@@ -158,9 +159,10 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       ICustomMovementLayer.ts  ← migrated (69 lines) -- Phase G
       World/
         Locomotor.ts        ← migrated (261 lines) -- Phase G
-    Widgets/                ← Chapter 5 Phase E: World Interaction Bridge (COMPLETE)
+    Widgets/                ← Chapter 5 Phase E: World Interaction Bridge + Chapter 7 Phase B/C
       WorldInteractionControllerWidget.ts  ← migrated (1157 lines, 55 tests) -- Phase E
       ViewportControllerWidget.ts  ← migrated (868 lines, 573 test lines) -- Ch7 Phase B
+      SelectionUtils.ts    ← migrated (723 lines, 58 tests) -- Ch7 Phase C
   OpenRA.Platforms.Default/ ← Platform abstraction (6 migrated, 7 NOP, 5 stubs)
       Shader.ts             ← migrated (417 lines, 572 test lines)
       FrameBuffer.ts        ← migrated (415 lines, 649 test lines)

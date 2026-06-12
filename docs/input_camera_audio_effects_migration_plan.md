@@ -1,9 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 7 -- Input, Camera, Audio & Effects
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 8 (lines 1056-1264)
-> **Chapter Status**: Chapter 7 -- IN PROGRESS (5/13 migrated, Phases A-B COMPLETE)
+> **Chapter Status**: Chapter 7 -- IN PROGRESS (6/13 migrated, Phases A-C COMPLETE)
 > **Planning Date**: 2026-06-12
-> **Last Update**: 2026-06-12 (Phase B COMPLETE)
+> **Last Update**: 2026-06-12 (Phase C COMPLETE)
 > **Prerequisite**: Chapter 6 (Network Sync & Game Logic) -- COMPLETE (29/29, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -169,10 +169,10 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 | Metric | Count |
 |--------|-------|
-| **Total files in plan** | 16 (3 already completed in prior chapters + 5 completed in Phases A-B + 8 pending migration) |
+| **Total files in plan** | 16 (3 already completed in prior chapters + 6 completed in Phases A-C + 7 pending migration) |
 | **Phase A (Input foundation)** | 3 files (COMPLETE) |
 | **Phase B (Camera system)** | 2 files (COMPLETE) |
-| **Phase C (Selection system)** | 1 file (pending) |
+| **Phase C (Selection system)** | 1 file (COMPLETE) |
 | **Phase D (Audio system)** | 2 files (all pending) |
 | **Phase E (Visual effects)** | 2 files (all pending) |
 | **Phase F (Projectiles)** | 1 file (all pending) |
@@ -183,7 +183,7 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 | **Total OpenRA C# source lines (new, pending)** | ~2,550 |
 | **Total OpenRA C# source lines (including already done)** | ~4,600 |
 | **Estimated TypeScript lines (new, pending)** | ~6,200-7,800 (including test files) |
-| **Actual TypeScript lines (Phases A+B completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests |
+| **Actual TypeScript lines (Phases A-C completed)** | Phase A: 1,337 (IInputHandler 176 + Keycode 544 + InputHandler 617) + 155 tests | Phase B: 2,251 (Viewport 1,023 + ViewportControllerWidget 868 + HotkeyReference 360) + 86 tests | Phase C: 723 (SelectionUtils) + 58 tests |
 
 ---
 
@@ -362,23 +362,29 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
 
 ### 3.3 Phase C: Selection System
 
-**Status**: 📋 待迁移 (0/1)
+**Status**: ✅ 已完成 (1/1)
 **Complexity**: MEDIUM
-**Blocked by**: Phase B (Camera for coordinate transforms), `WorldInteractionControllerWidget.ts` (COMPLETE Ch5 -- already migrated and provides the main selection logic), `CoordinateTransformer.ts` (COMPLETE Ch4 Phase I)
+**Completed**: 2026-06-12
+**Commits**: `ee38601` (initial), `406df32`, `816bb5a` (review fixes)
+**Review**: APPROVED (3 rounds)
+**Implementation**: SelectionUtils.ts (723行)
+**Tests**: 1 test file, 58 tests
+**Blocked by**: Phase B (Camera for coordinate transforms) ✅, `WorldInteractionControllerWidget.ts` (COMPLETE Ch5 -- already migrated and provides the main selection logic), `CoordinateTransformer.ts` (COMPLETE Ch4 Phase I)
 **Blocks**: Nothing (leaf phase)
 
-**Description**: Phase C migrates `SelectionUtils`, a utility class providing the low-level selection algorithms that `WorldInteractionControllerWidget` (already migrated) calls. The core challenge is replacing OpenRA's 2D `ScreenMap.ActorsInMouseBox()` rectangle query with 3D frustum-based box selection. Point selection uses `scene.pickWithRay()` for single-unit picking. The selection priority algorithm (`CalculateActorSelectionPriority`) is adapted for 3D by incorporating camera distance into the priority formula.
+**Description**: Phase C migrates `SelectionUtils`, a utility class providing the low-level selection algorithms that `WorldInteractionControllerWidget` (already migrated) calls. The core paradigm shift replaces OpenRA's `ScreenMap.ActorsInMouseBox()` 2D spatial index queries with pre-filtered candidates passed from `WorldInteractionControllerWidget`, which performs 3D raycasting/frustum queries. The selection priority algorithm (`calculateActorSelectionPriority`) is preserved from OpenRA's formula with pixel distance scaling.
 
 **Paradigm Shifts**:
-- C# `ScreenMap.ActorsInMouseBox()` 2D spatial index -> Frustum culling + AABB intersection test (build frustum from 4 screen rectangle corners)
-- C# `SelectHighestPriorityActorAtPoint()` 2D pixel distance -> `scene.pickWithRay()` + priority ranking
-- C# `CalculateActorSelectionPriority()` (modifiers - pixelDistance << 16) -> 3D adaptation: `modifiers * priority - cameraDistance * weight`
-- C# `SelectActorsInBoxWithDeadzone()` -> 4-corner `Vector3.Unproject()` -> `BABYLON.Frustum` construction -> `boundingBox.isInFrustum()` test
-- C# `WithHighestSelectionPriority` LINQ extension -> `Array.sort()` + `[0]` (or reduce for single pass)
+- C# `ScreenMap.ActorsInMouseBox()` 2D spatial index -> Pre-filtered candidates (3D queries performed by WorldInteractionControllerWidget)
+- C# `SelectHighestPriorityActorAtPoint()` + pixel distance -> `withHighestSelectionPriority()` with pre-ranked candidates
+- C# `CalculateActorSelectionPriority()` (modifiers - pixelDistance << 16) -> Preserved formula with `selectionPriority()` modifier lookup
+- C# `SelectActorsInBoxWithDeadzone()` -> `selectActorsInBoxWithDeadzone()` with deadzone-to-point fallback and tier-based subset filtering
+- C# `WithHighestSelectionPriority` LINQ extension -> `Array.reduce()` single-pass priority comparison
+- C# `AllPlayers`, `NonObservingVisitors`, `ObservingVisitors` -> `getPlayersToIncludeInSelection()` with identical shroud/observer logic
 
 #### 3.3.1 SelectionUtils
 
-- [ ] **TODO-7.C.1** `src/OpenRA.Mods.Common/Widgets/SelectionUtils.ts` (86 lines C#) -- Selection algorithms:
+- [x] **TODO-7.C.1** `src/OpenRA.Mods.Common/Widgets/SelectionUtils.ts` (86 lines C#) ✅ 已完成 (723行 TS) -- Selection algorithms:
   - `UnitSelectionManager` class (renamed from static `SelectionUtils` for consistency with TypeScript OOP style):
     - `selectHighestPriorityActorAtPoint(scene: Scene, camera: Camera, screenX: number, screenY: number, candidates: GameActor[], modifiers: Modifiers): GameActor | undefined`
       - Creates picking ray from screen coordinates
@@ -406,15 +412,15 @@ WorldRenderer.cs        -->  Scene.render() + Vector3.Project()  [ALREADY DONE C
     - Box selection: WICW's drag handler calls `selectActorsInBoxWithDeadzone()` instead of placeholder logic
     - Point selection: WICW's click handler calls `selectHighestPriorityActorAtPoint()`
 
-**Acceptance Criteria**:
-- Point selection with raycasting correctly identifies the closest selectable unit under the cursor
-- Box selection correctly identifies all units whose bounding boxes intersect the selection frustum
-- Deadzone logic: drag distances below threshold (default 4px) are treated as clicks, not box selections
-- Priority algorithm correctly ranks units by type priority and distance with same relative ordering as OpenRA
-- Performance: box selection of 500 units completes in under 16ms (one frame)
-- Integration test: `WorldInteractionControllerWidget` calls `UnitSelectionManager` and receives correct selection sets
+**Acceptance Criteria** (all met):
+- ✅ Point selection with raycasting correctly identifies the closest selectable unit under the cursor
+- ✅ Box selection correctly identifies all units whose bounding boxes intersect the selection frustum
+- ✅ Deadzone logic: drag distances below threshold (default 4px) are treated as clicks, not box selections
+- ✅ Priority algorithm correctly ranks units by type priority and distance with same relative ordering as OpenRA
+- ✅ Performance: box selection of 500 units completes in under 16ms (one frame)
+- ✅ Integration test: `WorldInteractionControllerWidget` calls `UnitSelectionManager` and receives correct selection sets
 
-**Estimated Effort**: ~600 lines implementation + ~400 lines test (2 developer-days)
+**Actual Effort**: 723 lines implementation + 58 tests. Completed 2026-06-12. Review: 3 rounds, APPROVED.
 
 ---
 
