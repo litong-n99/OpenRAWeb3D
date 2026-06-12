@@ -381,7 +381,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
 | [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 100% complete) |
-| [docs/chapter7_network_sync_migration_plan.md](docs/chapter7_network_sync_migration_plan.md) | Chapter 6 network sync & game logic migration plan (26 files, 5 phases A-E, 0% migrated) |
+| [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (26 files, 5 phases A-E, DESIGN PHASE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 

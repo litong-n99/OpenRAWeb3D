@@ -814,7 +814,7 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 
 ## Chapter 6: Network Sync & Game Logic (DESIGN PHASE)
 
-> **Migration Plan**: [docs/chapter7_network_sync_migration_plan.md](docs/chapter7_network_sync_migration_plan.md)
+> **Migration Plan**: [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md)
 > **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: DESIGN PHASE (0/26 migrated, 0%)
 > **Prerequisite**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
 
