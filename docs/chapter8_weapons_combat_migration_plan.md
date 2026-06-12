@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 8 -- Weapons & Combat System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.5 (WeaponInfo/Combat) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (15/56 migrated, Phase A COMPLETE)
+> **Chapter Status**: IN PROGRESS (22/56 migrated, Phases A+B COMPLETE)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%)
 >
@@ -353,7 +353,8 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 ### 3.2 Phase B: Projectiles System
 
-**Status**: 📋 待迁移 (0/7 migrated; Bullet already in Ch7 Phase F)
+**Status**: ✅ COMPLETE (7/7 migrated, 186 tests)
+**Review**: APPROVED (2 rounds). Commits `0f02230` (initial), `28b4602` (Round 1 fixes)
 **Complexity**: Low-HIGH (InstantHit LOW, Missile HIGH at 980 lines)
 **Blocked by**: Phase A (Warheads -- projectiles trigger warheads on impact), Chapter 7 Phase F (Bullet -- reference projectile implementation)
 **Blocks**: Phase C (WeaponInfo references projectile types), Phase D (Armament creates projectiles on fire)
@@ -369,7 +370,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.2.1 Missile
 
-- [ ] **TODO-8.B.1** `src/OpenRA.Mods.Common/Projectiles/Missile.ts` (980 lines C#) -- Homing missile projectile:
+- [x] **TODO-8.B.1** `src/OpenRA.Mods.Common/Projectiles/Missile.ts` (980 lines C#) -- Homing missile projectile:
   - `HomingState` enum: `SeekingTarget`, `Cruising`, `Retargeting`, `OutOfFuel`
   - Trajectory: initial vertical launch phase, then angle-lerp toward target
   - Homing: `homingSpeed: WAngle` per tick turn rate, `homingAlliance` target filter
@@ -387,7 +388,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.2.2 AreaBeam
 
-- [ ] **TODO-8.B.2** `src/OpenRA.Mods.Common/Projectiles/AreaBeam.ts` (297 lines C#) -- Area-effect beam projectile:
+- [x] **TODO-8.B.2** `src/OpenRA.Mods.Common/Projectiles/AreaBeam.ts` (297 lines C#) -- Area-effect beam projectile:
   - `duration: number` -- beam persistence in ticks
   - `damageInterval: number` -- damage tick interval within beam
   - `width: WDist` -- beam width for visual and damage area
@@ -399,7 +400,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.2.3 Railgun
 
-- [ ] **TODO-8.B.3** `src/OpenRA.Mods.Common/Projectiles/Railgun.ts` (257 lines C#) -- High-velocity projectile with beam trail:
+- [x] **TODO-8.B.3** `src/OpenRA.Mods.Common/Projectiles/Railgun.ts` (257 lines C#) -- High-velocity projectile with beam trail:
   - Combines bullet physics (fast straight-line travel) with beam visual (trail)
   - `damage: number` -- impact damage
   - `speed: WDist` -- per-tick travel distance
@@ -410,7 +411,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.2.4 LaserZap
 
-- [ ] **TODO-8.B.4** `src/OpenRA.Mods.Common/Projectiles/LaserZap.ts` (217 lines C#) -- Instant laser beam projectile:
+- [x] **TODO-8.B.4** `src/OpenRA.Mods.Common/Projectiles/LaserZap.ts` (217 lines C#) -- Instant laser beam projectile:
   - `duration: number` -- beam visual persistence in ticks
   - `width: WDist` -- laser beam visual thickness
   - `tracksTarget: boolean` -- beam endpoint follows moving target
@@ -422,7 +423,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.2.5 NukeLaunch
 
-- [ ] **TODO-8.B.5** `src/OpenRA.Mods.Common/Projectiles/NukeLaunch.ts` (173 lines C#) -- Nuclear missile projectile:
+- [x] **TODO-8.B.5** `src/OpenRA.Mods.Common/Projectiles/NukeLaunch.ts` (173 lines C#) -- Nuclear missile projectile:
   - `missileWeapon: string` -- missile warhead config
   - `detonationAltitude: WDist` -- height at which missile detonates
   - `velocity: WVec` -- upward velocity vector
@@ -434,7 +435,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.2.6 GravityBomb
 
-- [ ] **TODO-8.B.6** `src/OpenRA.Mods.Common/Projectiles/GravityBomb.ts` (146 lines C#) -- Ballistic gravity-affected projectile:
+- [x] **TODO-8.B.6** `src/OpenRA.Mods.Common/Projectiles/GravityBomb.ts` (146 lines C#) -- Ballistic gravity-affected projectile:
   - Simple ballistic trajectory: initial horizontal velocity + gravity acceleration
   - `velocity: WVec` -- initial velocity (horizontal + vertical)
   - `acceleration: WVec` -- gravity vector (typically (0, 0, -g))
@@ -444,7 +445,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.2.7 InstantHit
 
-- [ ] **TODO-8.B.7** `src/OpenRA.Mods.Common/Projectiles/InstantHit.ts` (96 lines C#) -- Zero-travel-time projectile:
+- [x] **TODO-8.B.7** `src/OpenRA.Mods.Common/Projectiles/InstantHit.ts` (96 lines C#) -- Zero-travel-time projectile:
   - Applies warheads immediately at target position on tick 0
   - No visual projectile (effect handled by warhead's CreateEffect)
   - `Tick(world)` -- instant warhead trigger, then self-dispose
@@ -452,15 +453,15 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
   - Blocked by `BlockedByActor` check along line-of-sight from source to target
   - 3D line-of-sight check: `Ray` from source position to target, scene pick for blocking actors
 
-**Phase B Summary**: 7 files, ~2,166 C# lines, estimated ~8,000 TS implementation + ~5,500 test lines
+**Phase B Summary**: 7 files, ~2,166 C# lines source. Implemented: 17 files (9 source + 8 test), 186 tests, ~4,483 lines. Reviewed: APPROVED (2 rounds). Commits: `0f02230` (initial), `28b4602` (Round 1 fixes). Shared modules: `MissileMath.ts` (23 tests), `ProjectileRegistry.ts`, `BeamRenderableShape.ts`. Test breakdown: Missile (32), AreaBeam (12), Railgun (13), LaserZap (12), NukeLaunch (11), GravityBomb (15), InstantHit (14), MissileMath (23), BeamRenderableShape (shared).
 
 ---
 
 ### 3.3 Phase C: Weapon Configuration Data
 
-**Status**: 📋 待迁移 (0/2 migrated, +1 optional)
+**Status**: 📋 待迁移 (0/2 migrated, +1 optional) -- NOW UNBLOCKED (Phases A+B COMPLETE)
 **Complexity**: Medium (WeaponInfo parses from JSON rules)
-**Blocked by**: Phase A (WeaponInfo references warhead types), Phase B (WeaponInfo references projectile types)
+**Blocked by**: Phase A (WeaponInfo references warhead types) -- COMPLETE, Phase B (WeaponInfo references projectile types) -- COMPLETE
 **Blocks**: Phase D (Armament loads WeaponInfo for each weapon slot), Phase E (support traits reference weapon definitions)
 
 **Description**: Configuration data classes that define weapons, sounds, and music from JSON rule files. `WeaponInfo` is the central config hub -- it specifies the warhead, projectile, burst count, range, reload time, and target validation for each weapon. `SoundInfo` defines attack/death sound configurations. `MusicInfo` (optional) defines background music tracks. These classes are consumed by the Ruleset system (Ch6 Phase C) and loaded from JSON at world creation.
