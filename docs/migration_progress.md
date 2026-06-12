@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-12
-> **Current phase**: Chapter 5 (UI System & Resource Management) — COMPLETE (16/16, 100%)
-> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%, ALL PHASES A-E COMPLETE), Chapters 2-5 COMPLETE
+> **Current phase**: Chapter 6 (Network Sync & Game Logic) — DESIGN PHASE (migration plan complete, 0/26 migrated)
+> **Overall status**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 0/26 (0%, plan ready), Chapters 2-5 COMPLETE
 
 ---
 
@@ -18,8 +18,8 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Remaining chapters** | Chapters 6-8+ (networking, audio, game logic) |
-| **Overall project completion** | Chapters 2+3+4+5/8+ complete (116/116 rendering+actors+map+UI), Chapters 6-8+ not yet started |
+| **Remaining chapters** | Chapters 6-8+ (networking in design phase; audio, game logic not yet planned) |
+| **Overall project completion** | Chapters 2+3+4+5/8+ complete (116/116 rendering+actors+map+UI), Chapter 6 design phase (plan complete, 0/26 migrated) |
 
 > **Note**: Chapters 2 and 3 are fully complete. Chapter 4 is now complete at 37/37 (100%). Phase A (CellLayer): 8 files, 195 tests. Phase B (MapGrid + CellRamp): 2 files + 2 updated, 138 tests. Phase C (TerrainInfo): 1 file, 93 tests. Phase D (Map Core): 2 files, 38+ tests. Phase E (Map Support): 7 files + 2 stubs, 96 tests. Phase F (Terrain Mesh): 2 new files, 43 tests. Phase G (Pathfinding): 13 files (10 pathfinder + 3 dep), 190 tests, HPA* + A*. Phase H (MiniYAML): 1 new file, build-time JSON compiler. Phase I (CoordinateTransformer): 1 new file, WPos<->Vector3 bridge. Chapter 5: Phase A (FileSystem Foundation) COMPLETE (4/16, 1,430 impl + 1,961 test lines, 132 tests). Phase B (C&C Package Formats) COMPLETE (5/16, ~1,472 impl + ~1,653 test lines, 108 tests). Phase C (MOD System Core) COMPLETE (2/16, 832 impl + 1,296 test lines, 115 tests). Phase D (UI Widget Core) COMPLETE (4/16, 2,129 impl + 2,333 test lines, 174 tests). Phase E (World Interaction Bridge) COMPLETE (1/16, 1,157 impl + ~1,682 test lines, 55 tests). Chapter 5 now 100% complete.
 
@@ -809,3 +809,121 @@ Phase A: FileSystem (4 files) -- FOUNDATION
 | **Total** | **16** | | **~14,145** | **~584** | |
 
 **Total completed**: ~14,145 lines of implementation + test code across all 16 files. Chapter 5 is now 100% complete.
+
+---
+
+## Chapter 6: Network Sync & Game Logic (DESIGN PHASE)
+
+> **Migration Plan**: [docs/chapter7_network_sync_migration_plan.md](docs/chapter7_network_sync_migration_plan.md)
+> **Created**: 2026-06-12 | **Updated**: 2026-06-12 | **Status**: DESIGN PHASE (0/26 migrated, 0%)
+> **Prerequisite**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed | 0 | 0% |
+| Pending | 26 | 100% |
+| **Total** | **26** | **0%** |
+| **From OpenRA** | **22** | |
+| **New files (no OpenRA equivalent)** | **2** (sync hash generator build tool, behavior tree json configs) | |
+| **Existing file extensions** | **1** (ActorInfo.ts sync metadata) | |
+| **Deferred stubs** | **3** (BuildingRepairBotModule, PowerDownBotManager, ProtectionStates) | |
+
+### Chapter 6 Phases
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Network & Connection Foundation | 4 | HIGH (OrderManager, Connection), MEDIUM (Order, UnitOrders) | PENDING (0/4) |
+| Phase B | Sync Hash System | 2 | HIGH (hash generation + build tooling) | PENDING (0/2) |
+| Phase C | Ruleset Container & ActorInfo Integration | 2 | MEDIUM | PENDING (0/2) |
+| Phase D | AI BotModule Core | 10 | HIGH (SquadManager, BaseBuilder), MEDIUM | PENDING (0/10) |
+| Phase E | AI BotModule Extended | 8 (+3 stubs) | MEDIUM, LOW | PENDING (0/8+3) |
+
+### Key Architecture Decisions (8 ADRs)
+
+| ADR | Decision |
+|-----|----------|
+| ADR-6.1 | WebSocket client-server as primary transport; WebRTC DataChannel optional for LAN |
+| ADR-6.2 | MessagePack binary serialization for all network messages |
+| ADR-6.3 | Sync hash functions pre-generated at build time via AST scanning |
+| ADR-6.4 | Deterministic Mersenne Twister PRNG ported from C# (no Math.random()) |
+| ADR-6.5 | AI BotModules migrated to Behavior Tree architecture with JSON configuration |
+| ADR-6.6 | All mod rules compiled from MiniYAML to JSON at build time (consistent with ADR-4.2, ADR-5.1) |
+| ADR-6.7 | ActorInfo.ts extended with sync metadata (no separate class) |
+| ADR-6.8 | Game tick runs in Web Worker; rendering on main thread via postMessage |
+
+### Already Available (from Prior Chapters)
+
+| Dependency | Source | Status |
+|:---|:---|:---|
+| MiniYAML -> JSON pipeline | `utils/miniyaml-to-json.ts` | COMPLETE (Ch4 Phase H) |
+| `ActorInfo` trait metadata | `src/OpenRA.Game/GameRules/ActorInfo.ts` | COMPLETE (Ch3 Phase E) |
+| Coordinate types (WPos, CPos, CVec, etc.) | `src/OpenRA.Game/` | COMPLETE (Ch3 Phase A) |
+| `World.ts` / `GameWorldManager` | `src/OpenRA.Game/World.ts` | COMPLETE (Ch3 Phase C) |
+| `Actor.ts` / `GameActor` | `src/OpenRA.Game/Actor.ts` | COMPLETE (Ch3 Phase D) |
+| `Player.ts` | `src/OpenRA.Game/Player.ts` | COMPLETE (Ch3 Phase G) |
+| `TraitsInterfaces.ts` (ITick, IResolveOrder, etc.) | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` | COMPLETE (Ch3 Phase B) |
+| `ModData.ts` + `Manifest.ts` | `src/OpenRA.Game/` | COMPLETE (Ch5 Phase C) |
+| `FileSystem.ts` (VFS) | `src/OpenRA.Game/FileSystem/` | COMPLETE (Ch5 Phase A) |
+| `Map.ts` | `src/OpenRA.Game/Map/Map.ts` | COMPLETE (Ch4 Phase D) |
+| `Renderer.ts` + `WorldRenderer.ts` | `src/OpenRA.Game/` | COMPLETE (Ch2) |
+| `PriorityQueue.ts`, `Cache.ts`, `BitSet.ts` | `src/OpenRA.Game/Primitives/` | COMPLETE (Ch3 Phase A) |
+
+### Dependency Graph
+
+```
+Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
+  |
+  +--> Phase A (Order + Connection + UnitOrders + OrderManager) [0/4]
+  |     |
+  |     +--> Phase B (Sync + hash generator) [0/2]
+  |     |     |
+  |     |     +--> Phase C (Ruleset + ActorInfo extension) [0/2]
+  |     |           |
+  |     |           +--> Phase D (AI BotModule Core: 10 files) [0/10]
+  |     |                 |
+  |     |                 +--> Phase E (AI BotModule Extended: 8+3 files) [0/8+3]
+```
+
+### Phase Strategy
+
+| Week | Phase | Files | Description | Parallelizable |
+|:---:|:---|:---:|:---|:---:|
+| 1-2 | Phase A | 4 | Network foundation (Order, Connection, OrderManager, UnitOrders) | Order.ts + UnitOrders.ts in parallel |
+| 2-3 | Phase B | 2 | Sync hash system (runtime + build generator) | Sync.ts + hash generator in parallel |
+| 3-4 | Phase C | 2 | Ruleset container + ActorInfo extension | Sequential (needs Phase B) |
+| 4-6 | Phase D | 10 | AI core modules | Highly parallel (3 groups) |
+| 6-8 | Phase E | 8+3 | AI extended modules | Highly parallel |
+
+**Total estimate**: 8-9 weeks (2 developers) or 5-6 weeks (4 developers).
+
+### Chapter 6 File Inventory
+
+| # | OpenRA Source | Target TypeScript File | Complexity | Phase |
+|:---:|:---|:---|:---:|:---:|
+| 1 | `Order.cs` | `src/OpenRA.Game/Network/Order.ts` | MEDIUM | A |
+| 2 | `UnitOrders.cs` | `src/OpenRA.Game/Network/UnitOrders.ts` | MEDIUM | A |
+| 3 | `Connection.cs` | `src/OpenRA.Game/Network/Connection.ts` | HIGH | A |
+| 4 | `OrderManager.cs` | `src/OpenRA.Game/Network/OrderManager.ts` | HIGH | A |
+| 5 | `Sync.cs` | `src/OpenRA.Game/Sync.ts` | HIGH | B |
+| 5a | *(new build tool)* | `utils/sync-hash-generator.ts` | HIGH | B |
+| 6 | `Ruleset.cs` | `src/OpenRA.Game/GameRules/Ruleset.ts` | MEDIUM | C |
+| 7 | *(extend existing)* | `src/OpenRA.Game/GameRules/ActorInfo.ts` (extend) | MEDIUM | C |
+| 8 | `SquadManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/SquadManagerBotModule.ts` | HIGH | D |
+| 9 | `BaseBuilderBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BaseBuilderBotModule.ts` | HIGH | D |
+| 10 | `UnitBuilderBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/UnitBuilderBotModule.ts` | MEDIUM | D |
+| 11 | `HarvesterBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/HarvesterBotModule.ts` | MEDIUM | D |
+| 12 | `SupportPowerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/SupportPowerBotModule.ts` | MEDIUM | D |
+| 13 | `ResourceMapBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/ResourceMapBotModule.ts` | MEDIUM | D |
+| 14 | `Squad.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/Squad.ts` | MEDIUM | D |
+| 15 | `AttackOrFleeFuzzy.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/AttackOrFleeFuzzy.ts` | MEDIUM | D |
+| 16 | `StateMachine.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/StateMachine.ts` | LOW | D |
+| 17 | `StateBase.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/StateBase.ts` | LOW | D |
+| 18 | `BaseBuilderQueueManager.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/BaseBuilderQueueManager.ts` | MEDIUM | E |
+| 19 | `GroundStates.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/GroundStates.ts` | MEDIUM | E |
+| 20 | `AirStates.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/Squads/States/AirStates.ts` | MEDIUM | E |
+| 21 | `McvExpansionManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/McvExpansionManagerBotModule.ts` | HIGH | E |
+| 22 | `CaptureManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/CaptureManagerBotModule.ts` | LOW | E |
+| 23 | `McvManagerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/McvManagerBotModule.ts` | LOW | E |
+| 24 | `MinelayerBotModule.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/MinelayerBotModule.ts` | MEDIUM | E |
+| 25 | `SupportPowerDecision.cs` | `src/OpenRA.Mods.Common/Traits/BotModules/BotModuleLogic/SupportPowerDecision.ts` | LOW | E |
+| 26 | *(3 deferred stubs)* | `BuildingRepairBotModule`, `PowerDownBotManager`, `ProtectionStates` | LOW | E |

@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 5 (UI System & Resource Management) -- COMPLETE (16/16, 100%)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%)
+**Phase**: Chapter 6 (Network Sync & Game Logic) -- DESIGN PHASE (migration plan complete, 0/26 migrated)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 0/26 (0%)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -36,7 +36,13 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | MOD System Core (2 files) | COMPLETE (Manifest, ModData), 115 tests, 2 review rounds |
 | UI Widget Core (4 files) | COMPLETE (Widget, ChromeMetrics, WidgetLoader, ChromeProvider), 174 tests, 3 review rounds |
 | World Interaction Bridge (1 file) | COMPLETE (WorldInteractionControllerWidget, 1157 lines, 55 tests, 2 review rounds) |
-| Game logic, networking, audio | Not yet started (Chapters 6-8+)
+| **Network Sync & Game Logic (26 files)** | **DESIGN PHASE (0/26 migrated, migration plan complete)** |
+| Order & Connection System (4 files) | Pending (Phase A, plan complete) |
+| Sync Hash System (2 files) | Pending (Phase B, plan complete) |
+| Ruleset Container (2 files) | Pending (Phase C, plan complete) |
+| AI BotModule Core (10 files) | Pending (Phase D, plan complete) |
+| AI BotModule Extended (8+3 files) | Pending (Phase E, plan complete) |
+| Game logic, networking, audio | Chapter 6 plan ready; Chapters 7-8+ (audio, weapons, etc.) not yet planned
 
 ## Directory Layout
 
@@ -375,6 +381,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
 | [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 100% complete) |
+| [docs/chapter7_network_sync_migration_plan.md](docs/chapter7_network_sync_migration_plan.md) | Chapter 6 network sync & game logic migration plan (26 files, 5 phases A-E, 0% migrated) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
