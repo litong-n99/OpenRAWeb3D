@@ -113,7 +113,7 @@
     @keyframes coord-flash { 0% { color: #e94560; } 100% { color: #eee; } }
   </style>
 </head>
-<body>
+<body ondragstart="return false;" oncontextmenu="return false;">
   <div id="app">
     <div id="left-panel">
       <h2>A. 相机系统验收测试</h2>
@@ -180,8 +180,8 @@
       <button id="btn-toggle-bounds" style="margin-top:2px;">切换边界可视化</button>
       <button id="btn-toggle-edge-zones" style="margin-top:2px;">切换边缘滚动区域</button>
       <div style="font-size:10px; color:#667; margin-top:6px;">
-        鼠标左键拖拽以环绕观察 | 滚轮缩放<br>
-        靠近边缘 (≤15px) 查看滚屏区域
+        左键拖拽平移相机 | 中键拖拽环绕<br>
+        滚轮缩放 | 靠近边缘 (≤15px) 查看滚屏区域
       </div>
     </div>
 

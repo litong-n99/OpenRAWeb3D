@@ -112,16 +112,11 @@ camera.orthoBottom = -BASE_ORTHO_SIZE
 camera.orthoLeft = -BASE_ORTHO_SIZE
 camera.orthoRight = BASE_ORTHO_SIZE
 
-// Disable default camera controls — we implement our own for the test
+// Disable default ArcRotateCamera controls — implemented as custom RTS-style controls
+// Left-click drag = camera pan (RTS convention, grab-and-drag along terrain)
+// Middle-click drag = orbit rotation
+// Scroll wheel = zoom
 camera.inputs.clear()
-
-// Allow mouse orbit (left button drag rotates, right button pans)
-// Re-add basic mouse inputs for user exploration
-// We use attachControl with specific button mappings
-camera.attachControl(canvas, true)
-
-// Override: lock panning to XZ plane
-camera.panningAxis = new Vector3(1, 0, 0)
 
 // Radius limits (for perspective mode)
 camera.lowerRadiusLimit = 3
@@ -326,7 +321,14 @@ buildBoundaryVisualization()
 let lastWPosUnderCursor: { x: number; y: number; z: number } | null = null
 let referenceWPosForDrift: { x: number; y: number; z: number } | null = null
 let currentZoom = 1.0
-let _isRightDragging = false
+let _isPanning = false
+let _isOrbiting = false
+let _panRefWorld: Vector3 | null = null
+let _panRefTarget = Vector3.Zero()
+let _orbitRefScreenX = 0
+let _orbitRefScreenY = 0
+let _orbitRefAlpha = 0
+let _orbitRefBeta = 0
 
 /** Pick the terrain plane (y=0) at the given screen position */
 function pickTerrainAt(screenX: number, screenY: number): Vector3 | null {
@@ -622,63 +624,74 @@ canvas.addEventListener('dblclick', (event) => {
 })
 
 // ---------------------------------------------------------------------------
-// Prevent browser context menu and gesture navigation on right-click drag
-// Chromium handles gesture nav at window level — we MUST intercept there
-// Strategy: canvas pointer capture + window capture-phase pointermove
+// Custom Camera Controls (RTS-style)
+// Left-click drag = camera pan (grab-and-drag along terrain plane)
+// Middle-click drag = orbit rotation
+// Scroll wheel = zoom (handled below)
 // ---------------------------------------------------------------------------
 
-// Canvas-level: block context menu
+// Block browser context menu on right-click
 canvas.addEventListener('contextmenu', (event) => {
   event.preventDefault()
-  event.stopPropagation()
 })
 
-// Canvas-level: start tracking right-click drag, capture pointer to canvas
+// Shared cleanup for all drag states
+const endDrag = () => {
+  _isPanning = false
+  _isOrbiting = false
+  _panRefWorld = null
+}
+
+// Pointer down: start pan (left button) or orbit (middle button)
 canvas.addEventListener('pointerdown', (event) => {
-  if (event.button === 2) {  // right mouse button
-    event.preventDefault()
-    event.stopPropagation()
-    _isRightDragging = true
+  const rect = canvas.getBoundingClientRect()
+  if (event.button === 0) {  // left button = pan (RTS convention)
+    const sx = event.clientX - rect.left
+    const sy = event.clientY - rect.top
+    const worldHit = pickTerrainAt(sx, sy)
+    if (worldHit) {
+      _isPanning = true
+      _panRefWorld = worldHit
+      _panRefTarget = camera.target.clone()
+      canvas.setPointerCapture(event.pointerId)
+      event.preventDefault()
+    }
+  } else if (event.button === 1) {  // middle button = orbit
+    _isOrbiting = true
+    _orbitRefScreenX = event.clientX
+    _orbitRefScreenY = event.clientY
+    _orbitRefAlpha = camera.alpha
+    _orbitRefBeta = camera.beta
     canvas.setPointerCapture(event.pointerId)
+    event.preventDefault()
   }
-}, { passive: false })
+})
 
-// Canvas-level: prevent gesture during drag
+// Pointer move: pan or orbit
 canvas.addEventListener('pointermove', (event) => {
-  if (_isRightDragging) {
+  if (_isPanning && _panRefWorld) {
+    const rect = canvas.getBoundingClientRect()
+    const sx = event.clientX - rect.left
+    const sy = event.clientY - rect.top
+    const worldNow = pickTerrainAt(sx, sy)
+    if (worldNow) {
+      const worldDelta = _panRefWorld.subtract(worldNow)
+      camera.target = clampToMapBounds(_panRefTarget.add(worldDelta))
+      event.preventDefault()
+    }
+  } else if (_isOrbiting) {
+    const dx = event.clientX - _orbitRefScreenX
+    const dy = event.clientY - _orbitRefScreenY
+    camera.alpha = _orbitRefAlpha - dx * 0.01
+    camera.beta = Math.max(0.05, Math.min(Math.PI / 2 - 0.05, _orbitRefBeta + dy * 0.01))
     event.preventDefault()
-    event.stopPropagation()
   }
-}, { passive: false })
-
-// WINDOW-level capture phase: intercept BEFORE browser gesture engine
-window.addEventListener('pointermove', (event) => {
-  if (_isRightDragging) {
-    event.preventDefault()
-    event.stopPropagation()
-  }
-}, { passive: false, capture: true })
-
-window.addEventListener('pointerup', (_event) => {
-  if (_isRightDragging) {
-    _isRightDragging = false
-  }
-}, { capture: true })
-
-// Canvas-level cleanup
-canvas.addEventListener('pointerup', (event) => {
-  if (event.button === 2) {
-    _isRightDragging = false
-  }
-}, { passive: false })
-
-canvas.addEventListener('pointerleave', () => {
-  _isRightDragging = false
 })
 
-canvas.addEventListener('lostpointercapture', () => {
-  _isRightDragging = false
-})
+// Pointer up / leave / lost capture: end all drag states
+canvas.addEventListener('pointerup', endDrag)
+canvas.addEventListener('pointerleave', endDrag)
+canvas.addEventListener('lostpointercapture', endDrag)
 
 // ---------------------------------------------------------------------------
 // Mouse Events for Edge Detection & Cursor Readout
