@@ -123,6 +123,18 @@ export interface ISound {
  * - AudioContext 在用户交互前处于 suspended 状态（自动播放策略）
  * - Howler.autoUnlock = true 可处理自动恢复
  * - 3D 空间音频使用 Howler.pos() + HRTF 空间化
+ *
+ * ## OpenRA 方法对照与省略说明
+ * - `Play2DStream(Stream, ...)` → **有意省略**。OpenRA C# 通过流式 PCM 输入
+ *   实现音乐/视频播放（AUD/VOC/WAV 解码为原始 PCM）。浏览器环境下，
+ *   Howler.js / Web Audio API 原生支持所有主流音频格式的流式解码（WebM,
+ *   MP3, OGG, WAV），无需手动 PCM 流式传输。流式播放通过 Howl 构造函数
+ *   的 URL 参数或 `addSoundSourceFromMemory()` 的 Blob URL 自动处理。
+ *
+ * @todo TODO-7.D.5: WebAudioEngine 实现类 —— 基于 Howler.js 的 ISoundEngine
+ *   具体实现。封装 Howler 全局实例、AudioContext 生命周期管理、
+ *   WPos → Howler 坐标转换（Y-up → Z-forward）、距离衰减模型配置。
+ *   当前阶段：ISoundEngine 作为接口单独存在，Sound 类的 mock 实现用于测试。
  */
 export interface ISoundEngine {
   /** 枚举可用音频输出设备。

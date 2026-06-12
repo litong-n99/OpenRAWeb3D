@@ -25,6 +25,19 @@ import { WPos } from '../WPos.js'
 import type { ISound, ISoundEngine, ISoundSource, SoundDevice } from './SoundDevice.js'
 
 // ---------------------------------------------------------------------------
+// IReadOnlyFileSystemCompat
+// ---------------------------------------------------------------------------
+
+/** Sound 类使用的文件系统最小接口。
+ *
+ * 与 src/OpenRA.Game/FileSystem/IPackage.ts 中的 IReadOnlyFileSystem 兼容。
+ */
+export interface IReadOnlyFileSystemCompat {
+  exists(filename: string): boolean
+  openAsync(filename: string): Promise<ArrayBuffer | null>
+}
+
+// ---------------------------------------------------------------------------
 // SoundType 枚举
 // OpenRA 对照: SoundType enum { World, UI }
 // ---------------------------------------------------------------------------
@@ -755,6 +768,22 @@ export class Sound {
   }
 
   // ---------------------------------------------------------------------------
+  // Play(ISoundFormat) / Play(ISoundFormat, float) — PCM 流式播放
+  // OpenRA 对照: Sound.Play(ISoundFormat) / Sound.Play(ISoundFormat, float)
+  //
+  // @todo TODO-7.D.6: 实现 ISoundFormat → Play2DStream 桥接。
+  //   在 OpenRA C# 中，Play(ISoundFormat) 调用 soundEngine.Play2DStream()
+  //   直接播放 PCM 流（用于音乐和自定义音频）。Web 环境下，浏览器原生解码
+  //   替代了 PCM 流式传输。需要：
+  //   1. 定义 ISoundFormat 接口（Channels, SampleBits, SampleRate, LengthInSeconds,
+  //      GetPCMInputStream）
+  //   2. 实现 PCM → ArrayBuffer 转换，再通过 addSoundSourceFromMemory 播放
+  //   3. 或在 ISoundEngine 接口中添加 Play2DStream 方法返回 ISound
+  //   当前：Play(ISoundFormat) 和 Play(ISoundFormat, float) 重载暂不实现，
+  //   音乐播放通过 PlayMusic(MusicInfoCompat) 走独立的音乐管理路径。
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
   // PlayToPlayer
   // OpenRA 对照: Sound.PlayToPlayer(SoundType, Player, string)
   //   / PlayToPlayer(SoundType, Player, string, WPos)
@@ -1205,6 +1234,15 @@ export class Sound {
 
     const id = voicedActor?.actorID ?? 0
 
+    // OpenRA 对照: Sound.PlayPredefined line 409
+    // Shared voice channel: all selected units use actorId=0 so only one
+    // sound plays for the group (prevents 5 simultaneous Move sounds from 5 riflemen)
+    const currentSoundsKey = (
+      voicedActor !== null
+        && voicedActor.world !== null
+        && voicedActor.world.selection.contains(voicedActor)
+    ) ? 0 : id
+
     let pool: SoundPool
     let suffix = rules.defaultVariant
     let prefix = rules.defaultPrefix
@@ -1286,8 +1324,8 @@ export class Sound {
       if (sound === null) return false
       this.currentNotifications.set(name, sound)
     } else {
-      // 语音处理（按 actorId 追踪）
-      const currentSound = this.currentSounds.get(id)
+      // 语音处理（按 currentSoundsKey 追踪 —— 选中单位共享 channel 0）
+      const currentSound = this.currentSounds.get(currentSoundsKey)
       if (currentSound !== undefined && !currentSound.complete) {
         if (pool.type === InterruptType.Interrupt) {
           this.soundEngine.stopSound(currentSound)
@@ -1298,7 +1336,7 @@ export class Sound {
 
       const sound = playSound()
       if (sound === null) return false
-      this.currentSounds.set(id, sound)
+      this.currentSounds.set(currentSoundsKey, sound)
     }
 
     return true
@@ -1367,17 +1405,4 @@ export class Sound {
 
     this.soundEngine.dispose()
   }
-}
-
-// ---------------------------------------------------------------------------
-// IReadOnlyFileSystemCompat
-// ---------------------------------------------------------------------------
-
-/** Sound 类使用的文件系统最小接口。
- *
- * 与 src/OpenRA.Game/FileSystem/IPackage.ts 中的 IReadOnlyFileSystem 兼容。
- */
-export interface IReadOnlyFileSystemCompat {
-  exists(filename: string): boolean
-  openAsync(filename: string): Promise<ArrayBuffer | null>
 }

@@ -1467,6 +1467,85 @@ describe('Sound playPredefined', () => {
     expect(result).toBe(true)
     expect(engine.play2DCalls).toHaveLength(1)
   })
+
+  it('should route selected actors to shared voice channel (actorId=0)', () => {
+    // Two different actors, both in selection → both use currentSounds[0]
+    engine.nextSound = new MockSound()
+
+    // First actor (ID=1, in selection) plays Move
+    const result1 = sound.playPredefined(
+      SoundType.World,
+      ruleset,
+      localPlayer,
+      { actorID: 1, world: { selection: { contains: () => true }, localPlayer } },
+      'move',
+      'Move',
+      null,
+      false,
+      Zero,
+      1.0,
+      true,
+    )
+    expect(result1).toBe(true)
+
+    // Second actor (ID=2, also in selection) — should use currentSounds[0]
+    // With Overlap pool type, the sound plays (no interrupt check needed)
+    const result2 = sound.playPredefined(
+      SoundType.World,
+      ruleset,
+      localPlayer,
+      { actorID: 2, world: { selection: { contains: () => true }, localPlayer } },
+      'move',
+      'Move',
+      null,
+      false,
+      Zero,
+      1.0,
+      true,
+    )
+    expect(result2).toBe(true)
+    expect(engine.play2DCalls).toHaveLength(2)
+  })
+
+  it('should keep separate voice channels for non-selected actors', () => {
+    // Two different actors, NOT in selection → use separate actorIDs
+    // Use Interrupt pool type so we can verify channels are separate
+    engine.nextSound = new MockSound()
+
+    // Actor 1 (ID=1, not selected) plays Attack (Interrupt type)
+    sound.playPredefined(
+      SoundType.World,
+      ruleset,
+      localPlayer,
+      { actorID: 1, world: { selection: { contains: () => false }, localPlayer } },
+      'attack',
+      'Attack',
+      null,
+      false,
+      Zero,
+      1.0,
+      true,
+    )
+    expect(engine.play2DCalls).toHaveLength(1)
+
+    // Actor 2 (ID=2, not selected) — should use currentSounds[2],
+    // which is empty, so new sound plays (no interrupt)
+    sound.playPredefined(
+      SoundType.World,
+      ruleset,
+      localPlayer,
+      { actorID: 2, world: { selection: { contains: () => false }, localPlayer } },
+      'attack',
+      'Attack',
+      null,
+      false,
+      Zero,
+      1.0,
+      true,
+    )
+    // Both should have played (separate channels)
+    expect(engine.play2DCalls).toHaveLength(2)
+  })
 })
 
 // ---------------------------------------------------------------------------
