@@ -529,17 +529,28 @@ describe('ParticleEffectManager', () => {
     it('should return null for unknown effect type (no template)', () => {
       const manager = new ParticleEffectManager(mockScene)
       const result = manager.playEffect('nonexistent', { x: 0, y: 0, z: 0 } as any)
-      // Template is undefined → destructuring gives merged with undefined defaults
-      // The function won't crash but the effect config will be incomplete
       expect(result).toBeNull()
+      // activeCount must NOT increment on unknown type
+      expect(manager.activeCount).toBe(0)
     })
 
-    it('should increment active count for pooled effects (stub)', () => {
+    it('should NOT increment activeCount when stub returns null (no GPU context)', () => {
       const manager = new ParticleEffectManager(mockScene)
-      // Without GPU, returns null but increments activeCount
+      // Without GPU context, playEffect returns null and does NOT leak activeCount
       const result = manager.playEffect('explosion', { x: 10, y: 5, z: 0 } as any)
-      expect(result).toBeNull() // stub: no GPU
-      // activeCount is incremented even though null is returned (stub behavior)
+      expect(result).toBeNull()
+      expect(manager.activeCount).toBe(0) // no leak
+    })
+
+    it('should return null with 0 activeCount when LOD-off (far distance)', () => {
+      const manager = new ParticleEffectManager(mockScene)
+      mockScene.activeCamera = {
+        position: { x: 0, y: 0, z: 0 },
+      } as any
+      const farPosition = { x: 500, y: 0, z: 0 } as any
+      const result = manager.playEffect('smoke', farPosition)
+      expect(result).toBeNull()
+      expect(manager.activeCount).toBe(0)
     })
   })
 
@@ -574,6 +585,77 @@ describe('ParticleEffectManager', () => {
       const manager = new ParticleEffectManager(mockScene)
       expect(() => manager.disposeEffect(null as any)).not.toThrow()
       expect(() => manager.disposeEffect(undefined as any)).not.toThrow()
+      expect(manager.activeCount).toBe(0) // activeCount unchanged on null input
+    })
+
+    it('should recycle to correct pool via type map', () => {
+      const manager = new ParticleEffectManager(mockScene)
+      const mockPs = { dispose: vi.fn() } as any
+
+      // Simulate: register PS with a type and set active
+      ;(manager as any)._typeMap.set(mockPs, 'explosion')
+      ;(manager as any)._activeCount = 1
+
+      manager.disposeEffect(mockPs as any)
+      // After disposal, PS should be returned to 'explosion' pool
+      expect(manager.pooledCount).toBe(1)
+      expect(manager.activeCount).toBe(0)
+      // Type map entry should be removed
+      expect((manager as any)._typeMap.has(mockPs)).toBe(false)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // LOD computation (ADR-7.4: 4-tier)
+  // -----------------------------------------------------------------------
+
+  describe('LOD computation', () => {
+    it('should return 100% factor within half distance (tier 1)', () => {
+      const manager = new ParticleEffectManager(mockScene)
+      mockScene.activeCamera = {
+        position: { x: 0, y: 0, z: 0 },
+      } as any
+
+      // smoke: half=50, minimal=100, off=200 — distance 30 < 50 → full
+      const result = manager.playEffect('smoke', { x: 30, y: 0, z: 0 } as any)
+      // Stub returns null (no GPU), but LOD would be 1.0
+      expect(result).toBeNull()
+    })
+
+    it('should return 50% factor in half-minimal range (tier 2)', () => {
+      const manager = new ParticleEffectManager(mockScene)
+      mockScene.activeCamera = {
+        position: { x: 0, y: 0, z: 0 },
+      } as any
+
+      // smoke: half=50, minimal=100, off=200 — distance 75 is in [50, 100) → 50%
+      const result = manager.playEffect('smoke', { x: 75, y: 0, z: 0 } as any)
+      // LOD factor = 0.5, still not off → stub returns null
+      expect(result).toBeNull()
+    })
+
+    it('should return 20% factor in minimal-off range (tier 3)', () => {
+      const manager = new ParticleEffectManager(mockScene)
+      mockScene.activeCamera = {
+        position: { x: 0, y: 0, z: 0 },
+      } as any
+
+      // smoke: half=50, minimal=100, off=200 — distance 150 is in [100, 200) → 20%
+      const result = manager.playEffect('smoke', { x: 150, y: 0, z: 0 } as any)
+      // LOD factor = 0.2, still not off → stub returns null
+      expect(result).toBeNull()
+    })
+
+    it('should return 0% factor beyond off distance (tier 4)', () => {
+      const manager = new ParticleEffectManager(mockScene)
+      mockScene.activeCamera = {
+        position: { x: 0, y: 0, z: 0 },
+      } as any
+
+      // smoke: off=200 — distance 250 > 200 → off (no particles)
+      const result = manager.playEffect('smoke', { x: 250, y: 0, z: 0 } as any)
+      expect(result).toBeNull()
+      expect(manager.activeCount).toBe(0)
     })
   })
 })

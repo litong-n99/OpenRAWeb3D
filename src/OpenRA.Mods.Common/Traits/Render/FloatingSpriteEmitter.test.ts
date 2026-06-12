@@ -29,13 +29,15 @@ import {
   FloatingSpriteEmitter,
   DEFAULT_EMITTER_INFO,
   type FloatingSpriteEmitterInfo,
-  type INotifyDamage,
-  type AttackInfo,
 } from './FloatingSpriteEmitter'
 
 import { WVec } from '../../../OpenRA.Game/WVec'
 import { WDist } from '../../../OpenRA.Game/WDist'
-import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces'
+import type {
+  IGameActor,
+  INotifyDamage,
+  AttackInfo,
+} from '../../../OpenRA.Game/Traits/TraitsInterfaces'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,12 +67,12 @@ function createMockActor(overrides: Partial<IGameActor> = {}): IGameActor {
  */
 function createMockAttackInfo(overrides: Partial<AttackInfo> = {}): AttackInfo {
   return {
-    damage: { value: 10 },
+    damage: { value: 10, damageTypes: { contains: () => false, isEmpty: () => true } },
     attacker: createMockActor({ actorId: 999 }) as IGameActor,
     damageState: 2,
     previousDamageState: 1,
     ...overrides,
-  }
+  } as AttackInfo
 }
 
 /**

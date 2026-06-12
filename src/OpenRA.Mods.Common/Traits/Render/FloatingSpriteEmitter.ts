@@ -38,55 +38,12 @@ import {
   ConditionalTrait,
   type ConditionalTraitInfo,
   type IGameActor,
+  type INotifyDamage,
+  type AttackInfo,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { WVec } from '../../../OpenRA.Game/WVec.js'
 import { WDist } from '../../../OpenRA.Game/WDist.js'
 import type { IFacing } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
-
-// ---------------------------------------------------------------------------
-// AttackInfo — forward declaration (from TraitsInterfaces)
-// ---------------------------------------------------------------------------
-
-/**
- * Information about an attack event.
- *
- * OpenRA 对照: AttackInfo
- *
- * NOTE: Full definition is in TraitsInterfaces.ts. This is a local
- * forward declaration for the FloatingSpriteEmitter file.
- */
-export interface AttackInfo {
-  damage: unknown
-  attacker: IGameActor
-  damageState: unknown
-  previousDamageState: unknown
-}
-
-// ---------------------------------------------------------------------------
-// INotifyDamage — damage notification interface
-//
-// OpenRA 对照: OpenRA.Traits.INotifyDamage
-// NOTE: To be moved to TraitsInterfaces.ts when more traits use it.
-// ---------------------------------------------------------------------------
-
-/**
- * Interface for traits that respond to damage events.
- *
- * OpenRA 对照: INotifyDamage
- *
- * Called whenever the actor takes damage. Used by FloatingSpriteEmitter
- * to reset the emission duration on damage (e.g., fire reignites).
- */
-export interface INotifyDamage {
-  /** Called when the actor takes damage.
-   *
-   * OpenRA 对照: INotifyDamage.Damaged(Actor self, AttackInfo e)
-   *
-   * @param actor — the actor that took damage
-   * @param attackInfo — information about the attack
-   */
-  damaged(actor: IGameActor, attackInfo: AttackInfo): void
-}
 
 // ---------------------------------------------------------------------------
 // FloatingSpriteEmitterInfo — emitter configuration

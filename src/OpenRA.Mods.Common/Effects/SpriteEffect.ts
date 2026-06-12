@@ -742,6 +742,13 @@ export class ParticleEffectManager {
   /** Pooled particle systems organized by effect type. */
   private readonly _pool: Map<string, (ParticleSystem | GPUParticleSystem)[]> = new Map()
 
+  /** Maps each active particle system to its effect type name.
+   *
+   * Needed so disposeEffect() can return the PS to the correct pool
+   * without the caller having to pass the type again.
+   */
+  private readonly _typeMap: Map<ParticleSystem | GPUParticleSystem, string> = new Map()
+
   /** Active (non-pooled, currently emitting) particle system count. */
   private _activeCount = 0
 
@@ -763,12 +770,13 @@ export class ParticleEffectManager {
    * OpenRA 对照: N/A (新的粒子效果 API)
    *
    * Attempts to reuse a pooled particle system. If none available, creates
-   * a new one. Applies LOD reduction based on distance to camera.
+   * a new one. Applies distance-based LOD reduction to emitRate.
    *
    * @param type — effect type name (e.g., "explosion", "smoke")
    * @param position — 3D world position for the effect
    * @param config — optional override configuration
-   * @returns the particle system playing the effect
+   * @returns the particle system playing the effect, or null if LOD-off or
+   *          template not found
    */
   playEffect(
     type: string,
@@ -778,36 +786,30 @@ export class ParticleEffectManager {
     if (this._disposed) return null
 
     const template = EFFECT_TEMPLATES[type]
-    const merged = { ...template, ...config } as EffectConfig
+    if (!template) return null // Unknown type
 
-    // Apply LOD based on camera distance
-    const camera = this._scene.activeCamera
-    if (camera) {
-      const distance = Vector3.Distance(position, camera.position)
-      const lod = merged.lodTiers ?? {
-        full: PARTICLE_LOD_TIERS.FULL + PARTICLE_LOD_TIERS.HALF,
-        half: PARTICLE_LOD_TIERS.HALF + PARTICLE_LOD_TIERS.MINIMAL,
-        minimal: PARTICLE_LOD_TIERS.MINIMAL + PARTICLE_LOD_TIERS.OFF,
-        off: PARTICLE_LOD_TIERS.OFF,
-      }
+    const merged: EffectConfig = { ...template, ...config }
 
-      if (distance > lod.off) return null // Too far, no particles
-    }
+    // Apply 4-tier LOD based on camera distance (ADR-7.4)
+    const lodFactor = this._computeLodFactor(position, merged)
+    if (lodFactor <= 0) return null // LOD off — no particles
 
     // Try pool reuse
     const pooled = this._acquireFromPool(type)
     if (pooled) {
-      // Move pooled system to position and start emitting
+      // Move pooled system to position and apply LOD-scaled emitRate
       // pooled.emitter = position
+      // pooled.emitRate = merged.emitRate * lodFactor
       // pooled.start()
       this._activeCount++
+      this._typeMap.set(pooled, type)
       return pooled
     }
 
     // Create new particle system
     // NOTE: Full Babylon.js ParticleSystem construction requires GPU context.
     // When integrated with the scene, use:
-    //   const ps = new ParticleSystem(`effect_${type}_${this._activeCount}`, merged.emitRate, this._scene)
+    //   const ps = new ParticleSystem(`effect_${type}_${this._activeCount}`, merged.emitRate * lodFactor, this._scene)
     //   ps.emitter = position
     //   ps.minLifeTime = merged.minLifetime
     //   ps.maxLifeTime = merged.maxLifetime
@@ -820,7 +822,7 @@ export class ParticleEffectManager {
     //   ps.particleTexture = new Texture(merged.texturePath, this._scene)
     //   ps.start()
 
-    this._activeCount++
+    // this._activeCount++   // only when GPU PS actually created
     return null // Stub: return null until GPU context is available
   }
 
@@ -830,13 +832,18 @@ export class ParticleEffectManager {
    * The system stops emitting and is returned to the pool after remaining
    * particles die. If the pool is full, the system is disposed.
    *
-   * @param ps — the particle system to dispose/recycle
+   * @param ps — the particle system to dispose/recycle (nullable)
    */
-  disposeEffect(ps: ParticleSystem | GPUParticleSystem): void {
+  disposeEffect(ps: ParticleSystem | GPUParticleSystem | null): void {
+    if (!ps) return // Guard against null/undefined
+
     // Stop emission
     // ps.stop()
-    // Schedule return to pool or disposal after remaining particles die
-    this._returnToPool('', ps)
+
+    // Look up the type from the type map and return to correct pool
+    const type = this._typeMap.get(ps) ?? 'unknown'
+    this._typeMap.delete(ps)
+    this._returnToPool(type, ps)
     this._activeCount = Math.max(0, this._activeCount - 1)
   }
 
@@ -851,12 +858,49 @@ export class ParticleEffectManager {
       }
     }
     this._pool.clear()
+    this._typeMap.clear()
     this._activeCount = 0
   }
 
   // -------------------------------------------------------------------------
   // Internal
   // -------------------------------------------------------------------------
+
+  /**
+   * Compute LOD emission factor based on camera distance (ADR-7.4).
+   *
+   * OpenRA 对照: N/A (new 4-tier LOD system)
+   *
+   * @param position — effect world position
+   * @param config — effect configuration with lodTiers
+   * @returns emitRate multiplier: 1.0 (full), 0.5 (half), 0.2 (minimal),
+   *          0 (off — no particles)
+   */
+  private _computeLodFactor(position: Vector3, config: EffectConfig): number {
+    const camera = this._scene.activeCamera
+    if (!camera) return 1.0 // No camera → assume full detail
+
+    const tiers = config.lodTiers ?? {
+      full: 0,
+      half: 50,
+      minimal: 100,
+      off: 200,
+    }
+
+    const distance = Vector3.Distance(position, camera.position)
+
+    // Tier 4: beyond off → no particles
+    if (distance > tiers.off) return 0
+
+    // Tier 3: minimal → 20% emitRate
+    if (distance > tiers.minimal) return 0.2
+
+    // Tier 2: half → 50% emitRate
+    if (distance > tiers.half) return 0.5
+
+    // Tier 1: full → 100% emitRate (within half distance)
+    return 1.0
+  }
 
   /**
    * Attempt to acquire a particle system from the pool.
@@ -876,9 +920,11 @@ export class ParticleEffectManager {
    * Return a particle system to the pool.
    *
    * @param type — effect type name
-   * @param ps — the particle system to recycle
+   * @param ps — the particle system to recycle (must not be null)
    */
   private _returnToPool(type: string, ps: ParticleSystem | GPUParticleSystem): void {
+    if (!ps) return // Defensive null guard
+
     let pool = this._pool.get(type)
     if (!pool) {
       pool = []

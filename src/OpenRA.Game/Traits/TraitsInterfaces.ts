@@ -816,6 +816,18 @@ export interface INotifyKilled {
 }
 
 /**
+ * Called when the actor takes damage from an attack.
+ *
+ * OpenRA 对照: INotifyDamage
+ *
+ * Handlers receive the attack information and can respond (e.g.,
+ * FloatingSpriteEmitter resets its emission duration on damage).
+ */
+export interface INotifyDamage {
+  damaged(actor: IGameActor, attackInfo: AttackInfo): void
+}
+
+/**
  * Called when the actor is selected by the player.
  *
  * OpenRA 对照: INotifySelected
