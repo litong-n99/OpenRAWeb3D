@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Remaining Systems (Chapters 8-21)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md`
-> **Chapter Status**: PLANNING PHASE (0 files migrated, 250+ remaining)
+> **Chapter Status**: IN PROGRESS (87 files migrated: Ch8 57/57 + Ch9 30/30; ~250 remaining)
 > **Created**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162 files, 100%)
 >
@@ -269,32 +269,42 @@ Traits that modify, enhance, or react to combat events. These depend on the core
 
 ---
 
-### 3.2 Chapter 9: Unit Movement & Physics
+### 3.2 Chapter 9: Unit Movement & Physics -- COMPLETE (2026-06-13)
 
-> **Detailed Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) -- 32 files (30 active + 2 deferred), 4 phases A-D, ~5,355 active C# lines, ~180 estimated tests
+> **Detailed Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) -- 32 files (30 active + 2 deferred), 4 phases A-D, ALL PHASES COMPLETE. **~11,723 TS implementation lines, 1,084 tests, 19 commits**.
 
-**Objective**: Implement the Mobile trait (largest single trait at 1079 lines) and all movement-related traits that enable units to navigate the game world.
+**Objective**: COMPLETE. Implemented Mobile trait (largest single trait at 1079 lines C# -> ~2,500 lines TS) and all movement-related traits. Units can now traverse the game world via pathfinding, respecting terrain passability, blocking rules, and altitude constraints.
 
-**Prerequisites**: Chapters 2-8 COMPLETE (219/219, 100%)
+**Prerequisites**: Chapters 2-8 COMPLETE (219/219, 100%) -- satisfied.
 
-#### Phase A: Core Movement Trait (1 file + 3 dependencies)
+#### Phase A: Core Movement Trait (5 files) -- COMPLETE
 
-| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
-|:---:|:---|:---|:---:|:---:|
-| 1 | `Traits/Mobile.cs` | `src/OpenRA.Mods.Common/Traits/Mobile.ts` | 1079 | HIGHEST |
-| 2 | `Traits/Immobile.cs` | `src/OpenRA.Mods.Common/Traits/Immobile.ts` | -- | LOW |
-| 3 | `Traits/BodyOrientation.cs` | `src/OpenRA.Mods.Common/Traits/BodyOrientation.ts` | 127 | LOW |
-| 4 | `Traits/QuantizeFacingsFromSequence.cs` | `src/OpenRA.Mods.Common/Traits/QuantizeFacingsFromSequence.ts` | -- | LOW |
+| # | File | Lines (C#) | Status |
+|:---:|:---|:---:|:---:|
+| 1 | `Mobile.ts` | 1079 | COMPLETE, ~2,500 TS lines |
+| 2 | `Immobile.ts` | 62 | COMPLETE |
+| 3 | `Locomotor.ts` | 526 | COMPLETE (upgraded from 261-line stub) |
+| 4 | `PathFinder.ts` | 295 | COMPLETE |
+| -- | `TraitsInterfaces.ts` (IMove expansion) | -- | COMPLETE |
+| **Phase A Total** | 5 files | ~2,047 C# | ~4,200 TS, 361 tests, 7 commits, 2 review rounds |
 
-#### Phase B: Movement-Related Traits (~10 files)
+#### Phase B: Aircraft & Air Movement (4 files) -- COMPLETE
 
-| # | OpenRA Source | Target TypeScript File | Complexity |
-|:---:|:---|:---|:---:|
-| 5+ | Aircraft, Hovers, FallsToEarth, SpeedMultiplier, TerrainModifiesDamage, TunnelEntrance, EntersTunnels, BlocksProjectiles, Crushable, AutoCrusher | | LOW-MEDIUM |
+| # | File | Lines (C#) | Status |
+|:---:|:---|:---:|:---:|
+| 5 | `Aircraft.ts` | 1381 | COMPLETE, ~2,500 TS lines |
+| 6 | `FallsToEarth.ts` | 71 | COMPLETE |
+| 7 | `BodyOrientation.ts` | 127 | COMPLETE |
+| 8 | `QuantizeFacingsFromSequence.ts` | 48 | COMPLETE |
+| **Phase B Total** | 4 files | ~1,627 C# | ~3,873 TS, 358 tests, 4 commits, 1 review round |
 
-#### Phase C: Movement Activities (5 files, partial Chapter 14 overlap)
+#### Phase C: World Movement Infrastructure (10 files) -- COMPLETE
 
-See Chapter 14 Phase A for Move, MoveAdjacentTo, MoveOnto, MoveWithinRange, MoveToDock activities.
+SubterraneanLocomotor, SubterraneanActorLayer, BridgeLayer, LegacyBridgeLayer, ElevatedBridgeLayer, ElevatedBridgePlaceholder, TerrainTunnel, TerrainTunnelLayer, TunnelEntrance, EntersTunnels. ~900 C# lines, ~2,100 TS, 175 tests, 4 commits, 1 review round.
+
+#### Phase D: Movement-Related Support Traits (11 + 2 deferred) -- COMPLETE
+
+BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditionOnMovement, Hovers, TerrainModifiesDamage, SpeedMultiplier, AttackMove (upgraded from stub), ClassicFacingBodyOrientation, JumpjetLocomotor. 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. ~866 active C# lines, ~1,550 TS, 190 tests, 4 commits, 1 review round.
 
 #### Chapter 9 Key Paradigm Shifts
 
@@ -809,7 +819,7 @@ Where possible, Lua mission scripts are precompiled to JSON trigger definitions 
 
 **Phase 1 (Core Gameplay -- highest priority)**:
 - Chapter 8: Weapons & Combat (~16 weeks)
-- Chapter 9: Unit Movement & Physics (~6 weeks)
+- Chapter 9: Unit Movement & Physics (~6 weeks) -- **COMPLETE (2026-06-13)**
 - Chapter 10: Resource & Economy (~3 weeks)
 
 **Phase 2 (Game Loop Completion)**:

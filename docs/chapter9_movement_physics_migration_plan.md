@@ -1,9 +1,22 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 9 -- Unit Movement & Physics
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.3 (Traits -- Mobile, Aircraft, Movement)
-> **Chapter Status**: PLANNING (0/32 migrated)
+> **Chapter Status**: COMPLETE (30/30 active migrated, 2 deferred)
+> **Completion Date**: 2026-06-13
 > **Planning Date**: 2026-06-13
 > **Prerequisite**: Chapters 2-8 COMPLETE (219/219, 100%)
+>
+> ### Completion Summary
+>
+> | Phase | Files | TS Lines | Tests | Commits | Review Rounds |
+> |:---|:---:|:---:|:---:|:---:|:---:|
+> | A: Core Movement Foundations | 5 | ~4,200 | 361 | 7 | 2 |
+> | B: Aircraft & Air Movement | 4 | ~3,873 | 358 | 4 | 1 |
+> | C: World Movement Infrastructure | 10 | ~2,100 | 175 | 4 | 1 |
+> | D: Movement-Related Support Traits | 11 | ~1,550 | 190 | 4 | 1 |
+> | **Total** | **30** | **~11,723** | **1,084** | **19** | **5** |
+>
+> **Deferred**: 2 files (PathFinderOverlay, HierarchicalPathFinderOverlay -- debug visualizations; low priority)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
 
@@ -168,11 +181,11 @@ The following infrastructure from Chapters 2-8 is available for Chapter 9:
 
 | Phase | Files | C# Lines | Complexity | Status |
 |:---|:---:|:---:|:---|:---|
-| A: Core Movement Foundations | 5 (4 files + interface) | 2,047 | HIGHEST + MEDIUM + LOW | PLANNING (0/5) |
-| B: Aircraft & Air Movement | 4 | 1,627 | HIGH + LOW | PLANNING (0/4) |
-| C: World Movement Infrastructure | 10 | 900 | MEDIUM + LOW-MEDIUM + LOW | PLANNING (0/10) |
-| D: Movement-Related Support Traits | 11 active + 2 deferred | 866 active + 474 deferred | LOW-MEDIUM + LOW | PLANNING (0/13) |
-| **Total** | **30 active + 2 deferred** | **~5,355 active** | | **PLANNING (0/32)** |
+| A: Core Movement Foundations | 5 (4 files + interface) | 2,047 | HIGHEST + MEDIUM + LOW | COMPLETE (5/5) |
+| B: Aircraft & Air Movement | 4 | 1,627 | HIGH + LOW | COMPLETE (4/4) |
+| C: World Movement Infrastructure | 10 | 900 | MEDIUM + LOW-MEDIUM + LOW | COMPLETE (10/10) |
+| D: Movement-Related Support Traits | 11 active + 2 deferred | 866 active + 474 deferred | LOW-MEDIUM + LOW | COMPLETE (11/11 active, 2 deferred) |
+| **Total** | **30 active + 2 deferred** | **~5,355 active** | | **COMPLETE (30/30 active)** |
 
 ---
 
@@ -180,10 +193,10 @@ The following infrastructure from Chapters 2-8 is available for Chapter 9:
 
 ### 3.1 Phase A: Core Movement Foundations
 
-**Status**: PLANNING (0/5)
+**Status**: COMPLETE (5/5)
 **Complexity**: HIGHEST (Mobile 1079 lines) + MEDIUM + LOW (Immobile 62, Locomotor expand 526, PathFinder 295)
-**Blocked by**: Chapters 2-8 (foundation) -- ALL COMPLETE. Specifically: Ch3 Phase A (CPos/CVec/WPos/WVec/WAngle/WDist/WRot), Ch3 (GameActor, TraitDictionary, ITick, INotifyAddedToWorld/RemovedFromWorld, INotifyBecomingIdle), Ch3 (IFacing, IOccupySpace, IMoveInfo, ICreationActivity, IDeathActorInitModifier, IActorPreviewInitModifier), Ch4 Phase G (HierarchicalPathFinder, PathSearch, CellInfo, DensePathGraph, MapPathGraph, BlockedByActor, ICustomMovementLayer, Locomotor stub), Ch4 Phase I (CoordinateTransformer), Ch6 Phase A (Order, IResolveOrder, IIssueOrder), Ch8 Phase D (IMove, IPositionable integration needs), Ch8 Phase E (Turreted for body orientation)
-**Blocks**: Phase B (Aircraft implements IMove -- needs interface finalized), Phase C (SubterraneanLocomotor extends Locomotor), Phase D (AttackMove upgrades stub, all movement-related traits need IMove), Chapter 10 (Harvester movement), Chapter 11 (Production unit exit), Chapter 12 (MoveIntoShroud), Chapter 14 (Movement Activities)
+**Blocked by**: Chapters 2-8 (foundation) -- ALL COMPLETE. (Dependencies satisfied)
+**Blocks**: Phase B (Aircraft implements IMove -- interface finalized), Phase C (SubterraneanLocomotor extends Locomotor), Phase D (AttackMove upgrades stub, all movement-related traits need IMove), Chapter 10 (Harvester movement), Chapter 11 (Production unit exit), Chapter 12 (MoveIntoShroud), Chapter 14 (Movement Activities)
 
 **Description**: Phase A establishes the core movement foundation. The `IMove` interface (with all its sub-interfaces `INotifyMoving`, `INotifyFinishedMoving`, `IWrapMove`, `INotifyCenterPositionChanged`, `INotifyBlockingMove`) must be fully defined in `TraitsInterfaces.ts` before any implementing trait can be written. `Immobile` provides `IOccupySpace` for static actors (buildings, walls) and is the simplest trait to implement first. `Locomotor` is upgraded from the 261-line Ch4 Phase G stub to the full 526-line version with cell blocking, dirty cell tracking, and terrain cost management. `Mobile` at 1079 lines is the single largest trait in OpenRA -- it implements `IPositionable`, `IMove`, `IFacing`, `ITick`, `INotifyAddedToWorld`, `INotifyRemovedFromWorld`, `ICreationActivity`, `IDeathActorInitModifier`, `IActorPreviewInitModifier`, `INotifyBecomingIdle`, and order handlers for Move, Stop, and Scatter. `PathFinder` wires `Locomotor` to `HierarchicalPathFinder` and handles multi-source/target path queries with domain passability checks.
 
@@ -337,9 +350,9 @@ The following infrastructure from Chapters 2-8 is available for Chapter 9:
 
 ### 3.2 Phase B: Aircraft & Air Movement
 
-**Status**: PLANNING (0/4)
+**Status**: COMPLETE (4/4)
 **Complexity**: HIGH (Aircraft 1381 lines) + LOW (FallsToEarth 71, BodyOrientation 127, QuantizeFacingsFromSequence 48)
-**Blocked by**: Phase A (IMove interface must be finalized in TraitsInterfaces.ts; Mobile provides reference IMove implementation; BodyOrientation depends on IMove + IFacing; QuantizeFacingsFromSequence needs body orientation system)
+**Blocked by**: Phase A (IMove interface finalized in TraitsInterfaces.ts; Mobile provides reference IMove implementation; BodyOrientation depends on IMove + IFacing; QuantizeFacingsFromSequence uses body orientation system) -- dependencies satisfied
 **Blocks**: Chapter 11 (Production unit exit for aircraft), Chapter 13 (Paradrops/Airstrike), Chapter 14 (Aircraft movement activities), Chapter 19 (C&C-specific aircraft traits)
 **Already migrated from Ch8 Phase E**: `AttackAircraft.ts`, `AttackBomber.ts`
 
@@ -451,9 +464,9 @@ The following infrastructure from Chapters 2-8 is available for Chapter 9:
 
 ### 3.3 Phase C: World Movement Infrastructure
 
-**Status**: PLANNING (0/10)
+**Status**: COMPLETE (10/10)
 **Complexity**: MEDIUM + LOW-MEDIUM + LOW (10 files, ~900 lines total)
-**Blocked by**: Phase A (Locomotor must be complete -- SubterraneanLocomotor extends it; ICustomMovementLayer from Ch4 Phase G needed by all *Layer implementations; Map + TerrainInfo from Ch4 needed by all terrain-aware traits)
+**Blocked by**: Phase A (Locomotor complete -- SubterraneanLocomotor extends it; ICustomMovementLayer from Ch4 Phase G used by all *Layer implementations; Map + TerrainInfo from Ch4 used by all terrain-aware traits) -- dependencies satisfied
 **Blocks**: Phase D (AutoCrusher needs BridgeLayer/TunnelLayer for crush path checks), Chapter 10 (Harvester route to resource), Chapter 14 (tunnel/bridge movement activities)
 
 **Description**: World movement infrastructure provides terrain-aware movement layers beyond the base ground plane. `SubterraneanLocomotor` extends `Locomotor` for underground units. `SubterraneanActorLayer` provides the underground `ICustomMovementLayer`. Bridge infrastructure (`BridgeLayer`, `LegacyBridgeLayer`, `ElevatedBridgeLayer`, `ElevatedBridgePlaceholder`) handles bridge movement. Tunnel infrastructure (`TerrainTunnel`, `TerrainTunnelLayer`, `TunnelEntrance`, `EntersTunnels`) handles tunnel portals and underground passage.
@@ -586,9 +599,9 @@ The following infrastructure from Chapters 2-8 is available for Chapter 9:
 
 ### 3.4 Phase D: Movement-Related Support Traits
 
-**Status**: PLANNING (0/13; 11 active + 2 deferred)
+**Status**: COMPLETE (11/11 active + 2 deferred)
 **Complexity**: LOW-MEDIUM + LOW (13 files, ~866 active lines + ~474 deferred lines)
-**Blocked by**: Phase A (Mobile, Locomotor, IMove interface), Phase B (BodyOrientation for ClassicFacingBodyOrientation), Phase C (Bridge infrastructure for AutoCrusher bridge awareness)
+**Blocked by**: Phase A (Mobile, Locomotor, IMove interface), Phase B (BodyOrientation for ClassicFacingBodyOrientation), Phase C (Bridge infrastructure for AutoCrusher bridge awareness) -- dependencies satisfied
 **Blocks**: Chapter 10 (Harvester crushables), Chapter 19 (C&C-specific movement traits)
 
 **Description**: Support traits that modify, react to, or enhance movement. `BlocksProjectiles` prevents projectiles from passing through a structure (wall blocking). `Crushable` makes infantry/light units crushable by tanks. `AutoCrusher` auto-crushes crushable units during idle movement scanning. `TransformCrusherOnCrush` triggers actor transformation on crush (e.g., ore truck becomes husk). `GrantConditionOnMovement` grants conditions during movement (e.g., "moving" condition for movement-specific behaviors). `Hovers` provides visual hover elevation animation. `TerrainModifiesDamage` applies terrain-based damage multipliers (e.g., infantry in cover take less damage). `SpeedMultiplier` modifies movement speed by percentage. `AttackMove` is upgraded from Ch8 Phase D stub to full implementation. `ClassicFacingBodyOrientation` and `JumpjetLocomotor` are C&C-specific movement traits. `PathFinderOverlay` and `HierarchicalPathFinderOverlay` are deferred debug visualizations.
