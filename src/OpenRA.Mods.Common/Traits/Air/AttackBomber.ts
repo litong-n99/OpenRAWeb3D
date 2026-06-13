@@ -180,6 +180,11 @@ export class AttackBomber
       }
     }
 
+    // NOTE: C# AttackBomber.ITick.Tick replaces AttackBase.ITick.Tick entirely and
+    // does NOT fire INotifyAiming callbacks. This TS implementation calls
+    // super.tick(self) as a deliberate superset: it adds the attack-range
+    // transition logic while also invoking the base class's aiming callbacks,
+    // providing broader notification behavior than the C# original.
     super.tick(self)
   }
 

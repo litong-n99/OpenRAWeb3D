@@ -157,7 +157,41 @@ describe('FireWarheadsOnDeath', () => {
     expect(addFrameEndTask).toHaveBeenCalled()
   })
 
-  it('damage threshold does not trigger when HP above limit', () => {
+  it('damaged() kills self not source when DamageSource.Killer is used (regression)', () => {
+	    // Verify that kill() is called on self with attacker as the damage source,
+	    // NOT on the attacker itself.
+	    const info = new FireWarheadsOnDeathInfo({
+	      damageThreshold: 50,
+	      damageSource: DamageSource.Killer,
+	    })
+	    const trait = new FireWarheadsOnDeath(info)
+	    trait.init(makeMockActor(), { hp: 10, maxHP: 100 } as never, [])
+
+	    const attacker = makeMockActor({ actorId: 99 })
+	    let killedTarget: number | undefined = undefined
+	    let killedAttacker: number | undefined = undefined
+
+	    const addFrameEndTask = vi.fn((fn: (w: unknown) => void) => fn(undefined))
+	    const self = makeMockActor({
+	      actorId: 42,
+	      world: {
+	        actors: [] as never[],
+	        sharedRandom: { next: (_max?: number) => 0 },
+	        addFrameEndTask,
+	      },
+	      kill: (atk: { actorId: number }, _dmgTypes: unknown) => { killedTarget = 42; killedAttacker = atk.actorId },
+	    })
+
+	    // attacker is a different actor than self
+	    const attackInfo = makeAttackInfo(attacker as never)
+	    trait.damaged(self as never, attackInfo)
+	    expect(addFrameEndTask).toHaveBeenCalled()
+	    // Verify self (actorId=42) was killed, with attacker (actorId=99) as source
+	    expect(killedTarget).toBe(42)
+	    expect(killedAttacker).toBe(99)
+	  })
+
+	  it('damage threshold does not trigger when HP above limit', () => {
     const info = new FireWarheadsOnDeathInfo({ damageThreshold: 50 })
     const trait = new FireWarheadsOnDeath(info)
     // HP=80, maxHP=100: 80*100 >= 50*100 → does not trigger

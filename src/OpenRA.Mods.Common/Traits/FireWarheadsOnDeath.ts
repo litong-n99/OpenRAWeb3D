@@ -244,7 +244,7 @@ export class FireWarheadsOnDeath extends ConditionalTrait<FireWarheadsOnDeathInf
     const rng = sharedRandom?.next ?? ((max: number) => Math.random() * max)
 
     // Chance check
-    if (rng(100) >= this.info.chance) return
+    if (rng(100) > this.info.chance) return
 
     // Death type filter
     if (
@@ -331,7 +331,9 @@ export class FireWarheadsOnDeath extends ConditionalTrait<FireWarheadsOnDeathInf
       if (addFrameEndTask) {
         addFrameEndTask(() => {
           const source = this.getDamageSource(self, e)
-          ;(source as unknown as { kill?: (attacker: IGameActor, dmgTypes: BitSetStub<unknown>) => void })
+          // NOTE: C# kills self (the damaged actor) with source as attacker.
+          // source is the damage-source actor, self is the target being killed.
+          ;(self as unknown as { kill?: (attacker: IGameActor, dmgTypes: BitSetStub<unknown>) => void })
             .kill?.(source, e.damage.damageTypes)
         })
       }
@@ -369,7 +371,7 @@ export class FireWarheadsOnDeath extends ConditionalTrait<FireWarheadsOnDeathInf
     rng: (max: number) => number,
   ): unknown | null {
     if (this.armaments.length === 0) return this.weaponInfo
-    if (rng(100) >= this.info.loadedChance) return this.emptyWeaponInfo
+    if (rng(100) > this.info.loadedChance) return this.emptyWeaponInfo
 
     // PERF: Avoid LINQ — check each armament for reloading state
     for (const a of this.armaments) {
