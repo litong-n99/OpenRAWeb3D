@@ -200,9 +200,16 @@ export class Hovers
       const fallTicks = Math.trunc(this.worldVisualOffset.Z / this._fallTickHeight) - 1
       this.worldVisualOffset = new WVec(0, 0, this._fallTickHeight * fallTicks)
     } else {
-      // C# gate: only oscillate when above MinHoveringAltitude
       // OpenRA 对照: self.World.Map.DistanceAboveTerrain(self.CenterPosition) >= info.MinHoveringAltitude
-      const distanceAboveTerrain = this._getDistanceAboveTerrain(self)
+      // Gate: only oscillate when the actor is at or above MinHoveringAltitude.
+      // If terrain query is unavailable (!dat), treat as above threshold (always oscillate).
+      const dat = (self as unknown as {
+        world?: { map?: { distanceAboveTerrain?(pos: unknown): WDist } }
+        centerPosition?: unknown
+      }).world?.map?.distanceAboveTerrain?.(
+        (self as unknown as { centerPosition?: unknown }).centerPosition,
+      )
+      const aboveThreshold = !dat || dat.length >= this.info.minHoveringAltitude.length
 
       // Calculate sine-wave oscillation
       // C#: WAngle(ticks % (Ticks * 4) * stepPercentage).Sin()
@@ -215,9 +222,7 @@ export class Hovers
       const sinValue = Math.sin(phaseRadians)
 
       // C#: visualOffset = altitudeCheck ? angle.Sin() : 0
-      const visualOffset = distanceAboveTerrain >= this.info.minHoveringAltitude.length
-        ? sinValue
-        : 0
+      const visualOffset = aboveThreshold ? sinValue : 0
 
       // C#: currentHeight = BobDistance.Length * visualOffset / 1024 + InitialHeight.Length
       let currentHeight = this.info.bobDistance.length * visualOffset +
@@ -277,33 +282,4 @@ export class Hovers
     return bounds
   }
 
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
-
-  /** Query the actor's distance above terrain via duck-typing.
-   *
-   *  OpenRA 对照: self.World.Map.DistanceAboveTerrain(self.CenterPosition)
-   *
-   *  @returns WDist length value, or Infinity if the property is unavailable
-   *           (treating missing terrain info as "always above threshold").
-   */
-  private _getDistanceAboveTerrain(self: IGameActor): number {
-    const a = self as unknown as {
-      world?: {
-        map?: {
-          distanceAboveTerrain?(pos: unknown): WDist
-        }
-      }
-      centerPosition?: unknown
-    }
-    const mapFn = a.world?.map?.distanceAboveTerrain
-    const pos = a.centerPosition
-    if (typeof mapFn === 'function' && pos !== undefined) {
-      return mapFn(pos).length
-    }
-    // If the terrain query is unavailable, treat as always above threshold
-    // so existing behavior (always oscillate) is preserved for test environments.
-    return Infinity
-  }
 }

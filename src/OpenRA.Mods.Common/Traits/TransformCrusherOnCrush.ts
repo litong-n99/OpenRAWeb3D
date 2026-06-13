@@ -147,23 +147,19 @@ export class TransformCrusherOnCrush implements INotifyCrushed {
 
       // TODO-8.D.TRANSFORM-ACTIVITY: The full Transform activity would handle
       // proper actor replacement lifecycle (dispose old, create new, transfer
-      // conditions/effects). For now, dispose the crusher directly to prevent
-      // leaks, and create the replacement in the world.
+      // conditions/effects). For now, the crusher is NOT disposed — both the
+      // original crusher and the replacement exist simultaneously until Ch14
+      // Transform activity is migrated and can properly handle the lifecycle.
 
       // Create the replacement actor
       world.createActor(this.info.intoActor, init)
 
-      // Dispose the crusher to prevent ghost actors
-      const crusherAny = crusher as unknown as Record<string, unknown>
-      if (typeof crusherAny['dispose'] === 'function') {
-        (crusherAny['dispose'] as () => void)()
-      } else if (typeof crusherAny['kill'] === 'function') {
-        // Some actor implementations use kill() for disposal
-        (crusherAny['kill'] as (...a: unknown[]) => void)()
-      } else {
-        // Last resort: mark for deferred disposal
-        ;(crusher as unknown as { willDispose?: boolean }).willDispose = true
-      }
+      // WARNING: After createActor, both the original crusher and the new
+      // replacement actor exist in the world simultaneously. This is a known
+      // limitation. The crusher is intentionally NOT disposed here — that
+      // responsibility belongs to the Ch14 Transform activity which handles
+      // proper actor replacement lifecycle (dispose old, transfer ownership).
+      // Duplicate cleanup will be implemented when Transform is migrated.
     }
   }
 
