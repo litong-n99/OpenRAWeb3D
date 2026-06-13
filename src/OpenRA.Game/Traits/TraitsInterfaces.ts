@@ -2949,3 +2949,500 @@ export function isIPositionable(obj: unknown): obj is IPositionable {
     typeof (obj as Record<string, unknown>).isLeavingMap === 'function'
   )
 }
+
+// ---------------------------------------------------------------------------
+// Chapter 10 — Resource & Economy System interfaces
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs (Resource/Economy section)
+//
+// 核心范式转换:
+// - C# BitSet<DockType> → number bitmask (power-of-2 values)
+// - C# IDockHost (BitSet, DockClientManager refs) → TS IDockHost (number, unknown forward ref)
+// - C# IResourceLayer CellChanged event → TS onCellChanged callback
+// - C# ResourceLayerContents readonly struct → TS interface + Object.freeze() sentinel
+// - C# out params (bool TryGet*) → TS return type | undefined
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// DockType — docking type bitmask (for BitSet usage)
+// OpenRA 对照: DockType (implicit flags from IDockHost/IDockClient usage)
+// ---------------------------------------------------------------------------
+
+/** Docking type bitmask values.
+ *
+ *  OpenRA 对照: DockType flags used with BitSet<DockType>
+ *
+ *  These are power-of-2 values for use with bitwise operations.
+ *  Multiple types can be combined with bitwise OR.
+ */
+export const DockType = {
+  Unload: 1,
+  Repair: 2,
+  Refuel: 4,
+} as const
+
+/** Numeric type for DockType bitmask values. */
+export type DockTypeValue = number
+
+// ---------------------------------------------------------------------------
+// IDockHostInfo + IDockHost
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs lines 248-278
+// ---------------------------------------------------------------------------
+
+/** Marker info interface for docking host traits (e.g., Refinery, RepairPad).
+ *
+ *  OpenRA 对照: IDockHostInfo : ITraitInfoInterface
+ */
+export interface IDockHostInfo extends ITraitInfoInterface {
+  // marker — no additional members
+}
+
+/** Docking host trait — an actor that other actors can dock at.
+ *
+ *  OpenRA 对照: IDockHost (lines 250-278)
+ *
+ *  NOTE: DockClientManager reference is typed as `unknown` since
+ *  DockClientManager is not yet migrated (deferred to Chapter 14).
+ *  QueueMoveActivity and QueueDockActivity are deferred to Chapter 14.
+ */
+export interface IDockHost {
+  /** The docking types this host supports (bitmask of DockType values).
+   *
+   *  OpenRA 对照: IDockHost.GetDockType
+   */
+  readonly getDockType: DockTypeValue
+
+  /** Whether this host is currently enabled and in the world.
+   *
+   *  OpenRA 对照: IDockHost.IsEnabledAndInWorld
+   */
+  readonly isEnabledAndInWorld: boolean
+
+  /** Current number of reserved dock slots.
+   *
+   *  OpenRA 对照: IDockHost.ReservationCount
+   */
+  readonly reservationCount: number
+
+  /** Whether this host can accept new reservations.
+   *
+   *  OpenRA 对照: IDockHost.CanBeReserved
+   */
+  readonly canBeReserved: boolean
+
+  /** World position where docking clients should approach.
+   *
+   *  OpenRA 对照: IDockHost.DockPosition
+   */
+  readonly dockPosition: WPos
+
+  /** Check whether a docking client can dock at this host.
+   *
+   *  OpenRA 对照: IDockHost.IsDockingPossible(Actor, IDockClient, bool)
+   *
+   *  Does NOT check DockType or whether the client is enabled.
+   *
+   *  @param clientActor — the actor that wants to dock
+   *  @param client — the docking client trait (unknown until DockClientManager is migrated)
+   *  @param ignoreReservations — if true, skip reservation checks
+   *  @returns true if docking is possible at this host
+   */
+  isDockingPossible(
+    clientActor: IGameActor,
+    client: unknown,
+    ignoreReservations?: boolean,
+  ): boolean
+
+  /** Reserve a dock slot for a client.
+   *
+   *  OpenRA 对照: IDockHost.Reserve(Actor, DockClientManager)
+   *
+   *  @param self — the host actor
+   *  @param client — the docking client manager (unknown until Ch14)
+   *  @returns true if the reservation was successful
+   */
+  reserve(self: IGameActor, client: unknown): boolean
+
+  /** Release all dock reservations.
+   *
+   *  OpenRA 对照: IDockHost.UnreserveAll()
+   */
+  unreserveAll(): void
+}
+
+// ---------------------------------------------------------------------------
+// IAcceptResources
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 351-354
+// ---------------------------------------------------------------------------
+
+/** Accepts resource deliveries (e.g., Refinery).
+ *
+ *  OpenRA 对照: IAcceptResources (lines 351-354)
+ */
+export interface IAcceptResources {
+  /** Accept resources delivered by a harvester.
+   *
+   *  OpenRA 对照: IAcceptResources.AcceptResources(Actor, string, int)
+   *
+   *  @param self — the actor accepting resources
+   *  @param resourceType — the type of resource being delivered
+   *  @param count — the amount of resources to accept (default 1)
+   *  @returns the amount actually accepted (less than count if storage is full)
+   */
+  acceptResources(
+    self: IGameActor,
+    resourceType: string,
+    count?: number,
+  ): number
+}
+
+// ---------------------------------------------------------------------------
+// ResourceLayerContents
+// OpenRA 对照: ResourceLayerContents (readonly struct in ResourceLayer.cs)
+// ---------------------------------------------------------------------------
+
+/** Contents of a resource cell — type and density.
+ *
+ *  OpenRA 对照: ResourceLayerContents (readonly struct)
+ */
+export interface ResourceLayerContents {
+  /** The resource type identifier (e.g., "Tiberium", "Ore"), or empty string if none. */
+  readonly type: string
+  /** The density/amount of resource at this cell (0 if empty). */
+  readonly density: number
+}
+
+/** Sentinel value for an empty resource cell.
+ *
+ *  OpenRA 对照: ResourceLayerContents.Empty (default struct)
+ *
+ *  Object.freeze() prevents accidental mutation of the shared empty sentinel.
+ */
+export const ResourceLayerContentsEmpty: ResourceLayerContents = Object.freeze({
+  type: '',
+  density: 0,
+})
+
+// ---------------------------------------------------------------------------
+// IResourceLayerInfo + IResourceLayer
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs lines 814-834
+// ---------------------------------------------------------------------------
+
+/** Config info for the resource layer trait.
+ *
+ *  OpenRA 对照: IResourceLayerInfo : ITraitInfoInterface (lines 814-818)
+ */
+export interface IResourceLayerInfo extends ITraitInfoInterface {
+  /** Try to get the terrain type associated with a resource type.
+   *
+   *  OpenRA 对照: IResourceLayerInfo.TryGetTerrainType(string, out string)
+   *
+   *  @param resourceType — the resource type to look up
+   *  @returns the terrain type string, or undefined if not found
+   */
+  tryGetTerrainType(resourceType: string): string | undefined
+
+  /** Try to get the resource index (byte) for a resource type.
+   *
+   *  OpenRA 对照: IResourceLayerInfo.TryGetResourceIndex(string, out byte)
+   *
+   *  @param resourceType — the resource type to look up
+   *  @returns the resource index (0-255), or undefined if not found
+   */
+  tryGetResourceIndex(resourceType: string): number | undefined
+}
+
+/** World-level resource layer — manages the map's resource data.
+ *
+ *  OpenRA 对照: IResourceLayer (lines 820-834)
+ *
+ *  The ResourceLayer trait stores a CellLayer<ResourceLayerContents> that maps
+ *  each map cell to its resource type and density. This interface provides
+ *  the public API for querying and modifying resources.
+ */
+export interface IResourceLayer {
+  /** Config info for this resource layer.
+   *
+   *  OpenRA 对照: IResourceLayer.Info
+   */
+  readonly info: IResourceLayerInfo
+
+  /** Whether the resource layer has no resources.
+   *
+   *  OpenRA 对照: IResourceLayer.IsEmpty
+   */
+  readonly isEmpty: boolean
+
+  /** Get the resource contents at a map cell.
+   *
+   *  OpenRA 对照: IResourceLayer.GetResource(CPos)
+   *
+   *  @param cell — the map cell to query
+   *  @returns the resource contents (type and density), EMPTY if none
+   */
+  getResource(cell: CPos): ResourceLayerContents
+
+  /** Get the maximum density for a resource type.
+   *
+   *  OpenRA 对照: IResourceLayer.GetMaxDensity(string)
+   *
+   *  @param resourceType — the resource type
+   *  @returns the maximum density value
+   */
+  getMaxDensity(resourceType: string): number
+
+  /** Check whether a resource can be added to a cell.
+   *
+   *  OpenRA 对照: IResourceLayer.CanAddResource(string, CPos, byte)
+   *
+   *  @param resourceType — the resource type to add
+   *  @param cell — the target map cell
+   *  @param amount — the amount to add (default 1)
+   *  @returns true if the resource can be added
+   */
+  canAddResource(
+    resourceType: string,
+    cell: CPos,
+    amount?: number,
+  ): boolean
+
+  /** Add resources to a cell, respecting MaxDensity.
+   *
+   *  OpenRA 对照: IResourceLayer.AddResource(string, CPos, byte)
+   *
+   *  @param resourceType — the resource type to add
+   *  @param cell — the target map cell
+   *  @param amount — the amount to add (default 1)
+   *  @returns the amount actually added
+   */
+  addResource(
+    resourceType: string,
+    cell: CPos,
+    amount?: number,
+  ): number
+
+  /** Remove resources from a cell.
+   *
+   *  OpenRA 对照: IResourceLayer.RemoveResource(string, CPos, byte)
+   *
+   *  @param resourceType — the resource type to remove
+   *  @param cell — the target map cell
+   *  @param amount — the amount to remove (default 1)
+   *  @returns the amount actually removed
+   */
+  removeResource(
+    resourceType: string,
+    cell: CPos,
+    amount?: number,
+  ): number
+
+  /** Clear all resources from a cell.
+   *
+   *  OpenRA 对照: IResourceLayer.ClearResources(CPos)
+   *
+   *  @param cell — the cell to clear
+   */
+  clearResources(cell: CPos): void
+
+  /** Check whether resources at a cell are visible to the given player.
+   *
+   *  OpenRA 对照: IResourceLayer.IsVisible(CPos)
+   *
+   *  NOTE: Shroud integration deferred to Chapter 12. Initial implementation
+   *  always returns true.
+   *
+   *  @param cell — the cell to check
+   *  @returns true if resources at this cell are visible
+   */
+  isVisible(cell: CPos): boolean
+
+  /** Callback fired when a cell's resource state changes.
+   *
+   *  OpenRA 对照: IResourceLayer.CellChanged (event Action<CPos, string>)
+   *
+   *  @param cell — the cell that changed
+   *  @param resourceType — the new resource type, or null if the cell was cleared
+   */
+  onCellChanged(cell: CPos, resourceType: string | null): void
+}
+
+// ---------------------------------------------------------------------------
+// IResourceRenderer
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs lines 837-844
+// ---------------------------------------------------------------------------
+
+/** Renders resources on the terrain using sprite layers.
+ *
+ *  OpenRA 对照: IResourceRenderer (lines 837-844)
+ *
+ *  The ResourceRenderer trait manages one TerrainSpriteLayer per resource type
+ *  and updates sprite frames based on resource density changes.
+ */
+export interface IResourceRenderer {
+  /** The set of resource type strings this renderer handles.
+   *
+   *  OpenRA 对照: IResourceRenderer.ResourceTypes
+   */
+  readonly resourceTypes: Iterable<string>
+
+  /** Get the resource type rendered at a given cell.
+   *
+   *  OpenRA 对照: IResourceRenderer.GetRenderedResourceType(CPos)
+   *
+   *  @param cell — the map cell to query
+   *  @returns the resource type string, or null if no resource is rendered there
+   */
+  getRenderedResourceType(cell: CPos): string | null
+
+  /** Get the tooltip string for resources rendered at a given cell.
+   *
+   *  OpenRA 对照: IResourceRenderer.GetRenderedResourceTooltip(CPos)
+   *
+   *  @param cell — the map cell to query
+   *  @returns the tooltip string, or null if no resource at this cell
+   */
+  getRenderedResourceTooltip(cell: CPos): string | null
+}
+
+// ---------------------------------------------------------------------------
+// IResourceValueModifier
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 488
+// ---------------------------------------------------------------------------
+
+/** Modifies the cash value of resources (e.g., ResourcePurifier).
+ *
+ *  OpenRA 对照: IResourceValueModifier (line 488)
+ *
+ *  Stackable: multiple IResourceValueModifier traits multiply together.
+ */
+export interface IResourceValueModifier {
+  /** Get the resource value modifier percentage.
+   *
+   *  OpenRA 对照: IResourceValueModifier.GetResourceValueModifier()
+   *
+   *  @returns the modifier as an integer percentage (100 = normal, 200 = double)
+   */
+  getResourceValueModifier(): number
+}
+
+// ---------------------------------------------------------------------------
+// ISpeedModifier
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 449
+// ---------------------------------------------------------------------------
+
+/** Modifies an actor's movement speed (e.g., Harvester when fully loaded).
+ *
+ *  OpenRA 对照: ISpeedModifier (line 449)
+ */
+export interface ISpeedModifier {
+  /** Get the speed modifier percentage.
+   *
+   *  OpenRA 对照: ISpeedModifier.GetSpeedModifier()
+   *
+   *  @returns the modifier as an integer percentage (100 = normal, 85 = 85% speed)
+   */
+  getSpeedModifier(): number
+}
+
+// ---------------------------------------------------------------------------
+// INotifyCapture
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 179
+// ---------------------------------------------------------------------------
+
+/** Called when an actor is captured (e.g., Engineer capture).
+ *
+ *  OpenRA 对照: INotifyCapture (line 179)
+ */
+export interface INotifyCapture {
+  /** Called when this actor is captured.
+   *
+   *  OpenRA 对照: INotifyCapture.OnCapture(Actor, Actor, Player, Player, BitSet<CaptureType>)
+   *
+   *  @param self — the captured actor
+   *  @param captor — the actor that performed the capture
+   *  @param oldOwner — the previous owner (PlayerStub until Player is fully migrated)
+   *  @param newOwner — the new owner
+   *  @param captureTypes — bitmask of capture types used
+   */
+  onCapture(
+    self: IGameActor,
+    captor: IGameActor,
+    oldOwner: unknown,
+    newOwner: unknown,
+    captureTypes: number,
+  ): void
+}
+
+// ---------------------------------------------------------------------------
+// INotifySold
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs lines 69-73
+// ---------------------------------------------------------------------------
+
+/** Called when an actor is being sold.
+ *
+ *  OpenRA 对照: INotifySold (lines 69-73)
+ */
+export interface INotifySold {
+  /** Called when the actor begins the sell process.
+   *
+   *  OpenRA 对照: INotifySold.Selling(Actor)
+   *
+   *  @param self — the actor being sold
+   */
+  selling(self: IGameActor): void
+
+  /** Called when the actor has been sold.
+   *
+   *  OpenRA 对照: INotifySold.Sold(Actor)
+   *
+   *  @param self — the actor that was sold
+   */
+  sold(self: IGameActor): void
+}
+
+// ---------------------------------------------------------------------------
+// INotifyResourceAccepted
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 175
+// ---------------------------------------------------------------------------
+
+/** Called when a refinery accepts resources from a harvester.
+ *
+ *  OpenRA 对照: INotifyResourceAccepted (line 175)
+ */
+export interface INotifyResourceAccepted {
+  /** Called when resources are accepted by a refinery.
+   *
+   *  OpenRA 对照: INotifyResourceAccepted.OnResourceAccepted(Actor, Actor, string, int, int)
+   *
+   *  @param self — the harvester (or resource donor)
+   *  @param refinery — the refinery that accepted the resources
+   *  @param resourceType — the type of resource accepted
+   *  @param count — the amount of resource accepted
+   *  @param value — the cash value of the accepted resources
+   */
+  onResourceAccepted(
+    self: IGameActor,
+    refinery: IGameActor,
+    resourceType: string,
+    count: number,
+    value: number,
+  ): void
+}
+
+// ---------------------------------------------------------------------------
+// ISeedableResource
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 187
+// ---------------------------------------------------------------------------
+
+/** A trait that can seed (spawn) resources around the actor.
+ *
+ *  OpenRA 对照: ISeedableResource (line 187)
+ */
+export interface ISeedableResource {
+  /** Seed resources around this actor.
+   *
+   *  OpenRA 对照: ISeedableResource.Seed(Actor)
+   *
+   *  @param self — the actor seeding resources
+   */
+  seed(self: IGameActor): void
+}
