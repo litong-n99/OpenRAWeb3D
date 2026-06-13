@@ -30,6 +30,7 @@ import {
   type IOrderTargeter,
   type IOccupySpaceInfo,
   type IPositionable,
+  type IMove,
   type IMoveInfo,
   type INotifyAddedToWorld,
   type INotifyRemovedFromWorld,
@@ -53,6 +54,9 @@ import {
   type TargetStub,
   type OccupiedCell,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+
+import type { Target } from '../../OpenRA.Game/Traits/Target.js'
+import type { Activity } from '../../OpenRA.Game/Activities/Activity.js'
 
 import { applyPercentageModifiers } from '../Projectiles/MissileMath.js'
 
@@ -110,86 +114,37 @@ export interface IFullMove {
     targetLineColor?: ColorStub,
   ): ActivityStub
 
-  /** Move within range of a target.
-   *
-   * OpenRA 对照: Mobile.MoveWithinRange(Target, WDist, WPos?, Color?)
-   */
-  moveWithinRange(
-    target: TargetStub,
-    range: WDist,
-    initialTargetPosition?: WPos,
-    targetLineColor?: ColorStub,
-  ): ActivityStub
-
   /** Move within min/max range of a target.
    *
    * OpenRA 对照: Mobile.MoveWithinRange(Target, WDist, WDist, WPos?, Color?)
+   * NOTE: Not covered by IMove — Mobile-specific extension.
    */
   moveWithinRangeMinMax(
-    target: TargetStub,
+    source: IGameActor,
+    target: Target,
     minRange: WDist,
     maxRange: WDist,
-    initialTargetPosition?: WPos,
-    targetLineColor?: ColorStub,
-  ): ActivityStub
-
-  /** Follow a target between min/max range.
-   *
-   * OpenRA 对照: Mobile.MoveFollow()
-   */
-  moveFollow(
-    target: TargetStub,
-    minRange: WDist,
-    maxRange: WDist,
-    initialTargetPosition?: WPos,
-    targetLineColor?: ColorStub,
-  ): ActivityStub
+    initialTarget?: Target,
+  ): Activity
 
   /** Return to the actor's home cell.
    *
    * OpenRA 对照: Mobile.ReturnToCell()
+   * NOTE: Not covered by IMove — Mobile-specific extension.
    */
-  returnToCell(): ActivityStub
+  returnToCell(source: IGameActor): Activity
 
-  /** Move onto a target and face it.
-   *
-   * OpenRA 对照: Mobile.MoveOntoTarget()
-   */
-  moveOntoTarget(
-    target: TargetStub,
-    offset: WVec,
-    facing?: WAngle,
-    targetLineColor?: ColorStub,
-  ): ActivityStub
-
-  /** Estimate move duration between two world positions.
-   *
-   * OpenRA 对照: Mobile.EstimatedMoveDuration()
-   */
-  estimatedMoveDuration(
-    self: IGameActor,
-    fromPos: WPos,
-    toPos: WPos,
-  ): number
-
-  /** Find the nearest moveable cell.
+  /** Find the nearest moveable cell from CPos.
    *
    * OpenRA 对照: Mobile.NearestMoveableCell(CPos, int, int)
+   * NOTE: Separate from IMove.nearestMoveableCell(WPos) — CPos version is
+   * Mobile-specific.
    */
   nearestMoveableCell(
     target: CPos,
     minRange?: number,
     maxRange?: number,
   ): CPos
-
-  /** Local move between two world positions.
-   *
-   * OpenRA 对照: Mobile.LocalMove(WPos, WPos)
-   */
-  localMove(
-    fromPos: WPos,
-    toPos: WPos,
-  ): ActivityStub
 }
 
 // ---------------------------------------------------------------------------
@@ -334,8 +289,20 @@ export class MobileInfo implements
    * The resolved LocomotorInfo from the World actor.
    *
    * OpenRA 对照: MobileInfo.LocomotorInfo
+   *
+   * Set by the ruleset loader after construction. Null if not yet resolved.
+   * Callers should use hasLocomotorInfo() before accessing locomotorInfo-sensitive
+   * properties.
    */
   locomotorInfo: LocomotorInfo | null = null
+
+  /** Whether the LocomotorInfo has been resolved from the World actor.
+   *
+   * OpenRA 对照: MobileInfo.LocomotorInfo != null
+   */
+  hasLocomotorInfo(): boolean {
+    return this.locomotorInfo !== null
+  }
 
   constructor(params: {
     instanceName?: string
@@ -460,7 +427,7 @@ export class MobileInfo implements
     locomotor: ILocomotor | null,
   ): boolean {
     if (!locomotor) return false
-    // STUB: Tunnel check deferred to Ch12
+    // TODO-12.A.3: Tunnel check deferred to Ch12 (Shroud & Fog of War)
     // if (cell.Layer === CustomMovementLayerType.Tunnel) return false
     return locomotor.movementCostForCell(cell) !== PathGraph.MovementCostForUnreachableCell
   }
@@ -482,6 +449,7 @@ export class MobileInfo implements
 export class Mobile
   extends ConditionalTrait<MobileInfo>
   implements
+    IMove,
     IPositionable,
     IFacing,
     ITick,
@@ -533,6 +501,14 @@ export class Mobile
    * OpenRA 对照: Mobile.locomotor (Lazy resolution via world traits)
    */
   private _locomotorResolved: ILocomotor | null = null
+
+  /** Optional reference to the PathFinder for closestGroundCell.
+   *
+   * OpenRA 对照: Mobile constructor resolves World.WorldActor.Trait<IPathFinder>()
+   *
+   * TODO-9.A.7: Resolve PathFinder from world during initialization.
+   */
+  private _pathFinder: unknown = null
 
   /** Tracks whether immovable condition is evaluated as active. */
   private _immoConditionActive: boolean = false
@@ -634,18 +610,26 @@ export class Mobile
   // Movement state
   // -----------------------------------------------------------------------
 
+  /** Cached current movement types set — updated when _movementTypes changes.
+   *
+   * PERF: Avoids per-frame Set allocation (MINOR-11).
+   */
+  private _cachedMovementTypes: Set<string> | null = null
+
   get currentMovementTypes(): Set<string> {
-    const set = new Set<string>()
-    if (hasMovementType(this._movementTypes, MovementType.Horizontal)) {
-      set.add('Horizontal')
+    if (this._cachedMovementTypes === null) {
+      this._cachedMovementTypes = new Set<string>()
+      if (hasMovementType(this._movementTypes, MovementType.Horizontal)) {
+        this._cachedMovementTypes.add('Horizontal')
+      }
+      if (hasMovementType(this._movementTypes, MovementType.Vertical)) {
+        this._cachedMovementTypes.add('Vertical')
+      }
+      if (hasMovementType(this._movementTypes, MovementType.Turn)) {
+        this._cachedMovementTypes.add('Turn')
+      }
     }
-    if (hasMovementType(this._movementTypes, MovementType.Vertical)) {
-      set.add('Vertical')
-    }
-    if (hasMovementType(this._movementTypes, MovementType.Turn)) {
-      set.add('Turn')
-    }
-    return set
+    return this._cachedMovementTypes
   }
 
   /**
@@ -656,6 +640,7 @@ export class Mobile
   private setCurrentMovementTypes(value: MovementType): void {
     const oldValue = this._movementTypes
     this._movementTypes = value
+    this._cachedMovementTypes = null // invalidate cache
     if (value !== oldValue) {
       // HACK: ActorMap.UpdateOccupiedCells via world
       const world = this._self?.world as unknown as Record<string, unknown> | null
@@ -835,6 +820,24 @@ export class Mobile
    */
   setLocomotor(locomotor: ILocomotor): void {
     this._locomotor = locomotor
+  }
+
+  /** Set the PathFinder reference (resolved from world).
+   *
+   * OpenRA 对照: Mobile.Created() → PathFinder assignment
+   *
+   * TODO-9.A.7: Use to resolve pathfinding in closestGroundCell.
+   */
+  /** Get the PathFinder reference.
+   *
+   * OpenRA 对照: Mobile constructor resolves World.WorldActor.Trait<IPathFinder>()
+   */
+  get pathFinder(): unknown {
+    return this._pathFinder
+  }
+
+  setPathFinder(pathFinder: unknown): void {
+    this._pathFinder = pathFinder
   }
 
   /** Get the current locomotor.
@@ -1044,15 +1047,18 @@ export class Mobile
       if (cell.Layer === 0) {
         position = (map as unknown as { centerOfCell: (c: CPos) => WPos }).centerOfCell(cell)
       } else {
-        // Custom movement layer center — STUB
-        position = WPos.Zero
+        // Custom movement layer center — use layer-0 projection as fallback
+        // TODO-12.A.2: Proper custom movement layer center calculation
+        const layer0Cell = new CPos(cell.X, cell.Y)
+        position = (map as unknown as { centerOfCell: (c: CPos) => WPos }).centerOfCell(layer0Cell)
       }
       const grid = (map as unknown as Record<string, unknown>)['grid'] as unknown as Record<string, unknown> | null
       if (grid && typeof (grid as Record<string, unknown>).offsetOfSubCell === 'function') {
         const offset = (grid as unknown as { offsetOfSubCell: (s: SubCellEnum) => WVec }).offsetOfSubCell(validSubCell)
         position = WPos.add(position, offset)
       }
-      position = WPos.subtractVec(position, new WVec(0, 0, 0)) // dummy Z offset
+      // Apply Z-offset (0 for ground-level units)
+      position = WPos.subtractVec(position, WVec.Zero)
       this.setCenterPosition(this._self, position)
     }
 
@@ -1100,16 +1106,24 @@ export class Mobile
   /** Get an available sub-cell at a position.
    *
    * OpenRA 对照: Mobile.GetAvailableSubCell()
+   *
+   * Delegates to the Locomotor's getAvailableSubCell, which checks actor
+   * blocking and terrain passability.
    */
   getAvailableSubCell(
-    _a: CPos,
+    cell: CPos,
     preferredSubCell: SubCellEnum = SubCellEnum.Any,
-    _ignoreActor: IGameActor | null = null,
-    _check: BlockedByActor = 3, // All
+    ignoreActor: IGameActor | null = null,
+    check: BlockedByActor = 3, // All
   ): SubCellEnum {
     if (!this._locomotor) return SubCellEnum.Invalid
-    // STUB: Locomotor.getAvailableSubCell not yet on ILocomotor interface
-    return preferredSubCell !== SubCellEnum.Any ? preferredSubCell : SubCellEnum.FullCell
+    return this._locomotor.getAvailableSubCell(
+      this._self,
+      cell,
+      check,
+      preferredSubCell,
+      ignoreActor,
+    )
   }
 
   /** Check if the actor can exist in a cell (terrain passable).
@@ -1195,7 +1209,7 @@ export class Mobile
         n.onNotifyFinishedMoving(self)
       }
     }
-    // CrushAction: STUB — crush detection deferred to Ch14
+    // TODO-9.A.9: CrushAction — crush detection deferred to Ch14
   }
 
   /** Add this actor's influence to the actor map.
@@ -1234,7 +1248,7 @@ export class Mobile
    * OpenRA 对照: Mobile.WrapMove()
    */
   wrapMove(inner: ActivityStub): ActivityStub {
-    // STUB: moveWrappers[0].WrapMove not yet implemented
+    // TODO-14.A: moveWrappers[0].WrapMove not yet implemented
     return inner
   }
 
@@ -1249,21 +1263,23 @@ export class Mobile
     _evaluateNearestMovableCell?: boolean,
     _targetLineColor?: ColorStub,
   ): ActivityStub {
-    // STUB: Move activity deferred to Ch14
+    // TODO-14.A: Move activity deferred to Ch14
     return new ReturnToCellActivity()
   }
 
   /** Move to within range of a target.
    *
    * OpenRA 对照: Mobile.MoveWithinRange(Target, WDist, WPos?, Color?)
+   *
+   * Implements both IMove and IFullMove.
    */
   moveWithinRange(
-    _target: TargetStub,
+    _source: IGameActor,
+    _target: Target,
     _range: WDist,
-    _initialTargetPosition?: WPos,
-    _targetLineColor?: ColorStub,
-  ): ActivityStub {
-    return new ReturnToCellActivity()
+    _initialTarget?: Target,
+  ): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
   }
 
   /** Move within min/max range of a target.
@@ -1271,56 +1287,59 @@ export class Mobile
    * OpenRA 对照: Mobile.MoveWithinRange(Target, WDist, WDist, WPos?, Color?)
    */
   moveWithinRangeMinMax(
-    _target: TargetStub,
+    _source: IGameActor,
+    _target: Target,
     _minRange: WDist,
     _maxRange: WDist,
-    _initialTargetPosition?: WPos,
-    _targetLineColor?: ColorStub,
-  ): ActivityStub {
-    return new ReturnToCellActivity()
+    _initialTarget?: Target,
+  ): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
   }
 
   /** Move to follow a target between min/max range.
    *
    * OpenRA 对照: Mobile.MoveFollow()
+   *
+   * Implements both IMove and IFullMove.
    */
   moveFollow(
-    _target: TargetStub,
-    _minRange: WDist,
-    _maxRange: WDist,
-    _initialTargetPosition?: WPos,
-    _targetLineColor?: ColorStub,
-  ): ActivityStub {
-    return new ReturnToCellActivity()
+    _source: IGameActor,
+    _target: Target,
+    _range: WDist,
+    _followTarget: Target,
+    _initialTarget?: Target,
+  ): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
   }
 
   /** Return to the actor's home cell.
    *
    * OpenRA 对照: Mobile.ReturnToCell()
    */
-  returnToCell(): ActivityStub {
-    return new ReturnToCellActivity()
+  returnToCell(_source: IGameActor): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
   }
 
   /** Move onto a target and face it.
    *
    * OpenRA 对照: Mobile.MoveOntoTarget()
+   *
+   * Implements both IMove and IFullMove.
    */
   moveOntoTarget(
-    _target: TargetStub,
-    _offset: WVec,
-    _facing?: WAngle,
-    _targetLineColor?: ColorStub,
-  ): ActivityStub {
-    return new ReturnToCellActivity()
+    _source: IGameActor,
+    _target: Target,
+    _facingTarget: Target,
+  ): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
   }
 
   /** Estimate the duration (in ticks) to move between two positions.
    *
-   * OpenRA 对照: Mobile.EstimatedMoveDuration()
+   * OpenRA 对照: Mobile.EstimatedMoveDuration() / IMove.EstimatedMoveDuration(WPos, WPos)
    */
   estimatedMoveDuration(
-    _self: IGameActor,
+    _source: IGameActor,
     fromPos: WPos,
     toPos: WPos,
   ): number {
@@ -1329,7 +1348,18 @@ export class Mobile
     return speed > 0 ? delta.length / speed : 0
   }
 
-  /** Find the nearest moveable cell.
+  /** Find the nearest moveable cell from a WPos (IMove signature).
+   *
+   * OpenRA 对照: IMove.NearestMoveableCell(WPos)
+   *
+   * STUB: Converts WPos to CPos and delegates to nearestMoveableCellImpl.
+   * TODO-9.A.9: Use PathFinder for proper WPos-based nearest cell search.
+   */
+  nearestMoveableCell(
+    _source: IGameActor,
+    target: WPos,
+  ): CPos
+  /** Find the nearest moveable cell from a CPos (IFullMove signature).
    *
    * OpenRA 对照: Mobile.NearestMoveableCell(CPos)
    */
@@ -1337,23 +1367,82 @@ export class Mobile
     target: CPos,
     minRange?: number,
     maxRange?: number,
+  ): CPos
+  nearestMoveableCell(
+    sourceOrTarget: IGameActor | CPos,
+    targetOrMinRange?: WPos | number,
+    maxRange?: number,
   ): CPos {
+    // IMove overload: (source: IGameActor, target: WPos)
+    if (typeof sourceOrTarget === 'object' && 'actorId' in sourceOrTarget) {
+      const wTarget = targetOrMinRange as WPos
+      // Convert WPos to cell position and delegate
+      const world = (sourceOrTarget as IGameActor).world as unknown as Record<string, unknown> | null
+      const map = world?.map as unknown as { cellContaining: (p: WPos) => CPos } | null
+      const cell = map?.cellContaining(wTarget) ?? new CPos(0, 0)
+      return this.nearestMoveableCellImpl(cell, 1, 10)
+    }
+    // IFullMove overload: (target: CPos, minRange?, maxRange?)
+    const cTarget = sourceOrTarget as CPos
     return this.nearestMoveableCellImpl(
-      target,
-      minRange ?? 1,
+      cTarget,
+      (targetOrMinRange as number) ?? 1,
       maxRange ?? 10,
     )
   }
 
   /** Local move between two world positions.
    *
-   * OpenRA 对照: Mobile.LocalMove(WPos, WPos)
+   * OpenRA 对照: Mobile.LocalMove(WPos, WPos) / IMove.LocalMove(WPos)
+   *
+   * Implements both IMove and IFullMove.
    */
   localMove(
-    _fromPos: WPos,
-    _toPos: WPos,
-  ): ActivityStub {
-    return new ReturnToCellActivity()
+    _source: IGameActor,
+    _destination: WPos,
+  ): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
+  }
+
+  /** Move to a target position/actor.
+   *
+   * OpenRA 对照: IMove.MoveTo(Target)
+   *
+   * TODO-9.A.10: Full Move activity deferred to Ch14.
+   */
+  moveTo(_source: IGameActor, _target: Target): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
+  }
+
+  /** Move onto a target for attacking/interaction.
+   *
+   * OpenRA 对照: IMove.MoveToTarget(Target)
+   *
+   * TODO-9.A.10: Full Move activity deferred to Ch14.
+   */
+  moveToTarget(_source: IGameActor, _target: Target): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
+  }
+
+  /** Move onto a target's cell (passenger/transport interactions).
+   *
+   * OpenRA 对照: IMove.MoveIntoTarget(Target)
+   *
+   * TODO-11.A: Transport/passenger system deferred to Ch11.
+   */
+  moveIntoTarget(_source: IGameActor, _target: Target): Activity {
+    return new ReturnToCellActivity() as unknown as Activity
+  }
+
+  /** Check whether this actor can enter the target cell(s) right now.
+   *
+   * OpenRA 对照: IMove.CanEnterTargetNow(Target)
+   *
+   * TODO-9.A.10: Full implementation deferred to Ch14.
+   */
+  canEnterTargetNow(_source: IGameActor, _target: Target): boolean {
+    // STUB: Conservative fallback — assume can't enter until Ch14 implements
+    return false
   }
 
   // -----------------------------------------------------------------------
@@ -1381,7 +1470,7 @@ export class Mobile
   private getSpeedModifiers(): number[] {
     if (this._speedModifiersMemo === null) {
       this._speedModifiersMemo = []
-      // STUB: In full impl, queries self.TraitsImplementing<ISpeedModifier>()
+      // TODO-9.A: Speed modifier traits — queries self.TraitsImplementing<ISpeedModifier>()
     }
     return this._speedModifiersMemo
   }
@@ -1464,7 +1553,7 @@ export class Mobile
    * OpenRA 对照: Mobile.EnteringCell()
    */
   enteringCell(_self: IGameActor): void {
-    // CrushAction: STUB — deferred to Ch14
+    // TODO-9.A.9: CrushAction — deferred to Ch14
   }
 
   /** Find the closest ground cell from the current position.
@@ -1475,7 +1564,10 @@ export class Mobile
     const above = new CPos(this._toCell.X, this._toCell.Y)
     if (this.canEnterCell(above)) return above
 
-    // STUB: PathFinder.FindPathToTargetCellByPredicate deferred to Ch14
+    // TODO-9.A.7: Use resolved PathFinder to search for nearest ground cell
+    // when the direct above-cell isn't enterable.
+    // In C#: PathFinder.FindPathToTargetCellByPredicate(self, ...)
+    // if (this._pathFinder) { ... }
     return null
   }
 
@@ -1511,7 +1603,7 @@ export class Mobile
     if (this._toCell.Layer === 0) {
       // Make sure that units aren't left idling in a transit-only cell
       if (this._locomotor && !this.canStayInCell(this._toCell)) {
-        // STUB: QueueActivity MoveTo
+        // TODO-14.A: QueueActivity MoveTo
         return
       }
       return
@@ -1524,7 +1616,7 @@ export class Mobile
   // -----------------------------------------------------------------------
 
   onNotifyBlockingMove(self: IGameActor, _blocking: IGameActor): void {
-    // STUB: AppearsFriendlyTo and Nudge are deferred to Ch14
+    // TODO-14.A: AppearsFriendlyTo and Nudge deferred to Ch14
     if (self.isIdle ?? false) {
       return
     }
@@ -1583,21 +1675,61 @@ export class Mobile
 
   /** Evaluate a condition expression string against a variable map.
    *
-   * STUB: In full impl, uses BooleanExpression.Evaluate()
+   * Supports: variable names, ! (NOT), && (AND), || (OR).
+   * Variables are evaluated as truthy when their value in conditions is > 0.
+   *
+   * OpenRA 对照: BooleanExpression.Evaluate(ConditionPair[])
    */
   private evaluateConditionString(
     expr: string,
     conditions: ReadonlyMap<string, number>,
   ): boolean {
+    // Handle simple negation: !variable
+    if (expr.startsWith('!')) {
+      const varName = expr.slice(1).trim()
+      return !conditions.has(varName) || (conditions.get(varName) ?? 0) <= 0
+    }
+
+    // Handle AND: a && b
+    const andParts = expr.split(/\s*&&\s*/)
+    if (andParts.length > 1) {
+      return andParts.every((part) => this.evaluateConditionString(part.trim(), conditions))
+    }
+
+    // Handle OR: a || b
+    const orParts = expr.split(/\s*\|\|\s*/)
+    if (orParts.length > 1) {
+      return orParts.some((part) => this.evaluateConditionString(part.trim(), conditions))
+    }
+
+    // Simple variable: must exist and be > 0
     return conditions.has(expr) && (conditions.get(expr) ?? 0) > 0
   }
 
   /** Extract variable names from a condition expression string.
    *
-   * STUB: In full impl, uses BooleanExpression.Variables
+   * Parses operators: ! (NOT), && (AND), || (OR).
+   * Returns all unique variable names referenced in the expression.
+   *
+   * OpenRA 对照: BooleanExpression.Variables
    */
-  private extractVariables(_expr: string): readonly string[] {
-    return []
+  private extractVariables(expr: string): readonly string[] {
+    // Remove whitespace
+    const cleaned = expr.replace(/\s+/g, '')
+    if (!cleaned) return []
+
+    // Split on && and || first
+    const orSegments = cleaned.split('||')
+    const andSegments = orSegments.flatMap((s) => s.split('&&'))
+
+    const vars = new Set<string>()
+    for (const seg of andSegments) {
+      // Strip leading ! (negation)
+      const name = seg.startsWith('!') ? seg.slice(1) : seg
+      if (name) vars.add(name)
+    }
+
+    return Array.from(vars)
   }
 
   // -----------------------------------------------------------------------
@@ -1640,7 +1772,7 @@ export class Mobile
       const extra = order.extraData as Record<string, unknown> | undefined
       if (!extra?.['target']) return
 
-      // STUB: MoveIntoShroud check, cell clamping
+      // TODO-14.A: MoveIntoShroud check, cell clamping
       // Queue move activity
       if (self.queueActivity) {
         self.queueActivity(new ReturnToCellActivity() as unknown as ActivityStub)
@@ -1650,7 +1782,7 @@ export class Mobile
         self.cancelActivity()
       }
     } else if (order.orderName === 'Scatter') {
-      // STUB: Nudge deferred to Ch14
+      // TODO-14.A: Nudge deferred to Ch14
       if (self.queueActivity) {
         self.queueActivity(new ReturnToCellActivity() as unknown as ActivityStub)
       }
@@ -1726,7 +1858,7 @@ export class Mobile
    * OpenRA 对照: Created() → moveWrappers array
    */
   setMoveWrappers(_wrappers: IWrapMove[]): void {
-    // STUB: moveWrappers deferred — WrapMove always returns inner directly
+    // TODO-14.A: moveWrappers deferred — WrapMove always returns inner directly
   }
 
   /** Set the creation activity parameters.
@@ -1822,7 +1954,7 @@ export class ReturnToCellActivity {
   isCanceling: boolean = false
 
   tick(_self: IGameActor): boolean {
-    // STUB: immediately complete
+    // TODO-14.A: STUB — immediately complete (full activity deferred to Ch14)
     return true
   }
 
@@ -1831,7 +1963,7 @@ export class ReturnToCellActivity {
   }
 
   queue(_activity: ActivityStub): void {
-    // STUB: no-op
+    // TODO-14.A: STUB — no-op (full activity deferred to Ch14)
   }
 
   onActorDisposeOuter(_actor: IGameActor): void {
