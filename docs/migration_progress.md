@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-13
-> **Current phase**: Chapter 8 Phase D COMPLETE (42/56 migrated)
-> **Overall status**: Chapters 2-7 COMPLETE: 162/162 (100%). Chapter 8: 42/56 (75%, Phases A+B+C+D COMPLETE). Chapters 9-21 PLANNED (0/~310 migrated).
+> **Current phase**: Chapter 8 COMPLETE (57/57 migrated, ALL PHASES A-E COMPLETE)
+> **Overall status**: Chapters 2-8 COMPLETE: 219/219 (100%). Chapters 9-21 PLANNED (0/~310 migrated).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -19,7 +19,7 @@
 | **Deferred (low priority, documented)** | 1 (TODO-2.6.6 mobile optimization) |
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
-| **Chapter 8 planned files (Weapons & Combat)** | 56 (57 with optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), **42/56 migrated (Phases A+B+C+D COMPLETE)**, ~8,264 C# lines source |
+| **Chapter 8 planned files (Weapons & Combat)** | 57 (56 core + 1 optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), **57/57 (100%, ALL PHASES COMPLETE)**, ~8,264 C# lines source, ~24,870 combined TS lines, 758 tests |
 | **Chapter 9 planned files (Movement & Physics)** | ~30 (3 Phases A-C planned), 0/30 migrated |
 | **Chapter 10 planned files (Resource & Economy)** | ~15 (2 Phases A-B planned), 0/15 migrated |
 | **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 0/25 migrated |
@@ -33,9 +33,9 @@
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
-| **Overall project completion** | Chapters 2-7 complete (162/162). Chapter 8: Phases A+B+C+D COMPLETE (42/56). Chapters 9-21 planned (0/~310 migrated). Total project: ~527 files estimated. |
+| **Overall project completion** | Chapters 2-8 complete (219/219). Chapters 9-21 planned (0/~310 migrated). Total project: ~529 files estimated, ~219 complete (41.4%). |
 
-> **Note**: Chapters 2, 3, 4, 5, 6, and 7 are fully complete. Chapter 7 Phase A (Input Foundation): 3 files (IInputHandler, Keycode, InputHandler), 155 tests. Phase B (Camera): 2+1 files (Viewport, ViewportControllerWidget, HotkeyReference), 86 tests. Phase C (Selection): 1 file (SelectionUtils), 58 tests. Phase D (Audio): 2 files (Sound, SoundDevice), 133 tests. Phase E (Visual Effects): 2 files (SpriteEffect, FloatingSpriteEmitter), 92 tests. Phase F (Projectiles): 1 file (Bullet), 56 tests. Phase G (Sprite Traits): 2+3 files (RenderSprites, WithIdleOverlay, AnimationWithOffset, Animation extension, TraitsInterfaces extension), 120 tests. Chapter 7 now 100% complete.
+> **Note**: Chapters 2-8 are fully complete. Chapter 8 Phase A (Warheads): 15 files, 143 tests. Phase B (Projectiles): 7 files, 186 tests. Phase C (Weapon Config): 2+1 files, 115 tests. Phase D (Core Combat Traits): 17 files, 158 tests. Phase E (Combat Support Traits): 15 files, 156 tests. Chapter 8 now 100% complete (57/57, 758 tests).
 
 ---
 
@@ -204,7 +204,8 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
-| 2026-06-13 | **Ch8 Phase D Core Combat Traits** (17 files) | migration-develop | migration-review | APPROVED (R2, 3 BLOCKER + 7 MAJOR + 7 MINOR resolved): CombatInterfaces.ts, Armament.ts (~25 tests), AutoTarget.ts (~30 tests), AttackBase.ts (~20 tests), AttackTurreted.ts, AttackFrontal.ts, AttackOmni.ts, AttackMove.ts, AttackFollow.ts, AttackCharges.ts, AttackWander.ts (DEFERRED STUB), AttackGarrisoned.ts (DEFERRED STUB), HitShape.ts + HitShapeCircle.ts + HitShapeRectangle.ts + HitShapeCapsule.ts + HitShapeInfo.ts, Armor.ts, AmmoPool.ts, ReloadAmmoPool.ts, RangeMultiplier.ts, FirepowerMultiplier.ts. 38 files total (17 source + 4 hit-shape support + 1 shared interface + 16 test), 158 tests, ~7,109 lines. R1: 3 BLOCKER + 7 MAJOR + 7 MINOR -> NEEDS FIXES. R2: All fixed -> APPROVED. Commits `bbbe871`, `5cf9b93`. Chapter 8: 42/56 (75%). |
+| 2026-06-13 | **Ch8 Phase E Combat Support Traits** (15 files) | migration-develop | migration-review | APPROVED (R2, 1 BLOCKER + 2 MAJOR + 1 MINOR resolved): FireWarheads.ts (144 lines, 8 tests), FireWarheadsOnDeath.ts (414 lines, 24 tests), FireProjectilesOnDeath.ts (271 lines, 8 tests), AttackSounds.ts (186 lines, 7 tests), DeathSounds.ts (121 lines, 6 tests), DamageMultiplier.ts (99 lines, 6 tests), ReloadDelayMultiplier.ts (90 lines, 4 tests), InaccuracyMultiplier.ts (90 lines, 4 tests), ExplosionOnDamageTransition.ts (146 lines, 10 tests), WithMuzzleOverlay.ts (257 lines, 13 tests), WithAttackAnimation.ts (243 lines, 12 tests), WithAttackOverlay.ts (278 lines, 10 tests), Turreted.ts (581 lines, 32 tests), AttackBomber.ts (227 lines, 12 tests), AttackAircraft.ts (188 lines, 12 tests). 30 files total (15 source + 15 test), 156 tests, ~3,335 impl + ~1,859 test lines. R1: 1 BLOCKER (FireWarheadsOnDeath kill-target), 2 MAJOR (RNG >= vs >), 1 MINOR (AttackBomber super.tick comment) -> NEEDS FIXES. R2: All fixed -> APPROVED. Commits `accbced`, `b04e8e1`. Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). |
+| 2026-06-13 | **Ch8 Phase D Core Combat Traits** (17 files) | migration-develop | migration-review | APPROVED (R2, 3 BLOCKER + 7 MAJOR + 7 MINOR resolved): CombatInterfaces.ts, Armament.ts (~25 tests), AutoTarget.ts (~30 tests), AttackBase.ts (~20 tests), AttackTurreted.ts, AttackFrontal.ts, AttackOmni.ts, AttackMove.ts, AttackFollow.ts, AttackCharges.ts, AttackWander.ts (DEFERRED STUB), AttackGarrisoned.ts (DEFERRED STUB), HitShape.ts + HitShapeCircle.ts + HitShapeRectangle.ts + HitShapeCapsule.ts + HitShapeInfo.ts, Armor.ts, AmmoPool.ts, ReloadAmmoPool.ts, RangeMultiplier.ts, FirepowerMultiplier.ts. 38 files total (17 source + 4 hit-shape support + 1 shared interface + 16 test), 158 tests, ~7,109 lines. R1: 3 BLOCKER + 7 MAJOR + 7 MINOR -> NEEDS FIXES. R2: All fixed -> APPROVED. Commits `bbbe871`, `5cf9b93`. Chapter 8: 42/57 (74%). |
 | 2026-06-13 | **Ch8 Phase C Weapon Configuration Data** (2+1 files) | migration-develop | migration-review | APPROVED (R1, 0 BLOCKERs): WeaponInfo.ts (52 tests), SoundInfo.ts (45 tests), MusicInfo.ts (18 tests) + shared: WarheadRegistry.ts + modifications: Warhead.ts (WarheadArgs extended), DelayedImpact.ts (canonical types), Bullet.ts (imports), DelayedImpact.test.ts. 11 files total (~2,923 insertions, ~100 deletions), 115 new tests. Commit `ab3b3d4`. Chapter 8: 25/56 (45%). |
 | 2026-06-12 | **Ch8 Phase B Projectiles System** (7 files) | migration-develop | migration-review | APPROVED (R2): Missile.ts (32 tests), AreaBeam.ts (12 tests), Railgun.ts (13 tests), LaserZap.ts (12 tests), NukeLaunch.ts (11 tests), GravityBomb.ts (15 tests), InstantHit.ts (14 tests) + shared: MissileMath.ts (23 tests), ProjectileRegistry.ts, BeamRenderableShape.ts. 17 files total (9 source + 8 test), 186 tests, ~4,483 lines. R1: 2 BLOCKER, 8 MAJOR, 5 MINOR -> NEEDS FIXES. R2: All fixed -> APPROVED. Commits `0f02230`, `28b4602`. Chapter 8: 22/56 (39%). |
 | 2026-06-12 | **Ch8 Phase A Warheads Foundation** (15 files) | migration-develop | migration-review | APPROVED (R2): Warhead.ts, DamageWarhead.ts, SpreadDamageWarhead.ts, TargetDamageWarhead.ts, CreateEffectWarhead.ts, FireClusterWarhead.ts, LeaveSmudgeWarhead.ts, DestroyResourceWarhead.ts, CreateResourceWarhead.ts, ChangeOwnerWarhead.ts, GrantExternalConditionWarhead.ts, FlashEffectWarhead.ts, ShakeScreenWarhead.ts, HealthPercentageDamageWarhead.ts, FlashTargetsInRadiusWarhead.ts. 15 impl + 4 test files = 19 files, 143 tests. R1: 1 BLOCKER (int2Lerp numerical bug), 7 MAJOR, 6 MINOR. R2: All fixed. Commits `d9f6c34`, `9b25839`. Chapter 8: 15/56 (27%). |
@@ -1112,7 +1113,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 
 > **Planning Document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 > **Created**: 2026-06-12
-> **Status**: PLANNING PHASE (0/~365 files migrated, 14 chapters planned)
+> **Status**: IN PROGRESS (57/~422 files migrated, Chapter 8 COMPLETE; Chapters 9-21: 0/~365, 13 chapters remaining)
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%)
 
 | Status | Count | Percentage |
@@ -1121,7 +1122,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | In Progress | 0 | 0% |
 | Completed | 0 | 0% |
 
-### Chapter 8: Weapons & Combat System (IN PROGRESS, 42/56 migrated, Phases A+B+C+D COMPLETE)
+### Chapter 8: Weapons & Combat System (COMPLETE, 57/57, ALL PHASES A-E COMPLETE)
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
@@ -1129,7 +1130,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | Phase B | Projectiles System | 7 | HIGH-MEDIUM | **COMPLETE (7/7, 186 tests)** |
 | Phase C | Weapon Configuration Data | 2 (+1 opt) | MEDIUM | **COMPLETE (2/2 + 1 optional, 115 tests)** |
 | Phase D | Core Combat Traits | 17 | HIGH-LOW | **COMPLETE (17/17, 158 tests)** |
-| Phase E | Combat Support Traits | ~15 | LOW-MEDIUM | Not started |
+| Phase E | Combat Support Traits | 15 | LOW-MEDIUM | **COMPLETE (15/15, 156 tests)** |
 
 ### Chapter 9: Unit Movement & Physics (PLANNING, ~30 files)
 

@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 8 -- Weapons & Combat System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.5 (WeaponInfo/Combat) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (42/56 migrated, Phases A+B+C+D COMPLETE)
+> **Chapter Status**: COMPLETE (57/57 migrated, ALL PHASES A-E COMPLETE)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%)
 >
@@ -178,13 +178,13 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 | **LOW complexity** | 40 files |
 | **Total OpenRA C# source lines** | ~8,329 (with MusicInfo) / ~8,264 (without) |
 
-| Phase | Files | C# Lines | Description |
-|:---|:---:|:---:|:---|
-| A: Warheads | 15 | 1,135 | Impact-effect classes |
-| B: Projectiles | 7 | 2,166 | In-flight munition objects (Bullet already in Ch7) |
-| C: Weapon Config | 2 (+1 opt) COMPLETE | 365 (+65) | WeaponInfo, SoundInfo, MusicInfo |
-| D: Core Combat Traits | 17 | 3,075 | Armament, Attack*, AutoTarget, HitShape, Armor, etc. |
-| E: Support Traits | 15 | 1,523 | FireWarheads, Render overlays, Turreted, Multipliers, etc. |
+| Phase | Files | C# Lines | TS Lines | Tests | Status |
+|:---|:---:|:---:|:---:|:---:|:---|
+| A: Warheads | 15 | 1,135 | -- | 143 | COMPLETE |
+| B: Projectiles | 7 | 2,166 | ~4,483 | 186 | COMPLETE |
+| C: Weapon Config | 2 (+1 opt) | 365 (+65) | -- | 115 | COMPLETE |
+| D: Core Combat Traits | 17 | 3,075 | ~7,109 | 158 | COMPLETE |
+| E: Support Traits | 15 | 1,523 | ~3,335 | 156 | COMPLETE |
 
 ---
 
@@ -723,10 +723,11 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 ### 3.5 Phase E: Combat Support Traits
 
-**Status**: 📋 待迁移 (0/15 migrated) -- NOW UNBLOCKED (Phase D COMPLETE)
+**Status**: ✅ COMPLETE (15/15 migrated, 156 tests, APPROVED R2)
 **Complexity**: Low-Medium (Turreted 333 lines MEDIUM, DeathSounds 48 lines LOW)
+**Review**: APPROVED (2 rounds). Commits `accbced` (initial), `b04e8e1` (Round 1 fixes)
 **Blocked by**: Phase D (Core combat traits) -- COMPLETE, Chapter 7 Phases D-E (Sound and Effects) -- COMPLETE
-**Blocks**: Chapter 14 (Attack activities), Chapter 19 (mod-specific combat traits)
+**Blocks**: Chapter 9 (Movement & Physics -- Turreted dependency for Mobile), Chapter 14 (Attack activities -- AttackBomber/AttackAircraft)
 
 **Description**: Traits that modify, enhance, or react to combat events. `FireWarheads` and `FireWarheadsOnDeath` trigger warhead effects on specific conditions. `AttackSounds` and `DeathSounds` play audio feedback. `WithMuzzleOverlay`, `WithAttackAnimation`, and `WithAttackOverlay` provide visual combat feedback via sprite overlays. `Turreted` manages turret rotation and facing -- a critical dependency for turret-based attack variants. `AttackBomber` and `AttackAircraft` extend combat to air units. Multiplier traits (`DamageMultiplier`, `ReloadDelayMultiplier`, `InaccuracyMultiplier`) stack with Phase D multipliers.
 
@@ -738,7 +739,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.1 FireWarheads
 
-- [ ] **TODO-8.E.1** `src/OpenRA.Mods.Common/Traits/FireWarheads.ts` (86 lines C#) -- Conditional warhead trigger:
+- [x] **TODO-8.E.1** `src/OpenRA.Mods.Common/Traits/FireWarheads.ts` (86 lines C#) -- Conditional warhead trigger:
   - `warheads: string[]` -- warhead type names to trigger
   - `condition: string` -- condition that triggers warhead firing
   - `targetSelf: boolean` -- target self vs external targets
@@ -747,7 +748,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.2 FireWarheadsOnDeath
 
-- [ ] **TODO-8.E.2** `src/OpenRA.Mods.Common/Traits/FireWarheadsOnDeath.ts` (190 lines C#) -- Death explosion trait:
+- [x] **TODO-8.E.2** `src/OpenRA.Mods.Common/Traits/FireWarheadsOnDeath.ts` (190 lines C#) -- Death explosion trait:
   - `warhead: string` -- warhead type to trigger on death
   - `weapon: string` -- optional weapon reference (for projectile effects)
   - `emptyWeapon: string` -- alternate weapon when no ammo remains
@@ -758,7 +759,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.3 FireProjectilesOnDeath
 
-- [ ] **TODO-8.E.3** `src/OpenRA.Mods.Common/Traits/FireProjectilesOnDeath.ts` (124 lines C#) -- Death projectile burst:
+- [x] **TODO-8.E.3** `src/OpenRA.Mods.Common/Traits/FireProjectilesOnDeath.ts` (271 lines TS, 8 tests) -- Death projectile burst:
   - `projectile: string` -- projectile type to spawn on death
   - `count: number` -- number of projectiles to spawn
   - `offset: WVec` -- spawn offset from actor center
@@ -768,7 +769,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.4 AttackSounds
 
-- [ ] **TODO-8.E.4** `src/OpenRA.Mods.Common/Traits/Sound/AttackSounds.ts` (80 lines C#) -- Attack audio feedback:
+- [x] **TODO-8.E.4** `src/OpenRA.Mods.Common/Traits/Sound/AttackSounds.ts` (186 lines TS, 7 tests) -- Attack audio feedback:
   - `sounds: string[]` -- sound effects to play when attacking
   - `delay: number` -- delay before playing sound
   - `audibleRange: WDist` -- hearing distance
@@ -778,7 +779,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.5 DeathSounds
 
-- [ ] **TODO-8.E.5** `src/OpenRA.Mods.Common/Traits/Sound/DeathSounds.ts` (48 lines C#) -- Death audio feedback:
+- [x] **TODO-8.E.5** `src/OpenRA.Mods.Common/Traits/Sound/DeathSounds.ts` (121 lines TS, 6 tests) -- Death audio feedback:
   - `sounds: string[]` -- sound effects to play on death
   - `volume: number` -- playback volume
   - `killed(actor, attacker, damageState)` -- death event handler plays sound
@@ -787,7 +788,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.6 DamageMultiplier
 
-- [ ] **TODO-8.E.6** `src/OpenRA.Mods.Common/Traits/Multipliers/DamageMultiplier.ts` (37 lines C#) -- Damage taken multiplier:
+- [x] **TODO-8.E.6** `src/OpenRA.Mods.Common/Traits/Multipliers/DamageMultiplier.ts` (99 lines TS, 6 tests) -- Damage taken multiplier:
   - `modifier: number` -- damage multiplier on incoming damage
   - Modifies damage received from all sources
   - Applied during `getEffectiveDamage()` before Armor reduction
@@ -795,21 +796,21 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.7 ReloadDelayMultiplier
 
-- [ ] **TODO-8.E.7** `src/OpenRA.Mods.Common/Traits/Multipliers/ReloadDelayMultiplier.ts` (31 lines C#) -- Reload speed multiplier:
+- [x] **TODO-8.E.7** `src/OpenRA.Mods.Common/Traits/Multipliers/ReloadDelayMultiplier.ts` (90 lines TS, 4 tests) -- Reload speed multiplier:
   - `modifier: number` -- reload time scaling factor
   - Modifies all armaments' `reloadTicks`
   - Used for rate-of-fire buffs/debuffs (e.g., veterancy bonus)
 
 #### 3.5.8 InaccuracyMultiplier
 
-- [ ] **TODO-8.E.8** `src/OpenRA.Mods.Common/Traits/Multipliers/InaccuracyMultiplier.ts` (31 lines C#) -- Inaccuracy multiplier:
+- [x] **TODO-8.E.8** `src/OpenRA.Mods.Common/Traits/Multipliers/InaccuracyMultiplier.ts` (90 lines TS, 4 tests) -- Inaccuracy multiplier:
   - `modifier: number` -- inaccuracy scaling factor
   - Modifies weapon spread/inaccuracy radius
   - Affects projectile spawn offset randomization
 
 #### 3.5.9 ExplosionOnDamageTransition
 
-- [ ] **TODO-8.E.9** `src/OpenRA.Mods.Common/Traits/ExplosionOnDamageTransition.ts` (78 lines C#) -- Damage-state explosion trigger:
+- [x] **TODO-8.E.9** `src/OpenRA.Mods.Common/Traits/ExplosionOnDamageTransition.ts` (146 lines TS, 10 tests) -- Damage-state explosion trigger:
   - `damageState: DamageState` -- threshold to trigger explosion
   - `weapon: string` -- weapon/warhead to trigger at threshold
   - `damageStateChanged(actor, attackInfo)` -- fires warhead when damage crosses threshold
@@ -817,7 +818,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.10 WithMuzzleOverlay
 
-- [ ] **TODO-8.E.10** `src/OpenRA.Mods.Common/Traits/Render/WithMuzzleOverlay.ts` (118 lines C#) -- Muzzle flash render trait:
+- [x] **TODO-8.E.10** `src/OpenRA.Mods.Common/Traits/Render/WithMuzzleOverlay.ts` (257 lines TS, 13 tests) -- Muzzle flash render trait:
   - `sequence: string` -- sprite sequence name for muzzle flash
   - `palette: string` -- palette for muzzle sprite coloring
   - `offset: WVec` -- flash position offset from weapon hardpoint
@@ -828,7 +829,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.11 WithAttackAnimation
 
-- [ ] **TODO-8.E.11** `src/OpenRA.Mods.Common/Traits/Render/WithAttackAnimation.ts` (96 lines C#) -- Attack animation render trait:
+- [x] **TODO-8.E.11** `src/OpenRA.Mods.Common/Traits/Render/WithAttackAnimation.ts` (243 lines TS, 12 tests) -- Attack animation render trait:
   - `sequence: string` -- sprite animation sequence for attack
   - `body: string` -- body part name (for multi-part sprites)
   - `delay: number` -- ticks to play animation
@@ -838,7 +839,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.12 WithAttackOverlay
 
-- [ ] **TODO-8.E.12** `src/OpenRA.Mods.Common/Traits/Render/WithAttackOverlay.ts` (107 lines C#) -- Attack overlay render trait:
+- [x] **TODO-8.E.12** `src/OpenRA.Mods.Common/Traits/Render/WithAttackOverlay.ts` (278 lines TS, 10 tests) -- Attack overlay render trait:
   - `sequence: string` -- overlay sprite sequence
   - `palette: string` -- palette for overlay coloring
   - Overlay rendered on top of the actor during attack
@@ -848,7 +849,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.13 Turreted
 
-- [ ] **TODO-8.E.13** `src/OpenRA.Mods.Common/Traits/Turreted.ts` (333 lines C#) -- Turret rotation trait:
+- [x] **TODO-8.E.13** `src/OpenRA.Mods.Common/Traits/Turreted.ts` (581 lines TS, 32 tests) -- Turret rotation trait:
   - `turretFacing: WAngle` -- current turret rotation angle
   - `desiredFacing: WAngle` -- target rotation angle
   - `turnSpeed: WAngle` -- rotation speed per tick
@@ -864,7 +865,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.14 AttackBomber
 
-- [ ] **TODO-8.E.14** `src/OpenRA.Mods.Common/Traits/Air/AttackBomber.ts` (95 lines C#) -- Bomber aircraft attack:
+- [x] **TODO-8.E.14** `src/OpenRA.Mods.Common/Traits/Air/AttackBomber.ts` (227 lines TS, 12 tests) -- Bomber aircraft attack:
   - `facingTolerance: WAngle` -- bomb release angle tolerance
   - `targetDistance: WDist` -- maximum bomb range
   - `bombFacingOffset: WAngle` -- bomb release angle offset
@@ -874,7 +875,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.5.15 AttackAircraft
 
-- [ ] **TODO-8.E.15** `src/OpenRA.Mods.Common/Traits/Air/AttackAircraft.ts` (69 lines C#) -- Air-to-air / air-to-ground attack:
+- [x] **TODO-8.E.15** `src/OpenRA.Mods.Common/Traits/Air/AttackAircraft.ts` (188 lines TS, 12 tests) -- Air-to-air / air-to-ground attack:
   - `attackType: AirAttackType` (Strafe, FlyBy, Hover)
   - `attackRange: WDist` -- engagement range
   - `ammoRequirement: string` -- required ammo pool for attack
@@ -883,7 +884,9 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
   - Hover: hold position and fire (helicopters)
   - FlyBy: single pass attack
 
-**Phase E Summary**: 15 files, ~1,523 C# lines, estimated ~5,800 TS implementation + ~4,000 test lines
+**Phase E Summary**: 15 files, ~1,523 C# lines source. Implemented: 15 source + 15 test = 30 files, 156 tests, ~3,335 impl + ~1,859 test lines. Reviewed: APPROVED (2 rounds). Commits: `accbced` (initial), `b04e8e1` (Round 1 fixes). Round 1: 1 BLOCKER (FireWarheadsOnDeath kill-target bug), 2 MAJOR (RNG operator >= vs >), 1 MINOR (AttackBomber super.tick() comment) --> NEEDS FIXES. Round 2: All fixed --> APPROVED.
+
+**Chapter 8 Final Status**: 57/57 files (100%, ALL 5 PHASES A-E COMPLETE). Phase A: 15/15 (143 tests). Phase B: 7/7 (186 tests). Phase C: 2+1/2+1 (115 tests). Phase D: 17/17 (158 tests). Phase E: 15/15 (156 tests). Total: 57 impl files, 758 tests, ~24,870 combined lines. Chapter 8 is a milestone completion -- the first full gameplay logic chapter.
 
 ---
 
@@ -900,7 +903,7 @@ Chapters 2-7 (COMPLETE -- Foundation)
   |     |           |
   |     |           +--> Phase D (Core Combat Traits: 17 files)
   |     |                 |
-  |     |                 +--> Phase E (Combat Support Traits: 15 files)
+  |     |                 +--> Phase E (Combat Support Traits: 15 files) ✅ COMPLETE
   |     |
   |     +--> Phase D (Armament references warheads directly)
   |
@@ -944,7 +947,7 @@ Phase A -> Phase B -> Phase C -> Phase D(AttackBase+Armament+AutoTarget) -> Phas
 | Missile | Needs Warhead base + WeaponInfo for warhead lookup |
 | Armament | Needs WeaponInfo (which needs warhead + projectile type names) |
 | AttackBase | Needs Armament for weapon management |
-| AttackTurreted | Needs Turreted.ts (Phase E) -- Turreted must migrate early |
+| AttackTurreted | Needs Turreted.ts (Phase E) -- NOW AVAILABLE (Phase E COMPLETE) |
 | AttackGarrisoned | Needs Building stub from Chapter 11 |
 
 ---
@@ -971,10 +974,10 @@ All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 - [ ] **TEST-8.14** HitShape distanceFromEdge() for Circle and Rectangle matches C# within 1 WDist unit
 - [ ] **TEST-8.15** HitShape intersects() shape-shape collision correctly identifies overlapping and non-overlapping shapes
 - [ ] **TEST-8.16** AmmoPool takeAmmo()/giveAmmo() maintain correct counts; hasAmmo() returns false when empty
-- [ ] **TEST-8.17** Turreted rotation: WAngle lerp matches C# turn rate cap per tick; verify rotate-to-target within expected tick count
-- [ ] **TEST-8.18** Multiplier stacking: RangeMultiplier(1.5) + ReloadDelayMultiplier(0.5) correctly combine in Armament.getReloadTicks()
-- [ ] **TEST-8.19** FireWarheadsOnDeath triggers correct warhead at actor death position; verifies emptyWeapon vs weapon selection logic
-- [ ] **TEST-8.20** Render traits (WithMuzzleOverlay, WithAttackAnimation) trigger correct sprite sequences on attack events
+- [x] **TEST-8.17** Turreted rotation: WAngle lerp matches C# turn rate cap per tick; verify rotate-to-target within expected tick count
+- [x] **TEST-8.18** Multiplier stacking: RangeMultiplier(1.5) + ReloadDelayMultiplier(0.5) correctly combine in Armament.getReloadTicks()
+- [x] **TEST-8.19** FireWarheadsOnDeath triggers correct warhead at actor death position; verifies emptyWeapon vs weapon selection logic
+- [x] **TEST-8.20** Render traits (WithMuzzleOverlay, WithAttackAnimation) trigger correct sprite sequences on attack events
 
 ### 5.2 Per-Phase Test File Estimates
 
@@ -984,8 +987,8 @@ All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 | B: Projectiles | 7 | 7 | ~70 | ~5,500 |
 | C: Weapon Config | 2 | 2 | ~30 | ~900 |
 | D: Core Combat Traits | 17 | 15 | ~120 | ~8,500 |
-| E: Support Traits | 15 | 14 | ~100 | ~4,000 |
-| **Total** | **56** | **50** | **~410** | **~21,900** |
+| E: Support Traits | 15 | 15 | 156 | ~1,859 |
+| **Total** | **57** | **54** | **~758** | **~25,000+** |
 
 ### 5.3 Visual Acceptance Testing
 
@@ -1083,9 +1086,13 @@ Rendering-heavy systems require manual visual acceptance test pages:
 | 3 | Phase C | 2 | WeaponInfo, SoundInfo | After Phase A+B |
 | 3-5 | Phase D (core) | 5 | Armament, AttackBase, AutoTarget, HitShape, Armor | AttackBase after Armament |
 | 5-6 | Phase D (remaining) | 12 | Attack variants, AmmoPool, Multipliers | YES (most independent) |
-| 6-7 | Phase E | 15 | All support traits | YES (most independent) |
+| 6-7 | Phase E | 15 | All support traits | YES (most independent) -- **COMPLETE (2026-06-13)** |
 
-**Total**: 7 weeks (single developer) or 4-5 weeks (2 developers with parallel assignments).
+**Total**: 7 weeks estimated (single developer). **Actual: completed in ~2 days (all 5 phases)**. Chapter 8 is 57/57 (100%).
+
+---
+
+> **Chapter 8 milestone**: The first full gameplay logic chapter is COMPLETE. All weapons (warheads, projectiles, weapon config), combat traits (armament, attack variants, auto-targeting, hit shapes, armor, ammo), and support traits (turret rotation, muzzle overlays, attack animations, death handlers, sound effects, multipliers) are fully migrated with 758 tests across 57 files.
 
 ---
 
