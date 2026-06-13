@@ -82,9 +82,14 @@ export class TerrainTunnelLayer implements ICustomMovementLayer, IWorldLoaded {
   /** Height of a map cell step (from world.Map.CellHeightStep). */
   private _cellHeight: number = 0
 
-  constructor(_info: TerrainTunnelLayerInfo) {
-    // NOTE: _info stored for future use (e.g., ImpassableTerrainType),
-    // but currently unused since tunnel terrain types come from TerrainTunnelInfo.
+  /** Layer configuration reference.
+   *
+   * OpenRA 对照: TerrainTunnelLayer.Info (TraitInfo<T> stored via Trait<T>)
+   */
+  private readonly _info: TerrainTunnelLayerInfo
+
+  constructor(info: TerrainTunnelLayerInfo) {
+    this._info = info
   }
 
   // ---------------------------------------------------------------------------
@@ -251,7 +256,7 @@ export class TerrainTunnelLayer implements ICustomMovementLayer, IWorldLoaded {
           const undergroundPos = new WPos(
             pos.X,
             pos.Y,
-            pos.Z - heightOffset,
+            heightOffset,
           )
           this._cellCenters.set(c.Bits, undergroundPos)
         }
@@ -270,6 +275,15 @@ export class TerrainTunnelLayer implements ICustomMovementLayer, IWorldLoaded {
   // ---------------------------------------------------------------------------
   // Internal accessors
   // ---------------------------------------------------------------------------
+
+  /**
+   * Layer configuration info.
+   *
+   * OpenRA 对照: TerrainTunnelLayer.Info (via Trait<T>.Info)
+   */
+  get info(): TerrainTunnelLayerInfo {
+    return this._info
+  }
 
   /**
    * Whether this tunnel layer has been enabled (has at least one tunnel).

@@ -274,15 +274,25 @@ export class LegacyBridgeLayer {
     this.bridges.clear(null)
 
     // Build a list of templates that should be overlaid with bridges
-    for (const _bridgeName of this.info.Bridges) {
-      // NOTE: bridge actor info lookup from world rules:
-      // const bi = w.map.rules.actors.get(bridgeName)?.traitInfo<IBridgeInfoStub>()
-      // if (bi) {
-      //   for (const template of bi.templates) {
-      //     this.bridgeTypes.set(template.Template, { template: bridgeName, health: template.Health })
-      //   }
-      // }
-      // TODO-9.C.6: Full bridge type registration when BridgeInfo is migrated.
+    for (const bridgeName of this.info.Bridges) {
+      // Look up bridge actor info from world rules to auto-populate bridgeTypes
+      const actorEntry = w.map.rules.actors.get(bridgeName)
+      if (actorEntry) {
+        // NOTE: traitInfo<T>() is a forward-interface generic method.
+        // At runtime the type parameter is erased; cast to IBridgeInfoStub.
+        const bi = actorEntry.traitInfo() as IBridgeInfoStub | undefined
+        if (bi && bi.templates) {
+          for (const template of bi.templates) {
+            this.bridgeTypes.set(template.Template, {
+              template: bridgeName,
+              health: template.Health,
+            })
+          }
+        }
+      } else {
+        // Bridge type not found in world rules — manual registerBridgeType()
+        // is the fallback for test/configuration scenarios.
+      }
     }
 
     // Take all templates to overlay from the map

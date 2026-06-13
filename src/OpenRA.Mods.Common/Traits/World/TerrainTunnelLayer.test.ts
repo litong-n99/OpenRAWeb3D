@@ -206,12 +206,12 @@ describe('TerrainTunnelLayer', () => {
 
       // Cell at (5,10): centerOfCell returns (5*1024, 10*1024, 0)
       // height offset = 512 * 3 = 1536
-      // underground Z = 0 - 1536 = -1536
+      // underground Z = heightOffset = 1536 (matches ElevatedBridgeLayer pattern)
       const cell = new CPos(5, 10)
       const center = layer.centerOfCell(cell)
       expect(center.X).toBe(5 * 1024)
       expect(center.Y).toBe(10 * 1024)
-      expect(center.Z).toBe(-(512 * 3))
+      expect(center.Z).toBe(512 * 3)
     })
   })
 
