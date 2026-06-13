@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "kimi": {
+      "command": "npx",
+      "args": ["-y", "kimi-code-mcp@latest"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }
+  }
+}
