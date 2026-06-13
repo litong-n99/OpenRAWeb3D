@@ -341,6 +341,26 @@ export class WAngle {
   // -----------------------------------------------------------------------
 
   /**
+   * Rotate toward a desired facing by at most `step` angle units per call.
+   *
+   * OpenRA 对照: Util.TickFacing(WAngle facing, WAngle desired, WAngle step)
+   *
+   * @param current — current facing angle
+   * @param desired — target facing angle
+   * @param step — maximum rotation step per call
+   * @returns new facing angle after one tick of rotation
+   */
+  static tickFacing(current: WAngle, desired: WAngle, step: WAngle): WAngle {
+    const diff = WAngle.subtract(desired, current).angle
+    if (diff === 0) return current
+    // OpenRA convention: WAngle range is [0, 1024), shortest path through 512
+    const absDiff = diff > 512 ? 1024 - diff : diff
+    const sign = diff <= 512 ? 1 : -1
+    const move = Math.min(absDiff, step.angle)
+    return new WAngle(current.angle + sign * move)
+  }
+
+  /**
    * Linear interpolation between two angles, handling angle wrapping.
    *
    * OpenRA 对照: WAngle.Lerp(WAngle a, WAngle b, int mul, int div)

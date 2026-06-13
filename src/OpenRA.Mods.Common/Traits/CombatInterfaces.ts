@@ -15,7 +15,12 @@
 import type { WVec } from '../../OpenRA.Game/WVec.js'
 import type { WAngle } from '../../OpenRA.Game/WAngle.js'
 import type { Target } from '../../OpenRA.Game/Traits/Target.js'
-import type { IGameActor, PlayerRelationship } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type {
+  IGameActor,
+  PlayerRelationship,
+  AttackInfo,
+  Damage,
+} from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
 // UnitStance enum
@@ -272,6 +277,62 @@ export interface INotifyStanceChanged {
 }
 
 // ---------------------------------------------------------------------------
+// AttackDelayType enum
+// OpenRA 对照: AttackDelayType { Preparation, Attack }
+// ---------------------------------------------------------------------------
+
+/** Delay timing enum for attack-related sounds, animations, and overlays.
+ *
+ *  OpenRA 对照: AttackDelayType
+ */
+export const AttackDelayType = {
+  Preparation: 0,
+  Attack: 1,
+} as const
+export type AttackDelayType =
+  (typeof AttackDelayType)[keyof typeof AttackDelayType]
+
+// ---------------------------------------------------------------------------
+// Damage modifier
+// OpenRA 对照: IDamageModifier, IDamageModifierInfo
+// ---------------------------------------------------------------------------
+
+/** Percentage modifier for incoming damage on this actor.
+ *
+ *  OpenRA 对照: IDamageModifier
+ */
+export interface IDamageModifier {
+  getDamageModifier(attacker: IGameActor, damage: Damage): number
+}
+
+/** Info variant for ruleset-loaded default calculation.
+ *
+ *  OpenRA 对照: IDamageModifierInfo
+ */
+export interface IDamageModifierInfo {
+  getDamageModifierDefault(): number
+}
+
+// ---------------------------------------------------------------------------
+// INotifyKilled — combat-specific killed notification (extends lifecycle)
+// OpenRA 对照: INotifyKilled (in Traits namespace, distinct from INotifyKilled lifecycle)
+// NOTE: This is defined here for the combat-aware traits that need extra context.
+//   The base INotifyKilled in TraitsInterfaces.ts already handles the lifecycle.
+// ---------------------------------------------------------------------------
+
+/** Combat-aware killed notification with AttackInfo context.
+ *
+ *  OpenRA 对照: INotifyKilled (Traits namespace, combat-specific)
+ *
+ *  This extends the base killed() signature with AttackInfo for damage type
+ *  and attacker info. Traits that need this implement the method directly.
+ *  TraitsInterfaces.ts INotifyKilled already handles the base lifecycle.
+ */
+export interface INotifyKilledCombat {
+  killed(self: IGameActor, e: AttackInfo): void
+}
+
+// ---------------------------------------------------------------------------
 // Type guard functions
 // ---------------------------------------------------------------------------
 
@@ -398,5 +459,17 @@ export function isINotifyStanceChanged(
     obj !== null &&
     'stanceChanged' in obj &&
     typeof (obj as Record<string, unknown>).stanceChanged === 'function'
+  )
+}
+
+/** Type guard for IDamageModifier. */
+export function isIDamageModifier(
+  obj: unknown,
+): obj is IDamageModifier {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'getDamageModifier' in obj &&
+    typeof (obj as Record<string, unknown>).getDamageModifier === 'function'
   )
 }
