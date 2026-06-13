@@ -9,10 +9,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Refinery, RefineryInfo } from './Refinery.js'
+import { DockType } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type {
   IGameActor,
   PlayerStub,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { WPos } from '../../../OpenRA.Game/WPos.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -591,5 +593,220 @@ describe('Refinery acceptResources — resource value formats', () => {
 
     const accepted = refinery.acceptResources(actor, 'Tiberium', 1)
     expect(accepted).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Refinery — IDockHost interface
+// ---------------------------------------------------------------------------
+
+describe('Refinery IDockHost', () => {
+  it('getDockType returns DockType.Unload', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    expect(refinery.getDockType).toBe(DockType.Unload)
+    expect(refinery.getDockType).toBe(1)
+  })
+
+  it('isEnabledAndInWorld is true when attached to in-world actor', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, {
+      isInWorld: true,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    refinery.created(actor)
+    expect(refinery.isEnabledAndInWorld).toBe(true)
+  })
+
+  it('isEnabledAndInWorld is false when actor is not in world', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, {
+      isInWorld: false,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    refinery.created(actor)
+    expect(refinery.isEnabledAndInWorld).toBe(false)
+  })
+
+  it('isEnabledAndInWorld is false when trait is disabled', () => {
+    const refinery = new Refinery(new RefineryInfo({
+      requiresCondition: 'operational',
+    }))
+    // Simulate disabled state via internal _enabled flag
+    ;(refinery as unknown as Record<string, unknown>)._enabled = false
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, {
+      isInWorld: true,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    expect(refinery.isEnabledAndInWorld).toBe(false)
+  })
+
+  it('canBeReserved reflects isEnabledAndInWorld', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, {
+      isInWorld: true,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    refinery.created(actor)
+    expect(refinery.canBeReserved).toBe(true)
+    expect(refinery.isEnabledAndInWorld).toBe(true)
+  })
+
+  it('canBeReserved is false when disabled', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    // Simulate disabled state via internal _enabled flag
+    ;(refinery as unknown as Record<string, unknown>)._enabled = false
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, { world: { actors: [] } })
+    refinery.attach(actor)
+    expect(refinery.canBeReserved).toBe(false)
+  })
+
+  it('reservationCount starts at 0', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    expect(refinery.reservationCount).toBe(0)
+  })
+
+  it('reserve() increments reservationCount when enabled', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, {
+      isInWorld: true,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    refinery.created(actor)
+
+    expect(refinery.reserve(actor, null)).toBe(true)
+    expect(refinery.reservationCount).toBe(1)
+    expect(refinery.reserve(actor, null)).toBe(true)
+    expect(refinery.reservationCount).toBe(2)
+  })
+
+  it('reserve() returns false when disabled', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    // Simulate disabled state via internal _enabled flag
+    ;(refinery as unknown as Record<string, unknown>)._enabled = false
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, { world: { actors: [] } })
+    refinery.attach(actor)
+
+    expect(refinery.reserve(actor, null)).toBe(false)
+    expect(refinery.reservationCount).toBe(0)
+  })
+
+  it('unreserveAll() resets reservationCount to 0', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, {
+      isInWorld: true,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    refinery.created(actor)
+
+    refinery.reserve(actor, null)
+    refinery.reserve(actor, null)
+    expect(refinery.reservationCount).toBe(2)
+
+    refinery.unreserveAll()
+    expect(refinery.reservationCount).toBe(0)
+  })
+
+  it('isDockingPossible returns true for same-owner client', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    const owner = makePlayerStub('PlayerA')
+    const actor = makeRefineryActor(pr, {
+      isInWorld: true,
+      owner,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    refinery.created(actor)
+
+    const clientActor = makeMockActor({
+      isInWorld: true,
+      owner,
+    })
+    expect(refinery.isDockingPossible(clientActor, null)).toBe(true)
+  })
+
+  it('isDockingPossible returns false for different-owner client', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    const owner = makePlayerStub('PlayerA')
+    const actor = makeRefineryActor(pr, {
+      isInWorld: true,
+      owner,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    refinery.created(actor)
+
+    const otherOwner = makePlayerStub('PlayerB')
+    const clientActor = makeMockActor({
+      isInWorld: true,
+      owner: otherOwner,
+    })
+    expect(refinery.isDockingPossible(clientActor, null)).toBe(false)
+  })
+
+  it('isDockingPossible returns false when disabled', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    // Simulate disabled state via internal _enabled flag
+    ;(refinery as unknown as Record<string, unknown>)._enabled = false
+    const pr = makePlayerResources()
+    const actor = makeRefineryActor(pr, {
+      isInWorld: true,
+      owner: makePlayerStub('PlayerA'),
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+
+    const clientActor = makeMockActor({
+      isInWorld: true,
+      owner: makePlayerStub('PlayerA'),
+    })
+    expect(refinery.isDockingPossible(clientActor, null)).toBe(false)
+  })
+
+  it('dockPosition returns WPos.Zero when actor has no position', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    // Actor without centerPosition
+    const actor = makeRefineryActor(pr, { world: { actors: [] } })
+    refinery.attach(actor)
+    refinery.created(actor)
+
+    const pos = refinery.dockPosition
+    expect(pos).toBeInstanceOf(WPos)
+    expect(pos.X).toBe(0)
+    expect(pos.Y).toBe(0)
+    expect(pos.Z).toBe(0)
+  })
+
+  it('dockPosition returns actor centerPosition when available', () => {
+    const refinery = new Refinery(new RefineryInfo())
+    const pr = makePlayerResources()
+    const actorPos = new WPos(1024, 2048, 12)
+    const actor = makeRefineryActor(pr, {
+      centerPosition: actorPos,
+      world: { actors: [] },
+    })
+    refinery.attach(actor)
+    refinery.created(actor)
+
+    const pos = refinery.dockPosition
+    expect(pos.X).toBe(1024)
+    expect(pos.Y).toBe(2048)
+    expect(pos.Z).toBe(12)
   })
 })

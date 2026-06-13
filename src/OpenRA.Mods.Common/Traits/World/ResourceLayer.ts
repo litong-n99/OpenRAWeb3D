@@ -524,11 +524,15 @@ export class ResourceLayer implements IResourceLayer, IWorldLoaded {
       return false
     }
 
-    if (!resourceType || !this.info.resourceTypes.has(resourceType)) {
+    if (!resourceType) {
       return false
     }
 
-    const resInfo = this.info.resourceTypes.get(resourceType)!
+    const resInfo = this.info.resourceTypes.get(resourceType)
+    if (!resInfo) {
+      return false
+    }
+
     const cellTerrainInfo = this.map.getTerrainInfo(cell)
     if (!resInfo.allowedTerrainTypes.has(cellTerrainInfo.type)) {
       return false
@@ -601,9 +605,11 @@ export class ResourceLayer implements IResourceLayer, IWorldLoaded {
   canAddResource(resourceType: string, cell: CPos, amount: number = 1): boolean {
     if (!this.map.contains(cell)) return false
 
-    if (!resourceType || !this.info.resourceTypes.has(resourceType)) return false
+    if (!resourceType) return false
 
-    const resInfo = this.info.resourceTypes.get(resourceType)!
+    const resInfo = this.info.resourceTypes.get(resourceType)
+    if (!resInfo) return false
+
     const content = this.content.get(cell)
 
     if (!content.type) {
@@ -636,7 +642,7 @@ export class ResourceLayer implements IResourceLayer, IWorldLoaded {
   addResource(resourceType: string, cell: CPos, amount: number = 1): number {
     if (!this.content.contains(cell)) return 0
 
-    if (!resourceType || !this.info.resourceTypes.has(resourceType)) return 0
+    if (!resourceType) return 0
 
     let content = this.content.get(cell)
 
@@ -646,7 +652,9 @@ export class ResourceLayer implements IResourceLayer, IWorldLoaded {
 
     if (content.type !== resourceType) return 0
 
-    const resInfo = this.info.resourceTypes.get(resourceType)!
+    const resInfo = this.info.resourceTypes.get(resourceType)
+    if (!resInfo) return 0
+
     const oldDensity = content.density
     const density = Math.min(resInfo.maxDensity, oldDensity + amount)
     this.content.set(cell, makeContents(content.type, density))

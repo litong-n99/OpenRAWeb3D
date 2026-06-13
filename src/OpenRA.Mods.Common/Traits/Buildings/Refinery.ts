@@ -5,13 +5,21 @@
  * 核心范式转换:
  * - C# TraitInfo, IAcceptResources, INotifyCreated, ITick, INotifyOwnerChanged
  *   → TS ConditionalTrait<RefineryInfo> implements all same interfaces
+ * - C# IDockHost (separate trait) → TS Refinery implements IDockHost directly
+ *   (migration plan Section 3.1.6). See NOTE below.
  * - C# PlayerResources concrete type → TS IPlayerResources forward interface
  *   (PlayerResources.ts is migrated in Phase B — TODO-10.B.3)
  * - C# FloatingText effect → TS floating text stub (deferred to Chapter 14/16)
  * - C# Util.ApplyPercentageModifiers() → TS inline percentage application
  * - C# Requires<WithSpriteBodyInfo>, Requires<IDockHostInfo>
- *   → TS conceptual marker interfaces (build-time validation)
+ *   → IDockHost satisfied directly by Refinery; WithSpriteBody deferred
  * - C# Game.AddFrameEndTask() → TS queueActivity/observable pattern
+ *
+ * NOTE: In C#, Refinery does NOT implement IDockHost. IDockHost is a
+ * separate trait (typically provided by the Building's footprint/dock
+ * position infrastructure). In the TS migration (per Chapter 10 plan
+ * Section 3.1.6), Refinery directly implements IDockHost to simplify
+ * the trait composition and avoid a separate DockHost trait.
  *
  * Refinery accepts resources from harvesters and either:
  *   - UseStorage=true:  stores in player resource silos via PlayerResources
@@ -22,17 +30,21 @@
 
 import {
   ConditionalTrait,
+  DockType,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type {
   ConditionalTraitInfo,
   IGameActor,
   IAcceptResources,
+  IDockHost,
+  DockTypeValue,
   INotifyCreated,
   ITick,
   INotifyOwnerChanged,
   IResourceValueModifier,
   PlayerStub,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { WPos } from '../../../OpenRA.Game/WPos.js'
 
 // ---------------------------------------------------------------------------
 // IPlayerResources — Forward interface for PlayerResources (Phase B)
@@ -145,7 +157,7 @@ export class RefineryInfo implements ConditionalTraitInfo {
  */
 export class Refinery
   extends ConditionalTrait<RefineryInfo>
-  implements IAcceptResources, INotifyCreated, ITick, INotifyOwnerChanged
+  implements IDockHost, IAcceptResources, INotifyCreated, ITick, INotifyOwnerChanged
 {
   // ------- OpenRA: PlayerResources playerResources -------
   /** Reference to the owning player's PlayerResources trait.
@@ -178,6 +190,17 @@ export class Refinery
    */
   private _currentDisplayValue: number = 0
 
+  // ------- IDockHost private state -------
+  /** Tracked count of active dock slot reservations.
+   *
+   *  OpenRA 对照: Managed via DockHostManager reservation list
+   *
+   *  NOTE: In C#, reservation tracking is managed externally by
+   *  DockHostManager. In TS, Refinery tracks reservations directly
+   *  since it directly implements IDockHost.
+   */
+  private _reservationCount: number = 0
+
   // -----------------------------------------------------------------------
   // Constructor
   // -----------------------------------------------------------------------
@@ -207,6 +230,116 @@ export class Refinery
     this._playerResources = null
     this._resourceValueModifiers = []
     super.detach(actor)
+  }
+
+  // -----------------------------------------------------------------------
+  // IDockHost — allow harvesters to dock at this refinery
+  // OpenRA 对照: IDockHost (lines 250-278 in TraitsInterfaces.cs)
+  //
+  // NOTE: In C#, IDockHost is implemented by a separate trait (typically
+  // tied to the building's footprint). In the TS migration per Chapter 10
+  // plan Section 3.1.6, Refinery directly implements IDockHost to simplify
+  // trait composition. The full reservation tracking via DockHostManager
+  // is deferred to Chapter 14.
+  // -----------------------------------------------------------------------
+
+  /** The docking types supported by this host (bitmask of DockType values).
+   *
+   *  OpenRA 对照: IDockHost.GetDockType
+   *
+   *  Refinery only accepts DockType.Unload clients (harvesters delivering
+   *  resources). Repair and Refuel are not supported by Refinery.
+   */
+  get getDockType(): DockTypeValue {
+    return DockType.Unload
+  }
+
+  /** Whether this host is currently operational and in the game world.
+   *
+   *  OpenRA 对照: IDockHost.IsEnabledAndInWorld
+   */
+  get isEnabledAndInWorld(): boolean {
+    return !this.isTraitDisabled && (this.actor?.isInWorld === true)
+  }
+
+  /** Current count of active dock slot reservations.
+   *
+   *  OpenRA 对照: IDockHost.ReservationCount
+   */
+  get reservationCount(): number {
+    return this._reservationCount
+  }
+
+  /** Whether this host can accept new reservations.
+   *
+   *  OpenRA 对照: IDockHost.CanBeReserved
+   */
+  get canBeReserved(): boolean {
+    return this.isEnabledAndInWorld
+  }
+
+  /** World position where docking clients should approach.
+   *
+   *  OpenRA 对照: IDockHost.DockPosition
+   *
+   *  Returns the refinery actor's center position, which docking clients
+   *  navigate toward. Falls back to WPos.Zero when the actor reference
+   *  is not available (e.g., in unit tests with minimal actor stubs).
+   *
+   *  TODO-11.A.X: Refine to return a cell adjacent to the refinery
+   *               building footprint once Building trait is migrated.
+   */
+  get dockPosition(): WPos {
+    const center = (this.actor as unknown as { centerPosition?: WPos }).centerPosition
+    return center ?? WPos.Zero
+  }
+
+  /** Check whether a docking client can dock at this host.
+   *
+   *  OpenRA 对照: IDockHost.IsDockingPossible(Actor, IDockClient, bool)
+   *
+   *  Does NOT check DockType or whether the client is enabled.
+   *  Those checks are performed by the client's canDock() method.
+   *
+   *  Basic checks performed:
+   *  - Host is enabled and in world
+   *  - Client is owned by the same player as the host
+   *
+   *  @param clientActor — the actor that wants to dock
+   *  @param _client — the docking client trait (unknown until Ch14)
+   *  @param _ignoreReservations — if true, skip reservation checks
+   *  @returns true if docking is possible at this host
+   */
+  isDockingPossible(
+    clientActor: IGameActor,
+    _client: unknown,
+    _ignoreReservations?: boolean,
+  ): boolean {
+    if (!this.isEnabledAndInWorld) return false
+    if (clientActor.owner !== this.actor?.owner) return false
+    return true
+  }
+
+  /** Reserve a dock slot for a client.
+   *
+   *  OpenRA 对照: IDockHost.Reserve(Actor, DockClientManager)
+   *
+   *  @param _self — the host actor
+   *  @param _client — the docking client manager (unknown until Ch14)
+   *  @returns true if the reservation was successful
+   */
+  reserve(_self: IGameActor, _client: unknown): boolean {
+    if (!this.isEnabledAndInWorld) return false
+    this._reservationCount++
+    return true
+  }
+
+  /** Release all dock reservations.
+   *
+   *  OpenRA 对照: IDockHost.UnreserveAll()
+   */
+  unreserveAll(): void {
+    this._reservationCount = 0
   }
 
   // -----------------------------------------------------------------------
@@ -276,9 +409,12 @@ export class Refinery
       )
 
       if (!this.info.discardExcessResources) {
-        // Reduce amount if needed to fit available storage
-        while (value > storageLimit && acceptedCount > 0) {
-          acceptedCount--
+        // Reduce amount if value exceeds available storage.
+        // Scale down accepted count proportionally to fit storage limit.
+        // This avoids the per-iteration recalculation of the C# while loop
+        // and produces an equivalent result.
+        if (value > storageLimit) {
+          acceptedCount = Math.floor(count * storageLimit / value)
           value = this._applyPercentageModifiers(
             acceptedCount * resourceValue,
             this._resourceValueModifiers,
@@ -331,18 +467,16 @@ export class Refinery
     ) {
       this._currentDisplayTick--
       if (this._currentDisplayTick <= 0) {
-        const displayValue = this._currentDisplayValue
-
-        // Show floating cash text
-        // NOTE: Full implementation uses:
-        //   FloatingText(self.CenterPosition, displayValue, ...)
+        // Floating text display: C# renders using:
+        //   FloatingText(self.CenterPosition, this._currentDisplayValue, ...)
         // Requires FloatingText effect and World.AddFrameEndTask,
         // both deferred to Chapters 14/16.
         //
         // TODO-10.A.6-FLOATING: Implement floating text display using
         //   Babylon.js GUI TextBlock or FullScreenUI when World.AddFrameEndTask
         //   and FloatingText are available (Chapter 14/16).
-        void displayValue // used when FloatingText is implemented
+        // The cash value to display is accumulated in _currentDisplayValue
+        // across acceptResources() calls.
 
         // Reset for next cycle
         this._currentDisplayTick = this.info.tickRate
