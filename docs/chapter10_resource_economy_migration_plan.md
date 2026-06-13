@@ -1,15 +1,15 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 10 -- Resource & Economy System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.4 (Traits -- Harvester, ResourceLayer, Economy)
-> **Chapter Status**: PLANNING (0/17 migrated, plus 8 optional files)
-> **Planning Date**: 2026-06-13
+> **Chapter Status**: IN PROGRESS (Phase A COMPLETE: 8 core files, 344 tests, ~4,965 TS lines; Phase B PLANNING: 0/11)
+> **Planning Date**: 2026-06-13 | **Updated**: 2026-06-14 (Phase A COMPLETE)
 > **Prerequisite**: Chapters 2-9 COMPLETE (249/249, 100%)
 >
 > ### Completion Summary (Target)
 >
 > | Phase | Files | TS Lines (est.) | Tests (est.) | Commits | Review Rounds |
 > |:---|:---:|:---:|:---:|:---:|:---:|
-> | A: Resource Infrastructure | 6 | ~2,800 | ~65 | TBD | TBD |
+> | A: Resource Infrastructure | 6 | ~4,965 | ~3,960 (7 files, 344 tests) | 6 | 1 (R1 resolved, R2 pending) |
 > | B: Economy Support Traits | 11 | ~2,400 | ~60 | TBD | TBD |
 > | B-optional: Extended Economy Traits | 8 | ~1,300 | ~35 | TBD | TBD |
 > | **Total** | **17** | **~5,200** | **~125** | **TBD** | **TBD** |
@@ -121,15 +121,15 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 | # | OpenRA Source | Target TypeScript File | Class/Interface | Lines (C#) | Complexity | Phase |
 |:---:|:---|:---|:---|:---:|:---:|:---:|
-| **Phase A: Resource Infrastructure** | | | | | |
-| 0 | `OpenRA.Mods.Common/Traits/DockClientBase.cs` | `src/OpenRA.Mods.Common/Traits/DockClientBase.ts` | `DockClientBase<T>` | TBD | MEDIUM | A |
-| 0b | `TraitsInterfaces.cs` (IDockHost, IAcceptResources, IResourceLayer, IResourceRenderer, IStoresResources) | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` (expand existing) | `IDockHost`, `IAcceptResources`, `IResourceLayer`, `IResourceRenderer`, `IStoresResources` | ~80 | LOW | A |
-| 1 | `OpenRA.Mods.Common/Traits/Harvester.cs` | `src/OpenRA.Mods.Common/Traits/Harvester.ts` | `Harvester` | 330 | HIGH | A |
-| 2 | `OpenRA.Mods.Common/Traits/World/ResourceLayer.cs` | `src/OpenRA.Mods.Common/Traits/World/ResourceLayer.ts` | `ResourceLayer` | 302 | MEDIUM | A |
-| 3 | `OpenRA.Mods.Common/Traits/World/ResourceRenderer.cs` | `src/OpenRA.Mods.Common/Traits/World/ResourceRenderer.ts` | `ResourceRenderer` | 386 | MEDIUM | A |
-| 4 | `OpenRA.Mods.Common/Traits/World/ResourceClaimLayer.cs` | `src/OpenRA.Mods.Common/Traits/World/ResourceClaimLayer.ts` | `ResourceClaimLayer` | 74 | LOW | A |
-| 5 | `OpenRA.Mods.Common/Traits/SeedsResource.cs` | `src/OpenRA.Mods.Common/Traits/SeedsResource.ts` | `SeedsResource` | 64 | LOW | A |
-| 6 | `OpenRA.Mods.Common/Traits/Buildings/Refinery.cs` | `src/OpenRA.Mods.Common/Traits/Buildings/Refinery.ts` | `Refinery` | 110 | MEDIUM | A |
+| **Phase A: Resource Infrastructure (COMPLETED 2026-06-14)** | | | | TS Lines | | |
+| 0 | `OpenRA.Mods.Common/Traits/DockClientBase.cs` | `src/OpenRA.Mods.Common/Traits/DockClientBase.ts` | `DockClientBase<T>` (COMPLETED) | 385 | MEDIUM | A |
+| 0b | `TraitsInterfaces.cs` (IDockHost, IAcceptResources, IResourceLayer, IResourceRenderer, IStoresResources) | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` (expand existing) | `IDockHost`, `IAcceptResources`, `IResourceLayer`, `IResourceRenderer`, `IStoresResources` (COMPLETED +497 lines) | +497 | LOW | A |
+| 1 | `OpenRA.Mods.Common/Traits/Harvester.cs` | `src/OpenRA.Mods.Common/Traits/Harvester.ts` | `Harvester` (COMPLETED) | 1,075 | HIGH | A |
+| 2 | `OpenRA.Mods.Common/Traits/World/ResourceLayer.cs` | `src/OpenRA.Mods.Common/Traits/World/ResourceLayer.ts` | `ResourceLayer` (COMPLETED) | 799 | MEDIUM | A |
+| 3 | `OpenRA.Mods.Common/Traits/World/ResourceRenderer.cs` | `src/OpenRA.Mods.Common/Traits/World/ResourceRenderer.ts` | `ResourceRenderer` (COMPLETED) | 1,106 | MEDIUM | A |
+| 4 | `OpenRA.Mods.Common/Traits/World/ResourceClaimLayer.cs` | `src/OpenRA.Mods.Common/Traits/World/ResourceClaimLayer.ts` | `ResourceClaimLayer` (COMPLETED) | 240 | LOW | A |
+| 5 | `OpenRA.Mods.Common/Traits/SeedsResource.cs` | `src/OpenRA.Mods.Common/Traits/SeedsResource.ts` | `SeedsResource` (COMPLETED) | 348 | LOW | A |
+| 6 | `OpenRA.Mods.Common/Traits/Buildings/Refinery.cs` | `src/OpenRA.Mods.Common/Traits/Buildings/Refinery.ts` | `Refinery` (COMPLETED) | 705 | MEDIUM | A |
 
 | **Phase B: Economy Support Traits** | | | | | |
 | 7 | `OpenRA.Mods.Common/Traits/StoresResources.cs` | `src/OpenRA.Mods.Common/Traits/StoresResources.ts` | `StoresResources` | 107 | LOW | B |
@@ -178,10 +178,10 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 | Phase | Files | C# Lines | Complexity | Status |
 |:---|:---:|:---:|:---|:---|
-| A: Resource Infrastructure | 8 (6 files + interface + base class) | ~1,266 active + ~230 infrastructure | HIGH + MEDIUM + LOW | PLANNING (0/8) |
+| A: Resource Infrastructure | 8 (6 files + interface + base class) | ~1,266 active + ~230 infrastructure | HIGH + MEDIUM + LOW | COMPLETE (8/8, 344 tests, R1 done, R2 pending) |
 | B: Economy Support Traits | 11 | ~1,067 | MEDIUM + LOW-MEDIUM + LOW | PLANNING (0/11) |
 | B-opt: Extended Economy Traits | 8 | ~592 | LOW-MEDIUM + LOW | OPTIONAL (0/8) |
-| **Total** | **17 + 8 opt** | **~2,333 core + ~592 opt** | | **PLANNING (0/17)** |
+| **Total** | **17 + 8 opt** | **~2,333 core + ~592 opt** | | **IN PROGRESS (8/17 core)** |
 
 ---
 
@@ -189,9 +189,9 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 ### 3.1 Phase A: Resource Infrastructure
 
-**Status**: PLANNING (0/8)
+**Status**: COMPLETE (8/8, 344 tests, R1 resolved, R2 pending)
 **Complexity**: HIGH (Harvester 330 lines) + MEDIUM + LOW (DockClientBase, TraitsInterfaces expansion, ResourceLayer 302, ResourceRenderer 386, ResourceClaimLayer 74, SeedsResource 64, Refinery 110)
-**Blocked by**: Chapters 2-9 foundation (ALL COMPLETE). **Critical missing dependencies**: `DockClientBase` (new), `BuildingInfluence` (not migrated -- can be deferred for Phase A initial implementation), `IDockHost` interface (new), `WithSpriteBody` (Ch7 Phase G render trait -- check if migrated; if not, Refinery can accept a stub).
+**Blocked by**: Chapters 2-9 foundation (ALL COMPLETE). ~~**Critical missing dependencies**: `DockClientBase` (new), `BuildingInfluence` (not migrated -- deferred for Phase A initial implementation), `IDockHost` interface (new), `WithSpriteBody`~~ -- ALL RESOLVED. `BuildingInfluence` deferred to Ch11 per ADR-10.7.
 **Blocks**: Phase B (PlayerResources, StoresPlayerResources depend on resource infrastructure), Chapter 11 (Production queues consume resources), Chapter 14 Phase D (FindAndDeliverResources Activity implementation), Chapter 15 (HarvestOrderTargeter, SellOrderTargeter), Chapter 16 (ResourceBarWidget)
 
 **Description**: Phase A establishes the core resource gathering infrastructure. The new `DockClientBase<T>` abstract class must be migrated first since `Harvester` inherits from it. The `TraitsInterfaces.ts` expansion adds `IDockHost`, `IAcceptResources`, `IResourceLayer`, `IResourceRenderer`, and `IStoresResources` interfaces that both Phase A and B files depend on. `ResourceLayer` (302 lines) is the World trait that manages the `CellLayer<ResourceLayerContents>` data store with runtime density tracking, neighbor-aware density recalculation, and `CellChanged` events. `ResourceRenderer` (386 lines) uses `TerrainSpriteLayer` (Ch2) to render resource sprites at cell positions with variant selection and dirty cell tracking for incremental updates. `ResourceClaimLayer` (74 lines) provides simple bidirectional mapping for harvester-to-cell claim tracking. `SeedsResource` (64 lines) is a simple timer-based resource spawner. `Refinery` (110 lines) implements `IAcceptResources` with two modes (UseStorage/direct cash) and floating text display. `Harvester` (330 lines) is the central orchestrator -- it inherits from `DockClientBase`, implements `IMove`-based resource travel and `IStoresResources` for cargo management.
@@ -208,7 +208,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.1.0 DockClientBase (New Migration)
 
-- [ ] **TODO-10.A.0** `src/OpenRA.Mods.Common/Traits/DockClientBase.ts` (new file, ~150 estimated TS lines) -- Abstract base class for docking units:
+- [x] **TODO-10.A.0** `src/OpenRA.Mods.Common/Traits/DockClientBase.ts` (new file, 385 TS lines) -- Abstract base class for docking units (COMPLETED):
   - `DockClientBaseInfo` config class: `Type: BitSet<DockType>` (docking type flags), `color: Color`
   - Abstract methods to be overridden by subclasses (Harvester):
     - `CanDock(self: IGameActor, host: IGameActor): boolean` -- check if docking is allowed
@@ -226,7 +226,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.1.0b TraitsInterfaces Expansion: IDockHost + IAcceptResources + IResourceLayer + IResourceRenderer + IStoresResources
 
-- [ ] **TODO-10.A.0b** `src/OpenRA.Game/Traits/TraitsInterfaces.ts` (expand existing) -- Add resource/economy interfaces:
+- [x] **TODO-10.A.0b** `src/OpenRA.Game/Traits/TraitsInterfaces.ts` (expand existing, +497 lines) -- Add resource/economy interfaces (COMPLETED):
   - `IDockHost` interface:
     - `onDockStarted(actor: IGameActor, client: IGameActor): void`
     - `onDockTick(actor: IGameActor, client: IGameActor): void`
@@ -260,7 +260,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.1.1 Harvester
 
-- [ ] **TODO-10.A.1** `src/OpenRA.Mods.Common/Traits/Harvester.ts` (330 lines C#) -- Central resource-gathering actor trait:
+- [x] **TODO-10.A.1** `src/OpenRA.Mods.Common/Traits/Harvester.ts` (1075 TS lines, 81 tests) -- Central resource-gathering actor trait (COMPLETED):
   - `HarvesterInfo` config class (extends `DockClientBaseInfo`):
     - `Type: BitSet<DockType>` = `"Unload"` (default)
     - `UnblockCell: CVec` = `new CVec(0, 4)` -- cell to move to when unblocking refinery
@@ -316,7 +316,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.1.2 ResourceLayer
 
-- [ ] **TODO-10.A.2** `src/OpenRA.Mods.Common/Traits/World/ResourceLayer.ts` (302 lines C#) -- World-level resource data store:
+- [x] **TODO-10.A.2** `src/OpenRA.Mods.Common/Traits/World/ResourceLayer.ts` (799 TS lines, 83 tests) -- World-level resource data store (COMPLETED):
   - `ResourceLayerInfo` config class:
     - `ResourceTypes: Map<string, ResourceTypeInfo>` -- resource type definitions
     - `RecalculateResourceDensity: boolean` -- auto-recalculate density from neighbors
@@ -347,7 +347,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.1.3 ResourceRenderer
 
-- [ ] **TODO-10.A.3** `src/OpenRA.Mods.Common/Traits/World/ResourceRenderer.ts` (386 lines C#) -- Resource sprite rendering:
+- [x] **TODO-10.A.3** `src/OpenRA.Mods.Common/Traits/World/ResourceRenderer.ts` (1106 TS lines, 41 tests) -- Resource sprite rendering (COMPLETED):
   - `ResourceRendererInfo` config class:
     - `OverlayPalette: string` -- palette for overlay rendering
     - `RenderTypes: Set<string>` -- which resource types to render (default: all)
@@ -382,7 +382,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.1.4 ResourceClaimLayer
 
-- [ ] **TODO-10.A.4** `src/OpenRA.Mods.Common/Traits/World/ResourceClaimLayer.ts` (74 lines C#) -- Harvester-to-cell claim tracking:
+- [x] **TODO-10.A.4** `src/OpenRA.Mods.Common/Traits/World/ResourceClaimLayer.ts` (240 TS lines, 24 tests) -- Harvester-to-cell claim tracking (COMPLETED):
   - `ResourceClaimLayerInfo` config class: no config fields (marker trait)
   - World trait:
     - `claimants: Map<string, CPos>` -- keyed by actor ID string, maps to claimed cell
@@ -397,7 +397,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.1.5 SeedsResource
 
-- [ ] **TODO-10.A.5** `src/OpenRA.Mods.Common/Traits/SeedsResource.ts` (64 lines C#) -- Timer-based resource spawner:
+- [x] **TODO-10.A.5** `src/OpenRA.Mods.Common/Traits/SeedsResource.ts` (348 TS lines, 28 tests) -- Timer-based resource spawner (COMPLETED):
   - `SeedsResourceInfo` config class:
     - `ResourceType: string` -- type of resource to seed
     - `Interval: number` -- ticks between seeding attempts
@@ -414,7 +414,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.1.6 Refinery
 
-- [ ] **TODO-10.A.6** `src/OpenRA.Mods.Common/Traits/Buildings/Refinery.ts` (110 lines C#) -- Resource processing building:
+- [x] **TODO-10.A.6** `src/OpenRA.Mods.Common/Traits/Buildings/Refinery.ts` (705 TS lines, 43 tests) -- Resource processing building (COMPLETED):
   - `RefineryInfo` config class:
     - `UseStorage: boolean` = true -- store resources in silos (false = direct cash)
     - `DiscardExcessResources: boolean` = false -- discard when silos full
@@ -448,7 +448,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
       - Reset accumulator after display
     - **3D integration**: Floating "+$XXX" text uses Babylon.js `GUI.TextBlock` with `linkWithMesh()` at position above refinery mesh center
 
-**Phase A Summary**: 8 items (1 new base class + 1 interface expansion + 6 files), ~1,266 C# lines source + ~230 infrastructure lines. Harvester (330 lines) is the central orchestrator and must be carefully ported with correct docking integration. ResourceLayer (302 lines) and ResourceRenderer (386 lines) are medium complexity World traits that form the resource visualization backbone. DockClientBase must be migrated first since Harvester depends on it. Estimated ~65 unit tests. Estimated ~2,800 TypeScript implementation lines.
+**Phase A Summary (COMPLETED 2026-06-14)**: 8 items (1 new base class + 1 interface expansion + 6 files), ~4,965 TypeScript implementation lines, 7 test files with 6,224 test lines, 344 unit tests all passing. Harvester (1,075 TS lines) is the central orchestrator ported with full docking integration. ResourceLayer (799 TS lines) and ResourceRenderer (1,106 TS lines) are the resource visualization backbone. DockClientBase (385 TS lines) migrated as abstract generic base class. Review: R1 COMPLETE (4 BLOCKER + 4 MAJOR resolved), R2 PENDING. 6 commits: `d65c51c` (DockClientBase + TraitsInterfaces), `548756c` (ResourceClaimLayer + SeedsResource), `d78de60` (Harvester + Refinery), `7a72af7` (ResourceLayer + ResourceRenderer), `f55ed14` (BLOCKER#1,#2 + MAJOR#1,#2 fixes), `20380ca` (4 BLOCKER + 1 MAJOR fixes).
 
 ---
 
@@ -930,30 +930,30 @@ TraitsInterfaces (IDockHost + IStoresResources + IResourceLayer + IResourceRende
 
 All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 
-#### Phase A Tests
+#### Phase A Tests (ALL COMPLETE: 344 tests across 7 test files)
 
-- [ ] **TEST-10.1** DockClientBase: `CanDock()` returns true for compatible DockType host, false for incompatible; abstract methods throw if not overridden
-- [ ] **TEST-10.2** Harvester: `isFull` returns true when cargo equals capacity; `isEmpty` returns true when cargo is zero
-- [ ] **TEST-10.3** Harvester: `canHarvestCell()` returns true for cell with compatible resource, false for empty or incompatible cell
-- [ ] **TEST-10.4** Harvester: `findResourceField()` returns cell with resource within search radius, null when no resources nearby
-- [ ] **TEST-10.5** Harvester: `getSpeedModifier()` returns `FullyLoadedSpeed / 100` when full, 1.0 when empty
-- [ ] **TEST-10.6** Harvester: `issueOrder()` returns Harvest order for resource cell, null for non-resource cell
-- [ ] **TEST-10.7** Harvester: `resolveOrder("Harvest")` creates harvest activity stub; `resolveOrder("Deliver")` creates deliver activity stub
-- [ ] **TEST-10.8** ResourceLayer: `addResource()` adds resource to empty cell; respects `MaxDensity`; returns correct leftover amount
-- [ ] **TEST-10.9** ResourceLayer: `removeResource()` removes resource from cell; returns correct leftover if not enough density
-- [ ] **TEST-10.10** ResourceLayer: `clearResources()` sets cell to `EMPTY`; fires `CellChanged` event with null resourceType
-- [ ] **TEST-10.11** ResourceLayer: `recalculateResourceDensity()` correctly adjusts density based on neighbor counts
-- [ ] **TEST-10.12** ResourceLayer: `addResource()` on cell with building blocking returns full amount as leftover (if BuildingInfluence active)
-- [ ] **TEST-10.13** ResourceLayer: initialization from Map.Resources correctly maps byte indices to resource types
-- [ ] **TEST-10.14** ResourceRenderer: `addVisibleCell()` adds cell to dirty set; `updateCell()` marks cell dirty for re-render
-- [ ] **TEST-10.15** ResourceRenderer: sprite frame calculation: `lerp(0, length-1, density, maxDensity)` returns correct frame index
-- [ ] **TEST-10.16** ResourceClaimLayer: `TryClaimCell()` succeeds for unclaimed cell; fails if already claimed by same-player harvester
-- [ ] **TEST-10.17** ResourceClaimLayer: `RemoveClaim()` releases claim; subsequent `TryClaimCell()` succeeds
-- [ ] **TEST-10.18** SeedsResource: `tick()` adds resource to random cell within range after `Interval` ticks
-- [ ] **TEST-10.19** Refinery: `acceptResources()` in UseStorage mode stores in PlayerResources, returns 0 when space available
-- [ ] **TEST-10.20** Refinery: `acceptResources()` in direct-cash mode converts resources to cash, returns 0 (all accepted)
-- [ ] **TEST-10.21** Refinery: `acceptResources()` returns leftover when UseStorage and silos are full and `DiscardExcessResources` is false
-- [ ] **TEST-10.22** Refinery: `canDock()` returns true for DockType.Unload clients
+- [x] **TEST-10.1** DockClientBase: `CanDock()` returns true for compatible DockType host, false for incompatible; abstract methods throw if not overridden
+- [x] **TEST-10.2** Harvester: `isFull` returns true when cargo equals capacity; `isEmpty` returns true when cargo is zero
+- [x] **TEST-10.3** Harvester: `canHarvestCell()` returns true for cell with compatible resource, false for empty or incompatible cell
+- [x] **TEST-10.4** Harvester: `findResourceField()` returns cell with resource within search radius, null when no resources nearby
+- [x] **TEST-10.5** Harvester: `getSpeedModifier()` returns `FullyLoadedSpeed / 100` when full, 1.0 when empty
+- [x] **TEST-10.6** Harvester: `issueOrder()` returns Harvest order for resource cell, null for non-resource cell
+- [x] **TEST-10.7** Harvester: `resolveOrder("Harvest")` creates harvest activity stub; `resolveOrder("Deliver")` creates deliver activity stub
+- [x] **TEST-10.8** ResourceLayer: `addResource()` adds resource to empty cell; respects `MaxDensity`; returns correct leftover amount
+- [x] **TEST-10.9** ResourceLayer: `removeResource()` removes resource from cell; returns correct leftover if not enough density
+- [x] **TEST-10.10** ResourceLayer: `clearResources()` sets cell to `EMPTY`; fires `CellChanged` event with null resourceType
+- [x] **TEST-10.11** ResourceLayer: `recalculateResourceDensity()` correctly adjusts density based on neighbor counts
+- [x] **TEST-10.12** ResourceLayer: `addResource()` on cell with building blocking returns full amount as leftover (if BuildingInfluence active)
+- [x] **TEST-10.13** ResourceLayer: initialization from Map.Resources correctly maps byte indices to resource types
+- [x] **TEST-10.14** ResourceRenderer: `addVisibleCell()` adds cell to dirty set; `updateCell()` marks cell dirty for re-render
+- [x] **TEST-10.15** ResourceRenderer: sprite frame calculation: `lerp(0, length-1, density, maxDensity)` returns correct frame index
+- [x] **TEST-10.16** ResourceClaimLayer: `TryClaimCell()` succeeds for unclaimed cell; fails if already claimed by same-player harvester
+- [x] **TEST-10.17** ResourceClaimLayer: `RemoveClaim()` releases claim; subsequent `TryClaimCell()` succeeds
+- [x] **TEST-10.18** SeedsResource: `tick()` adds resource to random cell within range after `Interval` ticks
+- [x] **TEST-10.19** Refinery: `acceptResources()` in UseStorage mode stores in PlayerResources, returns 0 when space available
+- [x] **TEST-10.20** Refinery: `acceptResources()` in direct-cash mode converts resources to cash, returns 0 (all accepted)
+- [x] **TEST-10.21** Refinery: `acceptResources()` returns leftover when UseStorage and silos are full and `DiscardExcessResources` is false
+- [x] **TEST-10.22** Refinery: `canDock()` returns true for DockType.Unload clients
 
 #### Phase B Tests
 
@@ -996,7 +996,7 @@ All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 
 | Phase | Files | Test Files | Estimated Tests | Estimated Test Lines |
 |:---|:---:|:---:|:---:|:---:|
-| A: Resource Infrastructure | 8 (6 + interface + base) | 8 | ~65 | ~4,800 |
+| A: Resource Infrastructure | 8 (6 + interface + base) | 7 | 344 | ~6,224 |
 | B: Economy Support | 11 | 10 | ~60 | ~3,500 |
 | B-opt: Extended Economy | 8 | 6 | ~35 | ~1,800 |
 | **Total (core)** | **17** | **18** | **~125** | **~8,300** |

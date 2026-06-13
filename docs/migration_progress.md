@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
-> **Last updated**: 2026-06-13
-> **Current phase**: Chapter 9 COMPLETE (30/30 active migrated, ALL PHASES A-D COMPLETE)
-> **Overall status**: Chapters 2-9 COMPLETE: 249/249 (100%). Chapters 10-21 PLANNED (0/~278 migrated).
+> **Last updated**: 2026-06-14
+> **Current phase**: Chapter 9 COMPLETE, Chapter 10 Phase A COMPLETE (8 core files, 344 tests), Phase B PLANNING
+> **Overall status**: Chapters 2-9 COMPLETE: 249/249 (100%). Chapter 10 Phase A COMPLETE: 8/17 core files (47%). Chapters 10-21: 8/~278 migrated (3%).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -21,7 +21,7 @@
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
 | **Chapter 8 planned files (Weapons & Combat)** | 57 (56 core + 1 optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), **57/57 (100%, ALL PHASES COMPLETE)**, ~8,264 C# lines source, ~24,870 combined TS lines, 758 tests |
 | **Chapter 9 planned files (Movement & Physics)** | 32 (30 active + 2 deferred; 4 Phases A-D COMPLETE), 30/30 active migrated, 2 deferred, ~11,723 TS lines, 1,084 tests. See [chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) |
-| **Chapter 10 planned files (Resource & Economy)** | ~15 (2 Phases A-B planned), 0/15 migrated |
+| **Chapter 10 planned files (Resource & Economy)** | 17 core (2 Phases A-B) + 8 optional, Phase A COMPLETE: 8/8 core, Phase B: 0/11, optional: 0/8 |
 | **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 0/25 migrated |
 | **Chapter 12 planned files (Shroud & Fog of War)** | ~15 (1 Phase A planned), 0/15 migrated |
 | **Chapter 13 planned files (Support Powers)** | ~15 (1 Phase A planned), 0/15 migrated |
@@ -33,9 +33,9 @@
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
-| **Overall project completion** | Chapters 2-9 complete (249/249). Chapters 10-21 planned (0/~278 migrated). Total project: ~529 files estimated, ~249 complete (47.1%). |
+| **Overall project completion** | Chapters 2-9 complete (249/249). Chapter 10 Phase A complete (8 core files). Chapters 10-21 remaining: 8/~270 migrated. Total project: ~529 files estimated, ~257 complete (48.6%). |
 
-> **Note**: Chapters 2-9 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay.
+> **Note**: Chapters 2-9 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 Phase A COMPLETE (8 files, 344 tests, ~4,965 TS lines, 1 review round, R2 pending).
 
 ---
 
@@ -204,6 +204,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-14 | **Ch10 Phase A Resource Infrastructure** (8 files) | migration-develop | migration-review | Phase A COMPLETE (R1, 4 BLOCKER + 4 MAJOR resolved, R2 pending). 8 implementation files (~4,965 TS lines): TraitsInterfaces.ts expansion (+497 lines, IDockHost, IAcceptResources, IResourceLayer, IResourceRenderer, IStoresResources interfaces), DockClientBase.ts (385 lines, abstract generic base class), Harvester.ts (1,075 lines, central resource-gathering orchestrator, extends DockClientBase, implements IStoresResources + ISpeedModifier + IResolveOrder), ResourceLayer.ts (799 lines, CellLayer<ResourceContents> World trait, density recalculation, cell-changed events), ResourceRenderer.ts (1,106 lines, TerrainSpriteLayer-based sprite rendering, variant selection, dirty cell tracking), ResourceClaimLayer.ts (240 lines, harvester-to-cell claim tracking), SeedsResource.ts (348 lines, timer-based resource spawner), Refinery.ts (705 lines, IAcceptResources + IDockHost implementation, dual-mode resource processing). 7 test files (6,224 test lines, 344 tests): DockClientBase.test.ts (44 tests), Harvester.test.ts (81 tests), Refinery.test.ts (43 tests), ResourceLayer.test.ts (83 tests), ResourceRenderer.test.ts (41 tests), ResourceClaimLayer.test.ts (24 tests), SeedsResource.test.ts (28 tests). 5 commits: `d65c51c` (DockClientBase + TraitsInterfaces), `548756c` (ResourceClaimLayer + SeedsResource), `d78de60` (Harvester + Refinery), `7a72af7` (ResourceLayer + ResourceRenderer), `f55ed14` (BLOCKER#1,#2 + MAJOR#1,#2 fixes), `20380ca` (4 BLOCKER + 1 MAJOR fixes). R1: 4 BLOCKER + 4 MAJOR -> NEEDS FIXES. R2: pending. Chapter 10: 8/17 core (47%). |
 | 2026-06-13 | **Ch9 ALL PHASES A-D COMPLETE** (30 files) | migration-develop | migration-review | ALL PHASES COMPLETE (4 phases, 30/30 active migrated, 2 deferred). ~11,723 TS impl lines, 1,084 tests (361+358+175+190), 19 commits. Phase A (5 files, ~4,200 lines, 361 tests, 7 commits, 2 review rounds): IMove interface, Mobile.ts (1079 C# -> ~2,500 TS), Immobile.ts, Locomotor.ts (526 C# -> full upgrade from 261-line stub), PathFinder.ts. Phase B (4 files, ~3,873 lines, 358 tests, 4 commits, 1 round): Aircraft.ts (1381 C# -> ~2,500 TS), FallsToEarth.ts, BodyOrientation.ts, QuantizeFacingsFromSequence.ts. Phase C (10 files, ~2,100 lines, 175 tests, 4 commits, 1 round): SubterraneanLocomotor, SubterraneanActorLayer, BridgeLayer, LegacyBridgeLayer, ElevatedBridgeLayer, ElevatedBridgePlaceholder, TerrainTunnel, TerrainTunnelLayer, TunnelEntrance, EntersTunnels. Phase D (11 files, ~1,550 lines, 190 tests, 4 commits, 1 round): BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditionOnMovement, Hovers, TerrainModifiesDamage, SpeedMultiplier, AttackMove (upgrade from stub), ClassicFacingBodyOrientation, JumpjetLocomotor. Deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 9: 30/30 active (100%, ALL PHASES COMPLETE). |
 | 2026-06-13 | **Ch8 Phase E Combat Support Traits** (15 files) | migration-develop | migration-review | APPROVED (R2, 1 BLOCKER + 2 MAJOR + 1 MINOR resolved): FireWarheads.ts (144 lines, 8 tests), FireWarheadsOnDeath.ts (414 lines, 24 tests), FireProjectilesOnDeath.ts (271 lines, 8 tests), AttackSounds.ts (186 lines, 7 tests), DeathSounds.ts (121 lines, 6 tests), DamageMultiplier.ts (99 lines, 6 tests), ReloadDelayMultiplier.ts (90 lines, 4 tests), InaccuracyMultiplier.ts (90 lines, 4 tests), ExplosionOnDamageTransition.ts (146 lines, 10 tests), WithMuzzleOverlay.ts (257 lines, 13 tests), WithAttackAnimation.ts (243 lines, 12 tests), WithAttackOverlay.ts (278 lines, 10 tests), Turreted.ts (581 lines, 32 tests), AttackBomber.ts (227 lines, 12 tests), AttackAircraft.ts (188 lines, 12 tests). 30 files total (15 source + 15 test), 156 tests, ~3,335 impl + ~1,859 test lines. R1: 1 BLOCKER (FireWarheadsOnDeath kill-target), 2 MAJOR (RNG >= vs >), 1 MINOR (AttackBomber super.tick comment) -> NEEDS FIXES. R2: All fixed -> APPROVED. Commits `accbced`, `b04e8e1`. Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). |
 | 2026-06-13 | **Ch8 Phase D Core Combat Traits** (17 files) | migration-develop | migration-review | APPROVED (R2, 3 BLOCKER + 7 MAJOR + 7 MINOR resolved): CombatInterfaces.ts, Armament.ts (~25 tests), AutoTarget.ts (~30 tests), AttackBase.ts (~20 tests), AttackTurreted.ts, AttackFrontal.ts, AttackOmni.ts, AttackMove.ts, AttackFollow.ts, AttackCharges.ts, AttackWander.ts (DEFERRED STUB), AttackGarrisoned.ts (DEFERRED STUB), HitShape.ts + HitShapeCircle.ts + HitShapeRectangle.ts + HitShapeCapsule.ts + HitShapeInfo.ts, Armor.ts, AmmoPool.ts, ReloadAmmoPool.ts, RangeMultiplier.ts, FirepowerMultiplier.ts. 38 files total (17 source + 4 hit-shape support + 1 shared interface + 16 test), 158 tests, ~7,109 lines. R1: 3 BLOCKER + 7 MAJOR + 7 MINOR -> NEEDS FIXES. R2: All fixed -> APPROVED. Commits `bbbe871`, `5cf9b93`. Chapter 8: 42/57 (74%). |
@@ -1144,12 +1145,101 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | Phase C | World Movement Infrastructure | 10 | ~2,100 | 175 | 4 | 1 | **COMPLETE (10/10)** |
 | Phase D | Movement-Related Support Traits | 11 active + 2 deferred | ~1,550 | 190 | 4 | 1 | **COMPLETE (11/11 active)** |
 
-### Chapter 10: Resource & Economy System (PLANNING, ~15 files)
+### Chapter 10: Resource & Economy System (IN PROGRESS, 8/17 core files, Phase A COMPLETE)
+
+> **Migration Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
+> **Created**: 2026-06-13 | **Updated**: 2026-06-14 | **Status**: Phase A COMPLETE (8/8 core files, 344 tests), Phase B PLANNING (0/11)
+> **Prerequisite**: Chapters 2-9 COMPLETE (249/249, 100%)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed (Phase A) | 8 core | 47% |
+| Pending (Phase B + Optional) | 9 core + 8 optional | 53% |
+| **Total core** | **17** | **100%** |
+| **Total including optional** | **25** | |
+
+### Chapter 10 Phases
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
-| Phase A | Resource Infrastructure | 6 | HIGH-LOW | Not started |
-| Phase B | Economy Support Traits | ~9 | LOW-MEDIUM | Not started |
+| Phase A | Resource Infrastructure | 8 (6 files + interface expansion + base class) | HIGH-LOW | **COMPLETE (8/8, 344 tests)** |
+| Phase B | Economy Support Traits | 11 | LOW-MEDIUM | Not started |
+| B-Opt | Extended Economy Traits | 8 | LOW-MEDIUM | Optional, not started |
+
+### Phase A Completed: Resource Infrastructure (8 files, 2026-06-14)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| TraitsInterfaces.ts (expand) | +497 | -- | -- | IDockHost, IAcceptResources, IResourceLayer, IResourceRenderer, IStoresResources interfaces |
+| DockClientBase.ts | 385 | 646 | 44 | Abstract generic base class: CanDock, OnDockStarted, OnDockTick, OnDockCompleted, DockType enum |
+| Harvester.ts | 1,075 | 1,380 | 81 | Extends DockClientBase: resource search, IStoresResources cargo, speed modifier, Harvest/Deliver orders, capacity management |
+| ResourceLayer.ts | 799 | 1,239 | 83 | World trait: CellLayer<ResourceContents>, density recalculation, CellChanged events, Map.Resources init |
+| ResourceRenderer.ts | 1,106 | 1,176 | 41 | World trait: TerrainSpriteLayer per resource type, variant selection, density-based frames, dirty cell batching |
+| ResourceClaimLayer.ts | 240 | 399 | 24 | World trait: harvester-to-cell claim tracking, cross-player contention prevention |
+| SeedsResource.ts | 348 | 572 | 28 | Actor trait: timer-based resource spawning, random cell selection within range |
+| Refinery.ts | 705 | 812 | 43 | Building trait: IAcceptResources + IDockHost, UseStorage/direct-cash modes, floating cash text |
+| **Total** | **~4,965** | **6,224** | **344** | |
+
+**Implementation details**:
+- `TraitsInterfaces.ts` expansion (+497 lines): Added `IDockHost` (docking lifecycle), `IAcceptResources` (resource acceptance), `IResourceLayer` (resource data queries), `IResourceRenderer` (cell visibility/dirty tracking), `IStoresResources` (cargo management), `IResourceValueModifier` (value modifier), and `ResourceContents` type with `EMPTY` sentinel using `Object.freeze()`.
+- `DockClientBase.ts` (385 lines): New abstract generic base class providing docking lifecycle (`CanDock`, `OnDockStarted`, `OnDockTick`, `OnDockCompleted`), `getDockHost()` validation, and factory methods returning Activity stubs (actual Activities deferred to Ch14). `DockType` enum: `Unload = 1`, `Repair = 2`, `Refuel = 4`. Implements `IResolveOrder` for Dock order handling.
+- `Harvester.ts` (1,075 lines): Central resource-gathering orchestrator. Extends `DockClientBase<HarvesterInfo>`. Implements `IStoresResources` for cargo with `isFull`/`isEmpty`/`fullness` properties. `ISpeedModifier` returns `FullyLoadedSpeed/100` when full. `canHarvestCell()` + `findResourceField()` for resource search. `issueOrder()` returns Harvest order for resource cells. `resolveOrder()` handles Harvest/Deliver with activity stub creation. Docking overrides coordinate with Refinery's `IDockHost` for unloading. Activity factory methods (`createHarvestActivity`, `createDeliverActivity`) return stubs -- actual `FindAndDeliverResources` deferred to Ch14. Inner `HarvestOrderTargeter` deferred to Ch15.
+- `ResourceLayer.ts` (799 lines): World trait managing `CellLayer<ResourceContents>` data store. `IResourceLayer` implementation: `getResource`, `addResource` (respects `MaxDensity`), `removeResource`, `clearResources`. `CellChanged` event for renderer updates. Density recalculation based on neighbor counts. Initialization from `Map.Resources` byte-layer mapping to resource types via `ResourceTypes` config. `BuildingInfluence` integration deferred to Ch11 (stub returns false).
+- `ResourceRenderer.ts` (1,106 lines): World trait using Ch2 `TerrainSpriteLayer` per resource type. `IResourceRenderer` implementation: `addVisibleCell`, `removeVisibleCell`, `updateCell`. Variant system with deterministic cell-hash-based selection. Density-based frame calculation: `lerp(0, length-1, density, maxDensity)`. `ITickRender` batches dirty cell updates. `IRenderOverlay` draws all resource layers. Sequence loading via `SequenceProvider`.
+- `ResourceClaimLayer.ts` (240 lines): Simple bidirectional mapping: `claimants: Map<actorId, CPos>` and `claimCells: Map<cellIndex, IGameActor[]>`. `TryClaimCell()` prevents same-player harvesters from targeting same cell. `RemoveClaim()` releases claim. Player-based claim separation.
+- `SeedsResource.ts` (348 lines): Timer-based resource spawner with `Interval`, `Range`, `MaxDensity` config. `tick()` attempts to add resources to random nearby cells via `IResourceLayer.addResource()`.
+- `Refinery.ts` (705 lines): Building trait implementing `IAcceptResources` and `IDockHost`. Two modes: `UseStorage` (deposit into PlayerResources via StoresPlayerResources) and direct-cash conversion. Floating "+$XXX" text display via Babylon.js GUI TextBlock. `canDock()` only accepts `DockType.Unload` clients. `dockPosition()` returns adjacent cell for harvester docking.
+- Review: R1 COMPLETE (4 BLOCKER + 4 MAJOR resolved), R2 PENDING. | **Commits**: `d65c51c`, `548756c`, `d78de60`, `7a72af7`, `f55ed14`, `20380ca`
+
+### Phase A Dependency Graph
+
+```
+TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResourceRenderer, IStoresResources)
+  |
+  +--> DockClientBase (abstract base class)
+  |     |
+  |     +--> Harvester (extends DockClientBase, implements IStoresResources)
+  |           |
+  |           +--> Phase B (StoresResources, PlayerResources)
+  |
+  +--> ResourceLayer (IResourceLayer + CellLayer)
+  |     |
+  |     +--> ResourceRenderer (reads ResourceLayer data)
+  |     +--> SeedsResource (writes via IResourceLayer)
+  |
+  +--> ResourceClaimLayer (independent, used by Harvester)
+  |
+  +--> Refinery (IAcceptResources + IDockHost)
+        |
+        +--> Phase B (StoresPlayerResources bridge)
+```
+
+### Already Available (from Prior Chapters)
+
+| Dependency | Source | Status |
+|:---|:---|:---|
+| Renderer + WorldRenderer | Ch2 | COMPLETE |
+| TerrainSpriteLayer | Ch2 | COMPLETE (used by ResourceRenderer) |
+| Sprite/Sheet/Animation | Ch2 | COMPLETE |
+| World + Actor + Player | Ch3 | COMPLETE |
+| TraitsInterfaces (ITick, INotifyCreated, etc.) | Ch3 Phase B | COMPLETE |
+| Coordinate Primitives (CPos, CVec, WPos, WDist) | Ch3 Phase A | COMPLETE |
+| Map + CellLayer + TerrainInfo | Ch4 | COMPLETE |
+| CoordinateTransformer | Ch4 Phase I | COMPLETE |
+| FileSystem + MOD System | Ch5 | COMPLETE |
+| Order + IResolveOrder + IIssueOrder | Ch6 Phase A | COMPLETE |
+| Sync hash system | Ch6 Phase B | COMPLETE |
+| CombatInterfaces (IHealth, DamageState) | Ch8 Phase D | COMPLETE |
+| Mobile + IMove | Ch9 Phase A | COMPLETE |
+
+### Key Architecture Decisions (4 ADRs)
+
+| ADR | Decision |
+|-----|----------|
+| ADR-10.1 | Resource Rendering via Ch2 TerrainSpriteLayer (not new rendering system) |
+| ADR-10.2 | Resource Data Storage via CellLayer with Immutable Records (Object.freeze() EMPTY sentinel) |
+| ADR-10.3 | Harvester Activities (FindAndDeliverResources) Deferred to Chapter 14 Phase D |
+| ADR-10.4 | DockClientBase as Abstract Generic Base Class (reusable for Harvester, RepairClient, etc.) |
 
 ### Chapter 11: Production & Building System (PLANNING, ~25 files)
 
