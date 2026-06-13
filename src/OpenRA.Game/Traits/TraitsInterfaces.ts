@@ -1577,8 +1577,8 @@ export interface IStoresResources {
  * OpenRA 对照: IEffectiveOwner
  */
 export interface IEffectiveOwner {
-  readonly disguished: boolean
-  readonly owner: PlayerStub
+  readonly disguised: boolean
+  readonly owner: PlayerStub | null
 }
 
 // ---------------------------------------------------------------------------
@@ -2139,7 +2139,7 @@ export interface IUnlocksRenderPlayer {
  * OpenRA 对照: ICreationActivity
  */
 export interface ICreationActivity {
-  getCreationActivity(): ActivityStub
+  getCreationActivity(): ActivityStub | null
 }
 
 /**

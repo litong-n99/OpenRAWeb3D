@@ -1076,7 +1076,7 @@ describe('GameActor', () => {
 
       class EffectiveOwnerComp extends Component implements IEffectiveOwner {
         static readonly interfaces = ['IEffectiveOwner', 'component']
-        disguished = false
+        disguised = false
         owner = { playerName: 'Disguised' }
       }
       const comp = new EffectiveOwnerComp()

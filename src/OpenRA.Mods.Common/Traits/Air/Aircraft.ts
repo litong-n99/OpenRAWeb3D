@@ -2124,10 +2124,19 @@ export class Aircraft
   /** Check whether this actor can enter the target cell right now.
    *
    * OpenRA 对照: IMove.CanEnterTargetNow(Target)
+   *
+   * In C#, this extracts the target actor, checks if it is reservable, and
+   * returns true if a reservation was successfully made. Currently stubbed
+   * with a basic null-check on the reserved actor.
    */
   canEnterTargetNow(_source: IGameActor, _target: Target): boolean {
-    // TODO-9.B.1: Full enter target check when Target is fully migrated
-    this.makeReservation(this._reservedActor!)
+    // TODO-9.B.1: Full enter target check when Target is fully migrated.
+    //   In C#: extract target actor, verify ReservingOffset, call
+    //   MakeReservation. Return false if no reservable actor is found.
+    const reservedActor = this._reservedActor
+    if (!reservedActor) return false
+
+    this.makeReservation(reservedActor)
     return true
   }
 
@@ -2388,8 +2397,12 @@ export class Aircraft
   /** Get the creation activity for this aircraft.
    *
    * OpenRA 对照: ICreationActivity.GetCreationActivity()
+   *
+   * Returns an AssociateWithAirfieldActivity (stubbed as ReturnToBaseActivity)
+   * when there is a rally point, delay, or map-created flag. Otherwise returns
+   * null, matching C# behavior exactly.
    */
-  getCreationActivity(): ActivityStub {
+  getCreationActivity(): ActivityStub | null {
     if (
       this._creationRallyPoint !== null ||
       this._creationActivityDelay > 0 ||
@@ -2398,7 +2411,7 @@ export class Aircraft
       // TODO-14.A.12: Implement AssociateWithAirfieldActivity
       return new ReturnToBaseActivity()
     }
-    return new ReturnToBaseActivity()
+    return null
   }
 
   // -----------------------------------------------------------------------
@@ -2635,11 +2648,18 @@ export class Aircraft
     switch (order.orderName) {
       case 'Land':
       case 'Move':
-        if (
-          !this.info.moveIntoShroud // &&
-          // TODO-9.B.1: Check order target type
-        ) {
-          return ''
+        // When moveIntoShroud is false, check if the target cell is explored.
+        // If the order has a resolvable cell position, use it; otherwise
+        // use the actor's own position (which is always explored).
+        if (!this.info.moveIntoShroud) {
+          const map = this._getMap()
+          if (map) {
+            const cell = map.clamp(
+              map.cellContaining(this._getOrderCenterPosition(order)),
+            )
+            const shrouded = this._isShroudExplored(cell)
+            if (!shrouded) return ''
+          }
         }
         return this.info.voice
       case 'Enter':
@@ -2708,11 +2728,11 @@ export class Aircraft
     if (andIdx > -1) {
       return (
         this._evaluateConditionExpr(
-          trimmed.substring(0, andIdx),
+          trimmed.substring(0, andIdx).trim(),
           conditions,
         ) &&
         this._evaluateConditionExpr(
-          trimmed.substring(andIdx + 2),
+          trimmed.substring(andIdx + 2).trim(),
           conditions,
         )
       )
@@ -2721,11 +2741,11 @@ export class Aircraft
     if (orIdx > -1) {
       return (
         this._evaluateConditionExpr(
-          trimmed.substring(0, orIdx),
+          trimmed.substring(0, orIdx).trim(),
           conditions,
         ) ||
         this._evaluateConditionExpr(
-          trimmed.substring(orIdx + 2),
+          trimmed.substring(orIdx + 2).trim(),
           conditions,
         )
       )
@@ -2934,11 +2954,21 @@ export class Aircraft
     }
   }
 
-  private _hasReservableInfo(actor: IGameActor): boolean {
-    const info = actor.info as ActorInfoStub | undefined
-    if (!info) return false
-    // Check by duck typing — ReservableInfo has a known property set
-    return info.name !== undefined
+  /** Check if the actor has the Reservable trait info (which means it can be
+   * reserved by aircraft for landing/resupply).
+   *
+   * OpenRA 对照: Reservable.IsReservable(Actor)
+   *
+   * TODO-9.B.1-RESERVABLE: Replace with proper Reservable trait check once
+   *   the Reservable/ReservableInfo migration is complete. Currently returns
+   *   false for all actors — actual reservation logic deferred.
+   */
+  private _hasReservableInfo(_actor: IGameActor): boolean {
+    // STUB: Always returns false until Reservable trait is migrated.
+    // In C#: checks if actor.Info.TraitInfo<ReservableInfo>() is not null.
+    // For now, no actor is considered reservable, which means GetActorBelow()
+    // returns null and ReturnToBase falls back to resupply search logic.
+    return false
   }
 
   private _hasMobile(actor: IGameActor): boolean {
@@ -2950,9 +2980,22 @@ export class Aircraft
     return this._getDistanceAboveTerrain(this._centerPosition).length === 0
   }
 
-  private _isAtGroundLevelA(_actor: IGameActor): boolean {
-    // Simplified ground level check for other actors
-    return true
+  /** Check if an actor is at ground level relative to this aircraft.
+   *
+   * OpenRA 对照: Aircraft.IsAtGroundLevel(Actor)
+   *
+   * For other actors, checks if their position is at or below the aircraft's
+   * land altitude threshold. This prevents crushing actors that are airborne.
+   *
+   * TODO-9.B.1-ALTITUDE: Full altitude comparison with other actor's vertical
+   *   position. Currently checks distance above terrain through map proxy.
+   */
+  private _isAtGroundLevelA(actor: IGameActor): boolean {
+    const actorPos = (actor as unknown as { centerPosition?: WPos }).centerPosition
+    if (!actorPos) return false
+    const terrainDist = this._getDistanceAboveTerrain(actorPos)
+    // Actor is at ground level if the terrain distance is 0 or very small
+    return terrainDist.length <= this.landAltitude.length
   }
 
   private _appearsHostileTo(a: IGameActor): boolean {

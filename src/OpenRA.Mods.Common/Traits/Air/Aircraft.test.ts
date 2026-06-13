@@ -1535,6 +1535,12 @@ describe('Aircraft IMove', () => {
     expect(CPos.equals(result, cell)).toBe(true)
   })
 
+  it('canEnterTargetNow returns false when no reserved actor', () => {
+    const { aircraft, actor } = setup()
+    // _reservedActor is null by default
+    expect(aircraft.canEnterTargetNow(actor, {} as unknown as Target)).toBe(false)
+  })
+
   it('canEnterTargetNow makes reservation and returns true', () => {
     const { aircraft, actor } = setup()
     const target = mockActor({
@@ -1879,19 +1885,40 @@ describe('Aircraft onBecomingIdle', () => {
 // ---------------------------------------------------------------------------
 
 describe('Aircraft ICreationActivity', () => {
-  it('getCreationActivity returns ReturnToBase stub', () => {
+  it('getCreationActivity returns null when no rally point, delay, or map-created flag', () => {
     const { aircraft } = setup()
     const activity = aircraft.getCreationActivity()
-    expect(activity).toBeDefined()
-    expect((activity as unknown as { activityLabel: string }).activityLabel).toBe('ReturnToBase')
+    // C# returns null when no special creation conditions are met
+    expect(activity).toBeNull()
   })
 
-  it('getCreationActivity with creationByMap returns ReturnToBase', () => {
+  it('getCreationActivity returns ReturnToBase stub when creationByMap is true', () => {
     const info = makeInfo()
     const aircraft = new Aircraft(info)
     const actor = mockActor()
     aircraft.initialize(actor, new CPos(10, 10), new WPos(10240, 10240, 1280), true, 0)
     const activity = aircraft.getCreationActivity()
+    expect(activity).not.toBeNull()
+    expect((activity as unknown as { activityLabel: string }).activityLabel).toBe('ReturnToBase')
+  })
+
+  it('getCreationActivity returns ReturnToBase stub when creationActivityDelay > 0', () => {
+    const info = makeInfo()
+    const aircraft = new Aircraft(info)
+    const actor = mockActor()
+    aircraft.initialize(actor, new CPos(10, 10), new WPos(10240, 10240, 1280), false, 30)
+    const activity = aircraft.getCreationActivity()
+    expect(activity).not.toBeNull()
+    expect((activity as unknown as { activityLabel: string }).activityLabel).toBe('ReturnToBase')
+  })
+
+  it('getCreationActivity returns ReturnToBase stub when rally point is set', () => {
+    const info = makeInfo()
+    const aircraft = new Aircraft(info)
+    const actor = mockActor()
+    aircraft.initialize(actor, new CPos(10, 10), new WPos(10240, 10240, 1280), false, 0, [new CPos(5, 5)])
+    const activity = aircraft.getCreationActivity()
+    expect(activity).not.toBeNull()
     expect((activity as unknown as { activityLabel: string }).activityLabel).toBe('ReturnToBase')
   })
 })
@@ -2234,6 +2261,44 @@ describe('Aircraft IOrderVoice', () => {
     expect(result).toBe('')
   })
 
+  it('returns empty string for Move order when moveIntoShroud=false and cell unexplored', () => {
+    const { aircraft, actor } = setup({
+      infoOverrides: { voice: 'Action', moveIntoShroud: false },
+    })
+    // Mock shroud: isExplored returns false for the target cell
+    ;(actor as unknown as Record<string, unknown>).owner = {
+      playerName: 'TestPlayer',
+      shroud: {
+        isExplored: vi.fn().mockReturnValue(false),
+      },
+    }
+    const result = aircraft.voicePhraseForOrder(actor, {
+      orderName: 'Move',
+      targetString: '',
+      extraData: {},
+    })
+    expect(result).toBe('')
+  })
+
+  it('returns voice for Move order when moveIntoShroud=false and cell explored', () => {
+    const { aircraft, actor } = setup({
+      infoOverrides: { voice: 'Action', moveIntoShroud: false },
+    })
+    // Mock shroud: isExplored returns true
+    ;(actor as unknown as Record<string, unknown>).owner = {
+      playerName: 'TestPlayer',
+      shroud: {
+        isExplored: vi.fn().mockReturnValue(true),
+      },
+    }
+    const result = aircraft.voicePhraseForOrder(actor, {
+      orderName: 'Move',
+      targetString: '',
+      extraData: {},
+    })
+    expect(result).toBe('Action')
+  })
+
   it('returns empty string for unknown order', () => {
     const { aircraft, actor } = setup()
     const result = aircraft.voicePhraseForOrder(actor, {
@@ -2322,6 +2387,47 @@ describe('Aircraft IObservesVariables', () => {
     const conditions = new Map<string, number>()
     conditions.set('a', 2)
     observers[0].notifier({} as IGameActor, conditions)
+    expect(aircraft.requireForceMove).toBe(true)
+  })
+
+  it('condition evaluator handles spaces around operators (a || b)', () => {
+    const { aircraft } = setup({
+      infoOverrides: { requireForceMoveCondition: 'a || b' },
+    })
+    const observers = aircraft.getVariableObservers()
+    const conditions = new Map<string, number>()
+    conditions.set('a', 1)
+    conditions.set('b', 0)
+    observers[0].notifier({} as IGameActor, conditions)
+    // a is true, b is false => a || b is true
+    expect(aircraft.requireForceMove).toBe(true)
+  })
+
+  it('condition evaluator handles spaces around AND operators (a && b)', () => {
+    const { aircraft } = setup({
+      infoOverrides: { requireForceMoveCondition: 'a && b' },
+    })
+    const observers = aircraft.getVariableObservers()
+    const conditions = new Map<string, number>()
+    conditions.set('a', 1)
+    conditions.set('b', 1)
+    observers[0].notifier({} as IGameActor, conditions)
+    // a is true, b is true => a && b is true
+    expect(aircraft.requireForceMove).toBe(true)
+  })
+
+  it('condition evaluator ignores irrelevant spaces in logical expressions', () => {
+    // Test with spaces AND parentheses: "(a  ||  b) && c"
+    const { aircraft } = setup({
+      infoOverrides: { requireForceMoveCondition: '(a  ||  b) && c' },
+    })
+    const observers = aircraft.getVariableObservers()
+    const conditions = new Map<string, number>()
+    conditions.set('a', 0)
+    conditions.set('b', 1)
+    conditions.set('c', 1)
+    observers[0].notifier({} as IGameActor, conditions)
+    // (false || true) && true = true
     expect(aircraft.requireForceMove).toBe(true)
   })
 })

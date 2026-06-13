@@ -106,13 +106,13 @@ describe('FallsToEarth', () => {
     const owner = makePlayer('Killer')
     const trait = new FallsToEarth(info, owner)
     expect(trait.owner).toBe(owner)
-    expect(trait.owner.playerName).toBe('Killer')
+    expect(trait.owner!.playerName).toBe('Killer')
   })
 
-  it('disguished is always true', () => {
+  it('disguised is always true', () => {
     const info = new FallsToEarthInfo()
     const trait = new FallsToEarth(info)
-    expect(trait.disguished).toBe(true)
+    expect(trait.disguised).toBe(true)
   })
 
   it('effectiveOwner from constructor overrides actor owner', () => {
@@ -125,7 +125,7 @@ describe('FallsToEarth', () => {
     trait.created(actor)
     expect(trait.owner).toBe(initOwner)
     // actor's owner is NOT used because init provided the effective owner
-    expect(trait.owner.playerName).toBe('Killer')
+    expect(trait.owner!.playerName).toBe('Killer')
   })
 
   it('effectiveOwner defaults to actor owner when no init provided', () => {
@@ -135,17 +135,15 @@ describe('FallsToEarth', () => {
 
     trait.created(actor)
     expect(trait.owner).toBe(actor.owner)
-    expect(trait.owner.playerName).toBe('DefaultPlayer')
+    expect(trait.owner!.playerName).toBe('DefaultPlayer')
   })
 
-  it('owner getter throws when no effectiveOwner and no actor owner', () => {
+  it('owner getter returns null when no effectiveOwner and no actor owner', () => {
     const info = new FallsToEarthInfo()
     const trait = new FallsToEarth(info) // no effectiveOwner param
 
-    // Before created() is called, _effectiveOwner is null and _actor.owner is null
-    expect(() => trait.owner).toThrow(
-      'FallsToEarth: effectiveOwner not resolved and actor has no owner',
-    )
+    // Before created() is called, _effectiveOwner is null — returns null gracefully
+    expect(trait.owner).toBeNull()
   })
 
   it('owner getter works after created() resolves fallback', () => {
@@ -153,13 +151,13 @@ describe('FallsToEarth', () => {
     const trait = new FallsToEarth(info) // no effectiveOwner
     const actor = makeMockActor({ owner: makePlayer('AfterCreated') })
 
-    // Before created: throws
-    expect(() => trait.owner).toThrow()
+    // Before created: returns null
+    expect(trait.owner).toBeNull()
 
     // After created: resolves from actor.owner
     trait.created(actor)
     expect(trait.owner).toBe(actor.owner)
-    expect(trait.owner.playerName).toBe('AfterCreated')
+    expect(trait.owner!.playerName).toBe('AfterCreated')
   })
 
   it('created queues a stub FallToEarth activity', () => {
@@ -187,7 +185,7 @@ describe('FallsToEarth', () => {
     trait.created(actor)
     // init owner takes priority, actor.owner is NOT used
     expect(trait.owner).toBe(initOwner)
-    expect(trait.owner.playerName).toBe('ScriptKiller')
+    expect(trait.owner!.playerName).toBe('ScriptKiller')
   })
 
   it('max spin speed null vs set in info', () => {

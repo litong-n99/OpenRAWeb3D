@@ -142,22 +142,18 @@ export class FallsToEarth
    *
    * OpenRA 对照: IEffectiveOwner.Disguised => true
    */
-  readonly disguished: boolean = true
+  readonly disguised: boolean = true
 
   /** The effective owner of this actor for kill credit.
    *
    * OpenRA 对照: IEffectiveOwner.Owner => effectiveOwner
+   *
+   * Returns null if neither an effective owner was provided at construction
+   * nor a fallback was resolved via created(). In practice, created() is
+   * always called before the owner is queried, so this will always return
+   * a valid owner.
    */
-  get owner(): PlayerStub {
-    if (!this._effectiveOwner) {
-      // Fallback: use the actor's owner if available
-      if (this._actor?.owner) {
-        return this._actor.owner
-      }
-      // NOTE: This should never happen in practice — actors always have an owner.
-      // If it does, it means created() hasn't been called yet.
-      throw new Error('FallsToEarth: effectiveOwner not resolved and actor has no owner')
-    }
+  get owner(): PlayerStub | null {
     return this._effectiveOwner
   }
 
