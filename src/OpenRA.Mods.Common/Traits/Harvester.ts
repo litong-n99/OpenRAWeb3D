@@ -709,10 +709,9 @@ export class Harvester
   canHarvestCell(cell: CPos): boolean {
     // Resources only exist in the ground layer (layer 0)
     // CPos layer is tracked via Bits; for ground layer, layer component is 0
-    if (
-      'layer' in cell &&
-      (cell as unknown as { layer: number }).layer !== 0
-    ) {
+    // NOTE: CPos uses 'Layer' (capital L) as a getter property, not 'layer'.
+    // The cell's Layer property is 0 for ground-level cells.
+    if (cell.Layer !== 0) {
       return false
     }
 
