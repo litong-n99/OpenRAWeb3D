@@ -35,6 +35,9 @@ import {
   type INotifyRemovedFromWorld,
   type INotifyBlockingMove,
   type INotifyBecomingIdle,
+  type INotifyCustomLayerChanged,
+  type IActorPreviewInitModifier,
+  type IDeathActorInitModifier,
   type INotifyCenterPositionChanged,
   type INotifyMoving,
   type INotifyFinishedMoving,
@@ -54,6 +57,7 @@ import {
 import { applyPercentageModifiers } from '../Projectiles/MissileMath.js'
 
 import type { ILocomotor, LocomotorInfo } from './World/Locomotor.js'
+import { MovementType, hasMovementType } from './World/Locomotor.js'
 import type { BlockedByActor } from './BlockedByActor.js'
 import { SubCell as SubCellEnum } from '../../OpenRA.Game/Traits/SubCell.js'
 import { WAngle } from '../../OpenRA.Game/WAngle.js'
@@ -81,89 +85,6 @@ export const MoveResult = {
 } as const
 
 export type MoveResult = (typeof MoveResult)[keyof typeof MoveResult]
-
-// ---------------------------------------------------------------------------
-// MovementType flags
-// OpenRA 对照: MovementType enum (Flags)
-// ---------------------------------------------------------------------------
-
-/** Movement type flags tracking what kind of movement is happening.
- *
- * OpenRA 对照: MovementType enum
- */
-export const MovementType = {
-  None: 0,
-  Horizontal: 1,
-  Vertical: 2,
-  Turn: 4,
-} as const
-
-export type MovementType = number
-
-/** Extension helpers for MovementType bitwise checks.
- *
- * OpenRA 对照: MovementType.HasMovementType extension method
- */
-export const MovementTypeExts = {
-  hasMovementType(self: MovementType, type: MovementType): boolean {
-    return (self & type) !== 0
-  },
-} as const
-
-// ---------------------------------------------------------------------------
-// Local stub interfaces (not yet in TraitsInterfaces.ts)
-// ---------------------------------------------------------------------------
-
-/**
- * Called when an actor moves between custom movement layers.
- *
- * OpenRA 对照: INotifyCustomLayerChanged
- * TODO: Move to TraitsInterfaces.ts when used by other files.
- */
-export interface INotifyCustomLayerChanged {
-  customLayerChanged(self: IGameActor, oldLayer: number, newLayer: number): void
-}
-
-/**
- * Modifies actor preview inits (e.g., map editor preview direction).
- *
- * OpenRA 对照: IActorPreviewInitModifier
- * TODO: Move to TraitsInterfaces.ts when used by other files.
- */
-export interface IActorPreviewInitModifier {
-  modifyActorPreviewInit(self: IGameActor, inits: Map<string, unknown>): void
-}
-
-/**
- * Modifies death actor inits (e.g., husk direction and speed).
- *
- * OpenRA 对照: IDeathActorInitModifier
- * TODO: Move to TraitsInterfaces.ts when used by other files.
- */
-export interface IDeathActorInitModifier {
-  modifyDeathActorInit(self: IGameActor, init: Map<string, unknown>): void
-}
-
-// ---------------------------------------------------------------------------
-// ICrushable stub (for FinishedMoving crush logic)
-// ---------------------------------------------------------------------------
-
-export interface ICrushable {
-  crushableBy(
-    actor: IGameActor,
-    crusher: IGameActor,
-    crushClasses: unknown,
-  ): boolean
-}
-
-// ---------------------------------------------------------------------------
-// INotifyCrushed stub (for FinishedMoving crush logic)
-// ---------------------------------------------------------------------------
-
-export interface INotifyCrushed {
-  onCrush(actor: IGameActor, crusher: IGameActor, crushClasses: unknown): void
-  warnCrush(actor: IGameActor, crusher: IGameActor, crushClasses: unknown): void
-}
 
 // ---------------------------------------------------------------------------
 // IMove — local extension of the simplified TS IMove with full C# Mobile API
@@ -494,9 +415,10 @@ export class MobileInfo implements
   /** Whether this actor shares cells with others.
    *
    * OpenRA 对照: IOccupySpaceInfo.SharesCell → LocomotorInfo.SharesCell
+   * NOTE: C# default for LocomotorInfo.SharesCell is false.
    */
   get sharesCell(): boolean {
-    return (this.locomotorInfo as unknown as Record<string, unknown>)?.['SharesCell'] as boolean ?? true
+    return this.locomotorInfo?.SharesCell ?? false
   }
 
   /**
@@ -504,24 +426,28 @@ export class MobileInfo implements
    * ignored (matching OpenRA behavior).
    *
    * OpenRA 对照: MobileInfo.CanEnterCell()
+   *
+   * NOTE: Uses locomotor.movementCostToEnterCell() which checks BOTH terrain
+   * cost (water, cliffs) AND actor blocking. The previous implementation
+   * incorrectly only checked blocking via canMoveFreelyInto().
    */
   canEnterCell(
     self: IGameActor,
     cell: CPos,
     check: BlockedByActor,
-    subCell: SubCellEnum = SubCellEnum.FullCell,
+    _subCell: SubCellEnum = SubCellEnum.FullCell,
     ignoreActor: IGameActor | null = null,
     locomotor: ILocomotor | null,
   ): boolean {
     if (!locomotor) return false
-    return locomotor.canMoveFreelyInto(
+    // Overload 2 (without srcNode): (actor, destNode, check, ignoreActor, ignoreSelf)
+    return locomotor.movementCostToEnterCell(
       self,
       cell,
-      subCell,
       check,
-      ignoreActor,
+      ignoreActor ?? null,
       false,
-    )
+    ) !== PathGraph.MovementCostForUnreachableCell
   }
 
   /**
@@ -601,6 +527,12 @@ export class Mobile
   private _moveResult: MoveResult = MoveResult.Moving
   private _turnToMove: boolean = false
   private _locomotor: ILocomotor | null = null
+
+  /** Lazily-resolved locomotor cached on first use.
+   *
+   * OpenRA 对照: Mobile.locomotor (Lazy resolution via world traits)
+   */
+  private _locomotorResolved: ILocomotor | null = null
 
   /** Tracks whether immovable condition is evaluated as active. */
   private _immoConditionActive: boolean = false
@@ -704,13 +636,13 @@ export class Mobile
 
   get currentMovementTypes(): Set<string> {
     const set = new Set<string>()
-    if (MovementTypeExts.hasMovementType(this._movementTypes, MovementType.Horizontal)) {
+    if (hasMovementType(this._movementTypes, MovementType.Horizontal)) {
       set.add('Horizontal')
     }
-    if (MovementTypeExts.hasMovementType(this._movementTypes, MovementType.Vertical)) {
+    if (hasMovementType(this._movementTypes, MovementType.Vertical)) {
       set.add('Vertical')
     }
-    if (MovementTypeExts.hasMovementType(this._movementTypes, MovementType.Turn)) {
+    if (hasMovementType(this._movementTypes, MovementType.Turn)) {
       set.add('Turn')
     }
     return set
@@ -836,10 +768,10 @@ export class Mobile
    * OpenRA 对照: Mobile.IsLeaving()
    */
   isLeaving(): boolean {
-    if (MovementTypeExts.hasMovementType(this._movementTypes, MovementType.Horizontal)) {
+    if (hasMovementType(this._movementTypes, MovementType.Horizontal)) {
       return true
     }
-    if (MovementTypeExts.hasMovementType(this._movementTypes, MovementType.Turn)) {
+    if (hasMovementType(this._movementTypes, MovementType.Turn)) {
       return this._turnToMove
     }
     return false
@@ -911,6 +843,19 @@ export class Mobile
    */
   get locomotor(): ILocomotor | null {
     return this._locomotor
+  }
+
+  /** Resolve the locomotor lazily (cached on first use).
+   *
+   * OpenRA 对照: Mobile C# constructor: locomotor is resolved via
+   * world.WorldActor.TraitsImplementing<Locomotor>().SingleOrDefault()
+   * in a lazy pattern. This mirrors that lazy resolution.
+   */
+  private getLocomotor(): ILocomotor | null {
+    if (!this._locomotorResolved && this._locomotor) {
+      this._locomotorResolved = this._locomotor
+    }
+    return this._locomotorResolved
   }
 
   // -----------------------------------------------------------------------
@@ -1191,7 +1136,7 @@ export class Mobile
       check ?? 3, // BlockedByActor.All
       this._toSubCell_cache,
       ignoreActor ?? null,
-      this._locomotor,
+      this.getLocomotor(),
     )
   }
 
@@ -1200,7 +1145,7 @@ export class Mobile
    * OpenRA 对照: Mobile.CanStayInCell()
    */
   canStayInCell(cell: CPos): boolean {
-    return this.info.canStayInCell(cell, this._locomotor)
+    return this.info.canStayInCell(cell, this.getLocomotor())
   }
 
   // -----------------------------------------------------------------------

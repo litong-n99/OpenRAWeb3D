@@ -1389,6 +1389,62 @@ export interface ICrushable {
   ): LongBitSetStub<unknown>
 }
 
+/**
+ * Notification interface — called when an actor is crushed by another.
+ *
+ * OpenRA 对照: INotifyCrushed
+ */
+export interface INotifyCrushed {
+  onCrush(
+    actor: IGameActor,
+    crusher: IGameActor,
+    crushClasses: BitSetStub<unknown>,
+  ): void
+
+  warnCrush(
+    actor: IGameActor,
+    crusher: IGameActor,
+    crushClasses: BitSetStub<unknown>,
+  ): void
+}
+
+/**
+ * Notification interface — called when an actor changes custom movement layers.
+ *
+ * OpenRA 对照: INotifyCustomLayerChanged
+ */
+export interface INotifyCustomLayerChanged {
+  customLayerChanged(
+    self: IGameActor,
+    oldLayer: number,
+    newLayer: number,
+  ): void
+}
+
+/**
+ * Modifies actor preview inits (e.g., map editor preview direction).
+ *
+ * OpenRA 对照: IActorPreviewInitModifier
+ */
+export interface IActorPreviewInitModifier {
+  modifyActorPreviewInit(
+    self: IGameActor,
+    inits: Map<string, unknown>,
+  ): void
+}
+
+/**
+ * Modifies death actor inits (e.g., husk direction and speed).
+ *
+ * OpenRA 对照: IDeathActorInitModifier
+ */
+export interface IDeathActorInitModifier {
+  modifyDeathActorInit(
+    self: IGameActor,
+    init: Map<string, unknown>,
+  ): void
+}
+
 // ---------------------------------------------------------------------------
 // Selectable
 // ---------------------------------------------------------------------------

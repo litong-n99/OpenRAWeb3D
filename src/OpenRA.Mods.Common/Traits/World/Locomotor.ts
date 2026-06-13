@@ -106,16 +106,24 @@ export const CustomMovementLayerType = {
  *
  * OpenRA 对照: MovementType (Flags enum)
  *
+ * Values: None=0, Horizontal=1, Vertical=2, Turn=4
+ *
  * NOTE: Uses const object instead of enum for erasableSyntaxOnly compatibility.
+ * The type alias is `number` (not a narrow literal union) because bitwise OR
+ * operations produce `number` results that cannot be assigned to literal types.
  */
 export const MovementType = {
   None: 0,
   Horizontal: 1,
   Vertical: 2,
+  Turn: 4,
 } as const
 
-/** Type for MovementType values. */
-export type MovementType = (typeof MovementType)[keyof typeof MovementType]
+/** Type for MovementType values.  Matches C# `int`-backed Flags enum — allows
+ * bitwise OR results like `Horizontal | Turn`.
+ *
+ * NOTE: `number` rather than a literal union because `|=` yields `number`. */
+export type MovementType = number
 
 /**
  * Check if a MovementType value has a specific movement type flag set.

@@ -12,8 +12,6 @@ import {
   Mobile,
   MobileInfo,
   MoveResult,
-  MovementType,
-  MovementTypeExts,
   ReturnToCellActivity,
   LeaveProductionActivity,
   MoveOrderTargeter,
@@ -26,7 +24,7 @@ import { WRot } from '../../OpenRA.Game/WRot.js'
 import { CPos } from '../../OpenRA.Game/CPos.js'
 import { SubCell as SubCellEnum } from '../../OpenRA.Game/Traits/SubCell.js'
 import { PathGraph } from '../Pathfinder/IPathGraph.js'
-import { LocomotorInfo } from './World/Locomotor.js'
+import { LocomotorInfo, MovementType, hasMovementType } from './World/Locomotor.js'
 
 import type {
   IGameActor,
@@ -197,16 +195,21 @@ describe('MobileInfo', () => {
     expect(found).toBe(true)
   })
 
-  it('sharesCell defaults to true when locomotorInfo is null', () => {
+  it('sharesCell defaults to false when locomotorInfo is null', () => {
     const info = new MobileInfo()
-    expect(info.sharesCell).toBe(true)
+    expect(info.sharesCell).toBe(false)
   })
 
   it('sharesCell returns false when LocomotorInfo.SharesCell is false', () => {
     const info = new MobileInfo()
     info.locomotorInfo = new LocomotorInfo()
-  ;(info.locomotorInfo as unknown as Record<string, unknown>)['SharesCell'] = false
     expect(info.sharesCell).toBe(false)
+  })
+
+  it('sharesCell returns true when LocomotorInfo.SharesCell is true', () => {
+    const info = new MobileInfo()
+    info.locomotorInfo = new LocomotorInfo({ sharesCell: true })
+    expect(info.sharesCell).toBe(true)
   })
 
   it('canEnterCell returns false when locomotor is null', () => {
@@ -215,11 +218,22 @@ describe('MobileInfo', () => {
     expect(info.canEnterCell(actor, new CPos(0, 0), 3, SubCellEnum.FullCell, null, null)).toBe(false)
   })
 
-  it('canEnterCell delegates to locomotor.canMoveFreelyInto', () => {
+  it('canEnterCell delegates to locomotor.movementCostToEnterCell', () => {
     const info = new MobileInfo()
     const actor = mockActor()
     const locomotor = mockLocomotor()
+    // movementCostToEnterCell returns 100 (not unreachable), so canEnterCell returns true
+    ;(locomotor.movementCostToEnterCell as ReturnType<typeof vi.fn>).mockReturnValue(100)
     expect(info.canEnterCell(actor, new CPos(3, 3), 3, SubCellEnum.FullCell, null, locomotor)).toBe(true)
+    expect(locomotor.movementCostToEnterCell).toHaveBeenCalled()
+  })
+
+  it('canEnterCell returns false when movementCostToEnterCell returns unreachable', () => {
+    const info = new MobileInfo()
+    const actor = mockActor()
+    const locomotor = mockLocomotor()
+    ;(locomotor.movementCostToEnterCell as ReturnType<typeof vi.fn>).mockReturnValue(PathGraph.MovementCostForUnreachableCell)
+    expect(info.canEnterCell(actor, new CPos(3, 3), 3, SubCellEnum.FullCell, null, locomotor)).toBe(false)
   })
 
   it('canStayInCell returns false when locomotor is null', () => {
@@ -417,19 +431,19 @@ describe('Mobile movement types', () => {
 })
 
 // ---------------------------------------------------------------------------
-// MovementTypeExts
+// hasMovementType (from Locomotor)
 // ---------------------------------------------------------------------------
 
-describe('MovementTypeExts', () => {
+describe('hasMovementType', () => {
   it('hasMovementType returns true when flag is set', () => {
-    expect(MovementTypeExts.hasMovementType(
+    expect(hasMovementType(
       MovementType.Horizontal | MovementType.Turn,
       MovementType.Horizontal,
     )).toBe(true)
   })
 
   it('hasMovementType returns false when flag is not set', () => {
-    expect(MovementTypeExts.hasMovementType(
+    expect(hasMovementType(
       MovementType.Horizontal,
       MovementType.Turn,
     )).toBe(false)
@@ -441,10 +455,12 @@ describe('MovementTypeExts', () => {
 // ---------------------------------------------------------------------------
 
 describe('Mobile cell checks', () => {
-  it('canEnterCell delegates to locomotor', () => {
+  it('canEnterCell delegates to locomotor.movementCostToEnterCell', () => {
     const { mobile, locomotor } = setup()
+    // movementCostToEnterCell returns 100 (not unreachable), so canEnterCell returns true
+    ;(locomotor.movementCostToEnterCell as ReturnType<typeof vi.fn>).mockReturnValue(100)
     expect(mobile.canEnterCell(new CPos(3, 3))).toBe(true)
-    expect(locomotor.canMoveFreelyInto).toHaveBeenCalled()
+    expect(locomotor.movementCostToEnterCell).toHaveBeenCalled()
   })
 
   it('canStayInCell returns true for reachable cell', () => {
@@ -650,7 +666,7 @@ describe('Mobile nearestMoveableCell', () => {
   it('returns target when it is enterable and stayable', () => {
     const { mobile, locomotor } = setup()
     ;(locomotor.movementCostForCell as ReturnType<typeof vi.fn>).mockReturnValue(100)
-    ;(locomotor.canMoveFreelyInto as ReturnType<typeof vi.fn>).mockReturnValue(true)
+    ;(locomotor.movementCostToEnterCell as ReturnType<typeof vi.fn>).mockReturnValue(100)
     const result = mobile.nearestMoveableCell(new CPos(6, 6))
     expect(result.X).toBe(6)
     expect(result.Y).toBe(6)
@@ -897,7 +913,7 @@ describe('Mobile getAdjacentCell', () => {
   it('finds an adjacent enterable cell', () => {
     const { mobile, locomotor } = setup()
     ;(locomotor.movementCostForCell as ReturnType<typeof vi.fn>).mockReturnValue(100)
-    ;(locomotor.canMoveFreelyInto as ReturnType<typeof vi.fn>).mockReturnValue(true)
+    ;(locomotor.movementCostToEnterCell as ReturnType<typeof vi.fn>).mockReturnValue(100)
     ;(locomotor.canStayInCell as ReturnType<typeof vi.fn>).mockReturnValue(true)
     const result = mobile.getAdjacentCell(new CPos(6, 5))
     expect(result).not.toBeNull()
@@ -906,7 +922,9 @@ describe('Mobile getAdjacentCell', () => {
 
   it('returns an adjacent cell even when not enterable (notStupidCells fallback)', () => {
     const { mobile, locomotor } = setup()
-    ;(locomotor.canMoveFreelyInto as ReturnType<typeof vi.fn>).mockReturnValue(false)
+    ;(locomotor.movementCostToEnterCell as ReturnType<typeof vi.fn>).mockReturnValue(
+      PathGraph.MovementCostForUnreachableCell,
+    )
     ;(locomotor.movementCostForCell as ReturnType<typeof vi.fn>).mockReturnValue(
       PathGraph.MovementCostForUnreachableCell,
     )
