@@ -14,6 +14,7 @@
 
 import type { WVec } from '../../OpenRA.Game/WVec.js'
 import type { WAngle } from '../../OpenRA.Game/WAngle.js'
+import type { WDist } from '../../OpenRA.Game/WDist.js'
 import type { Target } from '../../OpenRA.Game/Traits/Target.js'
 import type {
   IGameActor,
@@ -473,3 +474,51 @@ export function isIDamageModifier(
     typeof (obj as Record<string, unknown>).getDamageModifier === 'function'
   )
 }
+
+// ---------------------------------------------------------------------------
+// IBlocksProjectiles — projectile blocking
+// OpenRA 对照: IBlocksProjectiles
+// ---------------------------------------------------------------------------
+
+/** Trait that can block projectiles (bullets and missiles with 'Blockable' property).
+ *
+ *  OpenRA 对照: IBlocksProjectiles
+ */
+export interface IBlocksProjectiles {
+  readonly blockingHeight: WDist
+  readonly validRelationships: PlayerRelationship
+}
+
+/** Type guard for IBlocksProjectiles. */
+export function isIBlocksProjectiles(
+  obj: unknown,
+): obj is IBlocksProjectiles {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'blockingHeight' in obj &&
+    'validRelationships' in obj
+  )
+}
+
+// ---------------------------------------------------------------------------
+// CrushClass marker type — tag type for BitSet<CrushClass>
+// OpenRA 对照: CrushClass enum
+// ---------------------------------------------------------------------------
+
+/** Marker interface for BitSet type tag.
+ *
+ *  OpenRA 对照: CrushClass (empty enum)
+ *
+ *  Crush classes are string identifiers grouped into a BitSet.
+ *  Common values: "infantry", "vehicle", "crusher".
+ */
+export interface CrushClass {
+  // intentionally empty — marker type tag
+}
+
+/** The type name string used to key the BitSet allocator for CrushClass.
+ *
+ *  OpenRA 对照: BitSetAllocator<CrushClass>
+ */
+export const CRUSH_CLASS_TYPENAME = 'CrushClass'
