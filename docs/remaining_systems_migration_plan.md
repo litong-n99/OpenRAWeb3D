@@ -271,9 +271,11 @@ Traits that modify, enhance, or react to combat events. These depend on the core
 
 ### 3.2 Chapter 9: Unit Movement & Physics
 
+> **Detailed Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) -- 32 files (30 active + 2 deferred), 4 phases A-D, ~5,355 active C# lines, ~180 estimated tests
+
 **Objective**: Implement the Mobile trait (largest single trait at 1079 lines) and all movement-related traits that enable units to navigate the game world.
 
-**Prerequisites**: Chapters 2-4 (Map + Pathfinding + World + Actor), Chapter 7 Phase C (Selection)
+**Prerequisites**: Chapters 2-8 COMPLETE (219/219, 100%)
 
 #### Phase A: Core Movement Trait (1 file + 3 dependencies)
 

@@ -20,7 +20,7 @@
 | **Chapter 5 planned files** | 16 (5 Phases A-E, all phases complete) |
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
 | **Chapter 8 planned files (Weapons & Combat)** | 57 (56 core + 1 optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), **57/57 (100%, ALL PHASES COMPLETE)**, ~8,264 C# lines source, ~24,870 combined TS lines, 758 tests |
-| **Chapter 9 planned files (Movement & Physics)** | ~30 (3 Phases A-C planned), 0/30 migrated |
+| **Chapter 9 planned files (Movement & Physics)** | 32 (30 active + 2 deferred; 4 Phases A-D planned), 0/32 migrated. See [chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) |
 | **Chapter 10 planned files (Resource & Economy)** | ~15 (2 Phases A-B planned), 0/15 migrated |
 | **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 0/25 migrated |
 | **Chapter 12 planned files (Shroud & Fog of War)** | ~15 (1 Phase A planned), 0/15 migrated |
@@ -33,7 +33,7 @@
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
-| **Overall project completion** | Chapters 2-8 complete (219/219). Chapters 9-21 planned (0/~310 migrated). Total project: ~529 files estimated, ~219 complete (41.4%). |
+| **Overall project completion** | Chapters 2-8 complete (219/219). Chapter 9: 32 files planned (0 migrated). Chapters 10-21 planned (0/~278 migrated). Total project: ~529 files estimated, ~219 complete (41.4%). |
 
 > **Note**: Chapters 2-8 are fully complete. Chapter 8 Phase A (Warheads): 15 files, 143 tests. Phase B (Projectiles): 7 files, 186 tests. Phase C (Weapon Config): 2+1 files, 115 tests. Phase D (Core Combat Traits): 17 files, 158 tests. Phase E (Combat Support Traits): 15 files, 156 tests. Chapter 8 now 100% complete (57/57, 758 tests).
 
