@@ -57,15 +57,15 @@ class TestDockClient extends DockClientBase<TestDockClientInfo> {
     return this.dockType
   }
 
-  override canDock(type: DockTypeValue, forceEnter?: boolean): boolean {
+  override canDock(type: DockTypeValue, forceEnter: boolean = false): boolean {
     return this.mockCanDock(type, forceEnter)
   }
 
   override canDockAt(
     host: IGameActor,
     hostTrait: IDockHost,
-    forceEnter?: boolean,
-    ignoreOccupancy?: boolean,
+    forceEnter: boolean = false,
+    ignoreOccupancy: boolean = false,
   ): boolean {
     return this.mockCanDockAt(host, hostTrait, forceEnter, ignoreOccupancy)
   }
@@ -73,8 +73,8 @@ class TestDockClient extends DockClientBase<TestDockClientInfo> {
   override canQueueDockAt(
     host: IGameActor,
     hostTrait: IDockHost,
-    forceEnter?: boolean,
-    isQueued?: boolean,
+    forceEnter: boolean = false,
+    isQueued: boolean = false,
   ): boolean {
     return this.mockCanQueueDockAt(host, hostTrait, forceEnter, isQueued)
   }
@@ -263,7 +263,7 @@ describe('DockClientBase', () => {
     client.resolveOrder(self, order)
 
     expect(client.mockCanDockAt).toHaveBeenCalled()
-    expect(client.mockCanDockAt).toHaveBeenCalledWith(host, hostTrait, undefined, undefined)
+    expect(client.mockCanDockAt).toHaveBeenCalledWith(host, hostTrait, false, false)
     expect(client.mockCreateMoveToDockActivity).toHaveBeenCalledWith(self, host)
     expect(client.mockCreateDockActivity).toHaveBeenCalledWith(self, host)
     // queueActivity should be called
@@ -337,7 +337,7 @@ describe('DockClientBase', () => {
 
     client.resolveOrder(self, order)
 
-    expect(client.mockCanDockAt).toHaveBeenCalledWith(host, hostTrait, undefined, undefined)
+    expect(client.mockCanDockAt).toHaveBeenCalledWith(host, hostTrait, false, false)
     expect(client.mockCreateMoveToDockActivity).not.toHaveBeenCalled()
 
     client['getDockHost'] = origGetDockHost
@@ -418,7 +418,7 @@ describe('DockClientBase', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Abstract method call forwarding
+  // Abstract method call forwarding (TestDockClient with overrides)
   // -----------------------------------------------------------------------
 
   it('forwards getDockType to subclass', () => {
@@ -428,7 +428,7 @@ describe('DockClientBase', () => {
   it('forwards canDock to mock', () => {
     client.mockCanDock.mockReturnValue(true)
     expect(client.canDock(DockType.Unload)).toBe(true)
-    expect(client.mockCanDock).toHaveBeenCalledWith(DockType.Unload, undefined)
+    expect(client.mockCanDock).toHaveBeenCalledWith(DockType.Unload, false)
   })
 
   it('forwards canDock with forceEnter parameter', () => {
@@ -442,7 +442,7 @@ describe('DockClientBase', () => {
     const hostTrait = makeMockHost()
     client.mockCanDockAt.mockReturnValue(true)
     expect(client.canDockAt(host, hostTrait)).toBe(true)
-    expect(client.mockCanDockAt).toHaveBeenCalledWith(host, hostTrait, undefined, undefined)
+    expect(client.mockCanDockAt).toHaveBeenCalledWith(host, hostTrait, false, false)
   })
 
   it('forwards canDockAt with all parameters', () => {
@@ -476,5 +476,171 @@ describe('DockClientBase', () => {
     const hostTrait = makeMockHost()
     client.onDockCompleted(self, host, hostTrait)
     expect(client.mockOnDockCompleted).toHaveBeenCalledWith(self, host, hostTrait)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// MinimalTestDockClient — only overrides abstract methods, uses defaults
+// ---------------------------------------------------------------------------
+
+class MinimalDockClient extends DockClientBase<TestDockClientInfo> {
+  dockType: DockTypeValue = DockType.Unload
+
+  override getDockType(): DockTypeValue {
+    return this.dockType
+  }
+
+  override createDockActivity(_self: IGameActor, _host: IGameActor): ActivityStub {
+    return makeMockActivityStub('Dock')
+  }
+
+  override createMoveToDockActivity(_self: IGameActor, _host: IGameActor): ActivityStub {
+    return makeMockActivityStub('MoveToDock')
+  }
+}
+
+describe('DockClientBase default virtual methods', () => {
+  let info: TestDockClientInfo
+  let client: MinimalDockClient
+
+  beforeEach(() => {
+    info = new TestDockClientInfo()
+    client = new MinimalDockClient(info)
+  })
+
+  // -----------------------------------------------------------------------
+  // Default canDock
+  // -----------------------------------------------------------------------
+
+  it('default canDock returns true when dock type overlaps', () => {
+    client.dockType = DockType.Unload
+    expect(client.canDock(DockType.Unload)).toBe(true)
+  })
+
+  it('default canDock returns true for bitmask overlap', () => {
+    client.dockType = DockType.Unload | DockType.Repair
+    expect(client.canDock(DockType.Unload)).toBe(true)
+  })
+
+  it('default canDock returns false when dock type does not overlap', () => {
+    client.dockType = DockType.Unload
+    expect(client.canDock(DockType.Repair)).toBe(false)
+  })
+
+  it('default canDock returns false when trait is disabled', () => {
+    client.dockType = DockType.Unload
+    ;((client as unknown) as { _enabled: boolean })._enabled = false
+    expect(client.canDock(DockType.Unload)).toBe(false)
+  })
+
+  it('default canDock forceEnter does not affect basic logic', () => {
+    client.dockType = DockType.Unload
+    expect(client.canDock(DockType.Unload, true)).toBe(true)
+    expect(client.canDock(DockType.Repair, true)).toBe(false)
+  })
+
+  // -----------------------------------------------------------------------
+  // Default canDockAt
+  // -----------------------------------------------------------------------
+
+  it('default canDockAt returns true when canDock + host accepts', () => {
+    const host = makeMockActor()
+    const hostTrait = makeMockHost()
+    const self = makeMockActor()
+    client.attach(self)
+
+    expect(client.canDockAt(host, hostTrait)).toBe(true)
+    expect(hostTrait.isDockingPossible).toHaveBeenCalledWith(
+      self, expect.anything(), false,
+    )
+  })
+
+  it('default canDockAt returns false when _actor is null', () => {
+    const host = makeMockActor()
+    const hostTrait = makeMockHost()
+    // client not attached → _actor is null
+
+    expect(client.canDockAt(host, hostTrait)).toBe(false)
+  })
+
+  it('default canDockAt passes ignoreOccupancy to host', () => {
+    const host = makeMockActor()
+    const hostTrait = makeMockHost()
+    const self = makeMockActor()
+    client.attach(self)
+
+    client.canDockAt(host, hostTrait, false, true)
+    expect(hostTrait.isDockingPossible).toHaveBeenCalledWith(
+      self, expect.anything(), true,
+    )
+  })
+
+  it('default canDockAt returns false when host rejects', () => {
+    const host = makeMockActor()
+    const hostTrait = makeMockHost({ isDockingPossible: vi.fn().mockReturnValue(false) })
+    const self = makeMockActor()
+    client.attach(self)
+
+    expect(client.canDockAt(host, hostTrait)).toBe(false)
+  })
+
+  it('default canDockAt returns false when canDock fails (type mismatch)', () => {
+    const host = makeMockActor()
+    // Host has Unload dock type...
+    const hostTrait = makeMockHost({ getDockType: DockType.Unload })
+    client.dockType = DockType.Repair // ...but client only supports Repair
+    const self = makeMockActor()
+    client.attach(self)
+
+    expect(client.canDockAt(host, hostTrait)).toBe(false)
+  })
+
+  // -----------------------------------------------------------------------
+  // Default canQueueDockAt
+  // -----------------------------------------------------------------------
+
+  it('default canQueueDockAt passes ignoreReservations=true to host', () => {
+    const host = makeMockActor()
+    const hostTrait = makeMockHost()
+    const self = makeMockActor()
+    client.attach(self)
+
+    client.canQueueDockAt(host, hostTrait)
+    // canQueueDockAt calls canDock(type, true) and host.isDockingPossible(_, _, true)
+    expect(hostTrait.isDockingPossible).toHaveBeenCalledWith(
+      self, expect.anything(), true,
+    )
+  })
+
+  it('default canQueueDockAt returns false when _actor is null', () => {
+    const host = makeMockActor()
+    const hostTrait = makeMockHost()
+
+    expect(client.canQueueDockAt(host, hostTrait)).toBe(false)
+  })
+
+  // -----------------------------------------------------------------------
+  // Default onDockStarted, onDockTick, onDockCompleted (no-op)
+  // -----------------------------------------------------------------------
+
+  it('default onDockStarted is a no-op (does not throw)', () => {
+    const self = makeMockActor()
+    const host = makeMockActor()
+    const hostTrait = makeMockHost()
+    expect(() => client.onDockStarted(self, host, hostTrait)).not.toThrow()
+  })
+
+  it('default onDockTick returns false (not complete)', () => {
+    const self = makeMockActor()
+    const host = makeMockActor()
+    const hostTrait = makeMockHost()
+    expect(client.onDockTick(self, host, hostTrait)).toBe(false)
+  })
+
+  it('default onDockCompleted is a no-op (does not throw)', () => {
+    const self = makeMockActor()
+    const host = makeMockActor()
+    const dock = makeMockHost()
+    expect(() => client.onDockCompleted(self, host, dock)).not.toThrow()
   })
 })

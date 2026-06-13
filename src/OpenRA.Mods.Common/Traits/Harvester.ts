@@ -43,6 +43,7 @@ import {
 } from './DockClientBase.js'
 import type { DockTypeValue } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { CPos } from '../../OpenRA.Game/CPos.js'
+import { CVec } from '../../OpenRA.Game/CVec.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -167,10 +168,10 @@ export class HarvesterInfo extends DockClientBaseInfo {
 
   /** Cell to move to when automatically unblocking the delivery building.
    *
-   *  OpenRA 对照: HarvesterInfo.UnblockCell (default CVec(0, 4))
+   *  OpenRA 对照: HarvesterInfo.UnblockCell (CVec, default CVec(0, 4))
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/Harvester.cs:28
    */
-  readonly unblockCellX: number = 0
-  readonly unblockCellY: number = 4
+  readonly unblockCell: CVec = new CVec(0, 4)
 
   constructor(params: {
     instanceName?: string
@@ -193,8 +194,7 @@ export class HarvesterInfo extends DockClientBaseInfo {
     harvestVoice?: string
     harvestLineColor?: ColorStub
     harvestCursor?: string
-    unblockCellX?: number
-    unblockCellY?: number
+    unblockCell?: CVec
   } = {}) {
     super({
       instanceName: params.instanceName,
@@ -218,8 +218,7 @@ export class HarvesterInfo extends DockClientBaseInfo {
     this.harvestVoice = params.harvestVoice ?? 'Action'
     this.harvestLineColor = params.harvestLineColor ?? { r: 0.86, g: 0.08, b: 0.24, a: 1 }
     this.harvestCursor = params.harvestCursor ?? 'harvest'
-    this.unblockCellX = params.unblockCellX ?? 0
-    this.unblockCellY = params.unblockCellY ?? 4
+    this.unblockCell = params.unblockCell ?? new CVec(0, 4)
   }
 }
 
@@ -403,39 +402,36 @@ export class Harvester
   /** Check whether this harvester can dock using the given dock type.
    *
    *  OpenRA 对照: Harvester.CanDock(BitSet<DockType>, bool)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/Harvester.cs:130-133
    *
+   *  Calls base.canDock() for isTraitDisabled + dock type overlap check.
    *  Only docks when not empty (has resources to unload), unless
    *  forceEnter is true.
    */
-  override canDock(_type: DockTypeValue, forceEnter: boolean = false): boolean {
-    // NOTE: C# calls base.CanDock(type, forceEnter) which checks
-    // IsTraitDisabled. In TS, DockClientBase.canDock is abstract so we
-    // replicate the base check inline.
-    return (
-      !this.isTraitDisabled &&
-      (forceEnter || !this.isEmpty)
-    )
+  override canDock(type: DockTypeValue, forceEnter: boolean = false): boolean {
+    return super.canDock(type, forceEnter) && (forceEnter || !this.isEmpty)
   }
 
   /** Check whether this harvester can dock at a specific host.
    *
    *  OpenRA 对照: Harvester.CanDockAt(Actor, IDockHost, bool, bool)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/Harvester.cs:135-139
    *
-   *  Only docks at hosts owned by the same player, or allied hosts
-   *  when ignoring occupancy.
+   *  Calls base.canDockAt() for isTraitDisabled + dock type overlap +
+   *  host availability checks. Harvester adds owner/alliance checks:
+   *  always allows same owner, allows allied hosts when ignoreOccupancy.
    */
   override canDockAt(
     host: IGameActor,
-    _hostTrait: IDockHost,
-    _forceEnter: boolean = false,
+    hostTrait: IDockHost,
+    forceEnter: boolean = false,
     ignoreOccupancy: boolean = false,
   ): boolean {
     const self = this._self
     if (!self) return false
 
-    // NOTE: super.canDockAt() is abstract in TS DockClientBase.
-    // Replicate the base check (IsTraitDisabled) inline.
-    if (this.isTraitDisabled) return false
+    // Base check: isTraitDisabled + dock type overlap + host availability
+    if (!super.canDockAt(host, hostTrait, forceEnter, ignoreOccupancy)) return false
 
     // Same owner: always allow
     if (self.owner === host.owner) return true
@@ -451,21 +447,22 @@ export class Harvester
   /** Check whether this harvester can queue a dock order for a host.
    *
    *  OpenRA 对照: Harvester.CanQueueDockAt(Actor, IDockHost, bool, bool)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/Harvester.cs:141-145
    *
-   *  Only queues dock at allied hosts.
+   *  Calls base.canQueueDockAt() for isTraitDisabled + dock type overlap +
+   *  host availability checks. Harvester adds alliance check.
    */
   override canQueueDockAt(
     host: IGameActor,
-    _hostTrait: IDockHost,
-    _forceEnter: boolean = false,
-    _isQueued: boolean = false,
+    hostTrait: IDockHost,
+    forceEnter: boolean = false,
+    isQueued: boolean = false,
   ): boolean {
-    // NOTE: super.canQueueDockAt() is abstract in TS DockClientBase.
-    // Replicate the base check (IsTraitDisabled) inline.
-    if (this.isTraitDisabled) return false
-
     const self = this._self
     if (!self) return false
+
+    // Base check: isTraitDisabled + dock type overlap + host availability
+    if (!super.canQueueDockAt(host, hostTrait, forceEnter, isQueued)) return false
 
     return this._isAlliedWith(self.owner, host.owner)
   }
@@ -477,14 +474,15 @@ export class Harvester
   /** Called when docking begins. Resolves the host's IAcceptResources trait.
    *
    *  OpenRA 对照: Harvester.OnDockStarted(Actor, Actor, IDockHost)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/Harvester.cs:170-174
    */
   override onDockStarted(
-    _self: IGameActor,
+    self: IGameActor,
     host: IGameActor,
     hostTrait: IDockHost,
   ): void {
-    // NOTE: C# calls base.CanDock() which checks IsTraitDisabled.
-    // In TS, we call our own canDock which already includes that check.
+    super.onDockStarted(self, host, hostTrait)
+    // C#: if (base.CanDock(host.GetDockType)) — check via our canDock (delegates to base)
     if (this.canDock(hostTrait.getDockType)) {
       this._acceptResources = this._resolveAcceptResources(host)
     }
@@ -493,6 +491,7 @@ export class Harvester
   /** Called every tick during docking. Unloads one bale per tick.
    *
    *  OpenRA 对照: Harvester.OnDockTick(Actor, Actor, IDockHost) -> bool
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/Harvester.cs:176-202
    *
    *  @returns true when docking is complete (all resources unloaded),
    *           false if still more to unload
@@ -500,8 +499,9 @@ export class Harvester
   override onDockTick(
     self: IGameActor,
     host: IGameActor,
-    _hostTrait: IDockHost,
+    hostTrait: IDockHost,
   ): boolean {
+    super.onDockTick(self, host, hostTrait) // no-op in base
     if (this._acceptResources === null || this.isTraitDisabled) {
       return true
     }
@@ -534,12 +534,14 @@ export class Harvester
    *  the dock type matches.
    *
    *  OpenRA 对照: Harvester.OnDockCompleted(Actor, Actor, IDockHost)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/Harvester.cs:204-215
    */
   override onDockCompleted(
     self: IGameActor,
-    _host: IGameActor,
+    host: IGameActor,
     dock: IDockHost,
   ): void {
+    super.onDockCompleted(self, host, dock) // no-op in base
     this._acceptResources = null
 
     // After docking at a refinery, ensure we continue harvesting
@@ -702,15 +704,14 @@ export class Harvester
   /** Check whether a cell contains resources this harvester can collect.
    *
    *  OpenRA 对照: Harvester.CanHarvestCell(CPos)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/Harvester.cs:217-229
    *
    *  @param cell — the map cell to check
    *  @returns true if the cell has a harvestable resource
    */
   canHarvestCell(cell: CPos): boolean {
-    // Resources only exist in the ground layer (layer 0)
-    // CPos layer is tracked via Bits; for ground layer, layer component is 0
-    // NOTE: CPos uses 'Layer' (capital L) as a getter property, not 'layer'.
-    // The cell's Layer property is 0 for ground-level cells.
+    // Resources only exist in the ground layer (layer 0).
+    // This check matches C# Harvester.cs:220 — "Resources only exist in the ground layer"
     if (cell.Layer !== 0) {
       return false
     }

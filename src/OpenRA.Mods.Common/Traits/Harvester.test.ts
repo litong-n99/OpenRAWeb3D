@@ -181,10 +181,10 @@ describe('HarvesterInfo', () => {
     expect(info.harvestCursor).toBe('harvest')
   })
 
-  it('has default unblockCellX of 0 and unblockCellY of 4', () => {
+  it('has default unblockCell of CVec(0, 4)', () => {
     const info = new HarvesterInfo()
-    expect(info.unblockCellX).toBe(0)
-    expect(info.unblockCellY).toBe(4)
+    expect(info.unblockCell.X).toBe(0)
+    expect(info.unblockCell.Y).toBe(4)
   })
 
   it('accepts custom values', () => {
@@ -724,8 +724,18 @@ describe('Harvester canDock', () => {
     const host = makeMockActor({ owner: playerB })
     const hostTrait = makeDockHost()
 
+    // Harvester must be non-empty for canDockAt to pass the initial canDock check
+    const contents = new Map<string, number>([['Tiberium', 50]])
+    const sr: IStoresResources = {
+      hasType: () => true,
+      capacity: 100,
+      contents,
+      get contentsSum(): number { return 50 },
+      addResource: vi.fn(),
+      removeResource: vi.fn(),
+    }
     const selfDiff = makeMockActor({
-      _storesResources: [] as IStoresResources[],
+      _storesResources: [sr],
       owner: makePlayerStub('PlayerA'),
     } as Record<string, unknown>)
     harvester.detach(self)
@@ -740,8 +750,18 @@ describe('Harvester canDock', () => {
     // Make ally have isAlliedWith
     ;(alliedPlayer as unknown as Record<string, unknown>).isAlliedWith = () => true
 
+    // Harvester must be non-empty for canDockAt to pass (calls canDock which checks isEmpty)
+    const contents = new Map<string, number>([['Tiberium', 50]])
+    const sr: IStoresResources = {
+      hasType: () => true,
+      capacity: 100,
+      contents,
+      get contentsSum(): number { return 50 },
+      addResource: vi.fn(),
+      removeResource: vi.fn(),
+    }
     const selfAllied = makeMockActor({
-      _storesResources: [] as IStoresResources[],
+      _storesResources: [sr],
       owner: alliedPlayer,
     })
     harvester.detach(self)

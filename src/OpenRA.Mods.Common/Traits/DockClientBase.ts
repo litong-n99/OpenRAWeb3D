@@ -1,14 +1,20 @@
 /**
  * DockClientBase.ts — Abstract generic base class for docking client units
- * OpenRA 对照: OpenRA.Mods.Common/Traits/DockClientBase.cs
+ * OpenRA 对照: OpenRA.Mods.Common/Traits/DockClientBase.cs (55 lines)
  *
  * 核心范式转换:
  * - C# DockClientBase<InfoType> : ConditionalTrait<InfoType>, IDockClient, INotifyCreated
  *   → TS DockClientBase<T> : ConditionalTrait<T>, IResolveOrder
- * - C# virtual methods with default impl → TS abstract methods (subclass must implement all)
+ *   NOTE: C# DockClientBase does NOT implement IResolveOrder — each subclass
+ *   (Harvester, etc.) implements it independently. In TS, we move IResolveOrder
+ *   to the base class for code reuse across all docking clients. The default
+ *   resolveOrder handles the "Dock" order; subclasses can override to add
+ *   additional order types (Harvest, Deliver, etc.) and call super.resolveOrder().
+ *   This is an intentional architectural deviation from C#, documented here.
+ * - C# virtual methods with default impl → TS virtual methods (subclass MAY override)
  * - C# self.TraitOrDefault<DockClientManager>() → deferred to Chapter 14 (DockClientManager)
  * - C# Actor concrete type → TS IGameActor forward interface
- * - C# BitSet<DockType> → TS DockTypeValue (number bitmask)
+ * - C# BitSet<DockType> → TS DockTypeValue (number bitmask, overlaps → bitwise AND)
  * - Actual docking Activity (MoveToDock, Dock) deferred to Chapter 14 Phase D
  *
  * DockClientBase is the base class for units that can dock at host buildings:
@@ -16,12 +22,12 @@
  * - RepairClient (docks at RepairPad for Repair)
  * - RefuelClient (docks at RefuelPad for Refuel)
  *
- * Subclasses must implement all abstract methods. The docking lifecycle is:
+ * The docking lifecycle (virtual methods, can be overridden):
  *   1. canDock / canDockAt — permission checks before issuing dock order
- *   2. createMoveToDockActivity — move to dock position
- *   3. onDockStarted — docking begins
- *   4. onDockTick — per-tick during dock (returns true when complete)
- *   5. onDockCompleted — docking finished
+ *   2. createMoveToDockActivity — move to dock position (abstract)
+ *   3. onDockStarted — docking begins (virtual no-op)
+ *   4. onDockTick — per-tick during dock (virtual, returns false = not complete)
+ *   5. onDockCompleted — docking finished (virtual no-op)
  *
  * TODO-10.A.0: DockClientManager integration deferred to Chapter 14.
  * TODO-14.D: Actual Dock/MoveToDock Activity implementation.
@@ -142,7 +148,12 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
 
   /** Check whether this client can dock using the given dock type.
    *
-   *  OpenRA 对照: IDockClient.CanDock(BitSet<DockType>, bool)
+   *  OpenRA 对照: DockClientBase.CanDock(BitSet<DockType>, bool)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/DockClientBase.cs:33-36
+   *
+   *  Default implementation checks IsTraitDisabled and DockType overlap.
+   *  Subclasses can override to add additional restrictions (e.g.,
+   *  Harvester checks IsEmpty).
    *
    *  Does NOT check if DockClientManager is enabled.
    *
@@ -150,11 +161,19 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
    *  @param forceEnter — if true, bypass certain restrictions
    *  @returns true if docking is allowed
    */
-  abstract canDock(type: DockTypeValue, forceEnter?: boolean): boolean
+  canDock(type: DockTypeValue, forceEnter: boolean = false): boolean {
+    void forceEnter // base impl doesn't use; subclasses may
+    return !this.isTraitDisabled && (this.getDockType() & type) !== 0
+  }
 
   /** Check whether this client can dock at a specific host.
    *
-   *  OpenRA 对照: IDockClient.CanDockAt(Actor, IDockHost, bool, bool)
+   *  OpenRA 对照: DockClientBase.CanDockAt(Actor, IDockHost, bool, bool)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/DockClientBase.cs:38-42
+   *
+   *  Default implementation calls canDock() for the host's dock type,
+   *  then checks host.isDockingPossible(). Subclasses can override to
+   *  add additional restrictions (e.g., Harvester checks ownership/alliance).
    *
    *  Does NOT check if DockClientManager is enabled.
    *
@@ -164,16 +183,26 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
    *  @param ignoreOccupancy — if true, ignore reservation count limits
    *  @returns true if docking at this host is allowed
    */
-  abstract canDockAt(
+  canDockAt(
     host: IGameActor,
     hostTrait: IDockHost,
-    forceEnter?: boolean,
-    ignoreOccupancy?: boolean,
-  ): boolean
+    forceEnter: boolean = false,
+    ignoreOccupancy: boolean = false,
+  ): boolean {
+    void host // base impl uses hostTrait, not host; subclasses may use
+    if (!this._actor) return false
+    return this.canDock(hostTrait.getDockType, forceEnter)
+      && hostTrait.isDockingPossible(this._actor, this as unknown, ignoreOccupancy)
+  }
 
   /** Check whether this client can queue a dock order for a specific host.
    *
-   *  OpenRA 对照: IDockClient.CanQueueDockAt(Actor, IDockHost, bool, bool)
+   *  OpenRA 对照: DockClientBase.CanQueueDockAt(Actor, IDockHost, bool, bool)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/DockClientBase.cs:44-48
+   *
+   *  Default implementation calls canDock(type, true) for the host's dock type,
+   *  then checks host.isDockingPossible() without reservation checks.
+   *  Subclasses can override to add additional restrictions.
    *
    *  Does NOT check if DockClientManager is enabled.
    *
@@ -183,12 +212,19 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
    *  @param isQueued — whether this order is queued (not immediate)
    *  @returns true if a dock order can be queued for this host
    */
-  abstract canQueueDockAt(
+  canQueueDockAt(
     host: IGameActor,
     hostTrait: IDockHost,
-    forceEnter?: boolean,
-    isQueued?: boolean,
-  ): boolean
+    forceEnter: boolean = false,
+    isQueued: boolean = false,
+  ): boolean {
+    void host // base impl uses hostTrait, not host; subclasses may use
+    void forceEnter // C# passes `true` hardcoded; subclasses may use
+    void isQueued // unused, matches C# signature
+    if (!this._actor) return false
+    return this.canDock(hostTrait.getDockType, true)
+      && hostTrait.isDockingPossible(this._actor, this as unknown, true)
+  }
 
   // -----------------------------------------------------------------------
   // Abstract docking lifecycle callbacks
@@ -196,46 +232,66 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
 
   /** Called when docking begins.
    *
-   *  OpenRA 对照: IDockClient.OnDockStarted(Actor, Actor, IDockHost)
+   *  OpenRA 对照: DockClientBase.OnDockStarted(Actor, Actor, IDockHost)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/DockClientBase.cs:50
+   *
+   *  Default implementation is a no-op. Subclasses can override to
+   *  resolve host traits (e.g., Harvester resolves IAcceptResources).
    *
    *  @param self — this actor
    *  @param host — the host actor being docked at
    *  @param hostTrait — the host's IDockHost trait
    */
-  abstract onDockStarted(
-    self: IGameActor,
-    host: IGameActor,
-    hostTrait: IDockHost,
-  ): void
+  onDockStarted(
+    _self: IGameActor,
+    _host: IGameActor,
+    _hostTrait: IDockHost,
+  ): void {
+    // no-op — subclasses override to add behavior
+  }
 
   /** Called every tick during docking.
    *
-   *  OpenRA 对照: IDockClient.OnDockTick(Actor, Actor, IDockHost) -> bool
+   *  OpenRA 对照: DockClientBase.OnDockTick(Actor, Actor, IDockHost) -> bool
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/DockClientBase.cs:52
+   *
+   *  Default implementation returns false (docking not complete).
+   *  Subclasses can override to add per-tick unloading/repairing logic
+   *  and return true when docking is finished.
    *
    *  @param self — this actor
    *  @param host — the host actor being docked at
    *  @param hostTrait — the host's IDockHost trait
    *  @returns true when docking is complete, false if still in progress
    */
-  abstract onDockTick(
-    self: IGameActor,
-    host: IGameActor,
-    hostTrait: IDockHost,
-  ): boolean
+  onDockTick(
+    _self: IGameActor,
+    _host: IGameActor,
+    _hostTrait: IDockHost,
+  ): boolean {
+    return false // not complete by default
+  }
 
   /** Called when docking is complete.
    *
-   *  OpenRA 对照: IDockClient.OnDockCompleted(Actor, Actor, IDockHost)
+   *  OpenRA 对照: DockClientBase.OnDockCompleted(Actor, Actor, IDockHost)
+   *  OpenRA 参照: OpenRA.Mods.Common/Traits/DockClientBase.cs:54
+   *
+   *  Default implementation is a no-op. Subclasses can override to
+   *  clear state and queue follow-up activities (e.g., Harvester
+   *  queues a new harvest activity after unloading).
    *
    *  @param self — this actor
    *  @param host — the host actor that was docked at
    *  @param dock — the host's IDockHost trait
    */
-  abstract onDockCompleted(
-    self: IGameActor,
-    host: IGameActor,
-    dock: IDockHost,
-  ): void
+  onDockCompleted(
+    _self: IGameActor,
+    _host: IGameActor,
+    _dock: IDockHost,
+  ): void {
+    // no-op — subclasses override to add behavior
+  }
 
   // -----------------------------------------------------------------------
   // Abstract activity factory methods
@@ -280,13 +336,25 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
 
   // -----------------------------------------------------------------------
   // IResolveOrder — handle Dock orders
+  //
+  // ARCHITECTURAL NOTE (intentional deviation from C#):
+  //   In C#, DockClientBase does NOT implement IResolveOrder. Each subclass
+  //   (Harvester, RepairClient, RefuelClient) independently implements
+  //   IResolveOrder. In TypeScript, we move IResolveOrder to the base class
+  //   so that the "Dock" order resolution (resolve host → validate → queue
+  //   move+dock activities) is implemented once and reused across all
+  //   docking client subclasses. Subclasses override resolveOrder to add
+  //   their own order types (Harvest, Repair, Refuel) and call
+  //   super.resolveOrder() for "Dock" order handling.
+  //
+  //   OpenRA 对照: C# Harvester.IResolveOrder.ResolveOrder() — the
+  //     equivalent logic in C# is per-subclass, not shared.
   // -----------------------------------------------------------------------
 
   /** Handle a player-issued order.
    *
-   *  OpenRA 对照: N/A (C# Harvester implements IResolveOrder directly;
-   *    DockClientBase does not. TS adaptation moves dock order resolution
-   *    to the base class for reuse across all docking clients.)
+   *  NOTE: This method exists on DockClientBase in TS (not in C#).
+   *  See the ARCHITECTURAL NOTE above for the rationale.
    *
    *  Default implementation handles the "Dock" order. Subclasses can
    *  override to add additional order types (Harvest, Deliver, etc.)
