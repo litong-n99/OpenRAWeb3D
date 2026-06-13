@@ -24,6 +24,8 @@ import type { WDist } from '../WDist'
 import type { CPos } from '../CPos'
 import type { WRot } from '../WRot'
 import type { SubCell as SubCellEnum } from './SubCell'
+import type { Activity } from '../Activities/Activity'
+import type { Target } from './Target'
 
 // ---------------------------------------------------------------------------
 // Forward type stubs (types not yet migrated, referenced by interfaces)
@@ -1197,6 +1199,172 @@ export interface ColorStub {
   readonly g: number
   readonly b: number
   readonly a: number
+}
+
+/**
+ * Central movement trait — provides movement activities and utilities.
+ *
+ * OpenRA 对照: IMove
+ */
+export interface IMove {
+  /** Move to a target position/actor.
+   *
+   * OpenRA 对照: IMove.MoveTo(Target)
+   */
+  moveTo(source: IGameActor, target: Target): Activity
+
+  /** Move to within a given range of a target.
+   *
+   * OpenRA 对照: IMove.MoveWithinRange(Target, WDist, WPos?, Target?)
+   */
+  moveWithinRange(
+    source: IGameActor,
+    target: Target,
+    range: WDist,
+    initialTarget?: Target,
+  ): Activity
+
+  /** Follow a target while staying within range of a second target.
+   *
+   * OpenRA 对照: IMove.MoveFollow(Target, WDist, WDist?, Target?)
+   */
+  moveFollow(
+    source: IGameActor,
+    target: Target,
+    range: WDist,
+    followTarget: Target,
+    initialTarget?: Target,
+  ): Activity
+
+  /** Move to a target for attacking/interaction.
+   *
+   * OpenRA 对照: IMove.MoveToTarget(Target)
+   */
+  moveToTarget(source: IGameActor, target: Target): Activity
+
+  /** Move onto a target's cell (for passenger/transport interactions).
+   *
+   * OpenRA 对照: IMove.MoveIntoTarget(Target)
+   */
+  moveIntoTarget(source: IGameActor, target: Target): Activity
+
+  /** Move onto a target's position, facing a specific target.
+   *
+   * OpenRA 对照: IMove.MoveOntoTarget(Target, WAngle?, Target?)
+   */
+  moveOntoTarget(
+    source: IGameActor,
+    target: Target,
+    facingTarget: Target,
+  ): Activity
+
+  /** Move to a specific world position (local/within-screen repositioning).
+   *
+   * OpenRA 对照: IMove.LocalMove(WPos)
+   */
+  localMove(source: IGameActor, destination: WPos): Activity
+
+  /** Estimate the duration (in ticks) to move between two world positions.
+   *
+   * OpenRA 对照: IMove.EstimatedMoveDuration(WPos, WPos)
+   */
+  estimatedMoveDuration(source: IGameActor, from: WPos, to: WPos): number
+
+  /** Find the nearest cell position that is reachable by this actor.
+   *
+   * OpenRA 对照: IMove.NearestMoveableCell(WPos)
+   */
+  nearestMoveableCell(source: IGameActor, target: WPos): CPos
+
+  /** Check whether this actor can enter the target cell(s) right now.
+   *
+   * OpenRA 对照: IMove.CanEnterTargetNow(Target)
+   */
+  canEnterTargetNow(source: IGameActor, target: Target): boolean
+
+  /** Bitfield-like string set tracking which movement types are currently active
+   * (e.g., "Horizontal", "Turn", "Vertical").
+   *
+   * OpenRA 对照: IMove.CurrentMovementTypes
+   */
+  readonly currentMovementTypes: Set<string>
+}
+
+/**
+ * Notification interface — called each tick while the actor is moving.
+ *
+ * OpenRA 对照: INotifyMoving
+ */
+export interface INotifyMoving {
+  onNotifyMoving(self: IGameActor): void
+}
+
+/**
+ * Notification interface — called when the actor finishes moving.
+ *
+ * OpenRA 对照: INotifyFinishedMoving
+ */
+export interface INotifyFinishedMoving {
+  onNotifyFinishedMoving(self: IGameActor): void
+}
+
+/**
+ * Wrapping movement — transforms a world position for map-edge wrapping.
+ *
+ * OpenRA 对照: IWrapMove
+ */
+export interface IWrapMove {
+  onWrapMove(self: IGameActor, oldPos: WPos, newPos: WPos): WPos
+}
+
+/**
+ * Notification interface — called when an actor's center position changes.
+ *
+ * OpenRA 对照: INotifyCenterPositionChanged
+ */
+export interface INotifyCenterPositionChanged {
+  onCenterPositionChanged(self: IGameActor): void
+}
+
+/**
+ * Notification interface — called when movement is blocked by another actor.
+ *
+ * OpenRA 对照: INotifyBlockingMove
+ */
+export interface INotifyBlockingMove {
+  onNotifyBlockingMove(self: IGameActor, blocking: IGameActor): void
+}
+
+/**
+ * Positionable trait — extends IOccupySpace with center-position updates
+ * and map-leaving checks.
+ *
+ * OpenRA 对照: IPositionable
+ */
+export interface IPositionable extends IOccupySpace {
+  /** Whether the center position can change in the current state.
+   *
+   * OpenRA 对照: IPositionable.CanCenterPositionChange
+   */
+  canCenterPositionChange(self: IGameActor): boolean
+
+  /** Set the center position.
+   *
+   * OpenRA 对照: IPositionable.SetCenterPosition(WPos)
+   */
+  setCenterPosition(self: IGameActor, value: WPos): void
+
+  /** Whether the actor is currently in the visible world area.
+   *
+   * OpenRA 对照: IPositionable.IsInWorld
+   */
+  isInWorld: boolean
+
+  /** Whether the actor is currently leaving the map (e.g., aircraft flying off).
+   *
+   * OpenRA 对照: IPositionable.IsLeavingMap
+   */
+  isLeavingMap(self: IGameActor): boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -2675,5 +2843,53 @@ export function isIWorldLoaded(obj: unknown): obj is IWorldLoaded {
     obj !== null &&
     'worldLoaded' in obj &&
     typeof (obj as Record<string, unknown>).worldLoaded === 'function'
+  )
+}
+
+/**
+ * Type guard for IMove.
+ */
+export function isIMove(obj: unknown): obj is IMove {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'moveTo' in obj &&
+    typeof (obj as Record<string, unknown>).moveTo === 'function' &&
+    'nearestMoveableCell' in obj &&
+    typeof (obj as Record<string, unknown>).nearestMoveableCell === 'function' &&
+    'currentMovementTypes' in obj
+  )
+}
+
+/**
+ * Type guard for INotifyMoving.
+ */
+export function isINotifyMoving(obj: unknown): obj is INotifyMoving {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'onNotifyMoving' in obj &&
+    typeof (obj as Record<string, unknown>).onNotifyMoving === 'function'
+  )
+}
+
+/**
+ * Type guard for IPositionable.
+ */
+export function isIPositionable(obj: unknown): obj is IPositionable {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'centerPosition' in obj &&
+    'topLeft' in obj &&
+    'occupiedCells' in obj &&
+    typeof (obj as Record<string, unknown>).occupiedCells === 'function' &&
+    'canCenterPositionChange' in obj &&
+    typeof (obj as Record<string, unknown>).canCenterPositionChange === 'function' &&
+    'setCenterPosition' in obj &&
+    typeof (obj as Record<string, unknown>).setCenterPosition === 'function' &&
+    'isInWorld' in obj &&
+    'isLeavingMap' in obj &&
+    typeof (obj as Record<string, unknown>).isLeavingMap === 'function'
   )
 }
