@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 8 -- Weapons & Combat System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.5 (WeaponInfo/Combat) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (25/56 migrated, Phases A+B+C COMPLETE)
+> **Chapter Status**: IN PROGRESS (42/56 migrated, Phases A+B+C+D COMPLETE)
 > **Planning Date**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%)
 >
@@ -517,10 +517,10 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 ### 3.4 Phase D: Core Combat Traits
 
-**Status**: 📋 待迁移 (0/17 migrated) -- NOW UNBLOCKED (Phases A+B+C COMPLETE)
+**Status**: ✅ COMPLETE (17/17 migrated, 158 tests, APPROVED R2). Commits `bbbe871` (initial), `5cf9b93` (Round 2 fixes)
 **Complexity**: Low-HIGH (AttackBase 526 lines HIGH, Armor 30 lines LOW)
 **Blocked by**: Phase A (Armament references warhead types) -- COMPLETE, Phase C (Armament references WeaponInfo) -- COMPLETE
-**Blocks**: Phase E (support traits react to combat events), Chapter 14 (Attack activities)
+**Blocks**: Phase E (support traits react to combat events) -- NOW UNBLOCKED, Chapter 14 (Attack activities)
 
 **Description**: The actor-side components that enable combat. `Armament` is the weapon mount -- it manages reload state, burst cycling, and firing logic. `AttackBase` is the abstract base for attack behavior, handling target validation, firing arc checks, and `AttackActivity` creation. `AutoTarget` implements autonomous target acquisition with priority and stance systems. `HitShape` defines collision geometry for damage application. `Armor` provides damage reduction via type-based multipliers. Multiplier traits (`RangeMultiplier`, `FirepowerMultiplier`) modify base combat stats. `AmmoPool` and `ReloadAmmoPool` manage limited ammunition.
 
@@ -533,7 +533,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.1 Armament
 
-- [ ] **TODO-8.D.1** `src/OpenRA.Mods.Common/Traits/Armament.ts` (432 lines C#) -- Weapon mount trait:
+- [x] **TODO-8.D.1** `src/OpenRA.Mods.Common/Traits/Armament.ts` (432 lines C#) -- Weapon mount trait:
   - `weapon: WeaponInfo` -- weapon configuration reference
   - `reloadDelay: number` -- current reload time (modified by multipliers)
   - `burst: number` -- current burst count (modified by multipliers)
@@ -551,7 +551,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.2 AutoTarget
 
-- [ ] **TODO-8.D.2** `src/OpenRA.Mods.Common/Traits/AutoTarget.ts` (485 lines C#) -- Autonomous target acquisition:
+- [x] **TODO-8.D.2** `src/OpenRA.Mods.Common/Traits/AutoTarget.ts` (485 lines C#) -- Autonomous target acquisition:
   - `scanRange: WDist` -- maximum search radius for targets
   - `initialStance: UnitStance` (Aggressive, AttackAnything, Defend, HoldFire, ReturnFire)
   - `scanInterval: number` -- ticks between target scans
@@ -567,7 +567,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.3 AttackBase
 
-- [ ] **TODO-8.D.3** `src/OpenRA.Mods.Common/Traits/Attack/AttackBase.ts` (526 lines C#) -- Abstract attack behavior:
+- [x] **TODO-8.D.3** `src/OpenRA.Mods.Common/Traits/Attack/AttackBase.ts` (526 lines C#) -- Abstract attack behavior:
   - Base class for all attack trait variants
   - `doAttack(world, attackSource, target): Activity` -- creates Attack activity
   - `hasAnyValidWeapons(): boolean` -- checks if any armament can fire
@@ -583,7 +583,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.4 AttackTurreted
 
-- [ ] **TODO-8.D.4** `src/OpenRA.Mods.Common/Traits/Attack/AttackTurreted.ts` (51 lines C#) -- Turret-based attack variant:
+- [x] **TODO-8.D.4** `src/OpenRA.Mods.Common/Traits/Attack/AttackTurreted.ts` (51 lines C#) -- Turret-based attack variant:
   - Extends `AttackBase` -- requires turret to face target before firing
   - `getTargetFacing(actor, target): WAngle` -- compute required turret facing
   - `targetIsFacing(actor, target): boolean` -- check turret rotation matches target bearing
@@ -592,7 +592,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.5 AttackFrontal
 
-- [ ] **TODO-8.D.5** `src/OpenRA.Mods.Common/Traits/Attack/AttackFrontal.ts` (48 lines C#) -- Frontal-only attack variant:
+- [x] **TODO-8.D.5** `src/OpenRA.Mods.Common/Traits/Attack/AttackFrontal.ts` (48 lines C#) -- Frontal-only attack variant:
   - Extends `AttackBase` -- entire actor must face target (tank hull rotation)
   - No independent turret -- actor body rotation is the firing arc
   - `targetIsFacing(actor, target): boolean` -- hull facing check
@@ -600,7 +600,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.6 AttackOmni
 
-- [ ] **TODO-8.D.6** `src/OpenRA.Mods.Common/Traits/Attack/AttackOmni.ts` (92 lines C#) -- Omnidirectional attack variant:
+- [x] **TODO-8.D.6** `src/OpenRA.Mods.Common/Traits/Attack/AttackOmni.ts` (92 lines C#) -- Omnidirectional attack variant:
   - Extends `AttackBase` -- can fire in any direction without facing requirement
   - No facing constraint -- fires instantly regardless of actor orientation
   - Used by stationary defenses, buildings with weapons
@@ -608,7 +608,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.7 AttackMove
 
-- [ ] **TODO-8.D.7** `src/OpenRA.Mods.Common/Traits/AttackMove.ts` (179 lines C#) -- Attack-move behavior trait:
+- [x] **TODO-8.D.7** `src/OpenRA.Mods.Common/Traits/AttackMove.ts` (179 lines C#) -- Attack-move behavior trait:
   - `assaultMoveCondition: string` -- condition token for assault-move mode
   - Auto-acquires and attacks targets while moving
   - `scanInterval: number` -- target scan frequency during movement
@@ -618,7 +618,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.8 AttackFollow
 
-- [ ] **TODO-8.D.8** `src/OpenRA.Mods.Common/Traits/Attack/AttackFollow.ts` (466 lines C#) -- Persistent pursuit attack:
+- [x] **TODO-8.D.8** `src/OpenRA.Mods.Common/Traits/Attack/AttackFollow.ts` (466 lines C#) -- Persistent pursuit attack:
   - Extends `AttackBase` -- maintains target lock and pursues fleeing targets
   - `followRange: WDist` -- maximum chase range before giving up
   - `targetStance: UnitStance` -- stance override for follow mode
@@ -629,7 +629,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.9 AttackCharges
 
-- [ ] **TODO-8.D.9** `src/OpenRA.Mods.Common/Traits/Attack/AttackCharges.ts` (77 lines C#) -- Limited-charge attack variant:
+- [x] **TODO-8.D.9** `src/OpenRA.Mods.Common/Traits/Attack/AttackCharges.ts` (77 lines C#) -- Limited-charge attack variant:
   - Extends `AttackBase` -- limited number of attack uses
   - `chargeCount: number` -- remaining charges
   - `reloadTime: number` -- recharge time for one charge
@@ -639,7 +639,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.10 AttackWander
 
-- [ ] **TODO-8.D.10** `src/OpenRA.Mods.Common/Traits/AttackWander.ts` (39 lines C#) -- Wander-and-attack behavior:
+- [x] **TODO-8.D.10** `src/OpenRA.Mods.Common/Traits/AttackWander.ts` (39 lines C#) -- Wander-and-attack behavior:
   - `wanderRadius: WDist` -- random movement radius
   - Periodically moves to random nearby positions, attacking targets encountered
   - Used for patrol-style autonomous behavior
@@ -647,7 +647,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.11 AttackGarrisoned
 
-- [ ] **TODO-8.D.11** `src/OpenRA.Mods.Common/Traits/Attack/AttackGarrisoned.ts` (235 lines C#) -- Garrison-based attack:
+- [x] **TODO-8.D.11** `src/OpenRA.Mods.Common/Traits/Attack/AttackGarrisoned.ts` (235 lines C#) -- Garrison-based attack:
   - Extends `AttackBase` -- weapon fires from garrisoned passengers
   - `portOffsets: WVec[]` -- firing port positions on the structure
   - Each passenger adds weapons to the garrisoned building's attack capability
@@ -657,7 +657,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.12 HitShape
 
-- [ ] **TODO-8.D.12** `src/OpenRA.Mods.Common/Traits/HitShape.ts` (177 lines C#) -- Collision geometry for damage:
+- [x] **TODO-8.D.12** `src/OpenRA.Mods.Common/Traits/HitShape.ts` (177 lines C#) -- Collision geometry for damage:
   - `type: HitShapeType` (Circle, Rectangle, Capsule)
   - `topBottomOffsets: (number, number)[]` -- per-facing height offsets
   - `info: HitShapeInfo` -- shape dimensions in WDist units
@@ -671,7 +671,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.13 Armor
 
-- [ ] **TODO-8.D.13** `src/OpenRA.Mods.Common/Traits/Armor.ts` (30 lines C#) -- Damage reduction trait:
+- [x] **TODO-8.D.13** `src/OpenRA.Mods.Common/Traits/Armor.ts` (30 lines C#) -- Damage reduction trait:
   - `type: string` -- armor type identifier (e.g., "Light", "Heavy", "Wood", "Concrete")
   - Warhead `versus` map looks up damage multiplier by armor type
   - Simple trait with no active logic -- provides type label for damage calculation
@@ -679,7 +679,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.14 AmmoPool
 
-- [ ] **TODO-8.D.14** `src/OpenRA.Mods.Common/Traits/AmmoPool.ts` (119 lines C#) -- Limited ammunition trait:
+- [x] **TODO-8.D.14** `src/OpenRA.Mods.Common/Traits/AmmoPool.ts` (119 lines C#) -- Limited ammunition trait:
   - `name: string` -- pool identifier for armament linkage
   - `ammo: number` -- current ammunition count
   - `maxAmmo: number` -- maximum ammunition capacity
@@ -694,7 +694,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.15 ReloadAmmoPool
 
-- [ ] **TODO-8.D.15** `src/OpenRA.Mods.Common/Traits/ReloadAmmoPool.ts` (95 lines C#) -- Ammo reload behavior:
+- [x] **TODO-8.D.15** `src/OpenRA.Mods.Common/Traits/ReloadAmmoPool.ts` (95 lines C#) -- Ammo reload behavior:
   - `ammoPool: string` -- linked AmmoPool name
   - `reloadDelay: number` -- ticks between reload events
   - `reloadCount: number` -- ammo restored per tick
@@ -704,7 +704,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.16 RangeMultiplier
 
-- [ ] **TODO-8.D.16** `src/OpenRA.Mods.Common/Traits/Multipliers/RangeMultiplier.ts` (33 lines C#) -- Weapon range multiplier:
+- [x] **TODO-8.D.16** `src/OpenRA.Mods.Common/Traits/Multipliers/RangeMultiplier.ts` (33 lines C#) -- Weapon range multiplier:
   - `modifier: number` -- range scaling factor (1.0 = normal, 1.5 = +50%)
   - Modifies all armaments' `weaponRange` by multiplicative factor
   - Stackable with other multipliers
@@ -712,20 +712,20 @@ The following infrastructure from Chapters 2-7 is available for Chapter 8:
 
 #### 3.4.17 FirepowerMultiplier
 
-- [ ] **TODO-8.D.17** `src/OpenRA.Mods.Common/Traits/Multipliers/FirepowerMultiplier.ts` (31 lines C#) -- Weapon damage multiplier:
+- [x] **TODO-8.D.17** `src/OpenRA.Mods.Common/Traits/Multipliers/FirepowerMultiplier.ts` (31 lines C#) -- Weapon damage multiplier:
   - `modifier: number` -- damage scaling factor
   - Modifies all warhead damage by multiplicative factor
   - Applied during `getEffectiveDamage()` in DamageWarhead
 
-**Phase D Summary**: 17 files, ~3,075 C# lines, estimated ~12,000 TS implementation + ~8,500 test lines
+**Phase D Summary**: 17 files, ~3,075 C# lines. Implemented: 17 source + 4 hit-shape support + 1 shared interface + 16 test = 38 files, 158 tests, ~7,109 lines. Reviewed: APPROVED (2 rounds). Commits: `bbbe871` (initial), `5cf9b93` (Round 2 fixes). Round 1: 3 BLOCKER + 7 MAJOR + 7 MINOR --> NEEDS FIXES. Round 2: All fixed --> APPROVED. AttackWander (TODO-8.D.10) and AttackGarrisoned (TODO-8.D.11) are DEFERRED STUBs pending Chapter 11 (Production & Building). CombatInterfaces.ts added as shared interfaces/enums file. HitShape support files: HitShapeCircle.ts, HitShapeRectangle.ts, HitShapeCapsule.ts, HitShapeInfo.ts
 
 ---
 
 ### 3.5 Phase E: Combat Support Traits
 
-**Status**: 📋 待迁移 (0/15 migrated)
+**Status**: 📋 待迁移 (0/15 migrated) -- NOW UNBLOCKED (Phase D COMPLETE)
 **Complexity**: Low-Medium (Turreted 333 lines MEDIUM, DeathSounds 48 lines LOW)
-**Blocked by**: Phase D (Core combat traits -- support traits react to combat events), Chapter 7 Phases D-E (Sound and Effects)
+**Blocked by**: Phase D (Core combat traits) -- COMPLETE, Chapter 7 Phases D-E (Sound and Effects) -- COMPLETE
 **Blocks**: Chapter 14 (Attack activities), Chapter 19 (mod-specific combat traits)
 
 **Description**: Traits that modify, enhance, or react to combat events. `FireWarheads` and `FireWarheadsOnDeath` trigger warhead effects on specific conditions. `AttackSounds` and `DeathSounds` play audio feedback. `WithMuzzleOverlay`, `WithAttackAnimation`, and `WithAttackOverlay` provide visual combat feedback via sprite overlays. `Turreted` manages turret rotation and facing -- a critical dependency for turret-based attack variants. `AttackBomber` and `AttackAircraft` extend combat to air units. Multiplier traits (`DamageMultiplier`, `ReloadDelayMultiplier`, `InaccuracyMultiplier`) stack with Phase D multipliers.
