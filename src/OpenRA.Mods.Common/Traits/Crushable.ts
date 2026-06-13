@@ -278,11 +278,15 @@ export class Crushable
    *  OpenRA 对照: BitSet<CrushClass>.Overlaps()
    */
   private _overlaps(crushClasses: BitSetStub<unknown>): boolean {
-    // BitSet overlaps: check if there's any common bit
-    // NOTE: BitSetStub.isEmpty is a method, but duck-typed objects may use a getter
-    const empty = typeof crushClasses.isEmpty === 'function'
+    // BitSet overlaps: check if there's any common bit.
+    // Duck-typed objects may have isEmpty as a method, a boolean property,
+    // or not at all (undefined → treat as empty/safe default).
+    const isEmptyType = typeof crushClasses.isEmpty
+    const empty = isEmptyType === 'function'
       ? (crushClasses.isEmpty as () => boolean)()
-      : (crushClasses.isEmpty as unknown as boolean)
+      : isEmptyType === 'boolean'
+        ? (crushClasses.isEmpty as unknown as boolean)
+        : true
     if (empty) return false
     return this.info.crushClasses.overlaps(
       crushClasses as unknown as BitSet<CrushClass>,

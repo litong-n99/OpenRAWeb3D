@@ -74,6 +74,17 @@ export class AutoCrusherInfo implements ConditionalTraitInfo {
    */
   readonly targetRelationships: PlayerRelationship
 
+  /** Whether this actor can see through disguise.
+   *
+   *  OpenRA 对照: self.Info.HasTraitInfo<IgnoresDisguiseInfo>()
+   *
+   *  TODO-8.D.IGNORES-DISGUISE: In OpenRA, this is determined dynamically at
+   *  runtime via self.Info.HasTraitInfo<IgnoresDisguiseInfo>(). For now, use a
+   *  config option. When the full trait system supports dynamic trait info
+   *  queries, replace this with a runtime check.
+   */
+  readonly ignoresDisguise: boolean = false
+
   constructor(params: {
     instanceName?: string
     requiresCondition?: string
@@ -82,6 +93,7 @@ export class AutoCrusherInfo implements ConditionalTraitInfo {
     maximumScanTimeInterval?: number
     crushClasses?: readonly string[]
     targetRelationships?: PlayerRelationship
+    ignoresDisguise?: boolean
   } = {}) {
     this.instanceName = params.instanceName
     this.requiresCondition = params.requiresCondition
@@ -96,6 +108,7 @@ export class AutoCrusherInfo implements ConditionalTraitInfo {
     this.targetRelationships = params.targetRelationships ?? (
       (PlayerRelationship.Ally | PlayerRelationship.Neutral | PlayerRelationship.Enemy) as PlayerRelationship
     )
+    this.ignoresDisguise = params.ignoresDisguise ?? false
   }
 }
 
@@ -128,11 +141,19 @@ export class AutoCrusher
   // migrated, add _isAircraft field and set it from `move is Aircraft`.
   // private _isAircraft: boolean = false
 
-  /** Whether this actor ignores disguise. */
-  private readonly _ignoresDisguise: boolean = false
+  /** Whether this actor ignores disguise.
+   *
+   *  OpenRA 对照: self.Info.HasTraitInfo<IgnoresDisguiseInfo>()
+   *
+   *  TODO-8.D.IGNORES-DISGUISE: Currently uses the config option from info.
+   *  When the full trait system supports dynamic trait info queries, add a
+   *  runtime fallback via self.Info.HasTraitInfo equivalent.
+   */
+  private readonly _ignoresDisguise: boolean
 
   constructor(info: AutoCrusherInfo) {
     super(info)
+    this._ignoresDisguise = info.ignoresDisguise
   }
 
   // -----------------------------------------------------------------------

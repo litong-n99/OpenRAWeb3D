@@ -141,6 +141,37 @@ export class Hovers
 
   constructor(info: HoversInfo) {
     super(info)
+
+    // -------------------------------------------------------------------------
+    // Validation — OpenRA 对照: HoversInfo.RulesetLoaded()
+    // -------------------------------------------------------------------------
+
+    if (info.bobDistance.length > -1) {
+      throw new Error(
+        `Hovers.BobDistance must be a negative value, got ${info.bobDistance.length}.`,
+      )
+    }
+    if (info.ticks < 1) {
+      throw new Error(
+        `Hovers.Ticks must be higher than zero, got ${info.ticks}.`,
+      )
+    }
+    if (info.fallTicks < 1) {
+      throw new Error(
+        `Hovers.FallTicks must be higher than zero, got ${info.fallTicks}.`,
+      )
+    }
+    if (info.riseTicks < 1) {
+      throw new Error(
+        `Hovers.RiseTicks must be higher than zero, got ${info.riseTicks}.`,
+      )
+    }
+    if (info.initialHeight.length < info.riseTicks) {
+      throw new Error(
+        `Hovers.InitialHeight (${info.initialHeight.length}) must be at least as high as RiseTicks (${info.riseTicks}).`,
+      )
+    }
+
     this._stepPercentage = 256 / info.ticks
 
     // fallTickHeight must be at least 1 to avoid DivideByZeroException
@@ -161,7 +192,7 @@ export class Hovers
    *
    * OpenRA 对照: ITick.Tick()
    */
-  tick(_self: IGameActor): void {
+  tick(self: IGameActor): void {
     if (this.isTraitDisabled) {
       // Fall smoothly to ground
       if (this.worldVisualOffset.Z < 0) return
@@ -169,6 +200,10 @@ export class Hovers
       const fallTicks = Math.trunc(this.worldVisualOffset.Z / this._fallTickHeight) - 1
       this.worldVisualOffset = new WVec(0, 0, this._fallTickHeight * fallTicks)
     } else {
+      // C# gate: only oscillate when above MinHoveringAltitude
+      // OpenRA 对照: self.World.Map.DistanceAboveTerrain(self.CenterPosition) >= info.MinHoveringAltitude
+      const distanceAboveTerrain = this._getDistanceAboveTerrain(self)
+
       // Calculate sine-wave oscillation
       // C#: WAngle(ticks % (Ticks * 4) * stepPercentage).Sin()
       // In C# WAngle.Sin() returns int in [-1024, 1024] representing sin*1024.
@@ -179,8 +214,13 @@ export class Hovers
       const phaseRadians = (rawPhase / 256) * 2 * Math.PI
       const sinValue = Math.sin(phaseRadians)
 
+      // C#: visualOffset = altitudeCheck ? angle.Sin() : 0
+      const visualOffset = distanceAboveTerrain >= this.info.minHoveringAltitude.length
+        ? sinValue
+        : 0
+
       // C#: currentHeight = BobDistance.Length * visualOffset / 1024 + InitialHeight.Length
-      let currentHeight = this.info.bobDistance.length * sinValue +
+      let currentHeight = this.info.bobDistance.length * visualOffset +
         this.info.initialHeight.length
 
       // Rise smoothly from disabled state
@@ -235,5 +275,35 @@ export class Hovers
     bounds: readonly RectangleStub[],
   ): readonly RectangleStub[] {
     return bounds
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
+  /** Query the actor's distance above terrain via duck-typing.
+   *
+   *  OpenRA 对照: self.World.Map.DistanceAboveTerrain(self.CenterPosition)
+   *
+   *  @returns WDist length value, or Infinity if the property is unavailable
+   *           (treating missing terrain info as "always above threshold").
+   */
+  private _getDistanceAboveTerrain(self: IGameActor): number {
+    const a = self as unknown as {
+      world?: {
+        map?: {
+          distanceAboveTerrain?(pos: unknown): WDist
+        }
+      }
+      centerPosition?: unknown
+    }
+    const mapFn = a.world?.map?.distanceAboveTerrain
+    const pos = a.centerPosition
+    if (typeof mapFn === 'function' && pos !== undefined) {
+      return mapFn(pos).length
+    }
+    // If the terrain query is unavailable, treat as always above threshold
+    // so existing behavior (always oscillate) is preserved for test environments.
+    return Infinity
   }
 }

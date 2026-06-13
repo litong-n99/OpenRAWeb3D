@@ -145,13 +145,25 @@ export class TransformCrusherOnCrush implements INotifyCrushed {
       // NOTE: In OpenRA, the Transform activity handles SkipMakeAnims.
       // In TS, we'd pass it through the activity when migrated.
 
-      // Create replacement actor AND dispose the crusher
-      // NOTE: Full transformation requires the activity system for proper
-      // lifecycle management. For now, we just create the new actor.
+      // TODO-8.D.TRANSFORM-ACTIVITY: The full Transform activity would handle
+      // proper actor replacement lifecycle (dispose old, create new, transfer
+      // conditions/effects). For now, dispose the crusher directly to prevent
+      // leaks, and create the replacement in the world.
+
+      // Create the replacement actor
       world.createActor(this.info.intoActor, init)
 
-      // NOTE: OpenRA would also remove the crusher here via the Transform activity.
-      // crusher.dispose() or similar cleanup is deferred to the full activity system.
+      // Dispose the crusher to prevent ghost actors
+      const crusherAny = crusher as unknown as Record<string, unknown>
+      if (typeof crusherAny['dispose'] === 'function') {
+        (crusherAny['dispose'] as () => void)()
+      } else if (typeof crusherAny['kill'] === 'function') {
+        // Some actor implementations use kill() for disposal
+        (crusherAny['kill'] as (...a: unknown[]) => void)()
+      } else {
+        // Last resort: mark for deferred disposal
+        ;(crusher as unknown as { willDispose?: boolean }).willDispose = true
+      }
     }
   }
 
