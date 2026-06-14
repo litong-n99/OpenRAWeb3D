@@ -1257,7 +1257,7 @@ export class ProductionQueue
       return 0
     }
 
-    var time = bi.buildDuration;
+    let time = bi.buildDuration;
     if (time == -1)
       time = this._getProductionCost(unit);
 
@@ -1474,6 +1474,14 @@ export class ProductionQueue
    *
    * OpenRA 对照: ProductionQueue.MostLikelyProducer()
    *
+   * NOTE: This base implementation only checks `productionTraits` linked to
+   * this queue's actor. It does NOT scan the world for all matching Production
+   * traits. `ClassicProductionQueue` overrides this to scan world productions.
+   *
+   * TODO-11.A.3: ClassicProductionQueue should override this to scan world
+   * productions and apply the full priority ordering (not paused, primary,
+   * highest ActorID).
+   *
    * @returns the best Production trait for this queue
    */
   mostLikelyProducer(): Production | null {
@@ -1496,8 +1504,20 @@ export class ProductionQueue
    *
    * OpenRA 对照: ProductionQueue.BuildUnit(ActorInfo)
    *
+   * TODO-11.A.2: This is a STUB. The current implementation returns true
+   * when the producer trait is not paused, but does NOT actually call
+   * `producer.produce()` to create the actor. Full implementation requires:
+   *   - Actor creation system (Chapter 14)
+   *   - ActorInitializer bag construction (LocationInit, OwnerInit, FacingInit, etc.)
+   *   - `producer.produce()` call with proper inits
+   *   - Proper success/failure handling based on `produce()` return value
+   *
+   * Until then, this stub removes the completed item from the queue and
+   * returns true, which is sufficient for queue state testing but does
+   * NOT spawn any actual unit in the world.
+   *
    * @param unit — the actor info to build
-   * @returns true if production succeeded
+   * @returns true if production "succeeded" (item removed from queue)
    */
   protected _buildUnit(unit: ActorInfoStub): boolean {
     const mostLikelyProducerTrait = this.mostLikelyProducer()
@@ -1521,10 +1541,10 @@ export class ProductionQueue
       return false
     }
 
-    // In full implementation: build inits, call producer.Produce()
-    // For now, this is a simplified version
+    // STUB: Does not actually call producer.produce() or create an actor.
+    // See TODO-11.A.2 comment on this method for full requirements.
     if (!mostLikelyProducerTrait.isTraitPaused) {
-      // Production succeeded
+      // Remove completed item from queue (stub behavior)
       this._endProduction(item)
       return true
     }

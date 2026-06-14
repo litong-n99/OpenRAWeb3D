@@ -131,7 +131,7 @@ export class BuildableInfo implements ITraitInfo {
     this.prerequisites = params.prerequisites ?? []
 
     // Accept either ReadonlySet<string> or string[] for queue
-    if (params.queue instanceof Set || (params.queue && 'has' in params.queue)) {
+    if (params.queue instanceof Set) {
       this.queue = params.queue as ReadonlySet<string>
     } else if (params.queue && Array.isArray(params.queue)) {
       this.queue = new Set(params.queue)

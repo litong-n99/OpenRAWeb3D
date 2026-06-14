@@ -278,6 +278,58 @@ describe('ClassicProductionQueue', () => {
   // Tick with world productions
   // ---------------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------------
+  // Tick with world productions — enabled logic
+  // ---------------------------------------------------------------------------
+
+  it('tick enables queue when matching world production exists and faction is valid', () => {
+    const info = new ClassicProductionQueueInfo({ type: 'Vehicle' })
+    const prod = createProduction({ isTraitDisabled: false, isTraitPaused: false })
+    const queue = createQueue(info, { worldProductions: [prod], productionTraits: [prod] })
+    const bi = new BuildableInfo({ queue: new Set(['Vehicle']), buildDuration: 5 })
+    const ai = createActorInfo('tank', bi, 500)
+    queue.producible.set('tank', new ProductionState())
+    queue.producible.get('tank')!.buildable = true
+    queue.setRulesActors(new Map([['tank', ai]]))
+    queue['_updateProducibleLists']()
+    queue.queue.push(new ProductionItem(queue, 'tank', 500, null, null, ai, bi))
+    queue.tick(actor)
+    expect(queue.enabled).toBe(true)
+    expect(queue.queue.length).toBe(1)
+  })
+
+  it('tick disables queue when no matching world production exists', () => {
+    const info = new ClassicProductionQueueInfo({ type: 'Vehicle' })
+    const prod = createProduction({ info: createProductionInfo(['Infantry']) }) // Wrong type
+    const queue = createQueue(info, { worldProductions: [prod], productionTraits: [prod] })
+    const bi = new BuildableInfo({ queue: new Set(['Vehicle']), buildDuration: 5 })
+    const ai = createActorInfo('tank', bi, 500)
+    queue.producible.set('tank', new ProductionState())
+    queue.producible.get('tank')!.buildable = true
+    queue.setRulesActors(new Map([['tank', ai]]))
+    queue['_updateProducibleLists']()
+    queue.queue.push(new ProductionItem(queue, 'tank', 500, null, null, ai, bi))
+    queue.tick(actor)
+    expect(queue.enabled).toBe(false)
+    expect(queue.queue.length).toBe(0) // Queue cleared when disabled
+  })
+
+  it('tick disables queue when all matching world productions are disabled', () => {
+    const info = new ClassicProductionQueueInfo({ type: 'Vehicle' })
+    const prod = createProduction({ isTraitDisabled: true, isTraitPaused: false })
+    const queue = createQueue(info, { worldProductions: [prod], productionTraits: [prod] })
+    const bi = new BuildableInfo({ queue: new Set(['Vehicle']), buildDuration: 5 })
+    const ai = createActorInfo('tank', bi, 500)
+    queue.producible.set('tank', new ProductionState())
+    queue.producible.get('tank')!.buildable = true
+    queue.setRulesActors(new Map([['tank', ai]]))
+    queue['_updateProducibleLists']()
+    queue.queue.push(new ProductionItem(queue, 'tank', 500, null, null, ai, bi))
+    queue.tick(actor)
+    expect(queue.enabled).toBe(false)
+    expect(queue.queue.length).toBe(0) // Queue cleared when disabled
+  })
+
   it('tick clears queue when no matching world productions', () => {
     const info = new ClassicProductionQueueInfo({ type: 'Vehicle' })
     const queue = createQueue(info, { worldProductions: [] })

@@ -206,6 +206,10 @@ export class RallyPoint implements INotifyOwnerChanged, INotifyCreated, INotifyA
   /** Called when the actor's owner changes.
    *
    * OpenRA 对照: RallyPoint.OnOwnerChanged(Actor, Player, Player)
+   *
+   * NOTE: `newOwner.playerName` is used as a stub for `Player.InternalName`.
+   * In the full implementation, Player would have an `internalName` field
+   * matching C# `Player.Faction.InternalName`.
    */
   onOwnerChanged(_actor: IGameActor, _oldOwner: PlayerStub, newOwner: PlayerStub): void {
     if (this.info.isPlayerPalette) {

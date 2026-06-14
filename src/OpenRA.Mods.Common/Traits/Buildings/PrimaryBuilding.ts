@@ -13,6 +13,8 @@
  * 建筑存在时，新生产的单位优先从主建筑出口。
  */
 
+// NOTE: IGameActor and PlayerStub are referenced in JSDoc comments for API parity.
+// They are not used in runtime code yet but document the intended interface.
 // @ts-expect-error: unused imports kept for API parity
 import type {
   IGameActor,

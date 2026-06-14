@@ -121,6 +121,10 @@ export class ClassicProductionQueue extends ProductionQueue {
   /** Override tick to scan all Production traits in the world.
    *
    * OpenRA 对照: ClassicProductionQueue.Tick(Actor)
+   *
+   * The enabled logic matches C# exactly: enabled is set to IsValidFaction
+   * only when we find at least one non-disabled Production trait that produces
+   * this queue's type. If no matching traits exist, the queue is disabled.
    */
   protected override _tick(self: IGameActor): void {
     // PERF: Avoid LINQ.
@@ -132,7 +136,9 @@ export class ClassicProductionQueue extends ProductionQueue {
       // For now, we check produces membership only
       if (!x.info.produces.has(this.info.type)) continue
 
-      enabled ||= this.isValidFaction
+      // Only enable if we found at least one matching production building
+      // AND the faction is valid for this queue
+      enabled = this.isValidFaction
       isActive ||= !x.isTraitPaused
     }
 
@@ -141,7 +147,7 @@ export class ClassicProductionQueue extends ProductionQueue {
     }
 
     // Update enabled state
-    this['_enabled'] = this.isValidFaction && enabled
+    this['_enabled'] = enabled
     this._tickInner(self, !isActive)
   }
 
