@@ -390,6 +390,46 @@ export const TargetModifiersExts = {
   },
 } as const
 
+// ---------------------------------------------------------------------------
+// PlaceBuildingCellType — placement validity flags
+// OpenRA 对照: PlaceBuildingCellType (Flags enum in PlaceBuildingOrderGenerator.cs)
+// ---------------------------------------------------------------------------
+
+/** Placement validity flags for building placement preview.
+ *
+ * OpenRA 对照: PlaceBuildingCellType { None = 0, Valid = 1, Invalid = 2, LineBuild = 4 }
+ */
+export const PlaceBuildingCellType = {
+  None: 0,
+  Valid: 1,
+  Invalid: 2,
+  LineBuild: 4,
+} as const
+
+export type PlaceBuildingCellType =
+  (typeof PlaceBuildingCellType)[keyof typeof PlaceBuildingCellType]
+
+// ---------------------------------------------------------------------------
+// EnterBehaviour — how actors enter transports
+// OpenRA 对照: EnterBehaviour { Exit = 0, Suicide = 1, Dispose = 2 }
+// ---------------------------------------------------------------------------
+
+/** Behaviour when an actor enters a transport.
+ *
+ * OpenRA 对照: EnterBehaviour enum
+ *
+ * Exit:    The actor exits normally (can re-enter).
+ * Suicide: The actor is killed (used by demolition/saboteur).
+ * Dispose: The actor is silently removed.
+ */
+export const EnterBehaviour = {
+  Exit: 0,
+  Suicide: 1,
+  Dispose: 2,
+} as const
+
+export type EnterBehaviour = (typeof EnterBehaviour)[keyof typeof EnterBehaviour]
+
 /**
  * Post-process render pass type — determines when a post-process effect runs
  * in the render pipeline.
@@ -1017,6 +1057,95 @@ export interface IValidateOrder {
   ): boolean
 }
 
+// ---------------------------------------------------------------------------
+// IOrderGenerator — generates orders from player input
+// OpenRA 对照: OpenRA.Orders.IOrderGenerator
+// ---------------------------------------------------------------------------
+
+/** Generates orders from player input (e.g., placing buildings, unit commands).
+ *
+ * OpenRA 对照: IOrderGenerator
+ *
+ * An order generator is an input mode that processes mouse/keyboard events
+ * and produces Order objects. Examples: PlaceBuildingOrderGenerator,
+ * UnitCommandOrderGenerator, etc.
+ */
+export interface IOrderGenerator {
+  /** Unique key identifying this order generator (for serialization/hotkey lookup).
+   *
+   * OpenRA 对照: IOrderGenerator.OrderGeneratorKey (convention, not on C# interface)
+   */
+  readonly orderGeneratorKey: string
+
+  /** Process mouse input and yield orders.
+   *
+   * OpenRA 对照: IOrderGenerator.Order(World, CPos, int2, MouseInput)
+   *
+   * @param world — the game world
+   * @param cell — the map cell under the cursor
+   * @param modifiers — keyboard modifiers active
+   * @returns an iterable of orders (empty = no order)
+   */
+  order(
+    world: WorldStub,
+    cell: CPos,
+    modifiers: TargetModifiers,
+  ): Generator<Order | null>
+
+  /** Called each logic tick to update state.
+   *
+   * OpenRA 对照: IOrderGenerator.Tick(World)
+   */
+  tick(world: WorldStub): void
+
+  /** Render above the shroud layer (visible through fog-of-war).
+   *
+   * OpenRA 对照: IOrderGenerator.RenderAboveShroud(WorldRenderer, World)
+   */
+  renderAboveShroud(
+    worldRenderer: WorldRendererStub,
+    world: WorldStub,
+  ): void
+
+  /** Render annotations (range circles, grid lines) on top of everything.
+   *
+   * OpenRA 对照: IOrderGenerator.RenderAnnotations(WorldRenderer, World)
+   */
+  renderAnnotations(
+    worldRenderer: WorldRendererStub,
+    world: WorldStub,
+  ): void
+
+  /** Get the cursor for the given cell.
+   *
+   * OpenRA 对照: IOrderGenerator.GetCursor(World, CPos, int2, MouseInput)
+   *
+   * @param world — the game world
+   * @param cell — the map cell under the cursor
+   * @returns the cursor name string
+   */
+  getCursor(world: WorldStub, cell: CPos): string
+
+  /** Handle a keyboard input event.
+   *
+   * OpenRA 对照: IOrderGenerator.HandleKeyPress(KeyInput)
+   *
+   * @param e — the key input event
+   * @returns true if the event was handled (consumed)
+   */
+  handleKeyPress(e: unknown): boolean
+
+  /** Handle a mouse input event.
+   *
+   * OpenRA 对照: IOrderGenerator is called via World.OrderGenerator, which
+   *   dispatches mouse input through the active generator.
+   *
+   * @param mouseInput — the mouse input event
+   * @returns true if the event was handled
+   */
+  handleMouseInput(mouseInput: unknown): boolean
+}
+
 /**
  * Provides a voice phrase for an order (audio feedback).
  *
@@ -1155,6 +1284,128 @@ export interface ITargetable {
  */
 export interface ITargetablePositions {
   targetablePositions(actor: IGameActor): readonly WPos[]
+}
+
+// ---------------------------------------------------------------------------
+// Targetable cells — list of cell/sub-cell pairs that can be targeted
+// OpenRA 对照: ITargetableCells
+// ---------------------------------------------------------------------------
+
+/** A targetable cell/sub-cell pair. */
+export interface TargetableCell {
+  readonly cell: CPos
+  readonly subCell: SubCellEnum
+}
+
+/** Provides the set of cells that can be targeted on this actor.
+ *
+ * OpenRA 对照: ITargetableCells
+ */
+export interface ITargetableCells {
+  readonly targetableCells: readonly [CPos, SubCellEnum][]
+}
+
+// ---------------------------------------------------------------------------
+// Demolishable
+// OpenRA 对照: IDemolishableInfo + IDemolishable
+// ---------------------------------------------------------------------------
+
+/** Info for demolishable traits — validates if a target can be demolished.
+ *
+ * OpenRA 对照: IDemolishableInfo
+ */
+export interface IDemolishableInfo extends ITraitInfoInterface {
+  /** Check whether the given actor is a valid demolition target.
+   *
+   * @param target — the actor to check for demolition
+   * @param saboteur — the actor attempting the demolition
+   * @returns true if the target can be demolished
+   */
+  readonly isValidTarget: (target: IGameActor, saboteur: IGameActor) => boolean
+}
+
+/** Marker on traits that can be demolished (e.g., Building, Bridge).
+ *
+ * OpenRA 对照: IDemolishable
+ */
+export interface IDemolishable {
+  readonly demolishableInfo: IDemolishableInfo
+}
+
+// ---------------------------------------------------------------------------
+// Place building decoration
+// OpenRA 对照: IPlaceBuildingDecorationInfo
+// ---------------------------------------------------------------------------
+
+/** Marker interface for building decoration preview traits.
+ *
+ * OpenRA 对照: IPlaceBuildingDecorationInfo
+ */
+export interface IPlaceBuildingDecorationInfo extends ITraitInfoInterface {
+  // intentionally empty — marker interface
+}
+
+// ---------------------------------------------------------------------------
+// Place building preview
+// OpenRA 对照: IPlaceBuildingPreviewGeneratorInfo + IPlaceBuildingPreview
+//   (from PlaceBuildingOrderGenerator.cs)
+// ---------------------------------------------------------------------------
+
+/** Info for place-building preview generators.
+ *
+ * OpenRA 对照: IPlaceBuildingPreviewGeneratorInfo
+ */
+export interface IPlaceBuildingPreviewGeneratorInfo extends ITraitInfoInterface {
+  readonly previewType: string
+
+  /** Create a preview renderer for the given actor type.
+   *
+   * @param worldRenderer — the world renderer instance
+   * @param actorInfo — info for the actor being placed
+   * @param init — initialization dictionary
+   * @returns a preview renderer
+   */
+  createPreview(
+    worldRenderer: WorldRendererStub,
+    actorInfo: ActorInfoStub,
+    init: Map<string, unknown>,
+  ): IPlaceBuildingPreview
+}
+
+/** Renders a preview of a building that is about to be placed.
+ *
+ * OpenRA 对照: IPlaceBuildingPreview
+ */
+export interface IPlaceBuildingPreview {
+  /** Screen-space pixel offset from the cell center to the top-left corner of the preview. */
+  readonly topLeftScreenOffset: { readonly x: number; readonly y: number }
+
+  /** Advance the preview animation/logic by one tick. */
+  tick(): void
+
+  /** Render the building preview footprint overlay.
+   *
+   * @param worldRenderer — the world renderer
+   * @param topLeft — the top-left cell of the placement
+   * @param validCells — map of cell to placement validity
+   * @returns renderable objects
+   */
+  render(
+    worldRenderer: WorldRendererStub,
+    topLeft: CPos,
+    validCells: ReadonlyMap<CPos, PlaceBuildingCellType>,
+  ): readonly IRenderable[]
+
+  /** Render annotation overlay (e.g., range circles, grid lines).
+   *
+   * @param worldRenderer — the world renderer
+   * @param topLeft — the top-left cell of the placement
+   * @returns renderable annotations
+   */
+  renderAnnotations(
+    worldRenderer: WorldRendererStub,
+    topLeft: CPos,
+  ): readonly IRenderable[]
 }
 
 // ---------------------------------------------------------------------------
