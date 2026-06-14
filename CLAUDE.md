@@ -10,6 +10,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 **Chapter 9 Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)
 **Chapter 10 Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
 **Chapter 11 Plan**: [docs/chapter11_production_building_migration_plan.md](docs/chapter11_production_building_migration_plan.md)
+**Chapter 12 Plan**: [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -499,6 +500,9 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md) | Chapter 7 input, camera, audio & effects migration plan (13 files, 7 phases A-G, ALL PHASES COMPLETE) |
 | [docs/chapter8_weapons_combat_migration_plan.md](docs/chapter8_weapons_combat_migration_plan.md) | Chapter 8 weapons & combat system migration plan with TODO checklist (57 files, 5 phases A-E, ALL PHASES COMPLETE: 57/57, 758 tests) |
 | [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) | Chapter 9 unit movement & physics migration plan with TODO checklist (32 files, 4 phases A-D, COMPLETE: 30/30 active, 2 deferred, 1,084 tests) |
+| [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md) | Chapter 10 resource & economy system migration plan with TODO checklist (25 files, Phases A-B + B-Optional COMPLETE, 972 tests) |
+| [docs/chapter11_production_building_migration_plan.md](docs/chapter11_production_building_migration_plan.md) | Chapter 11 production & building system migration plan with TODO checklist (37 files, 2 phases A-B, ALL PHASES COMPLETE, ~771 tests) |
+| [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md) | Chapter 12 shroud & fog of war migration plan with TODO checklist (15 files, Phase A, PLANNED) |
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-21 remaining systems migration plan (~365 files, 14 chapters, Ch10 Phase A COMPLETE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
