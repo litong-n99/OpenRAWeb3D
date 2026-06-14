@@ -1428,7 +1428,7 @@ export interface IPlaceBuildingPreview {
   render(
     worldRenderer: WorldRendererStub,
     topLeft: CPos,
-    validCells: ReadonlyMap<CPos, PlaceBuildingCellType>,
+    validCells: ReadonlyMap<number, PlaceBuildingCellType>,
   ): readonly IRenderable[]
 
   /** Render annotation overlay (e.g., range circles, grid lines).
