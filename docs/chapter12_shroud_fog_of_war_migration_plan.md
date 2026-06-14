@@ -125,7 +125,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **PLANNED** |
+| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (1/15)** |
 
 ---
 
@@ -133,10 +133,15 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 ### 3.1 Phase A: Shroud System
 
-**Status**: PLANNED (0/15 migrated)
+**Status**: IN PROGRESS (1/15 migrated)
 **Complexity**: HIGHEST (Shroud.cs 514 lines, ShroudRenderer.cs 390 lines)
 **Blocked by**: Chapter 4 (Map, CellLayers, ProjectedCellLayer), Chapter 3 (Player, Actor, TraitDictionary), Chapter 2 (Renderer, WorldRenderer, TerrainSpriteLayer)
 **Blocks**: Chapter 13 (Support Powers -- some require shroud visibility), Chapter 16 (RadarWidget -- depends on PlayerRadarTerrain), Chapter 19 (GPS/Sensors -- GpsDot, GpsWatcher interact with shroud)
+
+**Completed**:
+- [x] TODO-12.A.1 `Shroud.ts` -- per-player visibility state tracker (APPROVED, 2026-06-15)
+
+**Remaining**: 14 files
 
 **Description**: The shroud system controls what each player can see on the map. It has three layers: (1) `Shroud` -- per-player visibility state tracking with source-based reference counting, (2) `ShroudRenderer` -- visual overlay rendering of shroud/fog edges using sprite variants, (3) `FrozenActorLayer` -- per-player snapshot of enemy actors that have left visible range. Supporting traits include `RevealsShroud` (units reveal area), `CreatesShroud` (units generate darkness for enemies), `HiddenUnderShroud`/`HiddenUnderFog` (actors hide when not visible), `FrozenUnderFog` (buildings freeze when fogged), `Cloak` (stealth system), and `DetectCloaked` (detection of cloaked units).
 
@@ -149,7 +154,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.1 Shroud
 
-- [ ] **TODO-12.A.1** `src/OpenRA.Game/Traits/Player/Shroud.ts` (514 lines C#) -- Per-player visibility state tracker:
+- [x] **TODO-12.A.1** `src/OpenRA.Game/Traits/Player/Shroud.ts` (514 lines C#) -- Per-player visibility state tracker: ✅ COMPLETE (APPROVED, 2026-06-15)
   - `CellVisibility` enum: `Hidden = 0x0`, `Explored = 0x1`, `Visible = 0x2`
   - `SourceType` enum: `PassiveVisibility`, `Shroud`, `Visibility`
   - `ShroudSource` record: `(type: SourceType, projectedCells: PPos[])`
@@ -176,6 +181,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
   - `ProjectedCellsInRange(map, pos, minRange, maxRange, maxHeightDelta)` -- static helper for range queries
   - **PERF**: Hot-path loop in `Tick()` uses direct index iteration, converting to `PPos` only when needed
   - **PERF**: `UpdateCell()` only fires `OnShroudChanged` when resolved type actually changes
+  - **Status**: Migrated, reviewed, APPROVED. Also updated `Sync.ts` and `Sync.test.ts` for shroud sync hash integration.
 
 #### 3.1.2 ShroudRenderer
 
