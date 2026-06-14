@@ -118,6 +118,20 @@ export interface IBuildingUtilsActorInfo {
    * @returns array of trait info objects (or empty)
    */
   getTraitInfos(traitName: string): readonly ITraitInfoForQuery[]
+
+  /** Get the BuildingInfo for this actor type, if available.
+   *
+   * OpenRA 对照: ActorInfo.TraitInfo<BuildingInfo>()
+   *
+   * Optional method used by getLineBuildCells to get the segment's own
+   * BuildingInfo for placement validation.
+   *
+   * MAJOR fix (segment building resolution): enables using the segment's
+   * actual BuildingInfo instead of always falling back to the parent's.
+   *
+   * @returns the BuildingInfo, or undefined if this actor has none
+   */
+  getBuildingInfo?(): BuildingInfo
 }
 
 /** A minimal trait info with a name and types property.
@@ -550,16 +564,15 @@ export class BuildingUtils {
           // Get BuildingInfo from segment type
           const segBuildingInfos = segmentInfo.getTraitInfos('BuildingInfo')
           if (segBuildingInfos.length === 0) break
-          // NOTE: We assume the first BuildingInfo is the correct one.
-          // The real BuildingInfo instance would need reconstruction.
-          // For Phase B, we use buildingInfo as a fallback since we can't
-          // construct a full BuildingInfo from trait info alone.
-          //
-          // If segment type has terrain/placement requirements different
-          // from the parent, the correct behavior is to use the segment's
-          // BuildingInfo. For Phase B, we use the original buildingInfo
-          // as a reasonable default.
-          segmentBi = buildingInfo
+
+          // MAJOR fix: use the segment's own BuildingInfo for placement
+          // validation (terrain types, allowInvalidPlacement, etc.) when
+          // available via getBuildingInfo(). Only fall back to the parent's
+          // buildingInfo if the segment actor genuinely has no concrete
+          // BuildingInfo instance.
+          segmentBi = typeof segmentInfo.getBuildingInfo === 'function'
+            ? segmentInfo.getBuildingInfo()
+            : buildingInfo
         }
 
         const c = CPos.add(topLeft, new CVec(i * vecs[d].X, i * vecs[d].Y))
@@ -597,9 +610,12 @@ export class BuildingUtils {
             // NOTE: Connections on LineBuildNodeInfo is `connections: readonly CVec[]`.
             // We need to check if `vecs[d]` (the direction we searched) is in
             // the node's connection list.
-            const nodeConnections = (ni as any).connections as
-              | readonly CVec[]
-              | undefined
+            // The `connections` field is a concrete property of
+            // LineBuildNodeInfo, which implements ITraitInfoForQuery.
+            // We access it via a narrow interface cast.
+            const nodeConnections = (
+              ni as ITraitInfoForQuery & { connections?: readonly CVec[] }
+            ).connections
             if (nodeConnections && nodeConnections.length > 0) {
               let connectionFound = false
               for (const conn of nodeConnections) {

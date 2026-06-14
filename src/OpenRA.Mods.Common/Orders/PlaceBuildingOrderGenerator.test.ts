@@ -676,6 +676,8 @@ describe('PlaceBuildingOrderGenerator', () => {
         () => modifiers, sound,
       )
 
+      // Simulate left-click Down event (actionButton = 1)
+      gen.handleMouseInput({ button: 1, event: 'Down' })
       const orders = Array.from(gen.order(pausedWorld, CPos.Zero, 0))
       expect(orders.length).toBe(0)
     })
@@ -694,6 +696,8 @@ describe('PlaceBuildingOrderGenerator', () => {
         () => modifiers, sound,
       )
 
+      // Simulate left-click Down event (actionButton = 1)
+      gen.handleMouseInput({ button: 1, event: 'Down' })
       const orders = Array.from(gen.order(w, CPos.Zero, 0))
       const placeOrders = orders.filter((o) => {
         const og = makeOrderGuard(o)
@@ -719,6 +723,8 @@ describe('PlaceBuildingOrderGenerator', () => {
         () => createModifiers(false), sound,
       )
 
+      // Simulate left-click Down event (actionButton = 1)
+      gen.handleMouseInput({ button: 1, event: 'Down' })
       const orders = Array.from(gen.order(w, CPos.Zero, 0))
       const lbOrders = orders.filter((o) => makeOrderGuard(o).orderString === 'LineBuild')
       expect(lbOrders.length).toBe(1)
@@ -738,6 +744,8 @@ describe('PlaceBuildingOrderGenerator', () => {
         () => createModifiers(true), sound,
       )
 
+      // Simulate left-click Down event (actionButton = 1)
+      gen.handleMouseInput({ button: 1, event: 'Down' })
       const orders = Array.from(gen.order(w, CPos.Zero, 0))
       const placeOrders = orders.filter((o) => makeOrderGuard(o).orderString === 'PlaceBuilding')
       expect(placeOrders.length).toBe(1)
@@ -775,6 +783,8 @@ describe('PlaceBuildingOrderGenerator', () => {
         () => modifiers, sound,
       )
 
+      // Simulate left-click Down event (actionButton = 1)
+      gen.handleMouseInput({ button: 1, event: 'Down' })
       const orders = Array.from(gen.order(w, CPos.Zero, 0))
       const plugOrders = orders.filter((o) => makeOrderGuard(o).orderString === 'PlacePlug')
       expect(plugOrders.length).toBe(1)
@@ -797,6 +807,8 @@ describe('PlaceBuildingOrderGenerator', () => {
         () => modifiers, soundSpy,
       )
 
+      // Simulate left-click Down event (actionButton = 1)
+      gen.handleMouseInput({ button: 1, event: 'Down' })
       const orders = Array.from(gen.order(w, CPos.Zero, 0))
       const placeOrders = orders.filter((o) => {
         if (!o) return false

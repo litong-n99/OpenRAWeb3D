@@ -388,6 +388,24 @@ export interface IPlaceBuildingOGKeyInput {
   readonly modifiers: number
 }
 
+/**
+ * Player info exposed by the owner's ActorInfo for trait queries.
+ *
+ * OpenRA 对照: Player.PlayerActor.Info (ActorInfo)
+ *
+ * Provides access to trait info objects like PlaceBuildingInfo.
+ */
+export interface IPlaceBuildingOGPlayerInfo {
+  /** Get a single trait info by name, or null if absent. */
+  getTraitInfo(name: string): IPlaceBuildingOGPlaceBuildingInfo | null
+  /** Get a single trait info by name, returning null if absent. */
+  getTraitInfoOrDefault(name: string): IPlaceBuildingOGPlaceBuildingInfo | null
+  /** Get all instances of a trait info by name. */
+  getTraitInfos(name: string): readonly IPlaceBuildingOGPlaceBuildingInfo[]
+  /** Check if a trait info exists. */
+  hasTraitInfo(name: string): boolean
+}
+
 // ---------------------------------------------------------------------------
 // VariantWrapper — inner class holding variant info + preview
 // OpenRA 对照: PlaceBuildingOrderGenerator.VariantWrapper (sealed class)
@@ -569,6 +587,18 @@ export class PlaceBuildingOrderGenerator implements IOrderGenerator {
   /** Default cursor string. */
   private readonly _worldDefaultCursor: string
 
+  /** Last mouse button pressed (for button routing in order()).
+   *
+   * OpenRA 对照: MouseInput.Button
+   */
+  private _lastMouseButton: number = -1
+
+  /** Last mouse event type (for checking Down vs Up vs Move).
+   *
+   * OpenRA 对照: MouseInput.Event
+   */
+  private _lastMouseEvent: string = ''
+
   // ---------------------------------------------------------------------------
   // Constructor
   // ---------------------------------------------------------------------------
@@ -603,15 +633,14 @@ export class PlaceBuildingOrderGenerator implements IOrderGenerator {
     this._sound = sound
     this._worldDefaultCursor = worldDefaultCursor
 
-    // Resolve PlaceBuildingInfo from the player actor's info
-    const ownerInfo = (queue.actor.owner as unknown as { info?: unknown }).info as
-      | Record<string, unknown>
-      | undefined
-    this._placeBuildingInfo = (
-      typeof ownerInfo?.getTraitInfo === 'function'
-        ? (ownerInfo.getTraitInfo as (name: string) => IPlaceBuildingOGPlaceBuildingInfo | null)('PlaceBuildingInfo')
-        : null
-    ) ?? {
+    // Resolve PlaceBuildingInfo from the player actor's info.
+    // The owner is a PlayerStub at the interface level, but at runtime it is
+    // a full Player with an `info` property (PlayerActor.Info) that exposes
+    // trait queries. We narrow the type to access this.
+    const ownerInfo = (queue.actor.owner as unknown as {
+      info?: IPlaceBuildingOGPlayerInfo
+    }).info
+    this._placeBuildingInfo = ownerInfo?.getTraitInfo?.('PlaceBuildingInfo') ?? {
       cannotPlaceNotification: null,
       cannotPlaceTextNotification: null,
       toggleVariantKey: { isActivatedBy: () => false },
@@ -656,10 +685,15 @@ export class PlaceBuildingOrderGenerator implements IOrderGenerator {
    * OpenRA 对照: IOrderGenerator.Order(World, CPos, int2, MouseInput)
    *
    * Handles left-click (place) and right-click (cancel).
+   * The C# pattern checks `mi.Button == actionButton && mi.Event == Down`
+   * for placement and `mi.Button == cancelButton && mi.Event == Down`
+   * for cancellation. In the TS architecture, MouseInput is received
+   * separately via `handleMouseInput()` and the button/event state is
+   * stored for use here.
    *
-   * @param worldStub — the world (stub, unused — real world is _world field)
-   * @param cell — the cell under the cursor
-   * @param modifiers — keyboard modifiers stub
+   * @param _worldStub — the world (stub, unused — real world is _world field)
+   * @param _cell — the cell under the cursor
+   * @param _modifiers — keyboard modifiers stub
    */
   *order(
     _worldStub: WorldStub,
@@ -673,7 +707,29 @@ export class PlaceBuildingOrderGenerator implements IOrderGenerator {
       return
     }
 
-    // Try to produce orders
+    // Only respond to button-down events (matching C# MouseInputEvent.Down check)
+    if (this._lastMouseEvent !== 'Down') {
+      return
+    }
+
+    // Right-click / cancel button → cancel input mode (matching C# cancel branch)
+    if (
+      cancelButton !== 0 &&
+      this._lastMouseButton === cancelButton
+    ) {
+      this._world.cancelInputMode()
+      return
+    }
+
+    // Non-action button → ignore (matching C# fall-through behavior)
+    if (
+      actionButton === 0 ||
+      this._lastMouseButton !== actionButton
+    ) {
+      return
+    }
+
+    // Left-click / action button → try to produce orders
     const ret = Array.from(this.innerOrder(this._world))
 
     // If there was a successful placement order, cancel input mode
@@ -895,12 +951,21 @@ export class PlaceBuildingOrderGenerator implements IOrderGenerator {
    * OpenRA 对照: N/A (C# mouse input is routed through World.OrderGenerator
    *   which calls IOrderGenerator.Order)
    *
-   * Mouse input is handled by the `order()` method in the C# architecture.
-   * This method is a TS-only hook for mouse input preprocessing.
+   * In the TS architecture, mouse input is received here before `order()`
+   * is invoked. We store the last button and event type so that `order()`
+   * can route to the correct branch (action → place, cancel → exit).
    *
+   * @param mouseInput — the mouse input event with button/event fields
    * @returns false (unhandled, delegate to order())
    */
-  handleMouseInput(_mouseInput: unknown): boolean {
+  handleMouseInput(mouseInput: unknown): boolean {
+    const mi = mouseInput as { button?: number; event?: string } | undefined
+    if (mi?.button !== undefined) {
+      this._lastMouseButton = mi.button
+    }
+    if (mi?.event !== undefined) {
+      this._lastMouseEvent = mi.event
+    }
     return false
   }
 
@@ -1157,6 +1222,10 @@ export class PlaceBuildingOrderGenerator implements IOrderGenerator {
     if (activeVariant?.preview) {
       const previewOffset = activeVariant.preview.topLeftScreenOffset
       const worldPx = this._viewport.viewToWorldPx(offsetPos)
+      // NOTE: WPos here is the WorldRenderer's WPos interface (lowercase x,y,z),
+      // NOT the WPos class from OpenRA.Game/WPos.ts (uppercase X,Y,Z).
+      // The viewport interface (IPlaceBuildingOGViewport) uses the WorldRenderer
+      // shape for forward/backward coordinate transforms in viewport space.
       const adjustedWPos: WPos = {
         x: worldPx.x + previewOffset.x,
         y: worldPx.y + previewOffset.y,

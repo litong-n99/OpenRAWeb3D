@@ -22,12 +22,13 @@ import type {
   PlayerStub,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { Order } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { Target } from '../../../OpenRA.Game/Traits/Target.js'
 import { HotkeyReference } from '../../../OpenRA.Game/Input/HotkeyReference.js'
 import {
   ActorInit,
   type ISingleInstanceInit,
 } from '../../../OpenRA.Game/ActorInitializer.js'
-import type { CPos } from '../../../OpenRA.Game/CPos.js'
+import { CPos } from '../../../OpenRA.Game/CPos.js'
 import type { CVec } from '../../../OpenRA.Game/CVec.js'
 
 // ---------------------------------------------------------------------------
@@ -471,6 +472,36 @@ export class PlaceBuilding implements IResolveOrder, ITick {
    * This matches the pattern used by ProductionQueue which accesses world
    * through `self.world`.
    *
+   * ## Frame-end task omission (vs OpenRA C#)
+   *
+   * OpenRA C# wraps the ENTIRE body in
+   * `self.World.AddFrameEndTask(w => { ... })` to defer actor creation,
+   * INotifyBuildingPlaced callbacks, and ProductionQueue.EndProduction
+   * until after all in-tick logic completes. This prevents INotifyCreated
+   * from firing mid-tick during world actor iteration.
+   *
+   * The TypeScript architecture does NOT use frame-end tasks for the
+   * following reasons:
+   *
+   * 1. **Single-threaded execution**: TypeScript runs in a single-threaded
+   *    event loop. Actor creation is synchronous and does not interleave
+   *    with other callbacks (no C#-style coroutine yielding to tick).
+   *
+   * 2. **No intra-tick actor iteration**: The TS actor system uses
+   *    explicit trait queries rather than `self.World.Actors.Values`
+   *    enumeration inside tick loops. Creating actors during resolveOrder
+   *    does not invalidate ongoing iterations.
+   *
+   * 3. **INotifyCreated ordering**: TS trait lifecycle methods
+   *    (Created/AddedToWorld) fire synchronously during actor creation.
+   *    Since there is no concurrent world-actor iteration, the ordering
+   *    is safe: creation completes fully before any other logic runs.
+   *
+   * If in the future actor iteration becomes common during tick cycles,
+   * a deferred action queue can be introduced to match OpenRA's
+   * `AddFrameEndTask` pattern. For the current architecture, immediate
+   * execution is correct and simpler.
+   *
    * @param self — the player actor this trait is attached to
    * @param order — the order to resolve
    */
@@ -717,12 +748,16 @@ export class PlaceBuilding implements IResolveOrder, ITick {
     order: Order,
     fallbackActor: IGameActor,
   ): CPos {
-    // Try to get the target's center position from the order
-    const target = (order as unknown as Record<string, unknown>)._target as
-      | { centerPosition?: unknown }
-      | undefined
-    if (target?.centerPosition !== undefined) {
-      return world.map.cellContaining(target.centerPosition)
+    // Access the public `target` getter on the real Order class.
+    // At runtime, the Order instance passed is the full Order class from
+    // Network/Order.ts, which exposes `target: Target`.
+    // NOTE: The Order type in TraitsInterfaces is OrderStub (minimal interface);
+    // we narrow to the accessor shape needed here.
+    const orderTarget = (order as unknown as { target: Target }).target
+    try {
+      return world.map.cellContaining(orderTarget.centerPosition)
+    } catch {
+      // Target may be Invalid; fall through to fallback
     }
     // Fallback: use target actor's location
     const loc = (fallbackActor as unknown as Record<string, unknown>).location as
@@ -730,7 +765,7 @@ export class PlaceBuilding implements IResolveOrder, ITick {
       | undefined
     if (loc) return loc
     // Last resort: return zero cell
-    return _zeroCell()
+    return CPos.Zero
   }
 
   /** Find a production queue on the target actor that can build actorInfo
@@ -1213,14 +1248,3 @@ class _GenericInit<T> extends ActorInit<T> implements ISingleInstanceInit {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helper: construct a zero cell for default placement
-// ---------------------------------------------------------------------------
-
-/** Return a zero-value cell (0,0,0).
- *
- * OpenRA 对照: CPos.Zero
- */
-function _zeroCell(): CPos {
-  return { X: 0, Y: 0, Layer: 0 } as CPos
-}
