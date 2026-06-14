@@ -3400,6 +3400,35 @@ export interface INotifySold {
 }
 
 // ---------------------------------------------------------------------------
+// INotifyTransform
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs (transform lifecycle)
+// ---------------------------------------------------------------------------
+
+/** Called when an actor is about to transform into another actor type.
+ *
+ *  OpenRA 对照: INotifyTransform (BeforeTransform, OnTransform, AfterTransform)
+ */
+export interface INotifyTransform {
+  /** Called before the actor transforms.
+   *
+   *  @param self — the actor about to transform
+   */
+  beforeTransform(self: IGameActor): void
+
+  /** Called when the actor transforms.
+   *
+   *  @param self — the actor that is transforming
+   */
+  onTransform(self: IGameActor): void
+
+  /** Called after the actor has transformed.
+   *
+   *  @param self — the actor that has transformed
+   */
+  afterTransform(self: IGameActor): void
+}
+
+// ---------------------------------------------------------------------------
 // INotifyResourceAccepted
 // OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 175
 // ---------------------------------------------------------------------------
