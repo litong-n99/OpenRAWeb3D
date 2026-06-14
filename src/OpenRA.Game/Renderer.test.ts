@@ -128,6 +128,11 @@ vi.mock('@babylonjs/core', () => {
       CreateScreenshotUsingRenderTarget: vi.fn(),
     },
     Color3: Color3Mock,
+    Constants: {
+      TEXTUREFORMAT_RGBA: 5,
+      TEXTURE_NEAREST_SAMPLINGMODE: 1,
+      TEXTURE_BILINEAR_SAMPLINGMODE: 2,
+    },
   }
 })
 

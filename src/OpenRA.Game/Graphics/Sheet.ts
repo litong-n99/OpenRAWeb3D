@@ -138,12 +138,15 @@ export class Sheet {
   constructor(type: SheetType, sizeOrTexture: Size | RawTexture, scene?: Scene) {
     this.type = type
 
-    if (sizeOrTexture instanceof RawTexture) {
-      this._texture = sizeOrTexture
+    // NOTE: Use duck-typing instead of instanceof RawTexture to support
+    // mocked environments (vitest/happy-dom) where RawTexture may not be a
+    // callable constructor.
+    if (sizeOrTexture && typeof sizeOrTexture === 'object' && 'getSize' in sizeOrTexture) {
+      this._texture = sizeOrTexture as RawTexture
       const texSize = sizeOrTexture.getSize()
       this.size = { width: texSize.width, height: texSize.height }
     } else {
-      this.size = { width: sizeOrTexture.width, height: sizeOrTexture.height }
+      this.size = { width: (sizeOrTexture as Size).width, height: (sizeOrTexture as Size).height }
       if (scene) {
         this._scene = scene
       }

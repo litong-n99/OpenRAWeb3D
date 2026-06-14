@@ -132,7 +132,7 @@ export class RgbaSpriteRenderer {
       // 色调重载 — arg4 为 tint (Vec3), arg5 为 alpha, arg6 为 rotation
       this.parent.drawSprite(
         sprite, 0, arg2,
-        arg3 as number, arg7 ?? 0,
+        arg3 as number, arg6 ?? 0,
         arg4 as Vec3, arg5 as number,
       )
     } else {

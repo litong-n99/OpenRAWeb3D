@@ -372,10 +372,13 @@ describe('ModData', () => {
   // -----------------------------------------------------------------------
 
   describe('loadRuleSet', () => {
-    it('returns null (stub)', async () => {
+    it('returns a Ruleset instance', async () => {
       const md = new ModData(manifest, mockFiles as unknown as import('./FileSystem/FileSystem.js').FileSystem)
       const rules = await md.loadRuleSet()
-      expect(rules).toBeNull()
+      expect(rules).not.toBeNull()
+      expect(rules).toBeDefined()
+      // Ruleset.loadAsync is now implemented and returns a Ruleset with actor definitions
+      expect(rules!.actors).toBeInstanceOf(Map)
     })
   })
 

@@ -295,14 +295,16 @@ describe('fastCreateQuad', () => {
       samplers,
       0,
       0,
-      { x: 2, y: 2, z: 0 },
+      { x: 4, y: 2, z: 0 },
       { x: 1, y: 1, z: 1 },
       1,
       Math.PI / 2,
     )
 
-    // With rotation, vertices should differ from unrotated positions
+    // With rotation around center (12, 21), the TL corner should move
+    // from (10, 20) to approximately (11, 22) for a 4x2 sprite rotated 90 degrees
     expect(vertices[0].x).not.toBe(10)
+    expect(vertices[0].y).not.toBe(20)
   })
 })
 
