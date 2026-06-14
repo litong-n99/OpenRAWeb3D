@@ -403,8 +403,8 @@ export class SpawnActorsOnSell
         this.info.guaranteedActorTypes,
       )
 
-      let remainingLocations = [...eligibleLocations]
-      let remainingGuaranteed = [...guaranteedTypes]
+      const remainingLocations = [...eligibleLocations]
+      const remainingGuaranteed = [...guaranteedTypes]
 
       while (remainingLocations.length > 0 && remainingGuaranteed.length > 0) {
         const idx = this._randomIndex(remainingGuaranteed.length, sharedRandom)
@@ -412,14 +412,9 @@ export class SpawnActorsOnSell
         const locIdx = this._randomIndex(remainingLocations.length, sharedRandom)
         const loc = remainingLocations[locIdx]
 
-        remainingLocations = [
-          ...remainingLocations.slice(0, locIdx),
-          ...remainingLocations.slice(locIdx + 1),
-        ]
-        remainingGuaranteed = [
-          ...remainingGuaranteed.slice(0, idx),
-          ...remainingGuaranteed.slice(idx + 1),
-        ]
+        // In-place removal avoids O(n^2) intermediate array allocations
+        remainingLocations.splice(locIdx, 1)
+        remainingGuaranteed.splice(idx, 1)
         dudesValue -= at.cost
 
         this._createActor(world, at.name, loc, self.owner)
@@ -437,12 +432,10 @@ export class SpawnActorsOnSell
 
     if (actorTypes.length === 0) return
 
-    let remainingLocations = [...eligibleLocations]
+    const remainingLocations = [...eligibleLocations]
 
-    while (
-      remainingLocations.length > 0 &&
-      actorTypes.some((a) => a.cost <= dudesValue)
-    ) {
+    while (remainingLocations.length > 0) {
+      // Cache affordable types once per iteration instead of some() + filter()
       const affordableTypes = actorTypes.filter((a) => a.cost <= dudesValue)
       if (affordableTypes.length === 0) break
 
@@ -451,10 +444,8 @@ export class SpawnActorsOnSell
       const locIdx = this._randomIndex(remainingLocations.length, sharedRandom)
       const loc = remainingLocations[locIdx]
 
-      remainingLocations = [
-        ...remainingLocations.slice(0, locIdx),
-        ...remainingLocations.slice(locIdx + 1),
-      ]
+      // In-place removal avoids O(n^2) intermediate array allocations
+      remainingLocations.splice(locIdx, 1)
       dudesValue -= at.cost
 
       this._createActor(world, at.name, loc, self.owner)

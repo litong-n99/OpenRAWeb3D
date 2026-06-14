@@ -268,12 +268,13 @@ describe('GrantConditionOnPlayerResources', () => {
 
       trait.onOwnerChanged(actor, actor.owner!, newOwnerExt)
 
-      // Now tick with new owner's resources (below threshold) — should revoke
-      // But since we changed owners, _conditionToken was reset, and resources are below threshold
+      // Condition is revoked on the old owner during the change
+      expect(actor._revoked.length).toBe(1)
+
+      // Now tick with new owner's resources (below threshold) — should not re-grant
       trait.tick(actor)
       // No grant because resources are below threshold for new owner
       expect(actor._granted.length).toBe(1) // only the original grant
-      expect(actor._revoked.length).toBe(0) // token was just reset, not revoked via actor
     })
 
     it('handles actor without grantCondition/revokeCondition gracefully', () => {

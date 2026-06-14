@@ -125,7 +125,7 @@ export class GrantConditionOnPlayerResources
    *  OpenRA 对照: GrantConditionOnPlayerResources.Created(Actor self)
    */
   created(self: IGameActor): void {
-    this._resolvePlayerResources(self)
+    this._resolvePlayerResources(self.owner)
   }
 
   // ---------------------------------------------------------------------------
@@ -140,26 +140,15 @@ export class GrantConditionOnPlayerResources
    *  OpenRA 对照: GrantConditionOnPlayerResources.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
    */
   onOwnerChanged(
-    _self: IGameActor,
+    self: IGameActor,
     _oldOwner: PlayerStub,
     newOwner: PlayerStub,
   ): void {
-    // Resolve PlayerResources from the new owner
-    const playerActor = (newOwner as unknown as {
-      playerActor?: IGameActor
-    }).playerActor
+    // Revoke any condition granted on the old owner before switching
+    this._revokeCondition(self)
 
-    if (playerActor) {
-      this._playerResources =
-        (playerActor as unknown as {
-          _playerResources?: PlayerResources
-        })._playerResources ?? null
-    } else {
-      this._playerResources = null
-    }
-
-    // Revoke any currently granted condition before switching
-    this._revokeCondition()
+    // Re-resolve PlayerResources from the new owner
+    this._resolvePlayerResources(newOwner)
   }
 
   // ---------------------------------------------------------------------------
@@ -195,12 +184,14 @@ export class GrantConditionOnPlayerResources
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  /** Resolve PlayerResources from the actor's owner.
+  /** Resolve PlayerResources from an owner/player actor.
    *
    *  OpenRA 对照: self.Owner.PlayerActor.Trait<PlayerResources>()
+   *
+   *  @param owner — the player stub whose player actor holds the
+   *    `_playerResources` reference
    */
-  private _resolvePlayerResources(self: IGameActor): void {
-    const owner = self.owner
+  private _resolvePlayerResources(owner: PlayerStub | undefined): void {
     if (!owner) {
       this._playerResources = null
       return
@@ -225,12 +216,16 @@ export class GrantConditionOnPlayerResources
   /** Revoke the currently granted condition, if any.
    *
    *  Used when the owner changes to clean up the old condition.
+   *
+   *  @param self — the actor that holds the condition token
    */
-  private _revokeCondition(): void {
+  private _revokeCondition(self: IGameActor): void {
     if (this._conditionToken !== INVALID_CONDITION_TOKEN) {
-      // We cannot revoke without the actor reference, but the token
-      // is no longer valid after owner change anyway. Reset to invalid.
-      this._conditionToken = INVALID_CONDITION_TOKEN
+      if (self.revokeCondition) {
+        this._conditionToken = self.revokeCondition(this._conditionToken)
+      } else {
+        this._conditionToken = INVALID_CONDITION_TOKEN
+      }
     }
   }
 }

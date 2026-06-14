@@ -62,24 +62,12 @@ describe('calculateResourceLevelFrameIndex', () => {
       expect(calculateResourceLevelFrameIndex(50, 100, 5)).toBe(2)
     })
 
-    it('returns index 4 when resources=80 capacity=100 seqLen=5', () => {
-      // (10*5-1)*80/(10*100) = 49*80/1000 = 3920/1000 = 3
-      // Hmm that's 3, let me check... 49*80=3920, 3920/1000=3.92 floor=3
-      // Actually 80/100 = 0.8, seqLen=5 -> 0.8*5 = 4, so we expect index 4...
-      // Wait the formula is (49 * resources) / 1000, 49*80 = 3920, floor(3920/1000) = 3
-      // But for even distribution across 5 frames with 100-19*5...
-      // Actually the formula uses (10*len - 1) in numerator vs 10*capacity in denominator
-      // which gives a slight offset. Let me verify:
-      // resources: 0-19 -> 0, 20-39 -> 1, 40-59 -> 2, 60-78 -> 3, 79-99 -> 4
-      // 80 falls in range 79-99? 49*80=3920/1000=3, so index=3 for resources=80
-      // 49*79=3871/1000=3, 49*99=4851/1000=4, 49*100=4900/1000=4
-      // So: 0-19->0, 20-39->1, 40-59->2, 60-78->3, 79-99->4... but 80/100=0.8 exactly
-      // 49*80/1000=3.92 floor 3. So 80 gives index 3. That means resources=80 maps to the
-      // second-to-last frame.
-      // 49*82/1000=4018/1000=4. So resources>=82 maps to last frame.
-      // This is because of the (10L-1) factor which reduces the range slightly.
-      // This is per the OpenRA formula.
-      let index = calculateResourceLevelFrameIndex(80, 100, 5)
+    it('returns index 3 when resources=80 capacity=100 seqLen=5', () => {
+      // OpenRA formula: floor((10 * seqLen - 1) * resources / (10 * capacity))
+      // = floor((10*5 - 1) * 80 / (10*100)) = floor(49 * 80 / 1000) = floor(3920/1000) = 3.
+      // The (10*len - 1) factor intentionally scales the resource range so the
+      // final frame (index 4) is only reached near/at full capacity.
+      const index = calculateResourceLevelFrameIndex(80, 100, 5)
       expect(index).toBe(3)
     })
   })

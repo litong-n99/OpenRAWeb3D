@@ -13,7 +13,8 @@
  *
  * Pip 填充公式（对应 OpenRA RenderDecoration 循环）:
  *   player.Resources * Info.PipCount > i * player.ResourceCapacity
- *   等效于: filledPips = floor(resources * PipCount / capacity)
+ *   注意: 该严格大于循环在边界处与 floor(resources * PipCount / capacity) 不同,
+ *   因此直接复现 C# 循环语义而非取整公式。
  *
  * Pips 水平排列，步幅由 PipStride 或 pip 精灵宽度决定。
  * 空心 pip 使用 EmptySequence，实心 pip 使用 FullSequence。

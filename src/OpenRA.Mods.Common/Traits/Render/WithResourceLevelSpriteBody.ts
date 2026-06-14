@@ -8,7 +8,7 @@
  *   （WithSpriteBody 尚未迁移，直接继承 ConditionalTrait）
  * - C# ConfigureAnimation() 设置 PlayFetchIndex → TS calculateBodyFrameIndex() 纯逻辑
  * - C# TraitEnabled + CancelCustomAnimation 生命周期
- *   → TS traidEnabled() / cancelCustomAnimationCallback
+ *   → TS traitEnabled() / cancelCustomAnimationCallback
  * - 渲染存根: TODO-10.B-Opt.4-RENDER — 集成 RenderSprites/WithSpriteBody pipeline
  *
  * WithSpriteBody 替换说明:
