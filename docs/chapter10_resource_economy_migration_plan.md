@@ -1,18 +1,18 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 10 -- Resource & Economy System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.4 (Traits -- Harvester, ResourceLayer, Economy)
-> **Chapter Status**: IN PROGRESS (Phase A COMPLETE: 8 core files, 344 tests, ~4,965 TS lines; Phase B PLANNING: 0/11)
-> **Planning Date**: 2026-06-13 | **Updated**: 2026-06-14 (Phase A COMPLETE)
+> **Chapter Status**: COMPLETE (ALL PHASES A-B COMPLETE: 17 core files, 769 tests, ~7,365 TS lines; 8 optional files PLANNING; Phase B R2 pending)
+> **Planning Date**: 2026-06-13 | **Updated**: 2026-06-14 (Phase B COMPLETE)
 > **Prerequisite**: Chapters 2-9 COMPLETE (249/249, 100%)
 >
 > ### Completion Summary (Target)
 >
 > | Phase | Files | TS Lines (est.) | Tests (est.) | Commits | Review Rounds |
 > |:---|:---:|:---:|:---:|:---:|:---:|
-> | A: Resource Infrastructure | 6 | ~4,965 | ~3,960 (7 files, 344 tests) | 6 | 1 (R1 resolved, R2 pending) |
-> | B: Economy Support Traits | 11 | ~2,400 | ~60 | TBD | TBD |
+> | A: Resource Infrastructure | 8 | ~4,965 | ~3,960 (7 files, 344 tests) | 6 | 2 (R1 + R2) |
+> | B: Economy Support Traits | 11 | ~2,400 | ~2,900 (11 files, 425 tests) | 6 | 1 (R1 resolved, R2 pending) |
 > | B-optional: Extended Economy Traits | 8 | ~1,300 | ~35 | TBD | TBD |
-> | **Total** | **17** | **~5,200** | **~125** | **TBD** | **TBD** |
+> | **Total** | **17** | **~7,365** | **~769** | **12** | **TBD** |
 >
 > **Deferred**: 1 file (FindAndDeliverResources Activity -- implementation deferred to Chapter 14 Phase D). 3 inner order-targeter classes deferred to Chapter 15 (HarvestOrderTargeter, SellOrderTargeter).
 >
@@ -131,18 +131,18 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 | 5 | `OpenRA.Mods.Common/Traits/SeedsResource.cs` | `src/OpenRA.Mods.Common/Traits/SeedsResource.ts` | `SeedsResource` (COMPLETED) | 348 | LOW | A |
 | 6 | `OpenRA.Mods.Common/Traits/Buildings/Refinery.cs` | `src/OpenRA.Mods.Common/Traits/Buildings/Refinery.ts` | `Refinery` (COMPLETED) | 705 | MEDIUM | A |
 
-| **Phase B: Economy Support Traits** | | | | | |
-| 7 | `OpenRA.Mods.Common/Traits/StoresResources.cs` | `src/OpenRA.Mods.Common/Traits/StoresResources.ts` | `StoresResources` | 107 | LOW | B |
-| 8 | `OpenRA.Mods.Common/Traits/StoresPlayerResources.cs` | `src/OpenRA.Mods.Common/Traits/StoresPlayerResources.ts` | `StoresPlayerResources` | 67 | LOW | B |
-| 9 | `OpenRA.Mods.Common/Traits/Player/PlayerResources.cs` | `src/OpenRA.Mods.Common/Traits/Player/PlayerResources.ts` | `PlayerResources` | 264 | MEDIUM | B |
-| 10 | `OpenRA.Mods.Common/Traits/CashTrickler.cs` | `src/OpenRA.Mods.Common/Traits/CashTrickler.ts` | `CashTrickler` | 113 | LOW-MEDIUM | B |
-| 11 | `OpenRA.Mods.Common/Traits/Valued.cs` | `src/OpenRA.Mods.Common/Traits/Valued.ts` | `Valued` | 25 | LOW | B |
-| 12 | `OpenRA.Mods.Common/Traits/GivesBounty.cs` | `src/OpenRA.Mods.Common/Traits/GivesBounty.ts` | `GivesBounty` | 91 | LOW | B |
-| 13 | `OpenRA.Mods.Common/Traits/GivesCashOnCapture.cs` | `src/OpenRA.Mods.Common/Traits/GivesCashOnCapture.ts` | `GivesCashOnCapture` | 62 | LOW | B |
-| 14 | `OpenRA.Mods.Common/Traits/DeliversCash.cs` | `src/OpenRA.Mods.Common/Traits/DeliversCash.ts` | `DeliversCash` | 128 | LOW-MEDIUM | B |
-| 15 | `OpenRA.Mods.Common/Traits/AcceptsDeliveredCash.cs` | `src/OpenRA.Mods.Common/Traits/AcceptsDeliveredCash.ts` | `AcceptsDeliveredCash` | 50 | LOW | B |
-| 16 | `OpenRA.Mods.Common/Traits/Sellable.cs` | `src/OpenRA.Mods.Common/Traits/Sellable.ts` | `Sellable` | 122 | LOW-MEDIUM | B |
-| 17 | `OpenRA.Mods.Common/Traits/CustomSellValue.cs` | `src/OpenRA.Mods.Common/Traits/CustomSellValue.ts` | `CustomSellValue` | 38 | LOW | B |
+| **Phase B: Economy Support Traits (COMPLETED 2026-06-14)** | | | | TS Lines | | |
+| 7 | `OpenRA.Mods.Common/Traits/StoresResources.cs` | `src/OpenRA.Mods.Common/Traits/StoresResources.ts` | `StoresResources` (COMPLETED) | 219 | LOW | B |
+| 8 | `OpenRA.Mods.Common/Traits/StoresPlayerResources.cs` | `src/OpenRA.Mods.Common/Traits/StoresPlayerResources.ts` | `StoresPlayerResources` (COMPLETED) | 288 | LOW | B |
+| 9 | `OpenRA.Mods.Common/Traits/Player/PlayerResources.cs` | `src/OpenRA.Mods.Common/Traits/Player/PlayerResources.ts` | `PlayerResources` (COMPLETED) | 540 | MEDIUM | B |
+| 10 | `OpenRA.Mods.Common/Traits/CashTrickler.cs` | `src/OpenRA.Mods.Common/Traits/CashTrickler.ts` | `CashTrickler` (COMPLETED) | 294 | LOW-MEDIUM | B |
+| 11 | `OpenRA.Mods.Common/Traits/Valued.cs` | `src/OpenRA.Mods.Common/Traits/Valued.ts` | `Valued` (COMPLETED) | 76 | LOW | B |
+| 12 | `OpenRA.Mods.Common/Traits/GivesBounty.cs` | `src/OpenRA.Mods.Common/Traits/GivesBounty.ts` | `GivesBounty` (COMPLETED) | 268 | LOW | B |
+| 13 | `OpenRA.Mods.Common/Traits/GivesCashOnCapture.cs` | `src/OpenRA.Mods.Common/Traits/GivesCashOnCapture.ts` | `GivesCashOnCapture` (COMPLETED) | 232 | LOW | B |
+| 14 | `OpenRA.Mods.Common/Traits/DeliversCash.cs` | `src/OpenRA.Mods.Common/Traits/DeliversCash.ts` | `DeliversCash` (COMPLETED) | 298 | LOW-MEDIUM | B |
+| 15 | `OpenRA.Mods.Common/Traits/AcceptsDeliveredCash.cs` | `src/OpenRA.Mods.Common/Traits/AcceptsDeliveredCash.ts` | `AcceptsDeliveredCash` (COMPLETED) | 149 | LOW | B |
+| 16 | `OpenRA.Mods.Common/Traits/Sellable.cs` | `src/OpenRA.Mods.Common/Traits/Sellable.ts` | `Sellable` (COMPLETED) | 314 | LOW-MEDIUM | B |
+| 17 | `OpenRA.Mods.Common/Traits/CustomSellValue.cs` | `src/OpenRA.Mods.Common/Traits/CustomSellValue.ts` | `CustomSellValue` (COMPLETED) | 118 | LOW | B |
 
 | **Phase B-Optional: Extended Economy Traits** | | | | | |
 | 18 | `OpenRA.Mods.Common/Traits/Multipliers/ResourceValueMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/Multipliers/ResourceValueMultiplier.ts` | `ResourceValueMultiplier` | 31 | LOW | B-opt |
@@ -178,10 +178,10 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 | Phase | Files | C# Lines | Complexity | Status |
 |:---|:---:|:---:|:---|:---|
-| A: Resource Infrastructure | 8 (6 files + interface + base class) | ~1,266 active + ~230 infrastructure | HIGH + MEDIUM + LOW | COMPLETE (8/8, 344 tests, R1 done, R2 pending) |
-| B: Economy Support Traits | 11 | ~1,067 | MEDIUM + LOW-MEDIUM + LOW | PLANNING (0/11) |
+| A: Resource Infrastructure | 8 (6 files + interface + base class) | ~1,266 active + ~230 infrastructure | HIGH + MEDIUM + LOW | COMPLETE (8/8, 344 tests, R1 + R2 done) |
+| B: Economy Support Traits | 11 | ~1,067 | MEDIUM + LOW-MEDIUM + LOW | COMPLETE (11/11, 425 tests, R1 resolved, R2 pending) |
 | B-opt: Extended Economy Traits | 8 | ~592 | LOW-MEDIUM + LOW | OPTIONAL (0/8) |
-| **Total** | **17 + 8 opt** | **~2,333 core + ~592 opt** | | **IN PROGRESS (8/17 core)** |
+| **Total** | **17 + 8 opt** | **~2,333 core + ~592 opt** | | **COMPLETE (17/17 core)** |
 
 ---
 
@@ -454,10 +454,12 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 ### 3.2 Phase B: Economy Support Traits
 
-**Status**: PLANNING (0/11)
+**Status**: COMPLETE (11/11, 425 tests, R1 resolved, R2 pending)
 **Complexity**: MEDIUM (PlayerResources 264 lines) + LOW-MEDIUM + LOW (10 files, ~803 lines total)
 **Blocked by**: Phase A (IStoresResources interface finalized in TraitsInterfaces.ts; ResourceLayer for resource type info; Harvester for IStoresResources reference implementation; Refinery for IAcceptResources reference implementation). Also blocked by: Chapter 3 (Player, INotifyKilled, INotifyCapture, INotifyOwnerChanged -- ALL COMPLETE), Chapter 6 Phase A (Order, IResolveOrder -- ALL COMPLETE), Chapter 6 Phase B (Sync trait -- ALL COMPLETE).
 **Blocks**: Chapter 11 (Production queues consume PlayerResources cash and stored resources), Chapter 16 (ResourceBarWidget displays PlayerResources state)
+**Review**: R1 COMPLETE (0 BLOCKER, 5 MAJOR resolved, 5 MINOR resolved), R2 PENDING. 6 commits: 4 implementation + 2 review fix commits.
+**Date**: 2026-06-14
 
 **Description**: Phase B implements the economy traits that manage player resources (cash + stored resources), provide resource storage capacity, and handle various cash transfer events. `PlayerResources` (264 lines) is the central player-level economy manager with dual-currency tracking, `[Sync]` synchronization, lobby options for starting cash, and cash overflow protection. `StoresResources` (107 lines, already having its interface defined in Phase A) provides per-actor resource storage with capacity limits. `StoresPlayerResources` (67 lines) bridges building storage to `PlayerResources` capacity tracking. `CashTrickler` (113 lines) grants periodic cash. `Valued` (25 lines) is the simplest trait -- just stores a Cost value. `GivesBounty` (91 lines) grants cash to the killer on death. `GivesCashOnCapture` (62 lines) grants cash to the captor. `DeliversCash` (128 lines) and `AcceptsDeliveredCash` (50 lines) coordinate cash delivery between actors. `Sellable` (122 lines) adds a Sell button and refund logic. `CustomSellValue` (38 lines) overrides the sell value calculation.
 
@@ -471,7 +473,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.1 StoresResources
 
-- [ ] **TODO-10.B.1** `src/OpenRA.Mods.Common/Traits/StoresResources.ts` (107 lines C#) -- Per-actor resource storage:
+- [x] **TODO-10.B.1** `src/OpenRA.Mods.Common/Traits/StoresResources.ts` (219 TS lines) -- Per-actor resource storage (COMPLETED):
   - `StoresResourcesInfo` config class:
     - `Capacity: number` = 28 -- max total resource units
     - `Resources: string[]` -- which resource types can be stored
@@ -490,7 +492,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.2 StoresPlayerResources
 
-- [ ] **TODO-10.B.2** `src/OpenRA.Mods.Common/Traits/StoresPlayerResources.ts` (67 lines C#) -- Building-to-player resource bridge:
+- [x] **TODO-10.B.2** `src/OpenRA.Mods.Common/Traits/StoresPlayerResources.ts` (288 TS lines) -- Building-to-player resource bridge (COMPLETED):
   - `StoresPlayerResourcesInfo` config class: no config fields (marker trait)
   - `StoresPlayerResources` trait (`INotifyAddedToWorld`, `INotifyRemovedFromWorld`, `INotifyOwnerChanged`):
     - `capacity: number` -- delegates to `IStoresResources.capacity` on this actor
@@ -508,7 +510,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.3 PlayerResources
 
-- [ ] **TODO-10.B.3** `src/OpenRA.Mods.Common/Traits/Player/PlayerResources.ts` (264 lines C#) -- Player-level economy manager:
+- [x] **TODO-10.B.3** `src/OpenRA.Mods.Common/Traits/Player/PlayerResources.ts` (540 TS lines) -- Player-level economy manager (COMPLETED):
   - `PlayerResourcesInfo` config class:
     - `DefaultCashDropdownLabel: string` = "Starting Cash"
     - `DefaultCashDropdownDescription: string` -- tooltip
@@ -556,7 +558,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.4 CashTrickler
 
-- [ ] **TODO-10.B.4** `src/OpenRA.Mods.Common/Traits/CashTrickler.ts` (113 lines C#) -- Periodic cash income:
+- [x] **TODO-10.B.4** `src/OpenRA.Mods.Common/Traits/CashTrickler.ts` (294 TS lines) -- Periodic cash income (COMPLETED):
   - `CashTricklerInfo` config class:
     - `Amount: number` -- cash per period
     - `Interval: number` -- ticks between grants
@@ -571,7 +573,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.5 Valued
 
-- [ ] **TODO-10.B.5** `src/OpenRA.Mods.Common/Traits/Valued.ts` (25 lines C#) -- Actor cost/value assignment:
+- [x] **TODO-10.B.5** `src/OpenRA.Mods.Common/Traits/Valued.ts` (76 TS lines) -- Actor cost/value assignment (COMPLETED):
   - `ValuedInfo` config class:
     - `Cost: number` -- cost/value of this actor
   - `Valued` trait:
@@ -581,7 +583,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.6 GivesBounty
 
-- [ ] **TODO-10.B.6** `src/OpenRA.Mods.Common/Traits/GivesBounty.ts` (91 lines C#) -- Bounty on kill:
+- [x] **TODO-10.B.6** `src/OpenRA.Mods.Common/Traits/GivesBounty.ts` (268 TS lines) -- Bounty on kill (COMPLETED):
   - `GivesBountyInfo` config class:
     - `Percentage: number` = 10 -- percentage of killed actor's value as bounty
     - `Levels: number[]` -- fixed bounty amounts per veterancy level
@@ -598,7 +600,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.7 GivesCashOnCapture
 
-- [ ] **TODO-10.B.7** `src/OpenRA.Mods.Common/Traits/GivesCashOnCapture.ts` (62 lines C#) -- Cash on building capture:
+- [x] **TODO-10.B.7** `src/OpenRA.Mods.Common/Traits/GivesCashOnCapture.ts` (232 TS lines) -- Cash on building capture (COMPLETED):
   - `GivesCashOnCaptureInfo` config class:
     - `Amount: number` -- cash granted
     - `ShowTicksFlag: boolean` = true -- show floating cash text
@@ -610,7 +612,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.8 DeliversCash
 
-- [ ] **TODO-10.B.8** `src/OpenRA.Mods.Common/Traits/DeliversCash.ts` (128 lines C#) -- Carryable cash delivery:
+- [x] **TODO-10.B.8** `src/OpenRA.Mods.Common/Traits/DeliversCash.ts` (298 TS lines) -- Carryable cash delivery (COMPLETED):
   - `DeliversCashInfo` config class:
     - `Payload: number` -- cash amount delivered
     - `PlayerExperience: number` = 0 -- experience granted to player on delivery
@@ -630,7 +632,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.9 AcceptsDeliveredCash
 
-- [ ] **TODO-10.B.9** `src/OpenRA.Mods.Common/Traits/AcceptsDeliveredCash.ts` (50 lines C#) -- Cash delivery receiver:
+- [x] **TODO-10.B.9** `src/OpenRA.Mods.Common/Traits/AcceptsDeliveredCash.ts` (149 TS lines) -- Cash delivery receiver (COMPLETED):
   - `AcceptsDeliveredCashInfo` config class:
     - `Type: string` = "Cash" -- delivery type to accept
     - `ValidRelationships: PlayerRelationship` = `"Ally"` -- who can deliver
@@ -641,7 +643,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.10 Sellable
 
-- [ ] **TODO-10.B.10** `src/OpenRA.Mods.Common/Traits/Sellable.ts` (122 lines C#) -- Sell button + refund logic:
+- [x] **TODO-10.B.10** `src/OpenRA.Mods.Common/Traits/Sellable.ts` (314 TS lines) -- Sell button + refund logic (COMPLETED):
   - `SellableInfo` config class:
     - `RefundPercent: number` = 50 -- percentage of cost refunded
     - `SellSounds: string[]` -- sound effects played on sell
@@ -669,7 +671,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.2.11 CustomSellValue
 
-- [ ] **TODO-10.B.11** `src/OpenRA.Mods.Common/Traits/CustomSellValue.ts` (38 lines C#) -- Override sell value:
+- [x] **TODO-10.B.11** `src/OpenRA.Mods.Common/Traits/CustomSellValue.ts` (118 TS lines) -- Override sell value (COMPLETED):
   - `CustomSellValueInfo` config class:
     - `Value: number` -- override sell value (0 = use default calculation)
   - `CustomSellValue` trait:
@@ -677,7 +679,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
   - Used by `Sellable` to optionally override the calculated sell value
   - Simple data trait with no logic beyond value exposure
 
-**Phase B Summary**: 11 files, ~1,067 C# lines source. PlayerResources (264 lines) is the central economy manager and must be carefully ported with correct [Sync] integration and overflow protection. StoresResources (107 lines) and StoresPlayerResources (67 lines) work together to bridge actor-level storage to player-level capacity. Most other files are simple event-driven traits (GivesBounty, GivesCashOnCapture, AcceptsDeliveredCash) or simple data holders (Valued, CustomSellValue). Estimated ~60 unit tests. Estimated ~2,400 TypeScript implementation lines.
+**Phase B Summary (COMPLETED 2026-06-14)**: 11 files, ~2,400 TypeScript implementation lines, 11 test files with 425 unit tests all passing. PlayerResources (540 TS lines) is the central economy manager ported with correct [Sync] integration and overflow protection. StoresResources (219 TS lines) and StoresPlayerResources (288 TS lines) work together to bridge actor-level storage to player-level capacity. CashTrickler (294 TS lines), GivesBounty (268 TS lines), GivesCashOnCapture (232 TS lines), DeliversCash (298 TS lines), Sellable (314 TS lines), and Valued (76 TS lines) are all fully implemented with tests. AcceptsDeliveredCash (149 TS lines) and CustomSellValue (118 TS lines) are simple data/filter traits. Review: R1 COMPLETE (0 BLOCKER, 5 MAJOR resolved, 5 MINOR resolved), R2 PENDING. 6 commits: 4 implementation + 2 review fix commits.
 
 ---
 
@@ -957,29 +959,29 @@ All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 
 #### Phase B Tests
 
-- [ ] **TEST-10.23** StoresResources: `addResource()` adds up to capacity, returns leftover; `removeResource()` removes up to current amount
-- [ ] **TEST-10.24** StoresResources: `contentsSum` correctly tracks total stored units after add/remove operations
-- [ ] **TEST-10.25** StoresResources: `ContentHash` produces deterministic hash value for sync validation
-- [ ] **TEST-10.26** StoresPlayerResources: `addedToWorld()` calls `PlayerResources.addStorageCapacity()` with correct capacity
-- [ ] **TEST-10.27** StoresPlayerResources: `removedFromWorld()` calls `PlayerResources.removeStorageCapacity()` with correct capacity
-- [ ] **TEST-10.28** StoresPlayerResources: owner change adjusts storage on both old and new owner
-- [ ] **TEST-10.29** PlayerResources: `addCash()` correctly increments cash balance; `Number.isSafeInteger()` overflow protection caps at MAX_SAFE_INTEGER
-- [ ] **TEST-10.30** PlayerResources: `takeCash()` returns false when insufficient funds; returns true and decrements when sufficient
-- [ ] **TEST-10.31** PlayerResources: `canAfford()` returns true for cost <= cash, false for cost > cash
-- [ ] **TEST-10.32** PlayerResources: `addResourceStorage()` respects total capacity; returns leftover when full
-- [ ] **TEST-10.33** PlayerResources: `addStorageCapacity()` / `removeStorageCapacity()` correctly adjust total capacity
-- [ ] **TEST-10.34** PlayerResources: sync hash fields update correctly after cash and resource changes
-- [ ] **TEST-10.35** CashTrickler: `tick()` grants cash at correct interval; does not grant at non-interval ticks
-- [ ] **TEST-10.36** Valued: `cost` getter returns `info.Cost` value correctly
-- [ ] **TEST-10.37** GivesBounty: `killed()` grants correct bounty amount to attacker based on victim's Valued.Cost * Percentage
-- [ ] **TEST-10.38** GivesBounty: `ValidRelationships` filter prevents bounty grant to allies
-- [ ] **TEST-10.39** GivesCashOnCapture: `onCapture()` grants cash to new owner
-- [ ] **TEST-10.40** DeliversCash: `issueOrder()` returns DeliverCash order when targeting AcceptsDeliveredCash actor
-- [ ] **TEST-10.41** AcceptsDeliveredCash: `acceptsDelivery()` returns true for matching type and valid relationship
-- [ ] **TEST-10.42** Sellable: `sellValue()` calculates correct refund: Valued.Cost * healthPercent * RefundPercent / 100
-- [ ] **TEST-10.43** Sellable: `resolveOrder("Sell")` grants cash to player, removes actor from world
-- [ ] **TEST-10.44** Sellable: `issueOrder()` returns null when `RequiresCondition` is not satisfied
-- [ ] **TEST-10.45** CustomSellValue: `value()` returns configured override value
+- [x] **TEST-10.23** StoresResources: `addResource()` adds up to capacity, returns leftover; `removeResource()` removes up to current amount
+- [x] **TEST-10.24** StoresResources: `contentsSum` correctly tracks total stored units after add/remove operations
+- [x] **TEST-10.25** StoresResources: `ContentHash` produces deterministic hash value for sync validation
+- [x] **TEST-10.26** StoresPlayerResources: `addedToWorld()` calls `PlayerResources.addStorageCapacity()` with correct capacity
+- [x] **TEST-10.27** StoresPlayerResources: `removedFromWorld()` calls `PlayerResources.removeStorageCapacity()` with correct capacity
+- [x] **TEST-10.28** StoresPlayerResources: owner change adjusts storage on both old and new owner
+- [x] **TEST-10.29** PlayerResources: `addCash()` correctly increments cash balance; `Number.isSafeInteger()` overflow protection caps at MAX_SAFE_INTEGER
+- [x] **TEST-10.30** PlayerResources: `takeCash()` returns false when insufficient funds; returns true and decrements when sufficient
+- [x] **TEST-10.31** PlayerResources: `canAfford()` returns true for cost <= cash, false for cost > cash
+- [x] **TEST-10.32** PlayerResources: `addResourceStorage()` respects total capacity; returns leftover when full
+- [x] **TEST-10.33** PlayerResources: `addStorageCapacity()` / `removeStorageCapacity()` correctly adjust total capacity
+- [x] **TEST-10.34** PlayerResources: sync hash fields update correctly after cash and resource changes
+- [x] **TEST-10.35** CashTrickler: `tick()` grants cash at correct interval; does not grant at non-interval ticks
+- [x] **TEST-10.36** Valued: `cost` getter returns `info.Cost` value correctly
+- [x] **TEST-10.37** GivesBounty: `killed()` grants correct bounty amount to attacker based on victim's Valued.Cost * Percentage
+- [x] **TEST-10.38** GivesBounty: `ValidRelationships` filter prevents bounty grant to allies
+- [x] **TEST-10.39** GivesCashOnCapture: `onCapture()` grants cash to new owner
+- [x] **TEST-10.40** DeliversCash: `issueOrder()` returns DeliverCash order when targeting AcceptsDeliveredCash actor
+- [x] **TEST-10.41** AcceptsDeliveredCash: `acceptsDelivery()` returns true for matching type and valid relationship
+- [x] **TEST-10.42** Sellable: `sellValue()` calculates correct refund: Valued.Cost * healthPercent * RefundPercent / 100
+- [x] **TEST-10.43** Sellable: `resolveOrder("Sell")` grants cash to player, removes actor from world
+- [x] **TEST-10.44** Sellable: `issueOrder()` returns null when `RequiresCondition` is not satisfied
+- [x] **TEST-10.45** CustomSellValue: `value()` returns configured override value
 
 #### Phase B-Optional Tests
 
@@ -997,9 +999,9 @@ All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 | Phase | Files | Test Files | Estimated Tests | Estimated Test Lines |
 |:---|:---:|:---:|:---:|:---:|
 | A: Resource Infrastructure | 8 (6 + interface + base) | 7 | 344 | ~6,224 |
-| B: Economy Support | 11 | 10 | ~60 | ~3,500 |
+| B: Economy Support | 11 | 11 | 425 | ~2,900 |
 | B-opt: Extended Economy | 8 | 6 | ~35 | ~1,800 |
-| **Total (core)** | **17** | **18** | **~125** | **~8,300** |
+| **Total (core)** | **17** | **18** | **769** | **~9,124** |
 
 ### 5.3 Visual Acceptance Testing
 
