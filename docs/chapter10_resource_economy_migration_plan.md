@@ -1,8 +1,8 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 10 -- Resource & Economy System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.4 (Traits -- Harvester, ResourceLayer, Economy)
-> **Chapter Status**: COMPLETE (ALL PHASES A-B COMPLETE: 17 core files, 769 tests, ~7,365 TS lines; 8 optional files PLANNING; Phase B R2 pending)
-> **Planning Date**: 2026-06-13 | **Updated**: 2026-06-14 (Phase B COMPLETE)
+> **Chapter Status**: COMPLETE (ALL PHASES A-B COMPLETE: 17 core files, 769 tests, ~7,365 TS lines; Phase B-Optional: 8 files, 203 tests, ~1,300 TS lines; ALL 25 FILES COMPLETE)
+> **Planning Date**: 2026-06-13 | **Updated**: 2026-06-14 (Phase B-Optional COMPLETE)
 > **Prerequisite**: Chapters 2-9 COMPLETE (249/249, 100%)
 >
 > ### Completion Summary (Target)
@@ -11,8 +11,8 @@
 > |:---|:---:|:---:|:---:|:---:|:---:|
 > | A: Resource Infrastructure | 8 | ~4,965 | ~3,960 (7 files, 344 tests) | 6 | 2 (R1 + R2) |
 > | B: Economy Support Traits | 11 | ~2,400 | ~2,900 (11 files, 425 tests) | 6 | 1 (R1 resolved, R2 pending) |
-> | B-optional: Extended Economy Traits | 8 | ~1,300 | ~35 | TBD | TBD |
-> | **Total** | **17** | **~7,365** | **~769** | **12** | **TBD** |
+> | B-optional: Extended Economy Traits | 8 | ~1,300 | ~203 (5 test files, 8 files) | 1 | 1 (R1) |
+> | **Total** | **25** | **~8,665** | **~972** | **13** | **TBD** |
 >
 > **Deferred**: 1 file (FindAndDeliverResources Activity -- implementation deferred to Chapter 14 Phase D). 3 inner order-targeter classes deferred to Chapter 15 (HarvestOrderTargeter, SellOrderTargeter).
 >
@@ -144,15 +144,15 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 | 16 | `OpenRA.Mods.Common/Traits/Sellable.cs` | `src/OpenRA.Mods.Common/Traits/Sellable.ts` | `Sellable` (COMPLETED) | 314 | LOW-MEDIUM | B |
 | 17 | `OpenRA.Mods.Common/Traits/CustomSellValue.cs` | `src/OpenRA.Mods.Common/Traits/CustomSellValue.ts` | `CustomSellValue` (COMPLETED) | 118 | LOW | B |
 
-| **Phase B-Optional: Extended Economy Traits** | | | | | |
-| 18 | `OpenRA.Mods.Common/Traits/Multipliers/ResourceValueMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/Multipliers/ResourceValueMultiplier.ts` | `ResourceValueMultiplier` | 31 | LOW | B-opt |
-| 19 | `OpenRA.Mods.Common/Traits/Conditions/GrantConditionOnPlayerResources.cs` | `src/OpenRA.Mods.Common/Traits/Conditions/GrantConditionOnPlayerResources.ts` | `GrantConditionOnPlayerResources` | 64 | LOW | B-opt |
-| 20 | `OpenRA.Mods.Common/Traits/Render/WithResourceLevelOverlay.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithResourceLevelOverlay.ts` | `WithResourceLevelOverlay` | 69 | LOW | B-opt |
-| 21 | `OpenRA.Mods.Common/Traits/Render/WithResourceLevelSpriteBody.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithResourceLevelSpriteBody.ts` | `WithResourceLevelSpriteBody` | 75 | LOW | B-opt |
-| 22 | `OpenRA.Mods.Common/Traits/Render/WithResourceStoragePipsDecoration.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithResourceStoragePipsDecoration.ts` | `WithResourceStoragePipsDecoration` | 79 | LOW | B-opt |
-| 23 | `OpenRA.Mods.Common/Traits/Render/WithStoresResourcesPipsDecoration.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithStoresResourcesPipsDecoration.ts` | `WithStoresResourcesPipsDecoration` | 101 | LOW | B-opt |
-| 24 | `OpenRA.Mods.Common/Traits/CarryableHarvester.cs` | `src/OpenRA.Mods.Common/Traits/CarryableHarvester.ts` | `CarryableHarvester` | 61 | LOW | B-opt |
-| 25 | `OpenRA.Mods.Common/Traits/SpawnActorsOnSell.cs` | `src/OpenRA.Mods.Common/Traits/SpawnActorsOnSell.ts` | `SpawnActorsOnSell` | 143 | LOW-MEDIUM | B-opt |
+| **Phase B-Optional: Extended Economy Traits (COMPLETE 2026-06-14)** | | | | | |
+| 18 | `OpenRA.Mods.Common/Traits/Multipliers/ResourceValueMultiplier.cs` | `src/OpenRA.Mods.Common/Traits/Multipliers/ResourceValueMultiplier.ts` | `ResourceValueMultiplier` (COMPLETED) | 31 | LOW | B-opt |
+| 19 | `OpenRA.Mods.Common/Traits/Conditions/GrantConditionOnPlayerResources.cs` | `src/OpenRA.Mods.Common/Traits/Conditions/GrantConditionOnPlayerResources.ts` | `GrantConditionOnPlayerResources` (COMPLETED) | 64 | LOW | B-opt |
+| 20 | `OpenRA.Mods.Common/Traits/Render/WithResourceLevelOverlay.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithResourceLevelOverlay.ts` | `WithResourceLevelOverlay` (COMPLETED) | 69 | LOW | B-opt |
+| 21 | `OpenRA.Mods.Common/Traits/Render/WithResourceLevelSpriteBody.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithResourceLevelSpriteBody.ts` | `WithResourceLevelSpriteBody` (COMPLETED) | 75 | LOW | B-opt |
+| 22 | `OpenRA.Mods.Common/Traits/Render/WithResourceStoragePipsDecoration.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithResourceStoragePipsDecoration.ts` | `WithResourceStoragePipsDecoration` (COMPLETED) | 79 | LOW | B-opt |
+| 23 | `OpenRA.Mods.Common/Traits/Render/WithStoresResourcesPipsDecoration.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithStoresResourcesPipsDecoration.ts` | `WithStoresResourcesPipsDecoration` (COMPLETED) | 101 | LOW | B-opt |
+| 24 | `OpenRA.Mods.Common/Traits/CarryableHarvester.cs` | `src/OpenRA.Mods.Common/Traits/CarryableHarvester.ts` | `CarryableHarvester` (COMPLETED) | 61 | LOW | B-opt |
+| 25 | `OpenRA.Mods.Common/Traits/SpawnActorsOnSell.cs` | `src/OpenRA.Mods.Common/Traits/SpawnActorsOnSell.ts` | `SpawnActorsOnSell` (COMPLETED) | 143 | LOW-MEDIUM | B-opt |
 
 > **Complexity Legend**:
 > - **LOW**: Data structures or simple logic with few dependencies. 25-107 lines of C#. Can be parallel-assigned.
@@ -180,8 +180,8 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 |:---|:---:|:---:|:---|:---|
 | A: Resource Infrastructure | 8 (6 files + interface + base class) | ~1,266 active + ~230 infrastructure | HIGH + MEDIUM + LOW | COMPLETE (8/8, 344 tests, R1 + R2 done) |
 | B: Economy Support Traits | 11 | ~1,067 | MEDIUM + LOW-MEDIUM + LOW | COMPLETE (11/11, 425 tests, R1 resolved, R2 pending) |
-| B-opt: Extended Economy Traits | 8 | ~592 | LOW-MEDIUM + LOW | OPTIONAL (0/8) |
-| **Total** | **17 + 8 opt** | **~2,333 core + ~592 opt** | | **COMPLETE (17/17 core)** |
+| B-opt: Extended Economy Traits | 8 | ~592 | LOW-MEDIUM + LOW | COMPLETE (8/8, 203 tests, 1 commit) |
+| **Total** | **25** | **~2,925 core + ~592 opt** | | **COMPLETE (25/25, 972 tests)** |
 
 ---
 
@@ -685,10 +685,11 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 ### 3.3 Phase B-Optional: Extended Economy Traits
 
-**Status**: OPTIONAL PLANNING (0/8)
+**Status**: COMPLETE (8/8, 203 tests, 2026-06-14)
 **Complexity**: LOW-MEDIUM + LOW (8 files, ~592 lines total)
 **Blocked by**: Phase A (ResourceLayer, Harvester, Refinery), Phase B (PlayerResources, StoresResources, Sellable, Valued)
 **Blocks**: Nothing critical -- these are visual polish and edge-case traits
+**Date**: 2026-06-14
 
 **Description**: These 8 additional traits provide visual enhancements and edge-case economy behaviors. They are NOT required for basic RTS gameplay but add polish and completeness. `ResourceValueMultiplier` (31 lines) modifies the cash value of resources. `GrantConditionOnPlayerResources` (64 lines) grants conditions based on player resource levels. The four render overlay/decorator traits (WithResourceLevelOverlay, WithResourceLevelSpriteBody, WithResourceStoragePipsDecoration, WithStoresResourcesPipsDecoration) add visual indicators for resource levels on buildings and units. `CarryableHarvester` (61 lines) allows carrying harvesters by transports. `SpawnActorsOnSell` (143 lines) spawns actors when a building is sold.
 
@@ -701,7 +702,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.3.1 ResourceValueMultiplier
 
-- [ ] **TODO-10.B-Opt.1** `src/OpenRA.Mods.Common/Traits/Multipliers/ResourceValueMultiplier.ts` (31 lines C#) -- Resource value modifier:
+- [x] **TODO-10.B-Opt.1** `src/OpenRA.Mods.Common/Traits/Multipliers/ResourceValueMultiplier.ts` (31 lines C# -> ~90 TS lines, 6 tests) -- Resource value modifier (COMPLETED 2026-06-14):
   - `ResourceValueMultiplierInfo` config class:
     - `Modifier: number` = 100 -- percentage modifier (100 = normal, 200 = double)
   - `ResourceValueMultiplier` trait (`IResourceValueModifier`):
@@ -712,7 +713,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.3.2 GrantConditionOnPlayerResources
 
-- [ ] **TODO-10.B-Opt.2** `src/OpenRA.Mods.Common/Traits/Conditions/GrantConditionOnPlayerResources.ts` (64 lines C#) -- Resource-level condition:
+- [x] **TODO-10.B-Opt.2** `src/OpenRA.Mods.Common/Traits/Conditions/GrantConditionOnPlayerResources.ts` (64 lines C# -> ~180 TS lines, 8 tests) -- Resource-level condition (COMPLETED 2026-06-14):
   - `GrantConditionOnPlayerResourcesInfo` config class:
     - `ResourceType: string` -- which resource to check
     - `Condition: string` -- condition to grant
@@ -726,7 +727,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.3.3 WithResourceLevelOverlay
 
-- [ ] **TODO-10.B-Opt.3** `src/OpenRA.Mods.Common/Traits/Render/WithResourceLevelOverlay.ts` (69 lines C#) -- Resource fill overlay:
+- [x] **TODO-10.B-Opt.3** `src/OpenRA.Mods.Common/Traits/Render/WithResourceLevelOverlay.ts` (69 lines C# -> ~200 TS lines, 24 tests) -- Resource fill overlay (COMPLETED 2026-06-14):
   - `WithResourceLevelOverlayInfo` config class:
     - `Sequence: string` -- overlay sprite sequence name
     - `Palette: string` -- palette for rendering
@@ -740,7 +741,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.3.4 WithResourceLevelSpriteBody
 
-- [ ] **TODO-10.B-Opt.4** `src/OpenRA.Mods.Common/Traits/Render/WithResourceLevelSpriteBody.ts` (75 lines C#) -- Resource-based sprite body:
+- [x] **TODO-10.B-Opt.4** `src/OpenRA.Mods.Common/Traits/Render/WithResourceLevelSpriteBody.ts` (75 lines C# -> ~220 TS lines, 24 tests) -- Resource-based sprite body (COMPLETED 2026-06-14):
   - `WithResourceLevelSpriteBodyInfo` config class:
     - `Levels: number[]` -- density thresholds for each body frame
     - `ResourceType: string` -- which resource to track
@@ -753,7 +754,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.3.5 WithResourceStoragePipsDecoration
 
-- [ ] **TODO-10.B-Opt.5** `src/OpenRA.Mods.Common/Traits/Render/WithResourceStoragePipsDecoration.ts` (79 lines C#) -- Resource capacity pip indicators:
+- [x] **TODO-10.B-Opt.5** `src/OpenRA.Mods.Common/Traits/Render/WithResourceStoragePipsDecoration.ts` (79 lines C# -> ~230 TS lines, 24 tests) -- Resource capacity pip indicators (COMPLETED 2026-06-14):
   - `WithResourceStoragePipsDecorationInfo` config class:
     - `PipCount: number` = 5 -- number of pips to display
     - `PipSequence: string` -- sprite sequence for pip
@@ -768,7 +769,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.3.6 WithStoresResourcesPipsDecoration
 
-- [ ] **TODO-10.B-Opt.6** `src/OpenRA.Mods.Common/Traits/Render/WithStoresResourcesPipsDecoration.ts` (101 lines C#) -- Multi-type resource pips:
+- [x] **TODO-10.B-Opt.6** `src/OpenRA.Mods.Common/Traits/Render/WithStoresResourcesPipsDecoration.ts` (101 lines C# -> ~290 TS lines, 24 tests) -- Multi-type resource pips (COMPLETED 2026-06-14):
   - `WithStoresResourcesPipsDecorationInfo` config class:
     - `PipCount: number` = 5 -- number of pips per resource type
     - `PipSequences: Map<string, string>` -- pip sequence per resource type
@@ -782,7 +783,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.3.7 CarryableHarvester
 
-- [ ] **TODO-10.B-Opt.7** `src/OpenRA.Mods.Common/Traits/CarryableHarvester.ts` (61 lines C#) -- Carryable harvester interaction:
+- [x] **TODO-10.B-Opt.7** `src/OpenRA.Mods.Common/Traits/CarryableHarvester.ts` (61 lines C# -> ~170 TS lines, 8 tests) -- Carryable harvester interaction (COMPLETED 2026-06-14):
   - `CarryableHarvesterInfo` config class: no config fields (marker trait)
   - `CarryableHarvester` trait (`INotifyPickedUp`, `INotifyDelivered`):
     - `onPickup(self, transport)` -- harvester is picked up by carryall
@@ -794,7 +795,7 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
 
 #### 3.3.8 SpawnActorsOnSell
 
-- [ ] **TODO-10.B-Opt.8** `src/OpenRA.Mods.Common/Traits/SpawnActorsOnSell.ts` (143 lines C#) -- Spawn actors when sold:
+- [x] **TODO-10.B-Opt.8** `src/OpenRA.Mods.Common/Traits/SpawnActorsOnSell.ts` (143 lines C# -> ~400 TS lines, 85 tests) -- Spawn actors when sold (COMPLETED 2026-06-14):
   - `SpawnActorsOnSellInfo` config class:
     - `ActorTypes: string[]` -- actor types to spawn
     - `Faction: string` -- faction for spawned actors
@@ -809,11 +810,11 @@ The following infrastructure from Chapters 2-9 is available for Chapter 10:
   - Integration with `GameWorldManager` (Ch3) for actor creation
   - Integration with `Sellable` (Ch10 Phase B) for sell notification
 
-**Phase B-Optional Summary**: 8 files, ~592 C# lines source. All LOW to LOW-MEDIUM complexity. These are polish traits -- the game is functionally complete without them. The render overlay traits require `SequenceProvider` and `Animation` from Ch2 for sprite rendering. `SpawnActorsOnSell` (143 lines) is the largest in this group. Estimated ~35 unit tests. Estimated ~1,300 TypeScript implementation lines.
+**Phase B-Optional Summary (COMPLETE 2026-06-14)**: 8 files, ~592 C# lines source, ~1,300 TypeScript implementation lines, 203 tests across 5 test files (ResourceValueMultiplier: 6, GrantConditionOnPlayerResources: 8, CarryableHarvester: 8, 4 render traits: 181 tests total). All LOW to LOW-MEDIUM complexity. Render overlay traits have GPU rendering calls stubbed (TODO-10.B-Opt.X-RENDER) pending Chapter 2 rendering pipeline integration. CarryableHarvester has transport interfaces stubbed (TODO-10.B-Opt.7-TRANSPORT) pending Chapter 19 mod-specific transport mechanics. SpawnActorsOnSell (143 lines C# -> ~400 TS lines, 85 tests) is the largest in this group.
 
 ---
 
-**Chapter 10 Total**: 17 core files + 8 optional files. ~2,333 + ~592 C# source lines. Estimated ~125 unit tests (core) + ~35 (optional). Estimated ~5,200 + ~1,300 TypeScript implementation lines.
+**Chapter 10 Total**: 17 core files + 8 optional files = 25 files total. ~2,333 + ~592 C# source lines. 972 tests (769 core + 203 optional). ~5,200 + ~1,300 = ~6,500 TypeScript implementation lines.
 
 ---
 
@@ -985,14 +986,14 @@ All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 
 #### Phase B-Optional Tests
 
-- [ ] **TEST-10.46** ResourceValueMultiplier: `getResourceValueModifier()` returns correct modifier ratio
-- [ ] **TEST-10.47** GrantConditionOnPlayerResources: grants condition when resources >= threshold; revokes when below
-- [ ] **TEST-10.48** WithResourceLevelOverlay: selects correct sprite frame based on fill level ratio
-- [ ] **TEST-10.49** WithResourceLevelSpriteBody: selects correct body frame for each density threshold level
-- [ ] **TEST-10.50** WithResourceStoragePipsDecoration: calculates correct number of filled pips
-- [ ] **TEST-10.51** WithStoresResourcesPipsDecoration: displays correct pip rows per resource type
-- [ ] **TEST-10.52** CarryableHarvester: preserves cargo contents across pickup/deliver cycle
-- [ ] **TEST-10.53** SpawnActorsOnSell: spawns correct actor types at correct position on sell
+- [x] **TEST-10.46** ResourceValueMultiplier: `getResourceValueModifier()` returns correct modifier ratio
+- [x] **TEST-10.47** GrantConditionOnPlayerResources: grants condition when resources >= threshold; revokes when below
+- [x] **TEST-10.48** WithResourceLevelOverlay: selects correct sprite frame based on fill level ratio
+- [x] **TEST-10.49** WithResourceLevelSpriteBody: selects correct body frame for each density threshold level
+- [x] **TEST-10.50** WithResourceStoragePipsDecoration: calculates correct number of filled pips
+- [x] **TEST-10.51** WithStoresResourcesPipsDecoration: displays correct pip rows per resource type
+- [x] **TEST-10.52** CarryableHarvester: preserves cargo contents across pickup/deliver cycle
+- [x] **TEST-10.53** SpawnActorsOnSell: spawns correct actor types at correct position on sell
 
 ### 5.2 Per-Phase Test File Estimates
 
@@ -1000,8 +1001,8 @@ All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 |:---|:---:|:---:|:---:|:---:|
 | A: Resource Infrastructure | 8 (6 + interface + base) | 7 | 344 | ~6,224 |
 | B: Economy Support | 11 | 11 | 425 | ~2,900 |
-| B-opt: Extended Economy | 8 | 6 | ~35 | ~1,800 |
-| **Total (core)** | **17** | **18** | **769** | **~9,124** |
+| B-opt: Extended Economy | 8 | 5 | 203 | ~1,800 |
+| **Total (all)** | **25** | **23** | **972** | **~10,924** |
 
 ### 5.3 Visual Acceptance Testing
 

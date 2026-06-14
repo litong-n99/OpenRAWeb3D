@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 9 COMPLETE (Movement & Physics -- ALL PHASES A-D DONE), Chapter 10 COMPLETE (Resource & Economy -- Phases A-B: 17/17 core, 769 tests, Phase B R2 pending)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 17/17 core (100%, Phases A-B COMPLETE). Chapters 11-21: 0/~261 (0%, PLANNING)
+**Phase**: Chapter 9 COMPLETE (Movement & Physics -- ALL PHASES A-D DONE), Chapter 10 COMPLETE (Resource & Economy -- ALL PHASES A-B + B-Optional: 25/25 files, 972 tests)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapters 11-21: 0/~261 (0%, PLANNING)
 **Planning Doc**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 **Chapter 9 Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)
 **Chapter 10 Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
@@ -56,7 +56,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | **Chapters 8-21 (14 chapters)** | **IN PROGRESS (Ch8 COMPLETE: 57/57, 100%. Ch9 COMPLETE: 30/32, 94%. Ch10 COMPLETE: 17/17 core, 100%.)** |
 | Weapons & Combat (Ch8) | COMPLETE (57 files, 5 phases A-E, ~8,264 C# lines -- Phase A: 15/15, 143 tests, `d9f6c34`/`9b25839`; Phase B: 7/7, 186 tests, `0f02230`/`28b4602`; Phase C: 2+1/2+1, 115 tests, `ab3b3d4`; Phase D: 17/17, 158 tests, `bbbe871`/`5cf9b93`; Phase E: 15/15, 156 tests, `accbced`/`b04e8e1`) |
 | Movement & Physics (Ch9) | COMPLETE (30 files, 4 phases A-D, ~11,723 TS lines, 1,084 tests, ~5,355 C# source. Plan: [chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)) |
-| Resource & Economy (Ch10) | COMPLETE (Phase A: 8 core + interface, 344 tests. Phase B: 11 files, 425 tests. Plan: [chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)) |
+| Resource & Economy (Ch10) | COMPLETE (Phase A: 8 core + interface, 344 tests. Phase B: 11 files, 425 tests. Phase B-Optional: 8 files, 203 tests. Total: 25 files, 972 tests. Plan: [chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)) |
 | Production & Building (Ch11) | Planned (~25 files, 2 phases A-B) |
 | Shroud & Fog of War (Ch12) | Planned (~15 files, 1 phase A) |
 | Support Powers (Ch13) | Planned (~15 files, 1 phase A) |

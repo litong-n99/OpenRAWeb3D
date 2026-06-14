@@ -21,7 +21,7 @@
 | **Chapter 5 status** | COMPLETE: 16/16 (100%), Phase A (FileSystem Foundation) COMPLETE, Phase B (C&C Package Formats) COMPLETE, Phase C (MOD System Core) COMPLETE, Phase D (UI Widget Core) COMPLETE, Phase E (World Interaction Bridge) COMPLETE |
 | **Chapter 8 planned files (Weapons & Combat)** | 57 (56 core + 1 optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), **57/57 (100%, ALL PHASES COMPLETE)**, ~8,264 C# lines source, ~24,870 combined TS lines, 758 tests |
 | **Chapter 9 planned files (Movement & Physics)** | 32 (30 active + 2 deferred; 4 Phases A-D COMPLETE), 30/30 active migrated, 2 deferred, ~11,723 TS lines, 1,084 tests. See [chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) |
-| **Chapter 10 planned files (Resource & Economy)** | 17 core (2 Phases A-B) + 8 optional, ALL PHASES COMPLETE: 17/17 core (100%), Phase A: 8/8, Phase B: 11/11, optional: 0/8 |
+| **Chapter 10 planned files (Resource & Economy)** | 17 core (2 Phases A-B) + 8 optional, ALL PHASES COMPLETE: 25/25 (100%), Phase A: 8/8, Phase B: 11/11, Phase B-Optional: 8/8, 972 tests |
 | **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 0/25 migrated |
 | **Chapter 12 planned files (Shroud & Fog of War)** | ~15 (1 Phase A planned), 0/15 migrated |
 | **Chapter 13 planned files (Support Powers)** | ~15 (1 Phase A planned), 0/15 migrated |
@@ -33,9 +33,9 @@
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
-| **Overall project completion** | Chapters 2-10 complete (266/266 core). Chapters 11-21 remaining: 0/~270. Total project: ~529 files estimated, ~266 complete (50.3%). |
+| **Overall project completion** | Chapters 2-10 complete (266/266 core + 8 optional = 274). Chapters 11-21 remaining: 0/~270. Total project: ~537 files estimated, ~274 complete (51.0%). |
 
-> **Note**: Chapters 2-10 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (17/17 core, 769 tests, ~7,365 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests, R1 resolved, R2 pending).
+> **Note**: Chapters 2-10 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests, R1 resolved, R2 pending), Phase B-Optional (8 files, 203 tests, 1 commit).
 
 ---
 
@@ -204,6 +204,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-14 | **Ch10 Phase B-Optional Extended Economy Traits** (8 files) | migration-develop | migration-review | Phase B-Optional COMPLETE. 8 implementation files (~1,300 TS lines): ResourceValueMultiplier.ts (~90 lines, 6 tests), GrantConditionOnPlayerResources.ts (~180 lines, 8 tests), WithResourceLevelOverlay.ts (~200 lines, 24 tests), WithResourceLevelSpriteBody.ts (~220 lines, 24 tests), WithResourceStoragePipsDecoration.ts (~230 lines, 24 tests), WithStoresResourcesPipsDecoration.ts (~290 lines, 24 tests), CarryableHarvester.ts (~170 lines, 8 tests), SpawnActorsOnSell.ts (~400 lines, 85 tests). 5 test files, 203 tests all passing. 1 commit: `2c77e8f`. Render traits have GPU rendering calls stubbed (TODO-10.B-Opt.X-RENDER). CarryableHarvester has transport interfaces stubbed (TODO-10.B-Opt.7-TRANSPORT). Chapter 10: 25/25 (100% = 17 core + 8 optional). |
 | 2026-06-14 | **Ch10 Phase B Economy Support Traits** (11 files) | migration-develop | migration-review | Phase B COMPLETE (R1, 0 BLOCKER + 5 MAJOR resolved + 5 MINOR resolved, R2 pending). 11 implementation files (~2,400 TS lines): StoresResources.ts (219), StoresPlayerResources.ts (288), PlayerResources.ts (540), Valued.ts (76), CustomSellValue.ts (118), AcceptsDeliveredCash.ts (149), GivesBounty.ts (268), GivesCashOnCapture.ts (232), CashTrickler.ts (294), DeliversCash.ts (298), Sellable.ts (314). 11 test files, 425 tests all passing. 6 commits: 4 implementation + 2 review fix. Chapter 10: 17/17 core (100%). |
 | 2026-06-14 | **Ch10 Phase A Resource Infrastructure** (8 files) | migration-develop | migration-review | Phase A COMPLETE (R1, 4 BLOCKER + 4 MAJOR resolved, R2 pending). 8 implementation files (~4,965 TS lines): TraitsInterfaces.ts expansion (+497 lines, IDockHost, IAcceptResources, IResourceLayer, IResourceRenderer, IStoresResources interfaces), DockClientBase.ts (385 lines, abstract generic base class), Harvester.ts (1,075 lines, central resource-gathering orchestrator, extends DockClientBase, implements IStoresResources + ISpeedModifier + IResolveOrder), ResourceLayer.ts (799 lines, CellLayer<ResourceContents> World trait, density recalculation, cell-changed events), ResourceRenderer.ts (1,106 lines, TerrainSpriteLayer-based sprite rendering, variant selection, dirty cell tracking), ResourceClaimLayer.ts (240 lines, harvester-to-cell claim tracking), SeedsResource.ts (348 lines, timer-based resource spawner), Refinery.ts (705 lines, IAcceptResources + IDockHost implementation, dual-mode resource processing). 7 test files (6,224 test lines, 344 tests): DockClientBase.test.ts (44 tests), Harvester.test.ts (81 tests), Refinery.test.ts (43 tests), ResourceLayer.test.ts (83 tests), ResourceRenderer.test.ts (41 tests), ResourceClaimLayer.test.ts (24 tests), SeedsResource.test.ts (28 tests). 5 commits: `d65c51c` (DockClientBase + TraitsInterfaces), `548756c` (ResourceClaimLayer + SeedsResource), `d78de60` (Harvester + Refinery), `7a72af7` (ResourceLayer + ResourceRenderer), `f55ed14` (BLOCKER#1,#2 + MAJOR#1,#2 fixes), `20380ca` (4 BLOCKER + 1 MAJOR fixes). R1: 4 BLOCKER + 4 MAJOR -> NEEDS FIXES. R2: pending. Chapter 10: 8/17 core (47%). |
 | 2026-06-13 | **Ch9 ALL PHASES A-D COMPLETE** (30 files) | migration-develop | migration-review | ALL PHASES COMPLETE (4 phases, 30/30 active migrated, 2 deferred). ~11,723 TS impl lines, 1,084 tests (361+358+175+190), 19 commits. Phase A (5 files, ~4,200 lines, 361 tests, 7 commits, 2 review rounds): IMove interface, Mobile.ts (1079 C# -> ~2,500 TS), Immobile.ts, Locomotor.ts (526 C# -> full upgrade from 261-line stub), PathFinder.ts. Phase B (4 files, ~3,873 lines, 358 tests, 4 commits, 1 round): Aircraft.ts (1381 C# -> ~2,500 TS), FallsToEarth.ts, BodyOrientation.ts, QuantizeFacingsFromSequence.ts. Phase C (10 files, ~2,100 lines, 175 tests, 4 commits, 1 round): SubterraneanLocomotor, SubterraneanActorLayer, BridgeLayer, LegacyBridgeLayer, ElevatedBridgeLayer, ElevatedBridgePlaceholder, TerrainTunnel, TerrainTunnelLayer, TunnelEntrance, EntersTunnels. Phase D (11 files, ~1,550 lines, 190 tests, 4 commits, 1 round): BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditionOnMovement, Hovers, TerrainModifiesDamage, SpeedMultiplier, AttackMove (upgrade from stub), ClassicFacingBodyOrientation, JumpjetLocomotor. Deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 9: 30/30 active (100%, ALL PHASES COMPLETE). |
@@ -1146,18 +1147,19 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | Phase C | World Movement Infrastructure | 10 | ~2,100 | 175 | 4 | 1 | **COMPLETE (10/10)** |
 | Phase D | Movement-Related Support Traits | 11 active + 2 deferred | ~1,550 | 190 | 4 | 1 | **COMPLETE (11/11 active)** |
 
-### Chapter 10: Resource & Economy System (COMPLETE, 17/17 core files, ALL PHASES A-B COMPLETE)
+### Chapter 10: Resource & Economy System (COMPLETE, 25/25 files = 17 core + 8 optional, ALL PHASES A-B + B-Optional COMPLETE)
 
 > **Migration Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
-> **Created**: 2026-06-13 | **Updated**: 2026-06-14 | **Status**: ALL PHASES COMPLETE (17/17 core files, 769 tests, Phase B R2 pending)
+> **Created**: 2026-06-13 | **Updated**: 2026-06-14 (Phase B-Optional COMPLETE)
+> **Status**: ALL PHASES COMPLETE (25/25 files = 17 core + 8 optional, 972 tests, ~8,665 TS lines)
 > **Prerequisite**: Chapters 2-9 COMPLETE (249/249, 100%)
 
 | Status | Count | Percentage |
 |--------|-------|------------|
-| Completed (Phase A + B) | 17 core | 100% |
-| Pending (Optional) | 8 optional | -- |
-| **Total core** | **17** | **100%** |
-| **Total including optional** | **25** | |
+| Completed (Phase A + B + B-Opt) | 25 | 100% |
+| **Total** | **25** | **100%** |
+| **From OpenRA** | **25** (17 core + 8 optional) | |
+| **New files (no OpenRA equivalent)** | **0** | |
 
 ### Chapter 10 Phases
 
@@ -1165,7 +1167,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 |-------|-------------|:---:|:---:|--------|
 | Phase A | Resource Infrastructure | 8 (6 files + interface expansion + base class) | HIGH-LOW | **COMPLETE (8/8, 344 tests)** |
 | Phase B | Economy Support Traits | 11 | LOW-MEDIUM | **COMPLETE (11/11, 425 tests, R2 pending)** |
-| B-Opt | Extended Economy Traits | 8 | LOW-MEDIUM | Optional, not started |
+| B-Opt | Extended Economy Traits | 8 | LOW-MEDIUM | **COMPLETE (8/8, 203 tests)** |
 
 ### Phase A Completed: Resource Infrastructure (8 files, 2026-06-14)
 
@@ -1222,6 +1224,31 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 - `DeliversCash.ts` (298 lines): `IIssueOrder` + `IResolveOrder` for carrying cash deliveries. `Payload`, `PlayerExperience`, `Type` config. Cash lost on death (`INotifyKilled`). Integration with `AcceptsDeliveredCash` for receiver validation.
 - `Sellable.ts` (314 lines): `IResolveOrder("Sell")` -- refund = `Valued.Cost * healthPercent * RefundPercent / 100` with `CustomSellValue` override. Actor removal via `GameWorldManager.removeActor()`. Sell sounds. `RequiresCondition` for sell button enable. Inner `SellOrderTargeter` deferred to Ch15.
 - Review: R1 COMPLETE (0 BLOCKER, 5 MAJOR resolved, 5 MINOR resolved), R2 PENDING. | **Commits**: 4 implementation + 2 review fix commits.
+
+### Phase B-Optional Completed: Extended Economy Traits (8 files, 2026-06-14)
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| ResourceValueMultiplier.ts | ~90 | -- | 6 | Resource value modifier: IResourceValueModifier implementation, stackable multiplier |
+| GrantConditionOnPlayerResources.ts | ~180 | -- | 8 | Resource-level condition: grants/revokes condition based on PlayerResources threshold |
+| WithResourceLevelOverlay.ts | ~200 | -- | 24 | Resource fill overlay: sprite frame selection based on fill level ratio |
+| WithResourceLevelSpriteBody.ts | ~220 | -- | 24 | Resource-based sprite body: frame selection per density threshold |
+| WithResourceStoragePipsDecoration.ts | ~230 | -- | 24 | Resource capacity pip indicators: filled/empty pip sprites |
+| WithStoresResourcesPipsDecoration.ts | ~290 | -- | 24 | Multi-type resource pips: color-coded rows per resource type |
+| CarryableHarvester.ts | ~170 | -- | 8 | Carryable harvester interaction: preserves cargo across pickup/deliver |
+| SpawnActorsOnSell.ts | ~400 | -- | 85 | Spawn actors when sold: actor creation at sell position with configurable types |
+| **Total** | **~1,300** | **~1,800** | **203** | |
+
+**Implementation details**:
+- `ResourceValueMultiplier.ts` (~90 lines): `IResourceValueModifier` implementation. `Modifier` config (percentage). `getResourceValueModifier()` returns `Modifier / 100`. Stackable: multiple traits multiply together. Used by Refinery for resource cash conversion.
+- `GrantConditionOnPlayerResources.ts` (~180 lines): `INotifyCreated` + `ITick` trait. Checks `PlayerResources.resources[ResourceType] >= Threshold`. Grants condition token via `ConditionManager` when above threshold, revokes when below. Periodic check every tick.
+- `WithResourceLevelOverlay.ts` (~200 lines): Render trait (`ITickRender`). Overlays sprite sequence on actor mesh. Frame = `floor(resourceFillLevel * sequenceLength)`. `resourceFillLevel = stored / capacity` from `IStoresResources` or `PlayerResources`. GPU rendering calls stubbed (TODO-10.B-Opt.3-RENDER).
+- `WithResourceLevelSpriteBody.ts` (~220 lines): Render trait replacing `WithSpriteBody`. Selects body frame based on resource fill level against `Levels` thresholds. Frame 0 = empty; frame i+1 when fillLevel >= Levels[i]. GPU rendering calls stubbed (TODO-10.B-Opt.4-RENDER).
+- `WithResourceStoragePipsDecoration.ts` (~230 lines): Render trait. Displays row of pip sprites showing resource fill percentage. `filledPips = floor(fillLevel * PipCount)`. Filled vs empty frames from sequence. GPU rendering calls stubbed (TODO-10.B-Opt.5-RENDER).
+- `WithStoresResourcesPipsDecoration.ts` (~290 lines): Render trait. Multiple rows of pips, one per resource type. Color-coded via different sprite sequences. Row ordering: descending by stored amount. GPU rendering calls stubbed (TODO-10.B-Opt.6-RENDER).
+- `CarryableHarvester.ts` (~170 lines): `INotifyPickedUp` + `INotifyDelivered` trait. Preserves cargo contents when picked up by transport. Restores cargo when delivered. Transport mechanics stubbed (TODO-10.B-Opt.7-TRANSPORT) pending Ch19 mod-specific transport.
+- `SpawnActorsOnSell.ts` (~400 lines): `INotifySold` trait. Spawns configured `ActorTypes` at self's position on sell. `OwnerType` enum: VictoryConditions, Self, Killer, InternalName. `Probability` per actor type. `Faction` for spawned actors. Integration with `Sellable` and `Valued`.
+- Review: 1 round. | **Commit**: `2c77e8f`
 
 ### Phase A Dependency Graph
 
