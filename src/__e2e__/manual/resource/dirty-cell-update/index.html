@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资源脏Cell更新 - 增量渲染验证 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #sandbox .overlay-tooltip { position: absolute; padding: 6px 10px; background: rgba(0,0,0,0.85); color: #eee; font-size: 11px; border-radius: 4px; pointer-events: none; display: none; font-family: 'Consolas', monospace; }
+    #controls { width: 280px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #controls h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ctrl-group { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .ctrl-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 3px; }
+    .ctrl-group select { width: 100%; padding: 5px 8px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; }
+    .ctrl-group input[type="range"] { width: 100%; accent-color: #e94560; }
+    .ctrl-group button { width: 100%; padding: 7px 12px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 12px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 4px; }
+    .ctrl-group button:hover { background: #e94560; color: #fff; }
+    .ctrl-group button.accent { background: #e94560; color: #fff; }
+    .dirty-highlight { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+    .dirty-highlight.dirty { background: #e94560; animation: pulse 0.5s ease-in-out infinite alternate; }
+    .dirty-highlight.clean { background: #444; }
+    @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+    .stat-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; margin: 2px 0; }
+    .stat-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    #dirty-list-display { max-height: 80px; overflow-y: auto; font-size: 10px; color: #888; font-family: 'Consolas', monospace; margin-top: 4px; line-height: 1.3; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 资源系统 - 脏 Cell 增量更新渲染验证</h1>
+    <div class="subtitle">ID: resource/dirty-cell-update | 期望结果见 README.md | OpenRA 对照: ResourceRenderer._addDirtyCell() + tickRender() dirty queue</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+      <div class="overlay-tooltip" id="cell-tooltip"></div>
+    </div>
+    <div id="controls">
+      <div class="ctrl-group">
+        <h3>C. 采集模拟</h3>
+        <label for="harvest-cell-x">目标 cell X</label>
+        <input type="range" id="harvest-cell-x" min="0" max="15" value="7">
+        <span style="font-size:10px;color:#888;">X: <span id="harvest-x-val">7</span></span>
+        <label for="harvest-cell-y" style="margin-top:4px;">目标 cell Y</label>
+        <input type="range" id="harvest-cell-y" min="0" max="11" value="5">
+        <span style="font-size:10px;color:#888;">Y: <span id="harvest-y-val">5</span></span>
+        <button id="btn-harvest-decrement">采集一次 (-1 密度)</button>
+        <button id="btn-harvest-clear">清空此 Cell</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>C. 批量操作</h3>
+        <button id="btn-random-harvest">采集随机 Cell</button>
+        <button id="btn-auto-start" class="accent">启动自动采集</button>
+        <button id="btn-auto-stop" style="display:none;">停止自动采集</button>
+        <label for="auto-speed" style="margin-top:6px;">自动采集速度</label>
+        <select id="auto-speed">
+          <option value="500">慢 (500ms)</option>
+          <option value="200" selected>中 (200ms)</option>
+          <option value="50">快 (50ms)</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <h3>C. 脏 Cell 处理</h3>
+        <button id="btn-process-one">处理 1 个脏 Cell</button>
+        <button id="btn-process-all">处理全部脏 Cell</button>
+        <button id="btn-clear-dirty">清空脏 Cell 队列</button>
+        <button id="btn-replenish">补充资源 (恢复所有 Cell)</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>状态监控</h3>
+        <div class="stat-row"><span>地图尺寸</span><span class="val">16x12</span></div>
+        <div class="stat-row"><span>总 cell 数</span><span class="val">192</span></div>
+        <div class="stat-row"><span>含资源 cell</span><span class="val" id="stat-resource-cells">192</span></div>
+        <div class="stat-row"><span>已枯竭 cell</span><span class="val" id="stat-depleted-cells">0</span></div>
+        <hr style="border-color:#0f3460;margin:4px 0;">
+        <div class="stat-row">
+          <span><span class="dirty-highlight" id="dirty-indicator"></span>脏 Cell 数</span>
+          <span class="val" id="stat-dirty-count">0</span>
+        </div>
+        <div class="stat-row"><span>已处理总数</span><span class="val" id="stat-processed-total">0</span></div>
+        <div class="stat-row"><span>最后更新耗时</span><span class="val" id="stat-update-time">-</span></div>
+        <label style="margin-top:6px;">脏 Cell 列表</label>
+        <div id="dirty-list-display">(无)</div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

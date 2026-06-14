@@ -80,6 +80,18 @@ export class PlayerResourcesInfo implements ConditionalTraitInfo {
    */
   readonly defaultCashDropdownVisible: boolean = true
 
+  /** Description of the default cash dropdown in the lobby options.
+   *
+   * OpenRA 对照: DefaultCashDropdownDescription
+   */
+  readonly defaultCashDropdownDescription: string = 'The amount of cash that players start with'
+
+  /** Display order of the default cash dropdown in the lobby options.
+   *
+   * OpenRA 对照: DefaultCashDropdownDisplayOrder
+   */
+  readonly defaultCashDropdownDisplayOrder: number = 0
+
   // -----------------------------------------------------------------------
   // Notifications
   // OpenRA 对照: InsufficientFundsNotification / InsufficientFundsTextNotification
@@ -145,6 +157,8 @@ export class PlayerResourcesInfo implements ConditionalTraitInfo {
     defaultCash?: number
     defaultCashDropdownLocked?: boolean
     defaultCashDropdownVisible?: boolean
+    defaultCashDropdownDescription?: string
+    defaultCashDropdownDisplayOrder?: number
     insufficientFundsNotification?: string | null
     insufficientFundsTextNotification?: string | null
     insufficientFundsNotificationInterval?: number
@@ -159,6 +173,8 @@ export class PlayerResourcesInfo implements ConditionalTraitInfo {
     if (params.defaultCash !== undefined) this.defaultCash = params.defaultCash
     if (params.defaultCashDropdownLocked !== undefined) this.defaultCashDropdownLocked = params.defaultCashDropdownLocked
     if (params.defaultCashDropdownVisible !== undefined) this.defaultCashDropdownVisible = params.defaultCashDropdownVisible
+    if (params.defaultCashDropdownDescription !== undefined) this.defaultCashDropdownDescription = params.defaultCashDropdownDescription
+    if (params.defaultCashDropdownDisplayOrder !== undefined) this.defaultCashDropdownDisplayOrder = params.defaultCashDropdownDisplayOrder
     if (params.insufficientFundsNotification !== undefined) this.insufficientFundsNotification = params.insufficientFundsNotification
     if (params.insufficientFundsTextNotification !== undefined) this.insufficientFundsTextNotification = params.insufficientFundsTextNotification
     if (params.insufficientFundsNotificationInterval !== undefined) this.insufficientFundsNotificationInterval = params.insufficientFundsNotificationInterval

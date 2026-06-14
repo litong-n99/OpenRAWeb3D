@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资源颜色映射 - 类型与变体对比 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 280px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #controls h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ctrl-group { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .ctrl-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 3px; }
+    .ctrl-group button { width: 100%; padding: 7px 12px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 12px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 4px; }
+    .ctrl-group button:hover { background: #e94560; color: #fff; }
+    .ctrl-group select { width: 100%; padding: 5px 8px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; }
+    .legend-panel { margin-top: 8px; padding: 8px; background: #111; border-radius: 4px; border: 1px solid #333; }
+    .legend-panel .legend-title { font-size: 12px; font-weight: 600; color: #ccc; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+    .legend-row { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #888; margin: 2px 0; font-family: 'Consolas', monospace; }
+    .legend-row .swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 资源系统 - 类型颜色与变体序列对比</h1>
+    <div class="subtitle">ID: resource/color-mapping | 期望结果见 README.md | OpenRA 对照: ResourceRendererInfo.resourceTypes palette/sequences 字段</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="ctrl-group">
+        <h3>C. 显示选项</h3>
+        <label for="layout-mode">布局模式</label>
+        <select id="layout-mode">
+          <option value="grid" selected>网格 (Grid)</option>
+          <option value="side-by-side">并排 (Side-by-side)</option>
+          <option value="density-wheels">密度色轮</option>
+        </select>
+        <label for="max-density" style="margin-top:6px;">最大密度</label>
+        <select id="max-density">
+          <option value="10" selected>10</option>
+          <option value="12">12</option>
+        </select>
+        <button id="btn-toggle-labels">切换标签显示</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>C. 对比模式</h3>
+        <button id="btn-compare-palettes">比较调色板 (原色 vs 偏移)</button>
+        <button id="btn-reset-view">重置视图</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>颜色图例</h3>
+        <div class="legend-panel" id="legend-tiberium">
+          <div class="legend-title" style="color:#00cc44;">Tiberium (绿晶)</div>
+          <div id="legend-tib-rows"></div>
+        </div>
+        <div class="legend-panel" id="legend-ore">
+          <div class="legend-title" style="color:#daa520;">Ore (金矿)</div>
+          <div id="legend-ore-rows"></div>
+        </div>
+        <div class="legend-panel" id="legend-spice">
+          <div class="legend-title" style="color:#cc5500;">Spice (香料)</div>
+          <div id="legend-spice-rows"></div>
+        </div>
+        <div class="legend-panel" id="legend-gems">
+          <div class="legend-title" style="color:#cc44cc;">Gems (宝石)</div>
+          <div id="legend-gems-rows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

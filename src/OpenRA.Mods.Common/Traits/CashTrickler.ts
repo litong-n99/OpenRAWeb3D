@@ -5,8 +5,8 @@
  * 核心范式转换:
  * - C# PausableConditionalTrait<CashTricklerInfo>, ITick, ISync, INotifyCreated,
  *     INotifyOwnerChanged
- *   → TS ConditionalTrait<CashTricklerInfo> implements ITick, INotifyCreated,
- *     INotifyOwnerChanged
+ *   → TS ConditionalTrait<CashTricklerInfo> implements ISync, ITick,
+ *     INotifyCreated, INotifyOwnerChanged
  *   (PausableConditionalTrait 的 pause 功能在 TS 的 ConditionalTrait._paused 中实现)
  * - C# Util.ApplyPercentageModifiers() → TS applyPercentageModifiers() helper
  * - C# FloatingText effect → TS 存根 (延迟至 TODO-14/16)
@@ -18,6 +18,7 @@ import { ConditionalTrait } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type {
   ConditionalTraitInfo,
   IGameActor,
+  ISync,
   ITick,
   INotifyCreated,
   INotifyOwnerChanged,
@@ -134,6 +135,31 @@ export class CashTricklerInfo implements ConditionalTraitInfo {
    */
   readonly useResourceStorage: boolean = false
 
+  /** Validate this info against the actor's full trait configuration.
+   *
+   *  OpenRA 对照: IRulesetLoaded<ActorInfo>.RulesetLoaded(Ruleset, ActorInfo)
+   *
+   *  When ShowTicks is true, the actor must have an IOccupySpaceInfo trait
+   *  (e.g., WithSpriteBody, BodyOrientation, etc.) so that floating text
+   *  has a world position to anchor to.
+   *
+   *  TODO-10.B.4-RULESET: Integrate with build-time YAML validation pipeline.
+   *  When the RulesetLoaded pipeline is implemented, this method should be
+   *  called automatically during ruleset loading. Currently, this is a
+   *  manual call-site for deferred validation.
+   *
+   *  @param traitInfoNames — Set of trait interface names available on the actor
+   *  @throws Error if ShowTicks is true but no IOccupySpaceInfo is present
+   */
+  validateOnLoad(traitInfoNames: ReadonlySet<string>): void {
+    if (this.showTicks && !traitInfoNames.has('IOccupySpaceInfo')) {
+      throw new Error(
+        `CashTrickler is defined with ShowTicks 'true' but actor occupies no space. ` +
+          `Add an IOccupySpaceInfo trait (e.g., WithSpriteBody, BodyOrientation) to the actor.`,
+      )
+    }
+  }
+
   constructor(params: {
     instanceName?: string
     requiresCondition?: string
@@ -163,17 +189,21 @@ export class CashTricklerInfo implements ConditionalTraitInfo {
 
 /** 周期性现金收入 trait。
  *
- *  OpenRA 对照: CashTrickler
+ *  OpenRA 对照: CashTrickler : PausableConditionalTrait<CashTricklerInfo>,
+ *    ITick, ISync, INotifyCreated, INotifyOwnerChanged
  *
  *  每个 Interval tick 向拥有者球员添加 Amount 现金。
  *  支持通过 PausableConditionalTrait 暂停和禁用，
  *  以及通过外部 ICashTricklerModifier traits 修改收入。
  *
+ *  ISync 标记: `ticks` 字段参与网络同步哈希计算
+ *  （对应 C# [VerifySync] 特性）。
+ *
  *  典型用户：油井（Oil Derrick）、科技建筑等被动收入来源。
  */
 export class CashTrickler
   extends ConditionalTrait<CashTricklerInfo>
-  implements ITick, INotifyCreated, INotifyOwnerChanged
+  implements ISync, ITick, INotifyCreated, INotifyOwnerChanged
 {
   /** 当前 tick 倒计时。
    *
@@ -330,7 +360,8 @@ export class CashTrickler
     //     self.World.AddFrameEndTask(w =>
     //       w.Add(new FloatingText(self.CenterPosition, self.OwnerColor(),
     //         FloatingText.FormatCashTick(amount), info.DisplayDuration)));
-    void effectiveAmount // mark as used
+    const _unused_effectiveAmount = effectiveAmount // explicitly mark for future floating text integration (TODO-14/16)
+    void _unused_effectiveAmount
   }
 
   // -----------------------------------------------------------------------

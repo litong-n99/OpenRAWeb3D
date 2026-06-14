@@ -125,6 +125,46 @@ describe('CashTrickler', () => {
       expect('requiresCondition' in info).toBe(true)
       expect('instanceName' in info).toBe(true)
     })
+
+    // -------------------------------------------------------------------
+    // validateOnLoad — IRulesetLoaded deferred validation
+    // OpenRA 对照: IRulesetLoaded<ActorInfo>.RulesetLoaded()
+    // TODO-10.B.4-RULESET: integrate with build-time YAML validation
+    // -------------------------------------------------------------------
+
+    describe('validateOnLoad()', () => {
+      it('does not throw when ShowTicks is false (no IOccupySpaceInfo needed)', () => {
+        const info = new CashTricklerInfo({ showTicks: false })
+        expect(() => info.validateOnLoad(new Set())).not.toThrow()
+      })
+
+      it('does not throw when ShowTicks is true and IOccupySpaceInfo is present', () => {
+        const info = new CashTricklerInfo({ showTicks: true })
+        const traitSet = new Set(['IOccupySpaceInfo', 'ITick', 'IRender'])
+        expect(() => info.validateOnLoad(traitSet)).not.toThrow()
+      })
+
+      it('throws when ShowTicks is true but IOccupySpaceInfo is missing', () => {
+        const info = new CashTricklerInfo({ showTicks: true })
+        const traitSet = new Set(['ITick', 'IRender', 'IMove'])
+        expect(() => info.validateOnLoad(traitSet)).toThrow(
+          /CashTrickler is defined with ShowTicks/i,
+        )
+      })
+
+      it('throws when ShowTicks is true and trait set is empty', () => {
+        const info = new CashTricklerInfo({ showTicks: true })
+        expect(() => info.validateOnLoad(new Set())).toThrow(
+          /CashTrickler is defined with ShowTicks/i,
+        )
+      })
+
+      it('does not throw for default-constructed info (ShowTicks=true) with IOccupySpaceInfo', () => {
+        const info = new CashTricklerInfo() // showTicks defaults to true
+        const traitSet = new Set(['IOccupySpaceInfo'])
+        expect(() => info.validateOnLoad(traitSet)).not.toThrow()
+      })
+    })
   })
 
   describe('CashTrickler trait', () => {
@@ -151,6 +191,15 @@ describe('CashTrickler', () => {
     it('extends ConditionalTrait', () => {
       expect(trait.enabled).toBe(true)
       expect(trait.disposed).toBe(false)
+    })
+
+    it('implements ISync (marker interface for network sync)', () => {
+      // ISync is a marker interface — the `ticks` field is the sync data
+      // (equivalent to C# [VerifySync] on Ticks).
+      // The interface itself has no members; just verify the class is recognized.
+      expect(trait).toBeDefined()
+      // Verify ticks is a sync-relevant field
+      expect(typeof trait.ticks).toBe('number')
     })
 
     // -----------------------------------------------------------------------

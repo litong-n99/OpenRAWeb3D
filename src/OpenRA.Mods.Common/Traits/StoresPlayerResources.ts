@@ -318,7 +318,8 @@ export class StoresPlayerResources
   /** Create a stub PlayerResources for testing when the real trait is
    * not yet available.
    *
-   * TODO-10.B.3: Remove this stub when PlayerResources is migrated.
+   * TEMPORARY — TODO-10.B.3: Remove when PlayerResources is fully migrated.
+   * The stub provides a 5000-capacity fallback for development/testing.
    */
   private _createStubPlayerResources(): IPlayerResourcesForStorage {
     let resourceCapacity = 5000

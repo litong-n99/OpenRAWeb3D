@@ -34,6 +34,8 @@ function createInfo(overrides: Partial<{
   defaultCash?: number
   defaultCashDropdownLocked?: boolean
   defaultCashDropdownVisible?: boolean
+  defaultCashDropdownDescription?: string
+  defaultCashDropdownDisplayOrder?: number
   insufficientFundsNotification?: string | null
   insufficientFundsTextNotification?: string | null
   insufficientFundsNotificationInterval?: number
@@ -89,6 +91,16 @@ describe('PlayerResourcesInfo', () => {
   it('defaults defaultCashDropdownVisible to true', () => {
     const info = createInfo()
     expect(info.defaultCashDropdownVisible).toBe(true)
+  })
+
+  it('defaults defaultCashDropdownDescription to correct text', () => {
+    const info = createInfo()
+    expect(info.defaultCashDropdownDescription).toBe('The amount of cash that players start with')
+  })
+
+  it('defaults defaultCashDropdownDisplayOrder to 0', () => {
+    const info = createInfo()
+    expect(info.defaultCashDropdownDisplayOrder).toBe(0)
   })
 
   it('defaults insufficientFundsNotification to null', () => {

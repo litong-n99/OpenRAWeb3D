@@ -6,7 +6,7 @@
  * and edge cases (no owner, no actor, empty/missing types).
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   AcceptsDeliveredCash,
   AcceptsDeliveredCashInfo,
@@ -179,13 +179,20 @@ describe('AcceptsDeliveredCash', () => {
           validRelationships: PlayerRelationship.Enemy,
         })
         const enemyTrait = new AcceptsDeliveredCash(enemyInfo)
+        const donor = makeMockActor({
+          owner: makePlayerStub({ playerName: 'EnemyDonorOwner' }),
+        })
+        // receiver→donor direction: self.owner sees donor.owner as Enemy
         const self = makeMockActor({
-          owner: makeOwnerWithRelationship(PlayerRelationship.Ally),
+          owner: makePlayerStub({
+            playerName: 'SelfOwner',
+            relationshipWith: (other: unknown) => {
+              if (other === donor.owner) return PlayerRelationship.Enemy
+              return PlayerRelationship.Neutral
+            },
+          }),
         })
         enemyTrait.attach(self)
-        const donor = makeMockActor({
-          owner: makeOwnerWithRelationship(PlayerRelationship.Enemy),
-        })
 
         expect(enemyTrait.acceptsDelivery('Cash', donor)).toBe(true)
       })
@@ -195,24 +202,76 @@ describe('AcceptsDeliveredCash', () => {
           validRelationships: (PlayerRelationship.Neutral | PlayerRelationship.Enemy) as PlayerRelationship,
         })
         const multiTrait = new AcceptsDeliveredCash(neutralEnemyInfo)
-        const self = makeMockActor({
-          owner: makeOwnerWithRelationship(PlayerRelationship.Ally),
-        })
-        multiTrait.attach(self)
 
         const neutralDonor = makeMockActor({
-          owner: makeOwnerWithRelationship(PlayerRelationship.Neutral),
+          owner: makePlayerStub({ playerName: 'NeutralDonorOwner' }),
         })
         const enemyDonor = makeMockActor({
-          owner: makeOwnerWithRelationship(PlayerRelationship.Enemy),
+          owner: makePlayerStub({ playerName: 'EnemyDonorOwner' }),
         })
         const allyDonor = makeMockActor({
-          owner: makeOwnerWithRelationship(PlayerRelationship.Ally),
+          owner: makePlayerStub({ playerName: 'AllyDonorOwner' }),
         })
+
+        // receiver→donor direction: self.owner determines relationship per donor
+        const self = makeMockActor({
+          owner: makePlayerStub({
+            playerName: 'SelfOwner',
+            relationshipWith: (other: unknown) => {
+              if (other === neutralDonor.owner) return PlayerRelationship.Neutral
+              if (other === enemyDonor.owner) return PlayerRelationship.Enemy
+              if (other === allyDonor.owner) return PlayerRelationship.Ally
+              return PlayerRelationship.Neutral
+            },
+          }),
+        })
+        multiTrait.attach(self)
 
         expect(multiTrait.acceptsDelivery('Cash', neutralDonor)).toBe(true)
         expect(multiTrait.acceptsDelivery('Cash', enemyDonor)).toBe(true)
         expect(multiTrait.acceptsDelivery('Cash', allyDonor)).toBe(false)
+      })
+
+      it('calls relationshipWith on receiver.owner with donor.owner (receiver→donor direction)', () => {
+        // OpenRA 对照: DeliversCashOrderTargeter.CanTargetActor()
+        //   target.Owner.RelationshipWith(self.Owner)
+        //   i.e., receiver.owner → donor.owner
+        const selfRelSpy = vi.fn().mockReturnValue(PlayerRelationship.Ally)
+        const donorRelSpy = vi.fn().mockReturnValue(PlayerRelationship.Enemy)
+
+        const self = makeMockActor({
+          owner: makePlayerStub({ relationshipWith: selfRelSpy }),
+        })
+        trait.attach(self)
+        const donor = makeMockActor({
+          owner: makePlayerStub({ relationshipWith: donorRelSpy }),
+        })
+
+        expect(trait.acceptsDelivery('Cash', donor)).toBe(true)
+        expect(selfRelSpy).toHaveBeenCalledWith(donor.owner)
+        // donor.owner.relationshipWith should NOT be called (wrong direction)
+        expect(donorRelSpy).not.toHaveBeenCalled()
+      })
+
+      it('rejects when receiver sees donor as Enemy (correct direction)', () => {
+        // self.owner.relationshipWith(donor.owner) returns Enemy
+        // donor.owner.relationshipWith(self.owner) returns Ally
+        // If we use the correct direction → reject. If wrong direction → accept.
+        const selfRelSpy = vi.fn().mockReturnValue(PlayerRelationship.Enemy)
+        const donorRelSpy = vi.fn().mockReturnValue(PlayerRelationship.Ally)
+
+        const self = makeMockActor({
+          owner: makePlayerStub({ relationshipWith: selfRelSpy }),
+        })
+        trait.attach(self)
+        const donor = makeMockActor({
+          owner: makePlayerStub({ relationshipWith: donorRelSpy }),
+        })
+
+        // validRelationships defaults to Ally
+        // receiver→donor is Enemy → should reject
+        expect(trait.acceptsDelivery('Cash', donor)).toBe(false)
+        expect(selfRelSpy).toHaveBeenCalledWith(donor.owner)
       })
 
       it('returns false when self has no owner', () => {

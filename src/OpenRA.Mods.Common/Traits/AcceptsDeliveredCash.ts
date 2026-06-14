@@ -115,9 +115,12 @@ export class AcceptsDeliveredCash extends Component {
     const self = this._actor
     if (!self || !self.owner || !fromActor.owner) return false
 
-    const relFn = (fromActor.owner as { relationshipWith?: (other: unknown) => number }).relationshipWith
+    // OpenRA 对照: DeliversCashOrderTargeter.CanTargetActor()
+    //   检查: target.Owner.RelationshipWith(self.Owner)
+    //   (receiver → donor, i.e. self.owner → fromActor.owner)
+    const relFn = (self.owner as { relationshipWith?: (other: unknown) => number }).relationshipWith
     const relationship: PlayerRelationship = relFn
-      ? (relFn(self.owner) as PlayerRelationship)
+      ? (relFn(fromActor.owner) as PlayerRelationship)
       : PlayerRelationship.Neutral
 
     return PlayerRelationshipExts.hasRelationship(

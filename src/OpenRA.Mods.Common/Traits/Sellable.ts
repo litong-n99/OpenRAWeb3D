@@ -349,7 +349,8 @@ export class Sellable
     // C#: foreach (var s in info.SellSounds)
     //        Game.Sound.PlayToPlayer(SoundType.UI, self.Owner, s, self.CenterPosition);
     // TODO-10-SOUND: 集成音频系统
-    void this.info.sellSounds.length // mark as used
+    const _unused_sellSounds = this.info.sellSounds.length // explicitly mark for future audio integration (TODO-10-SOUND)
+    void _unused_sellSounds
 
     // Notify INotifySold.Selling on all traits
     this._notifySelling(self)
@@ -403,7 +404,8 @@ export class Sellable
 
     // Cast to avoid overflow when multiplying by the health
     const hp = this._health?.hp ?? 1
-    const maxHP = this._health?.maxHP ?? 1
+    // Use || 1 to guard against both null/undefined AND zero maxHP (divide-by-zero)
+    const maxHP = this._health?.maxHP || 1
     const refund = Math.floor(
       (baseSellValue * this.info.refundPercent * hp) / (100 * maxHP),
     )

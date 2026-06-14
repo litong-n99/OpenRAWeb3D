@@ -210,6 +210,14 @@ export class StoresResources
    * If adding the full value would exceed Capacity, only the available
    * portion is stored and the remaining overflow is returned.
    *
+   * NOTE: This method intentionally does NOT gate on isTraitDisabled.
+   * In OpenRA C#, StoresResources extends a plain class (not
+   * ConditionalTrait / PausableConditionalTrait), and resource operations
+   * are always available regardless of condition state. The TS migration
+   * extends ConditionalTrait<StoresResourcesInfo> solely for condition
+   * lifecycle management (enable/disable resets via ConditionManager),
+   * but preserves the original ungated resource operation behavior.
+   *
    * @param resourceType — the type of resource to add
    * @param value — the amount to add
    * @returns the amount that could NOT be added (overflow). 0 means all
@@ -246,6 +254,10 @@ export class StoresResources
    *
    * If the stored amount is less than the requested value, only the stored
    * amount is removed and the remaining underflow is returned.
+   *
+   * NOTE: This method intentionally does NOT gate on isTraitDisabled,
+   * matching the original OpenRA C# behavior. See addResource() JSDoc
+   * for the full rationale.
    *
    * @param resourceType — the type of resource to remove
    * @param value — the amount to remove

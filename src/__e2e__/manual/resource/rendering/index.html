@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资源渲染 - 精灵密度与变体 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #sandbox .overlay-tooltip { position: absolute; padding: 6px 10px; background: rgba(0,0,0,0.85); color: #eee; font-size: 11px; border-radius: 4px; pointer-events: none; display: none; font-family: 'Consolas', monospace; white-space: pre-line; }
+    #controls { width: 310px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #controls h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ctrl-group { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .ctrl-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 3px; }
+    .ctrl-group select { width: 100%; padding: 5px 8px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; }
+    .ctrl-group button { width: 100%; padding: 7px 12px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 12px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 4px; }
+    .ctrl-group button:hover { background: #e94560; color: #fff; }
+    .ctrl-group input[type="checkbox"] { margin-right: 6px; accent-color: #e94560; }
+    .resource-legend { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+    .resource-legend .item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #a0a0b0; }
+    .resource-legend .swatch { width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0; }
+    .stat-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .stat-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 资源系统 - 精灵密度与变体渲染验证</h1>
+    <div class="subtitle">ID: resource/rendering | 期望结果见 README.md | OpenRA 对照: ResourceRenderer.ts (1,106 行)</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+      <div class="overlay-tooltip" id="cell-tooltip"></div>
+    </div>
+    <div id="controls">
+      <div class="ctrl-group">
+        <h3>C. 资源类型筛选</h3>
+        <div class="resource-legend">
+          <div class="item"><input type="checkbox" id="show-tiberium" checked><span class="swatch" style="background:#00cc44;"></span>Tiberium (绿色晶矿)</div>
+          <div class="item"><input type="checkbox" id="show-ore" checked><span class="swatch" style="background:#daa520;"></span>Ore (金色矿)</div>
+          <div class="item"><input type="checkbox" id="show-spice" checked><span class="swatch" style="background:#cc5500;"></span>Spice (橙红香料)</div>
+          <div class="item"><input type="checkbox" id="show-gems" checked><span class="swatch" style="background:#cc44cc;"></span>Gems (紫红宝石)</div>
+        </div>
+        <button id="btn-apply-filter">应用筛选</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>C. 密度级别分布</h3>
+        <label for="density-pattern">密度分布模式</label>
+        <select id="density-pattern">
+          <option value="gradient">渐变 (左低 → 右高)</option>
+          <option value="stripes" selected>条纹 (密度逐行递增)</option>
+          <option value="random">随机分布</option>
+          <option value="hotspot">热点 (中央高密度)</option>
+        </select>
+        <label for="max-density" style="margin-top:6px;">最大密度</label>
+        <select id="max-density">
+          <option value="10" selected>10 (标准)</option>
+          <option value="6">6 (低)</option>
+          <option value="15">15 (高)</option>
+        </select>
+        <button id="btn-regenerate">重新生成地图</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>C. 变体观察</h3>
+        <label for="variant-count">每类型变体数</label>
+        <select id="variant-count">
+          <option value="1">1 (无变体)</option>
+          <option value="3" selected>3</option>
+          <option value="5">5</option>
+        </select>
+        <button id="btn-highlight-variants">高亮变体边界</button>
+      </div>
+      <div class="ctrl-group">
+        <h3>状态监控</h3>
+        <div class="stat-row"><span>地图尺寸</span><span class="val" id="stat-map-size">18x12</span></div>
+        <div class="stat-row"><span>总 cell 数</span><span class="val" id="stat-total-cells">216</span></div>
+        <div class="stat-row"><span>含资源 cell</span><span class="val" id="stat-resource-cells">-</span></div>
+        <div class="stat-row"><span>空 cell</span><span class="val" id="stat-empty-cells">-</span></div>
+        <div class="stat-row"><span>平均密度</span><span class="val" id="stat-avg-density">-</span></div>
+        <hr style="border-color:#0f3460;margin:6px 0;">
+        <div class="stat-row"><span>活跃资源类型</span><span class="val" id="stat-active-types">4</span></div>
+        <div class="stat-row"><span>可见变体总数</span><span class="val" id="stat-variant-count">-</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
