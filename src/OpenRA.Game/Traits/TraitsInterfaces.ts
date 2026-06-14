@@ -325,6 +325,41 @@ export interface IGameActor {
    * OpenRA 对照: Actor.CancelActivity()
    */
   cancelActivity?(): void
+
+  // -----------------------------------------------------------------------
+  // Trait lookup (optional — available when trait system is built out)
+  // -----------------------------------------------------------------------
+
+  /** Get all traits on this actor implementing the specified interface.
+   *
+   * OpenRA 对照: Actor.TraitsImplementing<T>()
+   *
+   * Returns trait instances matching the interface identifier.
+   * Optional method — stub actors may not support trait lookup.
+   *
+   * @param interfaceId — unique string identifier for the interface
+   * @param typeGuard — optional type guard for type-safe filtering
+   * @returns array of matching trait instances
+   */
+  traitsImplementing?(interfaceId: string): unknown[]
+
+  /** Kill this actor (HP to 0, invoking death notifications).
+   *
+   * OpenRA 对照: Actor.Kill(Actor attacker)
+   *
+   * Optional method — stub actors may not support kill.
+   *
+   * @param attacker — the actor that caused the kill
+   */
+  kill?(attacker: IGameActor): void
+
+  /** Dispose this actor (silently remove from world).
+   *
+   * OpenRA 对照: Actor.Dispose()
+   *
+   * Optional method — stub actors may not support dispose.
+   */
+  dispose?(): void
 }
 
 // ---------------------------------------------------------------------------
