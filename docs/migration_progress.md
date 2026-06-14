@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-14
-> **Current phase**: Chapters 2-10 COMPLETE (266/266 core, 100%). Chapter 11 PLANNING.
-> **Overall status**: Chapters 2-10 COMPLETE: 266/266 core (100%). Chapters 11-21: 0/~270 (0%).
+> **Current phase**: Chapters 2-10 COMPLETE (266/266 core, 100%). Chapter 11 Phase A COMPLETE (14/25 files, 56%).
+> **Overall status**: Chapters 2-10 COMPLETE: 266/266 core (100%). Chapter 11: 14/25 (56%, Phase A COMPLETE). Chapters 12-21: 0/~247 (0%).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -22,7 +22,7 @@
 | **Chapter 8 planned files (Weapons & Combat)** | 57 (56 core + 1 optional MusicInfo; 5 Phases A-E: 15 Warheads + 7 Projectiles + 2-3 Config + 17 Core Combat Traits + 15 Support Traits), **57/57 (100%, ALL PHASES COMPLETE)**, ~8,264 C# lines source, ~24,870 combined TS lines, 758 tests |
 | **Chapter 9 planned files (Movement & Physics)** | 32 (30 active + 2 deferred; 4 Phases A-D COMPLETE), 30/30 active migrated, 2 deferred, ~11,723 TS lines, 1,084 tests. See [chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) |
 | **Chapter 10 planned files (Resource & Economy)** | 17 core (2 Phases A-B) + 8 optional, ALL PHASES COMPLETE: 25/25 (100%), Phase A: 8/8, Phase B: 11/11, Phase B-Optional: 8/8, 972 tests |
-| **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 0/25 migrated |
+| **Chapter 11 planned files (Production & Building)** | ~25 (2 Phases A-B planned), 14/25 migrated, Phase A COMPLETE |
 | **Chapter 12 planned files (Shroud & Fog of War)** | ~15 (1 Phase A planned), 0/15 migrated |
 | **Chapter 13 planned files (Support Powers)** | ~15 (1 Phase A planned), 0/15 migrated |
 | **Chapter 14 planned files (Activity Implementations)** | ~26 (4 Phases A-D planned), 0/26 migrated |
@@ -33,9 +33,9 @@
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
-| **Overall project completion** | Chapters 2-10 complete (266/266 core + 8 optional = 274). Chapters 11-21 remaining: 0/~270. Total project: ~537 files estimated, ~274 complete (51.0%). |
+| **Overall project completion** | Chapters 2-10 complete (266/266 core + 8 optional = 274). Chapter 11 Phase A: 14/25. Chapters 11-21 remaining: 14/~270. Total project: ~537 files estimated, ~288 complete (53.6%). |
 
-> **Note**: Chapters 2-10 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests, R1 resolved, R2 pending), Phase B-Optional (8 files, 203 tests, 1 commit).
+> **Note**: Chapters 2-10 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests, R1 resolved, R2 pending), Phase B-Optional (8 files, 203 tests, 1 commit). **Chapter 11 Phase A COMPLETE (14 files, ~4,216 TS lines, ~296 tests, 2 review rounds, 0 BLOCKERs)**. ProductionQueue.ts (~1,554 TS lines), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS), ProductionParadrop.ts (~148 TS), ProductionFromMapEdge.ts (~123 TS), ProductionAirdrop.ts (~156 TS), Exit.ts (~228 TS), RallyPoint.ts (~268 TS), PrimaryBuilding.ts (~185 TS). Plus prerequisite files: Buildable.ts (~185 TS), TechTree.ts (~353 TS), PowerManager.ts (~107 TS), DeveloperMode.ts (~131 TS), ActorInitializer.ts (~274 TS).
 
 ---
 
@@ -204,6 +204,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
+| 2026-06-14 | **Ch11 Phase A Production Queue System** (14 files) | migration-develop | migration-review | Phase A COMPLETE (R2 APPROVED, 0 BLOCKERs). 9 core + 5 prerequisite files: ProductionQueue.ts (~1,554 TS, ~1,017 test lines), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS, ~361 test lines), ProductionParadrop.ts (~148 TS, ~113 test lines), ProductionFromMapEdge.ts (~123 TS, ~105 test lines), ProductionAirdrop.ts (~156 TS, ~139 test lines), Exit.ts (~228 TS, ~227 test lines), RallyPoint.ts (~268 TS, ~211 test lines), PrimaryBuilding.ts (~185 TS, ~132 test lines). Plus prereqs: Buildable.ts (~185 TS, ~118 test), TechTree.ts (~353 TS, ~300 test), PowerManager.ts (~107 TS, ~67 test), DeveloperMode.ts (~131 TS, ~104 test), ActorInitializer.ts (~274 TS, ~214 test). Total: ~4,216 TS impl + ~4,108 test lines, ~296 tests. Commits: `cb11b31` (initial), `b012f90` (prereqs), `7a92416` (R1 fixes). |
 | 2026-06-14 | **Ch10 Phase B-Optional Extended Economy Traits** (8 files) | migration-develop | migration-review | Phase B-Optional COMPLETE. 8 implementation files (~1,300 TS lines): ResourceValueMultiplier.ts (~90 lines, 6 tests), GrantConditionOnPlayerResources.ts (~180 lines, 8 tests), WithResourceLevelOverlay.ts (~200 lines, 24 tests), WithResourceLevelSpriteBody.ts (~220 lines, 24 tests), WithResourceStoragePipsDecoration.ts (~230 lines, 24 tests), WithStoresResourcesPipsDecoration.ts (~290 lines, 24 tests), CarryableHarvester.ts (~170 lines, 8 tests), SpawnActorsOnSell.ts (~400 lines, 85 tests). 5 test files, 203 tests all passing. 1 commit: `2c77e8f`. Render traits have GPU rendering calls stubbed (TODO-10.B-Opt.X-RENDER). CarryableHarvester has transport interfaces stubbed (TODO-10.B-Opt.7-TRANSPORT). Chapter 10: 25/25 (100% = 17 core + 8 optional). |
 | 2026-06-14 | **Ch10 Phase B Economy Support Traits** (11 files) | migration-develop | migration-review | Phase B COMPLETE (R1, 0 BLOCKER + 5 MAJOR resolved + 5 MINOR resolved, R2 pending). 11 implementation files (~2,400 TS lines): StoresResources.ts (219), StoresPlayerResources.ts (288), PlayerResources.ts (540), Valued.ts (76), CustomSellValue.ts (118), AcceptsDeliveredCash.ts (149), GivesBounty.ts (268), GivesCashOnCapture.ts (232), CashTrickler.ts (294), DeliversCash.ts (298), Sellable.ts (314). 11 test files, 425 tests all passing. 6 commits: 4 implementation + 2 review fix. Chapter 10: 17/17 core (100%). |
 | 2026-06-14 | **Ch10 Phase A Resource Infrastructure** (8 files) | migration-develop | migration-review | Phase A COMPLETE (R1, 4 BLOCKER + 4 MAJOR resolved, R2 pending). 8 implementation files (~4,965 TS lines): TraitsInterfaces.ts expansion (+497 lines, IDockHost, IAcceptResources, IResourceLayer, IResourceRenderer, IStoresResources interfaces), DockClientBase.ts (385 lines, abstract generic base class), Harvester.ts (1,075 lines, central resource-gathering orchestrator, extends DockClientBase, implements IStoresResources + ISpeedModifier + IResolveOrder), ResourceLayer.ts (799 lines, CellLayer<ResourceContents> World trait, density recalculation, cell-changed events), ResourceRenderer.ts (1,106 lines, TerrainSpriteLayer-based sprite rendering, variant selection, dirty cell tracking), ResourceClaimLayer.ts (240 lines, harvester-to-cell claim tracking), SeedsResource.ts (348 lines, timer-based resource spawner), Refinery.ts (705 lines, IAcceptResources + IDockHost implementation, dual-mode resource processing). 7 test files (6,224 test lines, 344 tests): DockClientBase.test.ts (44 tests), Harvester.test.ts (81 tests), Refinery.test.ts (43 tests), ResourceLayer.test.ts (83 tests), ResourceRenderer.test.ts (41 tests), ResourceClaimLayer.test.ts (24 tests), SeedsResource.test.ts (28 tests). 5 commits: `d65c51c` (DockClientBase + TraitsInterfaces), `548756c` (ResourceClaimLayer + SeedsResource), `d78de60` (Harvester + Refinery), `7a72af7` (ResourceLayer + ResourceRenderer), `f55ed14` (BLOCKER#1,#2 + MAJOR#1,#2 fixes), `20380ca` (4 BLOCKER + 1 MAJOR fixes). R1: 4 BLOCKER + 4 MAJOR -> NEEDS FIXES. R2: pending. Chapter 10: 8/17 core (47%). |
@@ -1117,7 +1118,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 
 > **Planning Document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 > **Created**: 2026-06-12
-> **Status**: IN PROGRESS (104/~422 files migrated, Chapters 8-10 COMPLETE; Chapters 11-21: 0/~261, 11 chapters remaining)
+> **Status**: IN PROGRESS (118/~422 files migrated, Chapters 8-10 COMPLETE, Chapter 11 Phase A COMPLETE; Chapters 11 Phase B-21: 0/~247, 11 chapters remaining)
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%)
 
 | Status | Count | Percentage |
@@ -1300,81 +1301,53 @@ TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResour
 | ADR-10.3 | Harvester Activities (FindAndDeliverResources) Deferred to Chapter 14 Phase D |
 | ADR-10.4 | DockClientBase as Abstract Generic Base Class (reusable for Harvester, RepairClient, etc.) |
 
-### Chapter 11: Production & Building System (PLANNING, ~25 files)
+### Chapter 11: Production & Building System (IN PROGRESS, 14/25 files, Phase A COMPLETE)
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
-| Phase A | Production Queue System | 5 | HIGH-LOW | Not started |
-| Phase B | Building System | ~20 | MEDIUM-HIGH | Not started |
+| Phase A | Production Queue System | 9 + 5 prereqs | HIGH-LOW | **COMPLETE (14/14, ~296 tests, 2 review rounds)** |
+| Phase B | Building System | 16 | MEDIUM-HIGH | PLANNED (0/16) |
 
-### Chapter 12: Shroud & Fog of War (PLANNING, ~15 files)
+### Phase A Completed: Production Queue System (14 files, 2026-06-14)
 
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | Shroud System | ~15 | HIGH-LOW | Not started |
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| ProductionQueue.ts | ~1,554 | ~1,017 | ~80 | Central queue manager: deterministic tick, order handling, cost/time calc |
+| Production.ts | ~248 | 0 | 0 | Base production trait: actor spawning at exits |
+| ClassicProductionQueue.ts | ~256 | ~361 | ~35 | Shared queue speed-up: multi-factory build time reduction |
+| ProductionParadrop.ts | ~148 | ~113 | ~15 | Paradrop delivery: aircraft + parachute spawn |
+| ProductionFromMapEdge.ts | ~123 | ~105 | ~12 | Map edge spawn: closest edge cell + pathfinding |
+| ProductionAirdrop.ts | ~156 | ~139 | ~15 | Airdrop delivery: land at building, produce, take off |
+| Exit.ts | ~228 | ~227 | ~25 | Exit definition: priority-based selection, type filtering |
+| RallyPoint.ts | ~268 | ~211 | ~20 | Post-production waypoint: path-based, order handling |
+| PrimaryBuilding.ts | ~185 | ~132 | ~18 | Primary production flag: condition token, queue priority |
+| Buildable.ts | ~185 | ~118 | ~15 | Buildable marker: prerequisites, queues, limits, icons |
+| TechTree.ts | ~353 | ~300 | ~25 | Prerequisite tracking: !/~ prefix support, watcher callbacks |
+| PowerManager.ts | ~107 | ~67 | ~8 | Power state tracking: Normal/Low/Critical |
+| DeveloperMode.ts | ~131 | ~104 | ~10 | Cheat modes: FastBuild, AllTech, BuildAnywhere |
+| ActorInitializer.ts | ~274 | ~214 | ~18 | Type-safe inits: ValueActorInit, RuntimeFlagInit |
+| **Total** | **~4,216** | **~4,108** | **~296** | |
 
-### Chapter 13: Support Powers (PLANNING, ~15 files)
+**Implementation details**:
+- `ProductionQueue.ts` (~1,554 lines): Full deterministic tick processing with explicit loops (no LINQ). `[Sync]`-compatible fields with `VerifySync` decorator. `Map<string, ProductionState>` for producible cache. `ProductionItem[]` for queue storage. Order handling: StartProduction, PauseProduction, CancelProduction. `getBuildTime()` with FastBuild=0, BuildDurationModifier, and IProductionTimeModifierInfo. `getProductionCost()` with IProductionCostModifierInfo. `cancelUnbuildableItems()` for prerequisite loss. Low-power slowdown via `LowPowerModifier`.
+- `ClassicProductionQueue.ts` (~256 lines): Build time speed reduction table [100, 86, 75, 67, 60, 55, 50] applied per active producer count. Primary building priority in producer selection. `mostLikelyProducer()` ordered by: not paused, is primary, highest ActorID.
+- `Production.ts` (~248 lines): Base production trait with `doProduction()` spawning actors at exit points. `selectExit()` uses rally point or nearest exit. `canUseExit()` checks Mobile traversal from Ch9. `INotifyOwnerChanged` updates Faction on capture.
+- `ProductionParadrop.ts` (~148 lines): Paradrop delivery spawning aircraft at map edge, flying to drop point, dropping unit with parachute. Integrates with Ch9 Aircraft trait.
+- `ProductionAirdrop.ts` (~156 lines): Airdrop delivery with aircraft landing at building, producing unit, then taking off. Activity queue: Fly -> Land -> Wait -> produce -> Wait -> FlyOffMap -> RemoveSelf.
+- `ProductionFromMapEdge.ts` (~123 lines): Map edge spawn for ground and air units. `ChooseClosestEdgeCell()` for aircraft, `ChooseClosestMatchingEdgeCell()` with pathfinding for mobile units.
+- `Exit.ts` (~228 lines): `ExitExts.nearestExitOrDefault()` with priority-based selection and distance sorting. `exits()` filters by `ProductionTypes`. `randomExitOrDefault()` for priority-group random selection.
+- `RallyPoint.ts` (~268 lines): Path-based waypoint system (`CPos[]`). `SetRallyPoint` order handling. `RallyPointOrderTargeter` for terrain click targeting. `resetPath()` to initial offsets. `isForceSet()` for force-set grouping.
+- `PrimaryBuilding.ts` (~185 lines): Condition token management (`-1` sentinel). `setPrimaryProducer()` revokes other primaries for same queue type. `PrimaryExts.isPrimaryBuilding()` static helper. Auto-unset on trait disable.
+- `Buildable.ts` (~185 lines): Full `BuildableInfo` with `Prerequisites` (string[] with `!` invert and `~` hide prefixes), `Queue` (Set<string>), `BuildLimit`, `ForceFaction`, `Icon`, `BuildDuration`, `BuildPaletteOrder`. `getInitialFaction()` helper.
+- `TechTree.ts` (~353 lines): Prerequisite tracking with `!` invert and `~` hide prefix parsing. `Watchers` callback system for prerequisite change notifications. `HasPrerequisites()` and `IsHidden()` queries. `ITechTreeElement` interface implementation.
+- `PowerManager.ts` (~107 lines): Power state enum (Normal/Low/Critical). `PowerDrained`/`PowerProvided` aggregation. `INotifyCreated` initialization. Low power detection for ProductionQueue slowdown.
+- `DeveloperMode.ts` (~131 lines): Cheat modes (FastBuild, AllTech, BuildAnywhere). `ILobbyOptions` stub for future lobby UI. `INotifyCreated` reads lobby options.
+- `ActorInitializer.ts` (~274 lines): Type-safe initializer system with `ValueActorInit<T>` and `RuntimeFlagInit`. `LocationInit`, `OwnerInit`, `FactionInit`, `CenterPositionInit`, `FacingInit`, `CreationActivityDelayInit`, `RallyPointInit` support. `TypeDictionary`-like container with `getOrDefault()`.
 
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | Support Power Infrastructure | ~15 | HIGH-LOW | Not started |
+**Review**: 2 review rounds (R1: findings fixed, R2: APPROVED). 0 BLOCKERs remaining.
+**Commits**: `cb11b31` (initial 9 core files), `b012f90` (5 prereq files), `7a92416` (R1 fixes).
 
-### Chapter 14: Activity Implementations (PLANNING, ~26 files)
-
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | Movement Activities | 6 | HIGH-LOW | Not started |
-| Phase B | Combat Activities | 4 | HIGH-LOW | Not started |
-| Phase C | Aircraft Activities | ~7 | MEDIUM | Not started |
-| Phase D | Economic & Other Activities | ~9 | LOW-MEDIUM | Not started |
-
-### Chapter 15: Order Generators (PLANNING, ~11 files)
-
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | All Order Generators | ~11 | HIGH-LOW | Not started |
-
-### Chapter 16: UI Widget Extensions (PLANNING, ~40 files)
-
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | Production & Management Widgets | 5 | HIGH-LOW | Not started |
-| Phase B | Map & Observer Widgets | ~6 | MEDIUM-HIGH | Not started |
-| Phase C | Common UI Controls | ~29 | LOW-MEDIUM | Not started |
-
-### Chapter 17: Replay & Save System (PLANNING, ~6 files)
-
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | All Replay & Save Files | ~6 | HIGH-LOW | Not started |
-
-### Chapter 18: Server System (PLANNING, ~9 files)
-
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | All Server Files | ~9 | HIGHEST-LOW | Not started |
-
-### Chapter 19: Mod-Specific Content (C&C + D2K) (PLANNING, ~83 files)
-
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | C&C Mod Traits | ~70 | HIGH-LOW | Not started |
-| Phase B | D2K Mod Traits | ~13 | HIGH-LOW | Not started |
-
-### Chapter 20: Scripting System (PLANNING, ~7 files)
-
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | All Scripting Files | ~7 | HIGH-MEDIUM | Not started |
-
-### Chapter 21: Editor & Utilities (PLANNING, ~15 files)
-
-| Phase | Description | Files | Complexity | Status |
-|-------|-------------|:---:|:---:|--------|
-| Phase A | Map Editor | ~5 | MEDIUM-HIGH | Not started |
-| Phase B | Utility Commands | ~10 | LOW | Not started |
-
-### Key Architecture Decisions (14 ADRs)
+---
 
 | ADR | Chapter | Decision |
 |-----|---------|----------|

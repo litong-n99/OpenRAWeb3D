@@ -5,42 +5,42 @@
     {
       "name": "team-lead",
       "agentType": "team-lead",
-      "model": "deepseek-v4-flash",
+      "model": "claude-opus-4-6",
       "role": "Task coordination, routing, progress tracking. Does NOT write code."
     },
     {
       "name": "architect",
       "color": "green",
       "agentType": "migration-architect",
-      "model": "deepseek-v4-pro",
+      "model": "claude-opus-4-6",
       "role": "Analyze OpenRA source, write Work Requirement Document, resolve dependencies."
     },
     {
       "name": "developer",
       "color": "yellow",
       "agentType": "migration-develop",
-      "model": "deepseek-v4-pro",
+      "model": "claude-opus-4-6",
       "role": "Implement TypeScript + unit tests following migration docs."
     },
     {
       "name": "reviewer",
       "color": "purple",
       "agentType": "migration-review",
-      "model": "deepseek-v4-pro",
+      "model": "claude-opus-4-6",
       "role": "5-dimension code review: docs compliance, completeness, efficiency, bugs, format."
     },
     {
       "name": "acceptance-tester",
       "color": "blue",
       "agentType": "acceptance-test-assistant",
-      "model": "deepseek-v4-pro",
+      "model": "claude-opus-4-6",
       "role": "Create manual visual acceptance test pages for modules not verifiable by automated tests. Can commit test code."
     },
     {
       "name": "docs-manager",
       "color": "orange",
       "agentType": "migration-docs",
-      "model": "deepseek-v4-pro",
+      "model": "claude-opus-4-6",
       "role": "Update migration docs, progress tracker, and commit after review approval."
     }
   ]
