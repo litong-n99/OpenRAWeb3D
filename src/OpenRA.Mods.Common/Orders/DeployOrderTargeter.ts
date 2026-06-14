@@ -16,8 +16,9 @@ import type { CPos } from '../../OpenRA.Game/CPos.js'
 import type {
   IGameActor,
   IOrderTargeter,
-  TargetModifiers,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { TargetModifiers } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { TargetModifiers as TargetModifiersType } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { TargetType, type Target } from '../../OpenRA.Game/Traits/Target.js'
 
 // ---------------------------------------------------------------------------
@@ -86,15 +87,14 @@ export class DeployOrderTargeter implements IOrderTargeter {
   canTarget(
     self: IGameActor,
     target: Target,
-    modifiers: TargetModifiers,
+    modifiers: TargetModifiersType,
     _cursor: string,
   ): boolean {
     if (target.type !== TargetType.Actor)
       return false
 
-    // NOTE: In the C# version, modifiers.HasModifier(TargetModifiers.ForceQueue)
-    // is checked. The TS equivalent uses bitwise AND.
-    this.isQueued = (modifiers & 2 /* ForceQueue */) !== 0
+    // OpenRA 对照: modifiers.HasModifier(TargetModifiers.ForceQueue)
+    this.isQueued = (modifiers & TargetModifiers.ForceQueue) !== 0
 
     // Deploy can only target self
     // NOTE: target.actor returns IActorRef | null, while self is IGameActor.
@@ -116,7 +116,7 @@ export class DeployOrderTargeter implements IOrderTargeter {
     _target: Target,
     _actorsAt: readonly IGameActor[],
     _xy: CPos,
-    _modifiers: TargetModifiers,
+    _modifiers: TargetModifiersType,
   ): boolean {
     return true
   }

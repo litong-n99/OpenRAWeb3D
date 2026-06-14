@@ -27,6 +27,7 @@ import type {
   PlayerStub,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { ColorStub } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { PlayerRelationship } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { WDist } from '../../../OpenRA.Game/WDist.js'
 import { MapBuildRadius } from '../World/MapBuildRadius.js'
 
@@ -210,19 +211,15 @@ export class BaseProvider
       this._allyBuildEnabled = mapBuildRadius.allyBuildRadiusEnabled
       this._buildRadiusEnabled = mapBuildRadius.buildRadiusEnabled
     } else {
-      // NOTE: In OpenRA, if MapBuildRadius is null, both are set to false.
-      // But for backward compatibility in tests, we default to true.
-      this._allyBuildEnabled = true
-      this._buildRadiusEnabled = true
+      // OpenRA 对照: allyBuildEnabled = mapBuildRadius != null && ...
+      //   When mapBuildRadius is null, both are set to false.
+      this._allyBuildEnabled = false
+      this._buildRadiusEnabled = false
     }
 
     // Initialize cooldown tracking
     this._progress = info.initialDelay
     this._total = info.initialDelay
-
-    // Mark _validRenderPlayer as referenced (used by range circle rendering
-    // in OpenRA; stubbed due to missing WorldRenderer pipeline dependency)
-    void this._validRenderPlayer
   }
 
   // -----------------------------------------------------------------------
@@ -329,11 +326,14 @@ export class BaseProvider
     }
 
     if (this._allyBuildEnabled) {
-      // NOTE: IsAlliedWith check depends on diplomacy system (not yet migrated).
-      // For now, treat same owner only. Ally check will be added when
-      // the relationship system is available.
-      // TODO-11.B.4: Add IsAlliedWith check when diplomacy/relationships migrated.
-      return false
+      // Duck-typed check: renderPlayer has relationshipWith() from Player.ts Ch3
+      const rp = renderPlayer as unknown as {
+        relationshipWith?(other: unknown): PlayerRelationship
+      }
+      if (rp.relationshipWith) {
+        const stance = rp.relationshipWith(owner)
+        if (stance === PlayerRelationship.Ally) return true
+      }
     }
 
     return false
@@ -368,7 +368,9 @@ export class BaseProvider
 
     // NOTE: ValidRenderPlayer check requires renderPlayer which is not
     // available without the full WorldRenderer pipeline. For now,
-    // always return empty (stub).
+    // always return empty (stub). Method kept for future 3D annotation use.
+    // TODO-11.B.4: Wire _validRenderPlayer into actual visual range circles.
+    void this._validRenderPlayer
     return []
   }
 

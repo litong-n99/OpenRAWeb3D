@@ -19,8 +19,11 @@ import type { CPos } from '../../OpenRA.Game/CPos.js'
 import type {
   IGameActor,
   IOrderTargeter,
-  TargetModifiers,
   FrozenActorStub,
+} from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import {
+  TargetModifiers,
+  PlayerRelationship,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { TargetType, type Target } from '../../OpenRA.Game/Traits/Target.js'
 
@@ -159,13 +162,13 @@ export abstract class UnitOrderTargeter implements IOrderTargeter {
 
     // Check ForceAttack modifier constraint
     if (this.forceAttack !== null) {
-      const isForceAttack = (modifiers & 1 /* ForceAttack */) !== 0
+      const isForceAttack = (modifiers & TargetModifiers.ForceAttack) !== 0
       if (isForceAttack !== this.forceAttack)
         return false
     }
 
-    // Relationship checks
-    const isForceAttack = (modifiers & 1 /* ForceAttack */) !== 0
+    // Relationship checks using actual diplomacy lookup
+    const isForceAttack = (modifiers & TargetModifiers.ForceAttack) !== 0
     if (!isForceAttack) {
       // Get owner of target and check relationship with self's owner
       const selfOwner = self.owner
@@ -187,22 +190,29 @@ export abstract class UnitOrderTargeter implements IOrderTargeter {
         }
 
         if (targetOwner) {
-          // NOTE: Full relationship calculation requires Player.RelationshipWith()
-          // which is deferred to Chapter 11 Phase C. For Phase B, we use a
-          // simplified check: if self and target have the same owner, they're allies.
-          // This is sufficient for basic demolition targeting.
-          const sameOwner = targetOwner === selfOwner
+          // OpenRA 对照: target.Owner.RelationshipWith(self.Owner)
+          const targetOwnerRel = targetOwner as unknown as {
+            relationshipWith?(other: unknown): PlayerRelationship
+          }
+          const relationship = targetOwnerRel.relationshipWith
+            ? targetOwnerRel.relationshipWith(selfOwner)
+            : (targetOwner === selfOwner
+              ? PlayerRelationship.Ally
+              : PlayerRelationship.Enemy)
 
-          if (sameOwner && !this.targetAllyUnits)
+          if (relationship === PlayerRelationship.Ally && !this.targetAllyUnits)
             return false
-          if (!sameOwner && !this.targetEnemyUnits)
+          if (relationship === PlayerRelationship.Enemy && !this.targetEnemyUnits)
+            return false
+          // Neutral relationship: target neither enemy nor ally
+          if (relationship === PlayerRelationship.Neutral)
             return false
         }
       }
     }
 
     // Set isQueued based on ForceQueue modifier
-    this.isQueued = (modifiers & 2 /* ForceQueue */) !== 0
+    this.isQueued = (modifiers & TargetModifiers.ForceQueue) !== 0
 
     // Dispatch to type-specific validation
     if (type === TargetType.FrozenActor) {
