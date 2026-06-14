@@ -1,5 +1,6 @@
 /**
  * Shroud.test.ts — Shroud migration unit tests
+ * OpenRA 对照: OpenRA.Game/Traits/Player/Shroud.cs
  *
  * Tests focus on: state management, reference counting, visibility transitions,
  * boundary conditions, sync hash determinism.
@@ -135,6 +136,8 @@ describe('Shroud', () => {
 
     it('explores all cells when exploreMapEnabled is true', () => {
       const info = new ShroudInfo()
+      // NOTE: Object.assign is test-only mutation. In production, ShroudInfo
+      // fields are set by the MiniYAML parser at load time.
       Object.assign(info, { exploredMapCheckboxEnabled: true, fogCheckboxEnabled: false })
       const shroud2 = new Shroud(actor, info)
       shroud2.created(actor)
@@ -147,6 +150,8 @@ describe('Shroud', () => {
 
     it('sets revealedCells when fog disabled and explore map enabled', () => {
       const info = new ShroudInfo()
+      // NOTE: Object.assign is test-only mutation. In production, ShroudInfo
+      // fields are set by the MiniYAML parser at load time.
       Object.assign(info, { exploredMapCheckboxEnabled: true, fogCheckboxEnabled: false })
       const shroud2 = new Shroud(actor, info)
       shroud2.created(actor)
@@ -232,7 +237,7 @@ describe('Shroud', () => {
   describe('tick', () => {
     it('fires onShroudChanged when visibility changes', () => {
       const changedCells: PPos[] = []
-      shroud.onShroudChanged = (puv) => changedCells.push(puv)
+      shroud.addOnShroudChanged((puv) => changedCells.push(puv))
 
       const cells = [new PPos(1, 1)]
       shroud.addSource('source1', SourceType.Visibility, cells)
@@ -242,15 +247,44 @@ describe('Shroud', () => {
       expect(changedCells.some((p) => PPos.equals(p, new PPos(1, 1)))).toBe(true)
     })
 
+    it('supports multiple subscribers', () => {
+      const changed1: PPos[] = []
+      const changed2: PPos[] = []
+      const cb1 = (puv: PPos) => changed1.push(puv)
+      const cb2 = (puv: PPos) => changed2.push(puv)
+
+      shroud.addOnShroudChanged(cb1)
+      shroud.addOnShroudChanged(cb2)
+
+      shroud.addSource('source1', SourceType.Visibility, [new PPos(1, 1)])
+      shroud.tick(actor)
+
+      expect(changed1.some((p) => PPos.equals(p, new PPos(1, 1)))).toBe(true)
+      expect(changed2.some((p) => PPos.equals(p, new PPos(1, 1)))).toBe(true)
+    })
+
+    it('supports removing a subscriber', () => {
+      const changed: PPos[] = []
+      const cb = (puv: PPos) => changed.push(puv)
+
+      shroud.addOnShroudChanged(cb)
+      shroud.removeOnShroudChanged(cb)
+
+      shroud.addSource('source1', SourceType.Visibility, [new PPos(1, 1)])
+      shroud.tick(actor)
+
+      expect(changed.length).toBe(0)
+    })
+
     it('does not fire onShroudChanged when no callback registered', () => {
       const cells = [new PPos(1, 1)]
       shroud.addSource('source1', SourceType.Visibility, cells)
-      // Should not throw even with null callback
+      // Should not throw even with no callbacks registered
       shroud.tick(actor)
     })
 
     it('skips tick when no cells touched', () => {
-      shroud.onShroudChanged = () => {}
+      shroud.addOnShroudChanged(() => {})
       shroud.tick(actor)
       const hash1 = shroud.hash
       shroud.tick(actor)
@@ -258,7 +292,7 @@ describe('Shroud', () => {
     })
 
     it('updates hash deterministically', () => {
-      shroud.onShroudChanged = () => {}
+      shroud.addOnShroudChanged(() => {})
       const hash1 = shroud.hash
       shroud.addSource('source1', SourceType.Visibility, [new PPos(1, 1)])
       shroud.tick(actor)
@@ -269,7 +303,7 @@ describe('Shroud', () => {
     it('resets revealedCells to 0 when player has lost', () => {
       const lostActor = createMockActor(createMockPlayer(WinState.Lost))
       const shroud2 = new Shroud(lostActor, new ShroudInfo())
-      shroud2.onShroudChanged = () => {}
+      shroud2.addOnShroudChanged(() => {})
 
       shroud2.addSource('source1', SourceType.Visibility, [new PPos(1, 1)])
       shroud2.tick(lostActor)
@@ -283,7 +317,7 @@ describe('Shroud', () => {
 
   describe('disabled', () => {
     beforeEach(() => {
-      shroud.onShroudChanged = () => {}
+      shroud.addOnShroudChanged(() => {})
     })
 
     it('all cells return explored when disabled', () => {
@@ -320,7 +354,7 @@ describe('Shroud', () => {
 
   describe('fogEnabled', () => {
     beforeEach(() => {
-      shroud.onShroudChanged = () => {}
+      shroud.addOnShroudChanged(() => {})
     })
 
     it('explored cells remain visible when fog disabled', () => {
@@ -555,7 +589,7 @@ describe('Shroud', () => {
 
   describe('revealedCells', () => {
     beforeEach(() => {
-      shroud.onShroudChanged = () => {}
+      shroud.addOnShroudChanged(() => {})
     })
 
     it('increments when cells become visible', () => {

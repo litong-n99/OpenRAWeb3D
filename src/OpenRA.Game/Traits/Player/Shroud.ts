@@ -6,7 +6,8 @@
  * - C# ProjectedCellLayer<short> count arrays → Int16Array direct indexing (no JS boxing)
  * - C# ProjectedCellLayer<bool> / ProjectedCellLayer<ShroudCellType> → Uint8Array
  * - C# Span.IndexOf(true) dirty scan → TypedArray.indexOf(1) loop
- * - C# event Action<PPos> → callback field onShroudChanged: ((puv: PPos) => void) | null
+ * - C# event Action<PPos> → callback array with addOnShroudChanged /
+ *   removeOnShroudChanged (multi-subscriber pattern, matching C# event +=/-=)
  * - C# Dictionary<object, ShroudSource> → Map<unknown, ShroudSource>
  * - C# Actor.World.Map reference → stored map + worldTick for sync hash
  */
@@ -124,14 +125,49 @@ interface ShroudSource {
  */
 export class Shroud implements ISync, INotifyCreated, ITick {
   // -------------------------------------------------------------------------
-  // Public state
+  // Callback subscribers (multi-subscriber, matching C# event +=/-=)
   // -------------------------------------------------------------------------
 
-  /** Callback fired when a cell's visibility changes.
+  private readonly _onShroudChangedCallbacks: ((puv: PPos) => void)[] = []
+
+  /**
+   * Register a callback to be fired when a cell's visibility changes.
    *
-   * OpenRA 对照: Shroud.OnShroudChanged (event Action<PPos>)
+   * OpenRA 对照: Shroud.OnShroudChanged += handler
+   *
+   * @param callback — the function to call when a cell's visibility changes
    */
-  onShroudChanged: ((puv: PPos) => void) | null = null
+  addOnShroudChanged(callback: (puv: PPos) => void): void {
+    this._onShroudChangedCallbacks.push(callback)
+  }
+
+  /**
+   * Remove a previously registered visibility-change callback.
+   *
+   * OpenRA 对照: Shroud.OnShroudChanged -= handler
+   *
+   * @param callback — the function to remove
+   */
+  removeOnShroudChanged(callback: (puv: PPos) => void): void {
+    const idx = this._onShroudChangedCallbacks.indexOf(callback)
+    if (idx !== -1) {
+      this._onShroudChangedCallbacks.splice(idx, 1)
+    }
+  }
+
+  /** Fire OnShroudChanged to all registered subscribers.
+   *
+   * OpenRA 对照: OnShroudChanged?.Invoke(puv)
+   */
+  private _fireOnShroudChanged(puv: PPos): void {
+    for (const cb of this._onShroudChangedCallbacks) {
+      cb(puv)
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Public state
+  // -------------------------------------------------------------------------
 
   /** Number of currently visible cells.
    *
@@ -354,8 +390,8 @@ export class Shroud implements ISync, INotifyCreated, ITick {
       this._resolvedType[index] = type
 
       const puv = this._pposFromIndex(index)
-      if (this._map.contains(puv)) {
-        this.onShroudChanged?.(puv)
+      if (this._containsInLayerBounds(puv)) {
+        this._fireOnShroudChanged(puv)
       }
 
       if (!this._disabledChanged && (this._fogEnabled || !this._exploreMapEnabled)) {
@@ -395,6 +431,23 @@ export class Shroud implements ISync, INotifyCreated, ITick {
    */
   private _pposFromIndex(index: number): PPos {
     return new PPos(index % this._map.mapSize.width, (index / this._map.mapSize.width) | 0)
+  }
+
+  /** Check whether a PPos is within the projected layer bounds.
+   *
+   * OpenRA 对照: ProjectedCellLayer.Contains(PPos)
+   *
+   * NOTE: Uses the projected layer bounds (0..mapSize.width/height), not
+   * Map.Contains(). For rectangular grids these are the same, but for
+   * isometric grids the projected layer has a different shape.
+   */
+  private _containsInLayerBounds(puv: PPos): boolean {
+    return (
+      puv.U >= 0 &&
+      puv.V >= 0 &&
+      puv.U < this._map.mapSize.width &&
+      puv.V < this._map.mapSize.height
+    )
   }
 
   // -------------------------------------------------------------------------
@@ -676,12 +729,16 @@ export class Shroud implements ISync, INotifyCreated, ITick {
   }
 
   /**
-   * Check whether a projected position is within the map bounds.
+   * Check whether a projected position is within the shroud layer bounds.
    *
    * OpenRA 对照: Shroud.Contains(PPos)
+   *
+   * NOTE: Uses the projected layer bounds (0..mapSize.width/height), not
+   * Map.Contains(). For rectangular grids these are the same, but for
+   * isometric grids the projected layer has a different shape.
    */
   contains(puv: PPos): boolean {
-    return this._map.contains(puv)
+    return this._containsInLayerBounds(puv)
   }
 
   /**
@@ -736,7 +793,8 @@ export class Shroud implements ISync, INotifyCreated, ITick {
           }
         }
       } else if (this._map.contains(puv)) {
-        // We do not set Explored since IsExplored may return false.
+        // Shroud enabled, Fog disabled: Visible is set unconditionally.
+        // Explored is set if the cell was ever resolved above Shroud.
         const index = this._index(puv)
         state |= CellVisibility.Visible
         if (this._resolvedType[index] > ShroudCellType.Shroud) {
@@ -830,6 +888,10 @@ export class Shroud implements ISync, INotifyCreated, ITick {
    * Find all projected cells within a range from a cell position.
    *
    * OpenRA 对照: Shroud.ProjectedCellsInRange(Map, CPos, WDist, int)
+   *
+   * NOTE: This is a TypeScript overload of the WPos-based static method,
+   * matching the C# overload that takes a CPos instead of WPos. It delegates
+   * to the WPos version using the cell center as the origin.
    *
    * @param map — the map
    * @param cell — center cell position

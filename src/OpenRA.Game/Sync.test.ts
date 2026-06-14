@@ -389,9 +389,9 @@ describe('HashActor', () => {
 // ---------------------------------------------------------------------------
 
 describe('HashPlayer', () => {
-  it('hashes by (playerActor.actorId << 16) * 0x567', () => {
+  it('hashes by ((playerActor.actorId << 16) | 0) * 0x567', () => {
     const player = makePlayerRef(10)
-    const expected = (Math.imul(10 << 16, 0x567)) | 0
+    const expected = Math.imul(((10 << 16) | 0), 0x567) | 0
     expect(HashPlayer(player)).toBe(expected)
   })
 
@@ -408,10 +408,14 @@ describe('HashPlayer', () => {
     expect(HashPlayer(player)).toBe(HashPlayer(player))
   })
 
-  it('different actor IDs produce different hashes', () => {
-    const p1 = makePlayerRef(1)
-    const p2 = makePlayerRef(2)
-    expect(HashPlayer(p1)).not.toBe(HashPlayer(p2))
+  it('handles large actorId with 32-bit overflow correctly', () => {
+    // actorId << 16 can overflow 32-bit signed int; ensure the overflow
+    // is applied BEFORE Math.imul (not after), so the result matches
+    // the C# unchecked cast behavior.
+    const largeId = 0x12345 // 32-bit: 0x12345 << 16 = 0x23450000
+    const player = makePlayerRef(largeId)
+    const expected = Math.imul(((largeId << 16) | 0), 0x567) | 0
+    expect(HashPlayer(player)).toBe(expected)
   })
 })
 

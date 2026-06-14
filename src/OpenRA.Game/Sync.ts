@@ -210,7 +210,7 @@ export function HashActor(a: ISyncActorRef | null): number {
  * @param p — the player (or null → returns 0)
  */
 export function HashPlayer(p: ISyncPlayerRef | null): number {
-  if (p !== null) return (Math.imul(p.playerActor.actorId << 16, 0x567)) | 0
+  if (p !== null) return Math.imul(((p.playerActor.actorId << 16) | 0), 0x567) | 0
   return 0
 }
 
@@ -239,7 +239,7 @@ export function HashTarget(target: {
     case TT_Actor: {
       const actor = target.actor
       if (actor === null) return 0
-      return (Math.imul(actor.actorId << 16, 0x567)) | 0
+      return Math.imul(((actor.actorId << 16) | 0), 0x567) | 0
     }
     case TT_FrozenActor:
       // NOTE: FrozenActor hash deferred (TODO-6.B.3).
