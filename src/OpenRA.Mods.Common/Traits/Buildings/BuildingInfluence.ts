@@ -279,16 +279,23 @@ export class BuildingInfluence implements INotifyCreated {
    * concrete array for simplicity. The linked list is typically small (few
    * buildings per cell), so the allocation cost is negligible.
    *
+   * MAJOR fix: converts CPos → MPos once and reuses for both `contains` and
+   * `getMPos`, avoiding the double internal conversion that occurs when passing
+   * CPos directly (CellLayer.contains(CPos) internally calls toMPos(), as does
+   * CellLayer.get(CPos)).
+   *
    * @param cell — the cell position to query
    * @returns all building actors at the cell, or empty array
    */
   getBuildingsAt(cell: CPos): IGameActor[] {
-    if (!this.influence.contains(cell)) {
+    // Convert CPos → MPos once to avoid double conversion in contains + get
+    const uv = cell.toMPos(this.influence.GridType)
+    if (!this.influence.contains(uv)) {
       return []
     }
 
     const result: IGameActor[] = []
-    let node = this.influence.get(cell)
+    let node = this.influence.getMPos(uv)
 
     while (node !== null) {
       result.push(node.Actor)
@@ -311,13 +318,19 @@ export class BuildingInfluence implements INotifyCreated {
    * Equivalent to `influence.Contains(cell) && influence[cell] != null`.
    * Avoids iterating the linked list — just checks if the head is non-null.
    *
+   * MAJOR fix: converts CPos → MPos once and reuses for both `contains` and
+   * `getMPos`, avoiding the double internal conversion (same optimization as
+   * getBuildingsAt).
+   *
    * @param cell — the cell position to check
    * @returns true if at least one building occupies the cell
    */
   anyBuildingAt(cell: CPos): boolean {
-    if (!this.influence.contains(cell)) {
+    // Convert CPos → MPos once to avoid double conversion in contains + get
+    const uv = cell.toMPos(this.influence.GridType)
+    if (!this.influence.contains(uv)) {
       return false
     }
-    return this.influence.get(cell) !== null
+    return this.influence.getMPos(uv) !== null
   }
 }

@@ -65,10 +65,16 @@ import {
   BuildingInfo,
   Building,
   type IBuildingMap,
-  type ITargetableCells,
+  type IBuildingActorMap,
+  type IBuildingInfluenceAccess,
 } from './Building.js'
 
-import type { IGameActor, PlayerStub, ActorInfoStub } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type {
+  IGameActor,
+  ITargetableCells,
+  PlayerStub,
+  ActorInfoStub,
+} from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -692,7 +698,7 @@ describe('Building', () => {
   describe('targetableCells (ITargetableCells)', () => {
     it('returns only Occupied type cells', () => {
       const building = new Building(info, new CPos(0, 0), map)
-      const cells = building.targetableCells()
+      const cells = building.targetableCells
       // Only 'x' cells are targetable
       // footprint: (0,0)=x, (1,0)=x, (0,1)=[, (1,1)=+
       expect(cells.length).toBe(2)
@@ -823,17 +829,174 @@ describe('Building lifecycle', () => {
 // ---------------------------------------------------------------------------
 
 describe('ITargetableCells interface acceptance', () => {
-  it('Building satisfies ITargetableCells interface', () => {
+  it('Building satisfies ITargetableCells interface (readonly property)', () => {
     const info = BuildingInfo.fromJSON({ footprint: 'x' })
     const map = createMap()
     const building = new Building(info, new CPos(0, 0), map)
 
     // TypeScript structural compatibility:
-    // Building implements ITargetableCells
+    // Building implements ITargetableCells (canonical interface from TraitsInterfaces.ts)
+    // ITargetableCells.targetableCells is a readonly property, not a method.
     const tc: ITargetableCells = building
-    expect(tc.targetableCells().length).toBe(1)
-    expect(tc.targetableCells()[0][0].toString()).toBe('0,0')
-    expect(tc.targetableCells()[0][1]).toBe(SubCell.FullCell)
+    expect(tc.targetableCells.length).toBe(1)
+    expect(tc.targetableCells[0][0].toString()).toBe('0,0')
+    expect(tc.targetableCells[0][1]).toBe(SubCell.FullCell)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// BLOCKER-2: Lifecycle wiring (actor map + building influence injection)
+// ---------------------------------------------------------------------------
+
+describe('Building lifecycle wiring (BLOCKER-2)', () => {
+  let info: BuildingInfo
+  let map: IBuildingMap
+  let actor: IGameActor
+
+  beforeEach(() => {
+    info = BuildingInfo.fromJSON({
+      footprint: 'xx=+',
+      dimensions: { x: 2, y: 2 },
+    })
+    map = createMap()
+    actor = createActorStub()
+  })
+
+  it('addedToWorld calls actorMap.addInfluence when injected', () => {
+    const addSpy = vi.fn()
+    const actorMap: IBuildingActorMap = {
+      addInfluence: addSpy,
+      removeInfluence: vi.fn(),
+    }
+    const building = new Building(info, new CPos(0, 0), map, actorMap)
+    building.addedToWorld(actor)
+
+    expect(addSpy).toHaveBeenCalledTimes(1)
+    expect(addSpy).toHaveBeenCalledWith(actor, building)
+  })
+
+  it('addedToWorld calls buildingInfluence.addInfluence when injected', () => {
+    const addSpy = vi.fn()
+    const buildingInfluence: IBuildingInfluenceAccess = {
+      addInfluence: addSpy,
+      removeInfluence: vi.fn(),
+    }
+    const building = new Building(info, new CPos(0, 0), map, null, buildingInfluence)
+    building.addedToWorld(actor)
+
+    expect(addSpy).toHaveBeenCalledTimes(1)
+    // Called with the actor and the building's all occupied tiles
+    expect(addSpy).toHaveBeenCalledWith(actor, expect.any(Array))
+    const cells = addSpy.mock.calls[0][1] as readonly CPos[]
+    // "xx=+" has 4 non-empty tiles: x, x, =, + (all non-Empty)
+    expect(cells.length).toBe(4)
+  })
+
+  it('addedToWorld works with both actorMap and buildingInfluence', () => {
+    const actorMapAdd = vi.fn()
+    const influenceAdd = vi.fn()
+    const actorMap: IBuildingActorMap = {
+      addInfluence: actorMapAdd,
+      removeInfluence: vi.fn(),
+    }
+    const buildingInfluence: IBuildingInfluenceAccess = {
+      addInfluence: influenceAdd,
+      removeInfluence: vi.fn(),
+    }
+    const building = new Building(info, new CPos(0, 0), map, actorMap, buildingInfluence)
+    building.addedToWorld(actor)
+
+    expect(actorMapAdd).toHaveBeenCalledWith(actor, building)
+    expect(influenceAdd).toHaveBeenCalledWith(actor, expect.any(Array))
+  })
+
+  it('removedFromWorld calls actorMap.removeInfluence when injected', () => {
+    const removeSpy = vi.fn()
+    const actorMap: IBuildingActorMap = {
+      addInfluence: vi.fn(),
+      removeInfluence: removeSpy,
+    }
+    const building = new Building(info, new CPos(0, 0), map, actorMap)
+    building.removedFromWorld(actor)
+
+    expect(removeSpy).toHaveBeenCalledTimes(1)
+    expect(removeSpy).toHaveBeenCalledWith(actor, building)
+  })
+
+  it('removedFromWorld calls buildingInfluence.removeInfluence when injected', () => {
+    const removeSpy = vi.fn()
+    const buildingInfluence: IBuildingInfluenceAccess = {
+      addInfluence: vi.fn(),
+      removeInfluence: removeSpy,
+    }
+    const building = new Building(info, new CPos(0, 0), map, null, buildingInfluence)
+    building.removedFromWorld(actor)
+
+    expect(removeSpy).toHaveBeenCalledTimes(1)
+    expect(removeSpy).toHaveBeenCalledWith(actor, expect.any(Array))
+  })
+
+  it('removedFromWorld works with both actorMap and buildingInfluence', () => {
+    const actorMapRemove = vi.fn()
+    const influenceRemove = vi.fn()
+    const actorMap: IBuildingActorMap = {
+      addInfluence: vi.fn(),
+      removeInfluence: actorMapRemove,
+    }
+    const buildingInfluence: IBuildingInfluenceAccess = {
+      addInfluence: vi.fn(),
+      removeInfluence: influenceRemove,
+    }
+    const building = new Building(info, new CPos(0, 0), map, actorMap, buildingInfluence)
+    building.removedFromWorld(actor)
+
+    expect(actorMapRemove).toHaveBeenCalledWith(actor, building)
+    expect(influenceRemove).toHaveBeenCalledWith(actor, expect.any(Array))
+  })
+
+  it('addedToWorld is no-op (no throw) when neither dependency is injected', () => {
+    const building = new Building(info, new CPos(0, 0), map)
+    expect(() => building.addedToWorld(actor)).not.toThrow()
+  })
+
+  it('removedFromWorld is no-op (no throw) when neither dependency is injected', () => {
+    const building = new Building(info, new CPos(0, 0), map)
+    expect(() => building.removedFromWorld(actor)).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// BLOCKER-4: occupiedCells returns pre-computed array
+// ---------------------------------------------------------------------------
+
+describe('Building.occupiedCells pre-computation (BLOCKER-4)', () => {
+  let info: BuildingInfo
+  let map: IBuildingMap
+
+  beforeEach(() => {
+    info = BuildingInfo.fromJSON({
+      footprint: 'xx=+',
+      dimensions: { x: 2, y: 2 },
+    })
+    map = createMap()
+  })
+
+  it('returns the same array reference on each call', () => {
+    const building = new Building(info, new CPos(0, 0), map)
+    const result1 = building.occupiedCells()
+    const result2 = building.occupiedCells()
+    expect(result1).toBe(result2)
+  })
+
+  it('returns correct OccupiedCell objects', () => {
+    const building = new Building(info, new CPos(0, 0), map)
+    const cells = building.occupiedCells()
+    // "xx=+" has 3 occupied tiles: x, x, +
+    expect(cells.length).toBe(3)
+    for (const oc of cells) {
+      expect(oc.subCell).toBe(SubCell.FullCell)
+      expect(oc.cell).toBeInstanceOf(CPos)
+    }
   })
 })
 
@@ -851,7 +1014,7 @@ describe('Building edge cases', () => {
     const map = createMap()
     const building = new Building(info, new CPos(100, 100), map)
     expect(building.occupiedCells().length).toBe(25)
-    expect(building.targetableCells().length).toBe(25)
+    expect(building.targetableCells.length).toBe(25)
   })
 
   it('handles all-empty footprint (odd but valid for parsing)', () => {
@@ -862,7 +1025,7 @@ describe('Building edge cases', () => {
     const map = createMap()
     const building = new Building(info, new CPos(0, 0), map)
     expect(building.occupiedCells().length).toBe(0)
-    expect(building.targetableCells().length).toBe(0)
+    expect(building.targetableCells.length).toBe(0)
     expect(info.tiles(new CPos(0, 0)).length).toBe(0)
   })
 

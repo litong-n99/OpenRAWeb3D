@@ -8,8 +8,10 @@
  * - C# LoadFootprint() YAML 静态解析器 → TS fromJSON() JSON 工厂方法
  * - C# INotifySold/INotifyTransform 显式接口实现 → TS 接口方法直接实现
  * - C# WorldUtils.GetSmudgeTiles() / SmudgeLayer.RemoveSmudge() → TS 桩
- *   （SmudgeLayer 尚未迁移，TODO-11.B.X 后续实现）
- * - C# BuildingInfluence / ActorMap 尚未迁移 → TS 使用桩调用，带 TODO 标记
+ *   （SmudgeLayer 尚未迁移，TODO-11.B.6 后续实现）
+ * - C# BuildingInfluence / ActorMap 依赖注入 → TS 构造器可选参数
+ * - BLOCKER-3 fix: 预解析 footprints 缓存避免热路径 string.split + new CVec()
+ * - BLOCKER-4 fix: OccupiedCell[] 预计算避免 per-call .map() 分配
  */
 
 import { CVec } from '../../../OpenRA.Game/CVec.js'
@@ -31,6 +33,7 @@ import type {
   INotifyRemovedFromWorld,
   PlayerStub,
   ActorInfoStub,
+  ITargetableCells,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
@@ -59,6 +62,23 @@ export const FootprintCellType = {
 
 export type FootprintCellType =
   (typeof FootprintCellType)[keyof typeof FootprintCellType]
+
+// ---------------------------------------------------------------------------
+// Pre-parsed footprint entry
+// OpenRA 对照: N/A (C# uses CVec key directly, no string parsing overhead)
+// ---------------------------------------------------------------------------
+
+/** A single footprint entry with pre-parsed offset and type.
+ *
+ * Avoids per-call `key.split(',')` + `new CVec()` in hot-path footprint
+ * iteration methods (tiles, occupiedTiles, pathableTiles, etc.).
+ *
+ * BLOCKER-3 fix: computed once in constructor, reused in all query methods.
+ */
+interface ParsedFootprintEntry {
+  readonly offset: CVec
+  readonly type: FootprintCellType
+}
 
 // ---------------------------------------------------------------------------
 // Helper: CVec → footprint map key
@@ -100,25 +120,53 @@ export interface IBuildingMap {
 }
 
 // ---------------------------------------------------------------------------
-// ITargetableCells
-// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs (ITargetableCells)
+// Minimal actor map interface for Building lifecycle wiring
+// OpenRA 对照: ActorMap.Add/Remove (subset used by Building.AddedToWorld/RemovedFromWorld)
 // ---------------------------------------------------------------------------
 
-/** Provides targetable cell positions for an actor.
+/** Minimal actor map dependency for Building lifecycle registration.
  *
- * OpenRA 对照: ITargetableCells
+ * OpenRA 对照: ActorMap.Add(self, trait) / ActorMap.Remove(self, trait)
  *
- * Used by the target/hitbox system to determine which cells of a building
- * are valid targeting locations.
+ * BLOCKER-2 fix: injected via constructor, used in addedToWorld/removedFromWorld.
  */
-export interface ITargetableCells {
-  /** Get the cells that can be targeted on this actor.
+export interface IBuildingActorMap {
+  /** Register a building's occupied cells in the actor map.
    *
-   * OpenRA 对照: ITargetableCells.TargetableCells()
-   *
-   * @returns array of (cell, subCell) pairs
+   * OpenRA 对照: ActorMap.Add(Actor self, IOccupySpace trait)
    */
-  targetableCells(): readonly [CPos, SubCell][]
+  addInfluence(actor: IGameActor, trait: IOccupySpace): void
+
+  /** Remove a building's occupied cells from the actor map.
+   *
+   * OpenRA 对照: ActorMap.Remove(Actor self, IOccupySpace trait)
+   */
+  removeInfluence(actor: IGameActor, trait: IOccupySpace): void
+}
+
+// ---------------------------------------------------------------------------
+// Minimal building influence interface for lifecycle wiring
+// OpenRA 对照: BuildingInfluence.AddInfluence / RemoveInfluence
+// ---------------------------------------------------------------------------
+
+/** Minimal building influence dependency for Building lifecycle registration.
+ *
+ * OpenRA 对照: BuildingInfluence.AddInfluence(self, cells) / RemoveInfluence(self, cells)
+ *
+ * BLOCKER-2 fix: injected via constructor, used in addedToWorld/removedFromWorld.
+ */
+export interface IBuildingInfluenceAccess {
+  /** Register a building's occupied cells in the building influence layer.
+   *
+   * OpenRA 对照: BuildingInfluence.AddInfluence(Actor a, IEnumerable<CPos> cells)
+   */
+  addInfluence(actor: IGameActor, cells: readonly CPos[]): void
+
+  /** Remove a building's occupied cells from the building influence layer.
+   *
+   * OpenRA 对照: BuildingInfluence.RemoveInfluence(Actor a, IEnumerable<CPos> cells)
+   */
+  removeInfluence(actor: IGameActor, cells: readonly CPos[]): void
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +260,16 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
    */
   readonly sharesCell: boolean = false
 
+  /**
+   * Pre-parsed footprint entries for zero-allocation iteration.
+   *
+   * BLOCKER-3 fix: computed once in constructor; all footprint query methods
+   * iterate this array instead of parsing string keys on every call.
+   *
+   * OpenRA 对照: N/A (C# uses CVec dictionary keys directly, no parsing overhead)
+   */
+  private readonly _parsedFootprint: readonly ParsedFootprintEntry[]
+
   constructor(params: {
     instanceName?: string
     terrainTypes?: ReadonlySet<string> | readonly string[]
@@ -260,6 +318,16 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
     // Audio
     this.buildSounds = params.buildSounds ?? []
     this.undeploySounds = params.undeploySounds ?? []
+
+    // BLOCKER-3: Pre-parse footprint entries for zero-allocation iteration.
+    // All footprint query methods (tiles, occupiedTiles, pathableTiles, etc.)
+    // iterate this array instead of parsing "x,y" string keys on every call.
+    const parsed: ParsedFootprintEntry[] = []
+    for (const [key, type] of this.footprint) {
+      const [sx, sy] = key.split(',')
+      parsed.push({ offset: new CVec(Number(sx), Number(sy)), type })
+    }
+    this._parsedFootprint = parsed
   }
 
   // ---------------------------------------------------------------------------
@@ -356,6 +424,10 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
   // ---------------------------------------------------------------------------
   // Footprint tile queries
   // OpenRA 对照: BuildingInfo.FootprintTiles(CPos, FootprintCellType)
+  //
+  // BLOCKER-3: All methods now iterate _parsedFootprint instead of parsing
+  // "x,y" string keys on every call. The string key parsing happens exactly
+  // once in the constructor.
   // ---------------------------------------------------------------------------
 
   /** Get all cells at a given location that match a specific footprint type.
@@ -368,12 +440,9 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
    */
   footprintTiles(location: CPos, type: FootprintCellType): CPos[] {
     const result: CPos[] = []
-    for (const [key, cellType] of this.footprint) {
-      if (cellType === type) {
-        // Parse "x,y" key back to CVec
-        const [sx, sy] = key.split(',')
-        const offset = new CVec(Number(sx), Number(sy))
-        result.push(CPos.add(location, offset))
+    for (const entry of this._parsedFootprint) {
+      if (entry.type === type) {
+        result.push(CPos.add(location, entry.offset))
       }
     }
     return result
@@ -391,11 +460,9 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
    */
   tiles(location: CPos): CPos[] {
     const result: CPos[] = []
-    for (const [key, cellType] of this.footprint) {
-      if (cellType !== FootprintCellType.Empty) {
-        const [sx, sy] = key.split(',')
-        const offset = new CVec(Number(sx), Number(sy))
-        result.push(CPos.add(location, offset))
+    for (const entry of this._parsedFootprint) {
+      if (entry.type !== FootprintCellType.Empty) {
+        result.push(CPos.add(location, entry.offset))
       }
     }
     return result
@@ -413,15 +480,13 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
    */
   occupiedTiles(location: CPos): CPos[] {
     const result: CPos[] = []
-    for (const [key, cellType] of this.footprint) {
+    for (const entry of this._parsedFootprint) {
       if (
-        cellType === FootprintCellType.Occupied ||
-        cellType === FootprintCellType.OccupiedUntargetable ||
-        cellType === FootprintCellType.OccupiedPassableTransitOnly
+        entry.type === FootprintCellType.Occupied ||
+        entry.type === FootprintCellType.OccupiedUntargetable ||
+        entry.type === FootprintCellType.OccupiedPassableTransitOnly
       ) {
-        const [sx, sy] = key.split(',')
-        const offset = new CVec(Number(sx), Number(sy))
-        result.push(CPos.add(location, offset))
+        result.push(CPos.add(location, entry.offset))
       }
     }
     return result
@@ -436,14 +501,12 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
    */
   pathableTiles(location: CPos): CPos[] {
     const result: CPos[] = []
-    for (const [key, cellType] of this.footprint) {
+    for (const entry of this._parsedFootprint) {
       if (
-        cellType === FootprintCellType.Empty ||
-        cellType === FootprintCellType.OccupiedPassable
+        entry.type === FootprintCellType.Empty ||
+        entry.type === FootprintCellType.OccupiedPassable
       ) {
-        const [sx, sy] = key.split(',')
-        const offset = new CVec(Number(sx), Number(sy))
-        result.push(CPos.add(location, offset))
+        result.push(CPos.add(location, entry.offset))
       }
     }
     return result
@@ -474,10 +537,8 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
    */
   frozenUnderFogTiles(location: CPos): CPos[] {
     const result: CPos[] = []
-    for (const key of this.footprint.keys()) {
-      const [sx, sy] = key.split(',')
-      const offset = new CVec(Number(sx), Number(sy))
-      result.push(CPos.add(location, offset))
+    for (const entry of this._parsedFootprint) {
+      result.push(CPos.add(location, entry.offset))
     }
     return result
   }
@@ -650,25 +711,45 @@ export class Building
   /** The configuration info for this building. */
   readonly info: BuildingInfo
 
-  // NOTE: When TODO-11.B.X stubs are filled in (ActorMap, BuildingInfluence,
-  // SmudgeLayer), the actor reference will be needed for world-level trait
-  // lookups. For now, the lifecycle methods receive `self` from the interface.
-  // private readonly _self: IGameActor
-
   /** The top-left cell of the building footprint. */
   readonly topLeft: CPos
 
   /** The world position of the building's visual center. */
   readonly centerPosition: WPos
 
-  /** Cached occupied cells (for actor map registration). */
+  /** Cached occupied cells as tuples (for actor map registration). */
   private readonly _occupiedCells: readonly [CPos, SubCell][]
+
+  /** Pre-computed OccupiedCell[] — avoids per-call .map() allocation (BLOCKER-4). */
+  private readonly _occupiedCellsResult: readonly OccupiedCell[]
 
   /** Cached targetable cells (occupied cells that can be targeted). */
   private readonly _targetableCells: readonly [CPos, SubCell][]
 
   /** Cached transit-only cells. */
   private readonly _transitOnlyCells: readonly CPos[]
+
+  /**
+   * Optional actor map for lifecycle wiring (BLOCKER-2).
+   *
+   * Injected via constructor. When null, addedToWorld/removedFromWorld
+   * skip actor map registration (no-op for the lifecycle).
+   */
+  private readonly _actorMap: IBuildingActorMap | null
+
+  /**
+   * Optional building influence for lifecycle wiring (BLOCKER-2).
+   *
+   * Injected via constructor. When null, addedToWorld/removedFromWorld
+   * skip building influence registration (no-op for the lifecycle).
+   */
+  private readonly _buildingInfluence: IBuildingInfluenceAccess | null
+
+  /**
+   * Cached tiles result — avoids calling `this.info.tiles(this.topLeft)` on
+   * every lifecycle event. Computed once in constructor.
+   */
+  private readonly _allTiles: readonly CPos[]
 
   /** Construct a Building trait.
    *
@@ -678,24 +759,41 @@ export class Building
    * and the center position from the init's LocationInit and the
    * building info's centerOffset.
    *
-   * NOTE: The `self` actor reference will be needed when TODO-11.B.X stubs
-   * are filled in (actor map, building influence, smudge layer).
+   * BLOCKER-2: accepts optional actorMap and buildingInfluence dependencies.
+   * When both are provided, addedToWorld/removedFromWorld are fully wired.
+   *
    * @param info — the building configuration
    * @param topLeft — the top-left cell position (from LocationInit)
    * @param map — the game map for centerOfCell lookups
+   * @param actorMap — optional actor map for lifecycle registration (BLOCKER-2)
+   * @param buildingInfluence — optional building influence for lifecycle registration (BLOCKER-2)
    */
   constructor(
     info: BuildingInfo,
     topLeft: CPos,
     map: IBuildingMap,
+    actorMap?: IBuildingActorMap | null,
+    buildingInfluence?: IBuildingInfluenceAccess | null,
   ) {
     this.info = info
     this.topLeft = topLeft
 
-    // Cache occupied cells
+    this._actorMap = actorMap ?? null
+    this._buildingInfluence = buildingInfluence ?? null
+
+    // Cache all tiles for lifecycle methods (avoids recomputing on every call)
+    this._allTiles = info.tiles(topLeft)
+
+    // Cache occupied cells as tuples
     this._occupiedCells = info.occupiedTiles(topLeft).map(
       (c): [CPos, SubCell] => [c, SubCell.FullCell],
     )
+
+    // BLOCKER-4: Pre-compute OccupiedCell[] to avoid per-call .map() allocation
+    this._occupiedCellsResult = this._occupiedCells.map(([cell, subCell]) => ({
+      cell,
+      subCell,
+    }))
 
     // Cache targetable cells (Occupied type only)
     this._targetableCells = info
@@ -719,29 +817,30 @@ export class Building
    *
    * OpenRA 对照: Building.OccupiedCells()
    *
+   * BLOCKER-4: Returns pre-computed array to avoid per-call .map() allocation.
+   *
    * @returns array of (cell, SubCell.FullCell) pairs
    */
   occupiedCells(): readonly OccupiedCell[] {
-    return this._occupiedCells.map(([cell, subCell]) => ({
-      cell,
-      subCell,
-    }))
+    return this._occupiedCellsResult
   }
 
   // ---------------------------------------------------------------------------
-  // ITargetableCells
+  // ITargetableCells (BLOCKER-1: canonical interface from TraitsInterfaces.ts)
   // ---------------------------------------------------------------------------
 
   /** Get the cells that can be targeted on this building.
    *
-   * OpenRA 对照: ITargetableCells.TargetableCells()
+   * OpenRA 对照: ITargetableCells.TargetableCells
    *
    * Only Occupied type footprint cells are targetable.
    * OccupiedUntargetable cells are excluded.
    *
+   * Implements the readonly property from ITargetableCells in TraitsInterfaces.ts.
+   *
    * @returns array of (cell, SubCell.FullCell) pairs
    */
-  targetableCells(): readonly [CPos, SubCell][] {
+  get targetableCells(): readonly [CPos, SubCell][] {
     return this._targetableCells
   }
 
@@ -779,6 +878,9 @@ export class Building
    * Clears smudges from the footprint if RemoveSmudgesOnBuild is set,
    * then registers the building in the actor map and building influence.
    *
+   * BLOCKER-2: fully wired — calls actorMap.addInfluence and
+   * buildingInfluence.addInfluence when dependencies are available.
+   *
    * @param self — the actor being added
    */
   addedToWorld(self: IGameActor): void {
@@ -789,22 +891,30 @@ export class Building
   /** Internal implementation of AddedToWorld (virtual in OpenRA).
    *
    * OpenRA 对照: Building.AddedToWorld(Actor self) — protected virtual
-   * @param _self — the actor being added
+   *
+   * BLOCKER-2: wires actorMap and buildingInfluence when dependencies available.
+   *
+   * @param self — the actor being added
    */
   protected _addedToWorld(self: IGameActor): void {
     if (this.info.removeSmudgesOnBuild) {
       this.removeSmudges()
     }
 
-    // TODO-11.B.X: Register in actor map and building influence
-    //   self.world.addToMaps(self, this)
-    //   const influence = self.world.worldActor.trait<BuildingInfluence>()
-    //   influence.addInfluence(self, this.info.tiles(this.topLeft))
-    // NOTE: ActorMap and BuildingInfluence are not yet migrated (Phase B).
-    // These calls are stubbed until TODO-11.B.2 (BuildingInfluence) and
-    // the ActorMap implementation are complete.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    void self
+    // BLOCKER-2: Register in actor map and building influence
+    // OpenRA pattern:
+    //   self.World.AddToMaps(self, this);
+    //   var influence = self.World.WorldActor.Trait<BuildingInfluence>();
+    //   influence.AddInfluence(self, Info.Tiles(Location));
+    if (this._actorMap) {
+      this._actorMap.addInfluence(self, this)
+    }
+    if (this._buildingInfluence) {
+      this._buildingInfluence.addInfluence(self, this._allTiles)
+    }
+    // NOTE: When actorMap or buildingInfluence is null, the trait still
+    // functions correctly (lifecycle is graceful no-op). The wiring is
+    // activated when the dependency is injected.
   }
 
   // ---------------------------------------------------------------------------
@@ -818,16 +928,23 @@ export class Building
    *
    * Removes the building from the actor map and building influence.
    *
+   * BLOCKER-2: fully wired — calls actorMap.removeInfluence and
+   * buildingInfluence.removeInfluence when dependencies are available.
+   *
    * @param self — the actor being removed
    */
   removedFromWorld(self: IGameActor): void {
-    // TODO-11.B.X: Unregister from actor map and building influence
-    //   self.world.removeFromMaps(self, this)
-    //   const influence = self.world.worldActor.trait<BuildingInfluence>()
-    //   influence.removeInfluence(self, this.info.tiles(this.topLeft))
-    // NOTE: ActorMap and BuildingInfluence are not yet migrated.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    void self
+    // BLOCKER-2: Unregister from actor map and building influence
+    // OpenRA pattern:
+    //   self.World.RemoveFromMaps(self, this);
+    //   var influence = self.World.WorldActor.Trait<BuildingInfluence>();
+    //   influence.RemoveInfluence(self, Info.Tiles(Location));
+    if (this._actorMap) {
+      this._actorMap.removeInfluence(self, this)
+    }
+    if (this._buildingInfluence) {
+      this._buildingInfluence.removeInfluence(self, this._allTiles)
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -879,7 +996,7 @@ export class Building
     }
 
     // Play undeploy sounds
-    // TODO-7.D: Wire up to Sound.PlayToPlayer when Sound system is fully integrated
+    // TODO-8.F: Wire up to Sound.PlayToPlayer when Sound system is fully integrated
     // for (const s of this.info.undeploySounds) {
     //   Game.Sound.PlayToPlayer(SoundType.World, self.owner, s, self.centerPosition)
     // }
@@ -921,7 +1038,7 @@ export class Building
    * This method currently logs a warning and is a no-op.
    */
   removeSmudges(): void {
-    // TODO-11.B.X: Implement when SmudgeLayer is migrated
+    // TODO-11.B.6: Implement when SmudgeLayer is migrated
     //   const smudgeLayers = self.World.WorldActor.TraitsImplementing<SmudgeLayer>()
     //   for (const smudgeLayer of smudgeLayers)
     //     for (const footprintTile of this.info.tiles(this.topLeft))
