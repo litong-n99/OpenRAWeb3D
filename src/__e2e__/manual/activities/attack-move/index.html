@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activities - 攻击移动 (AttackMove) | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+
+    #app { display: flex; height: 100vh; }
+
+    /* Left panel: controls */
+    #left-panel {
+      width: 300px; min-width: 300px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0 0 8px; font-size: 16px; color: #8af; }
+    #left-panel h3 { margin: 12px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel button, #left-panel select {
+      padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      width: 100%; text-align: left;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #4a9; }
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; text-align: center; }
+
+    .expected-box {
+      background: rgba(13,17,23,0.6); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 12px; line-height: 1.6;
+    }
+    .expected-box h4 { margin: 0 0 6px; color: #8f8; font-size: 13px; }
+    .expected-box ul { margin: 4px 0; padding-left: 18px; }
+    .expected-box li { margin: 3px 0; }
+    .expected-box .metric { color: #aad; font-family: monospace; }
+
+    .stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+    .stat-row .label { color: #889; }
+    .stat-row .value { color: #eee; font-family: 'Consolas', monospace; font-weight: 600; }
+    .stat-row .value.attack { color: #e94560; }
+    .stat-row .value.move { color: #3399f2; }
+
+    /* Center: 3D viewport */
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+    #viewport { flex: 1; position: relative; background: #0d1117; }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 600px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #333; }
+
+    /* Info bar */
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #click-hint {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 16px; font-size: 12px; color: #a0b0d0;
+      pointer-events: none;
+    }
+
+    #enemy-alert {
+      position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
+      background: rgba(233,69,96,0.9); border: 1px solid #e94560;
+      border-radius: 6px; padding: 8px 20px; font-size: 14px; color: #fff;
+      font-weight: 600; pointer-events: none; opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #enemy-alert.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. 攻击移动测试</h2>
+      <div class="stat-row"><span class="label">当前状态:</span><span class="value" id="stat-state">移动中</span></div>
+      <div class="stat-row"><span class="label">扫描范围:</span><span class="value" id="stat-scan-range">5 格</span></div>
+      <div class="stat-row"><span class="label">发现敌人:</span><span class="value" id="stat-enemy-found">否</span></div>
+      <div class="stat-row"><span class="label">中断次数:</span><span class="value" id="stat-interrupts">0</span></div>
+      <div class="stat-row"><span class="label">当前活动:</span><span class="value attack" id="stat-activity">AttackMove</span></div>
+
+      <h3>场景控制</h3>
+      <button id="btn-reset">重置场景</button>
+      <button id="btn-toggle-enemies">切换敌人显示</button>
+      <div class="btn-row">
+        <button id="btn-scan-3" class="active">扫描 3 格</button>
+        <button id="btn-scan-5">扫描 5 格</button>
+        <button id="btn-scan-8">扫描 8 格</button>
+      </div>
+
+      <h3>预设场景</h3>
+      <button id="btn-scene-direct">直达路径 (无障碍)</button>
+      <button id="btn-scene-enemy-mid">敌人中途拦截</button>
+      <button id="btn-scene-enemy-far">敌人远端出现</button>
+      <button id="btn-scene-multiple">多敌人巡逻</button>
+
+      <h3>B. 期望结果</h3>
+      <div class="expected-box">
+        <h4>1. 攻击移动中断</h4>
+        <ul>
+          <li>单位移动时<span class="metric">持续扫描</span>周围敌人</li>
+          <li>发现敌人后当前移动<span class="metric">立即取消</span></li>
+          <li>状态从「移动中」→「攻击中」→「恢复移动」</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>2. 扫描范围可视化</h4>
+        <ul>
+          <li>扫描范围以<span class="metric">半透明圆环</span>显示</li>
+          <li>圆环颜色: 绿色(安全) / 黄色(警戒) / 红色(交战)</li>
+          <li>圆环半径对应扫描格数 × 1.0 世界单位</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>3. 恢复移动</h4>
+        <ul>
+          <li>敌人被消灭或离开后，单位<span class="metric">自动恢复</span>原目标移动</li>
+          <li>恢复时重新计算路径到原目标</li>
+          <li>红色目标线保持指向原目标</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="click-hint">左键点击地面设置目标 | 敌人自动巡逻</div>
+        <div id="enemy-alert">⚠ 发现敌人！攻击移动中断</div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#3399f2"></div>友方单位</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#e94560"></div>敌人</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#e94560"></div>AttackMove 目标线</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffcc00"></div>扫描范围 (警戒)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#44cc44"></div>扫描范围 (安全)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ee3333"></div>目标</div>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span>网格: <span id="info-grid">20x20</span></span>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

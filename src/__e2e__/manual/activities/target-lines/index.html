@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activities - 目标线渲染 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+
+    #app { display: flex; height: 100vh; }
+
+    /* Left panel: controls */
+    #left-panel {
+      width: 300px; min-width: 300px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0 0 8px; font-size: 16px; color: #8af; }
+    #left-panel h3 { margin: 12px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel button, #left-panel select {
+      padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      width: 100%; text-align: left;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #4a9; }
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; text-align: center; }
+
+    .expected-box {
+      background: rgba(13,17,23,0.6); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 12px; line-height: 1.6;
+    }
+    .expected-box h4 { margin: 0 0 6px; color: #8f8; font-size: 13px; }
+    .expected-box ul { margin: 4px 0; padding-left: 18px; }
+    .expected-box li { margin: 3px 0; }
+    .expected-box .metric { color: #aad; font-family: monospace; }
+
+    .stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+    .stat-row .label { color: #889; }
+    .stat-row .value { color: #eee; font-family: 'Consolas', monospace; font-weight: 600; }
+
+    .color-picker-row { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
+    .color-picker-row label { font-size: 12px; color: #889; flex: 1; }
+    .color-picker-row input[type="color"] { width: 40px; height: 24px; border: none; cursor: pointer; }
+
+    /* Center: 3D viewport */
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+    #viewport { flex: 1; position: relative; background: #0d1117; }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 600px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #333; }
+
+    /* Info bar */
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #click-hint {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 16px; font-size: 12px; color: #a0b0d0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. 目标线渲染测试</h2>
+      <div class="stat-row"><span class="label">活动类型:</span><span class="value" id="stat-activity">Move</span></div>
+      <div class="stat-row"><span class="label">目标线数量:</span><span class="value" id="stat-line-count">0</span></div>
+      <div class="stat-row"><span class="label">选中单位:</span><span class="value" id="stat-selected">Unit A</span></div>
+
+      <h3>活动类型</h3>
+      <div class="btn-row">
+        <button id="btn-move" class="active">Move</button>
+        <button id="btn-attack-move">AttackMove</button>
+      </div>
+
+      <h3>颜色配置</h3>
+      <div class="color-picker-row">
+        <label>Move 目标线</label>
+        <input type="color" id="color-move" value="#3399f2">
+      </div>
+      <div class="color-picker-row">
+        <label>AttackMove 目标线</label>
+        <input type="color" id="color-attack" value="#e94560">
+      </div>
+      <div class="color-picker-row">
+        <label>Waypoint 节点</label>
+        <input type="color" id="color-waypoint" value="#ffcc00">
+      </div>
+
+      <h3>场景控制</h3>
+      <button id="btn-add-waypoint">添加路径点</button>
+      <button id="btn-clear-waypoints">清除路径点</button>
+      <button id="btn-toggle-lines">切换目标线显示</button>
+      <button id="btn-toggle-waypoints">切换路径点显示</button>
+      <div class="btn-row">
+        <button id="btn-unit-a" class="active">Unit A</button>
+        <button id="btn-unit-b">Unit B</button>
+      </div>
+
+      <h3>B. 期望结果</h3>
+      <div class="expected-box">
+        <h4>1. 目标线颜色与样式</h4>
+        <ul>
+          <li>Move 目标线为 <span class="metric">蓝色 (#3399F2)</span> 虚线</li>
+          <li>AttackMove 目标线为 <span class="metric">红色 (#E94560)</span> 虚线</li>
+          <li>线宽 3px，虚线间隔 8px on / 4px off</li>
+          <li>线从单位中心出发，指向目标格中心</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>2. 路径点节点</h4>
+        <ul>
+          <li>路径点显示为 <span class="metric">黄色菱形</span> 标记</li>
+          <li>菱形大小 0.4 世界单位，高度 0.3</li>
+          <li>多路径点时线段依次连接各节点</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>3. 动态更新</h4>
+        <ul>
+          <li>单位移动时目标线 <span class="metric">实时缩短</span></li>
+          <li>到达目标后目标线 <span class="metric">淡出消失</span></li>
+          <li>切换活动类型时颜色 <span class="metric">即时变化</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="click-hint">左键点击地面设置目标 | Shift+点击添加路径点</div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#3399f2"></div>Move 目标线</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#e94560"></div>AttackMove 目标线</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffcc00"></div>路径点</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#44cc44"></div>单位 A</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#cc44cc"></div>单位 B</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ee3333"></div>目标</div>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span>网格: <span id="info-grid">20x20</span></span>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
