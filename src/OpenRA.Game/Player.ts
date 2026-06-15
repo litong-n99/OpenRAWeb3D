@@ -21,6 +21,7 @@ import {
   PlayerRelationship,
   type PlayerStub,
 } from './Traits/TraitsInterfaces.js'
+import type { Shroud } from './Traits/Player/Shroud.js'
 
 // ---------------------------------------------------------------------------
 // Enums (对应 OpenRA PowerState / WinState)
@@ -610,7 +611,7 @@ export class Player implements PlayerStub {
    *
    * OpenRA 对照: Player.Shroud
    */
-  readonly shroud: ShroudStub
+  readonly shroud: Shroud
 
   /**
    * The FrozenActorLayer trait (frozen-under-fog rendering).
@@ -1239,9 +1240,9 @@ interface WorldRendererStubPlayer {
 // Default stubs (used when traits are not available from PlayerActor)
 // ---------------------------------------------------------------------------
 
-const SHROUD_STUB_DEFAULT: ShroudStub = {
+const SHROUD_STUB_DEFAULT = {
   isDiscovered: false,
-}
+} as unknown as Shroud
 
 const FROZEN_ACTOR_LAYER_STUB_DEFAULT: FrozenActorLayerStub = {}
 
