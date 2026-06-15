@@ -233,12 +233,20 @@ export function clamp(value: number, min: number, max: number): number {
 // applyPercentageModifiers
 // ---------------------------------------------------------------------------
 
+/** Apply sequential percentage modifiers to a base value.
+ *
+ * OpenRA 对照: Util.ApplyPercentageModifiers(int number, IEnumerable<int> percentages)
+ *
+ * C# uses decimal arithmetic and truncates ONLY at the end ((int)a).
+ * We accumulate in JS float then truncate once, matching C# semantics.
+ * Each modifier p applies: result = result * p / 100.
+ */
 export function applyPercentageModifiers(value: number, modifiers: number[]): number {
   let result = value
   for (const m of modifiers) {
-    result = Math.trunc((result * m) / 100)
+    result = (result * m) / 100
   }
-  return result
+  return Math.trunc(result)
 }
 
 // ---------------------------------------------------------------------------

@@ -91,14 +91,16 @@ export class DetectCloaked
     'component',
   ]
 
-  /** Collected range percentage modifiers from IDetectCloakedModifier traits.
+  /** Collected range modifier traits from IDetectCloakedModifier.
    *
    * OpenRA 对照: DetectCloaked.rangeModifiers (IDetectCloakedModifier[])
    *
-   * Populated in {@link created} after the actor is fully initialized.
-   * Applied in the {@link range} getter via {@link applyPercentageModifiers}.
+   * We store the LIVE trait references (not pre-computed values) to match C#
+   * semantics: C# calls GetDetectCloakedModifier() on every Range access,
+   * so modifiers that change value mid-game (e.g. ConditionalTrait disabled)
+   * are reflected immediately. See BLOCKER 1 review fix.
    */
-  private _rangeModifiers: number[] = []
+  private _rangeModifiers: IDetectCloakedModifier[] = []
 
   constructor(info: DetectCloakedInfo) {
     super(info)
@@ -117,14 +119,11 @@ export class DetectCloaked
    * {@link range} getter via {@link applyPercentageModifiers}.
    */
   created(self: IGameActor): void {
-    // Collect IDetectCloakedModifier range modifiers.
-    // SAFETY: traitsImplementing is optional on IGameActor but exists at
-    // runtime on all real actor implementations via the trait dictionary.
-    const traitAny = self as any
-    const modifierTraits = traitAny.traitsImplementing?.('IDetectCloakedModifier') ?? []
-    this._rangeModifiers = (modifierTraits as IDetectCloakedModifier[]).map(
-      (m) => m.getDetectCloakedModifier(),
-    )
+    // Collect IDetectCloakedModifier TRAIT REFERENCES (not pre-computed values).
+    // C# stores IDetectCloakedModifier[] and calls GetDetectCloakedModifier()
+    // on EVERY Range access, so modifier value changes are reflected live.
+    const modifierTraits = self.traitsImplementing?.('IDetectCloakedModifier') ?? []
+    this._rangeModifiers = modifierTraits as IDetectCloakedModifier[]
   }
 
   // ---------------------------------------------------------------------------
@@ -136,21 +135,16 @@ export class DetectCloaked
    * OpenRA 对照: DetectCloaked.Range
    *
    * Returns WDist.Zero when the trait is disabled (condition not met).
-   * Otherwise, applies IDetectCloakedModifier percentage modifiers to the
-   * configured range via {@link applyPercentageModifiers}.
+   * Otherwise, queries LIVE modifier values (GetDetectCloakedModifier())
+   * and applies them via {@link applyPercentageModifiers}, matching
+   * C# behavior where modifiers that change value mid-game are reflected.
    */
   get range(): WDist {
     if (this.isTraitDisabled) return WDist.Zero
 
-    if (this._rangeModifiers.length > 0) {
-      const modified = applyPercentageModifiers(
-        this.info.range.length,
-        this._rangeModifiers,
-      )
-      return new WDist(modified)
-    }
-
-    return this.info.range
+    const modifierValues = this._rangeModifiers.map(m => m.getDetectCloakedModifier())
+    const modified = applyPercentageModifiers(this.info.range.length, modifierValues)
+    return new WDist(modified)
   }
 
   // ---------------------------------------------------------------------------

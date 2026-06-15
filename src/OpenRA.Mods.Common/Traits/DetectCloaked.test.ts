@@ -8,8 +8,9 @@
  * - DetectCloakedInfo defaults (detectionTypes = [{name: 'Cloak'}], range = WDist.fromCells(5))
  * - DetectCloaked range returns info.range when enabled
  * - DetectCloaked range returns WDist.Zero when disabled
- * - created() collects IDetectCloakedModifier traits
+ * - created() collects IDetectCloakedModifier trait references (not pre-computed values)
  * - range applies percentage modifiers via applyPercentageModifiers
+ * - range re-computes when modifier's getDetectCloakedModifier() changes (BLOCKER 1)
  * - Edge cases (empty modifiers, null traitsImplementing)
  * - Dispose cleanup
  */
@@ -40,9 +41,9 @@ class TestDetectCloaked extends DetectCloaked {
     this._testDisabled = disabled
   }
 
-  /** Expose _rangeModifiers for assertion. */
-  get rangeModifiers(): readonly number[] {
-    return this['_rangeModifiers'] as readonly number[]
+  /** Expose _rangeModifiers for assertion (trait references, not values). */
+  get rangeModifiers(): readonly IDetectCloakedModifier[] {
+    return (this as any)['_rangeModifiers'] as readonly IDetectCloakedModifier[]
   }
 }
 
@@ -70,6 +71,21 @@ function createMockActor(
 function createMockModifier(value: number): IDetectCloakedModifier {
   return {
     getDetectCloakedModifier: () => value,
+  }
+}
+
+/**
+ * Creates a mutable mock modifier whose getDetectCloakedModifier() return
+ * value can be changed externally — used for BLOCKER 1 stale-value test.
+ */
+function createMutableModifier(initialValue: number): {
+  modifier: IDetectCloakedModifier
+  setValue: (v: number) => void
+} {
+  let value = initialValue
+  return {
+    modifier: { getDetectCloakedModifier: () => value },
+    setValue: (v: number) => { value = v },
   }
 }
 
@@ -188,17 +204,21 @@ describe('DetectCloaked', () => {
   })
 
   // -----------------------------------------------------------------------
-  // created() collects IDetectCloakedModifier traits
+  // created() collects IDetectCloakedModifier trait references
   // -----------------------------------------------------------------------
 
-  it('created() collects IDetectCloakedModifier traits', () => {
+  it('created() collects IDetectCloakedModifier trait REFERENCES (not values)', () => {
     const modifier1 = createMockModifier(100)
     const modifier2 = createMockModifier(150)
     const actor = createMockActor([modifier1, modifier2])
 
     trait.created(actor)
 
-    expect(trait.rangeModifiers).toEqual([100, 150])
+    // Stores the trait references themselves, not pre-computed values
+    expect(trait.rangeModifiers).toEqual([modifier1, modifier2])
+    expect(trait.rangeModifiers.length).toBe(2)
+    expect(trait.rangeModifiers[0]).toBe(modifier1)
+    expect(trait.rangeModifiers[1]).toBe(modifier2)
   })
 
   it('created() handles empty modifiers array', () => {
@@ -227,8 +247,7 @@ describe('DetectCloaked', () => {
   // Range with modifiers
   // -----------------------------------------------------------------------
 
-  it('range applies percentage modifiers', () => {
-    // Set up modifiers: 150% and 200%
+  it('range applies percentage modifiers from live trait references', () => {
     trait.setDisabled(false)
     const actor = createMockActor([
       createMockModifier(150),
@@ -236,10 +255,9 @@ describe('DetectCloaked', () => {
     ])
     trait.created(actor)
 
-    // Expected: 5120 * 150/100 = 7680, then 7680 * 200/100 = 15360
-    const expected = Math.trunc((Math.trunc((5120 * 150) / 100) * 200) / 100)
-    // 5120 * 150/100 = 7680. 7680 * 200/100 = 15360
-    expect(trait.range.length).toBe(expected)
+    // Expected: 5120 * 150/100 * 200/100 = 15360, truncate at end
+    // C# decimal: 5120 * 1.5 = 7680, 7680 * 2.0 = 15360 → (int)15360
+    expect(trait.range.length).toBe(15360)
   })
 
   it('range with single modifier at 100% returns same range', () => {
@@ -255,7 +273,7 @@ describe('DetectCloaked', () => {
     const actor = createMockActor([createMockModifier(50)])
     trait.created(actor)
 
-    // 5120 * 50/100 = 2560
+    // 5120 * 50/100 = 2560, trunc(2560) = 2560
     expect(trait.range.length).toBe(2560)
   })
 
@@ -276,11 +294,66 @@ describe('DetectCloaked', () => {
   })
 
   // -----------------------------------------------------------------------
+  // BLOCKER 1: range re-computes when modifier value changes (live refs)
+  // -----------------------------------------------------------------------
+
+  it('range re-computes when modifier value changes after created() (BLOCKER 1)', () => {
+    trait.setDisabled(false)
+
+    const m1 = createMutableModifier(100)
+    const m2 = createMutableModifier(200)
+    const actor = createMockActor([m1.modifier, m2.modifier])
+    trait.created(actor)
+
+    // Initial: 5120 * 100/100 * 200/100 = 10240
+    expect(trait.range.length).toBe(10240)
+
+    // Change m1's value to 50 (represents a ConditionalTrait being disabled)
+    m1.setValue(50)
+    // Now: 5120 * 50/100 * 200/100 = 5120, trunc(5120)=5120
+    expect(trait.range.length).toBe(5120)
+
+    // Change m2's value to 0
+    m2.setValue(0)
+    // Now: 5120 * 50/100 * 0/100 = 0
+    expect(trait.range.length).toBe(0)
+
+    // Change both back to normal
+    m1.setValue(100)
+    m2.setValue(100)
+    // Now: 5120 * 100/100 * 100/100 = 5120
+    expect(trait.range.length).toBe(5120)
+  })
+
+  it('range re-computes EVERY access with live trait references', () => {
+    trait.setDisabled(false)
+
+    let value = 100
+    const dynamicModifier: IDetectCloakedModifier = {
+      getDetectCloakedModifier: () => value,
+    }
+    const actor = createMockActor([dynamicModifier])
+    trait.created(actor)
+
+    // Initial value: 100%
+    expect(trait.range.length).toBe(5120)
+
+    // Change to 150%
+    value = 150
+    expect(trait.range.length).toBe(7680)
+
+    // Change to 50%
+    value = 50
+    expect(trait.range.length).toBe(2560)
+  })
+
+  // -----------------------------------------------------------------------
   // Dispose
   // -----------------------------------------------------------------------
 
   it('dispose clears range modifiers', () => {
-    const actor = createMockActor([createMockModifier(150)])
+    const modifier1 = createMockModifier(150)
+    const actor = createMockActor([modifier1])
     trait.created(actor)
     expect(trait.rangeModifiers.length).toBe(1)
 
@@ -309,7 +382,7 @@ describe('DetectCloaked', () => {
     const actor = createMockActor([createMockModifier(200)])
     customTrait.created(actor)
 
-    // 3 * 1024 = 3072, * 200/100 = 6144
+    // 3 * 1024 = 3072, * 200/100 = 6144, trunc(6144)=6144
     expect(customTrait.range.length).toBe(6144)
   })
 
