@@ -175,13 +175,15 @@ describe('ShroudRenderer', () => {
       expect(cv).toBe(CellVisibility.Visible | CellVisibility.Explored)
     })
 
-    it('sets cell visibility to all hidden for regular world', () => {
+    it('sets cell visibility to spectator (all visible) when no render player', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderer.worldLoaded(world as any, {} as any)
 
+      // Without a render player, _worldOnRenderPlayerChanged(null) sets
+      // spectator mode: all cells within map bounds are visible + explored
       const puv = new PPos(0, 0)
       const cv = renderer.cellVisibility!(puv)
-      expect(cv).toBe(CellVisibility.Hidden)
+      expect(cv).toBe(CellVisibility.Visible | CellVisibility.Explored)
     })
 
     it('initializes visibility data for editor world', () => {
@@ -193,12 +195,14 @@ describe('ShroudRenderer', () => {
       expect(renderer.visibilityData.every((v) => v === 2)).toBe(true)
     })
 
-    it('initializes visibility data for regular world', () => {
+    it('initializes visibility data for regular world (spectator = all visible)', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderer.worldLoaded(world as any, {} as any)
 
-      // All cells should be 0 (Hidden)
-      expect(renderer.visibilityData.every((v) => v === 0)).toBe(true)
+      // worldLoaded marks all cells dirty; renderShroud syncs _visibilityData
+      // from _cellVisibility (spectator mode → all 2 = Visible)
+      renderer.renderShroud({} as any)
+      expect(renderer.visibilityData.every((v) => v === 2)).toBe(true)
     })
   })
 
@@ -336,6 +340,39 @@ describe('ShroudRenderer', () => {
       expect(renderer.cellsDirty[index23] || renderer.cellsDirty[index43] ||
         renderer.cellsDirty[index32] || renderer.cellsDirty[index34]).toBe(1)
     })
+
+    it('marks diagonal neighbors dirty when a cell changes', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, {} as any)
+
+      const { actor, shroud, player } = setupShroudActor()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(renderer as any)._worldOnRenderPlayerChanged(player as any)
+
+      // Clear dirty flags
+      renderer.cellsDirty.fill(0)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(renderer as any)._anyCellDirty = false
+
+      // Add a source at interior cell (3,3) — all 8 neighbors should be dirty
+      shroud.addSource('source1', SourceType.Visibility, [new PPos(3, 3)])
+      shroud.tick(actor)
+
+      // Diagonal neighbors
+      const indexTL = 2 * map.mapSize.width + 2 // TopLeft (2,2)
+      const indexTR = 2 * map.mapSize.width + 4 // TopRight (2,4)
+      const indexBR = 4 * map.mapSize.width + 4 // BottomRight (4,4)
+      const indexBL = 4 * map.mapSize.width + 2 // BottomLeft (4,2)
+
+      // All 8 neighbors (including diagonals) should be marked dirty
+      const anyDiagonalDirty =
+        renderer.cellsDirty[indexTL] === 1 ||
+        renderer.cellsDirty[indexTR] === 1 ||
+        renderer.cellsDirty[indexBR] === 1 ||
+        renderer.cellsDirty[indexBL] === 1
+      expect(anyDiagonalDirty).toBe(true)
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -413,7 +450,10 @@ describe('ShroudRenderer', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderer.worldLoaded(world as any, {} as any)
 
-      // In a regular world with no shroud, all cells are hidden
+      // Override spectator-mode visibility to simulate a fully-hidden shroud
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(renderer as any)._cellVisibility = (_puv: PPos) => CellVisibility.Hidden
+
       // Use interior cell to avoid border artifacts
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const edges = (renderer as any)._getCellEdges(new PPos(3, 3))
@@ -432,6 +472,26 @@ describe('ShroudRenderer', () => {
       const edges = (renderer as any)._getCellEdges(new PPos(3, 3))
       expect(edges[0]).toBe(0) // No shroud edges
       expect(edges[1]).toBe(0) // No fog edges
+    })
+
+    it('returns edges at map border (out-of-bounds neighbors = hidden)', () => {
+      world.type = 'Editor'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, {} as any)
+
+      // Cell (0,0) is at the top-left corner. Its neighbors outside the map
+      // bounds (Top, Left, TopLeft, TopRight, BottomLeft) are treated as
+      // Hidden (0x0), so edges for those directions should be set.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const edges = (renderer as any)._getCellEdges(new PPos(0, 0))
+
+      // Border cells have some edges set due to out-of-bounds neighbors.
+      // At (0,0): Top, Left, TopLeft, TopRight, BottomLeft are out-of-bounds.
+      // We only check that NOT all edges are zero (border IS detected).
+      // With UseExtendedIndex=false, return is masked to AllCorners (0x0f).
+      const hasShroudEdges = edges[0] !== 0
+      const hasFogEdges = edges[1] !== 0
+      expect(hasShroudEdges || hasFogEdges).toBe(true)
     })
   })
 

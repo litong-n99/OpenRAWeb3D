@@ -102,6 +102,23 @@ const Neighbor = {
   BottomLeft: 7,
 } as const
 
+/** All 8 neighbor directions (cardinal + diagonal) as CPos offsets.
+ *
+ * OpenRA 对照: CVec.Directions (8 directions)
+ *
+ * PERF: Module-level constant — no per-call allocation.
+ */
+const ALL_DIRECTIONS: readonly { readonly X: number; readonly Y: number }[] = [
+  { X: 0, Y: -1 },   // Top
+  { X: 1, Y: 0 },    // Right
+  { X: 0, Y: 1 },    // Bottom
+  { X: -1, Y: 0 },   // Left
+  { X: -1, Y: -1 },  // TopLeft
+  { X: 1, Y: -1 },   // TopRight
+  { X: 1, Y: 1 },    // BottomRight
+  { X: -1, Y: 1 },   // BottomLeft
+]
+
 // ---------------------------------------------------------------------------
 // ShroudRenderer
 // ---------------------------------------------------------------------------
@@ -233,10 +250,13 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
     this._cellsDirty.fill(1)
     this._anyCellDirty = true
 
-    // Subscribe to render player changes
+    // Subscribe to render player changes by wrapping the world's callback.
+    // Using != null handles both null and undefined — if the world has no
+    // renderPlayerChanged mechanism, the worldLoaded path handles the initial
+    // player assignment via worldAny.renderPlayer.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const worldAny = world as any
-    if (typeof worldAny.renderPlayerChanged === 'function' || worldAny.renderPlayerChanged !== undefined) {
+    if (worldAny.renderPlayerChanged != null) {
       const originalCallback = worldAny.renderPlayerChanged
       worldAny.renderPlayerChanged = (player: unknown) => {
         this._worldOnRenderPlayerChanged(player)
@@ -295,11 +315,10 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
       this._createShroudResources(scene)
     }
 
-    // Initialize with current render player
-    const renderPlayer = worldAny.renderPlayer
-    if (renderPlayer) {
-      this._worldOnRenderPlayerChanged(renderPlayer)
-    }
+    // Initialize with current render player (null = spectator = all visible).
+    // Always call to ensure _cellVisibility is set correctly — skipping
+    // null would leave the initial all-Hidden state active for one frame.
+    this._worldOnRenderPlayerChanged(worldAny.renderPlayer ?? null)
   }
 
   // -------------------------------------------------------------------------
@@ -317,6 +336,8 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
     // NOTE: RawTexture and ShaderMaterial creation is deferred to actual
     // Babylon.js usage. In unit tests these are mocked.
     // The actual GPU resource creation happens lazily on first render.
+    // TODO-12.DEFERRED.11: Create RawTexture (LUMINANCE, mapSize) +
+    // ShaderMaterial (shroud.frag) + fullscreen quad Mesh here
     this._scene = scene
     // Suppress TS6133: _scene stored for deferred GPU resource creation
     void this._scene as unknown
@@ -388,19 +409,14 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
       this._anyCellDirty = true
     }
 
-    // Mark neighbors dirty (edge blending depends on them)
+    // Mark neighbors dirty (edge blending depends on them).
+    // OpenRA uses 8-directional neighbor marking (CVec.Directions),
+    // because diagonal corners also participate in edge blending.
     const gridType = this._map.grid.type
     const cell = uv.toCPos(gridType)
     if (!cell) return
 
-    const directions = [
-      { X: 0, Y: -1 }, // Top
-      { X: 1, Y: 0 }, // Right
-      { X: 0, Y: 1 }, // Bottom
-      { X: -1, Y: 0 }, // Left
-    ]
-
-    for (const d of directions) {
+    for (const d of ALL_DIRECTIONS) {
       const neighborCell = new CPos(cell.X + d.X, cell.Y + d.Y)
       const neighborMPos = neighborCell.toMPos(gridType)
       if (neighborMPos && this._map.contains(neighborMPos)) {
@@ -438,6 +454,12 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
    *   TopLeft, TopRight, BottomRight, BottomLeft)
    */
   private _getNeighborsVisibility(puv: PPos): CellVisibility[] {
+    // Short-circuit: no visibility function means all neighbors are hidden
+    if (this._cellVisibility === null) {
+      this._neighbors.fill(0 as CellVisibility)
+      return this._neighbors
+    }
+
     // Convert PPos -> MPos -> CPos for neighbor iteration
     const gridType = this._map.grid.type
     const mpos = puv.toMPos()
@@ -447,21 +469,11 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
       return this._neighbors
     }
 
-    const dirs = [
-      { X: 0, Y: -1 }, // Top
-      { X: 1, Y: 0 }, // Right
-      { X: 0, Y: 1 }, // Bottom
-      { X: -1, Y: 0 }, // Left
-      { X: -1, Y: -1 }, // TopLeft
-      { X: 1, Y: -1 }, // TopRight
-      { X: 1, Y: 1 }, // BottomRight
-      { X: -1, Y: 1 }, // BottomLeft
-    ]
-
     for (let i = 0; i < 8; i++) {
-      const neighborCell = new CPos(cell.X + dirs[i].X, cell.Y + dirs[i].Y)
+      const d = ALL_DIRECTIONS[i]
+      const neighborCell = new CPos(cell.X + d.X, cell.Y + d.Y)
       const neighborMPos = neighborCell.toMPos(gridType)
-      if (neighborMPos && this._map.contains(neighborMPos) && this._cellVisibility !== null) {
+      if (neighborMPos && this._map.contains(neighborMPos)) {
         const neighborPPos = PPos.fromMPos(neighborMPos)
         this._neighbors[i] = this._cellVisibility(neighborPPos)
       } else {
@@ -520,7 +532,9 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
       edges |= Edges.BottomLeft
     }
 
-    return edges
+    // C# default UseExtendedIndex=false masks to AllCorners (only corner bits).
+    // When UseExtendedIndex is true (TODO-12.DEFERRED.10), side bits are included.
+    return this._info.useExtendedIndex ? edges : (edges & Edges.AllCorners)
   }
 
   /**
