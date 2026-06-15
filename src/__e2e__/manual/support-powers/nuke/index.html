@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>支援能力 - 核弹范围圈 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 270px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 360px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #target-info {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #target-info .val { color: #aad; font-family: monospace; }
+    #circle-config {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.7;
+      pointer-events: auto;
+    }
+    #circle-config h4 { margin: 0 0 6px; color: #aad; font-size: 13px; }
+    #circle-config .row { display: flex; gap: 8px; align-items: center; margin: 3px 0; }
+    #circle-config input[type=range] { width: 60px; }
+    #circle-config .swatch {
+      display: inline-block; width: 16px; height: 16px;
+      border: 1px solid #555; border-radius: 2px; vertical-align: middle;
+    }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>支援能力 - 核弹范围圈 (SelectNukePowerTarget CircleRanges)</h1>
+    <div class="subtitle">ID: support-powers/nuke | 验证: CircleRanges 渲染 | 颜色/粗细配置 | 多圈重叠</div>
+  </div>
+  <div id="controls">
+    <label>预设:</label>
+    <select id="sel-preset">
+      <option value="nuke">Tactical Nuke (3圈)</option>
+      <option value="single">单圈测试</option>
+      <option value="concentric">同心圆 (5圈)</option>
+      <option value="custom">自定义</option>
+    </select>
+    <span class="sep">|</span>
+    <label>CircleColor (填充):</label>
+    <input id="color-fill" type="color" value="#ff0000" style="width:30px;height:22px">
+    <label>Alpha:</label>
+    <input id="range-fill-a" type="range" min="0" max="255" value="128" style="width:60px">
+    <span id="val-fill-a" style="font-size:12px;color:#a0a0b0">128</span>
+    <span class="sep">|</span>
+    <label>BorderColor:</label>
+    <input id="color-border" type="color" value="#ff0000" style="width:30px;height:22px">
+    <label>BorderW:</label>
+    <input id="range-border-w" type="range" min="1" max="8" value="3" style="width:60px">
+    <span id="val-border-w" style="font-size:12px;color:#a0a0b0">3</span>
+    <span class="sep">|</span>
+    <label>LineW:</label>
+    <input id="range-line-w" type="range" min="1" max="6" value="1" style="width:60px">
+    <span id="val-line-w" style="font-size:12px;color:#a0a0b0">1</span>
+    <span class="hint">点击地图设置目标中心 | 使用预设或自定义范围圈配置</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>CircleRanges 渲染:</b> 以目标点为圆心，按照配置的 <span class="metric">WDist 半径</span> 绘制彩色圆圈</li>
+        <li><b>CircleColor (填充):</b> 圆圈填充色半透明红色 (<span class="metric">rgba(255,0,0,0.5)</span>), 与配置一致</li>
+        <li><b>CircleBorderColor (边框):</b> 圆圈边框颜色较淡 (<span class="metric">rgba(255,0,0,0.25)</span>), 边框宽度可调</li>
+        <li><b>多圈重叠:</b> 多个 CircleRanges 可同时渲染, 填充色叠加产生视觉层次</li>
+        <li><b>CircleWidth/CircleBorderWidth:</b> 线宽和边框宽分别独立可调</li>
+      </ul>
+    </div>
+    <div id="circle-config">
+      <h4>圆圈配置 (Custom)</h4>
+      <div class="row">
+        <label>圈1 (WDist):</label>
+        <input id="cfg-r1" type="number" value="2048" min="0" max="10240" step="256" style="width:60px">
+        <span id="cfg-label-r1" style="font-size:11px;color:#aaa">2 cells</span>
+      </div>
+      <div class="row">
+        <label>圈2:</label>
+        <input id="cfg-r2" type="number" value="4096" min="0" max="10240" step="256" style="width:60px">
+        <span id="cfg-label-r2" style="font-size:11px;color:#aaa">4 cells</span>
+      </div>
+      <div class="row">
+        <label>圈3:</label>
+        <input id="cfg-r3" type="number" value="6144" min="0" max="10240" step="256" style="width:60px">
+        <span id="cfg-label-r3" style="font-size:11px;color:#aaa">6 cells</span>
+      </div>
+      <div class="row">
+        <button id="btn-apply-custom" style="margin-top:4px">应用自定义</button>
+        <button id="btn-clear-target">清除目标</button>
+      </div>
+    </div>
+    <div id="target-info">
+      目标位置: <span class="val" id="st-target">无</span><br>
+      CircleRanges: <span class="val" id="st-ranges">2048, 4096, 6144</span><br>
+      填充色: <span class="val" id="st-fill">rgba(255,0,0,0.50)</span>
+      <span class="swatch" id="swatch-fill" style="background:rgba(255,0,0,0.50)"></span><br>
+      边框色: <span class="val" id="st-border">rgba(255,0,0,0.25)</span>
+      <span class="swatch" id="swatch-border" style="background:rgba(255,0,0,0.25)"></span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
