@@ -631,8 +631,9 @@ export class FrozenUnderFog
    * @returns true if any footprint cell is explored
    */
   private _anyExplored(shroud: Shroud): boolean {
-    for (const puv of this._footprint) {
-      if (shroud.isExplored(puv)) {
+    // PERF: numeric for-loop avoids iterator allocation on hot path
+    for (let i = 0; i < this._footprint.length; i++) {
+      if (shroud.isExplored(this._footprint[i])) {
         return true
       }
     }
@@ -701,4 +702,22 @@ export class FrozenUnderFog
     }
     return -1
   }
+}
+
+// ---------------------------------------------------------------------------
+// HiddenUnderFogInit (对应 OpenRA HiddenUnderFogInit)
+// ---------------------------------------------------------------------------
+
+/**
+ * HiddenUnderFogInit — deferred. This class is referenced by FrozenUnderFog
+ * but its initialization behavior (startsRevealed) depends on integration with
+ * the actor creation pipeline.
+ *
+ * OpenRA 对照: HiddenUnderFogInit (FrozenUnderFog.cs:189)
+ *
+ * TODO-12.A.6.1: Implement startsRevealed behavior when actor init pipeline is mature.
+ */
+export class HiddenUnderFogInit {
+  /** Placeholder for C# readonly string value — always empty for now. */
+  readonly value: string = ''
 }

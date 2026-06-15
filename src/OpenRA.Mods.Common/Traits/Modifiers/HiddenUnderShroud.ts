@@ -35,8 +35,26 @@ import { VisibilityType } from '../AffectsShroud.js'
 import { anyExplored } from '../../ShroudExts.js'
 
 // ---------------------------------------------------------------------------
+// Pre-allocated constants
+// ---------------------------------------------------------------------------
+
+/** Pre-allocated zero vector to avoid per-frame WVec allocation on hot paths. */
+export const WVecZero = new WVec(0, 0, 0)
+
+// ---------------------------------------------------------------------------
 // HiddenUnderShroudInfo (对应 OpenRA HiddenUnderShroudInfo)
 // ---------------------------------------------------------------------------
+
+/**
+ * Narrow interface for runtime access to Player.relationshipWith().
+ *
+ * PlayerStub does not expose relationshipWith in its type definition,
+ * but the runtime Player class provides it. This interface allows a
+ * single cast instead of double-cast + bracket notation.
+ */
+interface IHasPlayerRelationship {
+  relationshipWith(other: PlayerStub): PlayerRelationship
+}
 
 /**
  * Trait info for HiddenUnderShroud. Controls which players can always see
@@ -153,7 +171,8 @@ export class HiddenUnderShroud
       const map = this._getMap(self)
       if (!map) return false
       const aboveTerrain = map.distanceAboveTerrain(pos)
-      pos = WPos.subtractVec(pos, new WVec(0, 0, aboveTerrain.length))
+      // PERF: direct WPos construction avoids intermediate WVec allocation
+      pos = new WPos(pos.X, pos.Y, pos.Z - aboveTerrain.length)
     }
 
     return shroud.isExplored(pos)
@@ -185,12 +204,8 @@ export class HiddenUnderShroud
     // Check always-visible relationships
     const owner = self.owner
     if (owner) {
-      const ownerAny = owner as unknown as Record<string, unknown>
-      const relationshipWith = ownerAny['relationshipWith'] as
-        | ((other: PlayerStub) => PlayerRelationship)
-        | undefined
-      const rel = relationshipWith?.call(owner, byPlayer)
-      if (rel !== undefined && PlayerRelationshipExts.hasRelationship(rel, this.info.alwaysVisibleRelationships)) {
+      const rel = (owner as unknown as IHasPlayerRelationship).relationshipWith(byPlayer)
+      if (PlayerRelationshipExts.hasRelationship(rel, this.info.alwaysVisibleRelationships)) {
         return true
       }
     }

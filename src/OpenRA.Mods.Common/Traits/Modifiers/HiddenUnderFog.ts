@@ -17,7 +17,6 @@
  */
 
 import { WPos } from '../../../OpenRA.Game/WPos.js'
-import { WVec } from '../../../OpenRA.Game/WVec.js'
 import {
   type IGameActor,
   type PlayerStub,
@@ -117,7 +116,8 @@ export class HiddenUnderFog extends HiddenUnderShroud {
       const map = this._getMap(self)
       if (!map) return false
       const aboveTerrain = map.distanceAboveTerrain(pos)
-      pos = WPos.subtractVec(pos, new WVec(0, 0, aboveTerrain.length))
+      // PERF: direct WPos construction avoids intermediate WVec allocation
+      pos = new WPos(pos.X, pos.Y, pos.Z - aboveTerrain.length)
     }
 
     return shroud.isVisible(pos)
