@@ -167,38 +167,38 @@ function getNeighbors(col: number, row: number): Uint8Array {
 // Edge Computation (matching ShroudRenderer._getEdges)
 // ---------------------------------------------------------------------------
 
-function computeEdges(neighbors: Uint8Array, visibleMask: number): number {
+function computeEdges(neighbors: Uint8Array, cellState: number): number {
   let edges = Edges.None
 
   // Check sides
-  if ((neighbors[Neighbor.Top] & visibleMask) === 0) {
+  if (neighbors[Neighbor.Top] !== cellState) {
     edges |= Edges.TopSide | Edges.TopLeft | Edges.TopRight
   }
-  if ((neighbors[Neighbor.Right] & visibleMask) === 0) {
+  if (neighbors[Neighbor.Right] !== cellState) {
     edges |= Edges.RightSide | Edges.TopRight | Edges.BottomRight
   }
-  if ((neighbors[Neighbor.Bottom] & visibleMask) === 0) {
+  if (neighbors[Neighbor.Bottom] !== cellState) {
     edges |= Edges.BottomSide | Edges.BottomRight | Edges.BottomLeft
   }
-  if ((neighbors[Neighbor.Left] & visibleMask) === 0) {
+  if (neighbors[Neighbor.Left] !== cellState) {
     edges |= Edges.LeftSide | Edges.TopLeft | Edges.BottomLeft
   }
 
-  // Corners (only if not already set by sides)
-  if ((neighbors[Neighbor.TopLeft] & visibleMask) === 0) {
+  // Corner checks
+  if (neighbors[Neighbor.TopLeft] !== cellState) {
     edges |= Edges.TopLeft
   }
-  if ((neighbors[Neighbor.TopRight] & visibleMask) === 0) {
+  if (neighbors[Neighbor.TopRight] !== cellState) {
     edges |= Edges.TopRight
   }
-  if ((neighbors[Neighbor.BottomRight] & visibleMask) === 0) {
+  if (neighbors[Neighbor.BottomRight] !== cellState) {
     edges |= Edges.BottomRight
   }
-  if ((neighbors[Neighbor.BottomLeft] & visibleMask) === 0) {
+  if (neighbors[Neighbor.BottomLeft] !== cellState) {
     edges |= Edges.BottomLeft
   }
 
-  return edges & Edges.AllCorners // UseExtendedIndex=false in 3D
+  return edges
 }
 
 function getCellEdges(col: number, row: number): [number, number] {
@@ -213,10 +213,10 @@ function getCellEdges(col: number, row: number): [number, number] {
 
   // Fog edges: always AllCorners for non-Visible cells (simplified)
   const fogEdges =
-    cv === VISIBLE ? computeEdges(neighbors, 0x2) : Edges.AllCorners
+    cv === VISIBLE ? computeEdges(neighbors, cv) : Edges.AllCorners
 
   // Shroud edges
-  const shroudEdges = computeEdges(neighbors, 0x1)
+  const shroudEdges = computeEdges(neighbors, cv)
 
   return [shroudEdges, fogEdges]
 }

@@ -142,14 +142,12 @@ function drawShroudOverlay(ctx: CanvasRenderingContext2D): void {
         }
       }
       if (row + 1 < GRID_HEIGHT) {
-        const bs = effectiveState(col + 1, row + 1)
-        void bs // unused in vertical check below — re-fetch
-        const vs = effectiveState(col, row + 1)
-        if (state !== vs) {
+        const bottomState = effectiveState(col, row + 1)
+        if (state !== bottomState) {
           const gx = col * CELL_PX, gy = (row + 1) * CELL_PX - EH
           const grad = ctx.createLinearGradient(0, gy, 0, gy + EDGE)
           grad.addColorStop(0, rgbaToCSS(stateToRGBA(state)))
-          grad.addColorStop(1, rgbaToCSS(stateToRGBA(vs)))
+          grad.addColorStop(1, rgbaToCSS(stateToRGBA(bottomState)))
           ctx.fillStyle = grad; ctx.fillRect(gx, gy, CELL_PX, EDGE)
         }
       }

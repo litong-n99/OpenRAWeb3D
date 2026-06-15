@@ -18,7 +18,7 @@
 
 3. **8方向 Edges 位掩码正确性**: 边缘检测使用 OpenRA 的 `Edges` 枚举（TopLeft=0x01, TopRight=0x02, BottomRight=0x04, BottomLeft=0x08）。
    - 可量化指标: 鼠标悬停时 inspector 显示的 edge flags 必须与 8 邻居状态手工检查一致
-   - 可量化指标: 当 Cell 的 Top、TopLeft、Left 邻居均为不同状态时，edges=0x89 (TopLeft|LeftSide)
+   - 可量化指标: 当 Cell 的 TopLeft、Left 邻居均为不同状态时，edges=0x89 (LeftSide|BottomLeft|TopLeft)
    - 可量化指标: 黄色边缘标记线精确绘制在对应角落位置（如 TopLeft 边缘在左上角，BottomRight 边缘在右下角）
 
 4. **动态更新**: 扩张/收缩操作后边缘图案即时更新。
