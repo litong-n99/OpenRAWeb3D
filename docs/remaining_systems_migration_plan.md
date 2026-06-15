@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Remaining Systems (Chapters 8-21)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md`
-> **Chapter Status**: IN PROGRESS (87 files migrated: Ch8 57/57 + Ch9 30/30; ~250 remaining)
+> **Chapter Status**: IN PROGRESS (101 files migrated: Ch8 57/57 + Ch9 30/30 + Ch13 14/14; ~264 remaining in Ch10-12 + Ch14-21)
 > **Created**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162 files, 100%)
 >
@@ -111,7 +111,7 @@ The remaining ~250+ files are organized into 14 chapters (8-21), each representi
 | **10** | Resource & Economy System | ~15 | HIGH | Harvesting and economy; required for functional RTS gameplay. |
 | **11** | Production & Building System | ~25 | HIGH | Production queues, building placement, construction. Depends on Movement and Economy. |
 | **12** | Shroud & Fog of War | ~15 | MEDIUM | Exploration/visibility system. Required for full gameplay but not blocking combat tests. |
-| **13** | Support Powers | ~15 | MEDIUM | Airstrike, Nuke, ParaDrop, Chronoshift. Depends on Combat + Effects. |
+| **13** | Support Powers | 14 | MEDIUM | ~~Airstrike, Nuke, ParaDrop, Chronoshift. Depends on Combat + Effects.~~ **COMPLETE (14/14, 285 tests, R2 APPROVED)** |
 | **14** | Activity Implementations | ~25 | HIGH | Move, Attack, Fly, Harvest activities. Depends on Ch8-9. |
 | **15** | Order Generators | ~11 | MEDIUM | UI order creation (PlaceBuilding, Repair, Guard). Depends on Ch5+Ch8. |
 | **16** | UI Widget Extensions | ~40 | LOW | ProductionPalette, Radar, Observer widgets. Depends on Ch5+Ch11. |
@@ -121,7 +121,7 @@ The remaining ~250+ files are organized into 14 chapters (8-21), each representi
 | **20** | Scripting System | ~7 | LOW | Lua mission scripting bridge. Depends on Ch8-13. |
 | **21** | Editor & Utilities | ~15 | LOW | Map editor, brushes, utility commands. Depends on Ch4+Ch5. |
 
-**Total estimated files**: ~365 (250+ OpenRA C# files + some new TS files)
+**Total estimated files**: ~365 (~299 remaining; 66 migrated = Ch8 57 + Ch9 30 + Ch13 14 = 101 migrated)
 
 ---
 
@@ -400,27 +400,13 @@ BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditi
 
 ---
 
-### 3.6 Chapter 13: Support Powers
+### 3.6 Chapter 13: Support Powers -- COMPLETE (2026-06-15)
 
-**Objective**: Implement super-weapon and special ability powers (Airstrike, Nuke, ParaDrop, Chronoshift, etc.).
+> **Detailed Plan**: [docs/chapter13_support_powers_migration_plan.md](docs/chapter13_support_powers_migration_plan.md) -- 14 files + 1 interface, 1 Phase A, COMPLETE. **6,423 TS implementation lines, 5,126 test lines, 285 tests, 4 commits**.
 
-**Prerequisites**: Chapter 8 (Combat + Warheads + Projectiles), Chapter 7 (Effects + Audio)
+**Objective**: COMPLETE. Implemented support power infrastructure (SupportPower base class, SupportPowerManager registry) and 12 power implementations: AirstrikePower, NukePower, ParatroopersPower, ProduceActorPower, SpawnActorPower, GrantExternalConditionPower, DirectionalSupportPower, SelectDirectionalTarget, SupportPowerChargeBar, WithSupportPowerActivationAnimation, WithSupportPowerActivationOverlay, SupportPowerCrateAction. INotifySupportPower interface added to TraitsInterfaces.ts.
 
-#### Phase A: Support Power Infrastructure
-
-| # | OpenRA Source | Target TypeScript File | Complexity |
-|:---:|:---|:---|:---:|
-| 1 | `Traits/SupportPower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPower.ts` | HIGH |
-| 2 | `Traits/SupportPowerManager.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowerManager.ts` | MEDIUM |
-| 3 | `Traits/AirstrikePower.cs` | `src/OpenRA.Mods.Common/Traits/AirstrikePower.ts` | MEDIUM |
-| 4 | `Traits/NukePower.cs` | `src/OpenRA.Mods.Common/Traits/NukePower.ts` | MEDIUM |
-| 5 | `Traits/ParatroopersPower.cs` | `src/OpenRA.Mods.Common/Traits/ParatroopersPower.ts` | MEDIUM |
-| 6 | `Traits/ProduceActorPower.cs` | `src/OpenRA.Mods.Common/Traits/ProduceActorPower.ts` | LOW |
-| 7 | `Traits/SpawnActorPower.cs` | `src/OpenRA.Mods.Common/Traits/SpawnActorPower.ts` | LOW |
-| 8 | `Traits/DirectionalSupportPower.cs` | `src/OpenRA.Mods.Common/Traits/DirectionalSupportPower.ts` | LOW |
-| 9+ | GrantExternalConditionPower, SupportPowerChargeBar, SupportPowerCrateAction | | LOW |
-
-**ADR-13.1**: Support power targeting uses the existing `WorldInteractionControllerWidget` (Ch5 Phase E) with a power-specific targeting mode override. Target cursor changes via CSS.
+**Prerequisites**: All satisfied (Ch3 Actor, Ch5 OrderGenerator, Ch6 Order/IResolveOrder, Ch7 Sound/Effects, Ch8 Warheads/Projectiles, Ch9 Aircraft/Fly, Ch11 Production, Ch12 Shroud).
 
 ---
 
@@ -828,7 +814,7 @@ Where possible, Lua mission scripts are precompiled to JSON trigger definitions 
 - Chapter 12: Shroud & Fog of War (~4 weeks)
 
 **Phase 3 (Extended Features)**:
-- Chapter 13: Support Powers (~3 weeks)
+- Chapter 13: Support Powers (~3 weeks) -- **COMPLETE (2026-06-15)**
 - Chapter 15: Order Generators (~2 weeks)
 - Chapter 17: Replay & Save (~2 weeks)
 

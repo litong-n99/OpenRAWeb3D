@@ -1,8 +1,8 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 13 -- Support Powers
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.3 (Traits)
-> **Chapter Status**: PLANNING (0/14 migrated)
-> **Planning Date**: 2026-06-15
+> **Chapter Status**: COMPLETE (14/14 migrated, 285 tests, Round 2 APPROVED)
+> **Planning Date**: 2026-06-15 | **Completion Date**: 2026-06-15
 > **Prerequisite**: Chapters 3, 5 Phase E, 6 Phase A, 7 Phases D-E, 8, 9, 11, 12 (ALL COMPLETE)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -127,9 +127,9 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 | **LOW complexity** | 6 files (DirectionalSupportPower.cs 51 lines, SelectDirectionalTarget.cs 180 lines, SupportPowerChargeBar.cs 65 lines, WithSupportPowerActivationAnimation.cs 53 lines, WithSupportPowerActivationOverlay.cs 67 lines, SupportPowerCrateAction.cs 48 lines) |
 | **Total OpenRA C# source lines** | ~2,250 (+ ~10 for interface) |
 
-| Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
+| Phase | Files | C# Lines | TS Lines (actual) | Tests (actual) | Status |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| A: Support Power System | 14 (+1 interface) | ~2,260 | ~4,500-5,500 | ~150-180 | **PLANNING** |
+| A: Support Power System | 14 (+1 interface) | ~2,260 | 6,423 | 285 | **COMPLETE (R2 APPROVED)** |
 
 ---
 
@@ -137,10 +137,10 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 ### 3.1 Phase A: Support Power System
 
-**Status**: PLANNING (0/14 migrated)
+**Status**: COMPLETE (14/14 migrated, 285 tests, Round 2 APPROVED)
 **Complexity**: HIGHEST (SupportPower.cs 261 lines + SupportPowerManager.cs 321 lines)
-**Blocked by**: Chapter 3 (World, Actor, Player, TraitDictionary, TraitsInterfaces, ConditionManager, ITick, INotifyCreated), Chapter 5 Phase E (WorldInteractionControllerWidget -- OrderGenerator), Chapter 6 Phase A (Order, IResolveOrder, OrderManager), Chapter 7 Phase D (Sound -- audio notifications), Chapter 7 Phase E (SpriteEffect -- deploy effects), Chapter 8 (Warheads, Projectiles -- NukeLaunch, WeaponInfo), Chapter 9 (Aircraft, Fly activity, AttackBomber, Cargo, ParaDrop), Chapter 11 (Production, ProductionQueue), Chapter 12 (Shroud, RevealShroudEffect)
-**Blocks**: Chapter 14 (Activity implementations -- Fly, Wait, RemoveSelf used by powers), Chapter 16 (SupportPowerBinWidget -- power palette UI), Chapter 19 (C&C-specific support powers -- Chronoshift, GPS, Ion Cannon, Drop Pods)
+**Completed**: 2026-06-15
+**Commits**: `aac45e2` (core infra: SupportPower + SupportPowerManager + TraitsInterfaces), `8194110` (power implementations: AirstrikePower, NukePower, ParatroopersPower, ProduceActorPower, SpawnActorPower, GrantExternalConditionPower, DirectionalSupportPower, SelectDirectionalTarget), `55be5d4` (render/crate: SupportPowerChargeBar, WithSupportPowerActivationAnimation, WithSupportPowerActivationOverlay, SupportPowerCrateAction), `830951d` (review fixes: Round 2 APPROVED)
 
 **Description**: The support power system is the RTS "superweapon" mechanic. A `SupportPowerManager` attached to each player's `Player` actor manages a dictionary of `SupportPowerInstance` objects. Each instance tracks a charge timer (sub-tick precision), prerequisites via `TechTree`, and a list of `SupportPower` trait instances from the player's actors. When the timer completes, the power is "ready" and the player can target it. Targeting delegates to power-specific `OrderGenerator` subclasses (`SelectGenericPowerTarget`, `SelectDirectionalTarget`, `SelectNukePowerTarget`, `SelectSpawnActorPowerTarget`, `SelectConditionTarget`). Activation spawns actors, launches projectiles, creates beacons, plays audio, and reveals shroud depending on the power type.
 
@@ -154,7 +154,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.1 SupportPower (Base Class) + INotifySupportPower
 
-- [ ] **TODO-13.A.1** `src/OpenRA.Mods.Common/Traits/SupportPowers/SupportPower.ts` (261 lines C#) -- Abstract base class for all support powers: PLANNING
+- [x] **TODO-13.A.1** `src/OpenRA.Mods.Common/Traits/SupportPowers/SupportPower.ts` (261 lines C#) -- Abstract base class for all support powers: COMPLETED (R2 APPROVED, `aac45e2`/`830951d`)
   - `SupportPowerInfo` abstract trait info class (extends `PausableConditionalTraitInfo`):
     - `ChargeInterval: number` -- ticks between charges (0 = no auto-recharge)
     - `IconImage` / `Icon` / `IconPalette` -- power palette icon configuration
@@ -189,7 +189,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.2 SupportPowerManager + SelectGenericPowerTarget
 
-- [ ] **TODO-13.A.2** `src/OpenRA.Mods.Common/Traits/SupportPowers/SupportPowerManager.ts` (321 lines C#) -- Per-player support power registry and order resolver: PLANNING
+- [x] **TODO-13.A.2** `src/OpenRA.Mods.Common/Traits/SupportPowers/SupportPowerManager.ts` (321 lines C#) -- Per-player support power registry and order resolver: COMPLETED (R2 APPROVED, `aac45e2`/`830951d`)
   - `SupportPowerManagerInfo`:
     - `Requires<DeveloperModeInfo>` -- FastCharge support
     - `Requires<TechTreeInfo>` -- prerequisite integration
@@ -244,7 +244,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.3 AirstrikePower
 
-- [ ] **TODO-13.A.3** `src/OpenRA.Mods.Common/Traits/SupportPowers/AirstrikePower.ts` (227 lines C#) -- Aircraft-based airstrike support power: PLANNING
+- [x] **TODO-13.A.3** `src/OpenRA.Mods.Common/Traits/SupportPowers/AirstrikePower.ts` (227 lines C#) -- Aircraft-based airstrike support power: COMPLETED (R2 APPROVED, `8194110`/`830951d`)
   - `AirstrikePowerInfo` (extends `DirectionalSupportPowerInfo`):
     - `UnitType: string` -- aircraft actor type (default `"badr.bomber"`)
     - `SquadSize: number` -- number of aircraft in formation (default 1)
@@ -278,7 +278,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.4 NukePower
 
-- [ ] **TODO-13.A.4** `src/OpenRA.Mods.Common/Traits/SupportPowers/NukePower.ts` (244 lines C#) -- Nuclear missile support power: PLANNING
+- [x] **TODO-13.A.4** `src/OpenRA.Mods.Common/Traits/SupportPowers/NukePower.ts` (244 lines C#) -- Nuclear missile support power: COMPLETED (R2 APPROVED, `8194110`/`830951d`)
   - `NukePowerInfo` (extends `SupportPowerInfo`):
     - `MissileWeapon: string` -- weapon to use for impact (required)
     - `MissileDelay: number` -- ticks delay before missile spawns (default 0)
@@ -319,7 +319,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.5 ParatroopersPower
 
-- [ ] **TODO-13.A.5** `src/OpenRA.Mods.Common/Traits/SupportPowers/ParatroopersPower.ts` (277 lines C#) -- Paratrooper drop support power: PLANNING
+- [x] **TODO-13.A.5** `src/OpenRA.Mods.Common/Traits/SupportPowers/ParatroopersPower.ts` (277 lines C#) -- Paratrooper drop support power: COMPLETED (R2 APPROVED, `8194110`/`830951d`)
   - `ParatroopersPowerInfo` (extends `DirectionalSupportPowerInfo`):
     - `UnitType: string` -- aircraft type for delivery (default `"badr"`)
     - `SquadSize: number` -- number of aircraft (default 1)
@@ -355,7 +355,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.6 ProduceActorPower
 
-- [ ] **TODO-13.A.6** `src/OpenRA.Mods.Common/Traits/SupportPowers/ProduceActorPower.ts` (114 lines C#) -- Production queue-based support power: PLANNING
+- [x] **TODO-13.A.6** `src/OpenRA.Mods.Common/Traits/SupportPowers/ProduceActorPower.ts` (114 lines C#) -- Production queue-based support power: COMPLETED (R2 APPROVED, `8194110`/`830951d`)
   - `ProduceActorPowerInfo` (extends `SupportPowerInfo`):
     - `Actors: string[]` -- actor types to produce (required)
     - `Type: string` -- production queue type (required, e.g., "Vehicle", "Infantry")
@@ -381,7 +381,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.7 SpawnActorPower
 
-- [ ] **TODO-13.A.7** `src/OpenRA.Mods.Common/Traits/SupportPowers/SpawnActorPower.ts` (164 lines C#) -- Direct actor spawning support power: PLANNING
+- [x] **TODO-13.A.7** `src/OpenRA.Mods.Common/Traits/SupportPowers/SpawnActorPower.ts` (164 lines C#) -- Direct actor spawning support power: COMPLETED (R2 APPROVED, `8194110`/`830951d`)
   - `SpawnActorPowerInfo` (extends `SupportPowerInfo`):
     - `Actor: string` -- actor type to spawn (required)
     - `LifeTime: number` -- lifetime in ticks before auto-removal (default 250, -1 = permanent)
@@ -410,7 +410,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.8 GrantExternalConditionPower
 
-- [ ] **TODO-13.A.8** `src/OpenRA.Mods.Common/Traits/SupportPowers/GrantExternalConditionPower.ts` (178 lines C#) -- Area-of-effect condition application support power: PLANNING
+- [x] **TODO-13.A.8** `src/OpenRA.Mods.Common/Traits/SupportPowers/GrantExternalConditionPower.ts` (178 lines C#) -- Area-of-effect condition application support power: COMPLETED (R2 APPROVED, `8194110`/`830951d`)
   - `GrantExternalConditionPowerInfo` (extends `SupportPowerInfo`):
     - `Condition: string` -- condition token name to apply (required)
     - `Duration: number` -- condition duration in ticks (0 = permanent, default 0)
@@ -447,7 +447,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.9 DirectionalSupportPower
 
-- [ ] **TODO-13.A.9** `src/OpenRA.Mods.Common/Traits/SupportPowers/DirectionalSupportPower.ts` (51 lines C#) -- Directional targeting base class: PLANNING
+- [x] **TODO-13.A.9** `src/OpenRA.Mods.Common/Traits/SupportPowers/DirectionalSupportPower.ts` (51 lines C#) -- Directional targeting base class: COMPLETED (R2 APPROVED, `8194110`/`830951d`)
   - `DirectionalSupportPowerInfo` (extends `SupportPowerInfo`):
     - `UseDirectionalTarget: boolean` -- enable directional targeting mode (default false)
     - `Arrows: string[]` -- 8 arrow sequence names for direction UI (CCW: N, NW, W, SW, S, SE, E, NE -- OpenRA order is CCW starting from (0,-1))
@@ -460,7 +460,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.10 SelectDirectionalTarget
 
-- [ ] **TODO-13.A.10** `src/OpenRA.Mods.Common/Traits/SupportPowers/SelectDirectionalTarget.ts` (180 lines C#) -- Directional targeting OrderGenerator: PLANNING
+- [x] **TODO-13.A.10** `src/OpenRA.Mods.Common/Traits/SupportPowers/SelectDirectionalTarget.ts` (180 lines C#) -- Directional targeting OrderGenerator: COMPLETED (R2 APPROVED, `8194110`/`830951d`)
   - `MinDragThreshold = 20` / `MaxDragThreshold = 75` -- drag detection thresholds in pixels
   - Implements `IOrderGenerator`:
     - `ActionButton` / `CancelButton` -- from `GameSettings.MouseActionType.SupportPower`
@@ -482,7 +482,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.11 SupportPowerChargeBar
 
-- [ ] **TODO-13.A.11** `src/OpenRA.Mods.Common/Traits/Render/SupportPowerChargeBar.ts` (65 lines C#) -- Selection bar showing support power charge progress: PLANNING
+- [x] **TODO-13.A.11** `src/OpenRA.Mods.Common/Traits/Render/SupportPowerChargeBar.ts` (65 lines C#) -- Selection bar showing support power charge progress: COMPLETED (R2 APPROVED, `55be5d4`/`830951d`)
   - `SupportPowerChargeBarInfo` (extends `ConditionalTraitInfo`):
     - `DisplayRelationships: PlayerRelationship` -- who sees the charge bar (default Ally)
     - `Color: Color` -- bar color (default Magenta)
@@ -499,7 +499,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.12 WithSupportPowerActivationAnimation
 
-- [ ] **TODO-13.A.12** `src/OpenRA.Mods.Common/Traits/Render/WithSupportPowerActivationAnimation.ts` (53 lines C#) -- Building animation override on power activation: PLANNING
+- [x] **TODO-13.A.12** `src/OpenRA.Mods.Common/Traits/Render/WithSupportPowerActivationAnimation.ts` (53 lines C#) -- Building animation override on power activation: COMPLETED (R2 APPROVED, `55be5d4`/`830951d`)
   - `WithSupportPowerActivationAnimationInfo` (extends `ConditionalTraitInfo`, `Requires<WithSpriteBodyInfo>`):
     - `Sequence: string` -- animation sequence to play (default "active")
     - `Body: string` -- which sprite body to animate (default "body")
@@ -513,7 +513,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.13 WithSupportPowerActivationOverlay
 
-- [ ] **TODO-13.A.13** `src/OpenRA.Mods.Common/Traits/Render/WithSupportPowerActivationOverlay.ts` (67 lines C#) -- Overlay animation on power activation: PLANNING
+- [x] **TODO-13.A.13** `src/OpenRA.Mods.Common/Traits/Render/WithSupportPowerActivationOverlay.ts` (67 lines C#) -- Overlay animation on power activation: COMPLETED (R2 APPROVED, `55be5d4`/`830951d`)
   - `WithSupportPowerActivationOverlayInfo` (extends `ConditionalTraitInfo`, `Requires<RenderSpritesInfo>`, `Requires<BodyOrientationInfo>`):
     - `Sequence: string` -- overlay animation sequence (default "active")
     - `Offset: WVec` -- position relative to body (default `WVec.Zero`)
@@ -536,7 +536,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
 
 #### 3.1.14 SupportPowerCrateAction
 
-- [ ] **TODO-13.A.14** `src/OpenRA.Mods.Common/Traits/Crates/SupportPowerCrateAction.ts` (48 lines C#) -- Crate that grants a support power proxy actor: PLANNING
+- [x] **TODO-13.A.14** `src/OpenRA.Mods.Common/Traits/Crates/SupportPowerCrateAction.ts` (48 lines C#) -- Crate that grants a support power proxy actor: COMPLETED (R2 APPROVED, `55be5d4`/`830951d`)
   - `SupportPowerCrateActionInfo` (extends `CrateActionInfo`):
     - `Proxy: string` -- proxy actor type that grants the support power (required)
   - `SupportPowerCrateAction` trait class (extends `CrateAction`):
@@ -544,7 +544,7 @@ The following infrastructure from Chapters 2-12 is available for Chapter 13:
   - **3D migration**: Proxy actor creation follows standard Ch3 actor spawning pattern. The crate action itself has no visual rendering.
   - **Dependencies**: Ch3 (World, Actor, crate pick-up system). Ch13 (SupportPower -- the spawned proxy actor must have a SupportPower trait).
 
-**Phase A Summary**: 14 files + 1 interface addition, ~2,260 C# lines. Estimated: ~4,500-5,500 TS lines, ~150-180 tests.
+**Phase A Summary**: 14 files + 1 interface addition, ~2,260 C# lines. Actual: 6,423 TS implementation lines, 5,126 test lines, 285 tests. Commits: `aac45e2` (core infra), `8194110` (power implementations), `55be5d4` (render/crate), `830951d` (review fixes). R2 APPROVED 2026-06-15.
 
 ---
 
