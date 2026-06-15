@@ -107,17 +107,19 @@ describe('MoveWithinRange', () => {
     it('completes when target is invalid', () => {
       const self = mockActor()
       const move = new MoveWithinRange(self, Target.Invalid, new WDist(512), new WDist(2048))
-      const result = move.tick(self)
-      expect(result).toBe(true)
+      // MoveWithinRange now extends Move, so tick goes through Move's logic
+      // Invalid target causes noTarget, which cancels the activity
+      const result = move.tickOuter(self)
+      expect(result).toBeNull()
     })
 
-    it('ticks with valid target (completes or queues move)', () => {
+    it('ticks with valid target (Move activity handles pathing)', () => {
       const self = mockActor(new CPos(0, 0))
       // Use Target.fromPos with a far-away position so actor is not in range
       const target = Target.fromPos(new WPos(10240, 10240, 0))
       const move = new MoveWithinRange(self, target, new WDist(512), new WDist(2048))
-      // Without a real map, getCellFromPos returns (0,0) which matches actor location,
-      // causing the activity to think it's at destination. tickOuter returns null when done.
+      // MoveWithinRange now extends MoveAdjacentTo extends Move
+      // With no real map, getCellFromPos returns (0,0) which may match actor location
       const result = move.tickOuter(self)
       // Activity either completes (null) or stays active (move)
       expect(result === null || result === move).toBe(true)

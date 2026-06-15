@@ -103,16 +103,18 @@ describe('MoveOntoAndTurn', () => {
     it('completes when target is invalid', () => {
       const self = mockActor()
       const move = new MoveOntoAndTurn(self, Target.Invalid, new WVec(0, 0, 0))
-      const result = move.tick(self)
-      expect(result).toBe(true)
+      // MoveOntoAndTurn now extends MoveOnto extends MoveAdjacentTo extends Move
+      // Invalid target causes shouldStop to return true, which cancels the activity
+      const result = move.tickOuter(self)
+      expect(result).toBeNull()
     })
 
-    it('ticks with valid target (stub child completes immediately)', () => {
+    it('ticks with valid target (Move activity handles pathing)', () => {
       const self = mockActor(new CPos(0, 0))
       const target = Target.fromCell(new CPos(5, 5))
       const move = new MoveOntoAndTurn(self, target, new WVec(0, 0, 0))
       const result = move.tickOuter(self)
-      expect(result).toBeNull()
+      expect(result === null || result === move).toBe(true)
     })
   })
 

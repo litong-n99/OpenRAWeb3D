@@ -165,8 +165,9 @@ export class AttackMoveActivity extends Activity {
   }
 
   override targetLineNodes(_self: GameActor): import('../../../OpenRA.Game/Activities/Activity.js').TargetLineNode[] {
-    // Delegate to the move activity
-    const move = this.getMove()
-    return move.targetLineNodes(_self)
+    // Delegate to the current move child activity
+    const ca = this.childActivity
+    if (ca !== null) return ca.targetLineNodes(_self)
+    return []
   }
 }

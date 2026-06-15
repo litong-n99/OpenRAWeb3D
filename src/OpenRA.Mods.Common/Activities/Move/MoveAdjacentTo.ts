@@ -1,24 +1,27 @@
 /**
- * MoveAdjacentTo.ts — 移动到目标相邻格活动
- * OpenRA 对照: OpenRA.Mods.Common/Activities/Move/MoveAdjacentTo.cs
+ * MoveAdjacentTo.ts - Move to a cell adjacent to the target
+ * OpenRA reference: OpenRA.Mods.Common/Activities/Move/MoveAdjacentTo.cs
  *
- * 核心范式转换:
- * - C# MoveAdjacentTo base class → TypeScript base for MoveOnto, MoveWithinRange
- * - C# Target.Recalculate → Target.recalculate()
- * - C# Util.AdjacentCells → manual adjacent cell generation
+ * Core paradigm shifts:
+ * - C# MoveAdjacentTo extends Activity -> TypeScript extends Move (with custom getPath)
+ * - C# Mobile.MoveTo() child queue -> direct Move inheritance with path function
+ * - C# Target.Recalculate -> Target.recalculate()
+ * - C# Util.AdjacentCells -> manual adjacent cell generation
  */
 
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
 
-import { Activity, TargetLineNode } from '../../../OpenRA.Game/Activities/Activity.js'
+import { TargetLineNode } from '../../../OpenRA.Game/Activities/Activity.js'
 import type { GameActor } from '../../../OpenRA.Game/Actor.js'
 import { Target } from '../../../OpenRA.Game/Traits/Target.js'
 import { WPos } from '../../../OpenRA.Game/WPos.js'
 import { CPos } from '../../../OpenRA.Game/CPos.js'
 import type { ColorStub } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
-import type { BlockedByActor } from '../../Traits/BlockedByActor.js'
+import { BlockedByActor } from '../../Traits/BlockedByActor.js'
+import { MoveResult } from '../../Traits/Mobile.js'
+import { Move } from './Move.js'
 
 // ---------------------------------------------------------------------------
 // MoveAdjacentTo
@@ -27,31 +30,20 @@ import type { BlockedByActor } from '../../Traits/BlockedByActor.js'
 /**
  * Move to a cell adjacent to the target.
  *
- * OpenRA 对照: MoveAdjacentTo activity
+ * OpenRA reference: MoveAdjacentTo activity
  *
- * Base class for MoveOnto and MoveWithinRange. Finds adjacent cells that are
- * enterable and moves to the nearest one. Handles target visibility changes.
+ * Extends Move with a custom path function that finds adjacent cells.
+ * Handles target visibility changes and repathing when target moves.
  */
-export class MoveAdjacentTo extends Activity {
+export class MoveAdjacentTo extends Move {
   // ---------------------------------------------------------------------------
-  // Configuration
-  // ---------------------------------------------------------------------------
-
-  readonly targetLineColor: ColorStub | null
-
-  // ---------------------------------------------------------------------------
-  // State
+  // State (target tracking)
   // ---------------------------------------------------------------------------
 
   protected target: Target
   protected lastVisibleTarget: Target
   protected lastVisibleTargetLocation: CPos
   protected useLastVisibleTarget: boolean = false
-  protected readonly mobile: {
-    canStayInCell: (cell: CPos) => boolean
-    canEnterCell: (cell: CPos) => boolean
-    pathFinder: { findPathToTargetCells: (self: GameActor, from: CPos, targets: CPos[], check: BlockedByActor) => CPos[] }
-  }
 
   protected searchCells: CPos[] = []
   protected searchCellsTick: number = -1
@@ -66,16 +58,14 @@ export class MoveAdjacentTo extends Activity {
     initialTargetPosition: WPos | null = null,
     targetLineColor: ColorStub | null = null,
   ) {
-    super()
+    // Call Move constructor with a placeholder getPath; we'll override it after
+    super(self, (_check: BlockedByActor) => ({ alreadyAtDestination: false, path: [] }), targetLineColor ?? undefined)
+
     this.target = target
-    this.targetLineColor = targetLineColor
     this.childHasPriority = false
 
-    this.mobile = (self as unknown as { traits: Map<string, unknown> }).traits.get('Mobile') as {
-      canStayInCell: (cell: CPos) => boolean
-      canEnterCell: (cell: CPos) => boolean
-      pathFinder: { findPathToTargetCells: (self: GameActor, from: CPos, targets: CPos[], check: BlockedByActor) => CPos[] }
-    }
+    // Override the getPath with our custom path function
+    this.getPath = (check: BlockedByActor) => this.calculatePathToTarget(self, check)
 
     if (target.type === 2 || target.type === 3) { // Terrain or FrozenActor
       this.lastVisibleTarget = Target.fromPos(target.centerPosition)
@@ -85,7 +75,7 @@ export class MoveAdjacentTo extends Activity {
       this.lastVisibleTargetLocation = this.getCellFromPos(self, initialTargetPosition)
     } else {
       this.lastVisibleTarget = Target.Invalid
-      this.lastVisibleTargetLocation = { X: 0, Y: 0 } as CPos
+      this.lastVisibleTargetLocation = new CPos(0, 0)
     }
   }
 
@@ -93,9 +83,9 @@ export class MoveAdjacentTo extends Activity {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  private getCellFromPos(self: GameActor, pos: WPos): CPos {
+  protected getCellFromPos(self: GameActor, pos: WPos): CPos {
     const world = (self as unknown as { world?: { map?: { cellContaining: (p: WPos) => CPos } } }).world
-    return world?.map?.cellContaining?.(pos) ?? { X: 0, Y: 0 } as CPos
+    return world?.map?.cellContaining?.(pos) ?? new CPos(0, 0)
   }
 
   protected getTarget(): Target {
@@ -117,14 +107,14 @@ export class MoveAdjacentTo extends Activity {
   protected getAdjacentCells(_self: GameActor, _target: Target): CPos[] {
     const center = this.lastVisibleTargetLocation
     return [
-      { X: center.X - 1, Y: center.Y - 1 } as CPos,
-      { X: center.X, Y: center.Y - 1 } as CPos,
-      { X: center.X + 1, Y: center.Y - 1 } as CPos,
-      { X: center.X - 1, Y: center.Y } as CPos,
-      { X: center.X + 1, Y: center.Y } as CPos,
-      { X: center.X - 1, Y: center.Y + 1 } as CPos,
-      { X: center.X, Y: center.Y + 1 } as CPos,
-      { X: center.X + 1, Y: center.Y + 1 } as CPos,
+      new CPos(center.X - 1, center.Y - 1),
+      new CPos(center.X, center.Y - 1),
+      new CPos(center.X + 1, center.Y - 1),
+      new CPos(center.X - 1, center.Y),
+      new CPos(center.X + 1, center.Y),
+      new CPos(center.X - 1, center.Y + 1),
+      new CPos(center.X, center.Y + 1),
+      new CPos(center.X + 1, center.Y + 1),
     ]
   }
 
@@ -136,7 +126,7 @@ export class MoveAdjacentTo extends Activity {
       const adjacent = this.getAdjacentCells(self, this.getTarget())
       const selfLoc = (self as unknown as { location: CPos }).location
       for (const cell of adjacent) {
-        if (this.mobile.canStayInCell(cell) && this.mobile.canEnterCell(cell)) {
+        if (this.mobile?.canStayInCell(cell) && this.mobile?.canEnterCell(cell)) {
           if (cell.X === selfLoc.X && cell.Y === selfLoc.Y)
             return { alreadyAtDestination: true, path: [] }
           this.searchCells.push(cell)
@@ -147,24 +137,13 @@ export class MoveAdjacentTo extends Activity {
     if (this.searchCells.length === 0)
       return { alreadyAtDestination: false, path: [] }
 
-    const path = this.mobile.pathFinder.findPathToTargetCells(
+    const path = this.mobile?.pathFinder.findPathToTargetCells(
       self,
       (self as unknown as { location: CPos }).location,
       this.searchCells,
       check,
-    )
+    ) ?? []
     return { alreadyAtDestination: false, path }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Lifecycle
-  // ---------------------------------------------------------------------------
-
-  protected override onFirstRun(self: GameActor): void {
-    const { alreadyAtDestination, path } = this.calculatePathToTarget(self, 3 as BlockedByActor)
-    if (!alreadyAtDestination && path.length > 0) {
-      this.queueChild(new MoveAdjacentToMoveStub())
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -193,24 +172,26 @@ export class MoveAdjacentTo extends Activity {
     } else if (!this.isCanceling && targetIsValid && this.shouldRepath(self, oldTargetLocation)) {
       const ca = this.childActivity
       if (ca !== null) ca.cancel(self)
-      const { alreadyAtDestination, path } = this.calculatePathToTarget(self, 3 as BlockedByActor)
-      if (!alreadyAtDestination && path.length > 0) {
-        this.queueChild(new MoveAdjacentToMoveStub())
+      // Repath will be handled by parent's onFirstRun / tick logic
+    }
+
+    // Delegate to Move.tick for actual movement handling
+    // Tick child first (Move has childHasPriority = false, so parent tick controls)
+    const ca = this.childActivity
+    if (ca !== null) {
+      if (!this.tickChild(self)) {
+        return false
       }
     }
 
-    const ca = this.childActivity
-    if (ca !== null) {
-      this.tickChild(self)
-      return false
-    }
-
     // Check move result
-    const mobileResult = (self as unknown as { traits: Map<string, unknown> }).traits.get('Mobile') as {
-      moveResult: number
-    } | undefined
-    if (mobileResult && mobileResult.moveResult === 2) // CompleteDestinationReached
+    if (this.mobile?.moveResult === MoveResult.CompleteDestinationReached)
       return true
+
+    // If no child and not at destination, let Move.tick handle pathing
+    if (ca === null) {
+      return super.tick(self)
+    }
 
     this.cancel(self, true)
     return true
@@ -229,11 +210,5 @@ export class MoveAdjacentTo extends Activity {
       return [new TargetLineNode(this.getTarget(), this.targetLineColor)]
     }
     return []
-  }
-}
-
-class MoveAdjacentToMoveStub extends Activity {
-  override tick(_self: GameActor): boolean {
-    return true
   }
 }

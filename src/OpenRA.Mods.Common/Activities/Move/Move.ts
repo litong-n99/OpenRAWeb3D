@@ -1,14 +1,14 @@
 /**
- * Move.ts — 核心移动活动（路径跟随、阻挡处理、后退移动）
- * OpenRA 对照: OpenRA.Mods.Common/Activities/Move/Move.cs
+ * Move.ts - Core movement activity (path following, blocker handling, backward movement)
+ * OpenRA reference: OpenRA.Mods.Common/Activities/Move/Move.cs
  *
- * 核心范式转换:
- * - C# Mobile cast from OccupiesSpace → TypeScript Mobile trait lookup
- * - C# PathFinder.FindPathToTargetCell → TypeScript pathfinder API
- * - C# nested MovePart/MoveFirstHalf/MoveSecondHalf → TypeScript private classes
- * - C# WPos.Lerp/WRot.SLerp → WPos.lerp/WRot.slerp
- * - C# BlockedByActor enum → BlockedByActor const object
- * - C# List<CPos> path → CPos[] array
+ * Core paradigm shifts:
+ * - C# Mobile cast from OccupiesSpace -> TypeScript Mobile trait lookup
+ * - C# PathFinder.FindPathToTargetCell -> TypeScript pathfinder API
+ * - C# nested MovePart/MoveFirstHalf/MoveSecondHalf -> TypeScript private classes
+ * - C# WPos.Lerp/WRot.SLerp -> WPos.lerp/WRot.slerp
+ * - C# BlockedByActor enum -> BlockedByActor const object
+ * - C# List<CPos> path -> CPos[] array
  */
 
 // ---------------------------------------------------------------------------
@@ -23,15 +23,20 @@ import { WPos } from '../../../OpenRA.Game/WPos.js'
 import { WAngle } from '../../../OpenRA.Game/WAngle.js'
 import type { WVec } from '../../../OpenRA.Game/WVec.js'
 import type { ColorStub } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
-import type { BlockedByActor } from '../../Traits/BlockedByActor.js'
+import { BlockedByActor } from '../../Traits/BlockedByActor.js'
 import { MoveResult } from '../../Traits/Mobile.js'
 import { Turn } from '../Turn.js'
 
 // ---------------------------------------------------------------------------
-// PathSearchOrder (对应 OpenRA Move.PathSearchOrder)
+// PathSearchOrder (OpenRA reference: Move.PathSearchOrder)
 // ---------------------------------------------------------------------------
 
-const PATH_SEARCH_ORDER: BlockedByActor[] = [3, 2, 1, 0] // All, Stationary, Immovable, None
+const PATH_SEARCH_ORDER: BlockedByActor[] = [
+  BlockedByActor.All,
+  BlockedByActor.Stationary,
+  BlockedByActor.Immovable,
+  BlockedByActor.None,
+]
 
 // ---------------------------------------------------------------------------
 // Move
@@ -41,7 +46,7 @@ const PATH_SEARCH_ORDER: BlockedByActor[] = [3, 2, 1, 0] // All, Stationary, Imm
  * Core movement activity that follows a path from the actor's current cell
  * to a destination cell.
  *
- * OpenRA 对照: Move activity (640 lines C#)
+ * OpenRA reference: Move activity (640 lines C#)
  *
  * Handles path evaluation, cell-by-cell movement, local avoidance (nudge/wait),
  * backward movement, and carryover progress for smooth speed.
@@ -60,13 +65,13 @@ export class Move extends Activity {
   // Delegates
   // ---------------------------------------------------------------------------
 
-  private readonly getPath: (check: BlockedByActor) => { alreadyAtDestination: boolean; path: CPos[] }
+  protected getPath: (check: BlockedByActor) => { alreadyAtDestination: boolean; path: CPos[] }
 
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
 
-  private mobile: {
+  protected mobile: {
     toCell: CPos
     fromCell: CPos
     toSubCell: number
@@ -89,6 +94,7 @@ export class Move extends Activity {
     removeInfluence: () => void
     addInfluence: () => void
     isBlocking: boolean
+    pathFinder: { findPathToTargetCells: (self: GameActor, from: CPos, targets: CPos[], check: BlockedByActor) => CPos[] }
     info: {
       canMoveBackward: boolean
       maxBackwardCells: number
@@ -102,19 +108,25 @@ export class Move extends Activity {
     movementSpeedForCell: (cell: CPos) => number
   } | null = null
 
-  private actorFacingModifier: WAngle | null = null
-  private carryoverProgress: number = 0
-  private lastMovePartCompletedTick: number = -1
+  protected actorFacingModifier: WAngle | null = null
+  protected carryoverProgress: number = 0
+  protected lastMovePartCompletedTick: number = -1
 
-  private alreadyAtDestination: boolean = false
-  private path: CPos[] = []
-  private destination: CPos | null = null
-  private startTicks: number = 0
-  private hadNoPath: boolean = false
+  protected alreadyAtDestination: boolean = false
+  protected path: CPos[] = []
+  protected destination: CPos | null = null
+  protected startTicks: number = 0
+  protected hadNoPath: boolean = false
 
   // Blocker handling
-  private hasWaited: boolean = false
-  private waitTicksRemaining: number = 0
+  protected hasWaited: boolean = false
+  protected waitTicksRemaining: number = 0
+
+  // Cached world references (avoid deep optional chaining every tick)
+  protected worldTick: number = 0
+  protected mapFacingBetween: ((from: CPos, to: CPos, current: WAngle) => WAngle) | null = null
+  protected mapCenterOfCell: ((c: CPos) => WPos) | null = null
+  protected gridOffsetOfSubCell: ((s: number) => WVec) | null = null
 
   // ---------------------------------------------------------------------------
   // Constructor overloads
@@ -136,6 +148,25 @@ export class Move extends Activity {
 
     // Resolve Mobile trait
     this.mobile = (self as unknown as { traits: Map<string, unknown> }).traits.get('Mobile') as Move['mobile']
+    if (this.mobile) {
+      this.mobile.moveResult = MoveResult.InProgress
+    }
+
+    // Cache world references
+    const world = (self as unknown as {
+      world?: {
+        worldTick: number
+        map?: {
+          facingBetween: (from: CPos, to: CPos, current: WAngle) => WAngle
+          centerOfCell: (c: CPos) => WPos
+          grid?: { offsetOfSubCell: (s: number) => WVec }
+        }
+      }
+    }).world
+    this.worldTick = world?.worldTick ?? 0
+    this.mapFacingBetween = world?.map?.facingBetween ?? null
+    this.mapCenterOfCell = world?.map?.centerOfCell ?? null
+    this.gridOffsetOfSubCell = world?.map?.grid?.offsetOfSubCell ?? null
 
     if (typeof arg2 === 'function') {
       this.getPath = arg2
@@ -181,7 +212,7 @@ export class Move extends Activity {
   // Path evaluation
   // ---------------------------------------------------------------------------
 
-  private evalPath(check: BlockedByActor): { alreadyAtDestination: boolean; path: CPos[] } {
+  protected evalPath(check: BlockedByActor): { alreadyAtDestination: boolean; path: CPos[] } {
     const result = this.getPath(check)
     const filtered = result.path.filter(a => a !== this.mobile?.toCell)
     return { alreadyAtDestination: result.alreadyAtDestination, path: filtered }
@@ -262,15 +293,13 @@ export class Move extends Activity {
     const nextCell = popResult.next.cell
     const nextSubCell = popResult.next.subCell
 
-    const world = (self as unknown as { world?: { map?: { facingBetween: (from: CPos, to: CPos, current: WAngle) => WAngle } } }).world
-    let firstFacing = world?.map?.facingBetween?.(this.mobile.fromCell, nextCell, this.mobile.facing) ?? this.mobile.facing
+    const firstFacing = this.mapFacingBetween?.(this.mobile.fromCell, nextCell, this.mobile.facing) ?? this.mobile.facing
 
     if (this.mobile.info.canMoveBackward
       && (this.mobile.info.maxBackwardCells < 0 || this.path.length < this.mobile.info.maxBackwardCells)
       && (this.mobile.info.backwardDuration < 0 || ((self as unknown as { world?: { worldTick: number } }).world?.worldTick ?? 0) - this.startTicks < this.mobile.info.backwardDuration)
       && Math.abs(firstFacing.angle - this.mobile.facing.angle) > 256) {
       this.actorFacingModifier = new WAngle(512)
-      firstFacing = new WAngle((firstFacing.angle + 512) % 1024)
     } else {
       this.actorFacingModifier = new WAngle(0)
     }
@@ -285,12 +314,11 @@ export class Move extends Activity {
     this.mobile.setLocation(this.mobile.fromCell, this.mobile.fromSubCell, nextCell, nextSubCell)
 
     // Calculate positions and queue MoveFirstHalf
-    const map = (self as unknown as { world?: { map?: { centerOfCell: (c: CPos) => WPos; grid?: { offsetOfSubCell: (s: number) => WVec } } } }).world?.map
-    const fromPos = map?.centerOfCell?.(this.mobile.fromCell) ?? WPos.Zero
-    const fromSubOffset = map?.grid?.offsetOfSubCell?.(this.mobile.fromSubCell) ?? { X: 0, Y: 0, Z: 0 } as WVec
+    const fromPos = this.mapCenterOfCell?.(this.mobile.fromCell) ?? WPos.Zero
+    const fromSubOffset = this.gridOffsetOfSubCell?.(this.mobile.fromSubCell) ?? { X: 0, Y: 0, Z: 0 } as WVec
     const toPos = this.calculateBetweenCells(self, this.mobile.fromCell, this.mobile.toCell)
-    const toSubOffset = map?.grid?.offsetOfSubCell?.(this.mobile.fromSubCell) ?? { X: 0, Y: 0, Z: 0 } as WVec
-    const toSubOffset2 = map?.grid?.offsetOfSubCell?.(this.mobile.toSubCell) ?? { X: 0, Y: 0, Z: 0 } as WVec
+    const toSubOffset = this.gridOffsetOfSubCell?.(this.mobile.fromSubCell) ?? { X: 0, Y: 0, Z: 0 } as WVec
+    const toSubOffset2 = this.gridOffsetOfSubCell?.(this.mobile.toSubCell) ?? { X: 0, Y: 0, Z: 0 } as WVec
 
     const fromWPos = WPos.add(fromPos, fromSubOffset)
     const midSub = {
@@ -313,21 +341,16 @@ export class Move extends Activity {
   }
 
   private calculateBetweenCells(_self: GameActor, from: CPos, to: CPos): WPos {
-    const world = (_self as unknown as { world?: { map?: { centerOfCell: (c: CPos) => WPos } } }).world
-    const fromPos = world?.map?.centerOfCell?.(from) ?? WPos.Zero
-    const toPos = world?.map?.centerOfCell?.(to) ?? WPos.Zero
-    return new WPos(
-      Math.trunc((fromPos.X + toPos.X) / 2),
-      Math.trunc((fromPos.Y + toPos.Y) / 2),
-      Math.trunc((fromPos.Z + toPos.Z) / 2),
-    )
+    const fromPos = this.mapCenterOfCell?.(from) ?? WPos.Zero
+    const toPos = this.mapCenterOfCell?.(to) ?? WPos.Zero
+    return WPos.lerp(fromPos, toPos, 1, 2)
   }
 
   // ---------------------------------------------------------------------------
   // PopPath
   // ---------------------------------------------------------------------------
 
-  private popPath(self: GameActor): { next: { cell: CPos; subCell: number } | null; shouldTryAgain: boolean } {
+  protected popPath(self: GameActor): { next: { cell: CPos; subCell: number } | null; shouldTryAgain: boolean } {
     if (this.path.length === 0 || !this.mobile)
       return { next: null, shouldTryAgain: false }
 
@@ -336,7 +359,7 @@ export class Move extends Activity {
     const dx = Math.abs(nextCell.X - this.mobile.toCell.X)
     const dy = Math.abs(nextCell.Y - this.mobile.toCell.Y)
     if (dx > 1 || dy > 1) {
-      const result = this.evalPath(1 as BlockedByActor)
+      const result = this.evalPath(BlockedByActor.Immovable)
       this.alreadyAtDestination = result.alreadyAtDestination
       this.path = result.path
       return { next: null, shouldTryAgain: false }
@@ -356,9 +379,9 @@ export class Move extends Activity {
         }
       }
 
-      const canEnterImmovable = this.mobile.canEnterCell(nextCell, this.ignoreActor, 1 as BlockedByActor)
+      const canEnterImmovable = this.mobile.canEnterCell(nextCell, this.ignoreActor, BlockedByActor.Immovable)
       if (!canEnterImmovable) {
-        const result = this.evalPath(1 as BlockedByActor)
+        const result = this.evalPath(BlockedByActor.Immovable)
         this.alreadyAtDestination = result.alreadyAtDestination
         this.path = result.path
         return { next: null, shouldTryAgain: false }
@@ -380,7 +403,7 @@ export class Move extends Activity {
         return { next: null, shouldTryAgain: true }
 
       this.mobile.removeInfluence()
-      const { path: newPath } = this.evalPath(3 as BlockedByActor)
+      const { path: newPath } = this.evalPath(BlockedByActor.All)
       this.mobile.addInfluence()
 
       if (newPath.length > 0) {
@@ -406,7 +429,7 @@ export class Move extends Activity {
     return { next: { cell: nextCell, subCell }, shouldTryAgain: true }
   }
 
-  private cellIsEvacuating(_self: GameActor, _cell: CPos): boolean {
+  protected cellIsEvacuating(_self: GameActor, _cell: CPos): boolean {
     return false
   }
 
@@ -431,6 +454,10 @@ export class Move extends Activity {
 
   protected override onLastRun(_self: GameActor): void {
     this.path = []
+    // Set move result if not already set by tick completion
+    if (this.mobile && this.mobile.moveResult === MoveResult.InProgress) {
+      this.mobile.moveResult = MoveResult.CompleteDestinationReached
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -438,8 +465,6 @@ export class Move extends Activity {
   // ---------------------------------------------------------------------------
 
   override getTargets(_self: GameActor): Target[] {
-    if (this.path.length > 0)
-      return this.path.map(c => Target.fromCell(c))
     if (this.destination !== null)
       return [Target.fromCell(this.destination)]
     return []
@@ -468,17 +493,18 @@ export class Move extends Activity {
 }
 
 // ---------------------------------------------------------------------------
-// MoveFirstHalf — handles movement from fromCell to toCell
+// MovePart - Abstract base class for MoveFirstHalf and MoveSecondHalf
+// OpenRA reference: Move.MovePart abstract class
 // ---------------------------------------------------------------------------
 
-class MoveFirstHalf extends Activity {
-  private readonly move: Move
-  private readonly from: WPos
-  private readonly to: WPos
-  private readonly fromFacing: WAngle
-  private readonly toFacing: WAngle
-  private progress: number
-  private readonly distance: number
+abstract class MovePart extends Activity {
+  protected readonly move: Move
+  protected readonly from: WPos
+  protected readonly to: WPos
+  protected readonly fromFacing: WAngle
+  protected readonly toFacing: WAngle
+  protected progress: number
+  protected readonly distance: number
 
   constructor(
     move: Move,
@@ -507,34 +533,27 @@ class MoveFirstHalf extends Activity {
     const mobile = this.move._mobile
     if (!mobile) return true
 
-    if (this.move._lastMovePartCompletedTick < ((self as unknown as { world?: { worldTick: number } }).world?.worldTick ?? 0)) {
+    const worldTick = (self as unknown as { world?: { worldTick: number } }).world?.worldTick ?? 0
+    if (this.move._lastMovePartCompletedTick < worldTick) {
       this.progress += mobile.movementSpeedForCell(mobile.toCell)
     }
 
     if (this.progress >= this.distance) {
       mobile.setCenterPosition(self, this.to)
       mobile.facing = this.toFacing
-      this.move._lastMovePartCompletedTick = (self as unknown as { world?: { worldTick: number } }).world?.worldTick ?? 0
+      this.move._lastMovePartCompletedTick = worldTick
 
-      // Queue MoveSecondHalf
-      const world = (self as unknown as { world?: { map?: { centerOfCell: (c: CPos) => WPos; grid?: { offsetOfSubCell: (s: number) => WVec } } } }).world
-      const map = world?.map
-      const toPos = map?.centerOfCell?.(mobile.toCell) ?? WPos.Zero
-      const toSubOffset = map?.grid?.offsetOfSubCell?.(mobile.toSubCell) ?? { X: 0, Y: 0, Z: 0 } as WVec
-      const toWPos = WPos.add(toPos, toSubOffset)
+      // Call subclass completion handler
+      const nextPart = this.onComplete(self, mobile, this.move)
+      if (nextPart !== null) {
+        this.move.queueChild(nextPart)
+      }
 
-      this.queue(new MoveSecondHalf(this.move, this.to, toWPos, mobile.facing, this.toFacing, this.progress - this.distance))
-      mobile.enteringCell(self)
-      mobile.setLocation(mobile.toCell, mobile.toSubCell, mobile.toCell, mobile.toSubCell)
       return true
     }
 
     const t = this.distance > 0 ? this.progress / this.distance : 1
-    const pos = new WPos(
-      Math.trunc(this.from.X + (this.to.X - this.from.X) * t),
-      Math.trunc(this.from.Y + (this.to.Y - this.from.Y) * t),
-      Math.trunc(this.from.Z + (this.to.Z - this.from.Z) * t),
-    )
+    const pos = WPos.lerp(this.from, this.to, t, 1)
     mobile.setCenterPosition(self, pos)
 
     // Turn while moving
@@ -551,24 +570,27 @@ class MoveFirstHalf extends Activity {
     return false
   }
 
+  protected abstract onComplete(self: GameActor, mobile: NonNullable<Move['_mobile']>, move: Move): MovePart | null
+
   override getTargets(_self: GameActor): Target[] {
     return this.move.getTargets(_self)
+  }
+
+  protected override onLastRun(_self: GameActor): void {
+    // Remove influence when MovePart is cancelled mid-movement
+    const mobile = this.move._mobile
+    if (mobile) {
+      mobile.removeInfluence()
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
-// MoveSecondHalf — handles movement from between-cells to cell center
+// MoveFirstHalf - handles movement from fromCell to toCell
+// OpenRA reference: Move.MoveFirstHalf
 // ---------------------------------------------------------------------------
 
-class MoveSecondHalf extends Activity {
-  private readonly move: Move
-  private readonly from: WPos
-  private readonly to: WPos
-  private readonly fromFacing: WAngle
-  private readonly toFacing: WAngle
-  private progress: number
-  private readonly distance: number
-
+class MoveFirstHalf extends MovePart {
   constructor(
     move: Move,
     from: WPos,
@@ -577,60 +599,53 @@ class MoveSecondHalf extends Activity {
     toFacing: WAngle,
     carryoverProgress: number,
   ) {
-    super()
-    this.move = move
-    this.from = from
-    this.to = to
-    this.fromFacing = fromFacing
-    this.toFacing = toFacing
-    this.progress = carryoverProgress
-    this.distance = Math.sqrt(
-      (to.X - from.X) * (to.X - from.X) +
-      (to.Y - from.Y) * (to.Y - from.Y) +
-      (to.Z - from.Z) * (to.Z - from.Z),
-    )
-    this.isInterruptible = false
+    super(move, from, to, fromFacing, toFacing, carryoverProgress)
   }
 
-  override tick(self: GameActor): boolean {
-    const mobile = this.move._mobile
-    if (!mobile) return true
+  protected override onComplete(self: GameActor, mobile: NonNullable<Move['_mobile']>, move: Move): MovePart | null {
+    // Calculate the final position for MoveSecondHalf
+    const world = (self as unknown as { world?: { map?: { centerOfCell: (c: CPos) => WPos; grid?: { offsetOfSubCell: (s: number) => WVec } } } }).world
+    const map = world?.map
+    const toPos = map?.centerOfCell?.(mobile.toCell) ?? WPos.Zero
+    const toSubOffset = map?.grid?.offsetOfSubCell?.(mobile.toSubCell) ?? { X: 0, Y: 0, Z: 0 } as WVec
+    const toWPos = WPos.add(toPos, toSubOffset)
 
-    if (this.move._lastMovePartCompletedTick < ((self as unknown as { world?: { worldTick: number } }).world?.worldTick ?? 0)) {
-      this.progress += mobile.movementSpeedForCell(mobile.toCell)
-    }
+    mobile.enteringCell(self)
+    mobile.setLocation(mobile.toCell, mobile.toSubCell, mobile.toCell, mobile.toSubCell)
 
-    if (this.progress >= this.distance) {
-      mobile.setCenterPosition(self, this.to)
-      mobile.facing = this.toFacing
-      this.move._lastMovePartCompletedTick = (self as unknown as { world?: { worldTick: number } }).world?.worldTick ?? 0
-      mobile.setPosition(self, mobile.toCell)
-      this.move._carryoverProgress = this.progress - this.distance
-      return true
-    }
-
-    const t = this.distance > 0 ? this.progress / this.distance : 1
-    const pos = new WPos(
-      Math.trunc(this.from.X + (this.to.X - this.from.X) * t),
-      Math.trunc(this.from.Y + (this.to.Y - this.from.Y) * t),
-      Math.trunc(this.from.Z + (this.to.Z - this.from.Z) * t),
+    return new MoveSecondHalf(
+      move,
+      this.to,
+      toWPos,
+      mobile.facing,
+      this.toFacing,
+      this.progress - this.distance,
     )
-    mobile.setCenterPosition(self, pos)
+  }
+}
 
-    if (mobile.info.turnsWhileMoving) {
-      const diff = ((this.toFacing.angle - mobile.facing.angle + 1024) % 1024)
-      const shortestDiff = diff > 512 ? diff - 1024 : diff
-      const turnAmount = Math.min(Math.abs(shortestDiff), mobile.turnSpeed.angle)
-      const direction = shortestDiff >= 0 ? 1 : -1
-      mobile.facing = new WAngle((mobile.facing.angle + turnAmount * direction + 1024) % 1024)
-    } else {
-      mobile.facing = new WAngle(Math.trunc(this.fromFacing.angle + (this.toFacing.angle - this.fromFacing.angle) * t))
-    }
+// ---------------------------------------------------------------------------
+// MoveSecondHalf - handles movement from between-cells to cell center
+// OpenRA reference: Move.MoveSecondHalf
+// ---------------------------------------------------------------------------
 
-    return false
+class MoveSecondHalf extends MovePart {
+  constructor(
+    move: Move,
+    from: WPos,
+    to: WPos,
+    fromFacing: WAngle,
+    toFacing: WAngle,
+    carryoverProgress: number,
+  ) {
+    super(move, from, to, fromFacing, toFacing, carryoverProgress)
   }
 
-  override getTargets(_self: GameActor): Target[] {
-    return this.move.getTargets(_self)
+  protected override onComplete(_self: GameActor, mobile: Move['_mobile'], move: Move): MovePart | null {
+    if (!mobile) return null
+    mobile.setPosition(_self, mobile.toCell)
+    mobile.finishedMoving(_self)
+    move._carryoverProgress = this.progress - this.distance
+    return null
   }
 }

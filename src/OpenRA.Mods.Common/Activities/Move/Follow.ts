@@ -113,9 +113,9 @@ export class Follow extends Activity {
     const pos = (self as unknown as { centerPosition: WPos }).centerPosition
     const checkTarget = this.useLastVisibleTarget ? this.lastVisibleTarget : this.target
 
-    // In range — wait
+    // In range — wait (return true to complete this tick's follow check)
     if (checkTarget.isInRange(pos, this.maxRange) && !checkTarget.isInRange(pos, this.minRange))
-      return this.useLastVisibleTarget
+      return true
 
     // Out of range — queue move
     this.moveCooldownHelper.notifyMoveQueued()
