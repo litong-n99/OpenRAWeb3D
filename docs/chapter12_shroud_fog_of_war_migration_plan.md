@@ -125,7 +125,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (3/15)** |
+| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (4/15)** |
 
 ---
 
@@ -133,7 +133,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 ### 3.1 Phase A: Shroud System
 
-**Status**: IN PROGRESS (3/15 migrated)
+**Status**: IN PROGRESS (4/15 migrated)
 **Complexity**: HIGHEST (Shroud.cs 514 lines, ShroudRenderer.cs 390 lines)
 **Blocked by**: Chapter 4 (Map, CellLayers, ProjectedCellLayer), Chapter 3 (Player, Actor, TraitDictionary), Chapter 2 (Renderer, WorldRenderer, TerrainSpriteLayer)
 **Blocks**: Chapter 13 (Support Powers -- some require shroud visibility), Chapter 16 (RadarWidget -- depends on PlayerRadarTerrain), Chapter 19 (GPS/Sensors -- GpsDot, GpsWatcher interact with shroud)
@@ -142,8 +142,9 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 - [x] TODO-12.A.1 `Shroud.ts` -- per-player visibility state tracker (APPROVED, 2026-06-15)
 - [x] TODO-12.A.2 `ShroudRenderer.ts` -- visual shroud/fog overlay renderer (APPROVED, 2026-06-15)
 - [x] TODO-12.A.3 `FrozenActorLayer.ts` -- per-player frozen actor snapshot system (APPROVED R2, 2026-06-15)
+- [x] TODO-12.A.4 `Cloak.ts` -- stealth/cloak system (APPROVED, 2026-06-15)
 
-**Remaining**: 12 files
+**Remaining**: 11 files
 
 **Description**: The shroud system controls what each player can see on the map. It has three layers: (1) `Shroud` -- per-player visibility state tracking with source-based reference counting, (2) `ShroudRenderer` -- visual overlay rendering of shroud/fog edges using sprite variants, (3) `FrozenActorLayer` -- per-player snapshot of enemy actors that have left visible range. Supporting traits include `RevealsShroud` (units reveal area), `CreatesShroud` (units generate darkness for enemies), `HiddenUnderShroud`/`HiddenUnderFog` (actors hide when not visible), `FrozenUnderFog` (buildings freeze when fogged), `Cloak` (stealth system), and `DetectCloaked` (detection of cloaked units).
 
@@ -252,7 +253,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.4 Cloak
 
-- [ ] **TODO-12.A.4** `src/OpenRA.Mods.Common/Traits/Cloak.ts` (374 lines C#) -- Stealth/cloak system:
+- [x] **TODO-12.A.4** `src/OpenRA.Mods.Common/Traits/Cloak.ts` (374 lines C#) -- Stealth/cloak system: ✅ COMPLETE (APPROVED, 2026-06-15)
   - `UncloakType` enum flags: `Attack`, `Move`, `Load`, `Unload`, `Infiltrate`, `Demolish`, `Damage`, `Heal`, `SelfHeal`, `Dock`, `SupportPower`
   - `CloakStyle` enum: `None`, `Alpha`, `Color`, `Palette`
   - `CloakInfo`:
@@ -282,6 +283,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
   - **3D migration**: `Alpha` style -> `material.alpha = CloakedAlpha`
   - **3D migration**: `Color` style -> `material.emissiveColor = CloakedColor`
   - **3D migration**: `Palette` style -> custom shader material with palette swap
+  - **Status**: Migrated, reviewed, APPROVED (0 BLOCKER, 0 MAJOR, 4 MINOR). Commit `fdd6ba2`.
 
 #### 3.1.5 AffectsShroud
 
