@@ -24,7 +24,7 @@
 | **Chapter 10 planned files (Resource & Economy)** | 17 core (2 Phases A-B) + 8 optional, ALL PHASES COMPLETE: 25/25 (100%), Phase A: 8/8, Phase B: 11/11, Phase B-Optional: 8/8, 972 tests |
 | **Chapter 11 planned files (Production & Building)** | ~25 original plan + 13 additional = 37 total (2 Phases A-B), 37/37 COMPLETE, ALL PHASES COMPLETE |
 | **Chapter 12 planned files (Shroud & Fog of War)** | 16 (1 Phase A), COMPLETE: 16/16 APPROVED. Plan: [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md) |
-| **Chapter 13 planned files (Support Powers)** | ~15 (1 Phase A planned), 0/15 migrated |
+| **Chapter 13 planned files (Support Powers)** | 14 + 1 interface (1 Phase A), PLANNING, 0/14 migrated. Plan: [docs/chapter13_support_powers_migration_plan.md](docs/chapter13_support_powers_migration_plan.md) |
 | **Chapter 14 planned files (Activity Implementations)** | ~26 (4 Phases A-D planned), 0/26 migrated |
 | **Chapter 15 planned files (Order Generators)** | ~11 (1 Phase A planned), 0/11 migrated |
 | **Chapter 16 planned files (UI Widget Extensions)** | ~40 (3 Phases A-C planned), 0/40 migrated |
@@ -1461,6 +1461,58 @@ TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResour
 - **ADR-12.6**: Lazy shroud resolution with dirty cell tracking
 
 **Next Steps**: 15/16 committed (94%). 9 APPROVED, 6 under review, 1 blocked (A.8 PlayerRadarTerrain). Await review results for the 6 under-review files before committing doc updates.
+
+---
+
+### Chapter 13: Support Powers (PLANNING, 0/14 migrated)
+
+> **Migration Plan**: [docs/chapter13_support_powers_migration_plan.md](docs/chapter13_support_powers_migration_plan.md)
+> **Created**: 2026-06-15 | **Updated**: 2026-06-15 | **Status**: PLANNING (0/14 migrated)
+> **Prerequisite**: Chapters 3, 5 Phase E, 6 Phases A/C, 7 Phases D/E, 8 Phase B, 9, 11, 12 COMPLETE
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Support Power System | 14 (+1 interface) | LOW-HIGHEST | **PLANNING (0/14 migrated)** |
+
+**Phase A File Breakdown**:
+
+| # | File | Target | C# Lines | Complexity | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| A.1 | `SupportPower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/SupportPower.ts` | 261 | HIGHEST | PLANNING |
+| A.2 | `SupportPowerManager.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/SupportPowerManager.ts` | 321 | HIGHEST | PLANNING |
+| A.3 | `AirstrikePower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/AirstrikePower.ts` | 227 | HIGH | PLANNING |
+| A.4 | `NukePower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/NukePower.ts` | 244 | HIGH | PLANNING |
+| A.5 | `ParatroopersPower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/ParatroopersPower.ts` | 277 | HIGH | PLANNING |
+| A.6 | `ProduceActorPower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/ProduceActorPower.ts` | 114 | MEDIUM | PLANNING |
+| A.7 | `SpawnActorPower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/SpawnActorPower.ts` | 164 | MEDIUM | PLANNING |
+| A.8 | `GrantExternalConditionPower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/GrantExternalConditionPower.ts` | 178 | MEDIUM | PLANNING |
+| A.9 | `DirectionalSupportPower.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/DirectionalSupportPower.ts` | 51 | LOW | PLANNING |
+| A.10 | `SelectDirectionalTarget.cs` | `src/OpenRA.Mods.Common/Traits/SupportPowers/SelectDirectionalTarget.ts` | 180 | LOW | PLANNING |
+| A.11 | `SupportPowerChargeBar.cs` | `src/OpenRA.Mods.Common/Traits/Render/SupportPowerChargeBar.ts` | 65 | LOW | PLANNING |
+| A.12 | `WithSupportPowerActivationAnimation.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithSupportPowerActivationAnimation.ts` | 53 | LOW | PLANNING |
+| A.13 | `WithSupportPowerActivationOverlay.cs` | `src/OpenRA.Mods.Common/Traits/Render/WithSupportPowerActivationOverlay.ts` | 67 | LOW | PLANNING |
+| A.14 | `SupportPowerCrateAction.cs` | `src/OpenRA.Mods.Common/Traits/Crates/SupportPowerCrateAction.ts` | 48 | LOW | PLANNING |
+| -- | `INotifySupportPower` (interface) | `src/OpenRA.Game/Traits/TraitsInterfaces.ts` (addition) | ~10 | LOW | PLANNING |
+
+**Estimated Effort**: ~2,260 C# source lines, ~4,500-5,500 TS implementation lines, ~150-180 tests, ~3-4 weeks (single dev).
+
+**Deferred to Chapter 19**: 6 C&C-specific powers (ChronoshiftPower, AttackOrderPower, DropPodsPower, GpsPower, GrantPrerequisiteChargeDrainPower, IonCannonPower).
+
+**Key Architecture Decisions**:
+- **ADR-13.1**: SupportPowerManager on Player actor (SystemActors.Player)
+- **ADR-13.2**: Sub-tick precision timer as integer accumulator (no floating-point)
+- **ADR-13.3**: OrderGenerator reuse via callback-based targeting modes (not subclassing)
+- **ADR-13.4**: Beacon as world-space billboard with canvas-drawn clock animation
+- **ADR-13.5**: C&C-specific powers deferred to Chapter 19
+- **ADR-13.6**: INotifySupportPower interface in TraitsInterfaces.ts
+- **ADR-13.7**: Aircraft formation path via Ch9 Fly activity
+
+**Parallelization**:
+- Track 1 (core): SupportPower + INotifySupportPower + SupportPowerManager (Week 1)
+- Track 2 (directional): DirectionalSupportPower + SelectDirectionalTarget + AirstrikePower + ParatroopersPower (Weeks 1-2)
+- Track 3 (standalone): NukePower + SpawnActorPower (Week 2-3)
+- Track 4 (production/condition): ProduceActorPower + GrantExternalConditionPower (Week 3)
+- Track 5 (visual): SupportPowerChargeBar + WithSupportPowerActivationAnimation + WithSupportPowerActivationOverlay + SupportPowerCrateAction (Week 3)
 
 ---
 
