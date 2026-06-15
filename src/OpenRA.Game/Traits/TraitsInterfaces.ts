@@ -82,6 +82,23 @@ export interface FrozenActorStub {
 }
 
 /**
+ * Minimal reference to a FrozenActor for visibility change callbacks.
+ *
+ * OpenRA 对照: FrozenActor (subset used by ICreatesFrozenActors callbacks)
+ *
+ * Exposes the fields and methods needed by FrozenUnderFog and similar
+ * traits when reacting to visibility transitions. This avoids a circular
+ * dependency between TraitsInterfaces and FrozenActorLayer.
+ */
+export interface IFrozenActorRef {
+  readonly viewer: PlayerStub
+  readonly visible: boolean
+  readonly hidden: boolean
+  readonly centerPosition: WPos
+  refreshHidden(): void
+}
+
+/**
  * Interface for traits that create FrozenActor snapshots.
  *
  * OpenRA 对照: ICreatesFrozenActors
@@ -90,7 +107,7 @@ export interface FrozenActorStub {
  * notified so it can synchronize its own state.
  */
 export interface ICreatesFrozenActors {
-  onVisibilityChanged(frozen: FrozenActorStub): void
+  onVisibilityChanged(frozen: IFrozenActorRef): void
 }
 
 /**

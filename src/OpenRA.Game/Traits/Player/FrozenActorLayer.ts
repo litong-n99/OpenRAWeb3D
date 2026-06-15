@@ -280,7 +280,7 @@ export class FrozenActor {
    *
    * OpenRA 对照: FrozenActor.NeedRenderables
    */
-  NeedRenderables: boolean
+  NeedRenderables: boolean = false
 
   /** Whether to update visibility on next tick.
    *
@@ -446,12 +446,30 @@ export class FrozenActor {
     return this.Hidden
   }
 
+  /** The player who views this frozen actor (camelCase for IFrozenActorRef).
+   *
+   * OpenRA 对照: FrozenActor.Viewer
+   */
+  get viewer(): PlayerStub {
+    return this.Viewer
+  }
+
   /** Center position for compatibility with FrozenActorStub.
    *
    * OpenRA 对照: FrozenActor.CenterPosition
    */
   get centerPosition(): WPos {
     return this.CenterPosition
+  }
+
+  /** Recompute Hidden flag from visibility modifiers (camelCase for IFrozenActorRef).
+   *
+   * OpenRA 对照: FrozenActor.RefreshHidden()
+   *
+   * @returns void
+   */
+  refreshHidden(): void {
+    this.RefreshHidden()
   }
 
   /** The actor's static type info.
@@ -593,6 +611,8 @@ export class FrozenActor {
    * OpenRA 对照: FrozenActor.Tick()
    *
    * Advances flash timer and processes deferred visibility updates.
+   *
+   * @returns void
    */
   Tick(): void {
     // TODO-12.DEFERRED.11: Flash tick advancement.
@@ -674,6 +694,10 @@ export class FrozenActor {
    * OpenRA 对照: FrozenActor.Flash(Color, float)
    *
    * TODO-12.DEFERRED.11: Flash() tint animation.
+   *
+   * @param _color — RGBA color for tint
+   * @param _alpha — optional alpha override
+   * @returns void
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Flash(_color: unknown, _alpha?: number): void {
@@ -797,6 +821,7 @@ export class FrozenActorLayer implements IRender, ITick, ISync {
     info: FrozenActorLayerInfo,
   ) {
     this._binSize = info.binSize
+    // C# [TraitLocation(SystemActors.Player)] guarantees owner is non-null
     this._owner = self.owner!
 
     // Access world with screenMap and map
@@ -813,14 +838,15 @@ export class FrozenActorLayer implements IRender, ITick, ISync {
     // Subscribe to shroud changes
     const actorAny = self as unknown as Record<string, unknown>
     const shroudUntyped = actorAny['shroud'] as Record<string, unknown> | undefined
-    const selfRef = this
 
-    this._onShroudChanged = function (this: FrozenActorLayer, puv: PPos): void {
-      const frozenAtCell = selfRef._partitionedFrozenActors.at(puv.U, puv.V)
+    // NOTE: Arrow function captures `this` lexically — no need for
+    // selfRef + bind(this) pattern.
+    this._onShroudChanged = (puv: PPos): void => {
+      const frozenAtCell = this._partitionedFrozenActors.at(puv.U, puv.V)
       for (const fa of frozenAtCell) {
         fa.UpdateVisibilityNextTick = true
       }
-    }.bind(this)
+    }
 
     if (shroudUntyped && typeof shroudUntyped['addOnShroudChanged'] === 'function') {
       ;(shroudUntyped['addOnShroudChanged'] as (cb: (puv: PPos) => void) => void)(this._onShroudChanged)
