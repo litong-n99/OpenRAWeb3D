@@ -125,7 +125,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (6/15)** |
+| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (7/15)** |
 
 ---
 
@@ -133,7 +133,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 ### 3.1 Phase A: Shroud System
 
-**Status**: IN PROGRESS (6/15 migrated)
+**Status**: IN PROGRESS (7/15 migrated)
 **Complexity**: HIGHEST (Shroud.cs 514 lines, ShroudRenderer.cs 390 lines)
 **Blocked by**: Chapter 4 (Map, CellLayers, ProjectedCellLayer), Chapter 3 (Player, Actor, TraitDictionary), Chapter 2 (Renderer, WorldRenderer, TerrainSpriteLayer)
 **Blocks**: Chapter 13 (Support Powers -- some require shroud visibility), Chapter 16 (RadarWidget -- depends on PlayerRadarTerrain), Chapter 19 (GPS/Sensors -- GpsDot, GpsWatcher interact with shroud)
@@ -145,8 +145,9 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 - [x] TODO-12.A.4 `Cloak.ts` -- stealth/cloak system (APPROVED, 2026-06-15)
 - [x] TODO-12.A.5 `AffectsShroud.ts` -- abstract base for shroud-affecting traits (APPROVED, 2026-06-15)
 - [x] TODO-12.A.7 `RevealsMap.ts` -- full-map reveal trait (APPROVED, 2026-06-15)
+- [x] TODO-12.A.14 `ShroudExts.ts` -- shroud extension methods (APPROVED, 2026-06-15)
 
-**Remaining**: 9 files
+**Remaining**: 8 files
 
 **Description**: The shroud system controls what each player can see on the map. It has three layers: (1) `Shroud` -- per-player visibility state tracking with source-based reference counting, (2) `ShroudRenderer` -- visual overlay rendering of shroud/fog edges using sprite variants, (3) `FrozenActorLayer` -- per-player snapshot of enemy actors that have left visible range. Supporting traits include `RevealsShroud` (units reveal area), `CreatesShroud` (units generate darkness for enemies), `HiddenUnderShroud`/`HiddenUnderFog` (actors hide when not visible), `FrozenUnderFog` (buildings freeze when fogged), `Cloak` (stealth system), and `DetectCloaked` (detection of cloaked units).
 
@@ -424,11 +425,12 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.14 ShroudExts
 
-- [ ] **TODO-12.A.14** `src/OpenRA.Mods.Common/ShroudExts.ts` (48 lines C#) -- Shroud extension methods:
+- [x] **TODO-12.A.14** `src/OpenRA.Mods.Common/ShroudExts.ts` (48 lines C#) -- Shroud extension methods: ✅ COMPLETE (APPROVED, 2026-06-15)
   - `AnyExplored(shroud, cells)` -- check if any cell in array is explored
   - `AnyExplored(shroud, puvs)` -- check if any projected cell is explored
   - `AnyVisible(shroud, cells)` -- check if any cell is visible
   - **PERF**: Avoid LINQ, use manual loops
+  - **Status**: Migrated (103 lines), reviewed, APPROVED (ZERO findings across all 5 dimensions). 17 tests. Commit `43a256d`.
 
 #### 3.1.15 ShroudPalette
 
