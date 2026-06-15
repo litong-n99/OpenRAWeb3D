@@ -2,14 +2,14 @@
  * AffectsShroud.ts — Abstract base trait for shroud-affecting actors (reveals/generates shroud)
  * OpenRA 对照: OpenRA.Mods.Common/Traits/AffectsShroud.cs
  *
- * 核心范式转换:
+ * Key paradigm mappings:
  * - C# HashSet<PPos> footprint → TS Set<number> (linear index: v*width+u, avoids PPos reference-equality bugs)
  * - C# INotifyMoving.MovementTypeChanged(MovementType.None) → TS INotifyFinishedMoving.onNotifyFinishedMoving()
  * - C# self.OccupiesSpace / self.CenterPosition → TS traitOrDefault('IOccupySpace') lookup
  * - C# MoveRecalculationThreshold.Length/LengthSquared → TS WDist.length/lengthSquared
  * - C# event-driven shroud updates → TS direct Shroud.addSource/removeSource calls via Player.shroud
  *
- * 已知子类: RevealsShroud (TODO-12.A.6), CreatesShroud (TODO-12.A.7)
+ * Known subclasses: RevealsShroud (TODO-12.A.6), CreatesShroud (TODO-12.A.7)
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -21,6 +21,10 @@ import {
   ConditionalTrait,
   type ConditionalTraitInfo,
   type IGameActor,
+  type INotifyAddedToWorld,
+  type INotifyRemovedFromWorld,
+  type INotifyCenterPositionChanged,
+  type INotifyFinishedMoving,
   type ISync,
   type ITick,
   type IOccupySpace,
@@ -99,10 +103,10 @@ export abstract class AffectsShroudInfo implements ConditionalTraitInfo {
   } = {}) {
     this.instanceName = params.instanceName
     this.requiresCondition = params.requiresCondition
-    if (params.minRange) this.minRange = params.minRange
-    if (params.range) this.range = params.range
+    if (params.minRange !== undefined) this.minRange = params.minRange
+    if (params.range !== undefined) this.range = params.range
     if (params.maxHeightDelta !== undefined) this.maxHeightDelta = params.maxHeightDelta
-    if (params.moveRecalculationThreshold) this.moveRecalculationThreshold = params.moveRecalculationThreshold
+    if (params.moveRecalculationThreshold !== undefined) this.moveRecalculationThreshold = params.moveRecalculationThreshold
     if (params.type !== undefined) this.type = params.type
   }
 }
@@ -128,7 +132,8 @@ export abstract class AffectsShroudInfo implements ConditionalTraitInfo {
  */
 export abstract class AffectsShroud<TInfo extends AffectsShroudInfo>
   extends ConditionalTrait<TInfo>
-  implements ISync, ITick
+  implements ISync, ITick, INotifyAddedToWorld, INotifyRemovedFromWorld,
+    INotifyCenterPositionChanged, INotifyFinishedMoving
 {
   /** Pre-allocated empty array — avoids per-frame allocation. */
   private static readonly NO_CELLS: readonly PPos[] = []
@@ -166,7 +171,7 @@ export abstract class AffectsShroud<TInfo extends AffectsShroudInfo>
   }
 
   // -------------------------------------------------------------------------
-  // Abstract methods (子类必须实现)
+  // Abstract methods (subclasses must implement)
   // -------------------------------------------------------------------------
 
   /** Add visibility cells for this actor to a player's shroud.
@@ -517,7 +522,9 @@ export abstract class AffectsShroud<TInfo extends AffectsShroudInfo>
    * Returns null if the world or map is not yet available (e.g., during tests).
    */
   private _getMap(self: IGameActor): GameMap | null {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // SAFETY: IGameActor.world is typed, but `world.map` is not yet in the
+    // interface. At runtime every world instance holds a GameMap via `map`.
+    // The `as any` + guard + cast pattern provides safe runtime access.
     const world = self.world as any
     if (!world || !world.map) return null
     return world.map as GameMap
@@ -528,7 +535,9 @@ export abstract class AffectsShroud<TInfo extends AffectsShroudInfo>
    * Returns null if the world is not yet available.
    */
   private _getPlayers(self: IGameActor): readonly Player[] | null {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // SAFETY: IGameActor.world is typed, but `world.players` is not yet in
+    // the interface. At runtime every world instance holds a players array.
+    // The `as any` + guard + cast pattern provides safe runtime access.
     const world = self.world as any
     if (!world || !world.players) return null
     return world.players as readonly Player[]
@@ -540,7 +549,9 @@ export abstract class AffectsShroud<TInfo extends AffectsShroudInfo>
    */
   private _getCenterPosition(self: IGameActor): WPos | null {
     if (!this._cachedOccupiesSpace) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // SAFETY: IGameActor does not declare traitOrDefault in the interface,
+      // but at runtime all actor implementations provide it as part of the
+      // trait system. The optional-chaining + null cast provides safe access.
       this._cachedOccupiesSpace = (self as any).traitOrDefault?.('IOccupySpace') as IOccupySpace | null
     }
     return this._cachedOccupiesSpace?.centerPosition ?? null
@@ -549,7 +560,9 @@ export abstract class AffectsShroud<TInfo extends AffectsShroudInfo>
   /** Get the actor's occupied cells via IOccupySpace trait. */
   private _getOccupiedCells(self: IGameActor): readonly OccupiedCell[] {
     if (!this._cachedOccupiesSpace) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // SAFETY: Same runtime assumption as _getCenterPosition — traitOrDefault
+      // exists on all actor implementations even though IGameActor doesn't
+      // declare it. Optional-chaining + null cast provide safe access.
       this._cachedOccupiesSpace = (self as any).traitOrDefault?.('IOccupySpace') as IOccupySpace | null
     }
     return this._cachedOccupiesSpace?.occupiedCells() ?? []
