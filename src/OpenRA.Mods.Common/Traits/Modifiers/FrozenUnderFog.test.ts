@@ -328,10 +328,62 @@ describe('FrozenUnderFog constructor', () => {
     expect(fuf).toBeDefined()
   })
 
+  it('handles missing map gracefully (empty footprint)', () => {
+    const world: Record<string, unknown> = { players: [] }
+    const self = createMockBuildingActor({ world, location: new CPos(3, 4) })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    expect(fuf).toBeDefined()
+  })
+
+  it('handles missing world gracefully', () => {
+    const self = createMockBuildingActor({
+      world: undefined as unknown as Record<string, unknown>,
+      location: new CPos(1, 1),
+    })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    expect(fuf).toBeDefined()
+  })
+
   it('initializes VisibilityHash to 0', () => {
     const self = createMockBuildingActor()
     const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
     expect(fuf.VisibilityHash).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tests: FrozenState — per-player frozen actor + visibility
+// ---------------------------------------------------------------------------
+
+describe('FrozenState (via FrozenUnderFog)', () => {
+  beforeEach(() => {
+    resetMockFrozenActors()
+    actorIdCounter = 0
+  })
+
+  it('FrozenActor defaults Visible to true (frozen copy shown)', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+
+    expect(mockFrozenActorInstances[0].Visible).toBe(true)
+  })
+
+  it('FrozenActor starts with NeedRenderables = startsRevealed', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+
+    // startsRevealed is always false per TODO-12.A.6.1
+    expect(mockFrozenActorInstances[0].NeedRenderables).toBe(false)
   })
 })
 
@@ -414,6 +466,27 @@ describe('FrozenUnderFog.created', () => {
 
     const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
     expect(() => fuf.created(self)).not.toThrow()
+  })
+
+  it('handles world with no players in created()', () => {
+    const world: Record<string, unknown> = { players: [], map: createMockMap() }
+    const self = createMockBuildingActor({ owner: null, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    expect(() => fuf.created(self)).not.toThrow()
+    expect(mockFrozenActorInstances.length).toBe(0)
+  })
+
+  it('frameEndTask exits early if _frozenStates was cleared', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+
+    expect(world.addFrameEndTask).toHaveBeenCalledTimes(1)
+    expect(() => (world._executeFrameEndTasks as () => void)()).not.toThrow()
   })
 })
 
