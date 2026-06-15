@@ -1565,6 +1565,58 @@ TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResour
 
 ---
 
+### Chapter 14: Activity Implementations (Phase A COMPLETE, 11/49 migrated)
+
+> **Migration Plan**: [docs/chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md)
+> **Created**: 2026-06-15 | **Updated**: 2026-06-15 | **Status**: Phase A COMPLETE (11/11 files, 82 tests, 3 E2E pages R2 APPROVED)
+> **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Movement Activities | 11 | HIGHEST-MEDIUM | **COMPLETE (11/11, 82 tests, R2 APPROVED)** |
+| Phase B | Combat Activities | 5 | HIGH-LOW | PLANNING (0/5) |
+| Phase C | Aircraft Activities | 12 | HIGH-LOW | PLANNING (0/12) |
+| Phase D | Economic Activities | 7 | HIGH-LOW | PLANNING (0/7) |
+| Phase E | Transport & Enter Activities | 6 | HIGH-LOW | PLANNING (0/6) |
+| Phase F | Utility & Miscellaneous | 8 | MEDIUM-LOW | PLANNING (0/8) |
+
+**Phase A Completed: Movement Activities (11 files, 2026-06-15)**
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| Move.ts | ~640 | ~-- | ~-- | Core path follower with nested MovePart/MoveFirstHalf/MoveSecondHalf |
+| MoveAdjacentTo.ts | ~159 | -- | -- | Wrapper: compute adjacent target cell and nearEnough distance |
+| MoveOnto.ts | ~60 | -- | -- | Simple move-into-target-cell activity |
+| MoveOntoAndTurn.ts | ~43 | -- | -- | Move onto cell then face target |
+| MoveWithinRange.ts | ~78 | -- | -- | Move within WDist range of target |
+| Drag.ts | ~73 | -- | -- | Pull/push another actor |
+| Nudge.ts | ~64 | -- | -- | Micro-movement to unblock |
+| Follow.ts | ~89 | -- | -- | Chase moving target, re-evaluate path |
+| LocalMoveIntoTarget.ts | ~89 | -- | -- | Close-range approach to target |
+| AttackMoveActivity.ts | ~108 | -- | -- | Combines Move + Hunt for attack-move orders |
+| MoveCooldownHelper.ts | ~100 | -- | -- | Shared movement cooldown tracking |
+| **Total** | **~1,500 C#** | **~--** | **82** | 11 test files, all passing |
+
+**Acceptance Test Pages**: 3 pages created and R2 APPROVED:
+- `src/__e2e__/manual/activities/move/` -- Ground movement path following
+- `src/__e2e__/manual/activities/target-lines/` -- Target line rendering in 3D world space
+- `src/__e2e__/manual/activities/attack-move/` -- Attack-move combat interruption
+
+**Review**: ch14-reviewer, Round 2 APPROVED (0 BLOCKERs remaining).
+
+**Key Architecture Decisions**:
+- **ADR-14.1**: Reuse Chapter 3 Activity Base Without Modification
+- **ADR-14.2**: Movement Logic Stays Grid-Based, Visuals Use 3D Interpolation
+- **ADR-14.3**: Target Lines as World-Space LinesMesh
+- **ADR-14.4**: Aircraft Activities Delegate Physics to Aircraft Trait
+- **ADR-14.5**: All World Mutations Deferred to frameEndActions
+- **ADR-14.6**: Phase Ordering by Dependency, Not File Size
+- **ADR-14.7**: Enter Pattern as Shared Abstract Base
+
+**Unblocks**: Phase B (Attack, Hunt, CaptureActor, Demolish, Turn), Phase D (MoveToDock), Phase E (Enter, UnloadCargo, Resupply, PickupUnit, DeliverUnit), Phase F (DeployForGrantedCondition)
+
+---
+
 | ADR | Chapter | Decision |
 |-----|---------|----------|
 | ADR-8.1 | Ch8 | Warhead effects deferred to frame-end execution |
