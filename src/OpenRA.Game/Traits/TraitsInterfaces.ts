@@ -3686,6 +3686,38 @@ export interface IRevealsShroudModifier {
 }
 
 // ---------------------------------------------------------------------------
+// IDetectCloaked — marker interface for cloak detection traits
+// OpenRA 对照: OpenRA.Mods.Common/Traits/DetectCloaked.cs (implicit via TraitDictionary)
+// ---------------------------------------------------------------------------
+
+/** Marker interface for traits that can detect cloaked actors.
+ *
+ *  OpenRA 对照: DetectCloaked (TraitDictionary keyed by 'IDetectCloaked')
+ *
+ *  This interface is used as a string key in the trait dictionary. Traits
+ *  implementing this detect cloaked units within a configurable range.
+ */
+export interface IDetectCloaked {
+  // intentionally empty — marker interface
+}
+
+// ---------------------------------------------------------------------------
+// IDetectCloakedModifier — range modifier for cloak detection
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs IDetectCloakedModifier
+// ---------------------------------------------------------------------------
+
+/** Modifies the cloak detection range of DetectCloaked.
+ *
+ *  OpenRA 对照: IDetectCloakedModifier { int GetDetectCloakedModifier(); }
+ *
+ *  Returns an integer percentage modifier (100 = normal, 200 = double range).
+ *  Multiple modifiers stack multiplicatively via applyPercentageModifiers.
+ */
+export interface IDetectCloakedModifier {
+  getDetectCloakedModifier(): number
+}
+
+// ---------------------------------------------------------------------------
 // INotifyCapture
 // OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 179
 // ---------------------------------------------------------------------------
