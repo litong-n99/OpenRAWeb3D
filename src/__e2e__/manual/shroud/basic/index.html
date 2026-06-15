@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战争迷雾系统 - 基础三态可见性渲染 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 210px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 340px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #cell-inspector {
+      position: absolute; bottom: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 10px 14px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.6;
+      pointer-events: none; user-select: none;
+    }
+    #cell-inspector .val { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .label { color: #888; }
+    #info-bar .value { color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>战争迷雾系统 - 基础三态可见性渲染</h1>
+    <div class="subtitle">ID: shroud/basic | 验证: Hidden / Explored / Visible 三态 + 边缘混合 + 动态更新</div>
+  </div>
+  <div id="controls">
+    <label>画笔模式:</label>
+    <button id="btn-reveal" class="active" title="拖拽显示区域 (Visible)">显示 (=2)</button>
+    <button id="btn-explore" title="拖拽探索区域 (Explored/Fog)">探索 (=1)</button>
+    <button id="btn-hide" title="拖拽隐藏区域 (Hidden)">隐藏 (=0)</button>
+    <label style="margin-left:12px">画笔半径:</label>
+    <input id="range-brush" type="range" min="1" max="6" value="2" style="width:80px">
+    <span id="val-brush" style="font-size:13px;color:#a0a0b0">2</span>
+    <label style="margin-left:12px">预设:</label>
+    <button id="btn-all-visible">全部可见</button>
+    <button id="btn-all-explored">全部探索</button>
+    <button id="btn-all-hidden">全部隐藏</button>
+    <button id="btn-circular">圆形揭示</button>
+    <span class="hint">左键拖拽应用画笔 | 键 1/2/3 切换模式 | R 重置</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>三态可见:</b> Hidden=<span class="metric">rgba(0,0,0,1.0)</span> 全黑, Explored=<span class="metric">rgba(15,15,15,0.55)</span> 灰暗, Visible=<span class="metric">alpha=0</span> 透明见地形</li>
+        <li><b>边缘混合:</b> 状态边界处绘制 <span class="metric">4px 渐变条带</span>, 相邻状态不同时可见, 同状态无边线</li>
+        <li><b>动态更新:</b> 画笔拖拽时 <span class="metric">&lt;50ms</span> 内更新覆盖纹理, 无闪烁或残影</li>
+        <li><b>地形透出:</b> Visible 区域清晰可见下方 <span class="metric">绿色棋盘格地形</span> (8x8 世界单位)</li>
+        <li><b>统计数据:</b> 信息栏显示三种状态的 <span class="metric">精确单元格计数</span>, 总和 = 256</li>
+      </ul>
+    </div>
+    <div id="cell-inspector">
+      悬停单元格:<br>
+      坐标: <span class="val" id="insp-coord">-</span><br>
+      状态: <span class="val" id="insp-state">-</span><br>
+      Visible: <span class="val" id="insp-visible">-</span>
+      Explored: <span class="val" id="insp-explored">-</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span><span class="label">UA:</span> <span class="value" id="info-ua">-</span></span>
+    <span><span class="label">视口:</span> <span class="value" id="info-viewport">-</span></span>
+    <span><span class="label">引擎:</span> <span class="value" id="info-engine">-</span></span>
+    <span><span class="label">Hidden:</span> <span class="value" id="info-hidden">-</span></span>
+    <span><span class="label">Explored:</span> <span class="value" id="info-explored">-</span></span>
+    <span><span class="label">Visible:</span> <span class="value" id="info-visible">-</span></span>
+    <span><span class="label">FPS:</span> <span class="value" id="info-fps">-</span></span>
+    <span><span class="label">时间:</span> <span class="value" id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
