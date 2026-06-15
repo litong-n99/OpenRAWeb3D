@@ -444,6 +444,41 @@ export interface DockClientManagerLike {
     self: GameActor,
     client: DockClientManagerLike,
   ): void
+
+  /** 检查是否可以在指定主机对接。
+   *
+   *  @param hostActor — 主机 actor
+   *  @param host — 主机 trait
+   *  @param force — 是否强制
+   *  @param ignoreOccupancy — 是否忽略占用
+   *  @returns 是否可以对接
+   */
+  canDockAt?(hostActor: GameActor, host: IDockHost, force: boolean, ignoreOccupancy: boolean): boolean
+
+  /** 对接开始回调。
+   *
+   *  @param self — 客户端 actor
+   *  @param hostActor — 主机 actor
+   *  @param host — 主机 trait
+   */
+  onDockStarted?(self: GameActor, hostActor: GameActor, host: IDockHost): void
+
+  /** 对接 tick 回调 — 返回 true 表示对接完成。
+   *
+   *  @param self — 客户端 actor
+   *  @param hostActor — 主机 actor
+   *  @param host — 主机 trait
+   *  @returns 是否完成对接
+   */
+  onDockTick?(self: GameActor, hostActor: GameActor, host: IDockHost): boolean
+
+  /** 对接完成回调。
+   *
+   *  @param self — 客户端 actor
+   *  @param hostActor — 主机 actor
+   *  @param host — 主机 trait
+   */
+  onDockCompleted?(self: GameActor, hostActor: GameActor, host: IDockHost): void
 }
 
 // ---------------------------------------------------------------------------
