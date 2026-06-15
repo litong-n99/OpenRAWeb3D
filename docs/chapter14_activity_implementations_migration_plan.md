@@ -801,11 +801,13 @@ Rendering-heavy systems require manual visual acceptance test pages:
 - **Rationale**: Combat activities depend on Movement. Aircraft activities depend on Aircraft trait but are largely independent of ground movement. Economic, transport, and utility activities depend on earlier phases and Chapters 10-11.
 - **Mitigation**: Within each phase, parallelize by dependency subgraph (e.g., `Wait`, `Turn`, `RemoveSelf` can be done anytime after base).
 
-### ADR-14.7: Enter Pattern as Shared Abstract Base
+### ADR-14.7: Enter Pattern as Shared Abstract Base (Split: Phase B Minimal + Phase E Full)
 
-- **Decision**: The `Enter` abstract class (Approaching → Entering → Exiting → Finished) is migrated as a shared TypeScript abstract base used by `CaptureActor`, `Demolish`, `DonateCash`, `DonateExperience`, `RepairBridge`, `InstantRepair`, and `RideTransport`.
-- **Rationale**: Ensures consistent enter/cancel semantics across all actor-entry activities and reduces duplicated state machine code.
-- **Mitigation**: Implement `Enter.ts` early in Phase E; derive all enter-based activities from it.
+- **Decision**: The `Enter` abstract class (Approaching → Entering → Exiting → Finished) is migrated in two stages:
+  1. **Phase B**: A minimal abstract base with the 4-state enum, `Tick` orchestration (`MoveToTarget`/`MoveIntoTarget`/`ReturnToCell`), and virtual hooks (`TickInner`, `TryStartEnter`, `OnEnterComplete`). This unblocks `CaptureActor` and `Demolish` without waiting for Phase E.
+  2. **Phase E**: Full extensions adding Cargo/Passenger transport logic, capacity checks, and passenger state management. This supports `RideTransport`, `UnloadCargo`, `PickupUnit`, and `DeliverUnit`.
+- **Rationale**: `CaptureActor` and `Demolish` only need the basic enter/approach/exit state machine, not transport-specific logic. Splitting avoids blocking Phase B on Phase E dependencies (Ch11 Cargo/Passenger traits).
+- **Mitigation**: Implement minimal `Enter.ts` in Phase B; extend in Phase E. All derived activities (both phases) share the same base state machine semantics.
 
 ---
 
@@ -817,11 +819,11 @@ Rendering-heavy systems require manual visual acceptance test pages:
 | 2 | A (wrappers) | 4 | `MoveAdjacentTo`, `MoveOnto`, `MoveOntoAndTurn`, `MoveWithinRange` | `Move` |
 | 2-3 | A (advanced) | 3 | `Follow`, `LocalMoveIntoTarget`, `AttackMoveActivity` | `Move`, Ch8 combat |
 | 3 | A (support) | 2 | `MoveCooldownHelper`, `MoveToDock` | `Move`, Ch11 docking |
-| 3-4 | B | 5 | `Attack`, `Hunt`, `CaptureActor`, `Demolish`, `Turn` | Phase A + Ch8 |
+| 3-4 | B | 6 | `Enter` (minimal base), `Attack`, `Hunt`, `CaptureActor`, `Demolish`, `Turn` | Phase A + Ch8 |
 | 4-5 | C (core) | 3 | `Fly`, `TakeOff`, `Land` | Ch9 Aircraft |
 | 5 | C (modes) | 9 | `FlyIdle`, `FlyForward`, `FlyOffMap`, `ReturnToBase`, `FallToEarth`, `DeliverBulkOrder`, `FlyAttack`, `FlyFollow`, `Parachute` | `Fly` |
 | 6 | D | 7 | `HarvestResource`, `FindAndDeliverResources`, `MoveToDock`, `GenericDockSequence`, `Resupply`, `Sell`, `LayMines` | Ch10 + Ch11 |
-| 6-7 | E | 6 | `Enter`, `RideTransport`, `UnloadCargo`, `PickupUnit`, `DeliverUnit`, `SimpleTeleport` | Ch11 Cargo |
+| 6-7 | E | 5 | `RideTransport`, `UnloadCargo`, `PickupUnit`, `DeliverUnit`, `SimpleTeleport` | Ch11 Cargo + Enter base (Phase B) |
 | 7-8 | F | 8 | `Wait`, `Transform`, `RemoveSelf`, `DeployForGrantedCondition`, `DonateCash`, `DonateExperience`, `RepairBridge`, `InstantRepair` | Ch3 / Ch11 |
 
 **Total estimated effort**: ~7-8 weeks (single developer) or ~4 weeks (3 developers with parallel tracks).
