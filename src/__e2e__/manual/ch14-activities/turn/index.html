@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activities - Turn 旋转活动 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 320px; min-width: 320px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0 0 8px; font-size: 16px; color: #8af; }
+    #left-panel h3 { margin: 12px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel button, #left-panel select {
+      padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      width: 100%; text-align: left;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #4a9; }
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; text-align: center; }
+
+    .expected-box {
+      background: rgba(13,17,23,0.6); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 12px; line-height: 1.6;
+    }
+    .expected-box h4 { margin: 0 0 6px; color: #8f8; font-size: 13px; }
+    .expected-box ul { margin: 4px 0; padding-left: 18px; }
+    .expected-box li { margin: 3px 0; }
+    .expected-box .metric { color: #aad; font-family: monospace; }
+
+    .stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+    .stat-row .label { color: #889; }
+    .stat-row .value { color: #eee; font-family: 'Consolas', monospace; font-weight: 600; }
+    .stat-row .value.turning { color: #ffcc00; }
+    .stat-row .value.complete { color: #44cc44; }
+    .stat-row .value.disabled { color: #e94560; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+    #viewport { flex: 1; position: relative; background: #0d1117; }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 600px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #333; }
+
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #click-hint {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 16px; font-size: 12px; color: #a0b0d0;
+      pointer-events: none;
+    }
+
+    #angle-display {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 13px;
+      font-family: 'Consolas', monospace;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    #angle-display .angle-row { display: flex; justify-content: space-between; gap: 16px; }
+    #angle-display .angle-label { color: #889; }
+    #angle-display .angle-value { color: #eee; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. Turn 旋转活动测试</h2>
+      <div class="stat-row"><span class="label">旋转状态:</span><span class="value" id="stat-turn-state">空闲</span></div>
+      <div class="stat-row"><span class="label">当前朝向 (WAngle):</span><span class="value" id="stat-current-facing">0</span></div>
+      <div class="stat-row"><span class="label">目标朝向 (WAngle):</span><span class="value" id="stat-desired-facing">-</span></div>
+      <div class="stat-row"><span class="label">剩余角度差:</span><span class="value" id="stat-angle-diff">-</span></div>
+      <div class="stat-row"><span class="label">转向速度:</span><span class="value" id="stat-turn-speed">8</span></div>
+      <div class="stat-row"><span class="label">完成帧数:</span><span class="value" id="stat-completion-frames">-</span></div>
+      <div class="stat-row"><span class="label">总旋转次数:</span><span class="value" id="stat-turn-count">0</span></div>
+
+      <h3>场景控制</h3>
+      <div class="btn-row">
+        <button id="btn-pause">暂停</button>
+        <button id="btn-resume" class="active">运行</button>
+      </div>
+      <div class="btn-row">
+        <button id="btn-speed-1x" class="active">1x</button>
+        <button id="btn-speed-2x">2x</button>
+        <button id="btn-speed-4x">4x</button>
+      </div>
+      <button id="btn-reset">重置</button>
+
+      <h3>预设转向目标</h3>
+      <button id="btn-turn-north">转向北 (WAngle 0)</button>
+      <button id="btn-turn-east">转向东 (WAngle 768)</button>
+      <button id="btn-turn-south">转向南 (WAngle 512)</button>
+      <button id="btn-turn-west">转向西 (WAngle 256)</button>
+      <button id="btn-turn-northeast">转向东北 (WAngle 896)</button>
+      <button id="btn-turn-southwest">转向西南 (WAngle 384)</button>
+      <button id="btn-turn-opposite">转向正对面 (180°)</button>
+      <button id="btn-turn-small">小角度调整 (45°)</button>
+
+      <h3>转向速度</h3>
+      <div class="btn-row">
+        <button id="btn-turn-slow">慢 (4/帧)</button>
+        <button id="btn-turn-normal" class="active">正常 (8/帧)</button>
+        <button id="btn-turn-fast">快 (16/帧)</button>
+        <button id="btn-turn-instant">瞬间 (256/帧)</button>
+      </div>
+
+      <h3>特殊状态</h3>
+      <button id="btn-toggle-disabled">切换 Mobile 禁用</button>
+      <button id="btn-toggle-paused">切换 Mobile 暂停</button>
+
+      <h3>B. 期望结果</h3>
+      <div class="expected-box">
+        <h4>1. 最短弧转向</h4>
+        <ul>
+          <li>单位始终沿<span class="metric">最短弧</span>转向目标方向</li>
+          <li>WAngle 差值 > 512 时走反方向（如从 0 到 768 应顺时针而非逆时针）</li>
+          <li>每帧转向量 ≤ turnSpeed，<span class="metric">无跳变</span></li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>2. WAngle 坐标系</h4>
+        <ul>
+          <li>0 = 北 (-Z)，256 = 西 (-X)，512 = 南 (+Z)，768 = 东 (+X)</li>
+          <li>白色箭头指示器方向与 WAngle 数值严格对应</li>
+          <li>状态栏显示当前 WAngle 值和对应角度（度）</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>3. 完成判定</h4>
+        <ul>
+          <li>当前 facing == desiredFacing 时活动完成，状态显示"完成"</li>
+          <li>Mobile 禁用时转向<span class="metric">暂停</span>（状态显示"禁用"）</li>
+          <li>取消时立即完成（isCanceling = true）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="click-hint">左键点击地面设置转向目标 | 右键点击设置单位位置</div>
+        <div id="angle-display">
+          <div class="angle-row"><span class="angle-label">北 (0°)</span><span class="angle-value">WAngle 0</span></div>
+          <div class="angle-row"><span class="angle-label">西 (90°)</span><span class="angle-value">WAngle 256</span></div>
+          <div class="angle-row"><span class="angle-label">南 (180°)</span><span class="angle-value">WAngle 512</span></div>
+          <div class="angle-row"><span class="angle-label">东 (270°)</span><span class="angle-value">WAngle 768</span></div>
+          <div class="angle-row"><span class="angle-label">一圈</span><span class="angle-value">1024 = 360°</span></div>
+        </div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#3399f2"></div>单位 (蓝色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#fff"></div>朝向箭头 (白色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffcc00"></div>目标方向指示</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#e94560"></div>最短弧路径</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#44cc44"></div>完成标记</div>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span>网格: <span id="info-grid">20x20</span></span>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
