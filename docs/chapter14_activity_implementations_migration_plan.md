@@ -111,10 +111,11 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | -- | `OpenRA.Game/Activities/CallFunc.cs` | `src/OpenRA.Game/Activities/CallFunc.ts` | `CallFunc` | 33 | LOW | A ✅ ALREADY MIGRATED |
 
 | **Phase B: Combat Activities** | | | | | |
+| 11 | `OpenRA.Mods.Common/Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | `Enter` (abstract, minimal base) | 163 | HIGH | B |
 | 12 | `OpenRA.Mods.Common/Activities/Attack.cs` | `src/OpenRA.Mods.Common/Activities/Attack.ts` | `Attack` | 283 | HIGH | B |
 | 13 | `OpenRA.Mods.Common/Activities/Hunt.cs` | `src/OpenRA.Mods.Common/Activities/Hunt.ts` | `Hunt` | 49 | LOW | B |
-| 14 | `OpenRA.Mods.Common/Activities/CaptureActor.cs` | `src/OpenRA.Mods.Common/Activities/CaptureActor.ts` | `CaptureActor` | 158 | MEDIUM | B |
-| 15 | `OpenRA.Mods.Common/Activities/Demolish.cs` | `src/OpenRA.Mods.Common/Activities/Demolish.ts` | `Demolish` | 89 | LOW | B |
+| 14 | `OpenRA.Mods.Common/Activities/CaptureActor.cs` | `src/OpenRA.Mods.Common/Activities/CaptureActor.ts` | `CaptureActor` (extends minimal `Enter` base) | 158 | MEDIUM | B |
+| 15 | `OpenRA.Mods.Common/Activities/Demolish.cs` | `src/OpenRA.Mods.Common/Activities/Demolish.ts` | `Demolish` (extends minimal `Enter` base) | 89 | LOW | B |
 | 16 | `OpenRA.Mods.Common/Activities/Turn.cs` | `src/OpenRA.Mods.Common/Activities/Turn.ts` | `Turn` | 47 | LOW | B |
 
 | **Phase C: Aircraft Activities** | | | | | |
@@ -141,7 +142,7 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | 35 | `OpenRA.Mods.Common/Activities/LayMines.cs` | `src/OpenRA.Mods.Common/Activities/LayMines.ts` | `LayMines` | 237 | MEDIUM | D |
 
 | **Phase E: Transport & Enter Activities** | | | | | |
-| 36 | `OpenRA.Mods.Common/Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | `Enter` (abstract) | 163 | HIGH | E |
+| 36 | `OpenRA.Mods.Common/Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | `Enter` (abstract, full transport extensions) | 163 | HIGH | E |
 | 37 | `OpenRA.Mods.Common/Activities/RideTransport.cs` | `src/OpenRA.Mods.Common/Activities/RideTransport.ts` | `RideTransport` | 93 | LOW | E |
 | 38 | `OpenRA.Mods.Common/Activities/UnloadCargo.cs` | `src/OpenRA.Mods.Common/Activities/UnloadCargo.ts` | `UnloadCargo` | 153 | MEDIUM | E |
 | 39 | `OpenRA.Mods.Common/Activities/PickupUnit.cs` | `src/OpenRA.Mods.Common/Activities/PickupUnit.ts` | `PickupUnit` (+ nested `AttachUnit`) | 181 | MEDIUM | E |
@@ -188,7 +189,7 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | Phase | Files | C# Lines | Est. TS Lines | Est. Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---:|
 | A: Movement | 11 | ~1,500 | ~3,400 | ~180 | **COMPLETE (11/11, 82 tests, 3 E2E pages R2 APPROVED)** |
-| B: Combat | 5 | ~626 | ~1,500 | ~90 | PLANNING |
+| B: Combat | 6 | ~789 | ~1,700 | ~100 | PLANNING |
 | C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | PLANNING |
 | D: Economic | 7 | ~1,375 | ~3,300 | ~120 | PLANNING |
 | E: Transport & Enter | 6 | ~732 | ~1,800 | ~90 | PLANNING |
@@ -273,18 +274,26 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 ### 3.2 Phase B: Combat Activities
 
-**Status**: PLANNING (0/5 migrated)
-**Complexity**: HIGH (`Attack.cs` 283 lines)
+**Status**: PLANNING (0/6 migrated)
+**Complexity**: HIGH (`Attack.cs` 283 lines, `Enter.cs` 163 lines abstract base)
 **Blocked by**: Phase A (`Move`, `Turn`), Chapter 8 (combat traits), Chapter 9 (`Mobile`/`Aircraft`)
 **Blocks**: Phase A (`AttackMoveActivity`), Phase F (`DeployForGrantedCondition` indirectly)
 
-**Description**: Combat activities orchestrate the attack loop: move into range, face target, wait for armament cooldown, fire, repeat. `CaptureActor` and `Demolish` use the `Enter` pattern from Phase E.
+**Description**: Combat activities orchestrate the attack loop: move into range, face target, wait for armament cooldown, fire, repeat. `CaptureActor` and `Demolish` extend the minimal `Enter` base implemented in TODO-14.B.0. The full `Enter` with Cargo/Passenger transport logic remains in Phase E.
 
 **Paradigm Shifts**:
 - C# `Armament` / `AttackBase` integration -> reuse Ch8 traits
 - Range checks on XZ plane -> `CoordinateTransformer.distanceBetween()` or WPos horizontal distance
 - Target invalidation -> `Target.Recalculate()` equivalent
 - `Turn` is a combat support activity used by `Attack` and movement wrappers
+- Minimal `Enter` base: 4-state enum (`Approaching`/`Entering`/`Exiting`/`Finished`), `Tick` orchestrates `IMove.MoveToTarget`/`MoveIntoTarget`/`ReturnToCell`, virtual hooks `TickInner`/`TryStartEnter`/`OnEnterComplete`
+
+#### TODO-14.B.0 `src/OpenRA.Mods.Common/Activities/Enter.ts` (minimal base)
+- [ ] Port minimal abstract `Enter` class with 4-state state machine
+- [ ] Implement `Tick` orchestration: `Approaching` -> `MoveToTarget`/`MoveIntoTarget`, `Entering` -> `TryStartEnter`/`TickInner`, `Exiting` -> `ReturnToCell`, `Finished` -> complete
+- [ ] Virtual hooks: `TickInner`, `TryStartEnter`, `OnEnterComplete`
+- [ ] Unit tests: state transitions, cancellation return to Approaching
+- [ ] **Note**: intentionally minimal -- no Cargo/Passenger transport logic (Phase E)
 
 #### TODO-14.B.1 `src/OpenRA.Mods.Common/Activities/Attack.ts`
 - [ ] Port `Attack` activity (move into range, face, fire, repeat)
@@ -296,11 +305,11 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 - [ ] Unit tests: target acquisition, no-target completion
 
 #### TODO-14.B.3 `src/OpenRA.Mods.Common/Activities/CaptureActor.ts`
-- [ ] Port `CaptureActor` (engineer capture using `Enter` pattern)
+- [ ] Port `CaptureActor` (engineer capture, extends minimal `Enter` base from TODO-14.B.0)
 - [ ] Unit tests: capture progress, ownership transfer
 
 #### TODO-14.B.4 `src/OpenRA.Mods.Common/Activities/Demolish.ts`
-- [ ] Port `Demolish` (place explosives using `Enter` pattern)
+- [ ] Port `Demolish` (place explosives, extends minimal `Enter` base from TODO-14.B.0)
 - [ ] Unit tests: timer, damage application
 
 #### TODO-14.B.5 `src/OpenRA.Mods.Common/Activities/Turn.ts`
@@ -425,20 +434,22 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 ### 3.5 Phase E: Transport & Enter Activities
 
 **Status**: PLANNING (0/6 migrated)
-**Complexity**: HIGH (`Enter.cs` 163 lines abstract base)
-**Blocked by**: Phase A (`Move`), Phase C (`Land`, `TakeOff`, `Fly`), Chapter 11 (`Cargo`, `Passenger`, `Carryall`, `Carryable`)
-**Blocks**: Phase B (`CaptureActor`, `Demolish`), Phase D (`Resupply`), Phase F (`DonateCash`, `DonateExperience`, `RepairBridge`, `InstantRepair`)
+**Complexity**: HIGH (`Enter.cs` 163 lines abstract base -- minimal base in Phase B, full transport extensions here)
+**Blocked by**: Phase A (`Move`), Phase B (minimal `Enter` base), Phase C (`Land`, `TakeOff`, `Fly`), Chapter 11 (`Cargo`, `Passenger`, `Carryall`, `Carryable`)
+**Blocks**: Phase B (`CaptureActor`, `Demolish` -- now unblocked by minimal base in Phase B), Phase D (`Resupply`), Phase F (`DonateCash`, `DonateExperience`, `RepairBridge`, `InstantRepair`)
 
-**Description**: The `Enter` abstract class defines a 4-state state machine (Approaching/Entering/Exiting/Finished) used by capture, demolish, donation, repair, and transport activities. Cargo transport activities manage passenger loading/unloading.
+**Description**: Phase E extends the minimal `Enter` base from Phase B with full Cargo/Passenger transport logic. `RideTransport`, `UnloadCargo`, `PickupUnit`, and `DeliverUnit` manage passenger loading/unloading and carryall transport. `SimpleTeleport` handles instant actor relocation.
 
 **Paradigm Shifts**:
-- C# abstract `Enter` class -> TypeScript abstract class with string-union state
+- C# abstract `Enter` class -> TypeScript abstract class with string-union state (base already in Phase B)
 - `Cargo.Load`/`Unload` integration -> reuse Ch11 `Cargo` trait
 - `Carryall` attach/release -> reuse Ch11 carryable transport traits
+- Full `Enter` extensions: transport-specific hooks, cargo capacity checks, passenger state management
 
-#### TODO-14.E.1 `src/OpenRA.Mods.Common/Activities/Enter.ts`
-- [ ] Port abstract `Enter` class with 4-state state machine
-- [ ] Unit tests: state transitions, cancellation return to Approaching
+#### TODO-14.E.1 `src/OpenRA.Mods.Common/Activities/Enter.ts` (full extensions)
+- [ ] Extend minimal `Enter` base from Phase B with transport-specific logic
+- [ ] Cargo/Passenger integration: capacity checks, load/unload hooks
+- [ ] Unit tests: transport state transitions, cargo capacity, cancellation
 
 #### TODO-14.E.2 `src/OpenRA.Mods.Common/Activities/RideTransport.ts`
 - [ ] Port `RideTransport`
