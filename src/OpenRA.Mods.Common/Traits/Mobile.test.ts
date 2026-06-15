@@ -552,21 +552,27 @@ describe('Mobile isBlocking and isLeaving', () => {
 // ---------------------------------------------------------------------------
 
 describe('Mobile MoveResult', () => {
-  it('defaults to Moving', () => {
+  it('defaults to InProgress', () => {
     const { mobile } = setup()
-    expect(mobile.moveResult).toBe(MoveResult.Moving)
+    expect(mobile.moveResult).toBe(MoveResult.InProgress)
   })
 
-  it('can be set to Consumed', () => {
+  it('can be set to CompleteCanceled', () => {
     const { mobile } = setup()
-    mobile.moveResult = MoveResult.Consumed
-    expect(mobile.moveResult).toBe(MoveResult.Consumed)
+    mobile.moveResult = MoveResult.CompleteCanceled
+    expect(mobile.moveResult).toBe(MoveResult.CompleteCanceled)
   })
 
-  it('can be set to Blocked', () => {
+  it('can be set to CompleteDestinationReached', () => {
     const { mobile } = setup()
-    mobile.moveResult = MoveResult.Blocked
-    expect(mobile.moveResult).toBe(MoveResult.Blocked)
+    mobile.moveResult = MoveResult.CompleteDestinationReached
+    expect(mobile.moveResult).toBe(MoveResult.CompleteDestinationReached)
+  })
+
+  it('can be set to CompleteDestinationBlocked', () => {
+    const { mobile } = setup()
+    mobile.moveResult = MoveResult.CompleteDestinationBlocked
+    expect(mobile.moveResult).toBe(MoveResult.CompleteDestinationBlocked)
   })
 })
 
@@ -1073,8 +1079,9 @@ describe('MovementType enum', () => {
 
 describe('MoveResult enum', () => {
   it('has correct values', () => {
-    expect(MoveResult.Moving).toBe(0)
-    expect(MoveResult.Consumed).toBe(1)
-    expect(MoveResult.Blocked).toBe(2)
+    expect(MoveResult.InProgress).toBe(0)
+    expect(MoveResult.CompleteCanceled).toBe(1)
+    expect(MoveResult.CompleteDestinationReached).toBe(2)
+    expect(MoveResult.CompleteDestinationBlocked).toBe(3)
   })
 })

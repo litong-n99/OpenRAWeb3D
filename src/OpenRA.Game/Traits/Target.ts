@@ -380,6 +380,44 @@ export class Target {
   }
 
   // -----------------------------------------------------------------------
+  // Recalculate (visibility tracking)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Update (Frozen)Actor targets to account for visibility changes or actor replacement.
+   *
+   * OpenRA 对照: TargetExtensions.Recalculate(Target, Player, out bool)
+   *
+   * STUB: Full implementation requires FrozenActorLayer and player visibility.
+   * For now, handles basic actor validation (dead/invalid actors become Invalid).
+   *
+   * @param _viewer — the player viewing this target
+   * @returns [updatedTarget, targetIsHiddenActor] — updated target and whether the actor is hidden
+   */
+  recalculate(_viewer: unknown): [Target, boolean] {
+    // If actor target became invalid, mark as hidden
+    if (this.data.discriminator === TargetType.Actor) {
+      const actor = this.data.actor
+      if (!actor || actor.isDead || !actor.isInWorld) {
+        return [Target.Invalid, true]
+      }
+      if (actor.generation !== this.data.generation) {
+        return [Target.Invalid, true]
+      }
+    }
+
+    // FrozenActor targets: if invalid, return Invalid
+    if (this.data.discriminator === TargetType.FrozenActor) {
+      const fa = this.data.frozenActor
+      if (!fa || !fa.isValid || fa.hidden) {
+        return [Target.Invalid, false]
+      }
+    }
+
+    return [this, false]
+  }
+
+  // -----------------------------------------------------------------------
   // Conversion
   // -----------------------------------------------------------------------
 

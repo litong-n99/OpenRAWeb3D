@@ -83,9 +83,10 @@ import { PathGraph } from '../Pathfinder/IPathGraph.js'
  * OpenRA 对照: MoveResult enum
  */
 export const MoveResult = {
-  Moving: 0,
-  Consumed: 1,
-  Blocked: 2,
+  InProgress: 0,
+  CompleteCanceled: 1,
+  CompleteDestinationReached: 2,
+  CompleteDestinationBlocked: 3,
 } as const
 
 export type MoveResult = (typeof MoveResult)[keyof typeof MoveResult]
@@ -492,7 +493,7 @@ export class Mobile
   private _notifyFinishedMoving: INotifyFinishedMoving[] = []
   private _requireForceMove: boolean = false
   private _isBlocking: boolean = false
-  private _moveResult: MoveResult = MoveResult.Moving
+  private _moveResult: MoveResult = MoveResult.InProgress
   private _turnToMove: boolean = false
   private _locomotor: ILocomotor | null = null
 
