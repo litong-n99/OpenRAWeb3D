@@ -276,6 +276,11 @@ export class CloakInfo implements ConditionalTraitInfo {
   /** Offset for cloak/uncloak effect.
    *
    * OpenRA 对照: CloakInfo.EffectOffset (default WVec.Zero)
+   *
+   * NOTE: C# default is WVec.Zero, not null. The null default here is a
+   * simplification since TODO-12.DEFERRED.15 (SpriteEffect generation) is
+   * deferred. When implementing TODO-12.DEFERRED.15, change the default to
+   * `WVec.Zero` and update the constructor accordingly.
    */
   readonly effectOffset: WVec | null = null
 
@@ -285,7 +290,13 @@ export class CloakInfo implements ConditionalTraitInfo {
    */
   readonly effectTracksActor: boolean = true
 
-  /** Whether this trait is enabled by default. */
+  /** Whether this trait is enabled by default on the actor.
+   *
+   * This is a TypeScript framework field (not present in the C# CloakInfo).
+   * In C#, the EnabledByDefault behavior is handled by ConditionalTraitInfo
+   * base class. We surface it explicitly here so that the TS trait framework
+   * can determine the initial enabled/disabled state without reflection.
+   */
   readonly enabledByDefault: boolean = true
 
   constructor(params: {
@@ -376,6 +387,14 @@ export class Cloak
   extends ConditionalTrait<CloakInfo>
   implements ITick, INotifyAttack, INotifyDamage, ISync
 {
+  // NOTE: IRenderModifier and IVisibilityModifier are intentionally NOT
+  // listed in the implements clause. The modifyRender() and
+  // modifyScreenBounds() methods are present as partial stubs
+  // (TODO-12.A.4.8) and isVisible() relies on TODO-12.DEFERRED.16 for
+  // full DetectCloaked integration. Declaring these interfaces now would
+  // create a misleading contract. They should be added once the stubs are
+  // fully implemented.
+
   // ----- Pre-computed color values for CloakStyle.Color -----
 
   /** Linear-space RGB for color tinting.
@@ -587,6 +606,12 @@ export class Cloak
 
       if ((this.info.uncloakOn & UncloakType.Move) !== 0) {
         const currentLocation = (self as unknown as { location?: unknown }).location
+        // NOTE: Uses reference comparison (!==). If the actor's location
+        // property returns a new object each access (not a stable reference),
+        // this will trigger uncloak every tick. The assumption is that
+        // GameActor.location returns a stable reference that only changes
+        // when the actor actually moves. If this assumption is violated,
+        // switch to value comparison (compare U and V fields).
         if (this.lastPos === null || this.lastPos !== currentLocation) {
           this.uncloak()
           this.lastPos = currentLocation
