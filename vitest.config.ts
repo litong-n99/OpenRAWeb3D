@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'happy-dom',
-    pool: 'vmThreads', // Required for Node 24+ compatibility
+    pool: 'threads', // vmThreads causes cross-test @babylonjs/core mock contamination on Node 24
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
