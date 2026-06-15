@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 9 COMPLETE (Movement & Physics -- ALL PHASES A-D DONE), Chapter 10 COMPLETE (Resource & Economy -- ALL PHASES A-B + B-Optional: 25/25 files, 972 tests), Chapter 11 COMPLETE (Production & Building -- ALL PHASES A-B: 37/37 files, ~771 tests)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE, 25/25 original plan + 13 additional, ~771 tests). Chapters 12-21: 0/~247 (0%, PLANNING)
+**Phase**: Chapter 12 COMPLETE (Shroud & Fog of War -- Phase A: 16/16 files). Chapter 9 COMPLETE (Movement & Physics -- ALL PHASES A-D DONE), Chapter 10 COMPLETE (Resource & Economy -- ALL PHASES A-B + B-Optional: 25/25 files, 972 tests), Chapter 11 COMPLETE (Production & Building -- ALL PHASES A-B: 37/37 files, ~771 tests)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE, 25/25 original plan + 13 additional, ~771 tests). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapters 13-21: 0/~232 (0%, PLANNING)
 **Planning Doc**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 **Chapter 9 Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)
 **Chapter 10 Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
@@ -55,12 +55,12 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Visual Effects (2 files) | COMPLETE (SpriteEffect + FloatingSpriteEmitter, 92 tests, 2 rounds) |
 | Projectiles (1 file) | COMPLETE (Bullet 1,463 lines, 56 tests, 2 review rounds) |
 | Sprite Traits (2+3 files) | COMPLETE (AnimationWithOffset 163, RenderSprites ~500, WithIdleOverlay ~413 lines; 120 tests, 2 review rounds) |
-| **Chapters 8-21 (14 chapters)** | **IN PROGRESS (Ch8 COMPLETE: 57/57, 100%. Ch9 COMPLETE: 30/32, 94%. Ch10 COMPLETE: 25/25, 100%. Ch11 COMPLETE: 37/37, 100%. Chapters 12-21: 0/~247, 0%.)** |
+| **Chapters 8-21 (14 chapters)** | **IN PROGRESS (Ch8 COMPLETE: 57/57, 100%. Ch9 COMPLETE: 30/32, 94%. Ch10 COMPLETE: 25/25, 100%. Ch11 COMPLETE: 37/37, 100%. Ch12 COMPLETE: 16/16, 100%. Chapters 13-21: 0/~232, 0%.)** |
 | Weapons & Combat (Ch8) | COMPLETE (57 files, 5 phases A-E, ~8,264 C# lines -- Phase A: 15/15, 143 tests, `d9f6c34`/`9b25839`; Phase B: 7/7, 186 tests, `0f02230`/`28b4602`; Phase C: 2+1/2+1, 115 tests, `ab3b3d4`; Phase D: 17/17, 158 tests, `bbbe871`/`5cf9b93`; Phase E: 15/15, 156 tests, `accbced`/`b04e8e1`) |
 | Movement & Physics (Ch9) | COMPLETE (30 files, 4 phases A-D, ~11,723 TS lines, 1,084 tests, ~5,355 C# source. Plan: [chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)) |
 | Resource & Economy (Ch10) | COMPLETE (Phase A: 8 core + interface, 344 tests. Phase B: 11 files, 425 tests. Phase B-Optional: 8 files, 203 tests. Total: 25 files, 972 tests. Plan: [chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)) |
 | Production & Building (Ch11) | COMPLETE (37 files, ALL PHASES A-B. Phase A: 14 files, ~4,216 TS lines, ~296 tests. Phase B: 23 files, ~5,355 TS lines, ~475 tests. Total: ~9,571 TS lines, ~771 tests. Plan: [chapter11_production_building_migration_plan.md](docs/chapter11_production_building_migration_plan.md)) |
-| Shroud & Fog of War (Ch12) | Planned (~15 files, 1 phase A) |
+| Shroud & Fog of War (Ch12) | COMPLETE (16/16, 100%, Phase A) |
 | Support Powers (Ch13) | Planned (~15 files, 1 phase A) |
 | Activity Implementations (Ch14) | Planned (~26 files, 4 phases A-D) |
 | Order Generators (Ch15) | Planned (~11 files, 1 phase A) |
@@ -502,7 +502,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) | Chapter 9 unit movement & physics migration plan with TODO checklist (32 files, 4 phases A-D, COMPLETE: 30/30 active, 2 deferred, 1,084 tests) |
 | [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md) | Chapter 10 resource & economy system migration plan with TODO checklist (25 files, Phases A-B + B-Optional COMPLETE, 972 tests) |
 | [docs/chapter11_production_building_migration_plan.md](docs/chapter11_production_building_migration_plan.md) | Chapter 11 production & building system migration plan with TODO checklist (37 files, 2 phases A-B, ALL PHASES COMPLETE, ~771 tests) |
-| [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md) | Chapter 12 shroud & fog of war migration plan with TODO checklist (15 files, Phase A, PLANNED) |
+| [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md) | Chapter 12 shroud & fog of war migration plan with TODO checklist (16 files, Phase A, 100% COMPLETE) |
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-21 remaining systems migration plan (~365 files, 14 chapters, Ch10 Phase A COMPLETE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
