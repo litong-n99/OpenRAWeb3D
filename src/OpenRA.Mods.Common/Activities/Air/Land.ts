@@ -7,6 +7,7 @@
  * - C# approach trajectory math (tangent circles, waypoints) → Same math with WVec/WPos
  * - C# QueueChild multiple waypoints → TypeScript queueChild() multiple times
  * - C# OnFirstRun target assignment → onFirstRun override
+ * - C# distanceAboveTerrain fallback → shared getDistanceAboveTerrain helper
  */
 
 // ---------------------------------------------------------------------------
@@ -25,8 +26,16 @@ import { CPos } from '../../../OpenRA.Game/CPos.js'
 import type { ColorStub } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { Turn } from '../Turn.js'
 import { Wait } from '../Wait.js'
-import { Fly, type AircraftLike } from './Fly.js'
+import { Fly } from './Fly.js'
+import { TakeOff } from './TakeOff.js'
 import type { INotifyLanding } from './AircraftActivityInterfaces.js'
+import {
+  type AircraftLike,
+  getDistanceAboveTerrain,
+  isColorStub,
+  isWDist,
+  isWVec,
+} from './AircraftFlightUtils.js'
 
 // ---------------------------------------------------------------------------
 // Land
@@ -61,7 +70,7 @@ export class Land extends Activity {
   private readonly offset: WVec
 
   /** Desired facing after landing (null = no preference). */
-  private readonly desiredFacing: WAngle | null
+  private desiredFacing: WAngle | null
 
   /** Whether to assign target from self.Location on first run. */
   private readonly assignTargetOnFirstRun: boolean
@@ -94,6 +103,24 @@ export class Land extends Activity {
   // Constructor
   // ---------------------------------------------------------------------------
 
+  /**
+   * Create a Land activity.
+   *
+   * Supports multiple overloads:
+   * - Land(self, facing?, color?)
+   * - Land(self, target, facing?, color?)
+   * - Land(self, target, landRange, facing?, color?)
+   * - Land(self, target, offset, facing?, color?)
+   * - Land(self, target, landRange, offset, facing?, clearCells?, color?)
+   *
+   * @param self — the actor performing this activity
+   * @param arg2 — Target, WAngle (facing), or undefined/null
+   * @param arg3 — WDist (landRange), WVec (offset), WAngle (facing), Color, or undefined/null
+   * @param arg4 — WAngle (facing), WVec (offset), Color, or undefined/null
+   * @param arg5 — WAngle (facing), Color, or undefined/null
+   * @param arg6 — CPos[] (clearCells) or undefined/null
+   * @param arg7 — Color or undefined/null
+   */
   constructor(
     self: GameActor,
     arg2?: Target | WAngle | null,
@@ -111,10 +138,6 @@ export class Land extends Activity {
     // Parse constructor overloads
     const isTarget = (v: unknown): v is Target =>
       v !== null && v !== undefined && v instanceof Target
-    const isWDist = (v: unknown): v is WDist =>
-      v !== null && v !== undefined && typeof v === 'object' && 'length' in v && !('X' in v)
-    const isWVec = (v: unknown): v is WVec =>
-      v !== null && v !== undefined && typeof v === 'object' && 'X' in v && 'Y' in v && 'Z' in v
     const isWAngle = (v: unknown): v is WAngle =>
       v !== null && v !== undefined && v instanceof WAngle
 
@@ -126,7 +149,7 @@ export class Land extends Activity {
       this.desiredFacing = isWAngle(arg2) ? arg2 : null
       this.clearCells = []
       this.landRange = this.aircraft.info.landRange
-      this.targetLineColor = (arg3 as ColorStub | null) ?? null
+      this.targetLineColor = Land._extractColor(arg3)
     } else if (isTarget(arg2)) {
       this.target = arg2
       this.assignTargetOnFirstRun = false
@@ -137,21 +160,32 @@ export class Land extends Activity {
         this.desiredFacing = isWAngle(arg3) ? arg3 : null
         this.clearCells = []
         this.landRange = this.aircraft.info.landRange
-        this.targetLineColor = (arg4 as ColorStub | null) ?? null
+        this.targetLineColor = Land._extractColor(arg4)
       } else if (isWDist(arg3)) {
-        // Overload: Land(self, target, landRange, facing?, color?)
-        this.offset = WVec.Zero
-        this.landRange = arg3.length >= 0 ? arg3 : this.aircraft.info.landRange
-        this.desiredFacing = isWAngle(arg4) ? (arg4 as WAngle) : null
-        this.clearCells = []
-        this.targetLineColor = (arg5 as ColorStub | null) ?? null
+        // Could be Land(self, target, landRange, facing?, color?)
+        // OR Land(self, target, landRange, offset, facing?, clearCells?, color?)
+        if (arg4 !== undefined && arg4 !== null && isWVec(arg4)) {
+          // Full overload: target, landRange, offset, facing?, clearCells?, color?
+          this.landRange = arg3
+          this.offset = arg4
+          this.desiredFacing = isWAngle(arg5) ? arg5 : null
+          this.clearCells = arg6 ?? []
+          this.targetLineColor = Land._extractColor(arg7)
+        } else {
+          // Overload: target, landRange, facing?, color?
+          this.offset = WVec.Zero
+          this.landRange = arg3.length >= 0 ? arg3 : this.aircraft.info.landRange
+          this.desiredFacing = isWAngle(arg4) ? arg4 : null
+          this.clearCells = []
+          this.targetLineColor = Land._extractColor(arg5)
+        }
       } else if (isWVec(arg3)) {
         // Overload: Land(self, target, offset, facing?, color?)
         this.offset = arg3
         this.landRange = this.aircraft.info.landRange
-        this.desiredFacing = isWAngle(arg4) ? (arg4 as WAngle) : null
+        this.desiredFacing = isWAngle(arg4) ? arg4 : null
         this.clearCells = []
-        this.targetLineColor = (arg5 as ColorStub | null) ?? null
+        this.targetLineColor = Land._extractColor(arg5)
       } else {
         // Fallback
         this.offset = WVec.Zero
@@ -161,17 +195,10 @@ export class Land extends Activity {
         this.targetLineColor = null
       }
     } else {
-      // Full overload: Land(self, target, landRange, offset, facing?, clearCells?, color?)
-      this.target = arg2 as Target
-      this.assignTargetOnFirstRun = false
-      this.landRange = isWDist(arg3) ? (arg3.length >= 0 ? arg3 : this.aircraft.info.landRange) : this.aircraft.info.landRange
-      this.offset = isWVec(arg4) ? (arg4 as WVec) : WVec.Zero
-      this.desiredFacing = isWAngle(arg5) ? (arg5 as WAngle) : null
-      this.clearCells = arg6 ?? []
-      this.targetLineColor = arg7 ?? null
+      throw new Error('Land constructor received an invalid target argument')
     }
 
-    // NOTE: If no facing provided and TurnToLand is set, use InitialFacing
+    // If no facing provided and TurnToLand is set, use InitialFacing
     if (this.desiredFacing === null && this.aircraft.info.turnToLand) {
       this.desiredFacing = this.aircraft.info.initialFacing
     }
@@ -222,15 +249,13 @@ export class Land extends Activity {
           currentActivity?.nextActivity === null
 
         if (!continueLanding) {
-          const actorAny = self as unknown as {
-            world?: { map?: { distanceAboveTerrain: (pos: WPos) => WDist } }
-          }
-          const dat = actorAny.world?.map?.distanceAboveTerrain(this.aircraft.centerPosition) ?? WDist.Zero
-          if (WDist.greaterThan(dat, this.aircraft.landAltitude) && WDist.lessThan(dat, this.aircraft.info.cruiseAltitude)) {
+          const dat = getDistanceAboveTerrain(self, this.aircraft.centerPosition)
+          if (
+            WDist.greaterThan(dat, this.aircraft.landAltitude) &&
+            WDist.lessThan(dat, this.aircraft.info.cruiseAltitude)
+          ) {
             // Queue TakeOff to climb back to cruise altitude
-            void import('./TakeOff.js').then(({ TakeOff }) => {
-              this.queueChild(new TakeOff(self))
-            })
+            this.queueChild(new TakeOff(self))
             return false
           }
 
@@ -375,8 +400,8 @@ export class Land extends Activity {
       const canLand = (this.aircraft as unknown as { canLandMulti?: (cells: readonly CPos[], actor: unknown, blockedByMobile: boolean) => boolean }).canLandMulti
       if (canLand && !canLand.call(this.aircraft, blockingCells, this.target.actor, true)) {
         // Maintain holding pattern
-        // NOTE: Using Wait as a placeholder for FlyIdle (which is Batch 2)
-        // TODO-14.C.2: Replace with FlyIdle when Batch 2 is implemented
+        // NOTE: Using Wait as a placeholder for FlyIdle (implemented in Batch 2)
+        // TODO-14.C.B2: Replace with FlyIdle when Batch 2 is implemented
         this.queueChild(new Wait(25))
 
         // Notify blockers
@@ -420,10 +445,7 @@ export class Land extends Activity {
 
     // Final descent
     if (this.aircraft.info.vTOL) {
-      const actorAny2 = self as unknown as {
-        world?: { map?: { distanceAboveTerrain: (pos: WPos) => WDist } }
-      }
-      const terrainAlt = actorAny2.world?.map?.distanceAboveTerrain(this.targetPosition) ?? WDist.Zero
+      const terrainAlt = getDistanceAboveTerrain(self, this.targetPosition)
       const landAltitude = WDist.add(terrainAlt, this.aircraft.landAltitude)
       if (Fly.verticalTakeOffOrLandTick(self, this.aircraft, this.aircraft.facing, landAltitude)) {
         return false
@@ -441,11 +463,8 @@ export class Land extends Activity {
       return true
     }
 
-    const actorAny3 = self as unknown as {
-      world?: { map?: { distanceAboveTerrain: (pos: WPos) => WDist } }
-    }
     const landingAlt = WDist.add(
-      actorAny3.world?.map?.distanceAboveTerrain(this.targetPosition) ?? WDist.Zero,
+      getDistanceAboveTerrain(self, this.targetPosition),
       this.aircraft.landAltitude,
     )
     Fly.flyTick(self, this.aircraft, d.yaw, landingAlt)
@@ -481,5 +500,13 @@ export class Land extends Activity {
       throw new Error('Land requires an Aircraft trait on the actor')
     }
     return aircraft
+  }
+
+  /**
+   * Extract a ColorStub from an unknown argument, returning null if not a valid
+   * color object.
+   */
+  private static _extractColor(v: unknown): ColorStub | null {
+    return isColorStub(v) ? v : null
   }
 }

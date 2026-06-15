@@ -1,14 +1,13 @@
 /**
- * Fly.ts — 核心飞行活动（含静态飞行物理辅助方法）
+ * Fly.ts — 核心飞行活动
  * OpenRA 对照: OpenRA.Mods.Common/Activities/Air/Fly.cs
  *
  * 核心范式转换:
  * - C# RingBuffer<WPos> → TypeScript 固定大小循环数组（inline, capacity 5）
- * - C# static FlyTick() → TypeScript static flyTick()
- * - C# static VerticalTakeOffOrLandTick() → TypeScript static verticalTakeOffOrLandTick()
- * - C# static CalculateTurnRadius() → TypeScript static calculateTurnRadius()
+ * - C# static FlyTick() / VerticalTakeOffOrLandTick() / CalculateTurnRadius()
+ *   → 共享工具模块 `AircraftFlightUtils.ts`
  * - C# yield return → TypeScript 数组返回
- * - C# Util.TickFacing / Util.GetTurnDirection → WAngle.tickFacing / internal _getTurnDirection
+ * - C# Util.TickFacing / Util.GetTurnDirection → WAngle.tickFacing / _getTurnDirection
  */
 
 // ---------------------------------------------------------------------------
@@ -24,54 +23,21 @@ import { WAngle } from '../../../OpenRA.Game/WAngle.js'
 import { WVec } from '../../../OpenRA.Game/WVec.js'
 import { WRot } from '../../../OpenRA.Game/WRot.js'
 import type { ColorStub } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { TakeOff } from './TakeOff.js'
+import {
+  type AircraftLike,
+  type AircraftInfoLike,
+  flyTick,
+  verticalTakeOffOrLandTick,
+  calculateTurnRadius,
+  getDistanceAboveTerrain,
+  isColorStub,
+  isWDist,
+  isWPos,
+} from './AircraftFlightUtils.js'
 
-// ---------------------------------------------------------------------------
-// Internal types
-// ---------------------------------------------------------------------------
-
-/** Duck-typed Aircraft trait reference. */
-export interface AircraftLike {
-  readonly info: AircraftInfoLike
-  readonly centerPosition: WPos
-  facing: WAngle
-  pitch: WAngle
-  roll: WAngle
-  turnSpeed: WAngle
-  idleTurnSpeed: WAngle | null
-  movementSpeed: number
-  idleMovementSpeed: number
-  flyStep(facing: WAngle): WVec
-  setPosition(self: GameActor, pos: WPos): void
-  forceLanding: boolean
-  landAltitude: WDist
-  atLandAltitude: boolean
-  getTurnSpeed(isIdleTurn: boolean): WAngle
-}
-
-/** Duck-typed AircraftInfo config. */
-export interface AircraftInfoLike {
-  readonly cruiseAltitude: WDist
-  readonly canHover: boolean
-  readonly canSlide: boolean
-  readonly vTOL: boolean
-  readonly turnDeadzone: WAngle
-  readonly idleBehavior: number
-  readonly roll: WAngle
-  readonly idleRoll: WAngle | null
-  readonly rollSpeed: WAngle
-  readonly pitch: WAngle
-  readonly pitchSpeed: WAngle
-  readonly maximumPitch: WAngle
-  readonly altitudeVelocity: WDist
-  readonly landAltitude: WDist
-  readonly landRange: WDist
-  readonly minAirborneAltitude: number
-  readonly takeoffSounds: readonly string[]
-  readonly landingSounds: readonly string[]
-  readonly initialFacing: WAngle
-  readonly turnToLand: boolean
-  readonly speed: number
-}
+// Re-export types for backward-compatible imports
+export type { AircraftLike, AircraftInfoLike }
 
 // ---------------------------------------------------------------------------
 // Fly
@@ -85,8 +51,7 @@ export interface AircraftInfoLike {
  *
  * This is the foundational aircraft activity. All other aircraft activities
  * (TakeOff, Land, FlyForward, FlyIdle, FlyOffMap, FlyAttack, FlyFollow,
- * ReturnToBase) depend on its static helpers (flyTick, verticalTakeOffOrLandTick,
- * calculateTurnRadius).
+ * ReturnToBase) depend on the static helpers in `AircraftFlightUtils.ts`.
  *
  * Key behaviors:
  * - Flies toward target at cruise altitude
@@ -163,12 +128,6 @@ export class Fly extends Activity {
     this.aircraft = Fly._resolveAircraft(self)
 
     // Parse constructor overloads
-    // We need to distinguish WDist from WPos. WDist has .length, WPos has .X/.Y/.Z
-    const isWDist = (v: unknown): v is WDist =>
-      v !== null && v !== undefined && typeof v === 'object' && 'length' in v && !('X' in v)
-    const isWPos = (v: unknown): v is WPos =>
-      v !== null && v !== undefined && typeof v === 'object' && 'X' in v && 'Y' in v && 'Z' in v
-
     if (arg3 !== undefined && arg3 !== null && isWDist(arg3)) {
       // Could be nearEnough or minRange
       if (arg4 !== undefined && arg4 !== null && isWDist(arg4)) {
@@ -176,7 +135,7 @@ export class Fly extends Activity {
         this.minRange = arg3
         this.maxRange = arg4
         this.nearEnough = WDist.Zero
-        this.targetLineColor = (arg6 as ColorStub | null) ?? null
+        this.targetLineColor = arg6 !== undefined && arg6 !== null && isColorStub(arg6) ? arg6 : null
         this.lastVisibleTarget = Fly._initializeLastVisibleTarget(
           self,
           target,
@@ -187,7 +146,8 @@ export class Fly extends Activity {
         this.nearEnough = arg3
         this.minRange = WDist.Zero
         this.maxRange = WDist.Zero
-        this.targetLineColor = arg5 !== undefined ? (arg5 as ColorStub | null) : (arg4 as ColorStub | null)
+        const colorCandidate = arg5 !== undefined ? arg5 : arg4
+        this.targetLineColor = colorCandidate !== undefined && colorCandidate !== null && isColorStub(colorCandidate) ? colorCandidate : null
         this.lastVisibleTarget = Fly._initializeLastVisibleTarget(
           self,
           target,
@@ -199,7 +159,8 @@ export class Fly extends Activity {
       this.nearEnough = WDist.Zero
       this.minRange = WDist.Zero
       this.maxRange = WDist.Zero
-      this.targetLineColor = arg4 !== undefined ? (arg4 as ColorStub | null) : (arg3 as ColorStub | null)
+      const colorCandidate = arg4 !== undefined ? arg4 : arg3
+      this.targetLineColor = colorCandidate !== undefined && colorCandidate !== null && isColorStub(colorCandidate) ? colorCandidate : null
       this.lastVisibleTarget = Fly._initializeLastVisibleTarget(
         self,
         target,
@@ -248,159 +209,6 @@ export class Fly extends Activity {
   }
 
   // ---------------------------------------------------------------------------
-  // Static flyTick — core flight physics
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Core flight physics tick: move the aircraft one step.
-   *
-   * OpenRA 对照: Fly.FlyTick(Actor, Aircraft, WAngle, WDist, WVec?, bool?)
-   *
-   * Handles:
-   * - Facing rotation toward desired facing
-   * - Roll animation when turning
-   * - Pitch animation
-   * - Altitude adjustment toward desiredAltitude (or moveOverride.Z)
-   * - Position update
-   *
-   * @param self — the actor
-   * @param aircraft — the aircraft trait
-   * @param desiredFacing — the facing to rotate toward
-   * @param desiredAltitude — the altitude to reach
-   * @param moveOverride — override movement vector (WVec.Zero = use flyStep). Default: WVec.Zero
-   * @param idleTurn — whether this is an idle turn (affects roll and turn speed). Default: false
-   */
-  static flyTick(
-    self: GameActor,
-    aircraft: AircraftLike,
-    desiredFacing: WAngle,
-    desiredAltitude: WDist,
-    moveOverride: WVec = WVec.Zero,
-    idleTurn: boolean = false,
-  ): void {
-    const actorAny = self as unknown as { world?: { map?: { distanceAboveTerrain: (pos: WPos) => WDist } } }
-    const dat =
-      actorAny.world?.map?.distanceAboveTerrain(aircraft.centerPosition) ??
-      WDist.Zero
-
-    const move =
-      !WVec.equals(moveOverride, WVec.Zero)
-        ? moveOverride
-        : aircraft.info.canSlide
-          ? aircraft.flyStep(desiredFacing)
-          : aircraft.flyStep(aircraft.facing)
-
-    const oldFacing = aircraft.facing
-    aircraft.facing = WAngle.tickFacing(
-      aircraft.facing,
-      desiredFacing,
-      aircraft.getTurnSpeed(idleTurn),
-    )
-
-    // Roll
-    const roll = idleTurn
-      ? (aircraft.info.idleRoll ?? aircraft.info.roll)
-      : aircraft.info.roll
-    if (!WAngle.equals(roll, WAngle.Zero)) {
-      const desiredRoll = WAngle.equals(aircraft.facing, desiredFacing)
-        ? WAngle.Zero
-        : new WAngle(roll.angle * Fly._getTurnDirection(aircraft.facing, oldFacing))
-      aircraft.roll = WAngle.tickFacing(
-        aircraft.roll,
-        desiredRoll,
-        aircraft.info.rollSpeed,
-      )
-    }
-
-    // Pitch
-    if (!WAngle.equals(aircraft.info.pitch, WAngle.Zero)) {
-      aircraft.pitch = WAngle.tickFacing(
-        aircraft.pitch,
-        aircraft.info.pitch,
-        aircraft.info.pitchSpeed,
-      )
-    }
-
-    // Altitude adjustment
-    // Note: if move.Z is not zero, it's intentional and we want to move in that
-    // vertical direction instead of towards desiredAltitude.
-    if (!WDist.equals(dat, desiredAltitude) || move.Z !== 0) {
-      const maxDelta = Math.trunc((move.horizontalLength * aircraft.info.maximumPitch.tan()) / 1024)
-      const moveZ = move.Z !== 0 ? move.Z : (desiredAltitude.length - dat.length)
-      const deltaZ = Fly._clamp(moveZ, -maxDelta, maxDelta)
-      const adjustedMove = new WVec(move.X, move.Y, deltaZ)
-      aircraft.setPosition(self, WPos.add(aircraft.centerPosition, adjustedMove))
-    } else {
-      aircraft.setPosition(self, WPos.add(aircraft.centerPosition, move))
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Static verticalTakeOffOrLandTick — vertical-only altitude change
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Vertical-only altitude change (for VTOL take-off/landing).
-   *
-   * OpenRA 对照: Fly.VerticalTakeOffOrLandTick(Actor, Aircraft, WAngle, WDist, bool)
-   *
-   * Should only be used for vertical-only movement. Terrain-induced altitude
-   * changes should always be handled by flyTick.
-   *
-   * @returns true if still moving (not at desired altitude yet), false if done
-   */
-  static verticalTakeOffOrLandTick(
-    self: GameActor,
-    aircraft: AircraftLike,
-    desiredFacing: WAngle,
-    desiredAltitude: WDist,
-    idleTurn: boolean = false,
-  ): boolean {
-    const turnSpeed = idleTurn
-      ? (aircraft.idleTurnSpeed ?? aircraft.turnSpeed)
-      : aircraft.turnSpeed
-    aircraft.facing = WAngle.tickFacing(aircraft.facing, desiredFacing, turnSpeed)
-
-    const actorAny = self as unknown as {
-      world?: { map?: { distanceAboveTerrain: (pos: WPos) => WDist } }
-    }
-    const dat =
-      actorAny.world?.map?.distanceAboveTerrain(aircraft.centerPosition) ??
-      WDist.Zero
-
-    if (WDist.equals(dat, desiredAltitude)) return false
-
-    const maxDelta = aircraft.info.altitudeVelocity.length
-    const deltaZ = Fly._clamp(desiredAltitude.length - dat.length, -maxDelta, maxDelta)
-    aircraft.setPosition(
-      self,
-      WPos.add(aircraft.centerPosition, new WVec(0, 0, deltaZ)),
-    )
-    return true
-  }
-
-  // ---------------------------------------------------------------------------
-  // Static calculateTurnRadius
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Calculate the turn radius from speed and turn rate.
-   *
-   * OpenRA 对照: Fly.CalculateTurnRadius(int, WAngle)
-   *
-   * Formula: turnSpeed -> divide into 256 to get ticks per complete rotation
-   *          speed -> multiply to get distance per rotation (circumference)
-   *          180 -> divide by 2*pi to get turn radius (180 == 1024/(2*pi))
-   *
-   * @param speed — movement speed
-   * @param turnSpeed — turn speed (WAngle)
-   * @returns turn radius in world units
-   */
-  static calculateTurnRadius(speed: number, turnSpeed: WAngle): number {
-    return turnSpeed.angle > 0 ? Math.trunc((180 * speed) / turnSpeed.angle) : 0
-  }
-
-  // ---------------------------------------------------------------------------
   // Instance tick — target tracking and approach logic
   // ---------------------------------------------------------------------------
 
@@ -419,12 +227,9 @@ export class Fly extends Activity {
     }
 
     const actorAny = self as unknown as {
-      world?: { map?: { distanceAboveTerrain: (pos: WPos) => WDist } }
       currentActivity?: { isCanceling: boolean; nextActivity: Activity | null }
     }
-    const dat =
-      actorAny.world?.map?.distanceAboveTerrain(this.aircraft.centerPosition) ??
-      WDist.Zero
+    const dat = getDistanceAboveTerrain(self, this.aircraft.centerPosition)
     const isLanded = WDist.lessThanOrEqual(dat, this.aircraft.landAltitude)
 
     // HACK: Prevent paused (for example, EMP'd) aircraft from taking off
@@ -443,13 +248,9 @@ export class Fly extends Activity {
       if (this.aircraft.info.canHover && !skipHeightAdjustment && !WDist.equals(dat, this.aircraft.info.cruiseAltitude)) {
         if (isLanded) {
           // Queue TakeOff to manage influence reservation and takeoff sounds
-          // NOTE: Using dynamic import to avoid circular dependency with TakeOff.ts
-          // which imports Fly.ts for its static helpers.
-          void import('./TakeOff.js').then(({ TakeOff }) => {
-            this.queueChild(new TakeOff(self))
-          })
+          this.queueChild(new TakeOff(self))
         } else {
-          Fly.verticalTakeOffOrLandTick(
+          verticalTakeOffOrLandTick(
             self,
             this.aircraft,
             this.aircraft.facing,
@@ -461,9 +262,7 @@ export class Fly extends Activity {
       return true
     } else if (isLanded) {
       // Not canceling but on the ground — take off first
-      void import('./TakeOff.js').then(({ TakeOff }) => {
-        this.queueChild(new TakeOff(self))
-      })
+      this.queueChild(new TakeOff(self))
       return false
     }
 
@@ -517,7 +316,7 @@ export class Fly extends Activity {
     // Inside the minimum range, so reverse if we can slide, otherwise face away
     if (insideMinRange) {
       if (isSlider) {
-        Fly.flyTick(
+        flyTick(
           self,
           this.aircraft,
           desiredFacing,
@@ -525,7 +324,7 @@ export class Fly extends Activity {
           WVec.negate(move),
         )
       } else {
-        Fly.flyTick(
+        flyTick(
           self,
           this.aircraft,
           WAngle.add(desiredFacing, new WAngle(512)),
@@ -554,12 +353,12 @@ export class Fly extends Activity {
         // Set final (horizontal) position
         if (delta.horizontalLengthSquared !== 0) {
           const deltaMove = new WVec(delta.X, delta.Y, 0)
-          Fly.flyTick(self, this.aircraft, desiredFacing, dat, deltaMove)
+          flyTick(self, this.aircraft, desiredFacing, dat, deltaMove)
         }
 
         // Move to CruiseAltitude, if not already there
         if (!WDist.equals(dat, this.aircraft.info.cruiseAltitude)) {
-          Fly.verticalTakeOffOrLandTick(
+          verticalTakeOffOrLandTick(
             self,
             this.aircraft,
             this.aircraft.facing,
@@ -573,14 +372,14 @@ export class Fly extends Activity {
 
     // Turn radius check for non-sliders
     if (!isSlider) {
-      const turnRadius = Fly.calculateTurnRadius(
+      const turnRadius = calculateTurnRadius(
         this.aircraft.movementSpeed,
         this.aircraft.turnSpeed,
       )
 
       // The current facing is a tangent of the minimal turn circle.
       // Make a perpendicular vector, and use it to locate the turn's center.
-      const turnDir = Fly._getTurnDirection(this.aircraft.facing, desiredFacing)
+      const turnDir = getTurnDirection(this.aircraft.facing, desiredFacing)
       const turnCenterFacing = WAngle.add(this.aircraft.facing, new WAngle(turnDir * 256))
 
       const turnCenterDir = new WVec(0, -1024, 0).rotate(WRot.fromYaw(turnCenterFacing))
@@ -596,7 +395,7 @@ export class Fly extends Activity {
 
     // Record position and fly
     this._addPosition(pos)
-    Fly.flyTick(self, this.aircraft, desiredFacing, this.aircraft.info.cruiseAltitude)
+    flyTick(self, this.aircraft, desiredFacing, this.aircraft.info.cruiseAltitude)
 
     return false
   }
@@ -638,14 +437,62 @@ export class Fly extends Activity {
     if (this.posCount < 5) this.posCount++
   }
 
-  /** Get the turn direction: +1 for clockwise, -1 for counter-clockwise. */
-  private static _getTurnDirection(current: WAngle, desired: WAngle): number {
-    const diff = WAngle.subtract(desired, current).angle
-    return diff <= 512 ? 1 : -1
+  // ---------------------------------------------------------------------------
+  // Static helper shims — delegated to AircraftFlightUtils for reuse and to
+  // avoid circular imports with TakeOff / Land.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Core flight physics tick.
+   *
+   * OpenRA 对照: Fly.FlyTick(Actor, Aircraft, WAngle, WDist, WVec?, bool?)
+   */
+  public static flyTick(
+    self: GameActor,
+    aircraft: AircraftLike,
+    desiredFacing: WAngle,
+    desiredAltitude: WDist,
+    moveOverride: WVec = WVec.Zero,
+    idleTurn: boolean = false,
+  ): void {
+    return flyTick(self, aircraft, desiredFacing, desiredAltitude, moveOverride, idleTurn)
   }
 
-  /** Clamp a value to [min, max]. */
-  private static _clamp(value: number, min: number, max: number): number {
-    return Math.max(min, Math.min(max, value))
+  /**
+   * Vertical-only altitude change.
+   *
+   * OpenRA 对照: Fly.VerticalTakeOffOrLandTick(Actor, Aircraft, WAngle, WDist, bool)
+   */
+  public static verticalTakeOffOrLandTick(
+    self: GameActor,
+    aircraft: AircraftLike,
+    desiredFacing: WAngle,
+    desiredAltitude: WDist,
+    idleTurn: boolean = false,
+  ): boolean {
+    return verticalTakeOffOrLandTick(self, aircraft, desiredFacing, desiredAltitude, idleTurn)
   }
+
+  /**
+   * Calculate the turn radius from speed and turn rate.
+   *
+   * OpenRA 对照: Fly.CalculateTurnRadius(int, WAngle)
+   */
+  public static calculateTurnRadius(speed: number, turnSpeed: WAngle): number {
+    return calculateTurnRadius(speed, turnSpeed)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Re-exported static helpers (backward-compatible shims)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the turn direction: +1 for clockwise, -1 for counter-clockwise.
+ *
+ * Re-exported from AircraftFlightUtils for test compatibility.
+ */
+function getTurnDirection(current: WAngle, desired: WAngle): number {
+  const diff = WAngle.subtract(desired, current).angle
+  return diff <= 512 ? 1 : -1
 }

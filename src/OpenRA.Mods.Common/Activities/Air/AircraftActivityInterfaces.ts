@@ -86,3 +86,20 @@ export interface INotifyParachute {
    */
   onLanded(actor: GameActor): void
 }
+
+// ---------------------------------------------------------------------------
+// ParachutableInfo — used by Parachute
+// ---------------------------------------------------------------------------
+
+/**
+ * Configuration for parachute fall rate.
+ *
+ * OpenRA 对照: ParachutableInfo.FallRate
+ */
+export interface ParachutableInfo {
+  /** Rate at which the actor falls while parachuting.
+   *
+   * OpenRA 对照: ParachutableInfo.FallRate
+   */
+  readonly fallRate: import('../../../OpenRA.Game/WDist.js').WDist
+}

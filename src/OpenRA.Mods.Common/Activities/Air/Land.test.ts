@@ -76,6 +76,8 @@ function createMockAircraft(options: {
       initialFacing: options.initialFacing ?? WAngle.Zero,
       turnToLand: options.turnToLand ?? false,
       speed: options.speed ?? 100,
+      idleSpeed: -1,
+      turnSpeed: new WAngle(512),
     },
     centerPosition: pos,
     facing,

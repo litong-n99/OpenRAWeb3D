@@ -16,7 +16,8 @@ import { Activity } from '../../../OpenRA.Game/Activities/Activity.js'
 import type { GameActor } from '../../../OpenRA.Game/Actor.js'
 import { WDist } from '../../../OpenRA.Game/WDist.js'
 import type { INotifyTakeOff } from './AircraftActivityInterfaces.js'
-import { Fly, type AircraftLike } from './Fly.js'
+import type { AircraftLike } from './AircraftFlightUtils.js'
+import { flyTick, verticalTakeOffOrLandTick } from './AircraftFlightUtils.js'
 
 // ---------------------------------------------------------------------------
 // TakeOff
@@ -145,7 +146,7 @@ export class TakeOff extends Activity {
     if (WDist.lessThan(dat, this.aircraft.info.cruiseAltitude)) {
       // If we're a VTOL, rise before flying forward
       if (this.aircraft.info.vTOL) {
-        Fly.verticalTakeOffOrLandTick(
+        verticalTakeOffOrLandTick(
           self,
           this.aircraft,
           this.aircraft.facing,
@@ -154,7 +155,7 @@ export class TakeOff extends Activity {
         return false
       }
 
-      Fly.flyTick(self, this.aircraft, this.aircraft.facing, this.aircraft.info.cruiseAltitude)
+      flyTick(self, this.aircraft, this.aircraft.facing, this.aircraft.info.cruiseAltitude)
       return false
     }
 

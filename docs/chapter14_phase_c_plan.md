@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 14 Phase C -- Aircraft Activities
 
 > **Source Reference**: `OpenRA/OpenRA.Mods.Common/Activities/Air/*.cs`, `OpenRA/OpenRA.Mods.Common/Activities/Parachute.cs`
-> **Phase Status**: PLANNING (0/12 migrated)
+> **Phase Status**: COMPLETE (12/12 migrated, ~180 tests)
 > **Planning Date**: 2026-06-15
 > **Prerequisite**: Chapter 14 Phase A+B COMPLETE (17/49 files), Chapter 9 Aircraft trait COMPLETE
 >

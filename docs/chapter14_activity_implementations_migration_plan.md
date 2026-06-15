@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 14 -- Activity Implementations
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.3 (Traits) + `docs/chapter14_activity_implementations_analysis.md`
-> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phase B COMPLETE (6/6 files migrated, ~70 tests, R2 APPROVED); Phases C-F PLANNING (0/32 migrated)
+> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phase B COMPLETE (6/6 files migrated, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files migrated, ~180 tests); Phases D-F PLANNING (0/20 migrated)
 > **Planning Date**: 2026-06-15
 > **Last Updated**: 2026-06-15
 > **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
