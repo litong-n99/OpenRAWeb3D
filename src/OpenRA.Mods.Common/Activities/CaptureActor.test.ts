@@ -206,17 +206,66 @@ describe('CaptureActor', () => {
   })
 
   describe('onEnterComplete', () => {
-    it('queues frame-end action for ownership transfer', () => {
-      const actor = createMockActor() as never
-      const targetActor = createMockTargetActor() as { changeOwnerSync: ReturnType<typeof vi.fn> }
+    it('performs sabotage when HP ratio is above threshold', () => {
+      const targetActor = createMockTargetActor({ health: { hp: 100, maxHP: 100 } }) as { inflictDamage: ReturnType<typeof vi.fn>; changeOwnerSync: ReturnType<typeof vi.fn>; traits: Map<string, unknown> }
       const target = Target.fromActor(targetActor as never)
+
+      const captureManager = {
+        canTarget: vi.fn(() => true),
+        startCapture: vi.fn((_tcm: unknown, out: { captures: unknown }) => {
+          out.captures = {
+            info: {
+              consumedByCapture: true,
+              sabotageThreshold: 50,
+              sabotageHPRemoval: 25,
+              sabotageDamageTypes: new Set<string>(),
+              captureTypes: new Set<string>(['building']),
+              playerExperienceRelationships: 1,
+            },
+          }
+          return true
+        }),
+        cancelCapture: vi.fn(),
+        validCapturesWithLowestSabotageThreshold: vi.fn(() => ({
+          info: {
+            consumedByCapture: true,
+            sabotageThreshold: 50,
+            sabotageHPRemoval: 25,
+            sabotageDamageTypes: new Set<string>(),
+            captureTypes: new Set<string>(['building']),
+            playerExperienceRelationships: 1,
+          },
+        })),
+      }
+
+      const traits = new Map<string, unknown>()
+      traits.set('CaptureManager', captureManager)
+      traits.set('Mobile', {
+        isTraitDisabled: false,
+        isTraitPaused: false,
+        moveResult: 0,
+        moveToTarget: vi.fn(() => ({ tick: () => true })),
+        moveIntoTarget: vi.fn(() => ({ tick: () => true })),
+        returnToCell: vi.fn(() => ({ tick: () => true })),
+        canEnterTargetNow: vi.fn(() => true),
+      })
+
+      const actor = {
+        actorId: 1,
+        centerPosition: WPos.Zero,
+        traits,
+        world: {
+          sharedRandom: { next: vi.fn(() => 0.5) },
+          frameEndActions: [] as Array<() => void>,
+        },
+        owner: { playerName: 'test', relationshipWith: vi.fn(() => 1) },
+        dispose: vi.fn(),
+      } as never
+
       const capture = new CaptureActor(actor, target)
 
-      // Set up via tryStartEnter first
       const capProtected = capture as unknown as CaptureActorProtected
       capProtected.tryStartEnter(actor, targetActor as never)
-
-      // Call onEnterComplete
       capProtected.onEnterComplete(actor, targetActor as never)
 
       // Execute frame-end action
@@ -224,8 +273,9 @@ describe('CaptureActor', () => {
       expect(world.frameEndActions.length).toBeGreaterThan(0)
       world.frameEndActions[0]!()
 
-      // Verify ownership change was called
-      expect(targetActor.changeOwnerSync).toHaveBeenCalled()
+      // Should inflict sabotage damage, not change ownership
+      expect(targetActor.inflictDamage).toHaveBeenCalled()
+      expect(targetActor.changeOwnerSync).not.toHaveBeenCalled()
     })
   })
 

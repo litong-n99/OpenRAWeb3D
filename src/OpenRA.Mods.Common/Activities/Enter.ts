@@ -22,6 +22,7 @@ import { Activity, TargetLineNode } from '../../OpenRA.Game/Activities/Activity.
 import type { GameActor } from '../../OpenRA.Game/Actor.js'
 import { Target, TargetType } from '../../OpenRA.Game/Traits/Target.js'
 import type { ColorStub } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { WPos } from '../../OpenRA.Game/WPos.js'
 import { MoveCooldownHelper } from './Move/MoveCooldownHelper.js'
 import type { Mobile } from '../Traits/Mobile.js'
 
@@ -103,7 +104,7 @@ export abstract class Enter extends Activity {
 
   /** Duck-typed IMove trait reference. */
   protected readonly move: {
-    moveToTarget(source: GameActor, target: Target): Activity
+    moveToTarget(source: GameActor, target: Target, initialTargetPosition: WPos): Activity
     moveIntoTarget(source: GameActor, target: Target): Activity
     returnToCell(source: GameActor): Activity
     canEnterTargetNow(source: GameActor, target: Target): boolean
@@ -271,7 +272,8 @@ export abstract class Enter extends Activity {
     if (this.target.type !== TargetType.Invalid && this.move !== null &&
         !this.move.canEnterTargetNow(self, this.target)) {
       this.moveCooldownHelper.notifyMoveQueued()
-      this.queueChild(this.move.moveToTarget(self, this.target))
+      const initialTargetPosition = (this.useLastVisibleTarget ? this.lastVisibleTarget : this.target).centerPosition
+      this.queueChild(this.move.moveToTarget(self, this.target, initialTargetPosition))
       return false
     }
 

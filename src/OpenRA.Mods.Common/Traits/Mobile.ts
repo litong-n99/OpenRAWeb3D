@@ -125,7 +125,8 @@ export interface IFullMove {
     target: Target,
     minRange: WDist,
     maxRange: WDist,
-    initialTarget?: Target,
+    initialTargetPosition?: WPos,
+    targetLineColor?: ColorStub,
   ): Activity
 
   /** Return to the actor's home cell.
@@ -1292,7 +1293,8 @@ export class Mobile
     _target: Target,
     _minRange: WDist,
     _maxRange: WDist,
-    _initialTarget?: Target,
+    _initialTargetPosition?: WPos,
+    _targetLineColor?: ColorStub,
   ): Activity {
     return new ReturnToCellActivity() as unknown as Activity
   }
@@ -1417,11 +1419,11 @@ export class Mobile
 
   /** Move onto a target for attacking/interaction.
    *
-   * OpenRA 对照: IMove.MoveToTarget(Target)
+   * OpenRA 对照: IMove.MoveToTarget(Target, WPos?, Color?)
    *
    * TODO-9.A.10: Full Move activity deferred to Ch14.
    */
-  moveToTarget(_source: IGameActor, _target: Target): Activity {
+  moveToTarget(_source: IGameActor, _target: Target, _initialTargetPosition?: WPos): Activity {
     return new ReturnToCellActivity() as unknown as Activity
   }
 

@@ -294,7 +294,7 @@ export class CaptureActor extends Enter {
 
     const frameEndAction = (): void => {
       // The target died or was already captured during this tick
-      if (this.enterActor === null) return
+      if (this.enterActor === null || (this.enterActor as unknown as { isDead?: boolean }).isDead) return
       const currentOwner = (this.enterActor as unknown as { owner?: unknown }).owner
       if (currentOwner !== oldOwner) return
 

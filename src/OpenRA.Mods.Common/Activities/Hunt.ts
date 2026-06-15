@@ -50,7 +50,7 @@ export class Hunt extends Activity {
 
   /** Duck-typed IMove trait reference. */
   private readonly move: {
-    moveWithinRange(source: GameActor, target: Target, range: WDist): Activity
+    moveWithinRange(source: GameActor, target: Target, range: WDist, initialTarget?: Target): Activity
   } | null
 
   /** Duck-typed AttackBase trait reference. */
@@ -132,7 +132,8 @@ export class Hunt extends Activity {
     const closest = this.findClosestTarget(self)
     if (closest === null) return true
 
-    // Queue AttackMoveActivity to move within 2 cells of the target
+    // Queue AttackMoveActivity to move within 2 cells of the target, followed
+    // by a short wait to match OpenRA's Hunt.Tick behavior.
     if (this.move !== null) {
       const target = Target.fromActor(closest as never)
       const moveActivity = this.move.moveWithinRange(
@@ -141,10 +142,9 @@ export class Hunt extends Activity {
         WDist.fromCells(2),
       )
       this.queueChild(new AttackMoveActivity(self, () => moveActivity))
+      this.queueChild(new Wait(25))
     }
 
-    // TODO-14.F.1: Replace with real Wait activity when Phase F is implemented
-    // For now, we just return false to let the AttackMoveActivity run
     return false
   }
 
@@ -158,7 +158,11 @@ export class Hunt extends Activity {
    * OpenRA 对照: targets.ClosestToWithPathFrom(self)
    *
    * Simplified: uses straight-line distance (no pathfinding).
-   * Full implementation with path-based distance in Phase E.
+   * Full implementation with path-based distance is deferred to Phase E
+   * (TODO-14.E.2) when the full pathfinding integration is available.
+   *
+   * @param self — the actor performing the hunt
+   * @returns the closest target, or null if none
    */
   private findClosestTarget(self: GameActor): unknown | null {
     if (this.targets.length === 0) return null
@@ -191,5 +195,31 @@ export class Hunt extends Activity {
     }
 
     return closest
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wait helper (minimal inline stub until Phase F)
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal wait activity that does nothing for a fixed number of ticks.
+ *
+ * OpenRA 对照: Wait(ticks)
+ *
+ * TODO-14.F.1: Replace with the full Wait activity when Phase F is migrated.
+ */
+class Wait extends Activity {
+  private remainingTicks: number
+
+  constructor(ticks: number) {
+    super()
+    this.remainingTicks = ticks
+  }
+
+  override tick(): boolean {
+    if (this.remainingTicks <= 0) return true
+    this.remainingTicks--
+    return false
   }
 }

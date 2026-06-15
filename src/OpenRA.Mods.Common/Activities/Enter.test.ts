@@ -70,7 +70,7 @@ function createMockActor(options: {
     traits.set('Mobile', {
       isTraitDisabled: options.mobileDisabled ?? false,
       isTraitPaused: options.mobilePaused ?? false,
-      moveResult: 0,
+      moveResult: 2, // CompleteDestinationReached so MoveCooldownHelper doesn't block tests
       moveToTarget: vi.fn(() => new MockMoveActivity()),
       moveIntoTarget: vi.fn(() => new MockMoveActivity()),
       returnToCell: vi.fn(() => new MockMoveActivity()),
@@ -213,6 +213,30 @@ describe('Enter', () => {
 
       const result = enter.tick(actor)
       expect(result).toBe(true)
+    })
+
+    it('transitions Exiting -> Finished', () => {
+      const actor = createMockActor() as never
+      const targetActor = createMockTargetActor()
+      const target = Target.fromActor(targetActor as never)
+      const enter = new TestEnter(actor, target)
+
+      // First tick: Approaching -> Entering (queues moveIntoTarget)
+      enter.tick(actor)
+      expect(enter.getTestLastState()).toBe(EnterState.Entering)
+
+      // Second tick: Entering -> Exiting (queues returnToCell)
+      enter.tick(actor)
+      expect(enter.getTestLastState()).toBe(EnterState.Exiting)
+
+      // Third tick: Exiting -> Finished (queues returnToCell child)
+      const result3 = enter.tick(actor)
+      expect(result3).toBe(false)
+      expect(enter.getTestLastState()).toBe(EnterState.Finished)
+
+      // Fourth tick: returnToCell child completes, activity finishes
+      const result4 = enter.tick(actor)
+      expect(result4).toBe(true)
     })
   })
 

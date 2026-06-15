@@ -102,7 +102,7 @@ function createMockActor(options: {
       isTraitPaused: false,
       canInteractWithGroundLayer: vi.fn(() => true),
       moveResult: 0,
-      moveWithinRange: vi.fn((_self: unknown, _target: Target, _minRange: WDist, _maxRange: WDist, _initialPos: WPos, _color: unknown) => {
+      moveWithinRangeMinMax: vi.fn((_self: unknown, _target: Target, _minRange: WDist, _maxRange: WDist, _initialPos: WPos, _color: unknown) => {
         return new MockMoveActivity()
       }),
     })
@@ -246,6 +246,25 @@ describe('Attack', () => {
       // After recalculate, target should be invalid/hidden
       // useLastVisibleTarget should be set
       expect((attack as unknown as { useLastVisibleTarget: boolean }).useLastVisibleTarget).toBe(true)
+    })
+
+    it('turns toward target when not in firing arc', () => {
+      const actor = createMockActor() as never
+      const targetActor = createMockTargetActor(new WPos(1000, 0, 0))
+      const target = Target.fromActor(targetActor as never)
+
+      // Override targetInFiringArc to report out-of-arc
+      const traits = (actor as { traits: Map<string, unknown> }).traits
+      const attackBase = traits.get('attackBase') as Record<string, unknown>
+      attackBase['targetInFiringArc'] = vi.fn(() => false)
+      // Rebuild the OpenRA convention aggregate trait array
+      traits.set('', Array.from(traits.values()))
+
+      const attack = new Attack(actor, target, true, false)
+      ;(attack as unknown as { state: number }).state = 1 // Active
+      const result = attack.tick(actor)
+      // Needs to turn, so not done
+      expect(result).toBe(false)
     })
   })
 

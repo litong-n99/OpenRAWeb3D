@@ -2059,7 +2059,7 @@ export class Aircraft
   moveToTarget(
     _source: IGameActor,
     _target: Target,
-    _initialTarget?: Target,
+    _initialTargetPosition?: WPos,
   ): Activity {
     return new FlyActivity() as unknown as Activity
   }

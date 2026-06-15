@@ -29,6 +29,16 @@ import { MoveCooldownHelper } from './Move/MoveCooldownHelper.js'
 import type { UnitStance } from '../Traits/CombatInterfaces.js'
 
 // ---------------------------------------------------------------------------
+// Shared constants
+// ---------------------------------------------------------------------------
+
+/** Standard red target-line color used when moving toward a target.
+ *
+ * OpenRA 对照: Color.Red
+ */
+const TargetLineRed: ColorStub = { r: 255, g: 0, b: 0, a: 255 }
+
+// ---------------------------------------------------------------------------
 // AttackStatus enum (对应 OpenRA Attack.AttackStatus)
 // ---------------------------------------------------------------------------
 
@@ -95,9 +105,12 @@ export class Attack extends Activity {
     canEnterCell: (cell: unknown, ignoreActor?: unknown, check?: unknown) => boolean
   } | null
 
-  /** Duck-typed IMove trait (null if movement not allowed). */
+  /** Duck-typed Mobile.moveWithinRangeMinMax trait (null if movement not allowed).
+   *
+   * OpenRA 对照: IMove.MoveWithinRange(Target, WDist, WDist, WPos?, Color?)
+   */
   private readonly move: {
-    moveWithinRange: (source: GameActor, target: Target, minRange: WDist, maxRange: WDist, initialTargetPosition: WPos, targetLineColor: ColorStub | null) => Activity
+    moveWithinRangeMinMax: (source: GameActor, target: Target, minRange: WDist, maxRange: WDist, initialTargetPosition: WPos, targetLineColor: ColorStub | null) => Activity
   } | null
 
   /** Duck-typed Mobile trait (for ground layer interaction check). */
@@ -176,6 +189,9 @@ export class Attack extends Activity {
     this.childHasPriority = false
 
     // Resolve attack traits
+    // NOTE: Array.from(traits.values()) is O(n) but actor trait counts are
+    // typically small (<20). Caching by type is deferred to a future trait
+    // registry optimization.
     const actorAny = self as unknown as {
       traits?: Map<string, unknown>
       world?: { sharedRandom?: { next(): number } }
@@ -257,6 +273,26 @@ export class Attack extends Activity {
   }
 
   // ---------------------------------------------------------------------------
+  // Target recalculation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Recalculate the current target, handling visibility changes.
+   *
+   * OpenRA 对照: Attack.RecalculateTarget(Actor, out bool)
+   *
+   * Virtual so subclasses can override target resolution behavior.
+   *
+   * @param self — the actor performing the attack
+   * @returns [recalculated target, whether the target is a hidden actor]
+   */
+  protected recalculateTarget(self: GameActor): [Target, boolean] {
+    return this.target.recalculate(
+      (self as unknown as { owner?: unknown }).owner,
+    )
+  }
+
+  // ---------------------------------------------------------------------------
   // Tick
   // ---------------------------------------------------------------------------
 
@@ -281,9 +317,7 @@ export class Attack extends Activity {
     if (this.isCanceling) return true
 
     // Recalculate target (handle visibility changes)
-    const [recalculatedTarget, targetIsHiddenActor] = this.target.recalculate(
-      (self as unknown as { owner?: unknown }).owner,
-    )
+    const [recalculatedTarget, targetIsHiddenActor] = this.recalculateTarget(self)
     this.target = recalculatedTarget
 
     // Update last visible target info
@@ -329,13 +363,13 @@ export class Attack extends Activity {
 
       // Move toward last known position
       this.moveCooldownHelper.notifyMoveQueued()
-      this.queueChild(this.move.moveWithinRange(
+      this.queueChild(this.move.moveWithinRangeMinMax(
         self,
         this.target,
         WDist.Zero,
         this.lastVisibleMaximumRange,
         checkTarget.centerPosition,
-        { r: 255, g: 0, b: 0, a: 255 },
+        TargetLineRed,
       ))
       return false
     }
@@ -395,13 +429,13 @@ export class Attack extends Activity {
       const sightRange = WDist.fromCells(2)
       this.attackStatus = this.attackStatus >= AttackStatus.NeedsToMove ? this.attackStatus : AttackStatus.NeedsToMove
       this.moveCooldownHelper.notifyMoveQueued()
-      this.queueChild(this.move.moveWithinRange(
+      this.queueChild(this.move.moveWithinRangeMinMax(
         self,
         this.target,
         sightRange,
         WDist.MaxValue,
         this.target.centerPosition,
-        { r: 255, g: 0, b: 0, a: 255 },
+        TargetLineRed,
       ))
       return AttackStatus.NeedsToMove
     }
@@ -446,19 +480,20 @@ export class Attack extends Activity {
       this.attackStatus = this.attackStatus >= AttackStatus.NeedsToMove ? this.attackStatus : AttackStatus.NeedsToMove
       this.moveCooldownHelper.notifyMoveQueued()
       const checkTarget = this.useLastVisibleTarget ? this.lastVisibleTarget : this.target
-      this.queueChild(this.move.moveWithinRange(
+      this.queueChild(this.move.moveWithinRangeMinMax(
         self,
         this.target,
         this.minRange,
         this.maxRange,
         checkTarget.centerPosition,
-        { r: 255, g: 0, b: 0, a: 255 },
+        TargetLineRed,
       ))
       return AttackStatus.NeedsToMove
     }
 
     // Firing arc check
-    if (!attack.targetInFiringArc(self, this.target, attackInfo.facingTolerance)) {
+    const facingTolerance = attackInfo.facingTolerance ?? new WAngle(512)
+    if (!attack.targetInFiringArc(self, this.target, facingTolerance)) {
       // Try to turn toward target
       if (this.mobile === null || (!this.mobile.isTraitDisabled && !this.mobile.isTraitPaused)) {
         const targetPos = attack.getTargetPosition(pos, this.target)
@@ -473,7 +508,7 @@ export class Attack extends Activity {
           )
 
           // Check again if we turned enough
-          if (!attack.targetInFiringArc(self, this.target, attackInfo.facingTolerance)) {
+          if (!attack.targetInFiringArc(self, this.target, facingTolerance)) {
             this.attackStatus = this.attackStatus >= AttackStatus.NeedsToTurn ? this.attackStatus : AttackStatus.NeedsToTurn
             return AttackStatus.NeedsToTurn
           }

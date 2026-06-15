@@ -225,7 +225,7 @@ describe('Demolish', () => {
       expect((actor as { dispose: ReturnType<typeof vi.fn> }).dispose).toHaveBeenCalled()
     })
 
-    it('kills self when EnterBehaviour is Suicide', () => {
+    it('does not dispose or kill self when EnterBehaviour is Exit', () => {
       const actor = createMockActor() as never
       const targetActor = createMockTargetActor()
       const target = Target.fromActor(targetActor as never)
@@ -233,7 +233,7 @@ describe('Demolish', () => {
       const d = new DemolishClass(
         actor,
         target,
-        EnterBehaviour.Suicide,
+        EnterBehaviour.Exit,
         50, 3, 10, 5,
         new Set<string>(),
       )
@@ -245,7 +245,8 @@ describe('Demolish', () => {
       const world = (actor as { world: { frameEndActions: Array<() => void> } }).world
       world.frameEndActions[0]!()
 
-      expect((actor as { kill: ReturnType<typeof vi.fn> }).kill).toHaveBeenCalledWith(actor)
+      expect((actor as { dispose: ReturnType<typeof vi.fn> }).dispose).not.toHaveBeenCalled()
+      expect((actor as { kill: ReturnType<typeof vi.fn> }).kill).not.toHaveBeenCalled()
     })
   })
 
