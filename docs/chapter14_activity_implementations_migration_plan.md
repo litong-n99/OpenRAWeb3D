@@ -190,11 +190,11 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 |:---|:---:|:---:|:---:|:---:|:---:|
 | A: Movement | 11 | ~1,500 | ~3,400 | ~180 | **COMPLETE (11/11, 82 tests, 3 E2E pages R2 APPROVED)** |
 | B: Combat | 6 | ~789 | ~1,700 | ~100 | **COMPLETE (6/6, ~70 tests, R2 APPROVED)** |
-| C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | PLANNING |
+| C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | **PLANNING (0/12, detailed plan at [chapter14_phase_c_plan.md](docs/chapter14_phase_c_plan.md))** |
 | D: Economic | 7 | ~1,375 | ~3,300 | ~120 | PLANNING |
 | E: Transport & Enter | 6 | ~732 | ~1,800 | ~90 | PLANNING |
 | F: Utility & Misc | 8 | ~647 | ~1,500 | ~70 | PLANNING |
-| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A+B COMPLETE (17/49); C-F PLANNING** |
+| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A+B COMPLETE (17/49); C PLANNING (detailed); D-F PLANNING** |
 
 ---
 
@@ -327,6 +327,7 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 **Complexity**: HIGH (`Fly.cs` 283 lines, `FlyAttack.cs` 316 lines, `Land.cs` 276 lines)
 **Blocked by**: Phase B (`Enter` minimal base, `Attack`), Chapter 9 (`Aircraft` trait), Phase A (`Move` for ground taxi if any)
 **Blocks**: Phase D (`Resupply` for aircraft), Phase E (`PickupUnit`, `DeliverUnit`), Chapter 13 support powers (already use `Fly`)
+**Planning document**: [docs/chapter14_phase_c_plan.md](docs/chapter14_phase_c_plan.md)
 
 **Description**: Aircraft activities implement flight physics wrappers. `Fly` is the core and exposes static `FlyTick()` / `VerticalTakeOffOrLandTick()` helpers used by all other aircraft activities. `FlyAttack` contains nested `FlyAttackRun`/`StrafeAttackRun` classes.
 
@@ -335,58 +336,136 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 - 3D altitude maps to Babylon.js Y axis
 - Turn radius / roll / pitch handled by `Aircraft` trait, not activity
 - `RingBuffer<WPos>` for position history -> fixed-size array or `RingBuffer` utility
+- Static `FlyTick` helpers -> TypeScript static methods on `Fly` class
+- Child activity composition for complex sequences (FlyAttackRun, StrafeAttackRun)
+
+**Implementation Order** (see [chapter14_phase_c_plan.md](docs/chapter14_phase_c_plan.md) for full details):
+1. Batch 1: Fly (core), TakeOff, Land
+2. Batch 2: FlyForward, FlyIdle, FlyOffMap, Parachute
+3. Batch 3: FlyAttack, FlyFollow
+4. Batch 4: ReturnToBase, FallToEarth, DeliverBulkOrder
+5. Batch 5: Aircraft.ts stub replacement + shared stubs
+
+**Shared Stubs Required** (to be created during Phase C):
+- `Wait.ts` -- minimal stub (promoted from Hunt.ts local class)
+- `RemoveSelf.ts` -- minimal stub (Phase F will replace)
+- `Resupply.ts` -- minimal stub (Phase D will replace)
+- `AircraftActivityInterfaces.ts` -- INotifyIdle, INotifyLanding, INotifyTakeOff, INotifyParachute, ParachutableInfo
+
+**Aircraft.ts Stub Replacement** (post-Phase C cleanup):
+- Replace `FlyActivity`, `FlyFollowActivity`, `LandActivity`, `TakeOffActivity`, `FlyIdleActivity`, `FlyOffMapActivity`, `ReturnToBaseActivity` stubs with real imports
+- Update `moveToCell()`, `moveTo()`, `moveWithinRange()`, `moveFollow()`, `moveToTarget()`, `moveIntoTarget()`, `moveOntoTarget()`, `localMove()`, `getCreationActivity()`, `onBecomingIdle()`, `resolveOrder()` to construct real activities with proper parameters
 
 #### TODO-14.C.1 `src/OpenRA.Mods.Common/Activities/Air/Fly.ts`
-- [ ] Port `Fly` with target tracking, last-visible-target fallback, range annulus
-- [ ] Implement static `FlyTick` helpers (or delegate to `Aircraft`)
-- [ ] Implement `VerticalTakeOffOrLandTick`
-- [ ] Unit tests: target approach, minimum range slide, turn radius, cancellation/landing
+- [ ] Port `Fly` class with three constructors (target+nearEnough, target+initialPos+color, target+minRange+maxRange+initialPos+color)
+- [ ] Implement `RingBuffer<WPos>` position history (capacity 5) as inline fixed-size array
+- [ ] Implement static `flyTick()` with two overloads (with/without moveOverride)
+- [ ] Implement static `verticalTakeOffOrLandTick()` for VTOL altitude transitions
+- [ ] Implement static `calculateTurnRadius()` (speed + turnSpeed -> radius)
+- [ ] Implement instance `tick()` with: target tracking, last-visible-target fallback, range annulus (minRange/maxRange), turn radius avoidance, position history blocking detection, cancellation landing/TakeOff
+- [ ] Implement `getTargets()` and `targetLineNodes()`
+- [ ] Unit tests: target approach, min range slide (CanSlide vs non-slide), turn radius, cancellation, position history, target lines
+- [ ] **Why first**: All other aircraft activities depend on Fly's static helpers
 
-#### TODO-14.C.2 `src/OpenRA.Mods.Common/Activities/Air/FlyAttack.ts`
-- [ ] Port `FlyAttack` (aircraft attack run)
-- [ ] Port nested `FlyAttackRun` and `StrafeAttackRun`
-- [ ] Coordinate with `AttackAircraft` / `AttackBomber` traits
-- [ ] Unit tests: approach, attack range, departure
+#### TODO-14.C.2 `src/OpenRA.Mods.Common/Activities/Air/TakeOff.ts`
+- [ ] Port `TakeOff` with constructor resolving Aircraft trait
+- [ ] Implement `onFirstRun()`: remove influence, play sound (via Sound.ts), notify INotifyTakeOff
+- [ ] Implement `tick()`: VTOL uses `Fly.verticalTakeOffOrLandTick()`, non-VTOL uses `Fly.flyTick()`
+- [ ] Handle `forceLanding` cancellation
+- [ ] Unit tests: VTOL ascent, non-VTOL ascent, force landing cancellation, sound notification
+- [ ] **Depends on**: TODO-14.C.1 (Fly static helpers)
 
-#### TODO-14.C.3 `src/OpenRA.Mods.Common/Activities/Air/FlyFollow.ts`
-- [ ] Port `FlyFollow` (aircraft escort/chase)
-- [ ] Unit tests: follow range, target invalidation
+#### TODO-14.C.3 `src/OpenRA.Mods.Common/Activities/Air/Land.ts`
+- [ ] Port `Land` with multiple constructors (no target, target, target+landRange, target+offset, full with clearCells)
+- [ ] Implement `onFirstRun()`: assign target from self.Location if not provided
+- [ ] Implement VTOL landing path: horizontal alignment -> Turn -> vertical descent via `Fly.verticalTakeOffOrLandTick()`
+- [ ] Implement non-VTOL approach trajectory: calculate w1/w2/w3 waypoints using turn radius and tangent geometry
+- [ ] Implement landing initiation: `canLand()` check, `addInfluence()`, landing sound, `INotifyLanding` notification
+- [ ] Implement cancellation: continue landing (idle behavior) or TakeOff
+- [ ] Unit tests: VTOL landing, non-VTOL approach, cancellation, blocked landing (holding pattern), target lines
+- [ ] **Depends on**: TODO-14.C.1 (Fly), TODO-14.C.2 (TakeOff), Turn.ts (Phase B)
 
 #### TODO-14.C.4 `src/OpenRA.Mods.Common/Activities/Air/FlyForward.ts`
-- [ ] Port `FlyForward` (fly fixed facing)
-- [ ] Unit tests: boundary/off-map handling
+- [ ] Port `FlyForward` with two constructors (ticks, distance)
+- [ ] Implement `tick()`: fly at current facing for N ticks or until distance traveled, using `Fly.flyTick()`
+- [ ] Handle `forceLanding` cancellation
+- [ ] Unit tests: tick-based completion, distance-based completion, cancellation
+- [ ] **Depends on**: TODO-14.C.1 (Fly)
 
 #### TODO-14.C.5 `src/OpenRA.Mods.Common/Activities/Air/FlyIdle.ts`
-- [ ] Port `FlyIdle` (circling/hovering)
-- [ ] Unit tests: idle behavior modes
+- [ ] Port `FlyIdle` with constructor `(self, ticks = -1, idleTurn = true)`
+- [ ] Implement `tick()`: if `isIdleTurner`, circle at idle speed with `Fly.flyTick(idleTurn=true)`
+- [ ] Call `INotifyIdle.tickIdle()` for each notify idle trait
+- [ ] Unit tests: tick countdown, circling behavior, hover behavior, force landing cancellation
+- [ ] **Depends on**: TODO-14.C.1 (Fly), INotifyIdle stub
 
 #### TODO-14.C.6 `src/OpenRA.Mods.Common/Activities/Air/FlyOffMap.ts`
-- [ ] Port `FlyOffMap` (exit world bounds)
-- [ ] Unit tests: removal on off-map
+- [ ] Port `FlyOffMap` with two constructors (endingDelay, target+endingDelay)
+- [ ] Implement `onFirstRun()`: queue Fly + FlyForward (with target) or TakeOff + FlyForward (no target, VTOL)
+- [ ] Implement `tick()`: off-map detection with delay countdown, child cancellation
+- [ ] Unit tests: with target, without target, off-map detection, delay countdown
+- [ ] **Depends on**: TODO-14.C.1 (Fly), TODO-14.C.2 (TakeOff), TODO-14.C.4 (FlyForward)
 
-#### TODO-14.C.7 `src/OpenRA.Mods.Common/Activities/Air/Land.ts`
-- [ ] Port `Land` (descent and landing)
-- [ ] Unit tests: landing altitude, runway/offset alignment
+#### TODO-14.C.7 `src/OpenRA.Mods.Common/Activities/Air/FlyAttack.ts`
+- [ ] Port `FlyAttack` with constructor resolving Aircraft, AttackAircraft, Rearmable
+- [ ] Implement `tick()`: ammo check, target recalculation, resupply decision (AbortOnResupply), range approach, attack type selection (Strafe/Default/Hover)
+- [ ] Implement `onLastRun()`: clear requested target from AttackAircraft
+- [ ] Implement `stanceChanged()`: cancel non-forced targets on stance change
+- [ ] Port nested `FlyAttackRun`: queue Fly -> FlyForward(1) -> Fly(exitRange), cancel if target dies
+- [ ] Port nested `StrafeAttackRun`: queue Fly -> FlyForward(exitRange) -> Fly(exitRange+turnDistance), update ground target
+- [ ] Unit tests: approach, ammo depletion, resupply, stance change, FlyAttackRun child chain, StrafeAttackRun exit range
+- [ ] **Depends on**: TODO-14.C.1 (Fly), TODO-14.C.2 (TakeOff), TODO-14.C.4 (FlyForward), AttackAircraft trait (Ch8)
 
-#### TODO-14.C.8 `src/OpenRA.Mods.Common/Activities/Air/TakeOff.ts`
-- [ ] Port `TakeOff` (vertical ascent to cruise altitude)
-- [ ] Unit tests: altitude transition, influence reservation
+#### TODO-14.C.8 `src/OpenRA.Mods.Common/Activities/Air/FlyFollow.ts`
+- [ ] Port `FlyFollow` with constructor `(self, target, minRange, maxRange, initialPos, color)`
+- [ ] Implement `tick()`: recalculate target, range check, queue MoveWithinRange child if out of range, FlyTick if non-hover in range
+- [ ] Handle target hidden after move: give up (return true)
+- [ ] Unit tests: follow range, target invalidation, target lines
+- [ ] **Depends on**: TODO-14.C.1 (Fly)
 
 #### TODO-14.C.9 `src/OpenRA.Mods.Common/Activities/Air/ReturnToBase.ts`
-- [ ] Port `ReturnToBase` (find helipad/airfield, land, resupply)
-- [ ] Unit tests: base selection, landing sequence
+- [ ] Port `ReturnToBase` with constructor `(self, dest = null, alwaysLand = false)`
+- [ ] Implement static `chooseResupplier()`: find nearest available Reservable actor
+- [ ] Implement `shouldLandAtBuilding()`: check repair/rearm needs
+- [ ] Implement `tick()`: find dest, hover near nearest if none, queue MoveOntoTarget + Resupply if landing, Fly to dest if not
+- [ ] Unit tests: base selection, landing sequence, no-base idle, target lines
+- [ ] **Depends on**: TODO-14.C.1 (Fly), TODO-14.C.5 (FlyIdle), Resupply stub
 
 #### TODO-14.C.10 `src/OpenRA.Mods.Common/Activities/Air/FallToEarth.ts`
-- [ ] Port `FallToEarth` (crashing aircraft)
-- [ ] Unit tests: descent, impact
+- [ ] Port `FallToEarth` with constructor `(self, info)`, `IsInterruptible = false`
+- [ ] Implement `tick()`: ground impact -> weapon explosion + kill self; otherwise spin + fall
+- [ ] Unit tests: ground impact, falling spin, non-interruptible
+- [ ] **Depends on**: Aircraft trait, FallsToEarthInfo (Ch9)
 
 #### TODO-14.C.11 `src/OpenRA.Mods.Common/Activities/Air/DeliverBulkOrder.ts`
-- [ ] Port `DeliverBulkOrder` (transport deliver order)
-- [ ] Unit tests: delivery position, unload trigger
+- [ ] Port `DeliverBulkOrder` with constructor `(transport, producer, orderedActors, productionType, queue)`
+- [ ] Implement `onFirstRun()`: queue Land at producer, Wait before unload
+- [ ] Implement `onLastRun()`: notify delivery, queue Wait, FlyOffMap, RemoveSelf
+- [ ] Implement `onActorDispose()`: call `queue.DeliverFinished()`
+- [ ] Implement `tick()`: producer death -> find alternative, unload one actor per tick with delay
+- [ ] Unit tests: landing, unload delay, producer death, empty order list
+- [ ] **Depends on**: TODO-14.C.3 (Land), TODO-14.C.6 (FlyOffMap), Cargo trait (Ch11), Wait stub, RemoveSelf stub
 
 #### TODO-14.C.12 `src/OpenRA.Mods.Common/Activities/Parachute.ts`
-- [ ] Port `Parachute` (descent after paradrop)
-- [ ] Unit tests: fall completion, land effect
+- [ ] Port `Parachute` with constructor `(self)`, `IsInterruptible = false`
+- [ ] Implement `onFirstRun()`: record ground level, notify INotifyParachute
+- [ ] Implement `tick()`: fall by fallRate each tick, return true at ground level
+- [ ] Implement `onLastRun()`: snap to ground, notify landed
+- [ ] Unit tests: falling, landing, non-interruptible, notifications
+- [ ] **Depends on**: IPositionable, ParachutableInfo stub, INotifyParachute stub
+
+#### TODO-14.C.13 Shared Stubs (support files)
+- [ ] Create `src/OpenRA.Mods.Common/Activities/Wait.ts` (minimal stub, promoted from Hunt.ts)
+- [ ] Create `src/OpenRA.Mods.Common/Activities/RemoveSelf.ts` (minimal stub)
+- [ ] Create `src/OpenRA.Mods.Common/Activities/Resupply.ts` (minimal stub)
+- [ ] Create `src/OpenRA.Mods.Common/Activities/Air/AircraftActivityInterfaces.ts` (INotifyIdle, INotifyLanding, INotifyTakeOff, INotifyParachute, ParachutableInfo)
+
+#### TODO-14.C.14 Aircraft.ts Stub Replacement (post-Phase C cleanup)
+- [ ] Replace all activity stubs in `Aircraft.ts` with real imports from Phase C
+- [ ] Update `moveToCell()`, `moveTo()`, `moveWithinRange()`, `moveFollow()`, `moveToTarget()`, `moveIntoTarget()`, `moveOntoTarget()`, `localMove()` to construct real activities
+- [ ] Update `getCreationActivity()`, `onBecomingIdle()`, `resolveOrder()` to use real activities
+- [ ] Verify all Aircraft.ts tests still pass after replacement
+- [ ] Remove TODO-14.A.1 through TODO-14.A.10 comments from Aircraft.ts
 
 ---
 
