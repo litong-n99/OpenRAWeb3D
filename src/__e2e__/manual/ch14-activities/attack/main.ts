@@ -504,10 +504,20 @@ function tickAttack(): void {
     return
   }
 
-  // Check range
-  if (!isInRange()) {
+  const dist = distanceToTarget()
+  const maxRangeWorld = attacker.attackRange * CELL_SIZE
+  const minRangeWorld = attacker.minRange * CELL_SIZE
+
+  // Check if target is inside minimum range (must retreat)
+  if (minRangeWorld > 0 && dist < minRangeWorld) {
     attacker.attackStatus = AttackStatus.NeedsToMove
-    // Move toward target
+    moveAwayFromTarget()
+    return
+  }
+
+  // Check if target is outside maximum range (must approach)
+  if (dist > maxRangeWorld) {
+    attacker.attackStatus = AttackStatus.NeedsToMove
     moveTowardTarget()
     return
   }
@@ -535,8 +545,8 @@ function tickAttack(): void {
 
 function moveTowardTarget(): void {
   if (!attacker.isMoving) {
-    // Start moving toward target
-    const path = findPath(attacker.cellX, attacker.cellY, attacker.targetCellX, attacker.targetCellY)
+    // Start moving toward target's CURRENT position (not cached targetCell)
+    const path = findPath(attacker.cellX, attacker.cellY, target.cellX, target.cellY)
     if (path.length > 1) {
       attacker.movePath = path
       attacker.movePathIndex = 1
@@ -586,6 +596,91 @@ function moveTowardTarget(): void {
   }
 
   // Turn while moving toward target
+  const desired = directionToTargetWAngle()
+  attacker.facing = tickFacing(attacker.facing, desired, attacker.turnSpeed)
+}
+
+/** Move away from target (retreat) when target is inside minimum range.
+ *  OpenRA: Attack.TickAttack checks inMinRange and queues move to get outside min range.
+ */
+function moveAwayFromTarget(): void {
+  if (!attacker.isMoving) {
+    // Find a cell that is outside min range
+    const minRangeWorld = attacker.minRange * CELL_SIZE
+    let bestCell: { x: number; y: number } | null = null
+    let bestDist = Infinity
+
+    // Search all cells in a small radius for the best retreat position
+    for (let dy = -5; dy <= 5; dy++) {
+      for (let dx = -5; dx <= 5; dx++) {
+        const nx = attacker.cellX + dx
+        const ny = attacker.cellY + dy
+        if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue
+        if (nx === target.cellX && ny === target.cellY) continue
+
+        const c = cellCenter(nx, ny)
+        const tdx = c.x - target.posX
+        const tdy = c.z - target.posZ
+        const dist = Math.sqrt(tdx * tdx + tdy * tdy)
+
+        // Must be outside min range and further than current
+        if (dist >= minRangeWorld && dist > distanceToTarget()) {
+          if (dist < bestDist) {
+            bestDist = dist
+            bestCell = { x: nx, y: ny }
+          }
+        }
+      }
+    }
+
+    if (bestCell) {
+      const path = findPath(attacker.cellX, attacker.cellY, bestCell.x, bestCell.y)
+      if (path.length > 1) {
+        attacker.movePath = path
+        attacker.movePathIndex = 1
+        attacker.isMoving = true
+        attacker.moveProgress = 0
+        const from = cellCenter(attacker.cellX, attacker.cellY)
+        const to = cellCenter(path[1].x, path[1].y)
+        attacker.moveFrom = from
+        attacker.moveTo = to
+        attacker.moveDistance = Math.sqrt((to.x - from.x) ** 2 + (to.z - from.z) ** 2)
+      }
+    }
+    return
+  }
+
+  // Continue moving along retreat path (same interpolation as moveTowardTarget)
+  attacker.moveProgress += attacker.moveSpeed
+
+  if (attacker.moveProgress >= attacker.moveDistance) {
+    const nextCell = attacker.movePath[attacker.movePathIndex]
+    attacker.cellX = nextCell.x
+    attacker.cellY = nextCell.y
+    attacker.posX = attacker.moveTo.x
+    attacker.posZ = attacker.moveTo.z
+    attacker.movePathIndex++
+    attacker.moveProgress = 0
+
+    if (attacker.movePathIndex >= attacker.movePath.length) {
+      attacker.isMoving = false
+      attacker.movePath = []
+    } else {
+      const next = attacker.movePath[attacker.movePathIndex]
+      attacker.moveFrom = attacker.moveTo
+      attacker.moveTo = cellCenter(next.x, next.y)
+      attacker.moveDistance = Math.sqrt(
+        (attacker.moveTo.x - attacker.moveFrom.x) ** 2 +
+        (attacker.moveTo.z - attacker.moveFrom.z) ** 2
+      )
+    }
+  } else {
+    const t = attacker.moveProgress / attacker.moveDistance
+    attacker.posX = attacker.moveFrom.x + (attacker.moveTo.x - attacker.moveFrom.x) * t
+    attacker.posZ = attacker.moveFrom.z + (attacker.moveTo.z - attacker.moveFrom.z) * t
+  }
+
+  // Turn away from target while retreating
   const desired = directionToTargetWAngle()
   attacker.facing = tickFacing(attacker.facing, desired, attacker.turnSpeed)
 }

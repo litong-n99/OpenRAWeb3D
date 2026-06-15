@@ -501,9 +501,11 @@ for (const [id, speed] of [['btn-turn-slow', 4], ['btn-turn-normal', 8], ['btn-t
       document.getElementById(b)!.classList.toggle('active', b === id)
     }
     // Recalculate completion frames if turning
+    // Formula: elapsed frames + remaining frames at new speed
+    // remaining = remaining angle diff / new turnSpeed
     if (unit.isTurning && !unit.turnComplete) {
-      const diff = Math.abs(wAngleDiff(unit.facing, unit.desiredFacing))
-      unit.completionFrames = unit.currentTurnFrames + Math.ceil(diff / unit.turnSpeed)
+      const remainingDiff = Math.abs(wAngleDiff(unit.facing, unit.desiredFacing))
+      unit.completionFrames = unit.currentTurnFrames + Math.ceil(remainingDiff / unit.turnSpeed)
     }
   })
 }
