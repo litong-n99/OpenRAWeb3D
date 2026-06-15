@@ -64,7 +64,7 @@ export interface IPaletteWorldRenderer extends WorldRendererStub {
 
 const FOG_BASE: readonly number[] = [
   toArgb(0, 0, 0, 0),       // [0] 完全透明
-  toArgb(255, 0, 255, 0),   // [1] 绿色（调试可见）
+  toArgb(255, 0, 128, 0),   // [1] Green (System.Drawing.Color.Green)
   toArgb(255, 0, 0, 255),   // [2] 蓝色（调试可见）
   toArgb(255, 255, 255, 0), // [3] 黄色（调试可见）
   toArgb(128, 0, 0, 0),     // [4] 50% 黑色
@@ -84,7 +84,7 @@ const FOG_BASE: readonly number[] = [
 
 const SHROUD_BASE: readonly number[] = [
   toArgb(0, 0, 0, 0),       // [0] 完全透明
-  toArgb(255, 0, 255, 0),   // [1] 绿色（调试可见）
+  toArgb(255, 0, 128, 0),   // [1] Green (System.Drawing.Color.Green)
   toArgb(255, 0, 0, 255),   // [2] 蓝色（调试可见）
   toArgb(255, 255, 255, 0), // [3] 黄色（调试可见）
   toArgb(255, 0, 0, 0),     // [4] 黑色（完全）

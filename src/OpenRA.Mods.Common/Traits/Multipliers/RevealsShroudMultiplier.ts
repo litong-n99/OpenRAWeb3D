@@ -39,22 +39,14 @@ export class RevealsShroudMultiplierInfo implements ConditionalTraitInfo {
    */
   readonly modifier: number = 100
 
-  /** Whether this trait is enabled by default.
-   *
-   *  OpenRA 对照: (derived from EnabledByDefault logic)
-   */
-  readonly enabledByDefault: boolean = true
-
   constructor(params: {
     instanceName?: string
     requiresCondition?: string
     modifier?: number
-    enabledByDefault?: boolean
   } = {}) {
     this.instanceName = params.instanceName
     this.requiresCondition = params.requiresCondition
     this.modifier = params.modifier ?? 100
-    this.enabledByDefault = params.enabledByDefault ?? true
   }
 }
 
@@ -74,6 +66,12 @@ export class RevealsShroudMultiplier
   extends ConditionalTrait<RevealsShroudMultiplierInfo>
   implements IRevealsShroudModifier
 {
+  static readonly interfaces: string[] = [
+    'IRevealsShroudModifier',
+    'ConditionalTrait',
+    'component',
+  ]
+
   constructor(info: RevealsShroudMultiplierInfo) {
     super(info)
   }

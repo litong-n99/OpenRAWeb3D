@@ -184,9 +184,9 @@ describe('ShroudPalette.loadPalettes with Fog=false (shroud)', () => {
     sp.loadPalettes(wr)
 
     const pal = addPaletteCalls[0]!.pal
-    // Green: (255, 0, 255, 0)
+    // Green: (255, 0, 128, 0)
     const c1 = fromArgb(pal.at(1))
-    expect(c1).toEqual({ a: 255, r: 0, g: 255, b: 0 })
+    expect(c1).toEqual({ a: 255, r: 0, g: 128, b: 0 })
 
     // Blue: (255, 0, 0, 255)
     const c2 = fromArgb(pal.at(2))

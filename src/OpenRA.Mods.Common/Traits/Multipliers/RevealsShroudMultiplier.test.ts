@@ -25,16 +25,6 @@ describe('RevealsShroudMultiplierInfo', () => {
     expect(info.modifier).toBe(50)
   })
 
-  it('has default enabledByDefault of true', () => {
-    const info = new RevealsShroudMultiplierInfo()
-    expect(info.enabledByDefault).toBe(true)
-  })
-
-  it('accepts custom enabledByDefault', () => {
-    const info = new RevealsShroudMultiplierInfo({ enabledByDefault: false })
-    expect(info.enabledByDefault).toBe(false)
-  })
-
   it('has undefined instanceName by default', () => {
     const info = new RevealsShroudMultiplierInfo()
     expect(info.instanceName).toBeUndefined()
@@ -66,6 +56,14 @@ describe('RevealsShroudMultiplierInfo', () => {
 // ---------------------------------------------------------------------------
 
 describe('RevealsShroudMultiplier', () => {
+  it('declares correct static interfaces for trait dictionary registration', () => {
+    expect(RevealsShroudMultiplier.interfaces).toEqual([
+      'IRevealsShroudModifier',
+      'ConditionalTrait',
+      'component',
+    ])
+  })
+
   it('returns info.modifier when trait is enabled', () => {
     const info = new RevealsShroudMultiplierInfo({ modifier: 150 })
     const multiplier = new RevealsShroudMultiplier(info)
