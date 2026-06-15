@@ -73,7 +73,10 @@ export class Parachute extends Activity {
     }
     this.pos = pos
 
-    const parachutableInfo = actorAny.info?.traitInfo?.<ParachutableInfo>('Parachutable')
+    const traitInfoFn = actorAny.info?.traitInfo
+    const parachutableInfo = traitInfoFn
+      ? (traitInfoFn<ParachutableInfo>('Parachutable') as ParachutableInfo | null)
+      : null
     const fallRate = parachutableInfo?.fallRate?.length ?? 0
     this.fallVector = new WVec(0, 0, fallRate)
   }

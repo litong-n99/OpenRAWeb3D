@@ -158,7 +158,7 @@ export class DeliverBulkOrder extends Activity {
    */
   protected override onLastRun(self: GameActor): void {
     const producerAny = this.producer as unknown as { isDead?: boolean; isInWorld?: boolean; traits?: Map<string, unknown> }
-    if (!producerAny.isDead || producerAny.isInWorld) {
+    if (!producerAny.isDead && producerAny.isInWorld) {
       if (producerAny.traits) {
         for (const [, trait] of producerAny.traits) {
           const notify = trait as Partial<INotifyDelivery>
