@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 14 -- Activity Implementations
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.3 (Traits) + `docs/chapter14_activity_implementations_analysis.md`
-> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phases B-F PLANNING (0/38 migrated)
+> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phase B COMPLETE (6/6 files migrated, ~70 tests, R2 APPROVED); Phases C-F PLANNING (0/32 migrated)
 > **Planning Date**: 2026-06-15
 > **Last Updated**: 2026-06-15
 > **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
@@ -111,12 +111,12 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | -- | `OpenRA.Game/Activities/CallFunc.cs` | `src/OpenRA.Game/Activities/CallFunc.ts` | `CallFunc` | 33 | LOW | A ✅ ALREADY MIGRATED |
 
 | **Phase B: Combat Activities** | | | | | |
-| 11 | `OpenRA.Mods.Common/Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | `Enter` (abstract, minimal base) | 163 | HIGH | B |
-| 12 | `OpenRA.Mods.Common/Activities/Attack.cs` | `src/OpenRA.Mods.Common/Activities/Attack.ts` | `Attack` | 283 | HIGH | B |
-| 13 | `OpenRA.Mods.Common/Activities/Hunt.cs` | `src/OpenRA.Mods.Common/Activities/Hunt.ts` | `Hunt` | 49 | LOW | B |
-| 14 | `OpenRA.Mods.Common/Activities/CaptureActor.cs` | `src/OpenRA.Mods.Common/Activities/CaptureActor.ts` | `CaptureActor` (extends minimal `Enter` base) | 158 | MEDIUM | B |
-| 15 | `OpenRA.Mods.Common/Activities/Demolish.cs` | `src/OpenRA.Mods.Common/Activities/Demolish.ts` | `Demolish` (extends minimal `Enter` base) | 89 | LOW | B |
-| 16 | `OpenRA.Mods.Common/Activities/Turn.cs` | `src/OpenRA.Mods.Common/Activities/Turn.ts` | `Turn` | 47 | LOW | B |
+| 11 | `OpenRA.Mods.Common/Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | `Enter` (abstract, minimal base) | 163 | HIGH | B ✅ COMPLETE |
+| 12 | `OpenRA.Mods.Common/Activities/Attack.cs` | `src/OpenRA.Mods.Common/Activities/Attack.ts` | `Attack` | 283 | HIGH | B ✅ COMPLETE |
+| 13 | `OpenRA.Mods.Common/Activities/Hunt.cs` | `src/OpenRA.Mods.Common/Activities/Hunt.ts` | `Hunt` | 49 | LOW | B ✅ COMPLETE |
+| 14 | `OpenRA.Mods.Common/Activities/CaptureActor.cs` | `src/OpenRA.Mods.Common/Activities/CaptureActor.ts` | `CaptureActor` (extends minimal `Enter` base) | 158 | MEDIUM | B ✅ COMPLETE |
+| 15 | `OpenRA.Mods.Common/Activities/Demolish.cs` | `src/OpenRA.Mods.Common/Activities/Demolish.ts` | `Demolish` (extends minimal `Enter` base) | 89 | LOW | B ✅ COMPLETE |
+| 16 | `OpenRA.Mods.Common/Activities/Turn.cs` | `src/OpenRA.Mods.Common/Activities/Turn.ts` | `Turn` | 47 | LOW | B ✅ COMPLETE |
 
 | **Phase C: Aircraft Activities** | | | | | |
 | 17 | `OpenRA.Mods.Common/Activities/Air/Fly.cs` | `src/OpenRA.Mods.Common/Activities/Air/Fly.ts` | `Fly` (+ static `FlyTick`, `VerticalTakeOffOrLandTick`) | 283 | HIGH | C |
@@ -189,12 +189,12 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | Phase | Files | C# Lines | Est. TS Lines | Est. Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---:|
 | A: Movement | 11 | ~1,500 | ~3,400 | ~180 | **COMPLETE (11/11, 82 tests, 3 E2E pages R2 APPROVED)** |
-| B: Combat | 6 | ~789 | ~1,700 | ~100 | PLANNING |
+| B: Combat | 6 | ~789 | ~1,700 | ~100 | **COMPLETE (6/6, ~70 tests, R2 APPROVED)** |
 | C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | PLANNING |
 | D: Economic | 7 | ~1,375 | ~3,300 | ~120 | PLANNING |
 | E: Transport & Enter | 6 | ~732 | ~1,800 | ~90 | PLANNING |
 | F: Utility & Misc | 8 | ~647 | ~1,500 | ~70 | PLANNING |
-| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A COMPLETE (11/11); B-F PLANNING** |
+| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A+B COMPLETE (17/49); C-F PLANNING** |
 
 ---
 
@@ -203,7 +203,7 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 ### 3.1 Phase A: Movement Activities ✅ COMPLETE (11/11 migrated, 82 tests, 3 E2E pages R2 APPROVED)
 **Complexity**: HIGHEST (`Move.cs` 640 lines) + MEDIUM/LOW wrappers
 **Blocked by**: Chapter 3 Phase F (`Activity` base) -- COMPLETE; Chapter 9 (`Mobile`, `Locomotor`, pathfinding) -- COMPLETE
-**Blocks**: Phase B (`Attack`, `Hunt`), Phase D (`MoveToDock`), Phase E (`Enter`, `UnloadCargo`, `Resupply`), Phase F (`DeployForGrantedCondition`)
+**Blocks**: Phase B (`Attack`, `Hunt`) -- NOW COMPLETE, Phase D (`MoveToDock`), Phase E (`Enter`, `UnloadCargo`, `Resupply`), Phase F (`DeployForGrantedCondition`)
 **Completed**: 2026-06-15
 **Tests**: 11 test files, 82 tests, all passing
 **Acceptance Test Pages**: 3 pages (`activities/move/`, `activities/target-lines/`, `activities/attack-move/`), R2 APPROVED
@@ -272,12 +272,15 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 ---
 
-### 3.2 Phase B: Combat Activities
+### 3.2 Phase B: Combat Activities ✅ COMPLETE (6/6 migrated, ~70 tests, R2 APPROVED)
 
-**Status**: PLANNING (0/6 migrated)
+**Status**: COMPLETE (6/6 migrated)
 **Complexity**: HIGH (`Attack.cs` 283 lines, `Enter.cs` 163 lines abstract base)
 **Blocked by**: Phase A (`Move`, `Turn`), Chapter 8 (combat traits), Chapter 9 (`Mobile`/`Aircraft`)
-**Blocks**: Phase A (`AttackMoveActivity`), Phase F (`DeployForGrantedCondition` indirectly)
+**Blocks**: Phase A (`AttackMoveActivity` -- already unblocked), Phase F (`DeployForGrantedCondition` indirectly)
+**Completed**: 2026-06-15
+**Tests**: 6 test files, ~70 tests, all passing
+**Review**: ch14-reviewer, Round 2 APPROVED (2 BLOCKER + 5 MAJOR resolved, 0 remaining)
 
 **Description**: Combat activities orchestrate the attack loop: move into range, face target, wait for armament cooldown, fire, repeat. `CaptureActor` and `Demolish` extend the minimal `Enter` base implemented in TODO-14.B.0. The full `Enter` with Cargo/Passenger transport logic remains in Phase E.
 
@@ -289,32 +292,32 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 - Minimal `Enter` base: 4-state enum (`Approaching`/`Entering`/`Exiting`/`Finished`), `Tick` orchestrates `IMove.MoveToTarget`/`MoveIntoTarget`/`ReturnToCell`, virtual hooks `TickInner`/`TryStartEnter`/`OnEnterComplete`
 
 #### TODO-14.B.0 `src/OpenRA.Mods.Common/Activities/Enter.ts` (minimal base)
-- [ ] Port minimal abstract `Enter` class with 4-state state machine
-- [ ] Implement `Tick` orchestration: `Approaching` -> `MoveToTarget`/`MoveIntoTarget`, `Entering` -> `TryStartEnter`/`TickInner`, `Exiting` -> `ReturnToCell`, `Finished` -> complete
-- [ ] Virtual hooks: `TickInner`, `TryStartEnter`, `OnEnterComplete`
-- [ ] Unit tests: state transitions, cancellation return to Approaching
-- [ ] **Note**: intentionally minimal -- no Cargo/Passenger transport logic (Phase E)
+- [x] Port minimal abstract `Enter` class with 4-state state machine
+- [x] Implement `Tick` orchestration: `Approaching` -> `MoveToTarget`/`MoveIntoTarget`, `Entering` -> `TryStartEnter`/`TickInner`, `Exiting` -> `ReturnToCell`, `Finished` -> complete
+- [x] Virtual hooks: `TickInner`, `TryStartEnter`, `OnEnterComplete`
+- [x] Unit tests: state transitions, cancellation return to Approaching
+- [x] **Note**: intentionally minimal -- no Cargo/Passenger transport logic (Phase E)
 
 #### TODO-14.B.1 `src/OpenRA.Mods.Common/Activities/Attack.ts`
-- [ ] Port `Attack` activity (move into range, face, fire, repeat)
-- [ ] Handle `IsCanceling` cleanup
-- [ ] Unit tests: range approach, firing cycle, target death, cancellation
+- [x] Port `Attack` activity (move into range, face, fire, repeat)
+- [x] Handle `IsCanceling` cleanup
+- [x] Unit tests: range approach, firing cycle, target death, cancellation
 
 #### TODO-14.B.2 `src/OpenRA.Mods.Common/Activities/Hunt.ts`
-- [ ] Port `Hunt` (search for nearest enemy and attack)
-- [ ] Unit tests: target acquisition, no-target completion
+- [x] Port `Hunt` (search for nearest enemy and attack)
+- [x] Unit tests: target acquisition, no-target completion
 
 #### TODO-14.B.3 `src/OpenRA.Mods.Common/Activities/CaptureActor.ts`
-- [ ] Port `CaptureActor` (engineer capture, extends minimal `Enter` base from TODO-14.B.0)
-- [ ] Unit tests: capture progress, ownership transfer
+- [x] Port `CaptureActor` (engineer capture, extends minimal `Enter` base from TODO-14.B.0)
+- [x] Unit tests: capture progress, ownership transfer
 
 #### TODO-14.B.4 `src/OpenRA.Mods.Common/Activities/Demolish.ts`
-- [ ] Port `Demolish` (place explosives, extends minimal `Enter` base from TODO-14.B.0)
-- [ ] Unit tests: timer, damage application
+- [x] Port `Demolish` (place explosives, extends minimal `Enter` base from TODO-14.B.0)
+- [x] Unit tests: timer, damage application
 
 #### TODO-14.B.5 `src/OpenRA.Mods.Common/Activities/Turn.ts`
-- [ ] Port `Turn` (rotate actor to facing)
-- [ ] Unit tests: rotation completion
+- [x] Port `Turn` (rotate actor to facing)
+- [x] Unit tests: rotation completion
 
 ---
 
@@ -322,8 +325,8 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 **Status**: PLANNING (0/12 migrated)
 **Complexity**: HIGH (`Fly.cs` 283 lines, `FlyAttack.cs` 316 lines, `Land.cs` 276 lines)
-**Blocked by**: Chapter 9 (`Aircraft` trait), Phase A (`Move` for ground taxi if any)
-**Blocks**: Phase B (`FlyAttack`, `FlyFollow`), Phase D (`Resupply` for aircraft), Phase E (`PickupUnit`, `DeliverUnit`), Chapter 13 support powers (already use `Fly`)
+**Blocked by**: Phase B (`Enter` minimal base, `Attack`), Chapter 9 (`Aircraft` trait), Phase A (`Move` for ground taxi if any)
+**Blocks**: Phase D (`Resupply` for aircraft), Phase E (`PickupUnit`, `DeliverUnit`), Chapter 13 support powers (already use `Fly`)
 
 **Description**: Aircraft activities implement flight physics wrappers. `Fly` is the core and exposes static `FlyTick()` / `VerticalTakeOffOrLandTick()` helpers used by all other aircraft activities. `FlyAttack` contains nested `FlyAttackRun`/`StrafeAttackRun` classes.
 

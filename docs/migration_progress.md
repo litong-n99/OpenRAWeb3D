@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-06-15
 > **Current phase**: Chapters 2-13 COMPLETE (333/333 core, 100%). Chapter 14 Phase A COMPLETE (11/49 files, 82 tests, 3 E2E pages R2 APPROVED).
-> **Overall status**: Chapters 2-13 COMPLETE: 333/333 core (100%). Chapter 14: 11/49 (22%, Phase A COMPLETE). Chapters 15-21: 0/~192 (0%).
+> **Overall status**: Chapters 2-13 COMPLETE: 333/333 core (100%). Chapter 14: 17/49 (35%, Phase A+B COMPLETE). Chapters 15-21: 0/~192 (0%).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -25,7 +25,7 @@
 | **Chapter 11 planned files (Production & Building)** | ~25 original plan + 13 additional = 37 total (2 Phases A-B), 37/37 COMPLETE, ALL PHASES COMPLETE |
 | **Chapter 12 planned files (Shroud & Fog of War)** | 16 (1 Phase A), COMPLETE: 16/16 APPROVED. Plan: [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md) |
 | **Chapter 13 planned files (Support Powers)** | 14 + 1 interface (1 Phase A), COMPLETE: 14/14 APPROVED, 285 tests. Plan: [docs/chapter13_support_powers_migration_plan.md](docs/chapter13_support_powers_migration_plan.md) |
-| **Chapter 14 planned files (Activity Implementations)** | 49 concrete + 2 already-migrated base files (6 Phases A-F planned), 11/49 migrated, Phase A COMPLETE. Plans: [chapter14_activity_implementations_analysis.md](docs/chapter14_activity_implementations_analysis.md), [chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md) |
+| **Chapter 14 planned files (Activity Implementations)** | 49 concrete + 2 already-migrated base files (6 Phases A-F planned), 17/49 migrated, Phase A+B COMPLETE. Plans: [chapter14_activity_implementations_analysis.md](docs/chapter14_activity_implementations_analysis.md), [chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md) |
 | **Chapter 15 planned files (Order Generators)** | ~11 (1 Phase A planned), 0/11 migrated |
 | **Chapter 16 planned files (UI Widget Extensions)** | ~40 (3 Phases A-C planned), 0/40 migrated |
 | **Chapter 17 planned files (Replay & Save)** | ~6 (1 Phase A planned), 0/6 migrated |
@@ -35,7 +35,7 @@
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
 | **Overall project completion** | Chapters 2-13 complete (333/333 core + 8 optional = 341). Chapters 14-21 remaining: ~241/~241. Total project: ~582 files estimated, ~352 complete (60.5%). |
 
-> **Note**: Chapters 2-13 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests), Phase B-Optional (8 files, 203 tests). **Chapter 11 ALL PHASES COMPLETE (37 files: 14 Phase A + 23 Phase B, ~9,571 TS lines, ~771 tests, 2 review rounds per phase)**. Phase A (14 files, ~4,216 TS lines, ~296 tests): ProductionQueue.ts (~1,554 TS), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS), ProductionParadrop.ts (~148 TS), ProductionFromMapEdge.ts (~123 TS), ProductionAirdrop.ts (~156 TS), Exit.ts (~228 TS), RallyPoint.ts (~268 TS), PrimaryBuilding.ts (~185 TS), plus prereqs (Buildable, TechTree, PowerManager, DeveloperMode, ActorInitializer). Phase B (23 files, ~5,355 TS lines, ~475 tests): Building.ts (~550 TS), BuildingInfluence.ts (~180 TS), BuildingUtils.ts (~260 TS), PlaceBuilding.ts (~470 TS), PlaceBuildingOrderGenerator.ts (~600 TS), plus gap additions (ActorMap, GivesBuildableArea, LineBuildNode, Plug/Pluggable, etc.). **Chapter 12 ALL PHASES COMPLETE (16 files, Phase A APPROVED)**: Shroud.ts, ShroudRenderer.ts, FrozenActorLayer.ts, Cloak.ts, AffectsShroud.ts, FrozenUnderFog.ts, RevealsMap.ts, PlayerRadarTerrain.ts, CreatesShroud.ts, RevealsShroud.ts, HiddenUnderShroud.ts, HiddenUnderFog.ts, DetectCloaked.ts, ShroudExts.ts, ShroudPalette.ts, RevealsShroudMultiplier.ts. **Chapter 13 ALL PHASES COMPLETE (14 files + 1 interface, Phase A APPROVED, 285 tests)**: SupportPower.ts (745 TS), SupportPowerManager.ts (864 TS), AirstrikePower.ts (599 TS), NukePower.ts (731 TS), ParatroopersPower.ts (622 TS), ProduceActorPower.ts (316 TS), SpawnActorPower.ts (442 TS), GrantExternalConditionPower.ts (511 TS), DirectionalSupportPower.ts (154 TS), SelectDirectionalTarget.ts (485 TS), SupportPowerChargeBar.ts (271 TS), WithSupportPowerActivationAnimation.ts (255 TS), WithSupportPowerActivationOverlay.ts (310 TS), SupportPowerCrateAction.ts (118 TS). **Chapter 14 Phase A COMPLETE (11/49 files, 82 tests, 3 E2E pages R2 APPROVED)**: Move.ts (~1,400 TS), MoveAdjacentTo.ts (~200 TS), MoveOnto.ts (~80 TS), MoveOntoAndTurn.ts (~70 TS), MoveWithinRange.ts (~120 TS), Drag.ts (~90 TS), Nudge.ts (~80 TS), Follow.ts (~130 TS), LocalMoveIntoTarget.ts (~110 TS), AttackMoveActivity.ts (~160 TS), MoveCooldownHelper.ts (~120 TS). Commits: `4501c29` (implementation), `d307624` (review fixes), `68d9e14` (E2E pages).
+> **Note**: Chapters 2-13 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests), Phase B-Optional (8 files, 203 tests). **Chapter 11 ALL PHASES COMPLETE (37 files: 14 Phase A + 23 Phase B, ~9,571 TS lines, ~771 tests, 2 review rounds per phase)**. Phase A (14 files, ~4,216 TS lines, ~296 tests): ProductionQueue.ts (~1,554 TS), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS), ProductionParadrop.ts (~148 TS), ProductionFromMapEdge.ts (~123 TS), ProductionAirdrop.ts (~156 TS), Exit.ts (~228 TS), RallyPoint.ts (~268 TS), PrimaryBuilding.ts (~185 TS), plus prereqs (Buildable, TechTree, PowerManager, DeveloperMode, ActorInitializer). Phase B (23 files, ~5,355 TS lines, ~475 tests): Building.ts (~550 TS), BuildingInfluence.ts (~180 TS), BuildingUtils.ts (~260 TS), PlaceBuilding.ts (~470 TS), PlaceBuildingOrderGenerator.ts (~600 TS), plus gap additions (ActorMap, GivesBuildableArea, LineBuildNode, Plug/Pluggable, etc.). **Chapter 12 ALL PHASES COMPLETE (16 files, Phase A APPROVED)**: Shroud.ts, ShroudRenderer.ts, FrozenActorLayer.ts, Cloak.ts, AffectsShroud.ts, FrozenUnderFog.ts, RevealsMap.ts, PlayerRadarTerrain.ts, CreatesShroud.ts, RevealsShroud.ts, HiddenUnderShroud.ts, HiddenUnderFog.ts, DetectCloaked.ts, ShroudExts.ts, ShroudPalette.ts, RevealsShroudMultiplier.ts. **Chapter 13 ALL PHASES COMPLETE (14 files + 1 interface, Phase A APPROVED, 285 tests)**: SupportPower.ts (745 TS), SupportPowerManager.ts (864 TS), AirstrikePower.ts (599 TS), NukePower.ts (731 TS), ParatroopersPower.ts (622 TS), ProduceActorPower.ts (316 TS), SpawnActorPower.ts (442 TS), GrantExternalConditionPower.ts (511 TS), DirectionalSupportPower.ts (154 TS), SelectDirectionalTarget.ts (485 TS), SupportPowerChargeBar.ts (271 TS), WithSupportPowerActivationAnimation.ts (255 TS), WithSupportPowerActivationOverlay.ts (310 TS), SupportPowerCrateAction.ts (118 TS). **Chapter 14 Phase A COMPLETE (11/49 files, 82 tests, 3 E2E pages R2 APPROVED)**: Move.ts (~1,400 TS), MoveAdjacentTo.ts (~200 TS), MoveOnto.ts (~80 TS), MoveOntoAndTurn.ts (~70 TS), MoveWithinRange.ts (~120 TS), Drag.ts (~90 TS), Nudge.ts (~80 TS), Follow.ts (~130 TS), LocalMoveIntoTarget.ts (~110 TS), AttackMoveActivity.ts (~160 TS), MoveCooldownHelper.ts (~120 TS). Commits: `4501c29` (implementation), `d307624` (review fixes), `68d9e14` (E2E pages). **Phase B COMPLETE (6/49 files, ~70 tests, R2 APPROVED)**: Enter.ts (~350 TS), Attack.ts (~620 TS), Hunt.ts (~110 TS), CaptureActor.ts (~340 TS), Demolish.ts (~180 TS), Turn.ts (~90 TS). Review: 2 BLOCKER + 5 MAJOR resolved.
 
 ---
 
@@ -1131,16 +1131,16 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | In Progress | 0 | 0% |
 | Completed | 11 | 3% |
 
-### Chapter 14: Activity Implementations (Phase A COMPLETE, 11/49 files)
+### Chapter 14: Activity Implementations (Phase A+B COMPLETE, 17/49 files)
 
 > **Migration Plan**: [docs/chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md)
-> **Created**: 2026-06-15 | **Updated**: 2026-06-15 | **Status**: Phase A COMPLETE (11/11 files, 82 tests, 3 E2E pages R2 APPROVED); Phases B-F PLANNING (0/38)
+> **Created**: 2026-06-15 | **Updated**: 2026-06-15 | **Status**: Phase A COMPLETE (11/11 files, 82 tests, 3 E2E pages R2 APPROVED); Phase B COMPLETE (6/6 files, ~70 tests, R2 APPROVED)
 > **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
 | Phase A | Movement Activities | 11 | HIGHEST-LOW | **COMPLETE (11/11, 82 tests, 3 E2E pages R2 APPROVED)** |
-| Phase B | Combat Activities | 5 | HIGH-LOW | PLANNING (0/5) |
+| Phase B | Combat Activities | 6 | HIGH-LOW | **COMPLETE (6/6, ~70 tests, R2 APPROVED)** |
 | Phase C | Aircraft Activities | 12 | HIGH-LOW | PLANNING (0/12) |
 | Phase D | Economic Activities | 7 | HIGH-LOW | PLANNING (0/7) |
 | Phase E | Transport & Enter | 6 | HIGH-LOW | PLANNING (0/6) |
@@ -1171,10 +1171,37 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 - Acceptance test pages: 3 pages at `/test/activities/move/`, `/test/activities/attack-move/`, `/test/activities/target-lines/` (R2 APPROVED).
 - **Review**: Round 2 APPROVED (0 BLOCKERs remaining). Commits: `4501c29` (Phase A implementation), `d307624` (review fixes), `68d9e14` (E2E acceptance test pages).
 
+**Phase B Completed: Combat Activities (6 files, 2026-06-15)**
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| Enter.ts | ~163 C# -> ~350 TS | ~80 | ~12 | Minimal abstract base: 4-state state machine (Approaching/Entering/Exiting/Finished) |
+| Attack.ts | ~283 C# -> ~620 TS | ~140 | ~18 | Combat orchestration: move into range, face, fire, repeat |
+| Hunt.ts | ~49 C# -> ~110 TS | ~30 | ~8 | Search for nearest enemy, queue Attack on found |
+| CaptureActor.ts | ~158 C# -> ~340 TS | ~70 | ~12 | Engineer capture: extends Enter, ownership transfer |
+| Demolish.ts | ~89 C# -> ~180 TS | ~40 | ~8 | Place explosives: extends Enter, timer + damage |
+| Turn.ts | ~47 C# -> ~90 TS | ~25 | ~7 | Rotate actor to facing: WAngle turn speed |
+| **Total** | **~789 C#** | **~385** | **~70** | 6 test files, all passing |
+
+**Implementation details**:
+- `Enter.ts` (~350 TS): Minimal abstract base with 4-state enum (`Approaching`, `Entering`, `Exiting`, `Finished`). `Tick` orchestrates `IMove.MoveToTarget`/`MoveIntoTarget`/`ReturnToCell`. Virtual hooks: `TickInner`, `TryStartEnter`, `OnEnterComplete`. Intentionally minimal -- no Cargo/Passenger transport logic (deferred to Phase E).
+- `Attack.ts` (~620 TS): Full combat orchestration. Sequence: (1) `MoveWithinRange` if out of range, (2) `Turn` if not facing, (3) fire via `Armament`/`AttackBase` if in range and facing. Handles `IsCanceling` cleanup. Target invalidation: completes when target destroyed.
+- `Hunt.ts` (~110 TS): Simple search-and-attack wrapper. Scans for nearest enemy, queues `Attack` on found enemy. Returns true if no enemies in range.
+- `CaptureActor.ts` (~340 TS): Extends minimal `Enter` base. Engineer capture with progress ticks. Ownership transfer on completion. Condition granted during capture.
+- `Demolish.ts` (~180 TS): Extends minimal `Enter` base. Places explosives with timer. Damage application on detonation. Flash effects during countdown.
+- `Turn.ts` (~90 TS): Simple facing activity. Advances `WAngle` toward desired facing at turn speed. Returns true when facing reached. Used by `Attack` and movement wrappers.
+- **Review**: Round 2 APPROVED (2 BLOCKER + 5 MAJOR resolved, 0 remaining).
+
 **Key Architecture Decisions**:
 - **ADR-14.1**: Reuse Chapter 3 Activity Base Without Modification
 - **ADR-14.2**: Movement Logic Stays Grid-Based, Visuals Use 3D Interpolation
 - **ADR-14.3**: Target Lines as World-Space `LinesMesh`
+- **ADR-14.4**: Aircraft Activities Delegate Physics to `Aircraft` Trait
+- **ADR-14.5**: All World Mutations Deferred to `frameEndActions`
+- **ADR-14.6**: Phase Ordering by Dependency, Not File Size
+- **ADR-14.7**: Enter Pattern as Shared Abstract Base (Split: Phase B Minimal + Phase E Full)
+
+**Unblocks**: Phase C (`FlyAttack` uses `Attack` pattern), Phase D (`MoveToDock`), Phase E (`Enter` full extensions), Phase F (`DeployForGrantedCondition`)
 
 ---
 
