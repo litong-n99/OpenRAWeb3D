@@ -11,7 +11,7 @@
  * - C# self.World.Map.DistanceAboveTerrain() → (self as any).world.map.distanceAboveTerrain()
  *
  * 使用者:
- * - HiddenUnderFog.ts (TODO-12.A.12) — subclass that extends for fog visibility
+ * - HiddenUnderFog.ts — subclass that extends for fog visibility (submitted)
  */
 
 import { WPos } from '../../../OpenRA.Game/WPos.js'

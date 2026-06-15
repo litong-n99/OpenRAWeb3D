@@ -54,7 +54,13 @@ export class HiddenUnderFogInfo extends HiddenUnderShroudInfo {
  *   instead of exploration checks (shroud.isExplored / anyExplored)
  */
 export class HiddenUnderFog extends HiddenUnderShroud {
-  /** Trait configuration (narrower type than base). */
+  /** Trait configuration (narrower type than base).
+   *
+   * NOTE: `declare` re-declares the inherited `info` field with a narrower
+   * type (HiddenUnderFogInfo extends HiddenUnderShroudInfo). TypeScript
+   * does not emit code for `declare` — the base class property is used at
+   * runtime.
+   */
   declare protected readonly info: HiddenUnderFogInfo
 
   // -------------------------------------------------------------------------

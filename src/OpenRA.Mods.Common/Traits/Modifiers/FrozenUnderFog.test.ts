@@ -45,6 +45,10 @@ interface MockFrozenActor {
   invalidateCalls: number
   RefreshHidden(): void
   RefreshState(): void
+  /** camelCase alias (IFrozenActorRef compliance). */
+  refreshState(): void
+  /** camelCase alias (IFrozenActorRef compliance). */
+  refreshHidden(): void
   Invalidate(): void
 }
 
@@ -210,21 +214,23 @@ function addFrozenLayerToPlayer(player: MockPlayer, layer?: Record<string, unkno
 /**
  * Create a mock IFrozenActorRef for onVisibilityChanged tests.
  *
- * Includes RefreshState/RefreshHidden methods needed when the code casts
- * the ref to FrozenActor in the _updateFrozenActorCore path.
- * Use `as any` when passing to onVisibilityChanged to bypass IFrozenActorRef typing.
+ * Includes refreshState()/refreshHidden() (camelCase for IFrozenActorRef)
+ * as well as PascalCase RefreshState/RefreshHidden for legacy assertions.
  */
 function createMockFrozenRef(options: {
   viewer: unknown
   visible?: boolean
 }): Record<string, unknown> {
+  const refreshState = vi.fn()
   return {
     viewer: options.viewer,
     visible: options.visible ?? false,
     hidden: false,
     centerPosition: mockCenterPosition(),
     refreshHidden: vi.fn(),
-    RefreshState: vi.fn(),
+    refreshState,
+    // PascalCase kept for tests that verify FrozenActor-like behavior
+    RefreshState: refreshState,
     RefreshHidden: vi.fn(),
   }
 }
