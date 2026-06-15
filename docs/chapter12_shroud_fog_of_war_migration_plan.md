@@ -125,7 +125,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (1/15)** |
+| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (2/15)** |
 
 ---
 
@@ -133,15 +133,16 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 ### 3.1 Phase A: Shroud System
 
-**Status**: IN PROGRESS (1/15 migrated)
+**Status**: IN PROGRESS (2/15 migrated)
 **Complexity**: HIGHEST (Shroud.cs 514 lines, ShroudRenderer.cs 390 lines)
 **Blocked by**: Chapter 4 (Map, CellLayers, ProjectedCellLayer), Chapter 3 (Player, Actor, TraitDictionary), Chapter 2 (Renderer, WorldRenderer, TerrainSpriteLayer)
 **Blocks**: Chapter 13 (Support Powers -- some require shroud visibility), Chapter 16 (RadarWidget -- depends on PlayerRadarTerrain), Chapter 19 (GPS/Sensors -- GpsDot, GpsWatcher interact with shroud)
 
 **Completed**:
 - [x] TODO-12.A.1 `Shroud.ts` -- per-player visibility state tracker (APPROVED, 2026-06-15)
+- [x] TODO-12.A.2 `ShroudRenderer.ts` -- visual shroud/fog overlay renderer (APPROVED, 2026-06-15)
 
-**Remaining**: 14 files
+**Remaining**: 13 files
 
 **Description**: The shroud system controls what each player can see on the map. It has three layers: (1) `Shroud` -- per-player visibility state tracking with source-based reference counting, (2) `ShroudRenderer` -- visual overlay rendering of shroud/fog edges using sprite variants, (3) `FrozenActorLayer` -- per-player snapshot of enemy actors that have left visible range. Supporting traits include `RevealsShroud` (units reveal area), `CreatesShroud` (units generate darkness for enemies), `HiddenUnderShroud`/`HiddenUnderFog` (actors hide when not visible), `FrozenUnderFog` (buildings freeze when fogged), `Cloak` (stealth system), and `DetectCloaked` (detection of cloaked units).
 
@@ -185,7 +186,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.2 ShroudRenderer
 
-- [ ] **TODO-12.A.2** `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.ts` (390 lines C#) -- Visual shroud/fog overlay renderer:
+- [x] **TODO-12.A.2** `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.ts` (390 lines C#) -- Visual shroud/fog overlay renderer: ✅ COMPLETE (APPROVED, 2026-06-15)
   - `Edges` enum: bitflags for `TopLeft`, `TopRight`, `BottomRight`, `BottomLeft`, `TopSide`, `RightSide`, `BottomSide`, `LeftSide`
   - `Neighbor` enum: `Top`, `Right`, `Bottom`, `Left`, `TopLeft`, `TopRight`, `BottomRight`, `BottomLeft`
   - `TileInfo` struct: `(screenPosition: Vector3, variant: number)`
@@ -212,6 +213,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
   - `info.Index` -- bitfield mapping for frame indices
   - `info.UseExtendedIndex` -- extended edge detection
   - `info.OverrideFullShroud` / `info.OverrideFullFog` -- override sprites
+  - **Status**: Migrated (~720 TS lines), reviewed (Round 2), APPROVED. 28 tests.
 
 #### 3.1.3 FrozenActorLayer
 
