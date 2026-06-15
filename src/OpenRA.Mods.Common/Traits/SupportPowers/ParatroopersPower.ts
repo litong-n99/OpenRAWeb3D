@@ -458,6 +458,7 @@ export class ParatroopersPower extends DirectionalSupportPower {
     _pos: WorldPos,
     _facing: number,
   ): IGameActor {
+    // TODO: Replace Math.random() with seeded RNG for multiplayer sync replay
     return {
       actorId: Math.floor(Math.random() * 100000) + 100000,
       isInWorld: true,
@@ -473,6 +474,7 @@ export class ParatroopersPower extends DirectionalSupportPower {
    * Create an infantry unit actor.
    */
   protected _createUnit(_self: IGameActor, _unitType: string): IGameActor {
+    // TODO: Replace Math.random() with seeded RNG for multiplayer sync replay
     return {
       actorId: Math.floor(Math.random() * 100000) + 200000,
       isInWorld: true,
@@ -539,7 +541,6 @@ export class ParatroopersPower extends DirectionalSupportPower {
     for (let i = -Math.floor(squadSize / 2); i <= Math.floor(squadSize / 2); i++) {
       if (i === 0 && (squadSize & 1) === 0) continue
 
-      void this._computeSpawnOffset(i, squadOff, _facing) as unknown
       const targetOffset: WorldPos = {
         X: i * squadOff.Y,
         Y: 0,

@@ -57,7 +57,7 @@ function makeInfo(overrides: Partial<GrantExternalConditionPowerInfo> = {}): Gra
     condition: 'Invulnerability',
     duration: 50,
     dimensions: new CVec(3, 3),
-    footprint: 'xxx\nxxx\nxxx',
+    footprint: 'xxxxxxxxx',
     onFireSound: 'fire',
     cursor: 'ability',
     blockedCursor: 'ability-blocked',
@@ -107,14 +107,18 @@ class TestGrantExternalConditionPower extends GrantExternalConditionPower {
 
 describe('GrantExternalConditionPower', () => {
   describe('constructor', () => {
-    it('parses footprint removing whitespace', () => {
-      const info = makeInfo({ footprint: 'x x\n x \nx x' })
+    it('parses footprint preserving whitespace for index alignment', () => {
+      // NOTE: Footprint is a flat 9-char string for a 3x3 grid.
+      // Whitespace chars naturally won't match 'x' in cellsMatching,
+      // but their positions are preserved so indices align with grid cells.
+      const info = makeInfo({ footprint: 'x x x x x' })
       const actor = createMockActor()
       const power = new GrantExternalConditionPower(actor, info)
 
-      // Should have 5 'x' characters (whitespace removed)
-      expect(power.footprint.length).toBe(5)
-      expect(power.footprint.every((c) => c === 'x')).toBe(true)
+      // 9 characters total (3x3 grid), 5 are 'x', 4 are ' '
+      expect(power.footprint.length).toBe(9)
+      const xCount = power.footprint.filter(c => c === 'x').length
+      expect(xCount).toBe(5)
     })
 
     it('handles empty footprint', () => {

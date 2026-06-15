@@ -339,7 +339,11 @@ export class SelectDirectionalTarget {
    *
    * OpenRA 对照: IOrderGenerator.HandleKeyPress(KeyInput)
    *
-   * @returns false — this generator does not consume key presses
+   * TODO: When full OrderGenerator integration is wired, this stub should
+   * consume hotkeys (e.g., Esc to cancel). Currently returns false which
+   * prevents cancellation via keyboard.
+   *
+   * @returns false — this generator does not yet consume key presses
    */
   handleKeyPress(): boolean {
     return false

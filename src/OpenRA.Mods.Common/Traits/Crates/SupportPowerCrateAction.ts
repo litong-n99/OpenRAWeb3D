@@ -53,7 +53,7 @@ export interface SupportPowerCrateActionInfo extends CrateActionInfo {
 export class SupportPowerCrateAction extends CrateAction {
   /** Typed info reference. */
   get typedInfo(): SupportPowerCrateActionInfo {
-    return this.info as unknown as SupportPowerCrateActionInfo
+    return this.info as SupportPowerCrateActionInfo
   }
 
   // -----------------------------------------------------------------------

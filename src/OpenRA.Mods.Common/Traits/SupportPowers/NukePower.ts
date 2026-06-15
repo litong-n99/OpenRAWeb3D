@@ -429,9 +429,13 @@ export class NukePower extends SupportPower {
     if (skipAscent) {
       launchPos = WPos.Zero
     } else {
-      // NOTE: self.CenterPosition + body.LocalToWorld(info.SpawnOffset)
-      // Requires WPos addition + body orientation.
-      // Stubbed: use targetPosition + spawnOffset
+      // TODO-13.A.8: Proper silo launch position.
+      // In OpenRA: self.CenterPosition + body.LocalToWorld(info.SpawnOffset)
+      // This requires:
+      //   1. WPos addition operator (WPos + WVec = WPos)
+      //   2. BodyOrientation.LocalToWorld() vector transform
+      //   3. self.CenterPosition accessor (WPos on the actor)
+      // Currently stubbed to WPos.Zero — all nukes launch from world origin.
       launchPos = WPos.Zero
     }
 

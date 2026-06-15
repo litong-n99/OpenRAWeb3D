@@ -73,6 +73,27 @@ export interface IDevMode {
 
 export const DefaultSupportPowerPaletteOrder = 9999
 
+// ---------------------------------------------------------------------------
+// Audio category constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Audio notification categories for support power lifecycle events.
+ *
+ * OpenRA 对照: Notification categories set via Game.Sound.Play/Speech/TNotification
+ */
+export const SupportPowerAudioCategory = {
+  beginCharge: 'beginCharge',
+  endCharge: 'endCharge',
+  selectTarget: 'selectTarget',
+  insufficientPower: 'insufficientPower',
+  launch: 'launch',
+  incoming: 'incoming',
+  detected: 'detected',
+} as const
+
+export type SupportPowerAudioCategory = (typeof SupportPowerAudioCategory)[keyof typeof SupportPowerAudioCategory]
+
 /** Configuration for a support power.
  *
  * OpenRA 对照: SupportPowerInfo (14 regular + 32 sound/notification fields)

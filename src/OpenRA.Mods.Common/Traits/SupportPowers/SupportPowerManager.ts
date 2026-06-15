@@ -576,9 +576,10 @@ export class SupportPowerInstance implements ISupportPowerInstance {
 
     // Advance timer
     if (this._remainingSubTicks > 0) {
-      this._remainingSubTicks = Math.max(
+      this._remainingSubTicks = this._clamp(
+        this._remainingSubTicks - 100,
         0,
-        Math.min(this._remainingSubTicks - 100, this.totalTicks * 100),
+        this.totalTicks * 100,
       )
     }
 
@@ -743,6 +744,15 @@ export class SupportPowerInstance implements ISupportPowerInstance {
   // -----------------------------------------------------------------------
   // Private helpers
   // -----------------------------------------------------------------------
+
+  /**
+   * Clamp a value to the range [min, max].
+   *
+   * OpenRA 对照: Util.Clamp(value, min, max)
+   */
+  private _clamp(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(value, max))
+  }
 
   /**
    * Compute the squared horizontal distance from an instance's actor

@@ -501,6 +501,7 @@ export class AirstrikePower extends DirectionalSupportPower {
     // NOTE: self.World.CreateActor(false, unitType, [CenterPositionInit(pos), OwnerInit, FacingInit])
     // Actor creation requires full world integration.
     // Returns a stub actor for testing.
+    // TODO: Replace Math.random() with seeded RNG for multiplayer sync replay
     return {
       actorId: Math.floor(Math.random() * 100000),
       isInWorld: true,

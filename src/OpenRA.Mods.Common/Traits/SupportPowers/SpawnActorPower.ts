@@ -222,7 +222,13 @@ export class SpawnActorPower extends SupportPower {
    *   2. Shroud check (if !AllowUnderShroud)
    *   3. Terrain type check (if Terrain is specified)
    *
-   * @param _world — the game world (stub, accepts any object for mocking)
+   * TODO: Replace `_world: unknown` with the proper World type once the
+   * World interface is fully migrated. The World parameter is needed for:
+   *   world.Map.Contains(cell)
+   *   world.ShroudObscures(cell)
+   *   world.Map.GetTerrainInfo(cell).Type
+   *
+   * @param _world — the game world (currently unknown, will become World)
    * @param info — the power configuration
    * @param cell — the target cell
    * @returns true if the cell is a valid spawn location
@@ -384,7 +390,7 @@ export class SelectSpawnActorPowerTarget {
    *
    * Yields an Order only if the cell passes validation.
    *
-   * @param world — the game world
+   * @param world — the game world (TODO: replace `unknown` with proper World type)
    * @param cell — the map cell under the cursor
    * @returns an Order, or null if the cell is invalid
    */
@@ -424,7 +430,7 @@ export class SelectSpawnActorPowerTarget {
    *
    * OpenRA 对照: SelectSpawnActorPowerTarget.GetCursor(World, CPos, int2, MouseInput)
    *
-   * @param world — the game world
+   * @param world — the game world (TODO: replace `unknown` with proper World type)
    * @param cell — the map cell under the cursor
    * @returns cursor name string
    */

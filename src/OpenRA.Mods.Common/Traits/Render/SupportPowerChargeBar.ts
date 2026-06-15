@@ -11,8 +11,6 @@
  * RENDER: Charge bar rendering is handled by the selection bar renderer
  * (from Ch3 ISelectionBar interface). This trait only provides the data:
  * charge fraction, bar color, and display-when-empty flag.
- *
- * TODO-13.A.11: SupportPowerChargeBar migration
  */
 
 import {
@@ -217,13 +215,21 @@ export class SupportPowerChargeBar
    *
    * OpenRA 对照: spm.GetPowersForActor(self).FirstOrDefault(sp => !sp.Disabled)
    *
+   * Uses the real SupportPowerManager.getPowersForActor() when available,
+   * falling back to iterating all powers for stub/compat managers.
+   *
    * @returns the first non-disabled SupportPowerInstance, or null
    */
   protected getFirstEnabledPower(): ISupportPowerInstance | null {
     if (!this.spm) return null
 
-    const powers = this.spm.powers
-    for (const instance of powers.values()) {
+    // Prefer actor-specific lookup (real SupportPowerManager)
+    const mgr = this.spm as unknown as { getPowersForActor?: (actor: IGameActor) => ISupportPowerInstance[] }
+    const powers: Iterable<ISupportPowerInstance> = mgr.getPowersForActor
+      ? mgr.getPowersForActor(this.self)
+      : Array.from(this.spm.powers.values())
+
+    for (const instance of powers) {
       if (!instance.disabled) return instance
     }
     return null

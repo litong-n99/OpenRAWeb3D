@@ -4,7 +4,7 @@
  *
  * 核心范式转换:
  * - C# PausableConditionalTrait<GrantExternalConditionPowerInfo> → TS 继承 SupportPower
- * - C# footprint char[] filtering (char.IsWhiteSpace) → TS string 处理
+ * - C# footprint char[] (flat, no whitespace filter needed) → TS spread to array
  * - C# HashSet<Actor> deduplication → TS Set<IGameActor>
  * - C# ActorMap.GetActorsAt(tile) → TS 桩（actor map 空间查询）
  * - C# TraitsImplementing<ExternalCondition>() LINQ chains → TS 遍历组件数组
@@ -180,7 +180,7 @@ export class GrantExternalConditionPower extends SupportPower {
    * OpenRA 对照: GrantExternalConditionPower.info
    */
   get conditionInfo(): GrantExternalConditionPowerInfo {
-    return this.info as unknown as GrantExternalConditionPowerInfo
+    return this.info as GrantExternalConditionPowerInfo
   }
 
   /** Parsed footprint pattern (non-whitespace characters).
@@ -191,8 +191,10 @@ export class GrantExternalConditionPower extends SupportPower {
 
   constructor(self: IGameActor, info: GrantExternalConditionPowerInfo) {
     super(self, info)
-    // Parse footprint: filter out whitespace characters
-    this.footprint = info.footprint ? info.footprint.split('').filter((c) => !/\s/.test(c)) : []
+    // NOTE: Keep all characters including whitespace. Whitespace naturally
+    // won't match 'x' in cellsMatching, but preserving index positions is
+    // critical so that dimensions.X * dimensions.Y iteration stays aligned.
+    this.footprint = info.footprint ? [...info.footprint] : []
   }
 
   // -----------------------------------------------------------------------
