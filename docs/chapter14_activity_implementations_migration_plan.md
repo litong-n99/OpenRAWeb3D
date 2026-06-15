@@ -569,9 +569,10 @@ Activity base (Ch3 Phase F) -- ALREADY MIGRATED
   |
   +--> Phase B: Combat Activities
   |     |
+  |     +--> Enter (minimal abstract base, 4-state machine)
   |     +--> Attack (uses Mobile + Armament)
   |     +--> Hunt (simple search-and-attack wrapper)
-  |     +--> CaptureActor, Demolish (use Enter pattern from Phase E)
+  |     +--> CaptureActor, Demolish (extend minimal Enter base)
   |     +--> Turn (used by Attack and movement)
   |
   +--> Phase C: Aircraft Activities
@@ -591,7 +592,7 @@ Activity base (Ch3 Phase F) -- ALREADY MIGRATED
   |
   +--> Phase E: Transport & Enter Activities
   |     |
-  |     +--> Enter (abstract base)
+  |     +--> Enter (full extensions: Cargo/Passenger transport logic)
   |     +--> RideTransport, UnloadCargo (cargo)
   |     +--> PickupUnit, DeliverUnit (carryall)
   |     +--> SimpleTeleport (actor position)
@@ -611,7 +612,8 @@ Move (Phase A) -- longest and most complex activity
   |
   +--> AttackMoveActivity, MoveAdjacentTo, MoveWithinRange, LocalMoveIntoTarget, Nudge
   +--> Attack (Phase B)
-  +--> Enter, UnloadCargo, PickupUnit, Resupply, MoveToDock (Phases D/E)
+  +--> Enter minimal base (Phase B)
+  +--> UnloadCargo, PickupUnit, Resupply, MoveToDock (Phases D/E)
 
 Fly (Phase C) -- core aircraft physics
   |
@@ -619,10 +621,10 @@ Fly (Phase C) -- core aircraft physics
   +--> ReturnToBase, Land, TakeOff (Phase C)
   +--> DeliverBulkOrder, Parachute (Phase C)
 
-Enter (Phase E) -- abstract base for many activities
+Enter (Phase B minimal base + Phase E full extensions) -- abstract base for many activities
   |
-  +--> CaptureActor, Demolish (Phase B)
-  +--> RideTransport (Phase E)
+  +--> CaptureActor, Demolish (Phase B, use minimal base)
+  +--> RideTransport (Phase E, uses full extensions)
   +--> DonateCash, DonateExperience, RepairBridge, InstantRepair (Phase F)
 
 HarvestResource / FindAndDeliverResources (Phase D) -- depend on Move + economy traits
@@ -689,7 +691,7 @@ All non-rendering game logic MUST have unit tests. Key test patterns:
 | Phase | Files | Test Files (est.) | Tests (est.) | Test Lines (est.) |
 |:---|:---:|:---:|:---:|:---:|
 | A: Movement | 11 | 8 | ~180 | ~3,000 |
-| B: Combat | 5 | 3 | ~90 | ~1,500 |
+| B: Combat | 6 | 3 | ~100 | ~1,700 |
 | C: Aircraft | 12 | 5 | ~140 | ~2,500 |
 | D: Economic | 7 | 5 | ~120 | ~2,000 |
 | E: Transport & Enter | 6 | 4 | ~90 | ~1,500 |
