@@ -3727,6 +3727,55 @@ export interface IDetectCloakedModifier {
 }
 
 // ---------------------------------------------------------------------------
+// INotifySupportPower — support power charge/activation notifications
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs (INotifySupportPower)
+// ---------------------------------------------------------------------------
+
+/** Called when a support power finishes charging or is activated.
+ *
+ * OpenRA 对照: INotifySupportPower { void Charged(Actor self); void Activated(Actor self); }
+ *
+ * Implemented by render traits (WithSupportPowerActivationAnimation,
+ * WithSupportPowerActivationOverlay) and gameplay traits (Cloak) to respond
+ * to support power lifecycle events.
+ *
+ * Added: Chapter 13 Phase A (TODO-13.A.1).
+ */
+export interface INotifySupportPower {
+  /** Called when the support power finishes charging and becomes ready.
+   *
+   * OpenRA 对照: INotifySupportPower.Charged(Actor)
+   *
+   * @param self — the actor holding the support power
+   */
+  charged(self: IGameActor): void
+
+  /** Called when the support power is activated (fired).
+   *
+   * OpenRA 对照: INotifySupportPower.Activated(Actor)
+   *
+   * @param self — the actor holding the support power
+   */
+  activated(self: IGameActor): void
+}
+
+/**
+ * Type guard for INotifySupportPower.
+ */
+export function isINotifySupportPower(
+  obj: unknown,
+): obj is INotifySupportPower {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'charged' in obj &&
+    typeof (obj as Record<string, unknown>).charged === 'function' &&
+    'activated' in obj &&
+    typeof (obj as Record<string, unknown>).activated === 'function'
+  )
+}
+
+// ---------------------------------------------------------------------------
 // INotifyCapture
 // OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 179
 // ---------------------------------------------------------------------------
