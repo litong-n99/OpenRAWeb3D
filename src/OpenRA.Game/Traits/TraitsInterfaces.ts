@@ -3659,6 +3659,33 @@ export interface ISpeedModifier {
 }
 
 // ---------------------------------------------------------------------------
+// ICreatesShroudModifier / IRevealsShroudModifier
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs lines 479-482
+// ---------------------------------------------------------------------------
+
+/** Modifies the shroud range created by CreatesShroud.
+ *
+ *  OpenRA 对照: ICreatesShroudModifier { int GetCreatesShroudModifier(); }
+ *
+ *  Returns an integer percentage modifier (100 = normal, 200 = double range).
+ *  Multiple modifiers stack multiplicatively via applyPercentageModifiers.
+ */
+export interface ICreatesShroudModifier {
+  getCreatesShroudModifier(): number
+}
+
+/** Modifies the shroud range revealed by RevealsShroud.
+ *
+ *  OpenRA 对照: IRevealsShroudModifier { int GetRevealsShroudModifier(); }
+ *
+ *  Returns an integer percentage modifier (100 = normal, 200 = double range).
+ *  Multiple modifiers stack multiplicatively via applyPercentageModifiers.
+ */
+export interface IRevealsShroudModifier {
+  getRevealsShroudModifier(): number
+}
+
+// ---------------------------------------------------------------------------
 // INotifyCapture
 // OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs line 179
 // ---------------------------------------------------------------------------

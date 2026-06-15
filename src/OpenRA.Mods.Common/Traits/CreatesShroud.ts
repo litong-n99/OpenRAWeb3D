@@ -5,8 +5,9 @@
  * 核心范式转换:
  * - C# self.Owner.RelationshipWith(p) → TS self.owner.relationshipWith(p) with PlayerStub→Player cast
  * - C# Shroud.SourceType.Shroud enum → TS SourceType.Shroud const
- * - C# ICreatesShroudModifier range modifiers → TS deferred (TODO-12.A.9.1)
+ * - C# ICreatesShroudModifier range modifiers → TS traitsImplementing('ICreatesShroudModifier')
  * - C# HasRelationship extension method → TS PlayerRelationshipExts.hasRelationship
+ * - C# IEnumerable<int> rangeModifiers (lazy) → TS number[] (collected once in created())
  */
 
 import { WDist } from '../../OpenRA.Game/WDist.js'
@@ -19,9 +20,12 @@ import {
 import {
   PlayerRelationship,
   PlayerRelationshipExts,
+  type INotifyCreated,
   type IGameActor,
+  type ICreatesShroudModifier,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { SourceType } from '../../OpenRA.Game/Traits/Player/Shroud.js'
+import { applyPercentageModifiers } from '../Projectiles/MissileMath.js'
 import type { Player } from '../../OpenRA.Game/Player.js'
 
 // ---------------------------------------------------------------------------
@@ -75,21 +79,62 @@ export class CreatesShroudInfo extends AffectsShroudInfo {
  * relationship check and source type selection in the abstract method
  * implementations.
  */
-export class CreatesShroud extends AffectsShroud<CreatesShroudInfo> {
-  /**
-   * TODO-12.A.9.1: Integrate ICreatesShroudModifier range modifiers.
+export class CreatesShroud
+  extends AffectsShroud<CreatesShroudInfo>
+  implements INotifyCreated
+{
+  /** Trait dictionary registration keys.
    *
-   * OpenRA creates
-   *   rangeModifiers = self.TraitsImplementing<ICreatesShroudModifier>()
-   *     .Select(x => x.GetCreatesShroudModifier())
-   * in Created(). These are percentage modifiers applied via
-   * Util.ApplyPercentageModifiers in the Range getter.
-   * Deferred until modifier infrastructure is finalized.
+   * OpenRA 对照: N/A (C# uses reflection; TS uses explicit string registration)
    */
-  // private readonly _rangeModifiers: number[] = []
+  static readonly interfaces: string[] = [
+    'ISync',
+    'ITick',
+    'INotifyAddedToWorld',
+    'INotifyRemovedFromWorld',
+    'INotifyCenterPositionChanged',
+    'INotifyFinishedMoving',
+    'INotifyCreated',
+    'CreatesShroud',
+    'AffectsShroud',
+    'ConditionalTrait',
+    'component',
+  ]
+
+  /** Collected range percentage modifiers from ICreatesShroudModifier traits.
+   *
+   * OpenRA 对照: CreatesShroud.rangeModifiers (IEnumerable<int>)
+   *
+   * Populated in {@link created} after the actor is fully initialized.
+   * Applied in the {@link range} getter via {@link applyPercentageModifiers}.
+   */
+  private _rangeModifiers: number[] = []
 
   constructor(info: CreatesShroudInfo) {
     super(info)
+  }
+
+  // -------------------------------------------------------------------------
+  // INotifyCreated (对应 OpenRA Created)
+  // -------------------------------------------------------------------------
+
+  /** Collect range modifiers after the actor is fully initialized.
+   *
+   * OpenRA 对照: CreatesShroud.Created(Actor self)
+   *
+   * Queries the actor's trait dictionary for ICreatesShroudModifier traits
+   * and collects their percentage modifier values. These are applied in the
+   * {@link range} getter via {@link applyPercentageModifiers}.
+   */
+  created(self: IGameActor): void {
+    // Collect ICreatesShroudModifier range modifiers.
+    // SAFETY: traitsImplementing is optional on IGameActor but exists at
+    // runtime on all real actor implementations via the trait dictionary.
+    const traitAny = self as any
+    const modifierTraits = traitAny.traitsImplementing?.('ICreatesShroudModifier') ?? []
+    this._rangeModifiers = (modifierTraits as ICreatesShroudModifier[]).map(
+      (m) => m.getCreatesShroudModifier(),
+    )
   }
 
   // -------------------------------------------------------------------------
@@ -143,15 +188,23 @@ export class CreatesShroud extends AffectsShroud<CreatesShroudInfo> {
    * OpenRA 对照: CreatesShroud.Range
    *
    * Returns WDist.Zero when the trait was disabled in the previous tick.
-   *
-   * NOTE: ICreatesShroudModifier percentage modifiers are deferred (TODO-12.A.9.1).
-   * When implemented, this should apply Util.ApplyPercentageModifiers to
-   * Info.Range.Length using the collected _rangeModifiers.
+   * Otherwise, applies ICreatesShroudModifier percentage modifiers to the
+   * configured range via {@link applyPercentageModifiers}.
    */
   override get range(): WDist {
     if (this.cachedTraitDisabled) return WDist.Zero
 
-    // TODO-12.A.9.1: Apply _rangeModifiers via Util.ApplyPercentageModifiers
+    // NOTE: Only apply modifiers when there are actual modifiers to apply.
+    // If no modifiers are registered, skip the applyPercentageModifiers call
+    // to avoid unnecessary computation.
+    if (this._rangeModifiers.length > 0) {
+      const modified = applyPercentageModifiers(
+        this.info.range.length,
+        this._rangeModifiers,
+      )
+      return new WDist(modified)
+    }
+
     return this.info.range
   }
 
@@ -160,6 +213,7 @@ export class CreatesShroud extends AffectsShroud<CreatesShroudInfo> {
   // -------------------------------------------------------------------------
 
   override dispose(): void {
+    this._rangeModifiers = []
     super.dispose()
   }
 }

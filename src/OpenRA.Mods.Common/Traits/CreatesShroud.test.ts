@@ -9,6 +9,8 @@
  * - addCellsToPlayerShroud relationship filtering
  * - removeCellsFromPlayerShroud unconditional removal
  * - range getter (cachedTraitDisabled semantics)
+ * - created() collects ICreatesShroudModifier modifiers
+ * - range applies percentage modifiers via applyPercentageModifiers
  * - Edge cases (null owner, zero cells)
  * - Dispose cleanup
  */
@@ -371,6 +373,120 @@ describe('CreatesShroud', () => {
   })
 
   // -----------------------------------------------------------------------
+  // created() — modifier collection
+  // -----------------------------------------------------------------------
+
+  describe('created (INotifyCreated)', () => {
+    it('collects ICreatesShroudModifier values via traitsImplementing', () => {
+      const mockModifierFn = vi.fn().mockReturnValue(150)
+      const modifierTrait = { getCreatesShroudModifier: mockModifierFn }
+      const actor = createMockActor(ownerPlayer)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(actor as any).traitsImplementing = vi.fn().mockReturnValue([modifierTrait])
+
+      trait.created(actor)
+
+      expect((actor as any).traitsImplementing).toHaveBeenCalledWith('ICreatesShroudModifier')
+      expect(mockModifierFn).toHaveBeenCalledTimes(1)
+    })
+
+    it('handles empty modifiers gracefully (no ICreatesShroudModifier traits)', () => {
+      const actor = createMockActor(ownerPlayer)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(actor as any).traitsImplementing = vi.fn().mockReturnValue([])
+
+      expect(() => trait.created(actor)).not.toThrow()
+    })
+
+    it('handles missing traitsImplementing (optional method guard)', () => {
+      const actor = createMockActor(ownerPlayer)
+      // No traitsImplementing method at all
+
+      expect(() => trait.created(actor)).not.toThrow()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // range getter with modifiers
+  // -----------------------------------------------------------------------
+
+  describe('range with percentage modifiers', () => {
+    it('applies single modifier via applyPercentageModifiers', () => {
+      const info = new CreatesShroudInfo({ range: new WDist(4096) })
+      const modTrait = new TestCreatesShroud(info)
+
+      // Simulate a 200% modifier: 4096 * 200 / 100 = 8192
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any)._rangeModifiers = [200]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any).cachedTraitDisabled = false
+
+      expect(modTrait.range.length).toBe(8192)
+    })
+
+    it('applies multiple modifiers stacking multiplicatively', () => {
+      const info = new CreatesShroudInfo({ range: new WDist(4096) })
+      const modTrait = new TestCreatesShroud(info)
+
+      // 4096 * 200 / 100 = 8192, then 8192 * 50 / 100 = 4096
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any)._rangeModifiers = [200, 50]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any).cachedTraitDisabled = false
+
+      expect(modTrait.range.length).toBe(4096)
+    })
+
+    it('100 modifier leaves range unchanged', () => {
+      const info = new CreatesShroudInfo({ range: new WDist(2048) })
+      const modTrait = new TestCreatesShroud(info)
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any)._rangeModifiers = [100, 100, 100]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any).cachedTraitDisabled = false
+
+      expect(modTrait.range.length).toBe(2048)
+    })
+
+    it('returns WDist.Zero when disabled regardless of modifiers', () => {
+      const info = new CreatesShroudInfo({ range: new WDist(4096) })
+      const modTrait = new TestCreatesShroud(info)
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any)._rangeModifiers = [200]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any).cachedTraitDisabled = true
+
+      expect(modTrait.range.length).toBe(0)
+    })
+
+    it('returns info.range directly when no modifiers registered (skip computation)', () => {
+      const info = new CreatesShroudInfo({ range: new WDist(4096) })
+      const modTrait = new TestCreatesShroud(info)
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any)._rangeModifiers = []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any).cachedTraitDisabled = false
+
+      expect(modTrait.range.length).toBe(4096)
+    })
+
+    it('0 modifier reduces range to 0', () => {
+      const info = new CreatesShroudInfo({ range: new WDist(4096) })
+      const modTrait = new TestCreatesShroud(info)
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any)._rangeModifiers = [0]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(modTrait as any).cachedTraitDisabled = false
+
+      expect(modTrait.range.length).toBe(0)
+    })
+  })
+
+  // -----------------------------------------------------------------------
   // dispose
   // -----------------------------------------------------------------------
 
@@ -378,6 +494,14 @@ describe('CreatesShroud', () => {
     it('marks trait as disposed', () => {
       trait.dispose()
       expect(trait.disposed).toBe(true)
+    })
+
+    it('clears range modifiers', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(trait as any)._rangeModifiers = [200, 150]
+      trait.dispose()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((trait as any)._rangeModifiers).toEqual([])
     })
 
     it('can be called multiple times safely', () => {
