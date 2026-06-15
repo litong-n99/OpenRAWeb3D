@@ -125,7 +125,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (7/15)** |
+| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (9/15)** |
 
 ---
 
@@ -133,7 +133,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 ### 3.1 Phase A: Shroud System
 
-**Status**: IN PROGRESS (7/15 migrated)
+**Status**: IN PROGRESS (9/15 migrated)
 **Complexity**: HIGHEST (Shroud.cs 514 lines, ShroudRenderer.cs 390 lines)
 **Blocked by**: Chapter 4 (Map, CellLayers, ProjectedCellLayer), Chapter 3 (Player, Actor, TraitDictionary), Chapter 2 (Renderer, WorldRenderer, TerrainSpriteLayer)
 **Blocks**: Chapter 13 (Support Powers -- some require shroud visibility), Chapter 16 (RadarWidget -- depends on PlayerRadarTerrain), Chapter 19 (GPS/Sensors -- GpsDot, GpsWatcher interact with shroud)
@@ -145,9 +145,11 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 - [x] TODO-12.A.4 `Cloak.ts` -- stealth/cloak system (APPROVED, 2026-06-15)
 - [x] TODO-12.A.5 `AffectsShroud.ts` -- abstract base for shroud-affecting traits (APPROVED, 2026-06-15)
 - [x] TODO-12.A.7 `RevealsMap.ts` -- full-map reveal trait (APPROVED, 2026-06-15)
+- [x] TODO-12.A.9 `CreatesShroud.ts` -- shroud generation trait (APPROVED, 2026-06-15)
+- [x] TODO-12.A.10 `RevealsShroud.ts` -- shroud removal/reveal trait (APPROVED, 2026-06-15)
 - [x] TODO-12.A.14 `ShroudExts.ts` -- shroud extension methods (APPROVED, 2026-06-15)
 
-**Remaining**: 8 files
+**Remaining**: 6 files
 
 **Description**: The shroud system controls what each player can see on the map. It has three layers: (1) `Shroud` -- per-player visibility state tracking with source-based reference counting, (2) `ShroudRenderer` -- visual overlay rendering of shroud/fog edges using sprite variants, (3) `FrozenActorLayer` -- per-player snapshot of enemy actors that have left visible range. Supporting traits include `RevealsShroud` (units reveal area), `CreatesShroud` (units generate darkness for enemies), `HiddenUnderShroud`/`HiddenUnderFog` (actors hide when not visible), `FrozenUnderFog` (buildings freeze when fogged), `Cloak` (stealth system), and `DetectCloaked` (detection of cloaked units).
 
@@ -367,7 +369,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.9 CreatesShroud
 
-- [ ] **TODO-12.A.9** `src/OpenRA.Mods.Common/Traits/CreatesShroud.ts` (66 lines C#) -- Shroud generation trait:
+- [x] **TODO-12.A.9** `src/OpenRA.Mods.Common/Traits/CreatesShroud.ts` (66 lines C#) -- Shroud generation trait: ✅ COMPLETE (APPROVED, 2026-06-15)
   - `CreatesShroudInfo`:
     - `ValidRelationships: PlayerRelationship` -- who is affected by generated shroud (Neutral | Enemy default)
   - `CreatesShroud` class:
@@ -376,10 +378,11 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
     - `RemoveCellsFromPlayerShroud(self, player)` -- remove shroud source
     - `Range` override -- apply percentage modifiers
   - Extends: `AffectsShroud`
+  - **Status**: Migrated, reviewed, APPROVED (0 BLOCKER, 0 MAJOR, 76 tests). Commits `12f70fd`/`3195079`.
 
 #### 3.1.10 RevealsShroud
 
-- [ ] **TODO-12.A.10** `src/OpenRA.Mods.Common/Traits/RevealsShroud.ts` (72 lines C#) -- Shroud removal trait:
+- [x] **TODO-12.A.10** `src/OpenRA.Mods.Common/Traits/RevealsShroud.ts` (72 lines C#) -- Shroud removal trait: ✅ COMPLETE (APPROVED, 2026-06-15)
   - `RevealsShroudInfo`:
     - `ValidRelationships: PlayerRelationship` -- who sees the reveal (Ally default)
     - `RevealGeneratedShroud: boolean` -- can reveal generated shroud (true default)
@@ -390,6 +393,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
     - `RemoveCellsFromPlayerShroud(self, player)` -- remove visibility source
     - `Range` override -- apply percentage modifiers
   - Extends: `AffectsShroud`
+  - **Status**: Migrated, reviewed, APPROVED (0 BLOCKER, 0 MAJOR).
 
 #### 3.1.11 HiddenUnderShroud
 
