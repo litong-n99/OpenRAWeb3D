@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>降落伞 - Parachute (Parachute Descent)</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 400px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #flight-stats {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #flight-stats .val { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>降落伞 - Parachute (Parachute Descent)</h1>
+    <div class="subtitle">ID: activities/parachute | 验证: 降落伞下落速度 | 着陆精度 | 着陆通知</div>
+  </div>
+  <div id="controls">
+    <label>下落速率:</label>
+    <select id="sel-fall-rate">
+      <option value="64">慢速 (64 WDist/tick)</option>
+      <option value="128" selected>正常 (128 WDist/tick)</option>
+      <option value="256">快速 (256 WDist/tick)</option>
+    </select>
+    <span class="sep">|</span>
+    <label>起始高度:</label>
+    <select id="sel-start-alt">
+      <option value="2560">低 (2560 WDist)</option>
+      <option value="5120" selected>中 (5120 WDist)</option>
+      <option value="10240">高 (10240 WDist)</option>
+    </select>
+    <span class="sep">|</span>
+    <button id="btn-drop">投放单位</button>
+    <button id="btn-reset">重置</button>
+    <span class="hint">白色=降落伞 | 棕色=单位 | 观察下落与着陆</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>下落速度:</b> 每 tick 下降 <span class="metric">fallRate WDist</span> (由 ParachutableInfo 配置)。</li>
+        <li><b>着陆:</b> 到达地面高度时停止，位置 snapped 到地面水平。</li>
+        <li><b>着陆通知:</b> 着陆时触发 <span class="metric">INotifyParachute.onLanded()</span> 通知 (控制台输出)。</li>
+        <li><b>非中断:</b> 降落伞活动不可中断 (<span class="metric">isInterruptible = false</span>)。</li>
+        <li><b>着陆精度:</b> 水平位置保持不变，垂直位置 = 地面高度。</li>
+      </ul>
+    </div>
+    <div id="flight-stats">
+      单位位置: <span class="val" id="st-pos">0, 0, 0</span><br>
+      高度: <span class="val" id="st-alt">0</span> WDist<br>
+      状态: <span class="val" id="st-state">待机</span><br>
+      下落速率: <span class="val" id="st-fall-rate">128</span> WDist/tick<br>
+      已用 ticks: <span class="val" id="st-ticks">0</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

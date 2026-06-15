@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>空中攻击 - FlyAttack + FlyAttackRun + StrafeAttackRun | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 400px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #flight-stats {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #flight-stats .val { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>空中攻击 - FlyAttack + FlyAttackRun + StrafeAttackRun (Air Combat)</h1>
+    <div class="subtitle">ID: activities/fly-attack | 验证: 攻击接近 | 扫射飞行 | 悬停攻击 | 弹药耗尽返航</div>
+  </div>
+  <div id="controls">
+    <label>攻击类型:</label>
+    <select id="sel-attack">
+      <option value="default">Default (掠过攻击)</option>
+      <option value="strafe">Strafe (扫射)</option>
+      <option value="hover">Hover (悬停攻击)</option>
+    </select>
+    <span class="sep">|</span>
+    <button id="btn-attack">攻击目标</button>
+    <button id="btn-ammo-empty">模拟弹药耗尽</button>
+    <button id="btn-reset">重置</button>
+    <span class="hint">红色=攻击机 | 蓝色=目标建筑 | 观察攻击轨迹与返航行为</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>Default 攻击:</b> 飞机接近目标 → 掠过射击 → 飞出射程外 → 再次进入。使用 <span class="metric">FlyAttackRun</span>。</li>
+        <li><b>Strafe 扫射:</b> 飞机直线穿过目标区域，持续射击。使用 <span class="metric">StrafeAttackRun</span>。退出射程 = <span class="metric">exitRange</span>。</li>
+        <li><b>Hover 悬停:</b> 飞机悬停在射程内，转向目标射击。不移动，仅调整 <span class="metric">facing</span>。</li>
+        <li><b>弹药耗尽:</b> 弹药耗尽后触发 <span class="metric">ReturnToBase</span>，绿色目标线指向基地。</li>
+        <li><b>目标线:</b> 攻击时红色目标线 (#FF0000)，返航时绿色目标线 (#00FF00)。</li>
+      </ul>
+    </div>
+    <div id="flight-stats">
+      攻击机位置: <span class="val" id="st-attacker-pos">0, 0, 0</span><br>
+      攻击状态: <span class="val" id="st-attack-state">待机</span><br>
+      攻击类型: <span class="val" id="st-attack-type">-</span><br>
+      弹药: <span class="val" id="st-ammo">100%</span><br>
+      目标线: <span class="val" id="st-target-line">-</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

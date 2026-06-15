@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>起降活动 - TakeOff + Land | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 380px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #flight-stats {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #flight-stats .val { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>起降活动 - TakeOff + Land (Aircraft Takeoff & Landing)</h1>
+    <div class="subtitle">ID: activities/land-takeoff | 验证: VTOL垂直起降 | 非VTOL进近轨迹 | 着陆精度</div>
+  </div>
+  <div id="controls">
+    <label>飞机类型:</label>
+    <select id="sel-aircraft">
+      <option value="vtol">VTOL (垂直起降)</option>
+      <option value="fixed">固定翼 (非VTOL)</option>
+    </select>
+    <span class="sep">|</span>
+    <button id="btn-takeoff">起飞 (TakeOff)</button>
+    <button id="btn-land">降落 (Land)</button>
+    <button id="btn-cycle">完整周期 (起飞→飞行→降落)</button>
+    <span class="sep">|</span>
+    <button id="btn-reset">重置</button>
+    <span class="hint">观察起降过程 | 绿色=停机坪 | 红色=目标点</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>VTOL 起飞:</b> 垂直上升到巡航高度 <span class="metric">1280 WDist</span>，无水平位移。</li>
+        <li><b>VTOL 降落:</b> 水平对准停机坪 → 转向 → 垂直下降，落点偏差 <span class="metric">&lt; 64 WDist</span>。</li>
+        <li><b>非VTOL 起飞:</b> 边飞边爬升，有水平位移，到达巡航高度时已在空中。</li>
+        <li><b>非VTOL 降落:</b> 计算进近轨迹 (waypoints w1/w2/w3)，沿弧线进场，落点偏差 <span class="metric">&lt; 128 WDist</span>。</li>
+        <li><b>着陆音效:</b> 着陆时触发着陆音效事件 (控制台输出 "landing sound")。</li>
+      </ul>
+    </div>
+    <div id="flight-stats">
+      位置: <span class="val" id="st-pos">0, 0, 0</span><br>
+      高度: <span class="val" id="st-alt">0</span> WDist<br>
+      状态: <span class="val" id="st-state">地面待机</span><br>
+      阶段: <span class="val" id="st-phase">-</span><br>
+      目标: <span class="val" id="st-target">-</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
