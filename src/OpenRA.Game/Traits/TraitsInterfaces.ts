@@ -82,6 +82,18 @@ export interface FrozenActorStub {
 }
 
 /**
+ * Interface for traits that create FrozenActor snapshots.
+ *
+ * OpenRA 对照: ICreatesFrozenActors
+ *
+ * When a FrozenActor's visibility state changes, the creating trait is
+ * notified so it can synchronize its own state.
+ */
+export interface ICreatesFrozenActors {
+  onVisibilityChanged(frozen: FrozenActorStub): void
+}
+
+/**
  * IReadOnlyFileSystem stub — forward reference.
  *
  * OpenRA 对照: OpenRA.Game/FileSystem/IReadOnlyFileSystem.cs
