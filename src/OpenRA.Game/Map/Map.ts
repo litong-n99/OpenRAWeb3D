@@ -1652,6 +1652,42 @@ export class Map {
   }
 
   // =========================================================================
+  // GetTerrainColorPair
+  // OpenRA 对照: Map.GetTerrainColorPair(MPos)
+  // =========================================================================
+
+  /**
+   * Get a randomised terrain color pair for a map cell, used by the radar
+   * minimap for terrain coloring.
+   *
+   * OpenRA 对照: Map.GetTerrainColorPair(MPos)
+   *
+   * Each cell generates two slightly different colours (left and right) via
+   * the terrain type's colour range. Height-based brightness scaling is
+   * applied when min/max brightness differ from 1.0.
+   *
+   * @param uv — map cell position
+   * @returns [leftColor, rightColor] as ARGB uint32 values
+   */
+  getTerrainColorPair(uv: MPos): [number, number] {
+    const tile = this.tiles.getMPos(uv)
+    const info = this.terrainInfo.getTerrainInfo(tile)
+    let left = info.getColor(Math.random())   // CosmeticRandom = non-sync visual RNG
+    let right = info.getColor(Math.random())
+
+    const minBright = this.terrainInfo.minHeightColorBrightness ?? 1.0
+    const maxBright = this.terrainInfo.maxHeightColorBrightness ?? 1.0
+    if (minBright !== 1.0 || maxBright !== 1.0) {
+      const maxH = this.grid.maximumTerrainHeight
+      const t = maxH > 0 ? this.height.getMPos(uv) / maxH : 0
+      const scale = minBright + (maxBright - minBright) * t
+      left = scaleColorArgb(left, scale)
+      right = scaleColorArgb(right, scale)
+    }
+    return [left, right]
+  }
+
+  // =========================================================================
   // Dispose
   // OpenRA 对照: Map.Dispose()
   // =========================================================================
@@ -1696,4 +1732,27 @@ export class Map {
     this._initializedCellProjection = false
     this._projectionSafeBounds = null
   }
+}
+
+// ---------------------------------------------------------------------------
+// scaleColorArgb — helper for GetTerrainColorPair
+// ---------------------------------------------------------------------------
+
+/**
+ * Scale the RGB components of an ARGB uint32 colour by a brightness factor.
+ *
+ * OpenRA 对照: Color.FromArgb((int)(scale * left.R).Clamp(0, 255), ...)
+ *
+ * Alpha is left unchanged. The clamped result is clamped to 0-255 per channel.
+ *
+ * @param argb — ARGB uint32 colour
+ * @param scale — brightness scale factor (1.0 = unchanged)
+ * @returns scaled ARGB uint32
+ */
+function scaleColorArgb(argb: number, scale: number): number {
+  const r = Math.min(255, Math.trunc(((argb >> 16) & 0xff) * scale))
+  const g = Math.min(255, Math.trunc(((argb >> 8) & 0xff) * scale))
+  const b = Math.min(255, Math.trunc((argb & 0xff) * scale))
+  const a = (argb >> 24) & 0xff
+  return ((a << 24) | (r << 16) | (g << 8) | b) >>> 0
 }
