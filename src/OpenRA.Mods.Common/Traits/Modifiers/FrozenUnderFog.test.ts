@@ -104,6 +104,7 @@ import type {
   PlayerStub,
   WorldRendererStub,
   IRenderable,
+  RectangleStub,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces'
 
 // ---------------------------------------------------------------------------
@@ -251,9 +252,11 @@ function createMockActorInfo(buildingInfo?: Record<string, unknown>): Record<str
 function createMockBuildingActor(options: {
   owner?: PlayerStub | null
   world?: Record<string, unknown>
-  location?: CPos
+  /** Pass null to explicitly set no location (for empty footprint tests). */
+  location?: CPos | null
   actorInfo?: Record<string, unknown>
 } = {}): IGameActor {
+  const hasLocation = 'location' in options
   const actorAny: Record<string, unknown> = {
     actorId: actorIdCounter++,
     isInWorld: true,
@@ -261,7 +264,7 @@ function createMockBuildingActor(options: {
     disposed: false,
     owner: options.owner ?? null,
     world: options.world ?? { players: [], map: createMockMap() },
-    location: options.location ?? new CPos(5, 10),
+    location: hasLocation ? (options.location ?? undefined) : new CPos(5, 10),
     info: options.actorInfo ?? createMockActorInfo(),
   }
   return actorAny as unknown as IGameActor
@@ -581,6 +584,19 @@ describe('FrozenUnderFog.onVisibilityChanged', () => {
     expect(() => fuf.onVisibilityChanged(mockFrozenRef as any)).not.toThrow()
     expect(mockFrozenRef.refreshHidden).not.toHaveBeenCalled()
   })
+
+  it('ignores callbacks when _frozenStates is null (before created)', () => {
+    const { players, world } = setupPlayersWorld(1)
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    // created() not called, _frozenStates is null
+
+    const mockFrozenRef = createMockFrozenRef({ viewer: players[0], visible: false })
+
+    expect(() => fuf.onVisibilityChanged(mockFrozenRef as any)).not.toThrow()
+    expect(mockFrozenRef.refreshHidden).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -675,6 +691,63 @@ describe('FrozenUnderFog.isVisible', () => {
 
     expect(fuf.isVisible(self, players[1] as unknown as PlayerStub)).toBe(true)
   })
+
+  it('falls back to _isVisibleInner when relationship is not always-visible', () => {
+    const { players, world } = setupPlayersWorld(2, { fogEnabled: false, isExploredReturn: false })
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    ;(players[0].relationshipWith as ReturnType<typeof vi.fn>).mockImplementation((other: unknown) => {
+      if (other === players[1]) return PlayerRelationship.Enemy
+      return PlayerRelationship.Ally
+    })
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+
+    // Enemy relation + fog disabled + not explored → invisible
+    expect(fuf.isVisible(self, players[1] as unknown as PlayerStub)).toBe(false)
+  })
+
+  it('returns false for player not found in _frozenStates (fog enabled)', () => {
+    const { players, world } = setupPlayersWorld(1, { fogEnabled: true })
+    addFrozenLayerToPlayer(players[0])
+    const unknownPlayer = { playerActor: { world: { players: [] } }, _isMockPlayer: true, playerName: 'unknown', shroud: players[0].shroud }
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+
+    // _getPlayerIndex returns -1 for unknownPlayer → returns false
+    expect(fuf.isVisible(self, unknownPlayer as unknown as PlayerStub)).toBe(false)
+  })
+
+  it('returns true when any footprint cell is explored (fog disabled)', () => {
+    const { players, world } = setupPlayersWorld(2, { fogEnabled: false })
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    ;(players[1].shroud as Record<string, unknown>)['isExplored'] = vi.fn((puv: PPos) => puv.U === 1 && puv.V === 0)
+    ;(players[0].relationshipWith as ReturnType<typeof vi.fn>).mockImplementation((other: unknown) => {
+      if (other === players[1]) return PlayerRelationship.Enemy
+      return PlayerRelationship.Ally
+    })
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+
+    // Fog disabled + footprint has cell (1,0) that is explored → visible
+    expect(fuf.isVisible(self, players[1] as unknown as PlayerStub)).toBe(true)
+  })
+
+  it('handles null owner and null _frozenStates in _isVisibleInner', () => {
+    const { players, world } = setupPlayersWorld(1)
+    const self = createMockBuildingActor({ owner: null, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    // No owner → alwaysVisible check skipped
+    // _frozenStates is null → _isVisibleInner returns false for fog enabled
+    expect(fuf.isVisible(self, players[0] as unknown as PlayerStub)).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -747,6 +820,42 @@ describe('FrozenUnderFog.tickRender', () => {
     const mockWr = { viewport: { topLeft: { x: 0, y: 0 }, bottomRight: { x: 100, y: 100 } } }
     expect(() => fuf.tickRender(mockWr as unknown as WorldRendererStub, self)).not.toThrow()
   })
+
+  it('calls screenMap.addOrUpdate for frozen actors needing renderables', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    mockFrozenActorInstances[0].NeedRenderables = true
+
+    const mockWr = { viewport: { topLeft: { x: 0, y: 0 }, bottomRight: { x: 100, y: 100 } } }
+    fuf.tickRender(mockWr as unknown as WorldRendererStub, self)
+
+    expect(world.screenMap).toBeDefined()
+    const screenMap = world.screenMap as Record<string, unknown>
+    expect(screenMap.addOrUpdate).toHaveBeenCalled()
+  })
+
+  it('skips screenMap when world has no screenMap', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    delete world.screenMap
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    mockFrozenActorInstances[0].NeedRenderables = true
+
+    const mockWr = { viewport: { topLeft: { x: 0, y: 0 }, bottomRight: { x: 100, y: 100 } } }
+    expect(() => fuf.tickRender(mockWr as unknown as WorldRendererStub, self)).not.toThrow()
+    expect(mockFrozenActorInstances[0].NeedRenderables).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -818,6 +927,46 @@ describe('FrozenUnderFog.modifyRender', () => {
 
     expect(result).toBe(original)
   })
+
+  it('returns original renderables during _isRendering guard (capture mode)', () => {
+    const { players, world } = setupPlayersWorld(2, { fogEnabled: true, isExploredReturn: false })
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    ;(players[0].relationshipWith as ReturnType<typeof vi.fn>).mockImplementation((other: unknown) => {
+      if (other === players[1]) return PlayerRelationship.Enemy
+      return PlayerRelationship.Ally
+    })
+    world.renderPlayer = players[1]
+
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+
+    // Simulate isRendering = true (as during tickRender capture)
+    ;(fuf as any)._isRendering = true
+
+    const original: IRenderable[] = [{ type: 'test' } as unknown as IRenderable]
+    const mockWr = {} as unknown as WorldRendererStub
+    const result = fuf.modifyRender(self, mockWr, original)
+
+    expect(result).toBe(original)
+    ;(fuf as any)._isRendering = false
+  })
+
+  it('handles null world gracefully in modifyRender', () => {
+    const self = createMockBuildingActor({ world: undefined as unknown as Record<string, unknown> })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+
+    const original: IRenderable[] = [{ type: 'test' } as unknown as IRenderable]
+    const mockWr = {} as unknown as WorldRendererStub
+    // No world, no renderPlayer → returns original
+    const result = fuf.modifyRender(self, mockWr, original)
+
+    expect(result).toBe(original)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -839,6 +988,18 @@ describe('FrozenUnderFog.modifyScreenBounds', () => {
     const result = fuf.modifyScreenBounds(self, mockWr, bounds)
 
     expect(result).toBe(bounds)
+  })
+
+  it('passes through empty bounds unchanged', () => {
+    const self = createMockBuildingActor()
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+
+    const bounds: RectangleStub[] = []
+    const mockWr = {} as unknown as WorldRendererStub
+    const result = fuf.modifyScreenBounds(self, mockWr, bounds)
+
+    expect(result).toBe(bounds)
+    expect(result.length).toBe(0)
   })
 })
 
@@ -900,6 +1061,23 @@ describe('FrozenUnderFog.onOwnerChanged', () => {
       expect(fuf.VisibilityHash).toBeGreaterThan(0)
     }
   })
+
+  it('handles oldOwner not found in players list gracefully', () => {
+    const { players, world } = setupPlayersWorld(2)
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    const unknownOwner = { playerActor: { world: { players: [] } }, _isMockPlayer: true, playerName: 'unknown' }
+
+    expect(() =>
+      fuf.onOwnerChanged(self, unknownOwner as unknown as PlayerStub, players[1] as unknown as PlayerStub),
+    ).not.toThrow()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -952,6 +1130,25 @@ describe('FrozenUnderFog.disposing', () => {
 
     expect(() => fuf.disposing(self)).not.toThrow()
   })
+
+  it('invalidates correct player index with multiple players', () => {
+    const { players, world } = setupPlayersWorld(3)
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    addFrozenLayerToPlayer(players[2])
+    const self = createMockBuildingActor({ owner: players[2] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    fuf.disposing(self)
+
+    // Only player index 2 (owner) should be invalidated
+    expect(mockFrozenActorInstances[2].invalidateCalls).toBe(1)
+    expect(mockFrozenActorInstances[0].invalidateCalls).toBe(0)
+    expect(mockFrozenActorInstances[1].invalidateCalls).toBe(0)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -1001,6 +1198,250 @@ describe('FrozenUnderFog VisibilityHash', () => {
     fuf.onVisibilityChanged(createMockFrozenRef({ viewer: players[1], visible: false }) as any)
 
     expect(fuf.VisibilityHash & 0b11).toBe(0b11)
+  })
+
+  it('correctly wraps playerIndex >= 32 using modulo', () => {
+    const { players, world } = setupPlayersWorld(34)
+    for (let i = 0; i < 34; i++) {
+      addFrozenLayerToPlayer(players[i])
+    }
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // playerIndex 32 → 1 << 0 = 1
+    fuf.onVisibilityChanged(createMockFrozenRef({ viewer: players[32], visible: false }) as any)
+    expect(fuf.VisibilityHash & 1).toBe(1)
+
+    // playerIndex 33 → 1 << 1 = 2
+    fuf.onVisibilityChanged(createMockFrozenRef({ viewer: players[33], visible: false }) as any)
+    expect(fuf.VisibilityHash & 2).toBe(2)
+  })
+
+  it('combines VisibilityHash from onOwnerChanged and onVisibilityChanged', () => {
+    const { players, world } = setupPlayersWorld(2)
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // Set hash bit for player 0 via visibility change
+    fuf.onVisibilityChanged(createMockFrozenRef({ viewer: players[0], visible: false }) as any)
+    expect(fuf.VisibilityHash & 1).toBe(1)
+
+    // Set hash bit for player 0 again via owner change
+    fuf.onOwnerChanged(self, players[0] as unknown as PlayerStub, players[1] as unknown as PlayerStub)
+    expect(fuf.VisibilityHash & 1).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tests: FrozenUnderFog — _anyExplored behavior (私有方法，通过 isVisible 间接测试)
+// ---------------------------------------------------------------------------
+
+describe('FrozenUnderFog _anyExplored behavior', () => {
+  beforeEach(() => {
+    resetMockFrozenActors()
+    actorIdCounter = 0
+  })
+
+  it('returns false when footprint is empty (no cells to explore)', () => {
+    const { players, world } = setupPlayersWorld(1, { fogEnabled: false, isExploredReturn: true })
+    addFrozenLayerToPlayer(players[0])
+    // Pass location: null to explicitly create actor with no location → empty footprint
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world, location: null })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+
+    // Empty footprint + fog disabled → _anyExplored returns false → actor invisible
+    expect(fuf.isVisible(self, players[0] as unknown as PlayerStub)).toBe(false)
+  })
+
+  it('returns true when at least one footprint cell is explored', () => {
+    const { players, world } = setupPlayersWorld(1, { fogEnabled: false })
+    addFrozenLayerToPlayer(players[0])
+    // Shroud returns false for first cell, true for fourth cell
+    let callCount = 0
+    ;(players[0].shroud as Record<string, unknown>)['isExplored'] = vi.fn(() => {
+      callCount++
+      return callCount >= 4
+    })
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world, location: new CPos(5, 10) })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+
+    // At least one cell (the 4th) is explored → visible
+    expect(fuf.isVisible(self, players[0] as unknown as PlayerStub)).toBe(true)
+  })
+
+  it('returns false when no footprint cells are explored', () => {
+    const { players, world } = setupPlayersWorld(1, { fogEnabled: false, isExploredReturn: false })
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world, location: new CPos(5, 10) })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+
+    // Fog disabled + none explored → invisible
+    expect(fuf.isVisible(self, players[0] as unknown as PlayerStub)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tests: FrozenUnderFog — _getPlayerIndex edge cases (私有方法，通过公共 API 间接测试)
+// ---------------------------------------------------------------------------
+
+describe('FrozenUnderFog _getPlayerIndex edge cases', () => {
+  beforeEach(() => {
+    resetMockFrozenActors()
+    actorIdCounter = 0
+  })
+
+  it('returns -1 when player has no playerActor', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // Create a player with no playerActor
+    const playerWithNoActor = { shroud: players[0].shroud, _isMockPlayer: true, playerName: 'noActor' }
+
+    // _getPlayerIndex returns -1 → isVisible returns false
+    expect(fuf.isVisible(self, playerWithNoActor as unknown as PlayerStub)).toBe(false)
+  })
+
+  it('returns -1 when playerActor has no world', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // Create a player whose playerActor has no world
+    const playerWithActorNoWorld = {
+      shroud: players[0].shroud,
+      _isMockPlayer: true,
+      playerName: 'actorNoWorld',
+      playerActor: { traitOrDefault: vi.fn(() => undefined) },
+    }
+
+    // _getPlayerIndex returns -1 → isVisible returns false
+    expect(fuf.isVisible(self, playerWithActorNoWorld as unknown as PlayerStub)).toBe(false)
+  })
+
+  it('returns valid index for players found by reference equality', () => {
+    const { players, world } = setupPlayersWorld(3)
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    addFrozenLayerToPlayer(players[2])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // All 3 players should be found by reference equality and return valid indices
+    const mockFrozenRef0 = createMockFrozenRef({ viewer: players[2], visible: false })
+    fuf.onVisibilityChanged(mockFrozenRef0 as any)
+    // player 2 → bit position 2 → `1 << 2 = 4`
+    expect(fuf.VisibilityHash & 4).toBe(4)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tests: FrozenUnderFog — Complete lifecycle
+// ---------------------------------------------------------------------------
+
+describe('FrozenUnderFog complete lifecycle', () => {
+  beforeEach(() => {
+    resetMockFrozenActors()
+    actorIdCounter = 0
+  })
+
+  it('handles full create → created → visibility → ownerChange → dispose cycle', () => {
+    const { players, world } = setupPlayersWorld(2, { fogEnabled: true, isExploredReturn: false })
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    ;(players[0].relationshipWith as ReturnType<typeof vi.fn>).mockImplementation((other: unknown) => {
+      if (other === players[1]) return PlayerRelationship.Enemy
+      return PlayerRelationship.Ally
+    })
+    world.renderPlayer = players[1]
+
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    // 1. Constructor
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    expect(fuf.VisibilityHash).toBe(0)
+
+    // 2. created() — creates FrozenActor per player
+    fuf.created(self)
+    expect(mockFrozenActorInstances.length).toBe(2)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // 3. isVisible — not visible to enemy player (fog enabled, not visible)
+    expect(fuf.isVisible(self, players[1] as unknown as PlayerStub)).toBe(false)
+
+    // 4. modifyRender — hides renderables from enemy
+    const original: IRenderable[] = [{ type: 'test' } as unknown as IRenderable]
+    const mockWr = {} as unknown as WorldRendererStub
+    expect(fuf.modifyRender(self, mockWr, original).length).toBe(0)
+
+    // 5. tickRender
+    mockFrozenActorInstances[0].NeedRenderables = true
+    fuf.tickRender(mockWr, self)
+    expect(mockFrozenActorInstances[0].NeedRenderables).toBe(false)
+
+    // 6. onVisibilityChanged
+    const mockFrozenRef = createMockFrozenRef({ viewer: players[0], visible: false })
+    fuf.onVisibilityChanged(mockFrozenRef as any)
+    expect(fuf.VisibilityHash & 1).toBe(1)
+
+    // 7. onOwnerChanged
+    fuf.onOwnerChanged(self, players[0] as unknown as PlayerStub, players[1] as unknown as PlayerStub)
+    expect(mockFrozenActorInstances[0].refreshStateCalls).toBeGreaterThan(0)
+
+    // 8. disposing — invalidates owner's frozen actor
+    fuf.disposing(self)
+    expect(mockFrozenActorInstances[0].invalidateCalls).toBe(1)
+    expect(mockFrozenActorInstances[1].invalidateCalls).toBe(0)
+  })
+
+  it('handles multiple ownership changes in lifecycle', () => {
+    const { players, world } = setupPlayersWorld(3)
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    addFrozenLayerToPlayer(players[2])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // Owner 0 → Owner 1
+    fuf.onOwnerChanged(self, players[0] as unknown as PlayerStub, players[1] as unknown as PlayerStub)
+    expect(mockFrozenActorInstances[0].refreshStateCalls).toBeGreaterThan(0)
+
+    // Update self with new owner
+    const selfAny = self as unknown as Record<string, unknown>
+    selfAny.owner = players[1]
+
+    // Owner 1 → Owner 2
+    fuf.onOwnerChanged(self, players[1] as unknown as PlayerStub, players[2] as unknown as PlayerStub)
+    expect(mockFrozenActorInstances[1].refreshStateCalls).toBeGreaterThan(0)
+
+    // Dispose with final owner
+    fuf.disposing(self)
+    expect(mockFrozenActorInstances[1].invalidateCalls).toBe(1)
   })
 })
 
