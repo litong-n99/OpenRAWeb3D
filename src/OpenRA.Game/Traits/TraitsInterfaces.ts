@@ -22,6 +22,7 @@ import type { WPos } from '../WPos'
 import type { WAngle } from '../WAngle'
 import type { WDist } from '../WDist'
 import type { CPos } from '../CPos'
+import type { MPos } from '../MPos'
 import type { WRot } from '../WRot'
 import type { SubCell as SubCellEnum } from './SubCell'
 import type { Activity } from '../Activities/Activity'
@@ -3848,4 +3849,51 @@ export interface ISeedableResource {
    *  @param self — the actor seeding resources
    */
   seed(self: IGameActor): void
+}
+
+// ---------------------------------------------------------------------------
+// IRadarTerrainLayer — radar/minimap custom terrain color provider
+// OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs:847-851
+// ---------------------------------------------------------------------------
+
+/**
+ * Interface for world traits that provide custom radar/minimap terrain colors.
+ *
+ * OpenRA 对照: IRadarTerrainLayer (TraitsInterfaces.cs:847-851)
+ *
+ * World traits like ResourceRenderer implement this to override the default
+ * terrain color on the radar widget. The radar widget queries all
+ * IRadarTerrainLayer implementations in priority order; the first one that
+ * returns a color pair for a cell wins. If none do, the default map terrain
+ * colors are used.
+ *
+ * CellEntryChanged provides fine-grained update notifications when individual
+ * cells change (e.g., a resource tile is depleted).
+ */
+export interface IRadarTerrainLayer {
+  /** Register callback for cell entry color changes.
+   *
+   * OpenRA 对照: event Action<CPos> CellEntryChanged += handler
+   *
+   * @param callback — called with CPos whenever a cell's radar color changes
+   */
+  addCellEntryChangedListener(callback: (cell: CPos) => void): void
+
+  /** Unregister callback.
+   *
+   * OpenRA 对照: event Action<CPos> CellEntryChanged -= handler
+   *
+   * @param callback — the previously registered callback to remove
+   */
+  removeCellEntryChangedListener(callback: (cell: CPos) => void): void
+
+  /** Try to get a custom terrain color pair for a map cell.
+   *
+   * OpenRA 对照: TryGetTerrainColorPair(MPos uv, out (Color,Color))
+   *
+   * @param uv — map cell position
+   * @returns [true, {left, right}] on success, [false] on miss.
+   *   Each color is an ARGB uint32 (0xAARRGGBB).
+   */
+  tryGetTerrainColorPair(uv: MPos): [true, { left: number; right: number }] | [false, undefined?]
 }
