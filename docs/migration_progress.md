@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-15
-> **Current phase**: Chapters 2-13 COMPLETE (333/333 core, 100%). Chapter 13 Phase A COMPLETE (14/14 APPROVED).
-> **Overall status**: Chapters 2-13 COMPLETE: 333/333 core (100%). Chapters 14-21: 0/~241 (0%).
+> **Current phase**: Chapters 2-13 COMPLETE (333/333 core, 100%). Chapter 14 Phase A COMPLETE (11/49 files, 82 tests, 3 E2E pages R2 APPROVED).
+> **Overall status**: Chapters 2-13 COMPLETE: 333/333 core (100%). Chapter 14: 11/49 (22%, Phase A COMPLETE). Chapters 15-21: 0/~192 (0%).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -25,7 +25,7 @@
 | **Chapter 11 planned files (Production & Building)** | ~25 original plan + 13 additional = 37 total (2 Phases A-B), 37/37 COMPLETE, ALL PHASES COMPLETE |
 | **Chapter 12 planned files (Shroud & Fog of War)** | 16 (1 Phase A), COMPLETE: 16/16 APPROVED. Plan: [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md) |
 | **Chapter 13 planned files (Support Powers)** | 14 + 1 interface (1 Phase A), COMPLETE: 14/14 APPROVED, 285 tests. Plan: [docs/chapter13_support_powers_migration_plan.md](docs/chapter13_support_powers_migration_plan.md) |
-| **Chapter 14 planned files (Activity Implementations)** | 49 concrete + 2 already-migrated base files (6 Phases A-F planned), 0/49 migrated, PLANNING. Plans: [chapter14_activity_implementations_analysis.md](docs/chapter14_activity_implementations_analysis.md), [chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md) |
+| **Chapter 14 planned files (Activity Implementations)** | 49 concrete + 2 already-migrated base files (6 Phases A-F planned), 11/49 migrated, Phase A COMPLETE. Plans: [chapter14_activity_implementations_analysis.md](docs/chapter14_activity_implementations_analysis.md), [chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md) |
 | **Chapter 15 planned files (Order Generators)** | ~11 (1 Phase A planned), 0/11 migrated |
 | **Chapter 16 planned files (UI Widget Extensions)** | ~40 (3 Phases A-C planned), 0/40 migrated |
 | **Chapter 17 planned files (Replay & Save)** | ~6 (1 Phase A planned), 0/6 migrated |
@@ -33,7 +33,7 @@
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
-| **Overall project completion** | Chapters 2-13 complete (333/333 core + 8 optional = 341). Chapters 14-21 remaining: ~241/~241. Total project: ~582 files estimated, ~341 complete (58.6%). |
+| **Overall project completion** | Chapters 2-13 complete (333/333 core + 8 optional = 341). Chapters 14-21 remaining: ~241/~241. Total project: ~582 files estimated, ~352 complete (60.5%). |
 
 > **Note**: Chapters 2-13 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests), Phase B-Optional (8 files, 203 tests). **Chapter 11 ALL PHASES COMPLETE (37 files: 14 Phase A + 23 Phase B, ~9,571 TS lines, ~771 tests, 2 review rounds per phase)**. Phase A (14 files, ~4,216 TS lines, ~296 tests): ProductionQueue.ts (~1,554 TS), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS), ProductionParadrop.ts (~148 TS), ProductionFromMapEdge.ts (~123 TS), ProductionAirdrop.ts (~156 TS), Exit.ts (~228 TS), RallyPoint.ts (~268 TS), PrimaryBuilding.ts (~185 TS), plus prereqs (Buildable, TechTree, PowerManager, DeveloperMode, ActorInitializer). Phase B (23 files, ~5,355 TS lines, ~475 tests): Building.ts (~550 TS), BuildingInfluence.ts (~180 TS), BuildingUtils.ts (~260 TS), PlaceBuilding.ts (~470 TS), PlaceBuildingOrderGenerator.ts (~600 TS), plus gap additions (ActorMap, GivesBuildableArea, LineBuildNode, Plug/Pluggable, etc.). **Chapter 12 ALL PHASES COMPLETE (16 files, Phase A APPROVED)**: Shroud.ts, ShroudRenderer.ts, FrozenActorLayer.ts, Cloak.ts, AffectsShroud.ts, FrozenUnderFog.ts, RevealsMap.ts, PlayerRadarTerrain.ts, CreatesShroud.ts, RevealsShroud.ts, HiddenUnderShroud.ts, HiddenUnderFog.ts, DetectCloaked.ts, ShroudExts.ts, ShroudPalette.ts, RevealsShroudMultiplier.ts. **Chapter 13 ALL PHASES COMPLETE (14 files + 1 interface, Phase A APPROVED, 285 tests)**: SupportPower.ts (745 TS), SupportPowerManager.ts (864 TS), AirstrikePower.ts (599 TS), NukePower.ts (731 TS), ParatroopersPower.ts (622 TS), ProduceActorPower.ts (316 TS), SpawnActorPower.ts (442 TS), GrantExternalConditionPower.ts (511 TS), DirectionalSupportPower.ts (154 TS), SelectDirectionalTarget.ts (485 TS), SupportPowerChargeBar.ts (271 TS), WithSupportPowerActivationAnimation.ts (255 TS), WithSupportPowerActivationOverlay.ts (310 TS), SupportPowerCrateAction.ts (118 TS).
 

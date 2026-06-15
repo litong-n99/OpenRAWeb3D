@@ -1,8 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 14 -- Activity Implementations
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.3 (Traits) + `docs/chapter14_activity_implementations_analysis.md`
-> **Chapter Status**: PLANNING (0/49 concrete files migrated; `Activity.ts` + `CallFunc.ts` already migrated in Chapter 3 Phase F)
+> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phases B-F PLANNING (0/38 migrated)
 > **Planning Date**: 2026-06-15
+> **Last Updated**: 2026-06-15
 > **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -96,17 +97,17 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | # | OpenRA Source | Target TypeScript File | Class | Lines (C#) | Complexity | Phase |
 |:---:|:---|:---|:---|:---:|:---:|:---:|
 | **Phase A: Movement Activities** | | | | | |
-| 1 | `OpenRA.Mods.Common/Activities/Move/Move.cs` | `src/OpenRA.Mods.Common/Activities/Move/Move.ts` | `Move` (+ nested `MovePart`, `MoveFirstHalf`, `MoveSecondHalf`) | 640 | HIGHEST | A |
-| 2 | `OpenRA.Mods.Common/Activities/Move/MoveAdjacentTo.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveAdjacentTo.ts` | `MoveAdjacentTo` | 159 | MEDIUM | A |
-| 3 | `OpenRA.Mods.Common/Activities/Move/MoveOnto.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveOnto.ts` | `MoveOnto` | 60 | LOW | A |
-| 4 | `OpenRA.Mods.Common/Activities/Move/MoveOntoAndTurn.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveOntoAndTurn.ts` | `MoveOntoAndTurn` | 43 | LOW | A |
-| 5 | `OpenRA.Mods.Common/Activities/Move/MoveWithinRange.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveWithinRange.ts` | `MoveWithinRange` | 78 | MEDIUM | A |
-| 6 | `OpenRA.Mods.Common/Activities/Move/Drag.cs` | `src/OpenRA.Mods.Common/Activities/Move/Drag.ts` | `Drag` | 73 | LOW | A |
-| 7 | `OpenRA.Mods.Common/Activities/Move/Nudge.cs` | `src/OpenRA.Mods.Common/Activities/Move/Nudge.ts` | `Nudge` | 64 | LOW | A |
-| 8 | `OpenRA.Mods.Common/Activities/Move/Follow.cs` | `src/OpenRA.Mods.Common/Activities/Move/Follow.ts` | `Follow` | 89 | MEDIUM | A |
-| 9 | `OpenRA.Mods.Common/Activities/Move/LocalMoveIntoTarget.cs` | `src/OpenRA.Mods.Common/Activities/Move/LocalMoveIntoTarget.ts` | `LocalMoveIntoTarget` | 89 | LOW | A |
-| 10 | `OpenRA.Mods.Common/Activities/Move/AttackMoveActivity.cs` | `src/OpenRA.Mods.Common/Activities/Move/AttackMoveActivity.ts` | `AttackMoveActivity` | 108 | MEDIUM | A |
-| 11 | `OpenRA.Mods.Common/Activities/Move/MoveCooldownHelper.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveCooldownHelper.ts` | `MoveCooldownHelper` | 100 | LOW | A |
+| 1 | `OpenRA.Mods.Common/Activities/Move/Move.cs` | `src/OpenRA.Mods.Common/Activities/Move/Move.ts` | `Move` (+ nested `MovePart`, `MoveFirstHalf`, `MoveSecondHalf`) | 640 | HIGHEST | A ✅ COMPLETE |
+| 2 | `OpenRA.Mods.Common/Activities/Move/MoveAdjacentTo.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveAdjacentTo.ts` | `MoveAdjacentTo` | 159 | MEDIUM | A ✅ COMPLETE |
+| 3 | `OpenRA.Mods.Common/Activities/Move/MoveOnto.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveOnto.ts` | `MoveOnto` | 60 | LOW | A ✅ COMPLETE |
+| 4 | `OpenRA.Mods.Common/Activities/Move/MoveOntoAndTurn.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveOntoAndTurn.ts` | `MoveOntoAndTurn` | 43 | LOW | A ✅ COMPLETE |
+| 5 | `OpenRA.Mods.Common/Activities/Move/MoveWithinRange.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveWithinRange.ts` | `MoveWithinRange` | 78 | MEDIUM | A ✅ COMPLETE |
+| 6 | `OpenRA.Mods.Common/Activities/Move/Drag.cs` | `src/OpenRA.Mods.Common/Activities/Move/Drag.ts` | `Drag` | 73 | LOW | A ✅ COMPLETE |
+| 7 | `OpenRA.Mods.Common/Activities/Move/Nudge.cs` | `src/OpenRA.Mods.Common/Activities/Move/Nudge.ts` | `Nudge` | 64 | LOW | A ✅ COMPLETE |
+| 8 | `OpenRA.Mods.Common/Activities/Move/Follow.cs` | `src/OpenRA.Mods.Common/Activities/Move/Follow.ts` | `Follow` | 89 | MEDIUM | A ✅ COMPLETE |
+| 9 | `OpenRA.Mods.Common/Activities/Move/LocalMoveIntoTarget.cs` | `src/OpenRA.Mods.Common/Activities/Move/LocalMoveIntoTarget.ts` | `LocalMoveIntoTarget` | 89 | LOW | A ✅ COMPLETE |
+| 10 | `OpenRA.Mods.Common/Activities/Move/AttackMoveActivity.cs` | `src/OpenRA.Mods.Common/Activities/Move/AttackMoveActivity.ts` | `AttackMoveActivity` | 108 | MEDIUM | A ✅ COMPLETE |
+| 11 | `OpenRA.Mods.Common/Activities/Move/MoveCooldownHelper.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveCooldownHelper.ts` | `MoveCooldownHelper` | 100 | LOW | A ✅ COMPLETE |
 | -- | `OpenRA.Game/Activities/CallFunc.cs` | `src/OpenRA.Game/Activities/CallFunc.ts` | `CallFunc` | 33 | LOW | A ✅ ALREADY MIGRATED |
 
 | **Phase B: Combat Activities** | | | | | |
@@ -186,24 +187,26 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 | Phase | Files | C# Lines | Est. TS Lines | Est. Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| A: Movement | 11 | ~1,500 | ~3,400 | ~180 | PLANNING |
+| A: Movement | 11 | ~1,500 | ~3,400 | ~180 | **COMPLETE (11/11, 82 tests, 3 E2E pages R2 APPROVED)** |
 | B: Combat | 5 | ~626 | ~1,500 | ~90 | PLANNING |
 | C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | PLANNING |
 | D: Economic | 7 | ~1,375 | ~3,300 | ~120 | PLANNING |
 | E: Transport & Enter | 6 | ~732 | ~1,800 | ~90 | PLANNING |
 | F: Utility & Misc | 8 | ~647 | ~1,500 | ~70 | PLANNING |
-| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **PLANNING** |
+| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A COMPLETE (11/11); B-F PLANNING** |
 
 ---
 
 ## 3. Core Migration Tasks (TODO)
 
-### 3.1 Phase A: Movement Activities
-
-**Status**: PLANNING (0/11 migrated)
+### 3.1 Phase A: Movement Activities ✅ COMPLETE (11/11 migrated, 82 tests, 3 E2E pages R2 APPROVED)
 **Complexity**: HIGHEST (`Move.cs` 640 lines) + MEDIUM/LOW wrappers
 **Blocked by**: Chapter 3 Phase F (`Activity` base) -- COMPLETE; Chapter 9 (`Mobile`, `Locomotor`, pathfinding) -- COMPLETE
 **Blocks**: Phase B (`Attack`, `Hunt`), Phase D (`MoveToDock`), Phase E (`Enter`, `UnloadCargo`, `Resupply`), Phase F (`DeployForGrantedCondition`)
+**Completed**: 2026-06-15
+**Tests**: 11 test files, 82 tests, all passing
+**Acceptance Test Pages**: 3 pages (`activities/move/`, `activities/target-lines/`, `activities/attack-move/`), R2 APPROVED
+**Review**: ch14-reviewer, Round 2 APPROVED (0 BLOCKERs remaining)
 
 **Description**: Movement activities are the foundation of all actor motion. `Move` is the largest single activity in the chapter and handles path following, local avoidance, blocker retry, backward movement, arc movement, and `MoveResult` reporting. All other movement activities are wrappers or specializations.
 
@@ -216,55 +219,55 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 - Visual position interpolation -> `scene.onBeforeRenderObservable` between tick positions
 
 #### TODO-14.A.1 `src/OpenRA.Mods.Common/Activities/Move/Move.ts`
-- [ ] Port `Move` class with all three constructors (scriptable, standard, custom path func)
-- [ ] Port nested `MovePart`, `MoveFirstHalf`, `MoveSecondHalf` helpers
-- [ ] Implement `OnFirstRun` path evaluation with `PathSearchOrder` (All, Stationary, Immovable, None)
-- [ ] Implement `Tick` with path popping, facing, backward movement, blocker wait/retry
-- [ ] Handle cancellation: clear path, set `MoveResult.CompleteCanceled`
-- [ ] Implement `PopPath` helper with local avoidance and `MoveResult` reporting
-- [ ] Implement `TargetLineNodes` for move target preview
-- [ ] Unit tests: path following, cancellation, already-at-destination, blocked destination, backward movement, arc movement
+- [x] Port `Move` class with all three constructors (scriptable, standard, custom path func)
+- [x] Port nested `MovePart`, `MoveFirstHalf`, `MoveSecondHalf` helpers
+- [x] Implement `OnFirstRun` path evaluation with `PathSearchOrder` (All, Stationary, Immovable, None)
+- [x] Implement `Tick` with path popping, facing, backward movement, blocker wait/retry
+- [x] Handle cancellation: clear path, set `MoveResult.CompleteCanceled`
+- [x] Implement `PopPath` helper with local avoidance and `MoveResult` reporting
+- [x] Implement `TargetLineNodes` for move target preview
+- [x] Unit tests: path following, cancellation, already-at-destination, blocked destination, backward movement, arc movement
 
 #### TODO-14.A.2 `src/OpenRA.Mods.Common/Activities/Move/MoveAdjacentTo.ts`
-- [ ] Port `MoveAdjacentTo` wrapper around `Move`
-- [ ] Compute adjacent target cell and `nearEnough` distance
-- [ ] Unit tests: adjacency resolution, dynamic target updates
+- [x] Port `MoveAdjacentTo` wrapper around `Move`
+- [x] Compute adjacent target cell and `nearEnough` distance
+- [x] Unit tests: adjacency resolution, dynamic target updates
 
 #### TODO-14.A.3 `src/OpenRA.Mods.Common/Activities/Move/MoveOnto.ts`
-- [ ] Port simple `MoveOnto` (move into target cell)
-- [ ] Unit tests: cell containment, completion condition
+- [x] Port simple `MoveOnto` (move into target cell)
+- [x] Unit tests: cell containment, completion condition
 
 #### TODO-14.A.4 `src/OpenRA.Mods.Common/Activities/Move/MoveOntoAndTurn.ts`
-- [ ] Port `MoveOntoAndTurn` (move onto cell then face target)
-- [ ] Unit tests: facing after move completion
+- [x] Port `MoveOntoAndTurn` (move onto cell then face target)
+- [x] Unit tests: facing after move completion
 
 #### TODO-14.A.5 `src/OpenRA.Mods.Common/Activities/Move/MoveWithinRange.ts`
-- [ ] Port `MoveWithinRange` (move within WDist range of target)
-- [ ] Unit tests: range threshold, target invalidation
+- [x] Port `MoveWithinRange` (move within WDist range of target)
+- [x] Unit tests: range threshold, target invalidation
 
 #### TODO-14.A.6 `src/OpenRA.Mods.Common/Activities/Move/Drag.ts`
-- [ ] Port `Drag` (pull/push another actor)
-- [ ] Unit tests: relative position update
+- [x] Port `Drag` (pull/push another actor)
+- [x] Unit tests: relative position update
 
 #### TODO-14.A.7 `src/OpenRA.Mods.Common/Activities/Move/Nudge.ts`
-- [ ] Port `Nudge` (micro-movement to unblock)
-- [ ] Unit tests: nudge direction, completion
+- [x] Port `Nudge` (micro-movement to unblock)
+- [x] Unit tests: nudge direction, completion
 
 #### TODO-14.A.8 `src/OpenRA.Mods.Common/Activities/Move/Follow.ts`
-- [ ] Port `Follow` (chase moving target)
-- [ ] Unit tests: target movement, range maintenance
+- [x] Port `Follow` (chase moving target)
+- [x] Unit tests: target movement, range maintenance
 
 #### TODO-14.A.9 `src/OpenRA.Mods.Common/Activities/Move/LocalMoveIntoTarget.ts`
-- [ ] Port `LocalMoveIntoTarget` (close-range approach)
-- [ ] Unit tests: target validity, completion distance
+- [x] Port `LocalMoveIntoTarget` (close-range approach)
+- [x] Unit tests: target validity, completion distance
 
 #### TODO-14.A.10 `src/OpenRA.Mods.Common/Activities/Move/AttackMoveActivity.ts`
-- [ ] Port `AttackMoveActivity` (combines `Move` + `Hunt`)
-- [ ] Unit tests: move interleaved with attack acquisition
+- [x] Port `AttackMoveActivity` (combines `Move` + `Hunt`)
+- [x] Unit tests: move interleaved with attack acquisition
 
 #### TODO-14.A.11 `src/OpenRA.Mods.Common/Activities/Move/MoveCooldownHelper.ts`
-- [ ] Port `MoveCooldownHelper` (shared movement cooldown tracking)
-- [ ] Unit tests: cooldown expiration
+- [x] Port `MoveCooldownHelper` (shared movement cooldown tracking)
+- [x] Unit tests: cooldown expiration
 
 ---
 
@@ -688,14 +691,15 @@ Rendering-heavy systems require manual visual acceptance test pages:
 
 | System | Test Page | Purpose |
 |--------|-----------|---------|
-| Ground movement | `/test/activities/move/` | Verify path following, target line rendering, arrival at destination |
-| Attack-move | `/test/activities/attack-move/` | Verify movement interrupted by combat, target line color change |
-| Aircraft flight | `/test/activities/fly/` | Verify flight path, altitude maintenance, arrival at destination |
-| Landing/takeoff | `/test/activities/land-takeoff/` | Verify altitude transition, landing animation, takeoff sequence |
-| Harvester cycle | `/test/activities/harvest/` | Verify harvest animation, dock approach, resource delivery |
-| Cargo enter/unload | `/test/activities/cargo/` | Verify unit entering transport, transport moving, units exiting |
-| Capture/demolish | `/test/activities/engineer/` | Verify engineer approach, capture animation, ownership change |
-| Parachute drop | `/test/activities/parachute/` | Verify parachute descent animation, landing, unit spawn |
+| Ground movement | `/test/activities/move/` | ✅ COMPLETE (R2 APPROVED) | Verify path following, target line rendering, arrival at destination |
+| Attack-move | `/test/activities/attack-move/` | ✅ COMPLETE (R2 APPROVED) | Verify movement interrupted by combat, target line color change |
+| Target lines | `/test/activities/target-lines/` | ✅ COMPLETE (R2 APPROVED) | Verify move/attack target lines render in 3D world space |
+| Aircraft flight | `/test/activities/fly/` | 📋 Planned | Verify flight path, altitude maintenance, arrival at destination |
+| Landing/takeoff | `/test/activities/land-takeoff/` | 📋 Planned | Verify altitude transition, landing animation, takeoff sequence |
+| Harvester cycle | `/test/activities/harvest/` | 📋 Planned | Verify harvest animation, dock approach, resource delivery |
+| Cargo enter/unload | `/test/activities/cargo/` | 📋 Planned | Verify unit entering transport, transport moving, units exiting |
+| Capture/demolish | `/test/activities/engineer/` | 📋 Planned | Verify engineer approach, capture animation, ownership change |
+| Parachute drop | `/test/activities/parachute/` | 📋 Planned | Verify parachute descent animation, landing, unit spawn |
 | Target lines | `/test/activities/target-lines/` | Verify move/attack target lines render in 3D world space |
 
 ### 5.4 Integration Testing
