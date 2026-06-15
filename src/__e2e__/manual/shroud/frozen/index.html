@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战争迷雾 - 冻结建筑 (FrozenUnderFog) | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 210px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 360px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #building-status {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 10px 14px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #building-status .live { color: #4a4; }
+    #building-status .frozen { color: #aa4; }
+    #building-status .hidden { color: #a44; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .label { color: #888; }
+    #info-bar .value { color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>战争迷雾 - 冻结建筑 (FrozenUnderFog 快照渲染)</h1>
+    <div class="subtitle">ID: shroud/frozen | 验证: 迷雾中建筑50%透明度、去饱和/灰色调、迷雾清除后恢复实时</div>
+  </div>
+  <div id="controls">
+    <label>可见性区域:</label>
+    <button id="btn-all-visible" class="active">全部可见</button>
+    <button id="btn-partial-fog">部分迷雾</button>
+    <button id="btn-all-fog">全部迷雾</button>
+    <button id="btn-all-hidden">全部隐藏</button>
+    <label style="margin-left:12px">建筑状态:</label>
+    <button id="btn-damage-b1">建筑B1受损</button>
+    <button id="btn-heal-all">全部修复</button>
+    <span class="hint">按键 V/F/H 切换区域 | 观察迷雾中建筑渲染变化</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>迷雾中冻结:</b> 建筑在 Explored/Fog 区域渲染为 <span class="metric">alpha=0.5</span> 且灰色调 (desaturated <span class="metric">~60%饱和度</span>)</li>
+        <li><b>可见区域实时:</b> 建筑在 Visible 区域渲染为 <span class="metric">alpha=1.0</span> 全色，橙色/蓝色原始颜色</li>
+        <li><b>迷雾清除:</b> 从 Fog 切换回 Visible 时冻结快照 <span class="metric">立即替换</span> 为实时建筑 (无双重渲染)</li>
+        <li><b>隐藏区域不可见:</b> 建筑在 Hidden 区域完全 <span class="metric">不可见</span> (alpha=0)，包括冻结快照</li>
+        <li><b>独立追踪:</b> 4个建筑各自独立跟踪 <span class="metric">冻结状态</span>，互不干扰</li>
+        <li><b>状态变化保留:</b> 冻结快照保留建筑 <span class="metric">形态</span>，但颜色为灰色调、透明度50%</li>
+      </ul>
+    </div>
+    <div id="building-status">
+      <b>建筑状态清单:</b><br>
+      A1 (左上): <span class="live" id="status-a1">-</span><br>
+      B1 (右上): <span class="live" id="status-b1">-</span><br>
+      C1 (左下): <span class="live" id="status-c1">-</span><br>
+      D1 (右下): <span class="live" id="status-d1">-</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span><span class="label">UA:</span> <span class="value" id="info-ua">-</span></span>
+    <span><span class="label">视口:</span> <span class="value" id="info-viewport">-</span></span>
+    <span><span class="label">引擎:</span> <span class="value" id="info-engine">-</span></span>
+    <span><span class="label">Visible:</span> <span class="value" id="info-visible">-</span></span>
+    <span><span class="label">Explored:</span> <span class="value" id="info-explored">-</span></span>
+    <span><span class="label">Hidden:</span> <span class="value" id="info-hidden">-</span></span>
+    <span><span class="label">FPS:</span> <span class="value" id="info-fps">-</span></span>
+    <span><span class="label">时间:</span> <span class="value" id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战争迷雾 - 全图揭示 (RevealsMap) | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.toggle-on {
+      background: #0a3a1a; border-color: #4a4; color: #8f8;
+    }
+    #controls button.toggle-off {
+      background: #1a1a2e; border-color: #0f3460; color: #eee;
+    }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 210px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 360px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #reveal-state {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 10px 14px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.6;
+      pointer-events: none; user-select: none;
+    }
+    #reveal-state .enabled { color: #4a4; }
+    #reveal-state .disabled { color: #a44; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .label { color: #888; }
+    #info-bar .value { color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>战争迷雾 - 全图揭示 (RevealsMap 整个地图可见)</h1>
+    <div class="subtitle">ID: shroud/reveal-map | 验证: 开启后全图Explored, 关闭后恢复先前状态, 先前已探索区域保留</div>
+  </div>
+  <div id="controls">
+    <button id="btn-reveal" class="toggle-off" style="font-weight:bold;font-size:14px;padding:10px 20px">
+      Reveal Map (开启)
+    </button>
+    <label style="margin-left:12px">探索区域:</label>
+    <button id="btn-explore-corners">探索四角</button>
+    <button id="btn-explore-center">探索中心</button>
+    <button id="btn-explore-strip">探索横条</button>
+    <button id="btn-reset-all">重置全部Hidden</button>
+    <span class="hint">先探索部分区域→开启Reveal→关闭→验证之前探索的保留</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>RevealMap 关闭:</b> 未探索区域显示 <span class="metric">纯黑 Hidden</span></li>
+        <li><b>RevealMap 开启:</b> 全图变为 <span class="metric">Explored (暗灰迷雾)</span> — 地形可见但无活动单位</li>
+        <li><b>RevealMap 关闭后:</b> 先前探索过的区域 <span class="metric">保持 Explored</span>，未探索区域 <span class="metric">恢复 Hidden</span>（不是全黑）</li>
+        <li><b>无活动单位:</b> RevealMap 开启时单位不显示在 Explored 区域中（仅揭示地形）</li>
+        <li><b>状态恢复精度:</b> 每个 Cell 的记忆状态 <span class="metric">精确恢复</span>，总和=256</li>
+      </ul>
+    </div>
+    <div id="reveal-state">
+      RevealMap: <span class="disabled" id="state-reveal">Disabled</span><br>
+      先前探索细胞: <span class="metric" id="state-explored">0</span><br>
+      活动单位位置: <span class="metric" id="state-units">(3,3) (6,6)</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span><span class="label">UA:</span> <span class="value" id="info-ua">-</span></span>
+    <span><span class="label">视口:</span> <span class="value" id="info-viewport">-</span></span>
+    <span><span class="label">引擎:</span> <span class="value" id="info-engine">-</span></span>
+    <span><span class="label">Hidden:</span> <span class="value" id="info-hidden">-</span></span>
+    <span><span class="label">Explored:</span> <span class="value" id="info-explored">-</span></span>
+    <span><span class="label">Visible:</span> <span class="value" id="info-visible">-</span></span>
+    <span><span class="label">FPS:</span> <span class="value" id="info-fps">-</span></span>
+    <span><span class="label">时间:</span> <span class="value" id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战争迷雾 - 隐形Alpha效果 (CloakStyle.Alpha) | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox {
+      position: relative; width: 100%; height: calc(100vh - 200px);
+      display: flex;
+    }
+    #sandbox .viewport {
+      flex: 1; position: relative; border-right: 1px solid #0f3460;
+    }
+    #sandbox .viewport:last-child { border-right: none; }
+    #sandbox .viewport canvas { display: block; width: 100%; height: 100%; }
+    #sandbox .viewport-label {
+      position: absolute; top: 8px; left: 8px;
+      background: rgba(22, 33, 62, 0.9); color: #eee;
+      padding: 4px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      font-size: 12px; font-weight: bold;
+      pointer-events: none; user-select: none;
+    }
+    #sandbox .viewport-label.owner { border-color: #4a4; color: #8f8; }
+    #sandbox .viewport-label.enemy { border-color: #a44; color: #f88; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 380px;
+      z-index: 10;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #cloak-status {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 10px 14px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.6;
+      pointer-events: none; user-select: none;
+      z-index: 10;
+    }
+    #cloak-status .cloaked { color: #aa4; }
+    #cloak-status .uncloaked { color: #4a4; }
+    #cloak-status .timer { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .label { color: #888; }
+    #info-bar .value { color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>战争迷雾 - 隐形Alpha效果 (CloakStyle.Alpha / cloakedAlpha=0.55)</h1>
+    <div class="subtitle">ID: shroud/cloak-alpha | 验证: 拥有者55%透明可见, 敌方完全不可见, 攻击解除隐形</div>
+  </div>
+  <div id="controls">
+    <label>单位控制:</label>
+    <button id="btn-attack" title="攻击 (解除隐形)">攻击 (Uncloak)</button>
+    <button id="btn-move" title="移动 (解除隐形)">移动 (Uncloak)</button>
+    <button id="btn-cloak-only" class="active" title="等待重新隐形">等待隐形</button>
+    <label style="margin-left:12px">隐形计时器:</label>
+    <span id="cloak-timer" style="font-size:14px;font-family:monospace;color:#aad">Cloaked</span>
+    <label style="margin-left:12px">CloakDelay:</label>
+    <input id="range-delay" type="range" min="10" max="120" value="30" style="width:80px">
+    <span id="val-delay" style="font-size:13px;color:#a0a0b0">30 ticks</span>
+    <span class="hint">左视口=拥有者 | 右视口=敌方 | 攻击/移动解除隐形 30ticks后恢复</span>
+  </div>
+  <div id="sandbox">
+    <div class="viewport" id="vp-left">
+      <canvas id="canvas-owner"></canvas>
+      <div class="viewport-label owner">拥有者视角 (Owner)</div>
+    </div>
+    <div class="viewport" id="vp-right">
+      <canvas id="canvas-enemy"></canvas>
+      <div class="viewport-label enemy">敌方视角 (Enemy)</div>
+    </div>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>隐形-拥有者:</b> 单位渲染 <span class="metric">alpha=0.55</span> (55%不透明度), 半透明可见</li>
+        <li><b>隐形-敌方:</b> 单位完全 <span class="metric">不可见</span> (alpha=0, mesh disabled)</li>
+        <li><b>解除隐形:</b> 攻击/移动后两个视口单位 <span class="metric">alpha=1.0</span> 完全不透明</li>
+        <li><b>重新隐形:</b> CloakDelay (默认 <span class="metric">30 ticks</span>) 后恢复 alpha=0.55(Owner) / 0(Enemy)</li>
+        <li><b>计时器显示:</b> 解除隐形期间显示 <span class="metric">"Uncloaked: N ticks"</span> 倒计时</li>
+      </ul>
+    </div>
+    <div id="cloak-status">
+      隐形状态: <span class="cloaked" id="status-text">Cloaked</span><br>
+      剩余时间: <span class="timer" id="status-remaining">0 ticks</span><br>
+      拥有者 alpha: <span class="timer" id="status-owner-alpha">0.55</span><br>
+      敌方 alpha: <span class="timer" id="status-enemy-alpha">0.00</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span><span class="label">UA:</span> <span class="value" id="info-ua">-</span></span>
+    <span><span class="label">视口:</span> <span class="value" id="info-viewport">-</span></span>
+    <span><span class="label">引擎:</span> <span class="value" id="info-engine">-</span></span>
+    <span><span class="label">FPS:</span> <span class="value" id="info-fps">-</span></span>
+    <span><span class="label">时间:</span> <span class="value" id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

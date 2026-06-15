@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战争迷雾 - 隐形探测 (DetectCloaked) | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 210px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 360px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #detection-status {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 10px 14px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.6;
+      pointer-events: none; user-select: none;
+    }
+    #detection-status .detected { color: #4a4; }
+    #detection-status .not-detected { color: #a44; }
+    #detection-status .metric { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .label { color: #888; }
+    #info-bar .value { color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>战争迷雾 - 隐形探测 (DetectCloaked 探测范围)</h1>
+    <div class="subtitle">ID: shroud/cloak-detect | 验证: 探测范围外隐形不可见, 范围内隐形解除, DetectionTypes 过滤</div>
+  </div>
+  <div id="controls">
+    <label>探测器位置:</label>
+    <input id="range-detect-x" type="range" min="-3" max="3" value="-3" step="0.1" style="width:100px">
+    <span id="val-detect-x" style="font-size:13px;color:#a0a0b0">-3.0</span>
+    <input id="range-detect-z" type="range" min="-3" max="3" value="0" step="0.1" style="width:100px">
+    <span id="val-detect-z" style="font-size:13px;color:#a0a0b0">0.0</span>
+    <label style="margin-left:12px">探测范围:</label>
+    <input id="range-detect-r" type="range" min="1" max="4" value="2" step="0.1" style="width:80px">
+    <span id="val-detect-r" style="font-size:13px;color:#a0a0b0">2.0</span>
+    <label style="margin-left:12px">DetectionTypes:</label>
+    <select id="sel-detect-type">
+      <option value="Cloak">Cloak</option>
+      <option value="Subterranean">Subterranean</option>
+      <option value="Both">Cloak+Subterranean</option>
+      <option value="None">None (不匹配)</option>
+    </select>
+    <span class="hint">拖动滑杆移动探测器 | 当距离≤探测范围时隐形解除</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>范围外:</b> 探测器距离 &gt; <span class="metric">探测范围</span> 时隐形单位 <span class="metric">不可见</span></li>
+        <li><b>范围内:</b> 探测器距离 ≤ 探测范围时隐形单位 <span class="metric">完全可见</span> (alpha=1.0)</li>
+        <li><b>离开范围:</b> 探测器移出范围后隐形单位 <span class="metric">立即变为不可见</span></li>
+        <li><b>DetectionTypes过滤:</b> 只有匹配的类型 (Cloak↔Cloak) 才能解除隐形, <span class="metric">不匹配则始终不可见</span></li>
+        <li><b>探测圈可视化:</b> 探测器周围显示 <span class="metric">半透明圆形</span> 表示探测范围</li>
+      </ul>
+    </div>
+    <div id="detection-status">
+      隐形单位状态:<br>
+      探测距离: <span class="metric" id="status-dist">-</span> 单位<br>
+      探测状态: <span class="not-detected" id="status-detect">-</span><br>
+      Detector类型: <span class="metric" id="status-type">Cloak</span><br>
+      Cloak类型: <span class="metric">Cloak</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span><span class="label">UA:</span> <span class="value" id="info-ua">-</span></span>
+    <span><span class="label">视口:</span> <span class="value" id="info-viewport">-</span></span>
+    <span><span class="label">引擎:</span> <span class="value" id="info-engine">-</span></span>
+    <span><span class="label">FPS:</span> <span class="value" id="info-fps">-</span></span>
+    <span><span class="label">时间:</span> <span class="value" id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

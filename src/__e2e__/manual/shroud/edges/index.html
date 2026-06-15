@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>战争迷雾 - 边缘混合 (8方向 Edges 检测) | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 210px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 360px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #legend {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 10px 14px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #legend .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+    #legend .swatch.edge-vis-fog { background: linear-gradient(90deg, rgba(0,255,0,0.8), rgba(100,100,100,0.8)); }
+    #legend .swatch.edge-fog-hid { background: linear-gradient(90deg, rgba(100,100,100,0.8), rgba(0,0,0,1)); }
+    #legend .swatch.edge-vis-hid { background: linear-gradient(90deg, rgba(0,255,0,0.8), rgba(0,0,0,1)); }
+    #legend .swatch.no-edge { background: rgba(60,60,60,0.3); }
+    #cell-inspector {
+      position: absolute; bottom: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 10px 14px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.6;
+      pointer-events: none; user-select: none;
+    }
+    #cell-inspector .val { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .label { color: #888; }
+    #info-bar .value { color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>战争迷雾 - 边缘混合 (8方向 Edges 位掩码检测)</h1>
+    <div class="subtitle">ID: shroud/edges | 验证: 8-neighbor 边缘检测、渐变条带渲染、全可见无边缘、动态更新</div>
+  </div>
+  <div id="controls">
+    <label>预设:</label>
+    <button id="btn-checkerboard">棋盘格模式</button>
+    <button id="btn-island">孤岛模式</button>
+    <button id="btn-diagonal">对角斜坡</button>
+    <button id="btn-expand" class="active">扩张可见区域</button>
+    <button id="btn-shrink">收缩可见区域</button>
+    <label style="margin-left:12px">步数:</label>
+    <input id="range-steps" type="range" min="1" max="5" value="1" style="width:60px">
+    <span id="val-steps" style="font-size:13px;color:#a0a0b0">1</span>
+    <span class="hint">滚轮缩放查看边缘细节 | 边缘梯度宽度=4px</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>可见↔迷雾边界:</b> 4px渐变从 <span class="metric">rgba(0,0,0,0)→rgba(15,15,15,0.55)</span></li>
+        <li><b>迷雾↔黑暗边界:</b> 4px渐变从 <span class="metric">rgba(15,15,15,0.55)→rgba(0,0,0,1.0)</span></li>
+        <li><b>同状态相邻:</b> 无渐变线, 边缘不可见</li>
+        <li><b>全可见内部:</b> 被同状态包围的cell在 <span class="metric">overlay上完全透明</span>, 无任何edge sprite</li>
+        <li><b>8方向Edges:</b> TopLeft/TopRight/BottomRight/BottomLeft 角落 + 4边 (TopSide/RightSide/BottomSide/LeftSide) 各方向渐变均正确</li>
+        <li><b>扩张/收缩:</b> 边缘图案在操作时 <span class="metric">&lt;50ms</span> 内即时更新</li>
+      </ul>
+    </div>
+    <div id="legend">
+      <b>图例 — 边缘类型:</b><br>
+      <span class="swatch edge-vis-fog"></span> Visible↔Explored (边缘渐变)<br>
+      <span class="swatch edge-fog-hid"></span> Explored↔Hidden (边缘渐变)<br>
+      <span class="swatch edge-vis-hid"></span> Visible↔Hidden (边缘渐变)<br>
+      <span class="swatch no-edge"></span> 同状态无边缘
+    </div>
+    <div id="cell-inspector">
+      悬停单元格:<br>
+      坐标: <span class="val" id="insp-coord">-</span><br>
+      状态: <span class="val" id="insp-state">-</span><br>
+      边缘位: <span class="val" id="insp-edges">-</span><br>
+      角邻居: <span class="val" id="insp-corners">-</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span><span class="label">UA:</span> <span class="value" id="info-ua">-</span></span>
+    <span><span class="label">视口:</span> <span class="value" id="info-viewport">-</span></span>
+    <span><span class="label">引擎:</span> <span class="value" id="info-engine">-</span></span>
+    <span><span class="label">Hidden:</span> <span class="value" id="info-hidden">-</span></span>
+    <span><span class="label">Explored:</span> <span class="value" id="info-explored">-</span></span>
+    <span><span class="label">Visible:</span> <span class="value" id="info-visible">-</span></span>
+    <span><span class="label">FPS:</span> <span class="value" id="info-fps">-</span></span>
+    <span><span class="label">时间:</span> <span class="value" id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
