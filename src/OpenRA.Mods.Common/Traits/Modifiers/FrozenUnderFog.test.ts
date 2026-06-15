@@ -80,7 +80,15 @@ vi.mock('../../../OpenRA.Game/Traits/Player/FrozenActorLayer', () => {
       this.refreshHiddenCalls++
     }
 
+    refreshHidden(): void {
+      this.refreshHiddenCalls++
+    }
+
     RefreshState(): void {
+      this.refreshStateCalls++
+    }
+
+    refreshState(): void {
       this.refreshStateCalls++
     }
 
@@ -540,7 +548,7 @@ describe('FrozenUnderFog.onVisibilityChanged', () => {
 
     fuf.onVisibilityChanged(mockFrozenRef as any)
     expect(mockFrozenRef.refreshHidden).toHaveBeenCalled()
-    expect(mockFrozenRef.RefreshState).toHaveBeenCalled()
+    expect(mockFrozenRef.refreshState).toHaveBeenCalled()
     expect(fuf.VisibilityHash).toBe(1)
   })
 
@@ -572,7 +580,7 @@ describe('FrozenUnderFog.onVisibilityChanged', () => {
     const mockFrozenRef = createMockFrozenRef({ viewer: players[0], visible: true })
     fuf.onVisibilityChanged(mockFrozenRef as any)
     expect(mockFrozenRef.refreshHidden).toHaveBeenCalled()
-    expect(mockFrozenRef.RefreshState).not.toHaveBeenCalled()
+    expect(mockFrozenRef.refreshState).not.toHaveBeenCalled()
   })
 
   it('handles viewer not in players list gracefully', () => {

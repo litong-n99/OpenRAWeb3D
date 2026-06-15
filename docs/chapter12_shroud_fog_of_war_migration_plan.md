@@ -125,7 +125,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (9/15)** |
+| A: Shroud System | 15 (+1 opt) | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (15/16 committed; 9 APPROVED + 6 under review + 1 blocked)** |
 
 ---
 
@@ -133,12 +133,12 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 ### 3.1 Phase A: Shroud System
 
-**Status**: IN PROGRESS (9/15 migrated)
+**Status**: IN PROGRESS (15/16 committed, 9 APPROVED + 6 under review, A.8 blocked)
 **Complexity**: HIGHEST (Shroud.cs 514 lines, ShroudRenderer.cs 390 lines)
 **Blocked by**: Chapter 4 (Map, CellLayers, ProjectedCellLayer), Chapter 3 (Player, Actor, TraitDictionary), Chapter 2 (Renderer, WorldRenderer, TerrainSpriteLayer)
 **Blocks**: Chapter 13 (Support Powers -- some require shroud visibility), Chapter 16 (RadarWidget -- depends on PlayerRadarTerrain), Chapter 19 (GPS/Sensors -- GpsDot, GpsWatcher interact with shroud)
 
-**Completed**:
+**Completed** (APPROVED):
 - [x] TODO-12.A.1 `Shroud.ts` -- per-player visibility state tracker (APPROVED, 2026-06-15)
 - [x] TODO-12.A.2 `ShroudRenderer.ts` -- visual shroud/fog overlay renderer (APPROVED, 2026-06-15)
 - [x] TODO-12.A.3 `FrozenActorLayer.ts` -- per-player frozen actor snapshot system (APPROVED R2, 2026-06-15)
@@ -149,7 +149,16 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 - [x] TODO-12.A.10 `RevealsShroud.ts` -- shroud removal/reveal trait (APPROVED, 2026-06-15)
 - [x] TODO-12.A.14 `ShroudExts.ts` -- shroud extension methods (APPROVED, 2026-06-15)
 
-**Remaining**: 6 files
+**Committed / Under Review**:
+- [ ] TODO-12.A.6 `FrozenUnderFog.ts` -- building freeze-under-fog (committed `67b7731`, under review)
+- [ ] TODO-12.A.11 `HiddenUnderShroud.ts` -- base visibility trait (committed `c68750e`, under review)
+- [ ] TODO-12.A.12 `HiddenUnderFog.ts` -- fog visibility trait (committed `114a8b1`, under review)
+- [ ] TODO-12.A.13 `DetectCloaked.ts` -- cloak detection trait (committed `2508bae`, under review)
+- [ ] TODO-12.A.15 `ShroudPalette.ts` -- shroud palette (committed `5085dc0`, under review)
+- [ ] TODO-12.A.16 `RevealsShroudMultiplier.ts` -- range multiplier (committed `77255dc`, under review)
+
+**Blocked**:
+- [ ] TODO-12.A.8 `PlayerRadarTerrain.ts` -- radar terrain color tracker (blocked on architect design)
 
 **Description**: The shroud system controls what each player can see on the map. It has three layers: (1) `Shroud` -- per-player visibility state tracking with source-based reference counting, (2) `ShroudRenderer` -- visual overlay rendering of shroud/fog edges using sprite variants, (3) `FrozenActorLayer` -- per-player snapshot of enemy actors that have left visible range. Supporting traits include `RevealsShroud` (units reveal area), `CreatesShroud` (units generate darkness for enemies), `HiddenUnderShroud`/`HiddenUnderFog` (actors hide when not visible), `FrozenUnderFog` (buildings freeze when fogged), `Cloak` (stealth system), and `DetectCloaked` (detection of cloaked units).
 
@@ -314,7 +323,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.6 FrozenUnderFog
 
-- [ ] **TODO-12.A.6** `src/OpenRA.Mods.Common/Traits/Modifiers/FrozenUnderFog.ts` (190 lines C#) -- Building freeze-under-fog behavior:
+- [ ] **TODO-12.A.6** `src/OpenRA.Mods.Common/Traits/Modifiers/FrozenUnderFog.ts` (190 lines C#) -- Building freeze-under-fog behavior: 🚧 committed (under review, `67b7731`)
   - `FrozenUnderFogInfo`:
     - `AlwaysVisibleRelationships: PlayerRelationship` -- relationships that can always see
     - `Requires<BuildingInfo>` -- only for buildings
@@ -397,7 +406,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.11 HiddenUnderShroud
 
-- [ ] **TODO-12.A.11** `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderShroud.ts` (72 lines C#) -- Base visibility trait:
+- [ ] **TODO-12.A.11** `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderShroud.ts` (72 lines C#) -- Base visibility trait: 🚧 committed (under review, `c68750e`)
   - `HiddenUnderShroudInfo`:
     - `AlwaysVisibleRelationships: PlayerRelationship` -- always-visible relationships
     - `Type: VisibilityType` -- `CenterPosition` or `Footprint`
@@ -410,7 +419,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.12 HiddenUnderFog
 
-- [ ] **TODO-12.A.12** `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderFog.ts` (41 lines C#) -- Fog visibility trait:
+- [ ] **TODO-12.A.12** `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderFog.ts` (41 lines C#) -- Fog visibility trait: 🚧 committed (under review, `114a8b1`)
   - `HiddenUnderFogInfo` -- extends `HiddenUnderShroudInfo`
   - `HiddenUnderFog` class:
     - `IsVisibleInner(self, byPlayer)` -- check: if fog disabled, delegate to shroud; otherwise `AnyVisible` for footprint, `IsVisible` for center
@@ -418,7 +427,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.13 DetectCloaked
 
-- [ ] **TODO-12.A.13** `src/OpenRA.Mods.Common/Traits/DetectCloaked.ts` (54 lines C#) -- Cloak detection trait:
+- [ ] **TODO-12.A.13** `src/OpenRA.Mods.Common/Traits/DetectCloaked.ts` (54 lines C#) -- Cloak detection trait: 🚧 committed (under review, `2508bae`)
   - `DetectCloakedInfo`:
     - `DetectionTypes: BitSet<DetectionType>` -- types this detector can reveal (default "Cloak")
     - `Range: WDist` -- detection radius (5 cells default)
@@ -438,7 +447,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.15 ShroudPalette
 
-- [ ] **TODO-12.A.15** `src/OpenRA.Mods.Cnc/Traits/World/ShroudPalette.ts` (70 lines C#) -- Hard-coded shroud palette:
+- [ ] **TODO-12.A.15** `src/OpenRA.Mods.Cnc/Traits/World/ShroudPalette.ts` (70 lines C#) -- Hard-coded shroud palette: 🚧 committed (under review, `5085dc0`)
   - `ShroudPaletteInfo`:
     - `Name: string` -- palette name ("shroud")
     - `Fog: boolean` -- fog vs shroud palette type
@@ -452,7 +461,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.16 RevealsShroudMultiplier (Optional)
 
-- [ ] **TODO-12.A.16** `src/OpenRA.Mods.Common/Traits/Multipliers/RevealsShroudMultiplier.ts` (34 lines C#) -- Range multiplier:
+- [ ] **TODO-12.A.16** `src/OpenRA.Mods.Common/Traits/Multipliers/RevealsShroudMultiplier.ts` (34 lines C#) -- Range multiplier: 🚧 committed (under review, `77255dc`)
   - `RevealsShroudMultiplierInfo`:
     - `Modifier: number` -- percentage modifier
   - `RevealsShroudMultiplier` class:

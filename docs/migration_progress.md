@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-15
-> **Current phase**: Chapters 2-11 COMPLETE (303/303 core, 100%). Chapter 12 IN PROGRESS (9/15 files, 9 complete).
-> **Overall status**: Chapters 2-11 COMPLETE: 303/303 core (100%). Chapter 12: 9/15 (60%). Chapters 13-21: 0/~232 (0%).
+> **Current phase**: Chapters 2-11 COMPLETE (303/303 core, 100%). Chapter 12 IN PROGRESS (15/16 committed; 9 APPROVED + 6 under review + 1 blocked).
+> **Overall status**: Chapters 2-11 COMPLETE: 303/303 core (100%). Chapter 12: 15/16 committed (9 APPROVED, 6 under review, 1 blocked). Chapters 13-21: 0/~232 (0%).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -23,7 +23,7 @@
 | **Chapter 9 planned files (Movement & Physics)** | 32 (30 active + 2 deferred; 4 Phases A-D COMPLETE), 30/30 active migrated, 2 deferred, ~11,723 TS lines, 1,084 tests. See [chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md) |
 | **Chapter 10 planned files (Resource & Economy)** | 17 core (2 Phases A-B) + 8 optional, ALL PHASES COMPLETE: 25/25 (100%), Phase A: 8/8, Phase B: 11/11, Phase B-Optional: 8/8, 972 tests |
 | **Chapter 11 planned files (Production & Building)** | ~25 original plan + 13 additional = 37 total (2 Phases A-B), 37/37 COMPLETE, ALL PHASES COMPLETE |
-| **Chapter 12 planned files (Shroud & Fog of War)** | ~15 (1 Phase A planned), 9/15 migrated (9 files COMPLETE). Plan: [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md) |
+| **Chapter 12 planned files (Shroud & Fog of War)** | 15+1 opt (1 Phase A), 15/16 committed (9 APPROVED + 6 under review, A.8 blocked). Plan: [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md) |
 | **Chapter 13 planned files (Support Powers)** | ~15 (1 Phase A planned), 0/15 migrated |
 | **Chapter 14 planned files (Activity Implementations)** | ~26 (4 Phases A-D planned), 0/26 migrated |
 | **Chapter 15 planned files (Order Generators)** | ~11 (1 Phase A planned), 0/11 migrated |
@@ -1408,31 +1408,46 @@ TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResour
 
 ---
 
-### Chapter 12: Shroud & Fog of War (IN PROGRESS, 9/15 files, Phase A)
+### Chapter 12: Shroud & Fog of War (IN PROGRESS, 15/16 committed, Phase A)
 
 > **Migration Plan**: [docs/chapter12_shroud_fog_of_war_migration_plan.md](docs/chapter12_shroud_fog_of_war_migration_plan.md)
-> **Created**: 2026-06-15 | **Updated**: 2026-06-15 | **Status**: IN PROGRESS (9/15 migrated, Phase A)
+> **Created**: 2026-06-15 | **Updated**: 2026-06-15 | **Status**: IN PROGRESS (15/16 committed: 9 APPROVED + 6 under review, A.8 blocked)
 > **Prerequisite**: Chapters 2-11 COMPLETE (311/311, 100%)
 
 | Phase | Description | Files | Complexity | Status |
 |-------|-------------|:---:|:---:|--------|
-| Phase A | Shroud System | 15 (+1 optional) | LOW-HIGHEST | **IN PROGRESS (9/15)** |
+| Phase A | Shroud System | 15 (+1 optional) | LOW-HIGHEST | **IN PROGRESS (15/16 committed, 9 APPROVED, 6 under review, 1 blocked)** |
 
-**Completed Files**:
+**APPROVED Files**:
 
 | # | File | Lines (impl) | Lines (test) | Tests | Review | Date |
 |:---:|:---|:---:|:---:|:---:|:---:|:---:|
-| 1 | `src/OpenRA.Game/Traits/Player/Shroud.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
-| 2 | `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.ts` | ~720 | -- | 28 | APPROVED (R2) | 2026-06-15 |
-| 3 | `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts` | -- | -- | 63 | APPROVED (R2) | 2026-06-15 |
-| 4 | `src/OpenRA.Mods.Common/Traits/Cloak.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
-| 5 | `src/OpenRA.Mods.Common/Traits/RevealsMap.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
-| 6 | `src/OpenRA.Mods.Common/Traits/AffectsShroud.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
-| 7 | `src/OpenRA.Mods.Common/ShroudExts.ts` | ~103 | -- | 17 | APPROVED | 2026-06-15 |
-| 8 | `src/OpenRA.Mods.Common/Traits/CreatesShroud.ts` | -- | -- | 76 | APPROVED | 2026-06-15 |
-| 9 | `src/OpenRA.Mods.Common/Traits/RevealsShroud.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
+| A.1 | `src/OpenRA.Game/Traits/Player/Shroud.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
+| A.2 | `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.ts` | ~720 | -- | 28 | APPROVED (R2) | 2026-06-15 |
+| A.3 | `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts` | -- | -- | 63 | APPROVED (R2) | 2026-06-15 |
+| A.4 | `src/OpenRA.Mods.Common/Traits/Cloak.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
+| A.5 | `src/OpenRA.Mods.Common/Traits/AffectsShroud.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
+| A.7 | `src/OpenRA.Mods.Common/Traits/RevealsMap.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
+| A.9 | `src/OpenRA.Mods.Common/Traits/CreatesShroud.ts` | -- | -- | 76 | APPROVED | 2026-06-15 |
+| A.10 | `src/OpenRA.Mods.Common/Traits/RevealsShroud.ts` | -- | -- | -- | APPROVED | 2026-06-15 |
+| A.14 | `src/OpenRA.Mods.Common/ShroudExts.ts` | ~103 | -- | 17 | APPROVED | 2026-06-15 |
 
-**Planned Files (Remaining)**: `FrozenUnderFog.ts` (190 C# lines, MEDIUM), `PlayerRadarTerrain.ts` (97 C# lines, MEDIUM), plus 4 LOW-complexity traits (`HiddenUnderShroud`, `HiddenUnderFog`, `DetectCloaked`, `ShroudPalette`).
+**Committed / Under Review**:
+
+| # | File | Lines (impl) | Lines (test) | Tests | Review | Date | Commit |
+|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| A.6 | `src/OpenRA.Mods.Common/Traits/Modifiers/FrozenUnderFog.ts` | -- | -- | -- | Under Review | 2026-06-15 | `67b7731` |
+| A.11 | `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderShroud.ts` | -- | -- | -- | Under Review | 2026-06-15 | `c68750e` |
+| A.12 | `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderFog.ts` | -- | -- | -- | Under Review | 2026-06-15 | `114a8b1` |
+| A.13 | `src/OpenRA.Mods.Common/Traits/DetectCloaked.ts` | -- | -- | -- | Under Review | 2026-06-15 | `2508bae` |
+| A.15 | `src/OpenRA.Mods.Cnc/Traits/World/ShroudPalette.ts` | -- | -- | 23 | Under Review | 2026-06-15 | `5085dc0` |
+| A.16 | `src/OpenRA.Mods.Common/Traits/Multipliers/RevealsShroudMultiplier.ts` | -- | -- | -- | Under Review | 2026-06-15 | `77255dc` |
+
+**Blocked**:
+
+| # | File | Reason |
+|:---:|:---|:---|
+| A.8 | `src/OpenRA.Mods.Common/Traits/Player/PlayerRadarTerrain.ts` | Awaiting architect design (97 C# lines, MEDIUM) |
 
 **Estimated Effort**: ~2,594 C# source lines, ~5,500-7,000 TS implementation lines, ~200-250 tests.
 
@@ -1444,7 +1459,7 @@ TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResour
 - **ADR-12.5**: Shroud source reference counting identical to C# OpenRA
 - **ADR-12.6**: Lazy shroud resolution with dirty cell tracking
 
-**Next Steps**: 9/15 complete (60%). AffectsShroud chain fully complete (base + CreatesShroud + RevealsShroud + RevealsMap). Remaining: 2 MEDIUM + 4 LOW. Under review: ShroudPalette.ts (A.15), RevealsShroudMultiplier.ts (A.16 optional).
+**Next Steps**: 15/16 committed (94%). 9 APPROVED, 6 under review, 1 blocked (A.8 PlayerRadarTerrain). Await review results for the 6 under-review files before committing doc updates.
 
 ---
 

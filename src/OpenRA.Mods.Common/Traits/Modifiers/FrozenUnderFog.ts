@@ -3,7 +3,7 @@
  * OpenRA 对照: OpenRA.Mods.Common/Traits/Modifiers/FrozenUnderFog.cs
  *
  * 核心范式转换:
- * - C# PlayerDictionary<FrozenState> → FrozenState[] indexed by player index
+ * - C# PlayerDictionary<FrozenState> → Map<PlayerStub, FrozenState> (O(1) lookup)
  * - C# IRenderable capture (self.Render(wr).ToArray()) → deferred (TODO-12.DEFERRED.13)
  * - C# SpriteRenderable.None render modifier → empty renderables (TODO-12.DEFERRED.13)
  * - C# ShroudExts.AnyExplored(footprint) → inline _anyExplored() helper
@@ -52,6 +52,13 @@ class FrozenState {
    */
   readonly frozenActor: FrozenActor
 
+  /** The player's index in the world players array (for VisibilityHash bit).
+   *
+   * Stored at construction time to enable O(1) Map lookup while retaining
+   * the player index needed for sync hash computation.
+   */
+  readonly playerIndex: number
+
   /** Whether the live actor is currently visible to this player.
    *
    * OpenRA 对照: FrozenState.IsVisible
@@ -63,8 +70,9 @@ class FrozenState {
    */
   isVisible: boolean = false
 
-  constructor(frozenActor: FrozenActor) {
+  constructor(frozenActor: FrozenActor, playerIndex: number) {
     this.frozenActor = frozenActor
+    this.playerIndex = playerIndex
     this.isVisible = !frozenActor.Visible
   }
 }
@@ -155,8 +163,8 @@ export class FrozenUnderFog
   /** The actor's projected cell footprint. */
   private readonly _footprint: readonly PPos[]
 
-  /** Per-player frozen state, indexed by player index. */
-  private _frozenStates: FrozenState[] | null = null
+  /** Per-player frozen state, keyed by player for O(1) lookup. */
+  private _frozenStates: Map<PlayerStub, FrozenState> | null = null
 
   /** Guard flag — true while capturing renderables in tickRender. */
   private _isRendering: boolean = false
@@ -266,7 +274,7 @@ export class FrozenUnderFog
     const players = world?.['players'] as readonly PlayerStub[] | undefined
     if (!players) return
 
-    const states: FrozenState[] = []
+    const states = new Map<PlayerStub, FrozenState>()
 
     for (let playerIndex = 0; playerIndex < players.length; playerIndex++) {
       const player = players[playerIndex]
@@ -288,7 +296,7 @@ export class FrozenUnderFog
       const frozenActorLayer = traitOrDefault?.('FrozenActorLayer') as FrozenActorLayer | undefined
       frozenActorLayer?.Add(frozenActor)
 
-      states.push(new FrozenState(frozenActor))
+      states.set(player as PlayerStub, new FrozenState(frozenActor, playerIndex))
     }
 
     this._frozenStates = states
@@ -302,11 +310,10 @@ export class FrozenUnderFog
       | undefined
     addFrameEndTask?.(() => {
       if (!this._frozenStates) return
-      for (let playerIndex = 0; playerIndex < this._frozenStates.length; playerIndex++) {
-        const state = this._frozenStates[playerIndex]
+      for (const state of this._frozenStates.values()) {
         const frozen = state.frozenActor
         if (this._startsRevealed || state.isVisible) {
-          this._updateFrozenActorCore(frozen, playerIndex)
+          this._updateFrozenActorCore(frozen, state.playerIndex)
         }
         frozen.RefreshHidden()
       }
@@ -334,19 +341,15 @@ export class FrozenUnderFog
     // Ignore callbacks during initial setup
     if (!this._created || !this._frozenStates) return
 
-    const viewer = frozen.viewer
+    const state = this._frozenStates.get(frozen.viewer)
+    if (!state) return
 
-    // Find the player index for the viewer
-    const playerIndex = this._getPlayerIndex(viewer)
-    if (playerIndex < 0 || playerIndex >= this._frozenStates.length) return
-
-    const state = this._frozenStates[playerIndex]
     const isVisible = !frozen.visible
     state.isVisible = isVisible
 
     if (isVisible) {
-      const frozenFull = frozen as unknown as FrozenActor
-      this._updateFrozenActorCore(frozenFull, playerIndex)
+      // NOTE: Uses IFrozenActorRef.refreshState() — no unsafe cast to FrozenActor
+      this._updateFrozenActorCore(frozen, state.playerIndex)
     }
 
     frozen.refreshHidden()
@@ -414,21 +417,21 @@ export class FrozenUnderFog
 
     let renderables: readonly IRenderable[] | null = null
 
-    for (let playerIndex = 0; playerIndex < this._frozenStates.length; playerIndex++) {
-      const state = this._frozenStates[playerIndex]
+    for (const [player, state] of this._frozenStates) {
       const frozen = state.frozenActor
       if (!frozen.NeedRenderables) continue
 
       if (renderables === null) {
         this._isRendering = true
-
-        // TODO-12.DEFERRED.13: Capture live actor renderables
-        // renderables = self.render(wr).slice()
-        // bounds = self.screenBounds(wr).slice()
-        // mouseBounds = self.mouseBounds(wr)
-        renderables = FrozenUnderFog._emptyRenderables
-
-        this._isRendering = false
+        try {
+          // TODO-12.DEFERRED.13: Capture live actor renderables
+          // renderables = self.render(wr).slice()
+          // bounds = self.screenBounds(wr).slice()
+          // mouseBounds = self.mouseBounds(wr)
+          renderables = FrozenUnderFog._emptyRenderables
+        } finally {
+          this._isRendering = false
+        }
       }
 
       frozen.NeedRenderables = false
@@ -444,9 +447,7 @@ export class FrozenUnderFog
         const addOrUpdate = screenMap?.['addOrUpdate'] as
           | ((viewer: PlayerStub, fa: FrozenActor) => void)
           | undefined
-        const worldPlayers = world['players'] as readonly PlayerStub[] | undefined
-        const player = worldPlayers?.[playerIndex]
-        if (addOrUpdate && player) {
+        if (addOrUpdate) {
           addOrUpdate(player, frozen)
         }
       }
@@ -547,11 +548,11 @@ export class FrozenUnderFog
 
     if (!this._frozenStates) return
 
-    const oldOwnerIndex = this._getPlayerIndex(oldOwner)
-    if (oldOwnerIndex < 0 || oldOwnerIndex >= this._frozenStates.length) return
+    const state = this._frozenStates.get(oldOwner)
+    if (!state) return
 
-    const frozen = this._frozenStates[oldOwnerIndex].frozenActor
-    this._updateFrozenActorCore(frozen, oldOwnerIndex)
+    const frozen = state.frozenActor
+    this._updateFrozenActorCore(frozen, state.playerIndex)
     frozen.RefreshHidden()
   }
 
@@ -575,10 +576,10 @@ export class FrozenUnderFog
     const owner = this._getOwner(self)
     if (!owner) return
 
-    const ownerIndex = this._getPlayerIndex(owner)
-    if (ownerIndex < 0 || ownerIndex >= this._frozenStates.length) return
+    const state = this._frozenStates.get(owner)
+    if (!state) return
 
-    this._frozenStates[ownerIndex].frozenActor.Invalidate()
+    state.frozenActor.Invalidate()
   }
 
   // -------------------------------------------------------------------------
@@ -610,13 +611,13 @@ export class FrozenUnderFog
       return this._anyExplored(shroud)
     }
 
-    // Fog enabled — check per-player frozen state
+    // Fog enabled — check per-player frozen state (O(1) Map lookup)
     if (!this._frozenStates) return false
 
-    const playerIndex = this._getPlayerIndex(byPlayer)
-    if (playerIndex < 0 || playerIndex >= this._frozenStates.length) return false
+    const state = this._frozenStates.get(byPlayer)
+    if (!state) return false
 
-    return this._frozenStates[playerIndex].isVisible
+    return state.isVisible
   }
 
   /**
@@ -646,14 +647,14 @@ export class FrozenUnderFog
    * OpenRA 对照: FrozenUnderFog.UpdateFrozenActor(FrozenActor, int)
    *
    * Sets the VisibilityHash bit for the given player and calls
-   * RefreshState() on the frozen actor.
+   * refreshState() on the frozen actor.
    *
-   * @param frozen — the frozen actor to update
+   * @param frozen — the frozen actor to update (IFrozenActorRef — no unsafe cast)
    * @param playerIndex — the player index (for bit hash)
    */
-  private _updateFrozenActorCore(frozen: FrozenActor, playerIndex: number): void {
+  private _updateFrozenActorCore(frozen: IFrozenActorRef, playerIndex: number): void {
     this.VisibilityHash |= 1 << (playerIndex % 32)
-    frozen.RefreshState()
+    frozen.refreshState()
   }
 
   /**
@@ -674,33 +675,6 @@ export class FrozenUnderFog
    */
   private _getOwner(self: IGameActor): PlayerStub | null {
     return ((self as unknown as Record<string, unknown>)['owner'] as PlayerStub | null) ?? null
-  }
-
-  /**
-   * Get the player's index in the world's players array.
-   *
-   * OpenRA 对照: World.Players.IndexOf(Player)
-   *
-   * Uses reference equality (===) like C#'s default reference comparison.
-   *
-   * @param player — the player to find
-   * @returns the player index, or -1 if not found
-   */
-  private _getPlayerIndex(player: PlayerStub): number {
-    // Try to get world from the player, then look up the players array
-    const playerAny = player as unknown as Record<string, unknown>
-    const playerActor = playerAny['playerActor'] as IGameActor | undefined
-    if (playerActor) {
-      const playerActorAny = playerActor as unknown as Record<string, unknown>
-      const world = playerActorAny['world'] as
-        | Record<string, unknown>
-        | undefined
-      const players = world?.['players'] as readonly PlayerStub[] | undefined
-      if (players) {
-        return players.indexOf(player)
-      }
-    }
-    return -1
   }
 }
 
