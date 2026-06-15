@@ -6,8 +6,9 @@
  * - C# self.Owner.RelationshipWith(p) → TS self.owner.relationshipWith(p) with PlayerStub→Player cast
  * - C# Shroud.SourceType.Visibility / PassiveVisibility → TS SourceType.Visibility / PassiveVisibility
  * - C# revealGeneratedShroud → _sourceType selected in constructor (checked once)
- * - C# IRevealsShroudModifier range modifiers → TS deferred (TODO-12.A.10.1)
+ * - C# IRevealsShroudModifier range modifiers → TS traitsImplementing('IRevealsShroudModifier')
  * - C# HasRelationship extension method → TS PlayerRelationshipExts.hasRelationship
+ * - C# IEnumerable<int> rangeModifiers (lazy) → TS number[] (collected once in created())
  */
 
 import { WDist } from '../../OpenRA.Game/WDist.js'
@@ -20,9 +21,12 @@ import {
 import {
   PlayerRelationship,
   PlayerRelationshipExts,
+  type INotifyCreated,
   type IGameActor,
+  type IRevealsShroudModifier,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { SourceType } from '../../OpenRA.Game/Traits/Player/Shroud.js'
+import { applyPercentageModifiers } from '../Projectiles/MissileMath.js'
 import type { Player } from '../../OpenRA.Game/Player.js'
 
 // ---------------------------------------------------------------------------
@@ -91,7 +95,28 @@ export class RevealsShroudInfo extends AffectsShroudInfo {
  * Most logic (projectedCells, tick, position tracking, lifecycle hooks)
  * is inherited from {@link AffectsShroud}.
  */
-export class RevealsShroud extends AffectsShroud<RevealsShroudInfo> {
+export class RevealsShroud
+  extends AffectsShroud<RevealsShroudInfo>
+  implements INotifyCreated
+{
+  /** Trait dictionary registration keys.
+   *
+   * OpenRA 对照: N/A (C# uses reflection; TS uses explicit string registration)
+   */
+  static readonly interfaces: string[] = [
+    'ISync',
+    'ITick',
+    'INotifyAddedToWorld',
+    'INotifyRemovedFromWorld',
+    'INotifyCenterPositionChanged',
+    'INotifyFinishedMoving',
+    'INotifyCreated',
+    'RevealsShroud',
+    'AffectsShroud',
+    'ConditionalTrait',
+    'component',
+  ]
+
   /** The source type to use when adding visibility cells.
    *
    * Determined once at construction time from
@@ -101,17 +126,14 @@ export class RevealsShroud extends AffectsShroud<RevealsShroudInfo> {
    */
   private readonly _sourceType: SourceType
 
-  /**
-   * TODO-12.A.10.1: Integrate IRevealsShroudModifier range modifiers.
+  /** Collected range percentage modifiers from IRevealsShroudModifier traits.
    *
-   * OpenRA creates
-   *   rangeModifiers = self.TraitsImplementing<IRevealsShroudModifier>()
-   *     .Select(x => x.GetRevealsShroudModifier())
-   * in Created(). These are percentage modifiers applied via
-   * Util.ApplyPercentageModifiers in the Range getter.
-   * Deferred until modifier infrastructure is finalized.
+   * OpenRA 对照: RevealsShroud.rangeModifiers (IEnumerable<int>)
+   *
+   * Populated in {@link created} after the actor is fully initialized.
+   * Applied in the {@link range} getter via {@link applyPercentageModifiers}.
    */
-  // private readonly _rangeModifiers: number[] = []
+  private _rangeModifiers: number[] = []
 
   constructor(info: RevealsShroudInfo) {
     super(info)
@@ -119,6 +141,29 @@ export class RevealsShroud extends AffectsShroud<RevealsShroudInfo> {
     this._sourceType = info.revealGeneratedShroud
       ? SourceType.Visibility
       : SourceType.PassiveVisibility
+  }
+
+  // -------------------------------------------------------------------------
+  // INotifyCreated (对应 OpenRA Created)
+  // -------------------------------------------------------------------------
+
+  /** Collect range modifiers after the actor is fully initialized.
+   *
+   * OpenRA 对照: RevealsShroud.Created(Actor self)
+   *
+   * Queries the actor's trait dictionary for IRevealsShroudModifier traits
+   * and collects their percentage modifier values. These are applied in the
+   * {@link range} getter via {@link applyPercentageModifiers}.
+   */
+  created(self: IGameActor): void {
+    // Collect IRevealsShroudModifier range modifiers.
+    // SAFETY: traitsImplementing is optional on IGameActor but exists at
+    // runtime on all real actor implementations via the trait dictionary.
+    const traitAny = self as any
+    const modifierTraits = traitAny.traitsImplementing?.('IRevealsShroudModifier') ?? []
+    this._rangeModifiers = (modifierTraits as IRevealsShroudModifier[]).map(
+      (m) => m.getRevealsShroudModifier(),
+    )
   }
 
   // -------------------------------------------------------------------------
@@ -173,15 +218,23 @@ export class RevealsShroud extends AffectsShroud<RevealsShroudInfo> {
    * OpenRA 对照: RevealsShroud.Range
    *
    * Returns WDist.Zero when the trait was disabled in the previous tick.
-   *
-   * NOTE: IRevealsShroudModifier percentage modifiers are deferred (TODO-12.A.10.1).
-   * When implemented, this should apply Util.ApplyPercentageModifiers to
-   * Info.Range.Length using the collected _rangeModifiers.
+   * Otherwise, applies IRevealsShroudModifier percentage modifiers to the
+   * configured range via {@link applyPercentageModifiers}.
    */
   override get range(): WDist {
     if (this.cachedTraitDisabled) return WDist.Zero
 
-    // TODO-12.A.10.1: Apply _rangeModifiers via Util.ApplyPercentageModifiers
+    // NOTE: Only apply modifiers when there are actual modifiers to apply.
+    // If no modifiers are registered, skip the applyPercentageModifiers call
+    // to avoid unnecessary computation.
+    if (this._rangeModifiers.length > 0) {
+      const modified = applyPercentageModifiers(
+        this.info.range.length,
+        this._rangeModifiers,
+      )
+      return new WDist(modified)
+    }
+
     return this.info.range
   }
 
@@ -190,6 +243,7 @@ export class RevealsShroud extends AffectsShroud<RevealsShroudInfo> {
   // -------------------------------------------------------------------------
 
   override dispose(): void {
+    this._rangeModifiers = []
     super.dispose()
   }
 }
