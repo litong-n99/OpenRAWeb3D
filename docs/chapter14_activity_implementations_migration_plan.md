@@ -631,78 +631,83 @@ HarvestResource / FindAndDeliverResources (Phase D) -- depend on Move + economy 
 
 All non-rendering game logic MUST have unit tests. Key test patterns:
 
-- [ ] **TEST-14.1** `Move` path following: verify `Tick()` advances along path, updates `Mobile.CenterPosition`, reports `MoveResult.CompleteDestinationReached`
-- [ ] **TEST-14.2** `Move` cancellation: verify path cleared, `MoveResult.CompleteCanceled` set, actor stops
-- [ ] **TEST-14.3** `Move` blocked destination: verify `MoveResult.CompleteDestinationBlocked` after path exhaustion
+- [ ] **TEST-14.1** `Move` path following: verify actor advances one cell per tick along computed path; returns true when destination reached
+- [ ] **TEST-14.2** `Move` path recalculation: when next cell becomes blocked mid-movement, verify path is recomputed from current position
+- [ ] **TEST-14.3** `Move` local avoidance: when blocked by friendly actor, verify `Nudge` is attempted; when blocked by enemy, verify path recalculation
 - [ ] **TEST-14.4** `Move` backward movement: verify backward movement enabled when config allows and angle > 256
 - [ ] **TEST-14.5** `Move` arc movement: verify `MovePart` arc interpolation
-- [ ] **TEST-14.6** `MoveAdjacentTo` adjacency resolution: verify target cell is one of the 8 adjacent cells
-- [ ] **TEST-14.7** `MoveWithinRange` range threshold: verify completion when within `WDist`
-- [ ] **TEST-14.8** `Attack` firing cycle: verify move-into-range, face target, wait cooldown, fire, repeat
-- [ ] **TEST-14.9** `Attack` target death: verify activity completes when target invalid
-- [ ] **TEST-14.10** `Hunt` target acquisition: verify nearest enemy selected and attacked
-- [ ] **TEST-14.11** `CaptureActor` capture progress: verify engineer capture timer and ownership transfer
-- [ ] **TEST-14.12** `Fly` target approach: verify aircraft moves toward target, respects `nearEnough`
-- [ ] **TEST-14.13** `Fly` minimum range slide: verify slider aircraft backs away when inside min range
-- [ ] **TEST-14.14** `Fly` turn radius: verify turn radius calculation prevents impossible turns
-- [ ] **TEST-14.15** `Land` altitude transition: verify descent to `LandAltitude` then completion
-- [ ] **TEST-14.16** `TakeOff` altitude transition: verify ascent to `CruiseAltitude`
-- [ ] **TEST-14.17** `Enter` state machine: verify Approaching → Entering → Exiting → Finished transitions
-- [ ] **TEST-14.18** `Enter` cancellation: verify cancel returns to Approaching state
-- [ ] **TEST-14.19** `UnloadCargo` / `PickupUnit`: verify cargo load/unload with Ch11 `Cargo` trait
-- [ ] **TEST-14.20** `FindAndDeliverResources` full cycle: find resource → harvest → find refinery → deliver → repeat
-- [ ] **TEST-14.21** `Resupply` child chain: verify `Enter` → dock sequence → repair/rearm → exit
-- [ ] **TEST-14.22** `Transform` actor replacement: verify new actor spawned with correct inits, old actor removed
-- [ ] **TEST-14.23** `Sell` deferred removal: verify refund and `world.frameEndActions` removal
-- [ ] **TEST-14.24** `Wait` tick countdown: verify wait completes after N ticks
-- [ ] **TEST-14.25** `RemoveSelf` deferred removal: verify actor queued for removal
-- [ ] **TEST-14.26** Activity cancellation before first tick: verify queued activity marked `Done` without running `onFirstRun`
-- [ ] **TEST-14.27** Activity child priority: verify child ticks before parent when `childHasPriority=true`
-- [ ] **TEST-14.28** `TargetLineNodes` for `Move`/`Attack`/`Fly`: verify correct node count and target
+- [ ] **TEST-14.6** `MoveAdjacentTo` range validation: verify actor stops at cell within [minRange, maxRange] of target; re-evaluates if target moves
+- [ ] **TEST-14.7** `MoveOnto` exact cell: verify actor must reach exact target cell; fails if cell permanently blocked
+- [ ] **TEST-14.8** `MoveWithinRange` weapon range: verify actor stops when target is within `Armament.weaponRange`; re-approaches if target moves out of range
+- [ ] **TEST-14.9** `Nudge` resolution: verify single-cell displacement; returns true if blocked (give up)
+- [ ] **TEST-14.10** `Follow` re-evaluation: verify path recomputed when target moves >1 cell; maintains follow distance
+- [ ] **TEST-14.11** `AttackMoveActivity` interruption: verify `Move` is interrupted when enemy spotted; `Attack` queued; `Move` resumes after combat
+- [ ] **TEST-14.12** `Attack` state machine: verify sequence: (1) MoveWithinRange if out of range, (2) Turn if not facing, (3) Fire if in range and facing
+- [ ] **TEST-14.13** `Attack` target invalidation: verify activity completes when target destroyed; cancels when target becomes invalid
+- [ ] **TEST-14.14** `Hunt` scan: verify nearest enemy selected; queues `Attack` on found enemy; returns true if no enemies
+- [ ] **TEST-14.15** `FlyAttack` strafe: verify aircraft flies past target, fires when in range, continues past
+- [ ] **TEST-14.16** `FlyAttack` hover: verify aircraft holds position, fires continuously while target in range
+- [ ] **TEST-14.17** `Fly` target approach: verify aircraft moves toward target, respects `nearEnough`
+- [ ] **TEST-14.18** `Fly` minimum range slide: verify slider aircraft backs away when inside min range
+- [ ] **TEST-14.19** `Fly` turn radius: verify turn radius calculation prevents impossible turns
+- [ ] **TEST-14.20** `Land` descent: verify altitude decreases each tick; returns true when altitude <= 0
+- [ ] **TEST-14.21** `TakeOff` ascent: verify altitude increases each tick; returns true when cruise altitude reached
+- [ ] **TEST-14.22** `ReturnToBase` sequence: verify Fly -> Land -> Resupply -> TakeOff chain
+- [ ] **TEST-14.23** `Enter` state machine: verify Approaching -> Entering -> Exiting -> Finished transitions
+- [ ] **TEST-14.24** `Enter` cancellation: verify cancel returns to Approaching state
+- [ ] **TEST-14.25** `HarvestResource` completion: verify harvest completes when cell depleted; returns true
+- [ ] **TEST-14.26** `FindAndDeliverResources` cycle: verify state transitions: Empty -> FindResource -> Move -> Harvest -> Full -> FindRefinery -> Move -> Dock -> Deliver -> Empty
+- [ ] **TEST-14.27** `Resupply` orchestration: verify child activity chain: MoveToDock -> GenericDockSequence -> Wait -> Undock
+- [ ] **TEST-14.28** `UnloadCargo` / `PickupUnit`: verify cargo load/unload with Ch11 `Cargo` trait
+- [ ] **TEST-14.29** `CaptureActor` ownership: verify ownership transfer on completion; condition granted during capture
+- [ ] **TEST-14.30** `Transform` deferred mutation: verify new actor created, old actor removed via `frameEndActions`; state transferred
+- [ ] **TEST-14.31** `RemoveSelf` deferred: verify `world.remove(actor)` queued in `frameEndActions`, not immediate
+- [ ] **TEST-14.32** `Turn` rotation: verify facing advances toward desired at turn speed; returns true when facing reached
+- [ ] **TEST-14.33** `Wait` countdown: verify returns false while counting; returns true when duration expired
+- [ ] **TEST-14.34** `DeployForGrantedCondition` condition: verify condition granted after deploy animation; `ConditionManager` token created
+- [ ] **TEST-14.35** Activity cancellation: verify `cancel(keepQueue=true)` preserves child queue; `cancel(keepQueue=false)` discards it
+- [ ] **TEST-14.36** `ActivityRunner` tick all: verify `ActivityRunner` ticks current activity; advances to next on completion; handles cancellation
+- [ ] **TEST-14.37** Target line rendering: verify `LinesMesh` created on activity start; updated each tick; disposed on completion
+- [ ] **TEST-14.38** `Sell` deferred removal: verify refund and `world.frameEndActions` removal
 
-### 5.2 Per-File Test Estimates
+### 5.2 Per-Phase Test Estimates
 
-| File | Tests (est.) | Test Lines (est.) |
-|:---|:---:|:---:|
-| Move.ts | ~35 | ~1,200 |
-| MoveAdjacentTo.ts | ~6 | ~180 |
-| MoveWithinRange.ts | ~6 | ~180 |
-| Attack.ts | ~20 | ~650 |
-| Fly.ts | ~18 | ~600 |
-| FlyAttack.ts | ~12 | ~400 |
-| Land.ts | ~10 | ~350 |
-| Enter.ts | ~10 | ~350 |
-| FindAndDeliverResources.ts | ~15 | ~500 |
-| Resupply.ts | ~12 | ~400 |
-| Transform.ts | ~8 | ~280 |
-| UnloadCargo.ts / PickupUnit.ts / DeliverUnit.ts | ~6 each | ~200 each |
-| Utility activities (Wait, Turn, RemoveSelf, etc.) | ~3 each | ~100 each |
-| **Total** | **~210** | **~7,000** |
+| Phase | Files | Test Files (est.) | Tests (est.) | Test Lines (est.) |
+|:---|:---:|:---:|:---:|:---:|
+| A: Movement | 11 | 8 | ~180 | ~3,000 |
+| B: Combat | 5 | 3 | ~90 | ~1,500 |
+| C: Aircraft | 12 | 5 | ~140 | ~2,500 |
+| D: Economic | 7 | 5 | ~120 | ~2,000 |
+| E: Transport & Enter | 6 | 4 | ~90 | ~1,500 |
+| F: Utility & Miscellaneous | 8 | 3 | ~70 | ~1,000 |
+| **Total** | **49** | **28** | **~690** | **~11,500** |
 
 ### 5.3 Visual Acceptance Testing
 
-Rendering-heavy behaviors require manual visual acceptance test pages:
+Rendering-heavy systems require manual visual acceptance test pages:
 
 | System | Test Page | Purpose |
 |--------|-----------|---------|
-| Ground movement | `/test/activities/move/` | Verify unit follows path, turns smoothly, handles blockers |
-| Attack activity | `/test/activities/attack/` | Verify move-into-range, face target, fire, repeat |
-| Aircraft flight | `/test/activities/fly/` | Verify aircraft approach, altitude, landing, takeoff |
-| Harvester cycle | `/test/activities/harvest/` | Verify harvest → deliver → dock → repeat |
-| Cargo transport | `/test/activities/cargo/` | Verify enter, unload, pickup animations |
-| Target lines | `/test/activities/target-lines/` | Verify move/attack target lines render in 3D |
-| Parachute | `/test/activities/parachute/` | Verify paradrop descent effect |
+| Ground movement | `/test/activities/move/` | Verify path following, target line rendering, arrival at destination |
+| Attack-move | `/test/activities/attack-move/` | Verify movement interrupted by combat, target line color change |
+| Aircraft flight | `/test/activities/fly/` | Verify flight path, altitude maintenance, arrival at destination |
+| Landing/takeoff | `/test/activities/land-takeoff/` | Verify altitude transition, landing animation, takeoff sequence |
+| Harvester cycle | `/test/activities/harvest/` | Verify harvest animation, dock approach, resource delivery |
+| Cargo enter/unload | `/test/activities/cargo/` | Verify unit entering transport, transport moving, units exiting |
+| Capture/demolish | `/test/activities/engineer/` | Verify engineer approach, capture animation, ownership change |
+| Parachute drop | `/test/activities/parachute/` | Verify parachute descent animation, landing, unit spawn |
+| Target lines | `/test/activities/target-lines/` | Verify move/attack target lines render in 3D world space |
 
 ### 5.4 Integration Testing
 
-- [ ] **TEST-14.I1** Move + Mobile + Pathfinder: order a unit across the map; verify path computed, followed, completed
-- [ ] **TEST-14.I2** Attack + Armament + Projectile: actor acquires target, moves into range, fires, projectile hits, target damaged
-- [ ] **TEST-14.I3** Harvester full economy loop: harvest resource → deliver to refinery → cash increases → repeat
-- [ ] **TEST-14.I4** Transport cargo loop: infantry enters transport → transport moves → unloads at destination
-- [ ] **TEST-14.I5** Aircraft resupply: damaged aircraft returns to base → lands → repairs/rearms → takes off
-- [ ] **TEST-14.I6** Activity cancellation chain: cancel a complex activity (Resupply/FindAndDeliverResources); verify all children cleaned up
-- [ ] **TEST-14.I7** Engineer capture: engineer moves to building → enters → captures → ownership changes
-- [ ] **TEST-14.I8** Carryall transport: carryall picks up unit → flies to destination → releases unit
+- [ ] **TEST-14.I1** Full harvester cycle: harvester spawned -> FindAndDeliverResources -> moves to resource -> harvests -> moves to refinery -> docks -> delivers -> repeats
+- [ ] **TEST-14.I2** Attack + Move integration: unit attack-moves -> enemy spotted -> Attack activity -> MoveWithinRange -> Turn -> Armament fires -> enemy destroyed -> resume Move
+- [ ] **TEST-14.I3** Aircraft full cycle: aircraft spawned -> Fly to target -> FlyAttack -> ReturnToBase -> Land -> Resupply -> TakeOff -> Fly to patrol
+- [ ] **TEST-14.I4** Transport cargo loop: transport spawned -> PickupUnit -> Enter -> cargo loaded -> Move -> UnloadCargo -> passengers exit
+- [ ] **TEST-14.I5** Engineer capture: engineer spawned -> Move to building -> CaptureActor -> ownership transfer -> engineer removed
+- [ ] **TEST-14.I6** Carryall transport: carryall picks up unit -> flies to destination -> releases unit
+- [ ] **TEST-14.I7** Activity cancellation chain: parent activity cancelled -> all child activities cancelled -> next activity preserved (if keepQueue=true)
+- [ ] **TEST-14.I8** Resupply full cycle: damaged unit -> ReturnToBase -> MoveToDock -> GenericDockSequence -> Wait (repair) -> Undock -> TakeOff -> resume
 
 ---
 
