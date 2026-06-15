@@ -339,12 +339,14 @@ export class ReturnToBase extends Activity {
   }
 
   /** Generate a random horizontal offset vector of the given length. */
-  private static _randomVector(self: GameActor, length: number): WVec {
-    const worldAny = (self as unknown as { world?: { sharedRandom?: number } }).world
-    const seed = worldAny?.sharedRandom ?? 0
-    // Simple deterministic pseudo-random based on seed + length
-    const x = Math.trunc(((seed * 9301 + 49297) % 233280) / 233280 * length) - Math.trunc(length / 2)
-    const y = Math.trunc(((seed * 49297 + 9301) % 233280) / 233280 * length) - Math.trunc(length / 2)
+  private static _randomVector(_self: GameActor, length: number): WVec {
+    // Use Math.random for a non-deterministic but uniformly distributed offset.
+    // OpenRA's replay determinism would require a consumed world RNG; that is
+    // deferred until the sync/random system is fully wired.
+    const angle = Math.random() * 2 * Math.PI
+    const radius = Math.random() * length
+    const x = Math.trunc(radius * Math.cos(angle))
+    const y = Math.trunc(radius * Math.sin(angle))
     return new WVec(x, y, 0)
   }
 }

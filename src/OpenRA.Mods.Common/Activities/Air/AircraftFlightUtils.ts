@@ -78,10 +78,13 @@ export interface AircraftInfoLike {
 
 /**
  * Check whether a value is a WPos-like object.
+ *
+ * Distinguishes WPos from WVec by the presence of `toWVec()` (WPos has it,
+ * WVec does not).
  */
 export function isWPos(v: unknown): v is WPos {
   return v !== null && v !== undefined && typeof v === 'object' &&
-    'X' in v && 'Y' in v && 'Z' in v
+    'X' in v && 'Y' in v && 'Z' in v && 'toWVec' in v
 }
 
 /**
@@ -94,10 +97,13 @@ export function isWDist(v: unknown): v is WDist {
 
 /**
  * Check whether a value is a WVec-like object.
+ *
+ * Distinguishes WVec from WPos by the presence of `length` (WVec has it,
+ * WPos does not).
  */
 export function isWVec(v: unknown): v is WVec {
   return v !== null && v !== undefined && typeof v === 'object' &&
-    'X' in v && 'Y' in v && 'Z' in v
+    'X' in v && 'Y' in v && 'Z' in v && 'length' in v
 }
 
 /**

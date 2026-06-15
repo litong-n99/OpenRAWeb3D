@@ -190,11 +190,11 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 |:---|:---:|:---:|:---:|:---:|:---:|
 | A: Movement | 11 | ~1,500 | ~3,400 | ~180 | **COMPLETE (11/11, 82 tests, 3 E2E pages R2 APPROVED)** |
 | B: Combat | 6 | ~789 | ~1,700 | ~100 | **COMPLETE (6/6, ~70 tests, R2 APPROVED)** |
-| C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | **PLANNING (0/12, detailed plan at [chapter14_phase_c_plan.md](docs/chapter14_phase_c_plan.md))** |
-| D: Economic | 7 | ~1,375 | ~3,300 | ~120 | PLANNING |
+| C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | **COMPLETE (12/12, ~180 tests, 5 E2E pages)** |
+| D: Economic | 7 | ~1,375 | ~3,300 | ~120 | **IN PROGRESS (0/7 migrated, detailed plan at [chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md))** |
 | E: Transport & Enter | 6 | ~732 | ~1,800 | ~90 | PLANNING |
 | F: Utility & Misc | 8 | ~647 | ~1,500 | ~70 | PLANNING |
-| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A+B COMPLETE (17/49); C PLANNING (detailed); D-F PLANNING** |
+| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A+B+C COMPLETE (29/49); D IN PROGRESS; E-F PLANNING** |
 
 ---
 
@@ -321,12 +321,15 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 ---
 
-### 3.3 Phase C: Aircraft Activities
+### 3.3 Phase C: Aircraft Activities ✅ COMPLETE (12/12 migrated, ~180 tests, 5 E2E pages)
 
-**Status**: PLANNING (0/12 migrated)
+**Status**: COMPLETE (12/12 migrated, ~180 tests, 5 E2E pages)
 **Complexity**: HIGH (`Fly.cs` 283 lines, `FlyAttack.cs` 316 lines, `Land.cs` 276 lines)
 **Blocked by**: Phase B (`Enter` minimal base, `Attack`), Chapter 9 (`Aircraft` trait), Phase A (`Move` for ground taxi if any)
 **Blocks**: Phase D (`Resupply` for aircraft), Phase E (`PickupUnit`, `DeliverUnit`), Chapter 13 support powers (already use `Fly`)
+**Completed**: 2026-06-16
+**Tests**: 12 test files, ~180 tests, all passing
+**Acceptance Test Pages**: 5 pages (`activities/fly/`, `activities/land-takeoff/`, `activities/fly-attack/`, `activities/return-to-base/`, `activities/parachute/`)
 **Planning document**: [docs/chapter14_phase_c_plan.md](docs/chapter14_phase_c_plan.md)
 
 **Description**: Aircraft activities implement flight physics wrappers. `Fly` is the core and exposes static `FlyTick()` / `VerticalTakeOffOrLandTick()` helpers used by all other aircraft activities. `FlyAttack` contains nested `FlyAttackRun`/`StrafeAttackRun` classes.
@@ -471,7 +474,7 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 ### 3.4 Phase D: Economic Activities
 
-**Status**: PLANNING (0/7 migrated)
+**Status**: IN PROGRESS (0/7 migrated) — detailed plan at [docs/chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md)
 **Complexity**: HIGH (`Resupply.cs` 327 lines, `FindAndDeliverResources.cs` 263 lines, `GenericDockSequence.cs` 216 lines)
 **Blocked by**: Phase A (`Move`, `MoveToDock`), Chapter 10 (`Harvester`, `ResourceLayer`), Chapter 11 (`Building`, `DockClientManager`)
 **Blocks**: Phase C (`ReturnToBase`), Phase E (`PickupUnit`, `DeliverUnit` indirectly)
@@ -482,6 +485,11 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 - Docking offsets in WPos -> `CoordinateTransformer` for 3D positioning
 - `DockClientManager` / `IDockHost` integration -> reuse Ch11 docking traits
 - World mutations (sell, transform) -> deferred via `world.frameEndActions`
+
+**Implementation Order** (see [chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md) for full details):
+1. Batch 1: MoveToDock, GenericDockSequence, Resupply (core infrastructure)
+2. Batch 2: HarvestResource, FindAndDeliverResources (resource loop)
+3. Batch 3: Sell, LayMines (specialized)
 
 #### TODO-14.D.1 `src/OpenRA.Mods.Common/Activities/FindAndDeliverResources.ts`
 - [ ] Port `FindAndDeliverResources` state machine (find resource, harvest, find refinery, deliver)

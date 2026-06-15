@@ -53,6 +53,9 @@ export class FlyIdle extends Activity {
   /** Whether this aircraft should circle while idle. */
   private readonly isIdleTurner: boolean
 
+  /** Precomputed idle-speed / movement-speed ratio to avoid per-frame division. */
+  private readonly idleSpeedRatio: number
+
   // ---------------------------------------------------------------------------
   // Constructor
   // ---------------------------------------------------------------------------
@@ -74,6 +77,10 @@ export class FlyIdle extends Activity {
     this.isIdleTurner =
       this.aircraft.info.idleSpeed > 0 ||
       (!this.aircraft.info.canHover && this.aircraft.info.idleSpeed < 0)
+    this.idleSpeedRatio =
+      this.aircraft.movementSpeed !== 0
+        ? this.aircraft.idleMovementSpeed / this.aircraft.movementSpeed
+        : 1
 
     if (idleTurn) {
       this.tickIdles = FlyIdle._collectNotifyIdleTraits(self)
@@ -112,16 +119,21 @@ export class FlyIdle extends Activity {
     }
 
     if (this.isIdleTurner) {
-      // Compute move vector at idle speed by scaling the normal flyStep vector
-      const step = this.aircraft.flyStep(this.aircraft.facing)
-      let move = step
-      if (this.aircraft.movementSpeed !== 0) {
-        move = WVec.divide(WVec.multiply(step, this.aircraft.idleMovementSpeed), this.aircraft.movementSpeed)
+      // Compute move vector at idle speed by scaling the normal flyStep vector.
+      // When the ratio is 1 we avoid allocating an override vector entirely.
+      let moveOverride = WVec.Zero
+      if (this.idleSpeedRatio !== 1) {
+        const step = this.aircraft.flyStep(this.aircraft.facing)
+        moveOverride = new WVec(
+          Math.trunc(step.X * this.idleSpeedRatio),
+          Math.trunc(step.Y * this.idleSpeedRatio),
+          Math.trunc(step.Z * this.idleSpeedRatio),
+        )
       }
 
       // Turn 90° (256 units) per tick for a continuous circle
       const desiredFacing = WAngle.add(this.aircraft.facing, new WAngle(256))
-      Fly.flyTick(self, this.aircraft, desiredFacing, this.aircraft.info.cruiseAltitude, move, this.idleTurn)
+      Fly.flyTick(self, this.aircraft, desiredFacing, this.aircraft.info.cruiseAltitude, moveOverride, this.idleTurn)
     }
 
     return false

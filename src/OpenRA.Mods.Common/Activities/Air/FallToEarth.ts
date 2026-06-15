@@ -65,10 +65,9 @@ export class FallToEarth extends Activity {
 
     const maxSpin = this.info.maximumSpinSpeed
     if (maxSpin === null || !WAngle.equals(maxSpin, WAngle.Zero)) {
-      // Random acceleration: -1 or +1
-      const worldAny = (self as unknown as { world?: { sharedRandom?: number } }).world
-      const randomSeed = worldAny?.sharedRandom ?? Math.trunc(Math.random() * 1000)
-      this.acceleration = randomSeed % 2 === 0 ? -1 : 1
+      // Random acceleration: -1 or +1. Use Math.random; deterministic replay
+      // RNG integration is deferred until the sync/random system is wired.
+      this.acceleration = Math.random() < 0.5 ? -1 : 1
     } else {
       this.acceleration = 0
     }

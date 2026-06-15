@@ -146,7 +146,17 @@ export class Parachute extends Activity {
   protected override onLastRun(self: GameActor): void {
     const centerPosition = this.pos.centerPosition
     const landingPosition = new WPos(centerPosition.X, centerPosition.Y, this.groundLevel)
+
+    // `setCenterPosition` is the IPositionable contract and is responsible for
+    // updating the actor's cell/position maps (mirrors C# Actor.SetPosition).
     this.pos.setCenterPosition(self, landingPosition)
+
+    // Some actors expose an additional world-space setPosition hook; call it if
+    // present so that non-IPositionable state stays consistent.
+    const actorSetPosition = (self as unknown as { setPosition?: (pos: WPos) => void }).setPosition
+    if (actorSetPosition) {
+      actorSetPosition.call(self, landingPosition)
+    }
 
     const actorTraits = self as unknown as { traits?: Map<string, unknown> }
     if (actorTraits.traits) {
