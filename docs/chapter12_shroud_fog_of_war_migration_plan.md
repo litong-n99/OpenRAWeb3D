@@ -125,7 +125,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (2/15)** |
+| A: Shroud System | 15 | 2,594 | ~5,500-7,000 | ~200-250 | **IN PROGRESS (3/15)** |
 
 ---
 
@@ -133,7 +133,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 ### 3.1 Phase A: Shroud System
 
-**Status**: IN PROGRESS (2/15 migrated)
+**Status**: IN PROGRESS (3/15 migrated)
 **Complexity**: HIGHEST (Shroud.cs 514 lines, ShroudRenderer.cs 390 lines)
 **Blocked by**: Chapter 4 (Map, CellLayers, ProjectedCellLayer), Chapter 3 (Player, Actor, TraitDictionary), Chapter 2 (Renderer, WorldRenderer, TerrainSpriteLayer)
 **Blocks**: Chapter 13 (Support Powers -- some require shroud visibility), Chapter 16 (RadarWidget -- depends on PlayerRadarTerrain), Chapter 19 (GPS/Sensors -- GpsDot, GpsWatcher interact with shroud)
@@ -141,8 +141,9 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 **Completed**:
 - [x] TODO-12.A.1 `Shroud.ts` -- per-player visibility state tracker (APPROVED, 2026-06-15)
 - [x] TODO-12.A.2 `ShroudRenderer.ts` -- visual shroud/fog overlay renderer (APPROVED, 2026-06-15)
+- [x] TODO-12.A.3 `FrozenActorLayer.ts` -- per-player frozen actor snapshot system (APPROVED R2, 2026-06-15)
 
-**Remaining**: 13 files
+**Remaining**: 12 files
 
 **Description**: The shroud system controls what each player can see on the map. It has three layers: (1) `Shroud` -- per-player visibility state tracking with source-based reference counting, (2) `ShroudRenderer` -- visual overlay rendering of shroud/fog edges using sprite variants, (3) `FrozenActorLayer` -- per-player snapshot of enemy actors that have left visible range. Supporting traits include `RevealsShroud` (units reveal area), `CreatesShroud` (units generate darkness for enemies), `HiddenUnderShroud`/`HiddenUnderFog` (actors hide when not visible), `FrozenUnderFog` (buildings freeze when fogged), `Cloak` (stealth system), and `DetectCloaked` (detection of cloaked units).
 
@@ -217,7 +218,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
 
 #### 3.1.3 FrozenActorLayer
 
-- [ ] **TODO-12.A.3** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts` (385 lines C#) -- Per-player frozen actor snapshot system:
+- [x] **TODO-12.A.3** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts` (385 lines C#) -- Per-player frozen actor snapshot system: ✅ COMPLETE (APPROVED R2, 2026-06-15)
   - `FrozenActorLayerInfo` -- `BinSize: number` for spatial partition
   - `FrozenActor` class:
     - `Footprint: PPos[]` -- actor's projected cell footprint
@@ -247,6 +248,7 @@ The following infrastructure from Chapters 2-11 is available for Chapter 12:
     - `TickRender(wr)` -- render frozen actors
   - **3D migration**: Frozen actors rendered as static `TransformNode` clones with `StandardMaterial` at alpha=0.5
   - **3D migration**: No live updates -- position, health, owner frozen at snapshot time
+  - **Status**: Migrated, reviewed (Round 2), APPROVED. 63 tests. Commit `09437ba`.
 
 #### 3.1.4 Cloak
 
