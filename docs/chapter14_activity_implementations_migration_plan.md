@@ -486,30 +486,37 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 #### TODO-14.D.1 `src/OpenRA.Mods.Common/Activities/FindAndDeliverResources.ts`
 - [ ] Port `FindAndDeliverResources` state machine (find resource, harvest, find refinery, deliver)
 - [ ] Unit tests: full harvest cycle, no-resources behavior, refinery selection
+- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.5
 
 #### TODO-14.D.2 `src/OpenRA.Mods.Common/Activities/HarvestResource.ts`
 - [ ] Port `HarvestResource` (harvest tick at resource cell)
 - [ ] Unit tests: harvest progress, resource depletion
+- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.4
 
 #### TODO-14.D.3 `src/OpenRA.Mods.Common/Activities/MoveToDock.ts`
 - [ ] Port `MoveToDock` (approach dock and align)
 - [ ] Unit tests: dock alignment, offset
+- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.1
 
 #### TODO-14.D.4 `src/OpenRA.Mods.Common/Activities/GenericDockSequence.ts`
 - [ ] Port `GenericDockSequence` base class for docking
 - [ ] Unit tests: dock state transitions
+- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.2
 
 #### TODO-14.D.5 `src/OpenRA.Mods.Common/Activities/Resupply.ts`
-- [ ] Port `Resupply` (repair/rearm sequence)
+- [ ] Port `Resupply` (repair/rearm sequence) — replaces existing stub
 - [ ] Unit tests: resupply completion, cancellation, child chain
+- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.3
 
 #### TODO-14.D.6 `src/OpenRA.Mods.Common/Activities/Sell.ts`
 - [ ] Port `Sell` (sell building)
 - [ ] Unit tests: refund, removal deferred
+- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.6
 
 #### TODO-14.D.7 `src/OpenRA.Mods.Common/Activities/LayMines.ts`
 - [ ] Port `LayMines` (mine placement sequence)
 - [ ] Unit tests: mine placement, ammo check
+- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.7
 
 ---
 
