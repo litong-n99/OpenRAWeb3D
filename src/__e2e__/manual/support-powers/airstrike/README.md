@@ -13,11 +13,11 @@
 
 2. **拖拽距离阈值**:
    - MinDragThreshold = 20px: 拖拽距离 < 20px 时，释放鼠标产生 `ExtraData = 0xFFFFFFFF` (NO_DIRECTION)，结果框显示红色 "无方向"
-   - MaxDragThreshold = 75px: 拖拽距离 > 75px 时，方向线长度被截断至 75px，不继续增长
+   - MaxDragThreshold = 75px: 拖拽距离 > 75px 时，方向向量**反转** (OpenRA 行为: `dragDirection = -MaxDragThreshold * float2.FromAngle(...)`)，方向线长度截断至 75px 但指向相反方向
    - 可量化指标: 红色虚线圆半径 = 20px (内圈)，白色虚线圆半径 = 75px (外圈)
    - 可量化指标: 绿色方向线 = 已超过阈值 (将产生有效方向)，红色方向线 = 未超过阈值
 
-3. **Cursor 切换**: 鼠标在有效地形 (canvas 左侧 2/3) 上显示 `crosshair` (Cursor)，在阻塞区域 (canvas 右侧 1/3 红色区域) 显示 `not-allowed` (BlockedCursor)。地图外模式强制显示 `not-allowed`。
+3. **Cursor 切换**: 鼠标在有效地形 (canvas 前 9/14 约 64% 区域) 上显示 `crosshair` (Cursor)，在阻塞区域 (canvas 后 5/14 约 36% 红色区域) 显示 `not-allowed` (BlockedCursor)。地图外模式强制显示 `not-allowed`。
 
 4. **角度计算 (angleOf)**:
    - 正上方拖拽 (0,-1): 返回 0° (North)
@@ -36,14 +36,14 @@
 - 打开测试页面: `http://localhost:5173/test/support-powers/airstrike/`
 - 确认环境信息栏显示 "引擎: WebGL 2.0"
 - 设置屏幕分辨率为 1920x1080 (1x 缩放)
-- 确认页面显示绿色地形网格，右侧 1/3 为红色 "BLOCKED" 区域
+- 确认页面显示绿色地形网格，右侧约 36% 为红色 "BLOCKED" 区域
 - 确认右下角面板显示期望结果
 
 ### 2. 步骤一: Cursor 切换验证
 
-- 操作: 移动鼠标到绿色区域 (左侧 2/3)
+- 操作: 移动鼠标到绿色区域 (前 9/14)
 - 观察点: 鼠标样式变为 `crosshair` (crosshair)
-- 操作: 移动鼠标到红色 BLOCKED 区域 (右侧 1/3)
+- 操作: 移动鼠标到红色 BLOCKED 区域 (后 5/14)
 - 观察点: 鼠标样式变为 `not-allowed`
 - 操作: 在下拉框中选择 "地图外 (Blocked)"
 - 观察点: 任何位置鼠标样式均为 `not-allowed`
@@ -81,13 +81,13 @@
   - 控制台输出 ExtraData=0xFFFFFFFF
 - 预期: ✅ 短拖拽不产生方向，ExtraData=uint.MaxValue
 
-### 6. 步骤五: MaxDragThreshold 验证
+### 6. 步骤五: MaxDragThreshold 验证（方向反转）
 
 - 操作: 点击并向任意方向大量拖动 (> 100px)
 - 观察点:
   - 方向线长度不超过 75px (白色虚线圆半径)
-  - 超出部分被截断 (clamped)
-- 预期: ✅ 拖拽距离 > 75px 时方向线截断至 75px
+  - **方向反转**: 当拖拽超过 75px 时，方向线瞬间翻转到相反方向 (OpenRA 原始行为: 超出阈值时 `dragDirection = -MaxDragThreshold * float2.FromAngle(...)`)
+- 预期: ✅ 拖拽距离 > 75px 时方向反转，长度截断至 75px
 
 ### 7. 边界/异常测试
 

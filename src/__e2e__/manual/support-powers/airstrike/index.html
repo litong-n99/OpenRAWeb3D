@@ -84,9 +84,9 @@
       <ul>
         <li><b>8方向箭头:</b> 以目标点为中心，<span class="metric">8个箭头均匀分布</span> (每45°), 角度: N=0°, NW=45°, W=90°, SW=135°, S=180°, SE=225°, E=270°, NE=315°</li>
         <li><b>MinDragThreshold:</b> 拖拽距离 &lt; <span class="metric">20px</span> 不产生方向 (ExtraData=<span class="metric">0xFFFFFFFF</span>)</li>
-        <li><b>MaxDragThreshold:</b> 拖拽距离 &gt; <span class="metric">75px</span> 时方向线长度被截断至 <span class="metric">75px</span></li>
+        <li><b>MaxDragThreshold:</b> 拖拽距离 &gt; <span class="metric">75px</span> 时方向<b>反转</b>并截断至 <span class="metric">75px</span> (OpenRA 行为)</li>
         <li><b>Cursor切换:</b> 鼠标在有效地形上显示 Cursor, 阻塞/地图外显示 BlockedCursor</li>
-        <li><b>角度计算:</b> angleOf() 输出: 正上(0,-1)→0°, 正右(1,0)→90°, 正下(0,1)→180°, 正左(-1,0)→270°</li>
+        <li><b>角度计算:</b> angleOf() 输出: 正上(0,-1)→0°, 正右(1,0)→270°, 正下(0,1)→180°, 正左(-1,0)→90°</li>
       </ul>
     </div>
     <div id="drag-stats">

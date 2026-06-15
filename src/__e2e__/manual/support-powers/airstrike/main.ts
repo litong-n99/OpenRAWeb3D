@@ -45,6 +45,8 @@ const MIN_DRAG_THRESHOLD = 20
 const MAX_DRAG_THRESHOLD = 75
 /** ExtraData value when drag is too short (uint.MaxValue). */
 const NO_DIRECTION = 0xffffffff
+/** Fraction of the grid (from the left) that marks blocked terrain. Must match texture drawing in setupScene(). */
+const BLOCKED_BOUNDARY = 9 / 14 // Math.floor(14 * 2/3) / 14
 
 // ---------------------------------------------------------------------------
 // Arrow Direction (mirrors Arrow record in SelectDirectionalTarget.ts)
@@ -250,8 +252,8 @@ function setupScene(): void {
     gctx.lineTo(gridTexRes, i * cellPx)
     gctx.stroke()
   }
-  // Draw "blocked" zone (right third)
-  const blockedStart = Math.floor(gridSize * 2 / 3) * cellPx
+  // Draw "blocked" zone (right ~36%, matches BLOCKED_BOUNDARY)
+  const blockedStart = Math.round(BLOCKED_BOUNDARY * gridTexRes)
   gctx.fillStyle = 'rgba(255, 50, 50, 0.3)'
   gctx.fillRect(blockedStart, 0, gridTexRes - blockedStart, gridTexRes)
   gctx.fillStyle = '#ff4444'
@@ -365,7 +367,8 @@ function drawOverlay(): void {
   if (dist > 0.5) {
     const clampedDist = Math.min(dist, MAX_DRAG_THRESHOLD)
     const angle = angleOf(dragState.accumulated)
-    const rad = (-(angle - 90) * Math.PI) / 180 // convert to canvas radians
+    // OpenRA angle (0=North, CCW) to canvas radian (0=right, CW): rad = (-90 - angle) * PI / 180
+    const rad = (-90 - angle) * Math.PI / 180
     const ex = cx + clampedDist * Math.cos(rad)
     const ey = cy + clampedDist * Math.sin(rad)
 
@@ -399,7 +402,8 @@ function drawOverlay(): void {
   for (let i = 0; i < arrowCount; i++) {
     const arrow = currentArrowSet[i]
     const arrowAngle = (i * 360) / arrowCount // center of sector in degrees
-    const rad = (-(arrowAngle - 90) * Math.PI) / 180
+    // OpenRA angle (0=North, CCW) to canvas radian (0=right, CW): rad = (-90 - angle) * PI / 180
+    const rad = (-90 - arrowAngle) * Math.PI / 180
     const ax = cx + arrowRadius * Math.cos(rad)
     const ay = cy + arrowRadius * Math.sin(rad)
 
@@ -454,10 +458,12 @@ function onPointerMove(e: PointerEvent): void {
   dragState.accumulated.x += e.movementX
   dragState.accumulated.y += e.movementY
 
-  // Clamp to MAX_DRAG_THRESHOLD
+  // Clamp to MAX_DRAG_THRESHOLD and REVERSE direction (OpenRA behavior:
+  // when drag exceeds MaxDragThreshold, the vector is flipped to signal a
+  // "you went too far — aim the other way" correction)
   const dist = vectorLength(dragState.accumulated)
   if (dist > MAX_DRAG_THRESHOLD) {
-    const scale = MAX_DRAG_THRESHOLD / dist
+    const scale = -MAX_DRAG_THRESHOLD / dist
     dragState.accumulated.x *= scale
     dragState.accumulated.y *= scale
   }
@@ -528,8 +534,8 @@ function updateTerrainFromPosition(pos: { x: number; y: number }): void {
     return
   }
 
-  // Right third is "blocked" terrain
-  if (fracX > 0.66) {
+  // Right ~36% is "blocked" terrain (matches BLOCKED_BOUNDARY)
+  if (fracX > BLOCKED_BOUNDARY) {
     currentTerrain = 'blocked'
   } else {
     currentTerrain = 'valid'
