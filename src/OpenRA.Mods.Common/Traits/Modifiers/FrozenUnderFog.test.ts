@@ -1309,13 +1309,13 @@ describe('FrozenUnderFog _anyExplored behavior', () => {
 // Tests: FrozenUnderFog — _getPlayerIndex edge cases (私有方法，通过公共 API 间接测试)
 // ---------------------------------------------------------------------------
 
-describe('FrozenUnderFog _getPlayerIndex edge cases', () => {
+describe('FrozenUnderFog Map lookup edge cases (O(1) via Map<PlayerStub, FrozenState>)', () => {
   beforeEach(() => {
     resetMockFrozenActors()
     actorIdCounter = 0
   })
 
-  it('returns -1 when player has no playerActor', () => {
+  it('returns false when player not in Map (e.g. no playerActor)', () => {
     const { players, world } = setupPlayersWorld(1)
     addFrozenLayerToPlayer(players[0])
     const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
@@ -1324,14 +1324,13 @@ describe('FrozenUnderFog _getPlayerIndex edge cases', () => {
     fuf.created(self)
     ;(world._executeFrameEndTasks as () => void)()
 
-    // Create a player with no playerActor
+    // Create a player with no playerActor — not in the Map → isVisible returns false
     const playerWithNoActor = { shroud: players[0].shroud, _isMockPlayer: true, playerName: 'noActor' }
 
-    // _getPlayerIndex returns -1 → isVisible returns false
     expect(fuf.isVisible(self, playerWithNoActor as unknown as PlayerStub)).toBe(false)
   })
 
-  it('returns -1 when playerActor has no world', () => {
+  it('returns false when player not in Map (e.g. playerActor has no world)', () => {
     const { players, world } = setupPlayersWorld(1)
     addFrozenLayerToPlayer(players[0])
     const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
@@ -1340,7 +1339,7 @@ describe('FrozenUnderFog _getPlayerIndex edge cases', () => {
     fuf.created(self)
     ;(world._executeFrameEndTasks as () => void)()
 
-    // Create a player whose playerActor has no world
+    // Create a player whose playerActor has no world — not in the Map → isVisible returns false
     const playerWithActorNoWorld = {
       shroud: players[0].shroud,
       _isMockPlayer: true,
@@ -1348,11 +1347,10 @@ describe('FrozenUnderFog _getPlayerIndex edge cases', () => {
       playerActor: { traitOrDefault: vi.fn(() => undefined) },
     }
 
-    // _getPlayerIndex returns -1 → isVisible returns false
     expect(fuf.isVisible(self, playerWithActorNoWorld as unknown as PlayerStub)).toBe(false)
   })
 
-  it('returns valid index for players found by reference equality', () => {
+  it('finds player in Map by reference equality for onVisibilityChanged', () => {
     const { players, world } = setupPlayersWorld(3)
     addFrozenLayerToPlayer(players[0])
     addFrozenLayerToPlayer(players[1])
@@ -1363,10 +1361,10 @@ describe('FrozenUnderFog _getPlayerIndex edge cases', () => {
     fuf.created(self)
     ;(world._executeFrameEndTasks as () => void)()
 
-    // All 3 players should be found by reference equality and return valid indices
+    // players[2] is in the Map; O(1) lookup finds it, playerIndex=2
     const mockFrozenRef0 = createMockFrozenRef({ viewer: players[2], visible: false })
     fuf.onVisibilityChanged(mockFrozenRef0 as any)
-    // player 2 → bit position 2 → `1 << 2 = 4`
+    // player index 2 → bit position 2 → `1 << 2 = 4`
     expect(fuf.VisibilityHash & 4).toBe(4)
   })
 })

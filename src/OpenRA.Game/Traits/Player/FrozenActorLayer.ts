@@ -472,6 +472,16 @@ export class FrozenActor {
     this.RefreshHidden()
   }
 
+  /** Refresh all state from the live actor (camelCase for IFrozenActorRef).
+   *
+   * OpenRA 对照: FrozenActor.RefreshState()
+   *
+   * @returns void
+   */
+  refreshState(): void {
+    this.RefreshState()
+  }
+
   /** The actor's static type info.
    *
    * OpenRA 对照: FrozenActor.Info

@@ -97,6 +97,14 @@ export interface IFrozenActorRef {
   readonly hidden: boolean
   readonly centerPosition: WPos
   refreshHidden(): void
+  /** Refresh all state from the live actor.
+   *
+   * OpenRA 对照: FrozenActor.RefreshState()
+   *
+   * NOTE: Added to IFrozenActorRef to eliminate unsafe FrozenActor casts
+   * in FrozenUnderFog.onVisibilityChanged(). See review MAJOR 3.
+   */
+  refreshState(): void
 }
 
 /**
