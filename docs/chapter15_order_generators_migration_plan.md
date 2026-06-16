@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 15 -- Order Generators
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.4 (Orders/OrderGenerators) + Section 4.3 (Traits/Interfaces)
-> **Chapter Status**: PLANNING (3/11 already migrated from Chapter 11, 8/11 pending)
+> **Chapter Status**: PHASE A COMPLETE (3/11 migrated, 2 New + 1 Verified; 8 pending in Phases B-C). APPROVED (R1, 0 BLOCKERs, 0 MAJORs, 3 MINORs)
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-14 COMPLETE (all foundation layers ready)
 >
@@ -129,11 +129,11 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 | Phase | Pending Files | C# Lines | Est. TS Lines | Est. Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Foundation | 2 | 110 | ~200 | ~350 | PLANNING |
-| B: Core Generators | 4 | 445 | ~800 | ~920 | PLANNING |
-| C: Extended Generators | 2 | 131 | ~230 | ~380 | PLANNING |
+| A: Foundation | 0 | 110 | ~537 (done) | 59 (done) | ✅ COMPLETE |
+| B: Core Generators | 4 | 445 | ~800 | ~920 | 📋 PLANNING |
+| C: Extended Generators | 2 | 131 | ~230 | ~380 | 📋 PLANNING |
 | Already migrated (Ch11) | 3 | 471 | ~2,200 (done) | ~1,700 (done) | COMPLETE |
-| **Total** | **11** | **~1,217** | **~1,230 new + ~2,200 done** | **~1,650 new** | — |
+| **Total** | **11** | **~1,217** | **~537 new + ~2,200 done** | **59 new + ~1,700 done** | — |
 
 ---
 
@@ -141,8 +141,8 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 ### 3.1 Phase A: Foundation — Abstract Base & Targeters
 
-**Status**: 📋 PLANNING (2 pending, 3 already migrated; verification required)
-**Complexity**: LOW (OrderGenerator 61 lines, EnterAlliedActorTargeter 49 lines)
+**Status**: ✅ COMPLETE (2 new + 1 verified + 2 already migrated from Ch11 = 5/5)
+**Complexity**: LOW (OrderGenerator 275 TS lines, EnterAlliedActorTargeter 262 TS lines)
 **Blocked by**: Nothing (all dependencies already exist)
 **Blocks**: Phase B (all concrete generators extend OrderGenerator), Phase C (Guard and ForceModifiers extend UnitOrderGenerator)
 
@@ -158,7 +158,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.1.1 IOrderGenerator Interface Verification
 
-- [ ] **TODO-15.A.1** `src/OpenRA.Game/Traits/TraitsInterfaces.ts` (IOrderGenerator at L1137-1220) — Verify interface completeness against C# source:
+- [x] **TODO-15.A.1** `src/OpenRA.Game/Traits/TraitsInterfaces.ts` (IOrderGenerator at L1137-1220) — Verify interface completeness against C# source:
   - **C# reference**: `OpenRA.Game/Orders/IOrderGenerator.cs` (30 lines)
   - Verify `MouseButton ActionButton { get; }` property exists or is handled via `handleMouseInput`
   - Verify `IEnumerable<Order> Order(World, CPos, int2, MouseInput)` maps correctly to `order(world, cell, modifiers): Generator<Order>`
@@ -175,7 +175,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.1.2 OrderGenerator (Abstract Base Class)
 
-- [ ] **TODO-15.A.2** `src/OpenRA.Mods.Common/Orders/OrderGenerator.ts` (61 lines C#) — Abstract base class for all order generators:
+- [x] **TODO-15.A.2** `src/OpenRA.Mods.Common/Orders/OrderGenerator.ts` (275 lines TS) — Abstract base class for all order generators:
   - **C# reference**: `OpenRA.Mods.Common/Orders/OrderGenerator.cs` (61 lines)
   - `protected abstract actionType: MouseActionType` — abstract property for subclass to define
   - Constructor takes `world: World` and `settings: IMouseSettings` (injected, not global Game.Settings)
@@ -197,7 +197,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.1.3 EnterAlliedActorTargeter
 
-- [ ] **TODO-15.A.3** `src/OpenRA.Mods.Common/Orders/EnterAlliedActorTargeter.ts` (49 lines C#) — Generic allied-actor enter targeter:
+- [x] **TODO-15.A.3** `src/OpenRA.Mods.Common/Orders/EnterAlliedActorTargeter.ts` (262 lines TS) — Generic allied-actor enter targeter:
   - **C# reference**: `OpenRA.Mods.Common/Orders/EnterAlliedActorTargeter.cs` (49 lines)
   - Extends `UnitOrderTargeter` (already migrated)
   - C# `EnterAlliedActorTargeter<T> where T : ITraitInfoInterface` → TS: takes `traitKey: string` instead of generic type parameter
@@ -210,7 +210,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
   - `canTargetFrozenActor(self, target, modifiers, cursor): boolean` → always returns false (allied actors are never frozen)
   - **Precision requirement**: Allied relationship check must match C# diplomacy rules exactly
 
-**Phase A Summary**: 5 item slots (1 interface verify + 2 migrated from Ch11 + 2 new files). ~110 C# lines source, estimated ~200 TS implementation lines + ~350 test lines. Key deliverable: `OrderGenerator.ts` (TODO-15.A.2) — the abstract base that all Phase B/C generators extend.
+**Phase A Summary**: 5 item slots (1 interface verify + 2 migrated from Ch11 + 2 new files). ~110 C# lines source, delivered ~537 TS implementation lines (OrderGenerator 275 + EnterAlliedActorTargeter 262) + ~1,103 test lines (2 test files). 59 tests (29 + 30) all passing. Review: APPROVED (R1, 0 BLOCKERs, 0 MAJORs, 3 MINORs). Commit: `cb792bd`. Key deliverable: `OrderGenerator.ts` (TODO-15.A.2) — the abstract base that all Phase B/C generators extend.
 
 ---
 
