@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 17 — Replay & Save System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.6 (Network/Replay) + Section 4.3 (Traits)
-> **Chapter Status**: PLANNING (0/8 migrated, 0%)
+> **Chapter Status**: IN PROGRESS (2/8 migrated, 25%, Phase A COMPLETE)
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%), Chapter 6 Phase A (Order + Connection) COMPLETE
 >
@@ -128,7 +128,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 17:
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Foundation | 2 | 347 | ~650 | ~40 | PLANNING |
+| A: Foundation | 2 | 347 | 482+274=~756 | ~61 | ✅ COMPLETE |
 | B: Replay | 2 | 255 | ~700 | ~40 | PLANNING |
 | C: GameSave | 1 | 333 | ~1,000 | ~35 | PLANNING |
 | D: SyncReport + Traits | 3 | 513 | ~900 | ~45 | PLANNING |
@@ -140,9 +140,10 @@ The following infrastructure from Chapters 2-7 is available for Chapter 17:
 
 ### 3.1 Phase A: Core Foundation — GameInformation + ReplayMetadata
 
-**Status**: 📋 PLANNING (0/2 migrated)
+**Status**: ✅ COMPLETE (2/2 migrated, 61 tests)
 **Complexity**: Medium
-**Blocked by**: Chapter 6 Phase C (Ruleset/Session for map/mod metadata), Chapter 4 Phase E (MapGenerationArgs)
+**Review**: PENDING (commit `68a96fa`)
+**Blocked by**: Chapter 6 Phase C (Ruleset/Session for map/mod metadata), Chapter 4 Phase E (MapGenerationArgs) — COMPLETE
 **Blocks**: Phase B (ReplayRecorder writes ReplayMetadata; ReplayConnection reads ReplayMetadata), Phase C (GameSave references similar metadata concepts)
 
 **Description**: Phase A establishes the data model foundation that both replay and save systems depend on. `GameInformation` is a plain data transfer object containing all metadata about a game session (mod, version, map, players, duration, outcome). `ReplayMetadata` wraps `GameInformation` and handles the binary serialization format for the replay file footer. These two files are small but foundational — every other file in this chapter references them.
@@ -159,7 +160,7 @@ The key challenge is binary format fidelity: the replay file footer has a specif
 
 #### 3.1.1 GameInformation
 
-- [ ] **TODO-17.A.1** `src/OpenRA.Game/GameInformation.ts` (237 lines C#) — Game metadata data transfer object:
+- [x] **TODO-17.A.1** `src/OpenRA.Game/GameInformation.ts` (237 lines C#) ✅ — Game metadata data transfer object:
   - Properties: `Mod: string`, `Version: string`, `MapUid: string`, `MapTitle: string`, `FinalGameTick: number`, `StartTimeUtc: Date`, `EndTimeUtc: Date`
   - `Duration: number` computed property (EndTimeUtc - StartTimeUtc in seconds)
   - `Players: GameInformationPlayer[]` array
@@ -179,7 +180,7 @@ The key challenge is binary format fidelity: the replay file footer has a specif
 
 #### 3.1.2 ReplayMetadata
 
-- [ ] **TODO-17.A.2** `src/OpenRA.Game/FileFormats/ReplayMetadata.ts` (110 lines C#) — Replay file metadata container with binary footer format:
+- [x] **TODO-17.A.2** `src/OpenRA.Game/FileFormats/ReplayMetadata.ts` (110 lines C#) ✅ — Replay file metadata container with binary footer format:
   - Constants: `MetaStartMarker = -1`, `MetaEndMarker = -2`, `MetaVersion = 0x00000001`
   - `GameInfo: GameInformation` property (the wrapped game metadata)
   - `FilePath: string` for replay file location (virtual path)
