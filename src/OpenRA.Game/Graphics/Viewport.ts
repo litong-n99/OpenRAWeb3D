@@ -18,7 +18,7 @@
  *
  * ArcRotateCamera 必须使用 alpha=-PI/2 (相机在 -Z 侧)。
  *
- * 参考: src/__e2e__/manual/hardware-palette/color-accuracy/main.ts 的相机调试过程
+ * 参考: src/__e2e__/manual/ch02-hardware-palette/color-accuracy/main.ts 的相机调试过程
  */
 
 import { Vector3, Matrix } from '@babylonjs/core/Maths/math.vector'
