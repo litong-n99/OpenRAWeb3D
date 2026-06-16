@@ -536,8 +536,12 @@ describe('GuardOrderGenerator', () => {
       // Now call selectionChanged with mixed actors
       gen.selectionChanged(world, [subject1, subject2, deadGuard])
 
-      // We indirectly verify by checking that getCursor still works
-      // (subjects were filtered)
+      // subject1 (alive, GuardInfo+AutoTargetInfo) should remain
+      // subject2 (no GuardInfo) and deadGuard (dead) should be excluded
+      // Since at least one subject has AutoTargetInfo, cancelInputMode is NOT called
+      expect(cancelInputMode).not.toHaveBeenCalled()
+      // With subjects present but no guardable target at cell, cursor is "move-blocked"
+      expect(gen.getCursor(world, cell(0, 0))).toBe('move-blocked')
     })
 
     it('cancels input mode when no subjects have AutoTargetInfo', () => {

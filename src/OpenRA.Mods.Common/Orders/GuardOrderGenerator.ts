@@ -357,6 +357,10 @@ export class GuardOrderGenerator extends UnitOrderGenerator {
       if (world.shroud?.fogObscures(a)) return false
 
       return true
+    // NOTE: double cast (as unknown as IUnitOrderActor[]) is needed because
+    // the filter callback's type assertions don't propagate through the
+    // generic Array.filter() return type — TypeScript infers the narrowed
+    // predicate type but Array.prototype.filter returns the original T[].
     }) as unknown as IUnitOrderActor[]
   }
 

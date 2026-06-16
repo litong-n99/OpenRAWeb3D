@@ -33,6 +33,9 @@ import type {
 import {
   ForceModifiersOrderGenerator,
 } from './ForceModifiersOrderGenerator.js'
+import {
+  UnitOrderGenerator,
+} from './UnitOrderGenerator.js'
 import type {
   IUnitOrderGeneratorWorld,
   IUnitOrderPlayer,
@@ -259,7 +262,11 @@ describe('ForceModifiersOrderGenerator', () => {
 
     it('combines forced modifiers with existing mouse modifiers via OR', () => {
       // Start with ForceQueue (Shift=2), force ForceAttack (Ctrl=1)
-      // Expected: 2 | 1 = 3 (both set)
+      // Expected: 2 | 1 = 3 (both set in modifiedMi.modifiers)
+      // Spy on parent to verify combined modifiers are passed through
+      // biome-ignore lint/suspicious/noExplicitAny: protected method requires any cast for spyOn
+      const superOrderInnerSpy = vi.spyOn(UnitOrderGenerator.prototype as any, 'orderInner')
+
       const gen = new ForceModifiersOrderGenerator(
         world, settings, TargetModifiers.ForceAttack, false,
       )
@@ -275,6 +282,13 @@ describe('ForceModifiersOrderGenerator', () => {
 
       // The original mi should have been modified; cancel shouldn't trigger (not cancelOnFirstUse)
       expect(cancelInputMode).not.toHaveBeenCalled()
+      // Verify parent.orderInner was called with the OR-combined modifiers in modifiedMi
+      expect(superOrderInnerSpy).toHaveBeenCalledTimes(1)
+      const callArgs = superOrderInnerSpy.mock.calls[0] as unknown[]
+      const modifiedMi = callArgs[3] as IUnitOrderMouseInput
+      expect(modifiedMi.modifiers).toBe(TargetModifiers.ForceQueue | TargetModifiers.ForceAttack)
+
+      superOrderInnerSpy.mockRestore()
     })
 
     it('combines forced modifiers with the _modifiers parameter', () => {

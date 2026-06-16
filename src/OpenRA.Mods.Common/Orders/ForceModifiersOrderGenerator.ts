@@ -155,7 +155,7 @@ export class ForceModifiersOrderGenerator extends UnitOrderGenerator {
     // OpenRA 对照: return base.OrderInner(world, cell, worldPixel, mi)
     // Also OR the modifiers into the _modifiers parameter for consistency
     const combinedModifiers = (_modifiers | this._modifiers) as TargetModifiers
-    yield* super['orderInner'](_world, cell, combinedModifiers, modifiedMi)
+    yield* super.orderInner(_world, cell, combinedModifiers, modifiedMi)
   }
 
   // ---------------------------------------------------------------------------
