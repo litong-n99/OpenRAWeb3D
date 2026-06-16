@@ -77,7 +77,7 @@ Verify that the ProductionPaletteWidget correctly renders a grid of production i
 - Click "重置队列": all items reset to their initial state
 - Verify clock overlays return to initial angles
 - Verify e3 returns to "HOLD" state (paused)
-- Verify e2 returns to "READY" (should show READY since done state is reset... actually done=false, so it should show clock)
+- Verify e2 shows a clock overlay (done reset to false, showing build progress)
 
 ### Step 8: Boundary Tests
 - Resize the browser window: palette re-centers

@@ -65,21 +65,28 @@ function createSandboxRow(parent: HTMLElement, height: number): HTMLDivElement {
 // Helper: mount a widget tree into a DOM element and set up event routing
 // ---------------------------------------------------------------------------
 
+// Track all mounted widgets for direct event routing and per-frame tick
+const mountedWidgets: Widget[] = []
+
 function mountWidget(widget: Widget, container: HTMLElement): void {
   const el = widget.renderOuter()
   container.appendChild(el)
+  mountedWidgets.push(widget)
 
-  // Route DOM events to the widget tree via Ui.handleInput
+  // Route DOM events directly to the widget (NOT via Ui.handleInput, which
+  // dispatches through Ui.root — a 0×0 bounds widget with no children).
   const eventTypes = ['mousedown', 'mouseup', 'mousemove', 'click', 'dblclick', 'wheel', 'keydown', 'keyup']
   for (const type of eventTypes) {
     container.addEventListener(type, (e: Event) => {
       const me = e as MouseEvent
+      // Transform screen-absolute clientX/Y to container-relative coordinates
+      const rect = container.getBoundingClientRect()
       const widgetEvent: WidgetEvent = {
         type,
         stopPropagation: () => e.stopPropagation(),
         target: me.target as HTMLElement | null,
-        clientX: me.clientX,
-        clientY: me.clientY,
+        clientX: me.clientX - rect.left,
+        clientY: me.clientY - rect.top,
         button: me.button,
         deltaY: (e as WheelEvent).deltaY,
         key: (e as KeyboardEvent).key,
@@ -89,7 +96,7 @@ function mountWidget(widget: Widget, container: HTMLElement): void {
         metaKey: (e as KeyboardEvent).metaKey,
         repeat: (e as KeyboardEvent).repeat,
       }
-      const handled = Ui.handleInput(widgetEvent)
+      const handled = widget.handleEventOuter(widgetEvent)
       if (handled) {
         e.preventDefault()
         e.stopPropagation()
@@ -288,8 +295,8 @@ function mountWidget(widget: Widget, container: HTMLElement): void {
     const tf = new TextFieldWidget()
     tf.bounds = { x: 8, y: 6, width: 250, height: 32 }
     tf.textColor = '#ffffff'
+    tf.text = 'Disabled - cannot edit'
     tf.disabled = true
-    ;(tf as any)._text = 'Disabled - cannot edit'
     mountWidget(tf, row)
   }
 }
@@ -615,6 +622,11 @@ function mountWidget(widget: Widget, container: HTMLElement): void {
 // ---------------------------------------------------------------------------
 
 function gameLoopTick(): void {
+  // Tick each mounted widget directly (Ui.root has 0x0 bounds with no children,
+  // so Ui.tick() alone would not reach any test widget).
+  for (const w of mountedWidgets) {
+    w.tickOuter()
+  }
   Ui.tick()
   requestAnimationFrame(gameLoopTick)
 }

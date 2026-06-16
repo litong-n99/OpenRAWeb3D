@@ -10,7 +10,7 @@ Verify that all Phase A UI widget primitives (Button, Label, TextField, Checkbox
 
 1. **Button state transitions**: Clicking a normal ButtonWidget changes its `data-state` attribute from `"normal"` to `"pressed"` within 50ms of mousedown, and back to `"normal"` on mouseup. The `data-state="disabled"` attribute persists on disabled buttons regardless of clicks. The `data-state="hover"` attribute appears when the mouse enters the button bounds. Highlighted buttons have `data-highlighted="true"` set permanently.
 
-2. **TextField input responsiveness**: Typing in the TextFieldWidget updates the status bar text within 50ms of each keystroke. The placeholder text "Enter your name..." displays in the disabled-style text color (#888888) when the field is empty. The disabled field shows `cursor: not-allowed` and rejects all input.
+2. **TextField input responsiveness**: Typing in the TextFieldWidget updates the status bar text within 50ms of each keystroke. The placeholder text "Enter your name..." displays in a grayed-out color when the field is empty (typically #888888 or similar; the exact shade is browser-dependent for native placeholder styling). The disabled field shows `cursor: not-allowed` and rejects all input.
 
 3. **Checkbox toggle**: Clicking an unchecked CheckboxWidget toggles `data-checked` from `"false"` to `"true"` and the checkmark character ("✓") appears. Clicking again toggles back. The disabled checkbox does not respond to clicks and shows opacity at 0.5.
 

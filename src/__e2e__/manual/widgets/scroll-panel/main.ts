@@ -122,12 +122,14 @@ function mountWidget(widget: Widget, parent: HTMLElement): void {
   for (const type of eventTypes) {
     parent.addEventListener(type, (e: Event) => {
       const me = e as MouseEvent
+      // Transform screen-absolute clientX/Y to container-relative coordinates
+      const rect = parent.getBoundingClientRect()
       const widgetEvent: WidgetEvent = {
         type,
         stopPropagation: () => e.stopPropagation(),
         target: me.target as HTMLElement | null,
-        clientX: me.clientX,
-        clientY: me.clientY,
+        clientX: me.clientX - rect.left,
+        clientY: me.clientY - rect.top,
         button: me.button,
         deltaY: (e as WheelEvent).deltaY,
         key: (e as KeyboardEvent).key,
