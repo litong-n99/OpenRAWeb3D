@@ -21,6 +21,7 @@ import { TextAlign } from './TextAlign.js'
 import { ChromeMetrics } from '../../OpenRA.Game/Widgets/ChromeMetrics.js'
 import { Hotkey } from '../../OpenRA.Game/Input/HotkeyReference.js'
 import { KeyCode } from '../../OpenRA.Game/Input/Keycode.js'
+import { Modifiers } from '../../OpenRA.Game/Input/IInputHandler.js'
 import type { WidgetEvent } from '../../OpenRA.Game/Widgets/Widget.js'
 
 // ---------------------------------------------------------------------------
@@ -551,6 +552,119 @@ describe('ButtonWidget', () => {
       expect(result).toBe(true)
       expect(keyPressed).toBe(false)
     })
+
+    it('does NOT fire when modifier-required hotkey pressed without modifiers', () => {
+      // Hotkey: Ctrl+S, pressing plain S should not activate
+      const btn = new ButtonWidget()
+      btn.key = new Hotkey(KeyCode.S, Modifiers.Ctrl)
+
+      let keyPressed = false
+      btn.onKeyPress = () => {
+        keyPressed = true
+      }
+
+      // Press plain 's' without Ctrl modifier
+      const result = btn.handleEvent(
+        makeKeyEvent('s', { ctrlKey: false, altKey: false, shiftKey: false, metaKey: false }),
+      )
+
+      expect(keyPressed).toBe(false)
+      expect(result).toBe(false)
+    })
+
+    it('fires when modifier-required hotkey pressed with correct modifiers', () => {
+      // Hotkey: Ctrl+S, pressing Ctrl+S should activate
+      const btn = new ButtonWidget()
+      btn.key = new Hotkey(KeyCode.S, Modifiers.Ctrl)
+
+      let keyPressed = false
+      btn.onKeyPress = () => {
+        keyPressed = true
+      }
+
+      // Press 's' with Ctrl modifier
+      const result = btn.handleEvent(
+        makeKeyEvent('s', { ctrlKey: true, altKey: false, shiftKey: false, metaKey: false }),
+      )
+
+      expect(keyPressed).toBe(true)
+      expect(result).toBe(true)
+    })
+
+    it('does NOT fire when extra modifiers are pressed beyond what hotkey requires', () => {
+      // Hotkey: Ctrl+S, pressing Ctrl+Shift+S should NOT activate
+      // (OpenRA: IsActivatedBy does exact modifier equality)
+      const btn = new ButtonWidget()
+      btn.key = new Hotkey(KeyCode.S, Modifiers.Ctrl)
+
+      let keyPressed = false
+      btn.onKeyPress = () => {
+        keyPressed = true
+      }
+
+      // Press 's' with Ctrl+Shift modifiers (extra Shift)
+      const result = btn.handleEvent(
+        makeKeyEvent('s', { ctrlKey: true, altKey: false, shiftKey: true, metaKey: false }),
+      )
+
+      expect(keyPressed).toBe(false)
+      expect(result).toBe(false)
+    })
+
+    it('does NOT fire when hotkey has no modifiers but event has modifiers', () => {
+      // Hotkey: S (no modifier), pressing Ctrl+S should NOT activate
+      const btn = new ButtonWidget()
+      btn.key = new Hotkey(KeyCode.S, Modifiers.None)
+
+      let keyPressed = false
+      btn.onKeyPress = () => {
+        keyPressed = true
+      }
+
+      // Press 's' with Ctrl modifier (hotkey requires none)
+      const result = btn.handleEvent(
+        makeKeyEvent('s', { ctrlKey: true, altKey: false, shiftKey: false, metaKey: false }),
+      )
+
+      expect(keyPressed).toBe(false)
+      expect(result).toBe(false)
+    })
+
+    it('fires when hotkey has multiple modifiers and event matches exactly', () => {
+      // Hotkey: Ctrl+Shift+Enter, pressing Ctrl+Shift+Enter should activate
+      const btn = new ButtonWidget()
+      btn.key = new Hotkey(KeyCode.RETURN, Modifiers.Ctrl | Modifiers.Shift)
+
+      let keyPressed = false
+      btn.onKeyPress = () => {
+        keyPressed = true
+      }
+
+      const result = btn.handleEvent(
+        makeKeyEvent('Enter', { ctrlKey: true, altKey: false, shiftKey: true, metaKey: false }),
+      )
+
+      expect(keyPressed).toBe(true)
+      expect(result).toBe(true)
+    })
+
+    it('does NOT fire when hotkey has multiple modifiers but event misses one', () => {
+      // Hotkey: Ctrl+Shift+Enter, pressing only Ctrl+Enter should NOT activate
+      const btn = new ButtonWidget()
+      btn.key = new Hotkey(KeyCode.RETURN, Modifiers.Ctrl | Modifiers.Shift)
+
+      let keyPressed = false
+      btn.onKeyPress = () => {
+        keyPressed = true
+      }
+
+      const result = btn.handleEvent(
+        makeKeyEvent('Enter', { ctrlKey: true, altKey: false, shiftKey: false, metaKey: false }),
+      )
+
+      expect(keyPressed).toBe(false)
+      expect(result).toBe(false)
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -708,12 +822,14 @@ describe('ButtonWidget', () => {
   })
 
   describe('usableWidth', () => {
-    it('returns bounds width minus left and right margins', () => {
+    it('returns bounds.width to match OpenRA (margins handled by CSS flexbox)', () => {
       const btn = new ButtonWidget()
       btn.bounds = { x: 0, y: 0, width: 200, height: 40 }
       btn.leftMargin = 10
       btn.rightMargin = 20
-      expect(btn.usableWidth).toBe(170)
+      // OpenRA: UsableWidth returns Bounds.Width (full width).
+      // Margins are applied separately in GetTextPosition; CSS flexbox handles centering.
+      expect(btn.usableWidth).toBe(200)
     })
   })
 

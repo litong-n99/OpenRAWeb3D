@@ -28,6 +28,7 @@ import type { Color } from './LabelWidget.js'
 
 import { Hotkey } from '../../OpenRA.Game/Input/HotkeyReference.js'
 import { KeyCode, keyName } from '../../OpenRA.Game/Input/Keycode.js'
+import { Modifiers } from '../../OpenRA.Game/Input/IInputHandler.js'
 
 // ---------------------------------------------------------------------------
 // Sound callback — 可替换的声音播放回调
@@ -651,6 +652,18 @@ export class ButtonWidget extends InputWidget {
 
     if (!keyMatches) return false
 
+    // OpenRA: Hotkey.IsActivatedBy does exact modifier equality check
+    // (Key == e.Key && Modifiers == e.Modifiers)
+    // Build modifier bitmask from DOM event to compare against hotkey's modifiers
+    let eventModifiers = Modifiers.None
+    if (event.ctrlKey) eventModifiers |= Modifiers.Ctrl
+    if (event.altKey) eventModifiers |= Modifiers.Alt
+    if (event.shiftKey) eventModifiers |= Modifiers.Shift
+    if (event.metaKey) eventModifiers |= Modifiers.Meta
+
+    const modifiersMatch = eventModifiers === this.key.modifiers
+    if (!modifiersMatch) return false
+
     // OpenRA: e.Event != KeyInputEvent.Down → return false
     if (event.type !== 'keydown') return false
 
@@ -847,11 +860,17 @@ export class ButtonWidget extends InputWidget {
   }
 
   /**
-   * 获取可用宽度（bounds.width 减去左右边距）。
-   * OpenRA 对照: ButtonWidget.UsableWidth
+   * 获取可用宽度。
+   *
+   * OpenRA 对照: ButtonWidget.UsableWidth → Bounds.Width
+   *
+   * NOTE: 返回 bounds.width (不含边距) 以匹配 OpenRA。
+   * DOM 渲染中文本居中由 CSS flexbox 处理，左右边距通过 paddingLeft/paddingRight
+   * 在 _renderText() 中单独应用。外部代码（如 DropDownButtonWidget）访问此属性
+   * 进行布局计算时获得与 OpenRA 一致的值。
    */
   get usableWidth(): number {
-    return this.bounds.width - this.leftMargin - this.rightMargin
+    return this.bounds.width
   }
 
   // ---------------------------------------------------------------------------
