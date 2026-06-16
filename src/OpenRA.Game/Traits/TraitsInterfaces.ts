@@ -1053,10 +1053,14 @@ export interface INotifyPlayerDisconnected {
  * Provides trait data for game save serialization.
  *
  * OpenRA 对照: IGameSaveTraitData
+ *
+ * NOTE: Per ADR-17.5, trait data uses JSON-compatible Record<string, any>
+ * instead of MiniYaml nodes. The GameSave class (Ch17 Phase C) stores
+ * trait data as JSON strings within the .orasav binary format.
  */
 export interface IGameSaveTraitData {
-  issueTraitData(actor: IGameActor): MiniYamlStub[]
-  resolveTraitData(actor: IGameActor, data: MiniYamlStub): void
+  issueTraitData(actor: IGameActor): Record<string, any> | null
+  resolveTraitData(actor: IGameActor, data: Record<string, any>): void
 }
 
 // ---------------------------------------------------------------------------
