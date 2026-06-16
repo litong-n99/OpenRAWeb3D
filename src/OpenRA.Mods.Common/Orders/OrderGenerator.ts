@@ -86,9 +86,14 @@ export abstract class OrderGenerator implements IOrderGenerator {
   // Static
   // ---------------------------------------------------------------------------
 
-  /** Unique key for serialization/hotkey lookup.
+  /** Unique key for serialization and hotkey lookup.
    *
-   * OpenRA 对照: (convention — C# uses GetType().Name)
+   * TS-only extension: OpenRA uses `GetType().Name` via C# reflection to
+   * identify generators at runtime (e.g., for hotkey dispatch). TypeScript
+   * has no runtime type-name reflection, so each concrete generator passes
+   * its key explicitly at construction time. This field serves the same
+   * purpose — serialization, logging, and hotkey-to-generator mapping —
+   * without requiring a reflection API.
    */
   readonly orderGeneratorKey: string
 
@@ -295,7 +300,13 @@ export abstract class OrderGenerator implements IOrderGenerator {
    *
    * OpenRA 对照: protected abstract IEnumerable<IRenderable> Render(WorldRenderer, World)
    *
-   * Default is a no-op. Most generators render above the shroud.
+   * NOTE: OpenRA declares this as `protected abstract`, forcing every concrete
+   * generator to implement it even when it has no renderables. Most generators
+   * return an empty enumerable in practice, and the real render dispatch is
+   * handled by {@link renderAboveShroud} and {@link renderAnnotations} via
+   * `WorldInteractionControllerWidget`. This base class therefore makes it a
+   * virtual no-op — subclasses only override it if they genuinely need
+   * below-shroud rendering.
    */
   render(
     _worldRenderer: WorldRendererStub,

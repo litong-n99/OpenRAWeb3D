@@ -1143,6 +1143,12 @@ export interface IValidateOrder {
  * Each order generator specifies its action type, and the game settings
  * map this to a concrete mouse button (e.g., left-click, right-click)
  * based on the player's configured mouse control style.
+ *
+ * TODO-15.B / TODO-16: OpenRA defines a 5th value `SupportPower` (numeric 4)
+ * used by support power order generators (e.g., Chronoshift, GPS, Nuke).
+ * It is excluded here because no migrated code currently references it.
+ * Restore it when support power order generators are migrated into
+ * Chapter 15 (Order Generators) or Chapter 16 (UI Widget Extensions).
  */
 export const MouseActionType = {
   /** Context-sensitive orders (e.g., move, attack, repair) — default right-click. */
