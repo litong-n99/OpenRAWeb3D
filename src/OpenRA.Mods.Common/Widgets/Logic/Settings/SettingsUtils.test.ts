@@ -187,8 +187,9 @@ describe('SettingsUtils', () => {
 
       SettingsUtils.adjustSettingsScrollPanelLayout(scrollPanel)
 
-      expect(row1.visible).toBe(true) // 有可见子 widget
-      expect(row2.visible).toBe(false) // 没有可见子 widget
+      // row.visible property is NOT changed — row.isVisible delegate is set instead
+      expect(row1.isVisible()).toBe(true) // has visible child widgets
+      expect(row2.isVisible()).toBe(false) // no visible child widgets — hidden via delegate
     })
 
     it('should skip rows with no children', () => {
@@ -201,7 +202,7 @@ describe('SettingsUtils', () => {
       expect(() =>
         SettingsUtils.adjustSettingsScrollPanelLayout(scrollPanel),
       ).not.toThrow()
-      expect(emptyRow.visible).toBe(true) // 空行保持可见
+      expect(emptyRow.isVisible()).toBe(true) // 空行保持可见
     })
 
     it('should handle rows where at least one container has visible children', () => {
@@ -221,7 +222,9 @@ describe('SettingsUtils', () => {
 
       SettingsUtils.adjustSettingsScrollPanelLayout(scrollPanel)
 
-      expect(row.visible).toBe(true) // 至少一个容器有可见子 widget
+      // isVisible delegate is used — row should remain visible since
+      // at least one container has visible children
+      expect(row.isVisible()).toBe(true)
     })
   })
 
