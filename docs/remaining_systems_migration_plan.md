@@ -570,18 +570,25 @@ Menu screen behavior classes (ChromeLogic subclasses) for main menu, lobby, sett
 
 **Objective**: Implement replay recording and playback, game save serialization.
 
+> **Detailed Plan**: [docs/chapter17_replay_save_system_migration_plan.md](docs/chapter17_replay_save_system_migration_plan.md) — 8 files, 4 phases A-D, ~1,448 C# lines
+
 **Prerequisites**: Chapter 6 Phase A (Order + Connection)
 
-| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
-|:---:|:---|:---|:---:|:---:|
-| 1 | `Network/ReplayRecorder.cs` | `src/OpenRA.Game/Network/ReplayRecorder.ts` | 119 | MEDIUM |
-| 2 | `Network/ReplayConnection.cs` | `src/OpenRA.Game/Network/ReplayConnection.ts` | 136 | MEDIUM |
-| 3 | `Network/GameSave.cs` | `src/OpenRA.Game/Network/GameSave.ts` | 333 | HIGH |
-| 4 | `Network/SyncReport.cs` | `src/OpenRA.Game/Network/SyncReport.ts` | 342 | MEDIUM |
-| 5 | `Traits/AutoSave.cs` | `src/OpenRA.Mods.Common/Traits/AutoSave.ts` | -- | LOW |
-| 6 | `Traits/GameSaveViewportManager.cs` | `src/OpenRA.Mods.Common/Traits/GameSaveViewportManager.ts` | -- | LOW |
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity | Phase |
+|:---:|:---|:---|:---:|:---:|:---:|
+| 1 | `OpenRA.Game/GameInformation.cs` | `src/OpenRA.Game/GameInformation.ts` | 237 | MEDIUM | A |
+| 2 | `OpenRA.Game/FileFormats/ReplayMetadata.cs` | `src/OpenRA.Game/FileFormats/ReplayMetadata.ts` | 110 | MEDIUM | A |
+| 3 | `Network/ReplayRecorder.cs` | `src/OpenRA.Game/Network/ReplayRecorder.ts` | 119 | MEDIUM | B |
+| 4 | `Network/ReplayConnection.cs` | `src/OpenRA.Game/Network/ReplayConnection.ts` | 136 | MEDIUM | B |
+| 5 | `Network/GameSave.cs` | `src/OpenRA.Game/Network/GameSave.ts` | 333 | HIGH | C |
+| 6 | `Network/SyncReport.cs` | `src/OpenRA.Game/Network/SyncReport.ts` | 342 | MEDIUM | D |
+| 7 | `Traits/World/AutoSave.cs` | `src/OpenRA.Mods.Common/Traits/World/AutoSave.ts` | 106 | LOW | D |
+| 8 | `Traits/Player/GameSaveViewportManager.cs` | `src/OpenRA.Mods.Common/Traits/Player/GameSaveViewportManager.ts` | 65 | LOW | D |
 
-**ADR-17.1**: Replay files stored as gzipped MessagePack binary blobs. Replay playback uses `EchoConnection`-equivalent to feed recorded orders frame-by-frame into OrderManager.
+**ADR-17.1**: Binary format parity with OpenRA desktop (.orarep/.orasav). Browser storage via IndexedDB + OPFS with `IStorageProvider` abstraction.
+**ADR-17.2**: `ReplayConnection` implements existing `IConnection` interface from Ch6 — transparent to OrderManager.
+**ADR-17.3**: `LocalGameCoordinator` virtual server pattern for single-player save/load (replaces Server.cs coupling).
+**ADR-17.4**: Build-time code generation for SyncReport trait value extraction (extends `sync-hash-generator.ts` from Ch6 Phase B).
 
 ---
 
