@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 18 -- Server System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.6 (Network/Server) + Section 4.3 (Traits)
-> **Chapter Status**: IMPLEMENTING (3/9 migrated, 33%, Phase A COMPLETE)
+> **Chapter Status**: IMPLEMENTING (5/9 files, 55.6%, Phase A COMPLETE, Phase B COMPLETE)
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%), Chapter 6 Phase A (Order + Connection + OrderManager) COMPLETE, Chapter 6 Phase B (Sync hash) COMPLETE, Chapter 17 COMPLETE (GameSave, ReplayRecorder, ReplayConnection)
 >
@@ -124,10 +124,10 @@ The following infrastructure from Chapters 2-7 and Chapter 17 is available for C
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
 | A: Protocol and Interfaces | 3 | 169 | 504 | 52 | COMPLETE |
-| B: Server Core | 1 | 1,594 | ~2,200 | ~80 | NOT STARTED |
+| B: Server Core | 2 | ~2,290 | ~3,094 | 87 | COMPLETE |
 | C: Connection Layer | 2 | 359 | ~800 | ~45 | NOT STARTED |
 | D: Support Systems | 3 | 415 | ~900 | ~50 | NOT STARTED |
-| **Total** | **9** | **~2,537** | **~4,400** | **~205** | **IMPLEMENTING (Phase A COMPLETE)** |
+| **Total** | **9** | **~3,233** | **~5,298** | **~234** | **IMPLEMENTING (55.6%, Phase A+B COMPLETE)** |
 
 ---
 
@@ -203,7 +203,7 @@ The following infrastructure from Chapters 2-7 and Chapter 17 is available for C
 
 ### 3.2 Phase B: Server Core
 
-**Status**: NOT STARTED (0/1 + 1 support module)
+**Status**: COMPLETE (2/2 migrated, 87 tests)
 **Complexity**: HIGHEST (1594 lines C#)
 **Blocked by**: Phase A (ProtocolVersion constants, TraitInterfaces), Chapter 6 Phase A (Order, OrderManager types), Chapter 6 Phase C (Session types), Chapter 17 Phase A (GameInformation), Chapter 17 Phase B (ReplayRecorder), Chapter 17 Phase C (GameSave)
 **Blocks**: Phase C (Connection.ts is constructed by Server, calls back to Server methods), Phase D (all support systems receive Server reference)
@@ -238,7 +238,7 @@ The biggest paradigm shift is replacing the thread-based event loop (`BlockingCo
 
 #### 3.2.0 SessionTypes Support Module
 
-- [ ] **TODO-18.B.0** `src/OpenRA.Game/Server/SessionTypes.ts` -- Full Session type definitions (support module for Server.ts):
+- [x] **TODO-18.B.0** `src/OpenRA.Game/Server/SessionTypes.ts` -- Full Session type definitions (support module for Server.ts):
   - `export enum ConnectionQuality { Good = 0, Moderate = 1, Poor = 2 }`
   - `export enum ClientState { NotReady = 0, Ready = 1, Invalid = 2 }`
   - `export enum WinState { Undefined = 0, Won = 1, Lost = 2 }`
@@ -270,7 +270,7 @@ The biggest paradigm shift is replacing the thread-based event loop (`BlockingCo
 
 #### 3.2.1 Server
 
-- [ ] **TODO-18.B.1** `src/OpenRA.Game/Server/Server.ts` (1594 lines C#) -- Complete game server orchestrator. Since this is the most complex file, the implementation is divided into 8 sub-tasks:
+- [x] **TODO-18.B.1** `src/OpenRA.Game/Server/Server.ts` (1594 lines C#) -- Complete game server orchestrator. Since this is the most complex file, the implementation is divided into 8 sub-tasks:
 
 **Sub-task 18.B.1a -- Transport Abstraction and Server Setup** (estimated ~200 lines):
   - Define `IServerTransport` interface:
@@ -513,7 +513,7 @@ The biggest paradigm shift is replacing the thread-based event loop (`BlockingCo
 - `DataView` little-endian on all multi-byte writes; validate with known reference frames from C# output
 - `RecordOrder` checks for sync hash packet by examining `data[0]` byte before forwarding
 
-**Phase B Summary**: 1 core file + 1 support module. Target: `SessionTypes.ts` + `Server.ts`. Estimated ~80 tests (~3,000 test lines). This is the most complex single-file migration in Chapters 16-21 and requires deep familiarity with both the C# server architecture and Node.js WebSocket APIs. Developer should implement sub-tasks in order (a -> b -> c -> d -> e -> f -> g -> h).
+**Phase B Summary**: COMPLETE. 2 files migrated: `SessionTypes.ts` (696 lines, 35 tests), `Server.ts` (2,398 lines, 52 tests). Total: ~3,094 TS implementation lines, 87 tests (35 + 52). Commits: `374e0ad` (initial implementation). Review: R2 APPROVED (2 review rounds).
 
 ---
 
