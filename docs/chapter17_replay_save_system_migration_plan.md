@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 17 — Replay & Save System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.6 (Network/Replay) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (4/8 migrated, 50%, Phases A+B COMPLETE)
+> **Chapter Status**: IN PROGRESS (5/8 migrated, 62.5%, Phases A+B+C COMPLETE)
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%), Chapter 6 Phase A (Order + Connection) COMPLETE
 >
@@ -130,7 +130,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 17:
 |:---|:---:|:---:|:---:|:---:|:---|
 | A: Foundation | 2 | 347 | 482+274=~756 | ~61 | ✅ COMPLETE |
 | B: Replay | 2 | 255 | 336+508=~844 | ~51 | ✅ COMPLETE |
-| C: GameSave | 1 | 333 | ~1,000 | ~35 | PLANNING |
+| C: GameSave | 1 | 333 | ~1,215 | ~69 | ✅ COMPLETE |
 | D: SyncReport + Traits | 3 | 513 | ~900 | ~45 | PLANNING |
 | **Total** | **8** | **~1,448** | **~3,250** | **~160** | **PLANNING** |
 
@@ -286,9 +286,10 @@ The replay binary format is simple: each packet is `[clientID: int32][dataLength
 
 ### 3.3 Phase C: Game Save System
 
-**Status**: 📋 PLANNING (0/1 migrated)
-**Complexity**: **HIGH** (complex binary format, trait data collection across actors, slot-client remapping)
-**Blocked by**: Phase A (ReplayMetadata — shares binary serialization patterns), Chapter 6 Phase A (Order, Connection, OrderManager, Session types), Chapter 6 Phase C (Ruleset for MapCache)
+**Status**: ✅ COMPLETE (1/1 migrated, 69 tests)
+**Complexity**: HIGH
+**Review**: PENDING (commit `6a9a9ef`)
+**Blocked by**: Phase A (ReplayMetadata — shares binary serialization patterns), Chapter 6 Phase A (Order, Connection, OrderManager, Session types), Chapter 6 Phase C (Ruleset for MapCache) — COMPLETE
 **Blocks**: Phase D (AutoSave triggers GameSave; GameSaveViewportManager implements IGameSaveTraitData consumed by GameSave)
 
 **Description**: Phase C is the most complex single file in Chapter 17. `GameSave` handles the complete save/load lifecycle: capturing all game state (network orders, sync hash, lobby configuration, slot-client mappings, trait-specific data) into a binary `.orasav` file, and restoring that state during load. It includes the `SlotClient` inner class for serializing client state (faction, team, color, spawn point).
@@ -314,7 +315,7 @@ The critical architectural consideration is that `GameSave.DispatchOrders()` and
 
 #### 3.3.1 GameSave + SlotClient
 
-- [ ] **TODO-17.C.1** `src/OpenRA.Game/Network/GameSave.ts` (333 lines C#) — Complete game save serialization/deserialization:
+- [x] **TODO-17.C.1** `src/OpenRA.Game/Network/GameSave.ts` (333 lines C#) ✅ — Complete game save serialization/deserialization:
 
   **Constants & Core State**:
   - `EOFMarker = -2`, `MetadataMarker = -1`, `TraitDataMarker = -3`
