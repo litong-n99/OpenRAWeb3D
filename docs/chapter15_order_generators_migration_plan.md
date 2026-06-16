@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 15 -- Order Generators
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.4 (Orders/OrderGenerators) + Section 4.3 (Traits/Interfaces)
-> **Chapter Status**: PHASE A COMPLETE (3/11 migrated, 2 New + 1 Verified; 8 pending in Phases B-C). APPROVED (R1, 0 BLOCKERs, 0 MAJORs, 3 MINORs)
+> **Chapter Status**: PHASES A-B COMPLETE (7/11 migrated, 6 New + 1 Verified; 4 pending in Phase C). Phase A: APPROVED (R1, 0 BLOCKERs, 0 MAJORs, 3 MINORs). Phase B: APPROVED (R2, 0 BLOCKERs, 0 MAJORs, 0 MINORs)
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-14 COMPLETE (all foundation layers ready)
 >
@@ -97,10 +97,10 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 | 5 | `OpenRA.Mods.Common/Orders/EnterAlliedActorTargeter.cs` | `src/OpenRA.Mods.Common/Orders/EnterAlliedActorTargeter.ts` | `EnterAlliedActorTargeter` | 49 | LOW | A | 📋 PENDING |
 
 | **Phase B: Core Order Generators** | | | | | | | |
-| 6 | `OpenRA.Mods.Common/Orders/UnitOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/UnitOrderGenerator.ts` | `UnitOrderGenerator` | 224 | **HIGH** | B | 📋 PENDING |
-| 7 | `OpenRA.Mods.Common/Orders/RepairOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/RepairOrderGenerator.ts` | `RepairOrderGenerator` | 87 | LOW | B | 📋 PENDING |
-| 8 | `OpenRA.Mods.Common/Orders/BeaconOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/BeaconOrderGenerator.ts` | `BeaconOrderGenerator` | 39 | LOW | B | 📋 PENDING |
-| 9 | `OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.ts` | `GlobalButtonOrderGenerator` + `PowerDownOrderGenerator` + `SellOrderGenerator` | 95 | MEDIUM | B | 📋 PENDING |
+| 6 | `OpenRA.Mods.Common/Orders/UnitOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/UnitOrderGenerator.ts` | `UnitOrderGenerator` | 224 | **HIGH** | B | ✅ MIGRATED |
+| 7 | `OpenRA.Mods.Common/Orders/RepairOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/RepairOrderGenerator.ts` | `RepairOrderGenerator` | 87 | LOW | B | ✅ MIGRATED |
+| 8 | `OpenRA.Mods.Common/Orders/BeaconOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/BeaconOrderGenerator.ts` | `BeaconOrderGenerator` | 39 | LOW | B | ✅ MIGRATED |
+| 9 | `OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.ts` | `GlobalButtonOrderGenerator` + `PowerDownOrderGenerator` + `SellOrderGenerator` | 95 | MEDIUM | B | ✅ MIGRATED |
 
 | **Phase C: Extended Generators** | | | | | | | |
 | 10 | `OpenRA.Mods.Common/Orders/GuardOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/GuardOrderGenerator.ts` | `GuardOrderGenerator` | 85 | LOW | C | 📋 PENDING |
@@ -130,10 +130,10 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 | Phase | Pending Files | C# Lines | Est. TS Lines | Est. Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
 | A: Foundation | 0 | 110 | ~537 (done) | 59 (done) | ✅ COMPLETE |
-| B: Core Generators | 4 | 445 | ~800 | ~920 | 📋 PLANNING |
+| B: Core Generators | 0 | 445 | ~1,080 (done) | 104 (done) | ✅ COMPLETE |
 | C: Extended Generators | 2 | 131 | ~230 | ~380 | 📋 PLANNING |
 | Already migrated (Ch11) | 3 | 471 | ~2,200 (done) | ~1,700 (done) | COMPLETE |
-| **Total** | **11** | **~1,217** | **~537 new + ~2,200 done** | **59 new + ~1,700 done** | — |
+| **Total** | **11** | **~1,217** | **~1,617 new + ~2,200 done** | **163 new + ~1,700 done** | — |
 
 ---
 
@@ -216,9 +216,9 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 ### 3.2 Phase B: Core Order Generators
 
-**Status**: 📋 PLANNING (4 files pending, 1 already migrated)
-**Complexity**: LOW-HIGH (UnitOrderGenerator 224 lines HIGH, others LOW)
-**Blocked by**: Phase A (OrderGenerator abstract base — TODO-15.A.2)
+**Status**: ✅ COMPLETE (4 files migrated, 104 tests, APPROVED R2)
+**Complexity**: LOW-HIGH (UnitOrderGenerator ~460 TS lines HIGH, others LOW)
+**Blocked by**: Phase A (OrderGenerator abstract base — TODO-15.A.2) ✅ SATISFIED
 **Blocks**: Phase C (GuardOrderGenerator and ForceModifiersOrderGenerator extend UnitOrderGenerator), Chapter 16 (UI widgets use order generators for context-sensitive commands)
 
 **Description**: Phase B implements the concrete order generators that process player input and produce `Order` objects. `UnitOrderGenerator` (224 lines, HIGH) is the critical file — it handles all standard unit commands (attack, move, repair, capture, guard, deploy) by iterating through selected actors, resolving `IOrderTargeter` instances from their `IIssueOrder` traits, and picking the highest-priority matching targeter for the clicked target. The remaining generators are small, focused implementations for specific commands: repair cursor mode, global ability buttons (sell, power down), and beacon placement. `PlaceBuildingOrderGenerator` was already fully migrated in Chapter 11.
@@ -233,7 +233,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.2.1 UnitOrderGenerator
 
-- [ ] **TODO-15.B.1** `src/OpenRA.Mods.Common/Orders/UnitOrderGenerator.ts` (224 lines C#) — Main unit command order generator:
+- [x] **TODO-15.B.1** `src/OpenRA.Mods.Common/Orders/UnitOrderGenerator.ts` (~460 lines TS, 42 tests) — Main unit command order generator:
   - **C# reference**: `OpenRA.Mods.Common/Orders/UnitOrderGenerator.cs` (224 lines)
   - Implements `IOrderGenerator` (extends `OrderGenerator` abstract base)
   - `actionType: MouseActionType.Contextual` — right-click by default in standard mouse control
@@ -278,7 +278,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.2.2 RepairOrderGenerator
 
-- [ ] **TODO-15.B.2** `src/OpenRA.Mods.Common/Orders/RepairOrderGenerator.ts` (87 lines C#) — Repair cursor mode generator:
+- [x] **TODO-15.B.2** `src/OpenRA.Mods.Common/Orders/RepairOrderGenerator.ts` (~200 lines TS, 21 tests) — Repair cursor mode generator:
   - **C# reference**: `OpenRA.Mods.Common/Orders/RepairOrderGenerator.cs` (87 lines)
   - Extends `OrderGenerator` (not UnitOrderGenerator — uses simple cell-based repair targeting)
   - `actionType: MouseActionType.GlobalCommand` — global command button mapping
@@ -298,7 +298,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.2.3 BeaconOrderGenerator
 
-- [ ] **TODO-15.B.3** `src/OpenRA.Mods.Common/Orders/BeaconOrderGenerator.ts` (39 lines C#) — Beacon placement generator:
+- [x] **TODO-15.B.3** `src/OpenRA.Mods.Common/Orders/BeaconOrderGenerator.ts` (~120 lines TS, 13 tests) — Beacon placement generator:
   - **C# reference**: `OpenRA.Mods.Common/Orders/BeaconOrderGenerator.cs` (39 lines)
   - Extends `OrderGenerator` — simple one-shot generator
   - `actionType: MouseActionType.PlaceBuilding` — reuses building placement button
@@ -312,7 +312,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.2.4 GlobalButtonOrderGenerator
 
-- [ ] **TODO-15.B.4** `src/OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.ts` (95 lines C#) — Global ability button generator (generic base + 2 concretions):
+- [x] **TODO-15.B.4** `src/OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.ts` (~300 lines TS, 28 tests) — Global ability button generator (generic base + 2 concretions):
   - **C# reference**: `OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.cs` (95 lines)
   - C# `GlobalButtonOrderGenerator<T> where T : class` → TS: constructor takes `traitKey: string` instead of generic type parameter
   - Extends `OrderGenerator`
@@ -334,7 +334,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
     - `getCursor`: iterates `Sellable` traits on order subject, returns first non-null `sellable.info.cursor` or `"sell-blocked"`
   - **Precision requirement**: Dependencies on `ToggleConditionOnOrder` and `Sellable` trait interfaces — define minimal stubs
 
-**Phase B Summary**: 5 item slots (4 new + 1 already migrated). ~445 C# lines source. UnitOrderGenerator (224 lines) is the critical-path file with HIGH complexity. Estimated ~800 TS implementation lines + ~920 test lines.
+**Phase B Summary**: 5 item slots (4 new + 1 already migrated from Ch11). ~445 C# lines source. Delivered ~1,080 TS implementation lines (UnitOrderGenerator ~460 + RepairOrderGenerator ~200 + BeaconOrderGenerator ~120 + GlobalButtonOrderGenerator ~300) + 4 test files. 104 tests (42+21+13+28) all passing. Review: APPROVED (R2, 0 BLOCKERs, 0 MAJORs, 0 MINORs). Commits: `5070c5b` (implementation), `5d1f760` (review fixes). Phase B unblocks Phase C (GuardOrderGenerator and ForceModifiersOrderGenerator extend UnitOrderGenerator).
 
 ---
 
