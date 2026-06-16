@@ -137,7 +137,7 @@ export const OrderType = {
   Disconnect: 0xbf,
   /** Handshake / ServerOrders: [key: string][value: string] */
   Handshake: 0xfe,
-  /** World order: [orderName: string][orderFields: byte][orderData: ...] */
+  /** World order (C# enum name: `OrderType.Fields`): [orderName: string][orderFields: byte][orderData: ...] */
   WorldOrder: 0xff,
   /** Order acknowledgement: [frame: int32][count: byte] */
   Ack: 0x10,

@@ -18,6 +18,9 @@ import {
   type IEndGame,
 } from './TraitInterfaces';
 
+// NOTE: INotifyServerEmpty, IClientJoined, ITick are tested via `in` operator
+// checks (they aren't imported because DebugServerTrait doesn't implement them)
+
 // ---------------------------------------------------------------------------
 // Type stubs for forward-referenced Server/Connection/SessionClient
 // ---------------------------------------------------------------------------
