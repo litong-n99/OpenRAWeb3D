@@ -530,6 +530,152 @@ describe('ProductionPaletteWidget', () => {
   })
 
   // -----------------------------------------------------------------------
+  // Clock angle formula — cost-based ratio, unwinds from 360→0
+  // -----------------------------------------------------------------------
+
+  it('clock angle uses remainingCost/totalCost ratio and unwinds from 360 to 0', () => {
+    // totalCost=100, remainingCost=100 → angle=360 (full circle, not started paying)
+    const actor1 = mockActorInfo('e1')
+    const itemFull = mockProductionItem({
+      item: 'e1',
+      totalCost: 100,
+      remainingCost: 100,
+      totalTime: 100,
+      remainingTime: 100,
+    })
+    const queue1 = mockProductionQueue({
+      allItems: () => [actor1],
+      buildableItems: () => [actor1],
+      allQueued: () => [itemFull],
+      mostLikelyProducer: () => ({ isTraitDisabled: false, info: { produces: new Set(['Building']) } }),
+    })
+    widget.currentQueue = queue1 as unknown as ProductionQueue
+    widget.bounds = { x: 0, y: 0, width: 300, height: 200 }
+
+    const el1 = widget.render()
+    const clockFull = el1.querySelector('.production-clock-overlay') as HTMLElement
+    expect(clockFull).toBeDefined()
+    expect(clockFull.style.background).toContain('360deg')
+
+    // totalCost=100, remainingCost=0 → angle=0 (empty, fully paid)
+    widget.dispose()
+    widget = new ProductionPaletteWidget()
+    widget.id = 'test-palette-2'
+    widget.bounds = { x: 0, y: 0, width: 300, height: 200 }
+
+    const itemEmpty = mockProductionItem({
+      item: 'e1',
+      totalCost: 100,
+      remainingCost: 0,
+      totalTime: 100,
+      remainingTime: 0,
+    })
+    const queue2 = mockProductionQueue({
+      allItems: () => [actor1],
+      buildableItems: () => [actor1],
+      allQueued: () => [itemEmpty],
+      mostLikelyProducer: () => ({ isTraitDisabled: false, info: { produces: new Set(['Building']) } }),
+    })
+    widget.currentQueue = queue2 as unknown as ProductionQueue
+    widget.bounds = { x: 0, y: 0, width: 300, height: 200 }
+
+    const el2 = widget.render()
+    const clockEmpty = el2.querySelector('.production-clock-overlay') as HTMLElement
+    expect(clockEmpty).toBeDefined()
+    expect(clockEmpty.style.background).toContain('0deg')
+
+    // totalCost=100, remainingCost=50 → angle=180 (halfway paid)
+    widget.dispose()
+    widget = new ProductionPaletteWidget()
+    widget.id = 'test-palette-3'
+    widget.bounds = { x: 0, y: 0, width: 300, height: 200 }
+
+    const itemHalf = mockProductionItem({
+      item: 'e1',
+      totalCost: 100,
+      remainingCost: 50,
+      totalTime: 100,
+      remainingTime: 50,
+    })
+    const queue3 = mockProductionQueue({
+      allItems: () => [actor1],
+      buildableItems: () => [actor1],
+      allQueued: () => [itemHalf],
+      mostLikelyProducer: () => ({ isTraitDisabled: false, info: { produces: new Set(['Building']) } }),
+    })
+    widget.currentQueue = queue3 as unknown as ProductionQueue
+    widget.bounds = { x: 0, y: 0, width: 300, height: 200 }
+
+    const el3 = widget.render()
+    const clockHalf = el3.querySelector('.production-clock-overlay') as HTMLElement
+    expect(clockHalf).toBeDefined()
+    expect(clockHalf.style.background).toContain('180deg')
+  })
+
+  it('clock angle defaults to 360 when totalCost is 0 (avoids division by zero)', () => {
+    const actor1 = mockActorInfo('e1')
+    const itemZeroCost = mockProductionItem({
+      item: 'e1',
+      totalCost: 0,
+      remainingCost: 0,
+      totalTime: 0,
+      remainingTime: 0,
+    })
+    const queue = mockProductionQueue({
+      allItems: () => [actor1],
+      buildableItems: () => [actor1],
+      allQueued: () => [itemZeroCost],
+      mostLikelyProducer: () => ({ isTraitDisabled: false, info: { produces: new Set(['Building']) } }),
+    })
+    widget.currentQueue = queue as unknown as ProductionQueue
+    widget.bounds = { x: 0, y: 0, width: 300, height: 200 }
+
+    const el = widget.render()
+    const clock = el.querySelector('.production-clock-overlay') as HTMLElement
+    expect(clock).toBeDefined()
+    // totalCost=0 → ratio=1 → angle=360
+    expect(clock.style.background).toContain('360deg')
+  })
+
+  // -----------------------------------------------------------------------
+  // DOM element caching (FIX 2: avoid per-frame rebuild)
+  // -----------------------------------------------------------------------
+
+  it('caches DOM elements and reuses them when icon set unchanged', () => {
+    const actor1 = mockActorInfo('e1')
+    const actor2 = mockActorInfo('e2', { buildPaletteOrder: 1 })
+    const queue = mockProductionQueue({
+      allItems: () => [actor1, actor2],
+      buildableItems: () => [actor1, actor2],
+      allQueued: () => [],
+      mostLikelyProducer: () => ({ isTraitDisabled: false, info: { produces: new Set(['Building']) } }),
+    })
+    widget.currentQueue = queue as unknown as ProductionQueue
+    widget.bounds = { x: 0, y: 0, width: 300, height: 200 }
+
+    // First render
+    const el = widget.render()
+    const cell1First = el.querySelector('[data-icon-name="e1"]') as HTMLElement
+    const cell2First = el.querySelector('[data-icon-name="e2"]') as HTMLElement
+    expect(cell1First).toBeDefined()
+    expect(cell2First).toBeDefined()
+
+    // Second render with same icons — should reuse cells (not recreate)
+    const el2 = widget.render()
+    const cell1Second = el2.querySelector('[data-icon-name="e1"]') as HTMLElement
+    const cell2Second = el2.querySelector('[data-icon-name="e2"]') as HTMLElement
+    expect(cell1Second).toBeDefined()
+    expect(cell2Second).toBeDefined()
+
+    // With caching, the original cells should still be attached to the same container
+    // (getOrCreateElement returns the same el, so cell1First is still in el)
+    expect(el.contains(cell1First)).toBe(true)
+    expect(el.contains(cell2First)).toBe(true)
+    // And there should still only be 2 icon cells (no duplicates)
+    expect(el.querySelectorAll('[data-icon-name]').length).toBe(2)
+  })
+
+  // -----------------------------------------------------------------------
   // Affordability check (pay-up-front)
   // -----------------------------------------------------------------------
 

@@ -270,6 +270,15 @@ export class ProductionPaletteWidget extends InputWidget {
   /** Track whether we're hovering on a specific icon for cursor purposes. */
   private _hoveredIconName: string | null = null
 
+  /** Cache of rendered icon cell DOM elements, keyed by icon map key.
+   *
+   * OpenRA 对照: No direct C# equivalent (DOM rendering optimization)
+   */
+  private _iconCellCache: Map<string, { cell: HTMLElement; clockOverlay: HTMLElement | null }> = new Map()
+
+  /** Last rendered icon key fingerprint (for DOM rebuild change detection). */
+  private _lastRenderedIconKeys: string = ''
+
   constructor() {
     super()
     this.getTooltipIcon = () => this.tooltipIcon
@@ -1176,11 +1185,9 @@ export class ProductionPaletteWidget extends InputWidget {
 
   /** Render the production palette as a DOM element.
    *
-   * Generates a grid of icon cells, each with:
-   * - Background color representing the sprite (stub)
-   * - Clock progress via CSS conic-gradient
-   * - Overlay text: Ready, Hold, Time, Queue Count
-   * - Hotkey label in top-left corner
+   * Uses element caching: only rebuilds DOM when the icon set changes.
+   * Per-frame clock angle and overlay text updates happen in-place
+   * on cached elements without DOM removal/creation.
    *
    * OpenRA 对照: public override void Draw()
    */
@@ -1196,12 +1203,11 @@ export class ProductionPaletteWidget extends InputWidget {
       el.setAttribute('data-widget-id', this.id)
     }
 
-    // Clear existing content
-    while (el.firstChild) {
-      el.removeChild(el.firstChild)
-    }
-
     if (!this._currentQueue) {
+      // Clear cache and DOM when queue removed
+      while (el.firstChild) el.removeChild(el.firstChild)
+      this._iconCellCache.clear()
+      this._lastRenderedIconKeys = ''
       return el
     }
 
@@ -1209,11 +1215,52 @@ export class ProductionPaletteWidget extends InputWidget {
     const buildableItems = this._currentQueue.buildableItems()
     const buildableNames = new Set(buildableItems.map((a) => a.name))
 
-    // Build icon cells
-    for (const [, entry] of this._icons) {
-      const icon = entry.icon
-      const cell = this._renderIconCell(icon, buildableNames)
-      el.appendChild(cell)
+    // Compute current icon key fingerprint for change detection
+    const currentKeys = Array.from(this._icons.keys()).sort().join('|')
+    const iconSetChanged = currentKeys !== this._lastRenderedIconKeys
+
+    if (iconSetChanged) {
+      // Full rebuild: clear DOM and cache, recreate all cells
+      while (el.firstChild) el.removeChild(el.firstChild)
+      this._iconCellCache.clear()
+
+      for (const [key, entry] of this._icons) {
+        const result = this._renderIconCell(entry.icon, buildableNames)
+        el.appendChild(result.cell)
+        this._iconCellCache.set(key, { cell: result.cell, clockOverlay: result.clockOverlay })
+      }
+      this._lastRenderedIconKeys = currentKeys
+    } else {
+      // Icon set unchanged — update clock angles and overlay text in-place
+      for (const [key, entry] of this._icons) {
+        const cache = this._iconCellCache.get(key)
+        if (!cache) continue
+
+        const icon = entry.icon
+        const hasQueued = icon.queued.length > 0
+        const firstItem = hasQueued ? icon.queued[0] : null
+
+        // Update clock angle on cached clock overlay
+        if (cache.clockOverlay && hasQueued && firstItem) {
+          // NOTE: Uses remainingCost/totalCost ratio to show what REMAINS to pay.
+          // OpenRA C#: clock.PlayFetchIndex(ClockSequence, () =>
+          //   (first.TotalTime - first.RemainingTime) * (seqLen-1) / first.TotalTime);
+          // In the conic-gradient model, remaining ratio gives the unwinding direction:
+          // - remainingCost == totalCost → angle=360 (full circle, not started paying)
+          // - remainingCost == 0 → angle=0 (empty, fully paid)
+          const ratio = firstItem.totalCost > 0
+            ? firstItem.remainingCost / firstItem.totalCost
+            : 1
+          const angle = Math.floor(ratio * 360)
+          cache.clockOverlay.style.background = `conic-gradient(
+            rgba(100,180,255,0.6) ${angle}deg,
+            transparent ${angle}deg
+          )`
+        }
+
+        // Update overlay text in-place (infrequent change, but cheap)
+        this._updateOverlayText(cache.cell, icon, firstItem, buildableNames)
+      }
     }
 
     // Set size to accommodate all icons
@@ -1229,12 +1276,13 @@ export class ProductionPaletteWidget extends InputWidget {
 
   /** Render a single icon cell.
    *
-   * Each cell is a <div> positioned absolutely at the cell's grid position.
+   * Returns the cell element and a reference to the clock overlay (for per-frame
+   * angle updates without DOM queries).
    */
   private _renderIconCell(
     icon: ProductionIcon,
     buildableNames: Set<string>,
-  ): HTMLElement {
+  ): { cell: HTMLElement; clockOverlay: HTMLElement | null } {
     const cell = document.createElement('div')
     cell.className = 'production-icon-cell'
     cell.style.position = 'absolute'
@@ -1263,13 +1311,18 @@ export class ProductionPaletteWidget extends InputWidget {
     }
 
     // ---- Clock progress overlay (CSS conic-gradient) ----
-    if (hasQueued && firstItem) {
-      const progress = firstItem.totalTime > 0
-        ? (firstItem.totalTime - firstItem.remainingTime) / firstItem.totalTime
-        : 0
-      const angle = Math.floor(progress * 360)
+    // NOTE: Uses remainingCost/totalCost ratio for unwinding clock behavior.
+    // OpenRA 对照: clock.PlayFetchIndex(ClockSequence, () =>
+    //   (first.TotalTime - first.RemainingTime) * (seqLen-1) / first.TotalTime)
+    let clockOverlay: HTMLElement | null = null
 
-      const clockOverlay = document.createElement('div')
+    if (hasQueued && firstItem) {
+      const ratio = firstItem.totalCost > 0
+        ? firstItem.remainingCost / firstItem.totalCost
+        : 1
+      const angle = Math.floor(ratio * 360)
+
+      clockOverlay = document.createElement('div')
       clockOverlay.className = 'production-clock-overlay'
       clockOverlay.style.position = 'absolute'
       clockOverlay.style.inset = '4px'
@@ -1284,7 +1337,7 @@ export class ProductionPaletteWidget extends InputWidget {
       // Darken overlay for unbuildable items (already applied via opacity)
     }
 
-    // ---- Text overlays ----
+    // ---- Text overlays container ----
     const overlay = document.createElement('div')
     overlay.className = 'production-overlays'
     overlay.style.position = 'absolute'
@@ -1296,6 +1349,30 @@ export class ProductionPaletteWidget extends InputWidget {
     overlay.style.justifyContent = 'center'
     overlay.style.font = this.overlayFont
     overlay.style.textAlign = 'center'
+
+    cell.appendChild(overlay)
+
+    // Populate overlay text
+    this._populateOverlayText(cell, overlay, icon, firstItem, buildableNames)
+
+    return { cell, clockOverlay }
+  }
+
+  /** Populate overlay text into the cell's overlay container.
+   *
+   * Creates text spans for Ready/Hold/Time/QueueCount/Infinite/Hotkey.
+   * Called both during initial render and during in-place updates.
+   */
+  private _populateOverlayText(
+    cell: HTMLElement,
+    overlay: HTMLElement,
+    icon: ProductionIcon,
+    firstItem: ProductionItem | null,
+    _buildableNames: Set<string>,
+  ): void {
+    overlay.innerHTML = ''
+
+    const hasQueued = icon.queued.length > 0
 
     if (hasQueued && firstItem) {
       if (firstItem.done) {
@@ -1315,10 +1392,19 @@ export class ProductionPaletteWidget extends InputWidget {
         const timeSpan = this._createTextSpan(timeText, this.textColor)
         overlay.appendChild(timeSpan)
       }
+    }
 
+    // Remove old position-absolute overlay children (queue count, infinite, hotkey)
+    const oldAbsolutes = cell.querySelectorAll('.production-cell-absolute')
+    for (let i = 0; i < oldAbsolutes.length; i++) {
+      cell.removeChild(oldAbsolutes[i])
+    }
+
+    if (hasQueued && firstItem) {
       // Queue count (bottom-left)
       if (!firstItem.infinite && (icon.queued.length > 1)) {
         const countLabel = document.createElement('span')
+        countLabel.className = 'production-cell-absolute'
         countLabel.style.position = 'absolute'
         countLabel.style.left = `${this.queuedOffsetX}px`
         countLabel.style.top = `${this.queuedOffsetY}px`
@@ -1331,6 +1417,7 @@ export class ProductionPaletteWidget extends InputWidget {
       // Infinite symbol (top-left)
       if (firstItem.infinite) {
         const infiniteLabel = document.createElement('span')
+        infiniteLabel.className = 'production-cell-absolute'
         infiniteLabel.style.position = 'absolute'
         infiniteLabel.style.left = `${this.queuedOffsetX}px`
         infiniteLabel.style.top = `${this.queuedOffsetY}px`
@@ -1344,6 +1431,7 @@ export class ProductionPaletteWidget extends InputWidget {
     // ---- Hotkey label (top-left corner) ----
     if (icon.hotkey) {
       const hotkeyLabel = document.createElement('span')
+      hotkeyLabel.className = 'production-cell-absolute'
       hotkeyLabel.style.position = 'absolute'
       hotkeyLabel.style.top = '1px'
       hotkeyLabel.style.left = '1px'
@@ -1354,9 +1442,23 @@ export class ProductionPaletteWidget extends InputWidget {
       hotkeyLabel.textContent = icon.hotkey.getValue().displayString()
       cell.appendChild(hotkeyLabel)
     }
+  }
 
-    cell.appendChild(overlay)
-    return cell
+  /** Update overlay text in-place on a cached cell.
+   *
+   * Called during render() when the icon set hasn't changed,
+   * to update time display etc. without DOM rebuild.
+   */
+  private _updateOverlayText(
+    cell: HTMLElement,
+    icon: ProductionIcon,
+    firstItem: ProductionItem | null,
+    buildableNames: Set<string>,
+  ): void {
+    const overlay = cell.querySelector('.production-overlays') as HTMLElement | null
+    if (!overlay) return
+
+    this._populateOverlayText(cell, overlay, icon, firstItem, buildableNames)
   }
 
   /** Create a text span with text-shadow contrast effect. */

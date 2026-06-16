@@ -310,6 +310,18 @@ export class SupportPowersWidget extends Widget {
   /** Hotkey resolver for mapping prefix + index to HotkeyReference. */
   hotkeyResolver: ((keyName: string) => HotkeyReference | null) | null = null
 
+  /** Cache of rendered icon DOM elements, keyed by power key.
+   *
+   * OpenRA 对照: No direct C# equivalent (DOM rendering optimization)
+   */
+  private _iconCellCache: Map<string, { cell: HTMLElement; clockOverlay: HTMLElement | null }> = new Map()
+
+  /** Last rendered icon key fingerprint (for DOM rebuild change detection). */
+  private _lastRenderedIconKeys: string = ''
+
+  /** Fingerprint of last powers state (for conditional refreshIcons). */
+  private _lastPowersFingerprint: string = ''
+
   /** Tooltip container delegate (lazy). */
   private _tooltipContainerDelegate: ITooltipContainer | null = null
 
@@ -546,6 +558,10 @@ export class SupportPowersWidget extends Widget {
   /**
    * Render the support powers widget to a DOM element.
    *
+   * Uses element caching: only rebuilds DOM when the icon set changes.
+   * Per-frame clock angle and overlay text updates happen in-place
+   * on cached elements without DOM removal/creation.
+   *
    * OpenRA 对照: SupportPowersWidget.Draw()
    *
    * @returns HTMLElement — container with icon grid
@@ -557,15 +573,58 @@ export class SupportPowersWidget extends Widget {
     el.style.flexDirection = this.horizontal ? 'row' : 'column'
     el.style.gap = `${this.iconMargin}px`
 
-    // Clear children
-    while (el.lastChild) {
-      el.removeChild(el.lastChild)
-    }
+    // Compute current icon key fingerprint for change detection
+    const currentKeys = this._icons.map((icon) => icon.power.key).sort().join('|')
+    const iconSetChanged = currentKeys !== this._lastRenderedIconKeys
 
-    // Render each icon
-    for (const icon of this._icons) {
-      const iconEl = this._renderIcon(icon)
-      el.appendChild(iconEl)
+    if (iconSetChanged) {
+      // Full rebuild: clear DOM and cache, recreate all cells
+      while (el.lastChild) {
+        el.removeChild(el.lastChild)
+      }
+      this._iconCellCache.clear()
+
+      for (const icon of this._icons) {
+        const result = this._renderIcon(icon)
+        el.appendChild(result.cell)
+        this._iconCellCache.set(icon.power.key, { cell: result.cell, clockOverlay: result.clockOverlay })
+      }
+      this._lastRenderedIconKeys = currentKeys
+    } else {
+      // Icon set unchanged — update clock angles and overlay text in-place
+      for (const icon of this._icons) {
+        const cache = this._iconCellCache.get(icon.power.key)
+        if (!cache) continue
+
+        const power = icon.power
+
+        // Update clock angle on cached clock overlay
+        if (cache.clockOverlay && !power.ready) {
+          // NOTE: Uses remainingTicks/totalTicks ratio for unwinding clock behavior.
+          // OpenRA C#: clock.PlayFetchIndex(ClockSequence, () =>
+          //   sp.TotalTicks == 0 ? seqLen-1 : (sp.TotalTicks - sp.RemainingTicks) * (seqLen-1) / sp.TotalTicks);
+          // In conic-gradient, remaining ratio gives the unwinding direction:
+          // - remainingTicks == totalTicks → angle=360 (full circle, just started charging)
+          // - remainingTicks == 0 → angle=0 (empty, fully charged)
+          const ratio = power.totalTicks > 0
+            ? power.remainingTicks / power.totalTicks
+            : 0
+          const angle = Math.round(ratio * 360)
+
+          cache.clockOverlay.style.background = `
+            conic-gradient(
+              rgba(0, 255, 0, 0.7) ${angle}deg,
+              transparent ${angle}deg
+            )
+          `
+        }
+
+        // Update overlay text
+        const textEl = cache.cell.querySelector('.support-power-overlay-text') as HTMLElement | null
+        if (textEl) {
+          textEl.textContent = this._getOverlayText(power)
+        }
+      }
     }
 
     return el
@@ -574,10 +633,12 @@ export class SupportPowersWidget extends Widget {
   /**
    * Render a single support power icon element.
    *
+   * Returns the cell element and clock overlay reference for per-frame updates.
+   *
    * @param icon — icon data
-   * @returns HTMLElement for the icon
+   * @returns cell element and optional clock overlay reference
    */
-  private _renderIcon(icon: SupportPowerIcon): HTMLElement {
+  private _renderIcon(icon: SupportPowerIcon): { cell: HTMLElement; clockOverlay: HTMLElement | null } {
     const { width, height } = this.iconSize
 
     const container = document.createElement('div')
@@ -610,9 +671,14 @@ export class SupportPowersWidget extends Widget {
     }
 
     // ---- Clock overlay (cooldown ring) ----
+    // NOTE: Uses remainingTicks/totalTicks ratio for unwinding behavior.
+    // OpenRA 对照: clock.PlayFetchIndex(ClockSequence, () =>
+    //   sp.TotalTicks == 0 ? seqLen-1 : (sp.TotalTicks - sp.RemainingTicks) * (seqLen-1) / sp.TotalTicks);
     const power = icon.power
+    let clockOverlay: HTMLElement | null = null
+
     if (!power.ready) {
-      const clockOverlay = document.createElement('div')
+      clockOverlay = document.createElement('div')
       clockOverlay.className = 'support-power-clock'
       clockOverlay.style.position = 'absolute'
       clockOverlay.style.top = '0'
@@ -622,11 +688,10 @@ export class SupportPowersWidget extends Widget {
       clockOverlay.style.pointerEvents = 'none'
 
       // Draw clock as a partial ring using conic-gradient
-      const progress =
-        power.totalTicks > 0
-          ? (power.totalTicks - power.remainingTicks) / power.totalTicks
-          : 0
-      const angle = Math.round(progress * 360)
+      const ratio = power.totalTicks > 0
+        ? power.remainingTicks / power.totalTicks
+        : 0
+      const angle = Math.round(ratio * 360)
 
       clockOverlay.style.background = `
         conic-gradient(
@@ -690,7 +755,7 @@ export class SupportPowersWidget extends Widget {
       container.appendChild(hotkeyEl)
     }
 
-    return container
+    return { cell: container, clockOverlay }
   }
 
   // ---------------------------------------------------------------------------
@@ -840,11 +905,34 @@ export class SupportPowersWidget extends Widget {
   /**
    * Per-frame tick. Refresh icons from SupportPowerManager.
    *
+   * Only calls refreshIcons() when powers state has changed,
+   * avoiding unnecessary icon rebuilds every frame.
+   *
    * OpenRA 对照: SupportPowersWidget.Tick()
    */
   override tick(): void {
-    // TODO: Only refresh when powers have changed (optimization)
-    this.refreshIcons()
+    const fingerprint = this._computePowersFingerprint()
+    if (fingerprint !== this._lastPowersFingerprint) {
+      this._lastPowersFingerprint = fingerprint
+      this.refreshIcons()
+    }
+  }
+
+  /** Compute a fingerprint string from the current powers state.
+   *
+   * Includes: power key, ready, active, disabled, remainingTicks, totalTicks.
+   * Changing any of these triggers a refresh.
+   */
+  private _computePowersFingerprint(): string {
+    if (!this.spm) return ''
+
+    const parts: string[] = []
+    for (const [key, p] of this.spm.powers) {
+      parts.push(`${key}:${p.ready ? '1' : '0'}:${p.active ? '1' : '0'}:${p.disabled ? '1' : '0'}:${p.remainingTicks}:${p.totalTicks}`)
+    }
+    // Sort for stable ordering regardless of Map iteration order
+    parts.sort()
+    return parts.join('|')
   }
 
   // ---------------------------------------------------------------------------
