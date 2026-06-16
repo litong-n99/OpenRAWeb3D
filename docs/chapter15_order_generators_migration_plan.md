@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 15 -- Order Generators
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.4 (Orders/OrderGenerators) + Section 4.3 (Traits/Interfaces)
-> **Chapter Status**: PHASES A-B COMPLETE (7/11 migrated, 6 New + 1 Verified; 4 pending in Phase C). Phase A: APPROVED (R1, 0 BLOCKERs, 0 MAJORs, 3 MINORs). Phase B: APPROVED (R2, 0 BLOCKERs, 0 MAJORs, 0 MINORs)
+> **Chapter Status**: ALL PHASES COMPLETE (11/11 migrated, 8 New + 3 Verified; 206 tests). Phase A: APPROVED (R1). Phase B: APPROVED (R2). Phase C: APPROVED (R2). Summary: **CH15 ALL PHASES COMPLETE (100%)**
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-14 COMPLETE (all foundation layers ready)
 >
@@ -103,8 +103,8 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 | 9 | `OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/GlobalButtonOrderGenerator.ts` | `GlobalButtonOrderGenerator` + `PowerDownOrderGenerator` + `SellOrderGenerator` | 95 | MEDIUM | B | ✅ MIGRATED |
 
 | **Phase C: Extended Generators** | | | | | | | |
-| 10 | `OpenRA.Mods.Common/Orders/GuardOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/GuardOrderGenerator.ts` | `GuardOrderGenerator` | 85 | LOW | C | 📋 PENDING |
-| 11 | `OpenRA.Mods.Common/Orders/ForceModifiersOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/ForceModifiersOrderGenerator.ts` | `ForceModifiersOrderGenerator` | 46 | LOW | C | 📋 PENDING |
+| 10 | `OpenRA.Mods.Common/Orders/GuardOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/GuardOrderGenerator.ts` | `GuardOrderGenerator` | 85 | LOW | C | ✅ MIGRATED |
+| 11 | `OpenRA.Mods.Common/Orders/ForceModifiersOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/ForceModifiersOrderGenerator.ts` | `ForceModifiersOrderGenerator` | 46 | LOW | C | ✅ MIGRATED |
 
 | **Already Migrated in Chapter 11 (reference only)** | | | | | | | |
 | 12 | `OpenRA.Mods.Common/Orders/PlaceBuildingOrderGenerator.cs` | `src/OpenRA.Mods.Common/Orders/PlaceBuildingOrderGenerator.ts` | `PlaceBuildingOrderGenerator` | 337 | HIGH | Ch11 | ✅ MIGRATED (1,449 TS lines, 940 test lines) |
@@ -131,9 +131,9 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 |:---|:---:|:---:|:---:|:---:|:---|
 | A: Foundation | 0 | 110 | ~537 (done) | 59 (done) | ✅ COMPLETE |
 | B: Core Generators | 0 | 445 | ~1,080 (done) | 104 (done) | ✅ COMPLETE |
-| C: Extended Generators | 2 | 131 | ~230 | ~380 | 📋 PLANNING |
+| C: Extended Generators | 0 | 131 | ~460 (done) | 43 (done) | ✅ COMPLETE |
 | Already migrated (Ch11) | 3 | 471 | ~2,200 (done) | ~1,700 (done) | COMPLETE |
-| **Total** | **11** | **~1,217** | **~1,617 new + ~2,200 done** | **163 new + ~1,700 done** | — |
+| **Total** | **11** | **~1,217** | **~1,870 new + ~2,200 done** | **206 new + ~1,700 done** | **ALL PHASES COMPLETE** |
 
 ---
 
@@ -340,9 +340,9 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 ### 3.3 Phase C: Extended Generators
 
-**Status**: 📋 PLANNING (2 files pending)
-**Complexity**: LOW (GuardOrderGenerator 85 lines, ForceModifiersOrderGenerator 46 lines)
-**Blocked by**: Phase B (UnitOrderGenerator — TODO-15.B.1 — both extend it)
+**Status**: ✅ COMPLETE (2 files migrated, 43 tests, APPROVED R2)
+**Complexity**: LOW (GuardOrderGenerator ~260 TS lines, ForceModifiersOrderGenerator ~200 TS lines)
+**Blocked by**: Phase B (UnitOrderGenerator — TODO-15.B.1) ✅ SATISFIED
 **Blocks**: Nothing critical (optional quality-of-life features)
 
 **Description**: Phase C implements order generators that extend `UnitOrderGenerator` to provide specialized input modes. `GuardOrderGenerator` enters a guard-targeting mode where the player clicks on a friendly unit to assign selected units to guard it. `ForceModifiersOrderGenerator` is a decorator that forces modifier keys (Ctrl for force-attack, Alt for force-move, Shift for queue) and delegates to `UnitOrderGenerator`.
@@ -354,7 +354,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.3.1 GuardOrderGenerator
 
-- [ ] **TODO-15.C.1** `src/OpenRA.Mods.Common/Orders/GuardOrderGenerator.ts` (85 lines C#) — Guard command mode generator:
+- [x] **TODO-15.C.1** `src/OpenRA.Mods.Common/Orders/GuardOrderGenerator.ts` (~260 lines TS, 28 tests) — Guard command mode generator:
   - **C# reference**: `OpenRA.Mods.Common/Orders/GuardOrderGenerator.cs` (85 lines)
   - Extends `UnitOrderGenerator` — reuses unit targeting infrastructure
   - Constructor takes `world`, `subjects: IGameActor[]`, `orderName: string`, `cursor: string`
@@ -382,7 +382,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
 
 #### 3.3.2 ForceModifiersOrderGenerator
 
-- [ ] **TODO-15.C.2** `src/OpenRA.Mods.Common/Orders/ForceModifiersOrderGenerator.ts` (46 lines C#) — Modifier key passthrough decorator:
+- [x] **TODO-15.C.2** `src/OpenRA.Mods.Common/Orders/ForceModifiersOrderGenerator.ts` (~200 lines TS, 15 tests) — Modifier key passthrough decorator:
   - **C# reference**: `OpenRA.Mods.Common/Orders/ForceModifiersOrderGenerator.cs` (46 lines)
   - Extends `UnitOrderGenerator` — decorator pattern with forced modifier keys
   - Constructor takes `world`, `modifiers: TargetModifiers`, `cancelOnFirstUse: boolean`
@@ -397,7 +397,7 @@ The following infrastructure from Chapters 2-14 is available for Chapter 15:
   - `clearSelectionOnLeftClick: boolean` → false (prevents deselection during force-modifier mode)
   - Used by: force-attack (Ctrl+click → `ForceModifiersOrderGenerator(world, Modifiers.Ctrl, true)`), force-move (Alt+click), queued orders (Shift+click)
 
-**Phase C Summary**: 2 files, ~131 C# lines source. Both extend UnitOrderGenerator. Estimated ~230 TS implementation lines + ~380 test lines.
+**Phase C Summary**: 2 files migrated (GuardOrderGenerator ~260 TS lines + ForceModifiersOrderGenerator ~200 TS lines), ~131 C# source lines. Both extend UnitOrderGenerator. Delivered ~460 TS implementation lines, 43 tests (28 + 15) all passing. Review: APPROVED (R2, 0 BLOCKERs, 0 MAJORs, 0 MINORs). Commits: `af57cb2` (implementation), `ff3d917` (review fixes).
 
 ---
 
@@ -666,3 +666,67 @@ Rendering-heavy generators require manual visual acceptance test pages:
 | **Estimated tests** | ~85 new |
 | **Visual acceptance test pages** | 3 new (beacon, repair, guard) + 1 review (place-building) |
 | **ADR records** | 7 (ADR-15.1 through ADR-15.7) |
+
+---
+
+## Chapter 15 Final Status: ALL PHASES COMPLETE (11/11, 100%)
+
+**Completion Date**: 2026-06-16
+
+### Phase Summary
+
+| Phase | Description | Files | New Tests | Review | Status |
+|:---|:---|:---:|:---:|:---|:---:|
+| Phase A | Foundation -- Abstract Base & Targeters | 2 new + 1 verified + 2 existing | 59 | APPROVED R1 | ✅ COMPLETE |
+| Phase B | Core Order Generators | 4 new + 1 existing | 104 | APPROVED R2 | ✅ COMPLETE |
+| Phase C | Extended Generators | 2 new | 43 | APPROVED R2 | ✅ COMPLETE |
+| **Total** | | **8 new + 3 existing = 11** | **206** | **All 0 BLOCKERs** | |
+
+### File Inventory
+
+| # | File | TS Lines | Tests | Phase | Commit |
+|:---:|:---|:---:|:---:|:---:|:---|
+| 1 | OrderGenerator.ts | 275 | 29 | A | `cb792bd` |
+| 2 | EnterAlliedActorTargeter.ts | 262 | 30 | A | `cb792bd` |
+| 3 | UnitOrderGenerator.ts | ~460 | 42 | B | `5070c5b` |
+| 4 | RepairOrderGenerator.ts | ~200 | 21 | B | `5070c5b` |
+| 5 | BeaconOrderGenerator.ts | ~120 | 13 | B | `5070c5b` |
+| 6 | GlobalButtonOrderGenerator.ts | ~300 | 28 | B | `5070c5b` |
+| 7 | GuardOrderGenerator.ts | ~260 | 28 | C | `af57cb2` |
+| 8 | ForceModifiersOrderGenerator.ts | ~200 | 15 | C | `af57cb2` |
+| -- | UnitOrderTargeter.ts | (Ch11) | -- | A | existing |
+| -- | DeployOrderTargeter.ts | (Ch11) | -- | A | existing |
+| -- | PlaceBuildingOrderGenerator.ts | (Ch11) | -- | (Ch11) | existing |
+| **Total (8 new)** | | **~2,077** | **206** | | |
+
+### Commits Timeline
+
+| Commit | Date | Description |
+|:---|:---|:---|
+| `d47edf3` | 2026-06-16 | Migration plan |
+| `cb792bd` | 2026-06-16 | Phase A: OrderGenerator + EnterAlliedActorTargeter + TraitsInterfaces |
+| `5070c5b` | 2026-06-16 | Phase B: UnitOrderGenerator + RepairOrderGenerator + BeaconOrderGenerator + GlobalButtonOrderGenerator |
+| `cb6f6aa` | 2026-06-16 | Phase B review fixes |
+| `5d1f760` | 2026-06-16 | Phase B review fixes (final) |
+| `af57cb2` | 2026-06-16 | Phase C: GuardOrderGenerator + ForceModifiersOrderGenerator |
+| `ff3d917` | 2026-06-16 | Phase C review fixes |
+| `016798e` | 2026-06-16 | Docs: progress + CLAUDE.md update |
+| `59e7933` | 2026-06-16 | Docs: migration plan finalization |
+
+### Key Achievements
+
+- All 11 order generators migrated (8 new + 3 verified from Ch11)
+- ~1,870 TypeScript implementation lines
+- 206 new tests, 0 BLOCKERs across 3 review rounds
+- 9869 total test suite passing
+- ADR-15.5 implemented: logical cursor names mapped to CSS cursor property
+- ADR-15.6 implemented: per-ActorInfo order cache for performance
+- ADR-15.7 implemented: string-based trait key over TypeScript generics for GlobalButtonOrderGenerator
+
+### Unblocked Chapters
+
+- Chapter 16 (UI Widget Extensions): Order generators are a prerequisite for context-sensitive command buttons
+- Chapter 18 (Server System): Order dispatch pipeline foundation available for multiplayer
+- Chapter 19 (Mod-Specific Content): C&C-specific order generators can now be added
+
+### Chapter 15 Now 100% COMPLETE. Chapters 2-15: 401/401 files (100%).
