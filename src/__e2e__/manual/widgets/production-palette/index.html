@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProductionPalette - 生产图标网格 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #header {
+      padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; }
+
+    #main-area { display: flex; height: calc(100vh - 170px); }
+
+    #palette-container {
+      flex: 1; position: relative; background: #0d1117; overflow: auto;
+      display: flex; align-items: flex-start; justify-content: center; padding: 32px;
+    }
+
+    #status-panel {
+      width: 340px; padding: 20px; background: #0d1117; border-left: 1px solid #0f3460;
+      overflow-y: auto; font-size: 13px; line-height: 1.8;
+    }
+    #status-panel h3 { color: #58a6ff; font-size: 15px; margin: 0 0 12px; }
+    #status-panel .label { color: #8b949e; }
+    #status-panel .value { color: #e6edf3; font-family: 'Consolas', monospace; font-size: 12px; }
+
+    #legend {
+      margin-top: 12px; padding: 10px; background: #0f0f1a; border-radius: 4px; border: 1px solid #21262d;
+      font-size: 11px; line-height: 1.6;
+    }
+    #legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+    #controls {
+      padding: 8px 24px; background: #0f0f1a; border-top: 1px solid #0f3460; border-bottom: 1px solid #0f3460;
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    #controls button {
+      padding: 5px 12px; border-radius: 4px; border: 1px solid #30363d;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls span { font-size: 11px; color: #8b949e; }
+
+    #info-bar {
+      padding: 6px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div>
+      <h1>[A] ProductionPaletteWidget - 生产图标网格</h1>
+      <div class="subtitle">ID: widgets/production-palette | 期望结果见 README.md</div>
+    </div>
+  </div>
+
+  <div id="main-area">
+    <div id="palette-container"></div>
+    <div id="status-panel">
+      <h3>生产状态 (Production State)</h3>
+      <div><span class="label">图标数量:</span> <span class="value" id="st-icon-count">-</span></div>
+      <div><span class="label">队列项目:</span> <span class="value" id="st-queue-count">-</span></div>
+      <div><span class="label">悬停图标:</span> <span class="value" id="st-hovered">-</span></div>
+      <div><span class="label">最后操作:</span> <span class="value" id="st-last-op">-</span></div>
+      <div id="legend">
+        <h4 style="margin:0 0 6px;color:#f9a825;">图标状态图例</h4>
+        <div><span class="swatch" style="background:#0d2a4a;border:1px solid #1a3a5c;"></span> 可建造 (buildable)</div>
+        <div><span class="swatch" style="background:#1e4d7a;border:1px solid #2a5a8c;"></span> 建造中 (queued, with clock)</div>
+        <div><span class="swatch" style="background:#0a1a30;border:1px solid #1a1a2e;opacity:0.5"></span> 不可建造 (locked)</div>
+        <div style="margin-top:4px;"><strong>Clock:</strong> conic-gradient 从 360&deg;(全满) 到 0&deg;(完成) 逆时针递减</div>
+        <div><strong>Overlays:</strong> READY/HOLD/时间/排队数/热键</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="btn-progress">推进建造进度</button>
+    <button id="btn-reset">重置队列</button>
+    <button id="btn-add-queue">添加排队 (Rifleman)</button>
+    <button id="btn-remove-queue">移除排队</button>
+    <button id="btn-complete-one">完成一个</button>
+    <span>| 滚轮: 滚动面板 (多行时) | 点击图标: 交互</span>
+  </div>
+
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

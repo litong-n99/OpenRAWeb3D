@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI Widgets - Primitives Gallery | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow-y: auto; }
+    #header {
+      padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460;
+      position: sticky; top: 0; z-index: 100;
+    }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+
+    #gallery {
+      display: flex; flex-wrap: wrap; gap: 24px; padding: 24px;
+      max-width: 1400px; margin: 0 auto;
+    }
+    .widget-section {
+      background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+      padding: 16px; min-width: 320px; flex: 1 1 400px;
+    }
+    .widget-section h3 {
+      margin: 0 0 12px; font-size: 16px; color: #58a6ff;
+      border-bottom: 1px solid #21262d; padding-bottom: 8px;
+    }
+    .widget-section .desc { color: #8b949e; font-size: 12px; margin-bottom: 12px; }
+
+    .sandbox-row {
+      position: relative; width: 100%; min-height: 56px;
+      border: 1px dashed #21262d; border-radius: 4px; margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .status-text {
+      font-size: 11px; color: #484f58; margin-top: 6px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+    }
+    .status-text .val { color: #e6edf3; }
+
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; position: sticky; bottom: 0; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #expected-panel {
+      position: fixed; top: 80px; right: 16px; z-index: 101;
+      background: rgba(22, 33, 62, 0.95); border: 1px solid #0f3460; border-radius: 8px;
+      padding: 14px 18px; font-size: 12px; line-height: 1.6; max-width: 300px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>[A] UI Widgets - Primitives Gallery</h1>
+    <div class="subtitle">ID: widgets/primitives | 期望结果见 README.md</div>
+  </div>
+
+  <div id="expected-panel">
+    <h4>期望结果 (Expected)</h4>
+    <ul>
+      <li>所有 widget 正确渲染，标签文本<span class="metric">可读</span>，无溢出/重叠</li>
+      <li>Button: 点击时<span class="metric">data-state 变为 pressed</span>，释放后恢复</li>
+      <li>TextField: 输入字符后<span class="metric">状态栏文本实时更新</span>（&lt;50ms 延迟）</li>
+      <li>Checkbox: 点击勾选，<span class="metric">data-checked 属性切换</span></li>
+      <li>Slider: 拖拽滑块时<span class="metric">值连续变化</span>，轨道填充同步</li>
+      <li>ScrollPanel: 内容可滚动，<span class="metric">滑块大小与内容比例匹配</span></li>
+      <li>DropDown: 点击展开面板，遮罩层<span class="metric">覆盖全屏</span></li>
+    </ul>
+  </div>
+
+  <div id="gallery">
+    <!-- Sections are created dynamically by main.ts -->
+  </div>
+
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

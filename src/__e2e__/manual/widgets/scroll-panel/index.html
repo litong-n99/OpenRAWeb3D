@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScrollPanel - 滚动面板测试 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #header {
+      padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; }
+
+    #main-area { display: flex; height: calc(100vh - 120px); }
+
+    #scroll-container {
+      flex: 1; position: relative; min-width: 300px;
+      border-right: 1px solid #0f3460; background: #0d1117;
+    }
+    #scroll-container .label-hint {
+      position: absolute; top: 8px; left: 12px; color: #484f58; font-size: 11px; z-index: 5;
+    }
+
+    #status-panel {
+      width: 320px; padding: 20px; background: #0d1117; overflow-y: auto;
+      font-size: 13px; line-height: 1.8;
+    }
+    #status-panel h3 { color: #58a6ff; font-size: 15px; margin: 0 0 12px; }
+    #status-panel .label { color: #8b949e; }
+    #status-panel .value { color: #e6edf3; font-family: 'Consolas', monospace; }
+
+    #controls {
+      padding: 8px 24px; background: #0f0f1a; border-top: 1px solid #0f3460;
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    #controls button {
+      padding: 5px 12px; border-radius: 4px; border: 1px solid #30363d;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls span { font-size: 11px; color: #8b949e; }
+
+    #info-bar {
+      padding: 6px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div>
+      <h1>[A] ScrollPanelWidget - 滚动面板测试</h1>
+      <div class="subtitle">ID: widgets/scroll-panel | 期望结果见 README.md</div>
+    </div>
+  </div>
+
+  <div id="main-area">
+    <div id="scroll-container">
+      <div class="label-hint">ScrollPanelWidget — 50 items</div>
+    </div>
+    <div id="status-panel">
+      <h3>滚动状态 (Scroll State)</h3>
+      <div><span class="label">滚动偏移:</span> <span class="value" id="st-offset">0px</span></div>
+      <div><span class="label">目标偏移:</span> <span class="value" id="st-target">0px</span></div>
+      <div><span class="label">内容高度:</span> <span class="value" id="st-content-h">-</span></div>
+      <div><span class="label">可视高度:</span> <span class="value" id="st-visible-h">-</span></div>
+      <div><span class="label">滑块高度:</span> <span class="value" id="st-thumb-h">-</span></div>
+      <div><span class="label">滑块Y位置:</span> <span class="value" id="st-thumb-y">-</span></div>
+      <div><span class="label">顶部按钮:</span> <span class="value" id="st-up-btn">启用</span></div>
+      <div><span class="label">底部按钮:</span> <span class="value" id="st-down-btn">启用</span></div>
+      <div><span class="label">滑块:</span> <span class="value" id="st-thumb-state">释放</span></div>
+      <div style="margin-top:12px"><span class="label">最后操作:</span> <span class="value" id="st-last-op">-</span></div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="btn-scroll-top">Scroll To Top</button>
+    <button id="btn-scroll-bottom">Scroll To Bottom</button>
+    <button id="btn-scroll-up">Scroll Up (5 items)</button>
+    <button id="btn-scroll-down">Scroll Down (5 items)</button>
+    <button id="btn-scroll-item">Scroll To Item #25</button>
+    <span>|</span>
+    <span>滚轮: 滚动 | 拖拽滑块: 快速定位 | 键盘 ↑↓ PgUp PgDn Home End</span>
+  </div>
+
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

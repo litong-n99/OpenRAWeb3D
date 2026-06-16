@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RadarWidget - 雷达小地图测试 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #header {
+      padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; }
+
+    #main-area { display: flex; height: calc(100vh - 170px); }
+
+    #radar-container {
+      flex: 1; position: relative; background: #0d1117;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    #radar-canvas {
+      border: 2px solid #30363d;
+      border-radius: 2px;
+      image-rendering: pixelated;
+    }
+
+    #status-panel {
+      width: 340px; padding: 20px; background: #0d1117; border-left: 1px solid #0f3460;
+      overflow-y: auto; font-size: 13px; line-height: 1.8;
+    }
+    #status-panel h3 { color: #58a6ff; font-size: 15px; margin: 0 0 12px; }
+    #status-panel .label { color: #8b949e; }
+    #status-panel .value { color: #e6edf3; font-family: 'Consolas', monospace; font-size: 12px; }
+
+    #legend {
+      margin-top: 12px; padding: 10px; background: #0f0f1a; border-radius: 4px; border: 1px solid #21262d;
+      font-size: 11px; line-height: 1.6;
+    }
+    #legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+    #controls {
+      padding: 8px 24px; background: #0f0f1a; border-top: 1px solid #0f3460; border-bottom: 1px solid #0f3460;
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    #controls button {
+      padding: 5px 12px; border-radius: 4px; border: 1px solid #30363d;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls span { font-size: 11px; color: #8b949e; }
+
+    #info-bar {
+      padding: 6px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div>
+      <h1>[A] RadarWidget - 雷达小地图测试</h1>
+      <div class="subtitle">ID: widgets/radar | 期望结果见 README.md</div>
+    </div>
+  </div>
+
+  <div id="main-area">
+    <div id="radar-container">
+      <canvas id="radar-canvas"></canvas>
+    </div>
+    <div id="status-panel">
+      <h3>小地图状态 (Radar State)</h3>
+      <div><span class="label">地图尺寸:</span> <span class="value" id="st-map-size">-</span></div>
+      <div><span class="label">小地图像素:</span> <span class="value" id="st-radar-px">-</span></div>
+      <div><span class="label">视口矩形:</span> <span class="value" id="st-viewport-rect">-</span></div>
+      <div><span class="label">可见单元格:</span> <span class="value" id="st-visible-cells">-</span></div>
+      <div><span class="label">迷雾单元格:</span> <span class="value" id="st-fog-cells">-</span></div>
+      <div><span class="label">黑幕单元格:</span> <span class="value" id="st-shroud-cells">-</span></div>
+      <div><span class="label">点击坐标:</span> <span class="value" id="st-click-coord">(未点击)</span></div>
+      <div><span class="label">世界坐标:</span> <span class="value" id="st-world-coord">(未点击)</span></div>
+      <div id="legend">
+        <h4 style="margin:0 0 6px;color:#f9a825;">颜色图例</h4>
+        <div><span class="swatch" style="background:#4a7c3f;"></span> Clear 地形 (#4a7c3f)</div>
+        <div><span class="swatch" style="background:#8b7355;"></span> Rough 地形 (#8b7355)</div>
+        <div><span class="swatch" style="background:#4a6d8c;"></span> Water 地形 (#4a6d8c)</div>
+        <div><span class="swatch" style="background:#a0884a;"></span> Road 地形 (#a0884a)</div>
+        <div><span class="swatch" style="background:#555555;"></span> Ore 资源 (#555555)</div>
+        <div><span class="swatch" style="background:#cccccc;"></span> 单位位置点</div>
+        <div><span class="swatch" style="background:rgba(0,0,0,0.5);"></span> 迷雾 (已探索/不可见)</div>
+        <div><span class="swatch" style="background:#000000;"></span> 黑幕 (未探索)</div>
+        <div><span class="swatch" style="border:1px solid #ffffff;"></span> 视口矩形 (白框)</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="btn-viewport-up">视口 ↑</button>
+    <button id="btn-viewport-down">视口 ↓</button>
+    <button id="btn-viewport-left">视口 ←</button>
+    <button id="btn-viewport-right">视口 →</button>
+    <button id="btn-random-shroud">随机迷雾</button>
+    <button id="btn-reveal-all">全部揭示</button>
+    <button id="btn-reset-shroud">全部黑幕</button>
+    <span>| 点击小地图: 移动视口并显示坐标 | 拖拽视口矩形: 调整视野</span>
+  </div>
+
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
