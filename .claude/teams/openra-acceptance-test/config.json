@@ -1,0 +1,47 @@
+{
+  "name": "openra-acceptance-test",
+  "description": "Acceptance test verification team. Validates manual acceptance test pages via Playwright automated testing. Task prompt is set at spawn time.",
+  "members": [
+    {
+      "name": "team-lead",
+      "agentType": "team-lead",
+      "model": "claude-opus-4-6",
+      "role": "Orchestrate acceptance test verification workflow. Route between runner, assistant, developer, reviewer, and architect."
+    },
+    {
+      "name": "test-runner",
+      "color": "cyan",
+      "agentType": "acceptance-test-runner",
+      "model": "claude-opus-4-6",
+      "role": "Write Playwright test scripts, execute browser automation, collect evidence (screenshots/videos), produce reproduce docs and test reports under test-results/manual/."
+    },
+    {
+      "name": "acceptance-tester",
+      "color": "blue",
+      "agentType": "acceptance-test-assistant",
+      "model": "claude-opus-4-6",
+      "role": "Fix acceptance test page issues (Path B1). Diagnose whether failures are test-page or source-code related (B1 vs B2). Can modify src/__e2e__/manual/ files."
+    },
+    {
+      "name": "developer",
+      "color": "yellow",
+      "agentType": "migration-develop",
+      "model": "claude-opus-4-6",
+      "role": "Fix source code issues found by acceptance testing (Path B2a). Add negative unit tests for the failure case."
+    },
+    {
+      "name": "reviewer",
+      "color": "purple",
+      "agentType": "migration-review",
+      "model": "claude-opus-4-6",
+      "role": "5-dimension code review for fixes from Path B1 and Path B2a."
+    },
+    {
+      "name": "architect",
+      "color": "green",
+      "agentType": "migration-architect",
+      "model": "claude-opus-4-6",
+      "role": "Re-plan module architecture for major issues (Path B2b). Report findings to user."
+    }
+  ]
+}

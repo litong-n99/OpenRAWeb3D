@@ -254,6 +254,122 @@ src/__e2e__/manual/
 - **migration-develop**：当测试页面需要集成实际组件/类时，向 developer 获取导出接口
 - **migration-review**：当需要 review 确认期望结果的合理性或测试覆盖完整性时
 - **migration-docs**：当需要创建 README 文档或更新项目文档以引用新测试页面时
+- **acceptance-test-runner**：接受回测请求（故障修复后），负责更新 reproduce.md 和 evidence/ 文件夹，重新执行 Playwright 测试
+
+---
+
+## 验收测试故障处理流程 (Path B1 / B2)
+
+当收到 **acceptance-test-runner** 的故障报告后，你必须判断故障类型并执行对应的修复流程。
+
+### 故障报告格式 (来自 test-runner)
+
+```
+## 验收测试故障报告: ch{num}-{title} / {test-case-id}
+
+### 测试结果
+- 通过: N/M (X%)
+- 判定: NEEDS FIXES / INCOMPLETE
+
+### 故障详情
+[reproduce.md 关键内容：失败的测试项、期望值 vs 实测值]
+
+### 证据路径
+- reproduce.md: test-results/manual/ch{num}-{title}/{test-case-id}/reproduce.md
+- evidence/: test-results/manual/ch{num}-{title}/{test-case-id}/evidence/
+
+### 疑似问题源
+[test-runner 的初步判断]
+
+请诊断故障类型（B1/B2），并执行对应的修复流程。
+```
+
+### 第 1 步: 判断故障类型
+
+读取故障报告中的信息，结合证据截图和 reproduce.md，判断故障属于哪一类：
+
+| 故障类型 | 判断标准 | 举例 |
+|---------|---------|------|
+| **B1 - 测试页面问题** | 代码在 `src/__e2e__/manual/` 下，或 README.md 中的期望值写错，或 main.ts 中的测试场景搭建有问题 | 期望结果中的颜色值写错、canvas 尺寸配错、交互控件逻辑 bug |
+| **B2a - 源码问题（影响较小）** | 代码在 `src/OpenRA.*/` 下，改动 <= 2 个文件，不涉及接口/架构变更 | 某方法的返回值计算错误、边界条件未处理、缺少 null 检查 |
+| **B2b - 源码问题（影响较大）** | 代码在 `src/OpenRA.*/` 下，改动 > 2 个文件，或涉及接口变更、架构调整 | 坐标系统映射错误导致多个模块需要修改、渲染管线设计缺陷 |
+
+### 第 2 步: 路径 B1 - 测试页面问题修复
+
+如果是 B1 类型（问题在测试页面代码或 README.md 中），由你自行修复：
+
+1. **修复测试页面代码**：
+   - 修改 `src/__e2e__/manual/ch{num}-{title}/{test-case-id}/` 下的 index.html / main.ts / README.md
+   - 确保修复后代码与验收要求一致
+2. **验证编译**：
+   ```bash
+   npx tsc --noEmit   # 必须通过
+   ```
+3. **提交 reviewer 审查**：
+   - 将修改后的文件提交给 **migration-review** agent
+   - 附带说明：这是 B1 修复，修改范围仅限于 `src/__e2e__/manual/` 下文件
+4. **审查通过后交回回测**：
+   - reviewer APPROVED 后，通知 **acceptance-test-runner** 进行回测
+   - 附带说明修改了哪些文件
+5. **回测循环**：
+   - 如果 test-runner 回测仍失败 → 重新诊断，再次修复（循环）
+   - **最多 3 轮**（初测 + 2 次修复后回测 = 3 轮测试循环）
+   - 第 3 轮仍失败 → 汇报用户：
+     ```
+     ## B1 修复已达上限: ch{num}-{title} / {test-case-id}
+
+     经过 3 轮修复-回测循环，以下问题仍未解决：
+     [列出仍失败的测试项及每轮的修复尝试]
+
+     建议：用户手动介入排查。
+     ```
+
+### 第 3 步: 路径 B2 - 源码问题升级
+
+如果是 B2 类型（问题在源代码中），你需要整理故障信息并升级给对应角色：
+
+#### 升级信息包 (发给 migration-develop 或 migration-architect)
+
+```
+## 验收测试源码故障: ch{num}-{title} / {test-case-id}
+
+### 故障类型
+B2a (影响较小，<=2 文件) / B2b (影响较大，>2 文件或涉及接口/架构)
+
+### 故障详情
+[粘贴 reproduce.md 中失败测试项的完整内容：期望 vs 实际]
+
+### 证据
+- reproduce.md: [路径]
+- evidence/: [路径]
+
+### 相关源码文件
+- [文件1路径]: [怀疑的问题点]
+- [文件2路径]: [怀疑的问题点]
+
+### 建议修复方向
+[你的初步分析：可能的根因和修复方向]
+```
+
+#### B2a: 升级到 migration-develop
+
+1. 将升级信息包发送给 **migration-develop** agent
+2. developer 负责：
+   - 修复源码 bug
+   - 添加 **negative 单元测试**（覆盖此故障场景，防止回归）
+   - 提交 reviewer 审查
+3. reviewer APPROVED 后，通知 **acceptance-test-runner** 进行回测
+4. 回测循环同样最多 **3 轮**
+5. 第 3 轮仍失败 → 汇报用户
+
+#### B2b: 升级到 migration-architect
+
+1. 将升级信息包发送给 **migration-architect** agent
+2. architect 负责：
+   - 重新评估模块设计
+   - 制定修复方案（可能涉及多文件、接口变更）
+   - 汇报用户，等待用户决策
+3. B2b 流程到此暂停，不进行回测循环。用户决策后再继续。
 
 ---
 

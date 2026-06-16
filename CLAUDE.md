@@ -363,7 +363,7 @@ docs/
 
 ## Agent Team Structure
 
-The project uses five specialized agents defined in `.claude/agents/`:
+The project uses six specialized agents defined in `.claude/agents/`, plus a dedicated acceptance test verification team in `.claude/teams/openra-acceptance-test/`:
 
 | Agent | Spec File | Role |
 |-------|-----------|------|
@@ -372,6 +372,7 @@ The project uses five specialized agents defined in `.claude/agents/`:
 | **migration-develop** | `migration-develop.md` | TypeScript/Babylon.js implementation with unit tests |
 | **migration-review** | `migration-review.md` | Code review across 5 dimensions: docs compliance, feature completeness, efficiency, bugs, format |
 | **acceptance-test-assistant** | `acceptance-test-assistant.md` | Manual visual acceptance test pages for non-unit-testable modules |
+| **acceptance-test-runner** | `acceptance-test-runner.md` | Playwright automated verification of acceptance test pages (pure orchestrator, delegates to Kimi MCP) |
 | **migration-docs** | `migration-docs.md` | Documentation maintenance, progress tracking, task coordination, commit |
 
 ### Team Configurations
@@ -382,6 +383,7 @@ The project has two pre-configured team setups in `.claude/teams/`, selected by 
 |---------------|-------------|-------------|
 | **DeepSeek** | `.claude/teams/openra-migration-deepseek/` | team-lead: `deepseek-v4-flash`, all others: `deepseek-v4-pro` |
 | **Kimi** | `.claude/teams/openra-migration-kimi/` | all members: `kimi-k2.6` |
+| **Acceptance Test** | `.claude/teams/openra-acceptance-test/` | test-runner, acceptance-tester, developer, reviewer, architect |
 
 Spawn a team via `TeamCreate` with the appropriate config file when initiating migration work.
 
@@ -392,6 +394,25 @@ Agents communicate via `SendMessage` tool calls. **Team Lead handles all coordin
 ```
 Architect → Developer → Reviewer ─┬─→ Acceptance Tester → Team Lead (routing)
                                   └─→ Docs Manager → Team Lead (routing)
+```
+
+**Acceptance Test Verification Flow** (separate team, see `.claude/teams/openra-acceptance-test/`):
+
+```
+User / Team Lead dispatches acceptance-test team
+  │
+  ▼
+test-runner (writes Playwright scripts, executes tests, collects evidence)
+  │
+  ├── Path A (all pass): update README status → done
+  │
+  └── Path B (failures): escalates to acceptance-tester
+        │
+        ├── Path B1 (test page bug): fix → reviewer → back to test-runner (max 3 rounds)
+        │
+        └── Path B2 (source code bug):
+              ├── B2a (minor, <=2 files): developer fixes + negative tests → reviewer → back to test-runner (max 3 rounds)
+              └── B2b (major, >2 files or interface changes): architect re-plans → reports to user
 ```
 
 ### Agent Rules
