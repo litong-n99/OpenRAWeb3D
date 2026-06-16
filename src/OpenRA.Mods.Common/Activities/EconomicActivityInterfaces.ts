@@ -224,6 +224,24 @@ export interface INotifyMineLaying {
 }
 
 // ---------------------------------------------------------------------------
+// INotifySold — 出售通知 (对应 OpenRA INotifySold)
+// ---------------------------------------------------------------------------
+
+/** 当 actor 被出售时调用。
+ *
+ *  OpenRA 对照: INotifySold
+ *
+ *  被 Sell 使用。
+ */
+export interface INotifySold {
+  /** 出售时调用。
+   *
+   *  @param self — 被出售的 actor
+   */
+  sold(self: IGameActor): void
+}
+
+// ---------------------------------------------------------------------------
 // IDockClientBody — 对接客户端身体动画 (对应 OpenRA IDockClientBody)
 // ---------------------------------------------------------------------------
 

@@ -49,6 +49,8 @@ function createMockDockClientManager(overrides: Partial<DockClientManagerLike> =
     info: { searchForDockDelay: 25 },
     reservedHost: null,
     reservedHostActor: null,
+    lastReservedHost: null,
+    dockLineColor: { r: 0, g: 1, b: 0, a: 1 },
     closestDock: vi.fn(() => null),
     availableDockHosts: vi.fn(() => []),
     reserveHost: vi.fn(() => true),
