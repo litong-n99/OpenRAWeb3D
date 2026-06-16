@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SlotClient - Serialization Round-Trip | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui, monospace; background: #1a1a2e; color: #eee; }
+    #app { display: flex; flex-direction: column; height: 100vh; }
+
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+
+    #content { flex: 1; display: flex; overflow: hidden; }
+
+    #left-panel {
+      width: 340px; min-width: 340px; background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+    }
+    #left-panel h3 { margin: 12px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel button {
+      padding: 8px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; width: 100%; text-align: left;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.primary { background: #0f3460; border-color: #4a9; }
+
+    #main-area { flex: 1; overflow-y: auto; padding: 16px; }
+
+    .test-section {
+      background: rgba(22,33,62,0.5); border: 1px solid #0f3460; border-radius: 8px;
+      margin-bottom: 12px; overflow: hidden;
+    }
+    .test-section h4 {
+      margin: 0; padding: 10px 16px; background: rgba(15,52,96,0.4);
+      font-size: 14px;
+    }
+    .test-section .body { padding: 12px 16px; }
+
+    .test-result { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+    .test-result .pass { color: #4a9; font-weight: bold; }
+    .test-result .fail { color: #e94560; font-weight: bold; }
+
+    .json-display {
+      background: #0d1117; border: 1px solid #0f3460; border-radius: 4px;
+      padding: 12px; font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+      color: #c8d; max-height: 250px; overflow-y: auto;
+    }
+
+    .field-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .field-table th { text-align: left; padding: 6px 8px; background: rgba(15,52,96,0.5); color: #a0b0d0; }
+    .field-table td { padding: 4px 8px; border-bottom: 1px solid #0f3460; }
+    .field-table td:first-child { color: #889; width: 180px; }
+    .field-table tr.match td:last-child { color: #4a9; }
+    .field-table tr.mismatch td:last-child { color: #e94560; }
+
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <h1>A. SlotClient 序列化/反序列化 Round-Trip 测试</h1>
+      <div class="subtitle">ID: ch17-replay/slotclient | 期望结果见 README.md</div>
+    </div>
+
+    <div id="content">
+      <div id="left-panel">
+        <h3>B. 期望结果摘要</h3>
+        <div style="font-size:11px; color:#a0b0d0; line-height:1.5;">
+          <p><strong>E1:</strong> 默认构造器: 9 个字段全部为默认值</p>
+          <p><strong>E2:</strong> SessionClient 构造: 正确提取 game 相关字段, color 解析正确</p>
+          <p><strong>E3:</strong> serialize/deserialize: JSON 往返后所有属性相等</p>
+          <p><strong>E4:</strong> applyTo: 所有字段正确写回 MutableSessionClient</p>
+          <p><strong>E5:</strong> 边界: null Bot, 空字符串, 特殊颜色值</p>
+        </div>
+
+        <h3>C. 测试控制</h3>
+        <button id="btn-run-all" class="primary">运行全部测试</button>
+        <button id="btn-test-default">单独: 默认构造器</button>
+        <button id="btn-test-client">单独: SessionClient 构造</button>
+        <button id="btn-test-serialize">单独: 序列化往返</button>
+        <button id="btn-test-applyto">单独: applyTo</button>
+        <button id="btn-test-edge">单独: 边界情况</button>
+      </div>
+
+      <div id="main-area">
+        <div class="test-section">
+          <h4>D1: 默认构造器</h4>
+          <div class="body" id="section-default"><em>尚未运行...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D2: SessionClient 构造器</h4>
+          <div class="body" id="section-client"><em>尚未运行...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D3: serialize/deserialize 往返</h4>
+          <div class="body" id="section-serialize"><em>尚未运行...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D4: applyTo 属性传输</h4>
+          <div class="body" id="section-applyto"><em>尚未运行...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D5: 边界情况</h4>
+          <div class="body" id="section-edge"><em>尚未运行...</em></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="info-bar">
+      <span>UA: <span id="info-ua">-</span></span>
+      <span>视口: <span id="info-viewport">-</span></span>
+      <span>时间: <span id="info-time">-</span></span>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

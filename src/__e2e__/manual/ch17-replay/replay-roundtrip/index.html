@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Replay - Round-Trip 回放录制与播放 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui, monospace; background: #1a1a2e; color: #eee; }
+    #app { display: flex; flex-direction: column; height: 100vh; }
+
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+
+    #content { flex: 1; display: flex; overflow: hidden; }
+
+    #left-panel {
+      width: 340px; min-width: 340px; background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+    }
+    #left-panel h3 { margin: 12px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel button {
+      padding: 8px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; width: 100%; text-align: left;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.primary { background: #0f3460; border-color: #4a9; }
+
+    .expected-box {
+      background: rgba(13,17,23,0.6); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px; line-height: 1.6;
+    }
+    .expected-box h4 { margin: 0 0 4px; color: #8f8; font-size: 12px; }
+    .expected-box ul { margin: 2px 0; padding-left: 16px; }
+    .expected-box li { margin: 2px 0; }
+    .expected-box .metric { color: #aad; font-family: monospace; }
+
+    #main-area { flex: 1; overflow-y: auto; padding: 16px; }
+
+    .test-section {
+      background: rgba(22,33,62,0.5); border: 1px solid #0f3460; border-radius: 8px;
+      margin-bottom: 12px; overflow: hidden;
+    }
+    .test-section h4 {
+      margin: 0; padding: 10px 16px; background: rgba(15,52,96,0.4);
+      font-size: 14px; cursor: pointer; user-select: none;
+    }
+    .test-section .body { padding: 12px 16px; }
+
+    .test-result { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+    .test-result .pass { color: #4a9; font-weight: bold; }
+    .test-result .fail { color: #e94560; font-weight: bold; }
+    .test-result .info { color: #8af; }
+
+    .hex-dump {
+      background: #0d1117; border: 1px solid #0f3460; border-radius: 4px;
+      padding: 12px; font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 11px; line-height: 1.6; overflow-x: auto; white-space: pre-wrap;
+      max-height: 300px; overflow-y: auto; color: #8f8;
+    }
+
+    .summary-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .summary-table td { padding: 4px 8px; border-bottom: 1px solid #0f3460; }
+    .summary-table td:first-child { color: #889; width: 200px; }
+    .summary-table td:last-child { color: #eee; font-family: 'Consolas', monospace; }
+    .summary-table tr.pass td:last-child { color: #4a9; }
+    .summary-table tr.fail td:last-child { color: #e94560; }
+
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <h1>A. Replay 回放录制与播放 Round-Trip 测试</h1>
+      <div class="subtitle">ID: ch17-replay/replay-roundtrip | 期望结果见 README.md</div>
+    </div>
+
+    <div id="content">
+      <div id="left-panel">
+        <h3>B. 期望结果摘要</h3>
+        <div class="expected-box">
+          <h4>E1: isGameStart 检测</h4>
+          <ul><li>含 StartGame 且 frame=0 → <span class="metric">true</span></li>
+          <li>不含 StartGame / frame != 0 → <span class="metric">false</span></li></ul>
+        </div>
+        <div class="expected-box">
+          <h4>E2: 预启动缓冲</h4>
+          <ul><li>StartGame 前 → <span class="metric">recordingToFile=false</span></li>
+          <li>StartGame 后 → <span class="metric">recordingToFile=true</span></li></ul>
+        </div>
+        <div class="expected-box">
+          <h4>E3: 二进制输出与回读</h4>
+          <ul><li>dispose() 后 → <span class="metric">getBuffer() != null</span></li>
+          <li>尾部包含 <span class="metric">MetaStartMarker=-1</span></li></ul>
+        </div>
+        <div class="expected-box">
+          <h4>E4: ReplayConnection 属性</h4>
+          <ul><li>IsValid=<span class="metric">true</span>, TickCount=<span class="metric">>=0</span></li>
+          <li>localClientId = <span class="metric">-1</span></li></ul>
+        </div>
+        <div class="expected-box">
+          <h4>E5: 订单分发</h4>
+          <ul><li>Frame 0 → <span class="metric">receiveImmediateOrders</span></li>
+          <li>Frame > 0 → <span class="metric">receiveOrders</span></li></ul>
+        </div>
+
+        <h3>C. 测试控制</h3>
+        <button id="btn-run-all" class="primary">运行全部测试</button>
+        <button id="btn-test-isgamestart">单独: isGameStart 检测</button>
+        <button id="btn-test-record">单独: 录制与缓冲</button>
+        <button id="btn-test-serialize">单独: 二进制输出</button>
+        <button id="btn-test-parse">单独: 回读与分发</button>
+      </div>
+
+      <div id="main-area">
+        <div class="test-section">
+          <h4>D1: isGameStart 检测测试</h4>
+          <div class="body" id="section-isgamestart"><em>尚未运行...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D2: 录制与缓冲区转换测试</h4>
+          <div class="body" id="section-record"><em>尚未运行...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D3: 二进制输出与元数据解析</h4>
+          <div class="body" id="section-serialize"><em>尚未运行...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D4: ReplayConnection 回读与订单分发</h4>
+          <div class="body" id="section-parse"><em>尚未运行...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D5: 二进制 Hex Dump (前 256 字节)</h4>
+          <div class="body" id="section-hex"><em>尚未生成...</em></div>
+        </div>
+        <div class="test-section">
+          <h4>D6: 数据摘要表</h4>
+          <div class="body" id="section-summary"><em>尚未生成...</em></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="info-bar">
+      <span>UA: <span id="info-ua">-</span></span>
+      <span>视口: <span id="info-viewport">-</span></span>
+      <span>引擎: <span id="info-engine">N/A (纯逻辑测试)</span></span>
+      <span>时间: <span id="info-time">-</span></span>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
