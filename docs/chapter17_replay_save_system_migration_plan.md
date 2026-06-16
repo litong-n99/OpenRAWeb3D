@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 17 — Replay & Save System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.6 (Network/Replay) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (2/8 migrated, 25%, Phase A COMPLETE)
+> **Chapter Status**: IN PROGRESS (4/8 migrated, 50%, Phases A+B COMPLETE)
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%), Chapter 6 Phase A (Order + Connection) COMPLETE
 >
@@ -129,7 +129,7 @@ The following infrastructure from Chapters 2-7 is available for Chapter 17:
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
 | A: Foundation | 2 | 347 | 482+274=~756 | ~61 | ✅ COMPLETE |
-| B: Replay | 2 | 255 | ~700 | ~40 | PLANNING |
+| B: Replay | 2 | 255 | 336+508=~844 | ~51 | ✅ COMPLETE |
 | C: GameSave | 1 | 333 | ~1,000 | ~35 | PLANNING |
 | D: SyncReport + Traits | 3 | 513 | ~900 | ~45 | PLANNING |
 | **Total** | **8** | **~1,448** | **~3,250** | **~160** | **PLANNING** |
@@ -206,9 +206,10 @@ The key challenge is binary format fidelity: the replay file footer has a specif
 
 ### 3.2 Phase B: Replay Recording & Playback
 
-**Status**: 📋 PLANNING (0/2 migrated)
+**Status**: ✅ COMPLETE (2/2 migrated, 51 tests)
 **Complexity**: Medium
-**Blocked by**: Phase A (ReplayMetadata for metadata writing/reading), Chapter 6 Phase A (IConnection, OrderManager, Order types)
+**Review**: PENDING (commit `d9207bd`)
+**Blocked by**: Phase A (ReplayMetadata for metadata writing/reading), Chapter 6 Phase A (IConnection, OrderManager, Order types) — COMPLETE
 **Blocks**: Nothing downstream (leaf nodes from a dependency perspective)
 
 **Description**: Phase B implements the replay recording and playback loop. `ReplayRecorder` captures raw network order packets during gameplay and writes them to a binary `.orarep` file, with replay metadata appended on close. `ReplayConnection` reads a replay file and feeds recorded orders frame-by-frame into `OrderManager`, implementing the `IConnection` interface to make replay playback transparent to the game engine.
@@ -226,7 +227,7 @@ The replay binary format is simple: each packet is `[clientID: int32][dataLength
 
 #### 3.2.1 ReplayRecorder
 
-- [ ] **TODO-17.B.1** `src/OpenRA.Game/Network/ReplayRecorder.ts` (119 lines C#) — Replay recording engine:
+- [x] **TODO-17.B.1** `src/OpenRA.Game/Network/ReplayRecorder.ts` (119 lines C#) ✅ — Replay recording engine:
   - `Metadata: ReplayMetadata` property
   - `preStartBuffer: Uint8Array` with dynamic resize (or `number[][]` chunk list for append efficiency)
   - `chooseFilename: () => string` callback for filename generation
@@ -250,7 +251,7 @@ The replay binary format is simple: each packet is `[clientID: int32][dataLength
 
 #### 3.2.2 ReplayConnection
 
-- [ ] **TODO-17.B.2** `src/OpenRA.Game/Network/ReplayConnection.ts` (136 lines C#) — Replay playback connection implementing `IConnection`:
+- [x] **TODO-17.B.2** `src/OpenRA.Game/Network/ReplayConnection.ts` (136 lines C#) ✅ — Replay playback connection implementing `IConnection`:
   - Inner `Chunk` class: `Frame: number`, `Packets: { clientId: number; packet: Uint8Array }[]`
   - `chunks: Chunk[]` FIFO queue (no concurrency, so Array.shift() is acceptable)
   - `sync: { frame: number; syncHash: number; defeatState: bigint }[]` queue
