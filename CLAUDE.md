@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 14 Phase E COMPLETE (42/49 files, Phases A-E COMPLETE, ~421+~48 tests). Chapter 13 COMPLETE (Support Powers -- Phase A: 14/14 files, 285 tests). Chapter 12 COMPLETE (Shroud & Fog of War -- Phase A: 16/16 files). Chapter 9 COMPLETE (Movement & Physics -- ALL PHASES A-D DONE), Chapter 10 COMPLETE (Resource & Economy -- ALL PHASES A-B + B-Optional: 25/25 files, 972 tests), Chapter 11 COMPLETE (Production & Building -- ALL PHASES A-B: 37/37 files, ~771 tests)
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE, 25/25 original plan + 13 additional, ~771 tests). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 42/49 (85%, Phase A+B+C+D+E COMPLETE, 82+70+~180+161+~48 tests). Chapters 15-21: 0/~192 (0%, PLANNING)
+**Phase**: Chapter 14 ALL PHASES COMPLETE (49/49 files, 100%, ~421+~48+45 tests). Chapter 13 COMPLETE (Support Powers -- Phase A: 14/14 files, 285 tests). Chapter 12 COMPLETE (Shroud & Fog of War -- Phase A: 16/16 files). Chapter 9 COMPLETE (Movement & Physics -- ALL PHASES A-D DONE), Chapter 10 COMPLETE (Resource & Economy -- ALL PHASES A-B + B-Optional: 25/25 files, 972 tests), Chapter 11 COMPLETE (Production & Building -- ALL PHASES A-B: 37/37 files, ~771 tests)
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE, 25/25 original plan + 13 additional, ~771 tests). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 49/49 (100%, ALL PHASES COMPLETE, 82+70+~180+161+~48+45 tests). Chapters 15-21: 0/~192 (0%, PLANNING)
 **Planning Doc**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 **Chapter 9 Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)
 **Chapter 10 Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
@@ -63,7 +63,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Production & Building (Ch11) | COMPLETE (37 files, ALL PHASES A-B. Phase A: 14 files, ~4,216 TS lines, ~296 tests. Phase B: 23 files, ~5,355 TS lines, ~475 tests. Total: ~9,571 TS lines, ~771 tests. Plan: [chapter11_production_building_migration_plan.md](docs/chapter11_production_building_migration_plan.md)) |
 | Shroud & Fog of War (Ch12) | COMPLETE (16/16, 100%, Phase A) |
 | Support Powers (Ch13) | COMPLETE (14 files + 1 interface, Phase A: 14/14, 285 tests, R2 APPROVED). Plan: [chapter13_support_powers_migration_plan.md](docs/chapter13_support_powers_migration_plan.md) |
-| Activity Implementations (Ch14) | Phase A+B+C+D+E COMPLETE (42/49 files, 82+70+~180+161+~48 tests, 3 E2E pages R2 APPROVED). Phase F: PLANNING (0/8) |
+| Activity Implementations (Ch14) | **ALL PHASES COMPLETE (49/49 files, 100%, Phases A-F, 82+70+~180+161+~48+45 tests, 3 E2E pages)** |
 | Order Generators (Ch15) | Planned (~11 files, 1 phase A) |
 | UI Widget Extensions (Ch16) | Planned (~40 files, 3 phases A-C) |
 | Replay & Save (Ch17) | Planned (~6 files, 1 phase A) |

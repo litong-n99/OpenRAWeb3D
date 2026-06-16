@@ -487,18 +487,21 @@ BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditi
 | 6 | `Activities/SimpleTeleport.cs` | `src/OpenRA.Mods.Common/Activities/SimpleTeleport.ts` | 30 | LOW | **COMPLETE** |
 | + | *New* (no OpenRA equivalent) | `Activities/TransportActivityInterfaces.ts` | -- | -- | **COMPLETE** |
 
-#### Phase F: Utility & Miscellaneous Activities (8 files)
+#### Phase F: Utility & Miscellaneous Activities (8 files) ✅ COMPLETE (2026-06-16)
 
-| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
-|:---:|:---|:---|:---:|:---:|
-| 1 | `Activities/Wait.cs` | `src/OpenRA.Mods.Common/Activities/Wait.ts` | 56 | LOW |
-| 2 | `Activities/Transform.cs` | `src/OpenRA.Mods.Common/Activities/Transform.ts` | 189 | MEDIUM |
-| 3 | `Activities/RemoveSelf.cs` | `src/OpenRA.Mods.Common/Activities/RemoveSelf.ts` | 26 | LOW |
-| 4 | `Activities/DeployForGrantedCondition.cs` | `src/OpenRA.Mods.Common/Activities/DeployForGrantedCondition.ts` | 87 | LOW |
-| 5 | `Activities/DonateCash.cs` | `src/OpenRA.Mods.Common/Activities/DonateCash.ts` | 52 | LOW |
-| 6 | `Activities/DonateExperience.cs` | `src/OpenRA.Mods.Common/Activities/DonateExperience.ts` | 66 | LOW |
-| 7 | `Activities/RepairBridge.cs` | `src/OpenRA.Mods.Common/Activities/RepairBridge.ts` | 89 | LOW |
-| 8 | `Activities/InstantRepair.cs` | `src/OpenRA.Mods.Common/Activities/InstantRepair.ts` | 82 | LOW |
+> **Status**: ALL FILES COMPLETE (8/8, 45 tests, ~1,115 TS lines). Wait.ts + RemoveSelf.ts expanded from Phase E stubs. New file: UtilityActivityInterfaces.ts (duck-typed trait interfaces, 170 lines). Chapter 14: 49/49 (100%).
+
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| 1 | `Activities/Wait.cs` | `src/OpenRA.Mods.Common/Activities/Wait.ts` | 56 | LOW | **COMPLETE** (Phase E stub→full) |
+| 2 | `Activities/Transform.cs` | `src/OpenRA.Mods.Common/Activities/Transform.ts` | 189 | MEDIUM | **COMPLETE** |
+| 3 | `Activities/RemoveSelf.cs` | `src/OpenRA.Mods.Common/Activities/RemoveSelf.ts` | 26 | LOW | **COMPLETE** (Phase E stub→full) |
+| 4 | `Activities/DeployForGrantedCondition.cs` | `src/OpenRA.Mods.Common/Activities/DeployForGrantedCondition.ts` | 87 | LOW | **COMPLETE** |
+| 5 | `Activities/DonateCash.cs` | `src/OpenRA.Mods.Common/Activities/DonateCash.ts` | 52 | LOW | **COMPLETE** |
+| 6 | `Activities/DonateExperience.cs` | `src/OpenRA.Mods.Common/Activities/DonateExperience.ts` | 66 | LOW | **COMPLETE** |
+| 7 | `Activities/RepairBridge.cs` | `src/OpenRA.Mods.Common/Activities/RepairBridge.ts` | 89 | LOW | **COMPLETE** |
+| 8 | `Activities/InstantRepair.cs` | `src/OpenRA.Mods.Common/Activities/InstantRepair.ts` | 82 | LOW | **COMPLETE** |
+| + | *New* (no OpenRA equivalent) | `Activities/UtilityActivityInterfaces.ts` | -- | -- | **COMPLETE** |
 
 **Activity Total**: 49 concrete files, ~6,510 C# lines in original source (plus `Activity.cs` and `CallFunc.cs` already migrated in Chapter 3).
 

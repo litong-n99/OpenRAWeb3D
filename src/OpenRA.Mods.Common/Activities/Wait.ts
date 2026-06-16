@@ -1,20 +1,19 @@
 /**
- * Wait.ts — 等待活动（最小化存根）
+ * Wait.ts — 等待活动 (Phase F 完整实现)
  * OpenRA 对照: OpenRA.Mods.Common/Activities/Wait.cs
  *
  * 核心范式转换:
- * - C# Wait activity with multiple constructors → TypeScript minimal stub
- * - Full Wait with condition callbacks deferred to Phase F
- *
- * NOTE: This is a minimal stub. Phase F will implement the full Wait activity
- * with conditional wait, random wait, and callback support.
+ * - C# Wait + WaitFor classes → TypeScript Wait + WaitFor classes
+ * - C# Func<bool> predicate → TypeScript (() => boolean)
+ * - C# IsInterruptible property → inherited from Activity base
  */
 
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
 
-import { Activity } from '../../OpenRA.Game/Activities/Activity.js'
+import { Activity, ActivityState } from '../../OpenRA.Game/Activities/Activity.js'
+import type { GameActor } from '../../OpenRA.Game/Actor.js'
 
 // ---------------------------------------------------------------------------
 // Wait
@@ -25,56 +24,66 @@ import { Activity } from '../../OpenRA.Game/Activities/Activity.js'
  *
  * OpenRA 对照: Wait activity
  *
- * Minimal stub: counts down from the initial tick count and returns true
- * when the counter reaches zero. Full Wait (Phase F) will support:
- * - Conditional wait (wait until predicate is true)
- * - Random wait range
- * - Delayed action callbacks
- *
  * Used by: Hunt (wait between searches), DeliverBulkOrder (unload delays),
- * ReturnToBase (holding pattern), Land (holding pattern).
+ * ReturnToBase (holding pattern), Land (holding pattern), UnloadCargo.
  */
 export class Wait extends Activity {
-  // ---------------------------------------------------------------------------
-  // State
-  // ---------------------------------------------------------------------------
-
-  /** Remaining ticks before this activity completes.
-   *
-   * OpenRA 对照: Wait.remainingTicks
-   */
+  /** Remaining ticks before this activity completes. */
   private remainingTicks: number
-
-  // ---------------------------------------------------------------------------
-  // Constructor
-  // ---------------------------------------------------------------------------
 
   /**
    * Create a Wait activity.
    *
-   * OpenRA 对照: Wait(Actor self, int ticks)
+   * OpenRA 对照: Wait(int period) / Wait(int period, bool interruptible)
    *
-   * @param ticks — number of ticks to wait (0 or negative completes immediately)
+   * @param ticks — number of ticks to wait (0 or negative completes after 1 tick)
+   * @param interruptible — whether this wait can be interrupted (default true)
    */
-  constructor(ticks: number) {
+  constructor(ticks: number, interruptible: boolean = true) {
     super()
     this.remainingTicks = ticks
+    this.isInterruptible = interruptible
   }
 
-  // ---------------------------------------------------------------------------
-  // Tick
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Count down remaining ticks.
-   *
-   * OpenRA 对照: Wait.Tick(Actor)
-   *
-   * @returns true when countdown reaches zero, false otherwise
-   */
-  override tick(): boolean {
+  override tick(_self: GameActor): boolean {
+    if (this.isCanceling || this.state === ActivityState.Done) return true
     if (this.remainingTicks <= 0) return true
     this.remainingTicks--
     return this.remainingTicks <= 0
+  }
+}
+
+// ---------------------------------------------------------------------------
+// WaitFor
+// ---------------------------------------------------------------------------
+
+/**
+ * Wait until a predicate function returns true.
+ *
+ * OpenRA 对照: WaitFor activity
+ *
+ * Used by: Transform (wait forever for make animation),
+ * various condition-based wait scenarios.
+ */
+export class WaitFor extends Activity {
+  private readonly predicate: (() => boolean) | null
+
+  /**
+   * Create a WaitFor activity.
+   *
+   * OpenRA 对照: WaitFor(Func<bool> f) / WaitFor(Func<bool> f, bool interruptible)
+   *
+   * @param predicate — function returning true when wait should complete (null = wait forever)
+   * @param interruptible — whether this wait can be interrupted (default true)
+   */
+  constructor(predicate: (() => boolean) | null, interruptible: boolean = true) {
+    super()
+    this.predicate = predicate
+    this.isInterruptible = interruptible
+  }
+
+  override tick(_self: GameActor): boolean {
+    if (this.isCanceling || this.state === ActivityState.Done) return true
+    return this.predicate === null ? false : this.predicate()
   }
 }

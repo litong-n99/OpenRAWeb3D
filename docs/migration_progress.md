@@ -1131,10 +1131,10 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | In Progress | 0 | 0% |
 | Completed | 11 | 3% |
 
-### Chapter 14: Activity Implementations (Phase A+B+C+D+E COMPLETE, 42/49 files)
+### Chapter 14: Activity Implementations (Phases A-F COMPLETE, 49/49 files) ✅ 100%
 
 > **Migration Plan**: [docs/chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md)
-> **Created**: 2026-06-15 | **Updated**: 2026-06-16 | **Status**: Phase A COMPLETE (11/11 files, 82 tests, 3 E2E pages R2 APPROVED); Phase B COMPLETE (6/6 files, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files, ~180 tests); Phase D COMPLETE (7/7 files, 161 tests); Phase E COMPLETE (6/6 files, 48 tests)
+> **Created**: 2026-06-15 | **Updated**: 2026-06-16 | **Status**: Phase A COMPLETE (11/11 files, 82 tests, 3 E2E pages R2 APPROVED); Phase B COMPLETE (6/6 files, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files, ~180 tests); Phase D COMPLETE (7/7 files, 161 tests); Phase E COMPLETE (6/6, 48 tests); Phase F COMPLETE (8/8, 45 tests)
 > **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
 
 | Phase | Description | Files | Complexity | Status |
@@ -1144,7 +1144,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | Phase C | Aircraft Activities | 12 | HIGH-LOW | **COMPLETE (12/12, ~180 tests)** |
 | Phase D | Economic Activities | 7 | HIGH-LOW | **COMPLETE (7/7, 161 tests)** |
 | Phase E | Transport & Enter | 6 | HIGH-LOW | **COMPLETE (6/6, ~48 tests)** |
-| Phase F | Utility & Miscellaneous | 8 | MEDIUM-LOW | PLANNING (0/8) |
+| Phase F | Utility & Miscellaneous | 8 | MEDIUM-LOW | **COMPLETE (8/8, 45 tests)** |
 
 **Phase A Completed: Movement Activities (11 files, 2026-06-15)**
 
@@ -1228,6 +1228,40 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 - Static factory pattern for child activities (_landFactory, _moveFactory, etc.) to avoid circular imports and enable test injection
 - Frame-end world mutations for addActor/removeActor operations (per ADR-14.5)
 - WVec.rotate(WRot.fromYaw(WAngle)) for carryall offset calculations
+
+**Phase F Completed: Utility & Miscellaneous Activities (8 files, 2026-06-16)**
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| Wait.ts (expand stub) | ~75 | ~55 | ~12 | Added WaitFor class, isInterruptible parameter, ActivityState.Done guard |
+| RemoveSelf.ts (expand stub) | ~35 | ~25 | ~3 | Full implementation: dispose+cancel, Done guard |
+| Transform.ts | ~250 | ~80 | ~8 | MCV deployment: Turn+Land queuing, make-animation, world.createActor, order transfer |
+| DeployForGrantedCondition.ts | ~130 | ~75 | ~7 | Deploy+DeployInner classes, DeployState toggle, Turn queuing |
+| DonateCash.ts | ~110 | ~80 | ~4 | Extends Enter: PlayerResources.changeCash, INotifyCashTransfer |
+| DonateExperience.ts | ~100 | ~70 | ~4 | Extends Enter: GainsExperience.giveLevels, max-level check |
+| RepairBridge.ts | ~115 | ~80 | ~5 | Extends Enter: BridgeHut/LegacyBridgeHut repair, EnterBehaviour |
+| InstantRepair.ts | ~130 | ~75 | ~4 | Extends Enter: IHealth heal via negative damage, stance/relationship check |
+| UtilityActivityInterfaces.ts | ~170 | -- | -- | Duck-typed interfaces: IHealthLike, TransformsLike, GrantConditionOnDeployLike, GainsExperienceLike, PlayerResourcesLike, BridgeHutLike, etc. |
+| **Total** | **~1,115** | **~540** | **45** | 8 test files (1 expanded from Phase E Wait usage), all passing |
+
+**Implementation details**:
+- `Wait.ts`: Expanded from Phase E stub with WaitFor class for predicate-based waiting. Replaced simple `isCanceling` guard with `isCanceling || state === Done` to handle cancel-while-queued correctly.
+- `RemoveSelf.ts`: Completed from Phase E stub. Calls `self.dispose()` and `this.cancel(self)` then returns true.
+- `Transform.ts` (~250 TS): MCV deployment. OnFirstRun queues Turn (if IFacing) + Land (if Aircraft). Tick checks Transforms.canDeploy, fires INotifyTransform.beforeTransform, then either plays WithMakeAnimation.reverse/forward or calls doTransform directly. doTransform uses frame-end action to create new actor via world.createActor with init dict (Location, Owner, Facing, Health, Faction). Transfers orders via IssueOrderAfterTransform.
+- `DeployForGrantedCondition.ts` (~130 TS): Deploy/undeploy with nested DeployInner. OnFirstRun queues Turn if undeployed with facing. Tick queues DeployInner which toggles deployState (deploy/undeploy). DeployInner is not interruptible during animation.
+- `DonateCash.ts` (~110 TS): Extends Enter. OnEnterComplete transfers cash via PlayerResources.changeCash, awards experience via PlayerExperience.giveExperience, notifies INotifyCashTransfer on both actors, then disposes self.
+- `DonateExperience.ts` (~100 TS): Extends Enter. TryStartEnter validates GainsExperience is present and below max level. OnEnterComplete calls giveLevels, awards player experience, disposes self.
+- `RepairBridge.ts` (~115 TS): Extends Enter. TryStartEnter resolves BridgeHut or LegacyBridgeHut and checks canEnterHut (damaged + not repairing). OnEnterComplete calls hut.repair, routes EnterBehaviour (Dispose/Suicide).
+- `InstantRepair.ts` (~130 TS): Extends Enter. TryStartEnter validates IHealth is damaged, InstantlyRepairable present, stance passes ValidRelationships. OnEnterComplete heals via negative damage, routes EnterBehaviour.
+- `UtilityActivityInterfaces.ts` (~170 TS): Duck-typed interfaces for 8 Phase F activities covering DamageState, EnterBehaviour, DeployState, IHealthLike, GrantConditionOnDeployLike, TransformsLike, WithMakeAnimationLike, INotifyTransformLike, GainsExperienceLike, PlayerResourcesLike, PlayerExperienceLike, BridgeHutLike, InstantlyRepairableLike, and more.
+
+**Key Architecture Decisions**:
+- `ActivityState.Done` guard added to tick methods: cancel-while-queued transitions to Done (not Canceling), so tick must check both.
+- All Enter-based activities follow Phase B/E pattern: override tryStartEnter/onEnterComplete virtual hooks.
+- Duck-typed interfaces for all unmigrated traits (same pattern as Phase D/E).
+- Static factory pattern for child activities (Turn/Land factories).
+
+**Chapter 14: ALL PHASES COMPLETE (49/49 files, 100%)**
 
 ---
 
@@ -1631,7 +1665,7 @@ TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResour
 | Phase C | Aircraft Activities | 12 | HIGH-LOW | **COMPLETE (12/12, ~180 tests)** |
 | Phase D | Economic Activities | 7 | HIGH-LOW | **COMPLETE (7/7, 161 tests)** |
 | Phase E | Transport & Enter Activities | 6 | HIGH-LOW | PLANNING (0/6) |
-| Phase F | Utility & Miscellaneous | 8 | MEDIUM-LOW | PLANNING (0/8) |
+| Phase F | Utility & Miscellaneous | 8 | MEDIUM-LOW | **COMPLETE (8/8, 45 tests)** |
 
 **Phase A Completed: Movement Activities (11 files, 2026-06-15)**
 
