@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 14 -- Activity Implementations
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.3 (Traits) + `docs/chapter14_activity_implementations_analysis.md`
-> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phase B COMPLETE (6/6 files migrated, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files migrated, ~180 tests); Phase D IN PROGRESS (5/7 migrated, Batch 1-2 complete); Phases E-F PLANNING (0/13 migrated)
+> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phase B COMPLETE (6/6 files migrated, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files migrated, ~180 tests); Phase D COMPLETE (7/7 files migrated, 161 tests); Phases E-F PLANNING (0/13 migrated)
 > **Planning Date**: 2026-06-15
 > **Last Updated**: 2026-06-16
 > **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
@@ -133,13 +133,13 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | 28 | `OpenRA.Mods.Common/Activities/Parachute.cs` | `src/OpenRA.Mods.Common/Activities/Parachute.ts` | `Parachute` | 58 | LOW | C |
 
 | **Phase D: Economic Activities** | | | | | |
-| 29 | `OpenRA.Mods.Common/Activities/HarvestResource.cs` | `src/OpenRA.Mods.Common/Activities/HarvestResource.ts` | `HarvestResource` | 124 | MEDIUM | D |
-| 30 | `OpenRA.Mods.Common/Activities/FindAndDeliverResources.cs` | `src/OpenRA.Mods.Common/Activities/FindAndDeliverResources.ts` | `FindAndDeliverResources` | 263 | HIGH | D |
-| 31 | `OpenRA.Mods.Common/Activities/MoveToDock.cs` | `src/OpenRA.Mods.Common/Activities/MoveToDock.ts` | `MoveToDock` | 150 | MEDIUM | D |
-| 32 | `OpenRA.Mods.Common/Activities/GenericDockSequence.cs` | `src/OpenRA.Mods.Common/Activities/GenericDockSequence.ts` | `GenericDockSequence` | 216 | HIGH | D |
-| 33 | `OpenRA.Mods.Common/Activities/Resupply.cs` | `src/OpenRA.Mods.Common/Activities/Resupply.ts` | `Resupply` | 327 | HIGH | D |
-| 34 | `OpenRA.Mods.Common/Activities/Sell.cs` | `src/OpenRA.Mods.Common/Activities/Sell.ts` | `Sell` | 58 | LOW | D |
-| 35 | `OpenRA.Mods.Common/Activities/LayMines.cs` | `src/OpenRA.Mods.Common/Activities/LayMines.ts` | `LayMines` | 237 | MEDIUM | D |
+| 29 | `OpenRA.Mods.Common/Activities/HarvestResource.cs` | `src/OpenRA.Mods.Common/Activities/HarvestResource.ts` | `HarvestResource` | 124 | MEDIUM | D ✅ COMPLETE |
+| 30 | `OpenRA.Mods.Common/Activities/FindAndDeliverResources.cs` | `src/OpenRA.Mods.Common/Activities/FindAndDeliverResources.ts` | `FindAndDeliverResources` | 263 | HIGH | D ✅ COMPLETE |
+| 31 | `OpenRA.Mods.Common/Activities/MoveToDock.cs` | `src/OpenRA.Mods.Common/Activities/MoveToDock.ts` | `MoveToDock` | 150 | MEDIUM | D ✅ COMPLETE |
+| 32 | `OpenRA.Mods.Common/Activities/GenericDockSequence.cs` | `src/OpenRA.Mods.Common/Activities/GenericDockSequence.ts` | `GenericDockSequence` | 216 | HIGH | D ✅ COMPLETE |
+| 33 | `OpenRA.Mods.Common/Activities/Resupply.cs` | `src/OpenRA.Mods.Common/Activities/Resupply.ts` | `Resupply` | 327 | HIGH | D ✅ COMPLETE |
+| 34 | `OpenRA.Mods.Common/Activities/Sell.cs` | `src/OpenRA.Mods.Common/Activities/Sell.ts` | `Sell` | 58 | LOW | D ✅ COMPLETE |
+| 35 | `OpenRA.Mods.Common/Activities/LayMines.cs` | `src/OpenRA.Mods.Common/Activities/LayMines.ts` | `LayMines` | 237 | MEDIUM | D ✅ COMPLETE |
 
 | **Phase E: Transport & Enter Activities** | | | | | |
 | 36 | `OpenRA.Mods.Common/Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | `Enter` (abstract, full transport extensions) | 163 | HIGH | E |
@@ -191,10 +191,10 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | A: Movement | 11 | ~1,500 | ~3,400 | ~180 | **COMPLETE (11/11, 82 tests, 3 E2E pages R2 APPROVED)** |
 | B: Combat | 6 | ~789 | ~1,700 | ~100 | **COMPLETE (6/6, ~70 tests, R2 APPROVED)** |
 | C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | **COMPLETE (12/12, ~180 tests, 5 E2E pages)** |
-| D: Economic | 7 | ~1,375 | ~3,300 | ~120 | **IN PROGRESS (5/7 migrated, Batch 1-2 complete, detailed plan at [chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md))** |
+| D: Economic | 7 | ~1,375 | ~3,300 | ~120 | **COMPLETE (7/7, 161 tests)** |
 | E: Transport & Enter | 6 | ~732 | ~1,800 | ~90 | PLANNING |
 | F: Utility & Misc | 8 | ~647 | ~1,500 | ~70 | PLANNING |
-| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A+B+C COMPLETE (29/49); D IN PROGRESS; E-F PLANNING** |
+| **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A+B+C+D COMPLETE (36/49); E-F PLANNING** |
 
 ---
 
@@ -474,7 +474,8 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 ### 3.4 Phase D: Economic Activities
 
-**Status**: IN PROGRESS (5/7 migrated, Batch 1-2 complete) — detailed plan at [docs/chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md)
+**Status**: **COMPLETE (7/7 migrated, Batch 1-3 complete, 161 tests passing)** — detailed plan at [docs/chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md)
+**Completed**: 2026-06-16
 **Complexity**: HIGH (`Resupply.cs` 327 lines, `FindAndDeliverResources.cs` 263 lines, `GenericDockSequence.cs` 216 lines)
 **Blocked by**: Phase A (`Move`, `MoveToDock`), Chapter 10 (`Harvester`, `ResourceLayer`), Chapter 11 (`Building`, `DockClientManager`)
 **Blocks**: Phase C (`ReturnToBase`), Phase E (`PickupUnit`, `DeliverUnit` indirectly)
@@ -489,7 +490,7 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 **Implementation Order** (see [chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md) for full details):
 1. Batch 1: MoveToDock, GenericDockSequence, Resupply (core infrastructure) ✅ COMPLETE
 2. Batch 2: HarvestResource, FindAndDeliverResources (resource loop) ✅ COMPLETE
-3. Batch 3: Sell, LayMines (specialized) — IN PROGRESS
+3. Batch 3: Sell, LayMines (specialized) ✅ COMPLETE
 
 #### TODO-14.D.1 `src/OpenRA.Mods.Common/Activities/FindAndDeliverResources.ts`
 - [x] Port `FindAndDeliverResources` state machine (find resource, harvest, find refinery, deliver)
@@ -517,14 +518,14 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 - [x] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.3
 
 #### TODO-14.D.6 `src/OpenRA.Mods.Common/Activities/Sell.ts`
-- [ ] Port `Sell` (sell building)
-- [ ] Unit tests: refund, removal deferred
-- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.6
+- [x] Port `Sell` (sell building)
+- [x] Unit tests: refund, removal deferred
+- [x] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.6
 
 #### TODO-14.D.7 `src/OpenRA.Mods.Common/Activities/LayMines.ts`
-- [ ] Port `LayMines` (mine placement sequence)
-- [ ] Unit tests: mine placement, ammo check
-- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.7
+- [x] Port `LayMines` (mine placement sequence)
+- [x] Unit tests: mine placement, ammo check
+- [x] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.7
 
 ---
 

@@ -1,7 +1,8 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 14 Phase D -- Economic Activities
 
 > **Source Reference**: `OpenRA/OpenRA.Mods.Common/Activities/FindAndDeliverResources.cs`, `HarvestResource.cs`, `MoveToDock.cs`, `GenericDockSequence.cs`, `Resupply.cs`, `Sell.cs`, `LayMines.cs`
-> **Phase Status**: PLANNING (0/7 migrated)
+> **Phase Status**: **COMPLETE (7/7 migrated, 161 tests passing)**
+> **Completed Date**: 2026-06-16
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapter 14 Phase A+B+C COMPLETE (29/49 files), Chapter 10 (Resource & Economy) COMPLETE, Chapter 11 (Production & Building) COMPLETE
 >

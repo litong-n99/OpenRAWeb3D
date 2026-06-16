@@ -416,7 +416,7 @@ BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditi
 
 **Prerequisites**: Activity base class (Ch3 Phase F) -- COMPLETE; Chapter 9 (Movement) -- COMPLETE; Chapter 8 (Combat) -- COMPLETE.
 
-**Detailed Plan**: [docs/chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md) -- 49 concrete files + 2 already-migrated base files, 6 phases (A-F), PLANNING.
+**Detailed Plan**: [docs/chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md) -- 49 concrete files + 2 already-migrated base files, 6 phases (A-F). Phases A-D COMPLETE (36/49 files); Phases E-F PLANNING (0/13).
 
 #### Phase A: Movement Activities (11 files)
 

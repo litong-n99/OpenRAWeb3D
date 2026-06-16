@@ -184,8 +184,13 @@ export class LayMines extends Activity {
       LayMines.canLayMine(self, selfLocation)
 
     if (canLayHere) {
-      // 检查弹药 — 如果为空且可重新装弹，返回基地
-      if (this.rearmableInfo !== null && this._isAmmoEmpty()) {
+      // 检查弹药 — 如果为空，要么返回基地补给，要么直接结束
+      if (this._isAmmoEmpty()) {
+        // 没有可重新装弹信息，无法补给，结束活动
+        if (this.rearmableInfo === null) {
+          return true
+        }
+
         const target = this._findRearmTarget(self)
         if (target === null) {
           return true

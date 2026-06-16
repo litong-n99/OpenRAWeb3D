@@ -83,6 +83,9 @@ vi.mock('./Move/MoveAdjacentTo.js', async () => {
       override tick(): boolean {
         return true
       }
+      override queue(): void {
+        // stub: avoid walking uninitialized base-class chain in mocks
+      }
     },
   }
 })
@@ -94,6 +97,7 @@ vi.mock('./Move/MoveAdjacentTo.js', async () => {
 import { LayMines } from './LayMines.js'
 import { CPos } from '../../OpenRA.Game/CPos.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
+import { ActivityState } from '../../OpenRA.Game/Activities/Activity.js'
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -290,14 +294,14 @@ describe('LayMines', () => {
     it('stores minefield parameter', () => {
       const actor = createMockActor()
       const minefield = [new CPos(5, 5), new CPos(6, 5)]
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, minefield)
-      expect(layMines.minefield).toEqual(minefield)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, minefield);
+      expect(layMines.minefield).toEqual(minefield);
     })
 
     it('accepts null minefield', () => {
       const actor = createMockActor()
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, null)
-      expect(layMines.minefield).toBeNull()
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, null);
+      expect(layMines.minefield).toBeNull();
     })
   })
 
@@ -308,11 +312,9 @@ describe('LayMines', () => {
   describe('onFirstRun', () => {
     it('defaults minefield to actor location when null', () => {
       const actor = createMockActor({ location: new CPos(3, 4) })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, null)
-
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, null);
       // Simulate tickOuter calling onFirstRun
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
 
       expect(layMines.minefield).toEqual([new CPos(3, 4)])
     })
@@ -320,10 +322,8 @@ describe('LayMines', () => {
     it('preserves provided minefield', () => {
       const actor = createMockActor({ location: new CPos(3, 4) })
       const minefield = [new CPos(10, 10)]
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, minefield)
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, minefield);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
 
       expect(layMines.minefield).toEqual(minefield)
     })
@@ -336,11 +336,9 @@ describe('LayMines', () => {
   describe('tick - basic laying', () => {
     it('lays mine immediately when preLayDelay is 0', () => {
       const actor = createMockActor({ location: new CPos(5, 5), preLayDelay: 0 })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
       // First run to set minefield
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       // Should return false (not done yet, may queue Wait)
@@ -351,10 +349,8 @@ describe('LayMines', () => {
 
     it('queues Wait when preLayDelay > 0', () => {
       const actor = createMockActor({ location: new CPos(5, 5), preLayDelay: 5 })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       expect(result).toBe(false)
@@ -365,10 +361,8 @@ describe('LayMines', () => {
 
     it('queues Wait for afterLayingDelay when > 0', () => {
       const actor = createMockActor({ location: new CPos(5, 5), preLayDelay: 0, afterLayingDelay: 3 })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       // After laying with afterLayingDelay > 0, a Wait should be queued
@@ -377,10 +371,8 @@ describe('LayMines', () => {
 
     it('deducts ammo when laying mine', () => {
       const actor = createMockActor({ location: new CPos(5, 5), ammoCount: 5, ammoUsage: 1 })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       const ammoPool = actor.traits.get('AmmoPool') as { takeAmmo: ReturnType<typeof vi.fn> }
@@ -392,10 +384,8 @@ describe('LayMines', () => {
 
     it('creates mine actor via frame end action', () => {
       const actor = createMockActor({ location: new CPos(5, 5), preLayDelay: 0 })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       // Execute frame end actions
@@ -415,10 +405,8 @@ describe('LayMines', () => {
 
     it('removes current cell from minefield after laying', () => {
       const actor = createMockActor({ location: new CPos(5, 5), preLayDelay: 0 })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5), new CPos(6, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5), new CPos(6, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       // Execute frame end actions to complete the lay
@@ -438,10 +426,8 @@ describe('LayMines', () => {
   describe('tick - movement to next cell', () => {
     it('queues Move to next valid cell when not at minefield cell', () => {
       const actor = createMockActor({ location: new CPos(5, 5) })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(10, 10)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(10, 10)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       expect(result).toBe(false)
@@ -456,13 +442,17 @@ describe('LayMines', () => {
       const actorsAtCell = new Map<string, MockActor[]>()
       actorsAtCell.set('10,10', [otherActor])
 
+      ;(actor._mockWorld as { actorMap: { getActorsAt: ReturnType<typeof vi.fn> } }).actorMap.getActorsAt = vi.fn((cell: CPos) => {
+        const key = `${cell.X},${cell.Y}`
+        return actorsAtCell.get(key) ?? []
+      })
+
       const layMines = new LayMines(
         actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor,
         [new CPos(10, 10)],
-      )
+      );
 
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       expect(result).toBe(true)
@@ -476,10 +466,8 @@ describe('LayMines', () => {
   describe('tick - rearm cycle', () => {
     it('returns true when out of ammo and no rearm building found', () => {
       const actor = createMockActor({ location: new CPos(5, 5), ammoCount: 0, hasRearmable: true })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       expect(result).toBe(true)
@@ -491,12 +479,11 @@ describe('LayMines', () => {
       const depot = createMockActor({ location: new CPos(1, 1) })
       depot.info = { name: 'ServiceDepot' }
       depot.centerPosition = new WPos(1 * 1024, 1 * 1024, 0)
+      depot.owner = actor.owner
       ;(actor._mockWorld as { actors: MockActor[] }).actors = [depot]
 
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       expect(result).toBe(false)
@@ -506,10 +493,8 @@ describe('LayMines', () => {
 
     it('returns true when out of ammo and no rearmable info', () => {
       const actor = createMockActor({ location: new CPos(5, 5), ammoCount: 0, hasRearmable: false })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       expect(result).toBe(true)
@@ -530,12 +515,11 @@ describe('LayMines', () => {
         mineLaid: vi.fn(),
       })
 
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor) // Sets layingMine = true
       expect(layMines.layingMine).toBe(true)
+      layMines.state = ActivityState.Active
 
       layMines.cancel(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
@@ -546,10 +530,9 @@ describe('LayMines', () => {
 
     it('returns true immediately when canceling without layingMine', () => {
       const actor = createMockActor({ location: new CPos(5, 5) })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
+      layMines.state = ActivityState.Active
       layMines.cancel(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
@@ -624,7 +607,7 @@ describe('LayMines', () => {
         new CPos(5, 5),
         new CPos(6, 5),
         new CPos(7, 5),
-      ])
+      ]);
 
       layMines.cleanMineField(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
@@ -635,8 +618,7 @@ describe('LayMines', () => {
 
     it('does nothing when minefield is null', () => {
       const actor = createMockActor({ location: new CPos(5, 5) })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, null)
-
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, null);
       layMines.cleanMineField(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       expect(layMines.minefield).toBeNull()
@@ -650,8 +632,7 @@ describe('LayMines', () => {
   describe('targetLineNodes', () => {
     it('returns rearm target line when returnToBase is true', () => {
       const actor = createMockActor({ location: new CPos(5, 5) })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(10, 10)])
-
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(10, 10)]);
       layMines.returnToBase = true
       layMines.rearmTarget = createMockActor({ location: new CPos(1, 1) }) as unknown as import('../../OpenRA.Game/Actor.js').GameActor
 
@@ -665,7 +646,7 @@ describe('LayMines', () => {
       const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [
         new CPos(5, 5),
         new CPos(6, 5),
-      ])
+      ]);
 
       const nodes = layMines.targetLineNodes(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
@@ -675,8 +656,7 @@ describe('LayMines', () => {
 
     it('returns empty array when minefield is empty', () => {
       const actor = createMockActor({ location: new CPos(5, 5) })
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [])
-
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, []);
       const nodes = layMines.targetLineNodes(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       expect(nodes).toEqual([])
@@ -691,10 +671,8 @@ describe('LayMines', () => {
     it('handles missing ammo pool gracefully', () => {
       const actor = createMockActor({ location: new CPos(5, 5) })
       actor.traits.delete('AmmoPool')
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       // Should still try to lay mine (no ammo check needed)
@@ -704,8 +682,7 @@ describe('LayMines', () => {
     it('handles missing Minelayer trait with defaults', () => {
       const actor = createMockActor({ location: new CPos(5, 5) })
       actor.traits.delete('Minelayer')
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
       // Should not throw during construction
       expect(layMines).toBeDefined()
     })
@@ -724,10 +701,8 @@ describe('LayMines', () => {
       const ammoPool = actor.traits.get('AmmoPool') as { takeAmmo: ReturnType<typeof vi.fn> }
       ammoPool.takeAmmo = vi.fn(() => false)
 
-      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)])
-
-      const onFirstRun = (layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void
-      onFirstRun(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
+      const layMines = new LayMines(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor, [new CPos(5, 5)]);
+      ((layMines as unknown as Record<string, unknown>).onFirstRun as (a: unknown) => void)(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor);
       const result = layMines.tick(actor as unknown as import('../../OpenRA.Game/Actor.js').GameActor)
 
       // Should not queue frame end action for mine creation
