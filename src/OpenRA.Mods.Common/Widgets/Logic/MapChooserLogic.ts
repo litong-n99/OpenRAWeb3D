@@ -13,20 +13,18 @@ import {
   type FactionInfoStub,
   fluentGetMessage,
 } from './BrowserTypes.js'
+import { ConfirmationDialogs } from '../ConfirmationDialogs.js'
+import { WidgetUtils } from '../WidgetUtils.js'
 
 // ---------------------------------------------------------------------------
-// Dynamic widget property helpers
+// Dynamic widget property helpers — consolidated (MAJOR 5 fix)
 //
 // Widget tree nodes have concrete types (ButtonWidget, ScrollItemWidget, etc.)
 // with properties not on the base Widget class. We use dynamic access to wire
 // up event handlers, matching OpenRA's runtime duck typing.
 // ---------------------------------------------------------------------------
 
-type DynWidget = Record<string, unknown> & Widget
-
-function asDyn(w: Widget): DynWidget {
-  return w as unknown as DynWidget
-}
+const asDyn = WidgetUtils.asDyn
 
 // ---------------------------------------------------------------------------
 // ModData stub interface
@@ -158,12 +156,18 @@ export class MapChooserLogic extends ChromeLogic {
       const d = asDyn(dmb)
       d.isDisabled = () => this.currentTab !== MapClassification.User
       d.isVisible = () => this.currentTab === MapClassification.User
-      d.onClick = () => this.deleteOneMap(this.selectedUid, (newUid) => {
-        this.refreshMaps(this.currentTab); this.enumerateMaps(this.currentTab); this.setupMapTabs()
-        if (this.tabMaps.get(this.currentTab)?.length === 0) {
-          const e = this.modData.mapCache.getMap(newUid); if (e) this.switchTab(e.class)
-        }
-      })
+      d.onClick = () => {
+        // OpenRA uses ConfirmationDialogs before delete map (MAJOR 4 fix)
+        ConfirmationDialogs.buttonPrompt(null, 'Delete Map', 'Delete selected map?',
+          () => this.deleteOneMap(this.selectedUid, (newUid) => {
+            this.refreshMaps(this.currentTab); this.enumerateMaps(this.currentTab); this.setupMapTabs()
+            if (this.tabMaps.get(this.currentTab)?.length === 0) {
+              const e = this.modData.mapCache.getMap(newUid); if (e) this.switchTab(e.class)
+            }
+          }),
+          () => { /* cancelled */ },
+        )
+      }
     }
 
     // Delete all maps button
@@ -171,10 +175,16 @@ export class MapChooserLogic extends ChromeLogic {
     if (damb) {
       const da = asDyn(damb)
       da.isVisible = () => this.currentTab === MapClassification.User
-      da.onClick = () => this.deleteAllMaps([...this.visibleMapUids], (newUid) => {
-        this.refreshMaps(this.currentTab); this.enumerateMaps(this.currentTab); this.setupMapTabs()
-        const e = this.modData.mapCache.getMap(newUid); if (e) this.switchTab(e.class)
-      })
+      da.onClick = () => {
+        // OpenRA uses ConfirmationDialogs before delete all maps (MAJOR 4 fix)
+        ConfirmationDialogs.buttonPrompt(null, 'Delete All Maps', 'Delete all custom maps?',
+          () => this.deleteAllMaps([...this.visibleMapUids], (newUid) => {
+            this.refreshMaps(this.currentTab); this.enumerateMaps(this.currentTab); this.setupMapTabs()
+            const e = this.modData.mapCache.getMap(newUid); if (e) this.switchTab(e.class)
+          }),
+          () => { /* cancelled */ },
+        )
+      }
     }
 
     // Filter order controls

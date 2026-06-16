@@ -10,7 +10,7 @@
  * - C# CachedTransform<Modifiers, string> → 简单字符串替换
  */
 
-import { Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'
+import { Widget, ChromeLogic } from '../../../../OpenRA.Game/Widgets/Widget.js'
 import type { SettingsLogic } from './SettingsLogic.js'
 import { SettingsUtils } from './SettingsUtils.js'
 import { CheckboxWidget } from '../../CheckboxWidget.js'
@@ -86,7 +86,10 @@ export interface InputSettings {
  *
  * OpenRA 对照: public class InputSettingsLogic : ChromeLogic
  */
-export class InputSettingsLogic {
+/**
+ * NOTE: ADR-16.2 — InputSettingsLogic extends ChromeLogic for OpenRA parity.
+ */
+export class InputSettingsLogic extends ChromeLogic {
   private readonly inputSettings: InputSettings
   private readonly mouseFocusCallbacks: MouseFocusCallbacks
 
@@ -117,6 +120,8 @@ export class InputSettingsLogic {
     inputSettings: InputSettings,
     mouseFocusCallbacks: MouseFocusCallbacks,
   ) {
+    super()
+
     this.inputSettings = inputSettings
     this.mouseFocusCallbacks = mouseFocusCallbacks
 
@@ -425,5 +430,17 @@ export class InputSettingsLogic {
     } else {
       this.mouseFocusCallbacks.releaseWindowMouseFocus()
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ChromeLogic interface
+  // ---------------------------------------------------------------------------
+
+  tick(): void {
+    // No per-frame logic needed.
+  }
+
+  override dispose(): void {
+    super.dispose()
   }
 }

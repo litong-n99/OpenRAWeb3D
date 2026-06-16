@@ -6,9 +6,11 @@
 import { ChromeLogic, type Widget } from '../../../OpenRA.Game/Widgets/Widget.js'
 import type { ModDataStub } from './MapChooserLogic.js'
 import { DateType, DurationType, GameType, WinState, MapStatus, type ReplayMetadataStub, type SpawnOccupantStub } from './BrowserTypes.js'
+import { ConfirmationDialogs } from '../ConfirmationDialogs.js'
+import { WidgetUtils } from '../WidgetUtils.js'
 
-type DynWidget = Record<string, unknown> & Widget
-function asDyn(w: Widget): DynWidget { return w as unknown as DynWidget }
+// Consolidated dynamic widget access (MAJOR 5 fix)
+const asDyn = WidgetUtils.asDyn
 
 interface ReplayState { visible: boolean; item: Widget }
 interface Filter { type: GameType; date: DateType; duration: DurationType; outcome: WinState; playerName: string | null; mapName: string | null; faction: string | null }
@@ -73,11 +75,30 @@ export class ReplayBrowserLogic extends ChromeLogic {
 
     const delb = asDyn(this.panel.get<Widget>('MNG_DELSEL_BUTTON'))
     delb.isDisabled = () => this.selectedReplay == null
-    delb.onClick = () => { if (!this.selectedReplay) return; this.deleteReplay(this.selectedReplay); if (!this.selectedReplay) this.selectFirstVisibleReplay() }
+    delb.onClick = () => {
+      if (!this.selectedReplay) return
+      // OpenRA uses ConfirmationDialogs before delete (MAJOR 4 fix)
+      ConfirmationDialogs.buttonPrompt(null, 'Delete Replay', 'Delete selected replay?',
+        () => {
+          this.deleteReplay(this.selectedReplay!)
+          if (!this.selectedReplay) this.selectFirstVisibleReplay()
+        },
+        () => { /* cancelled */ },
+      )
+    }
 
     const dab = asDyn(this.panel.get<Widget>('MNG_DELALL_BUTTON'))
     dab.isDisabled = () => ![...this.replayState.values()].some((s: ReplayState) => s.visible)
-    dab.onClick = () => { for (const r of this.replays.filter((r2: ReplayMetadataStub) => this.replayState.get(r2)?.visible)) this.deleteReplay(r); if (!this.selectedReplay) this.selectFirstVisibleReplay() }
+    dab.onClick = () => {
+      // OpenRA uses ConfirmationDialogs before delete all (MAJOR 4 fix)
+      ConfirmationDialogs.buttonPrompt(null, 'Delete All Replays', 'Delete all visible replays?',
+        () => {
+          for (const r of this.replays.filter((r2: ReplayMetadataStub) => this.replayState.get(r2)?.visible)) this.deleteReplay(r)
+          if (!this.selectedReplay) this.selectFirstVisibleReplay()
+        },
+        () => { /* cancelled */ },
+      )
+    }
   }
 
   static evaluateReplayVisibility(replay: ReplayMetadataStub): boolean {

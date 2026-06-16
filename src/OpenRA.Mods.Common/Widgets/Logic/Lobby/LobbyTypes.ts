@@ -298,6 +298,14 @@ export interface OrderManagerLobby {
   readonly authenticationFailed: boolean
   readonly serverMapPool: ReadonlySet<string> | null
   issueOrder(order: unknown): void
+  /** OpenRA 对照: Game.BeforeGameStart event — 注册游戏开始回调 */
+  onBeforeGameStart?(handler: () => void): void
+  /** OpenRA 对照: Game.BeforeGameStart event — 解绑游戏开始回调 */
+  offBeforeGameStart?(handler: () => void): void
+  /** OpenRA 对照: Game.ConnectionStateChanged event — 注册连接状态变化回调 */
+  onConnectionStateChanged?(handler: (orderManager: OrderManagerLobby, connectionState: string) => void): void
+  /** OpenRA 对照: Game.ConnectionStateChanged event — 解绑连接状态变化回调 */
+  offConnectionStateChanged?(handler: (orderManager: OrderManagerLobby, connectionState: string) => void): void
 }
 
 // ---------------------------------------------------------------------------

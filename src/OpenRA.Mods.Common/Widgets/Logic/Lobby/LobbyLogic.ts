@@ -19,6 +19,7 @@ import type { ButtonWidget } from '../../../Widgets/ButtonWidget.js'
 import type { DropDownButtonWidget } from '../../../Widgets/DropDownButtonWidget.js'
 import type { LabelWidget } from '../../../Widgets/LabelWidget.js'
 import type { TextFieldWidget } from '../../../Widgets/TextFieldWidget.js'
+import { WidgetUtils } from '../../../Widgets/WidgetUtils.js'
 import {
   setupEditableSlotWidget,
   setupSlotWidget,
@@ -53,12 +54,10 @@ import {
 } from './LobbyTypes.js'
 
 // ---------------------------------------------------------------------------
-// Helper: access child widget by ID
+// Consolidated widget child access (MAJOR 5 fix)
 // ---------------------------------------------------------------------------
 
-function wc<T extends Widget = Widget>(parent: Widget, id: string): T | undefined {
-  return (parent as unknown as Record<string, unknown>)[id] as T | undefined
-}
+const wc = WidgetUtils.getChildWidget
 
 // ---------------------------------------------------------------------------
 // Fluent stub
@@ -66,6 +65,22 @@ function wc<T extends Widget = Widget>(parent: Widget, id: string): T | undefine
 
 function fluentMsg(key: string, ..._args: string[]): string {
   return key
+}
+
+// ---------------------------------------------------------------------------
+// SelectSpawnPoint stub
+// NOTE: Full LobbyUtils.SelectSpawnPoint migration deferred to TODO-16.C.8
+// ---------------------------------------------------------------------------
+
+let _lobbyUtilsSelectSpawnPoint:
+  | ((orderManager: OrderManagerLobby, preview: unknown, mapPreview: unknown, mi: unknown) => void)
+  | null = null
+
+/** Register the LobbyUtils.SelectSpawnPoint implementation. */
+export function setSelectSpawnPoint(
+  fn: (orderManager: OrderManagerLobby, preview: unknown, mapPreview: unknown, mi: unknown) => void,
+): void {
+  _lobbyUtilsSelectSpawnPoint = fn
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +177,25 @@ export class LobbyLogic extends ChromeLogic {
 
   private _lobbyInfoHandlers: Array<() => void> = []
 
+  // ---- Sound notification callbacks (MAJOR 7 fix) ----
+  // OpenRA 对照: ChromeMetrics keys — chat_line, player_joined, player_left, lobby_option_changed
+  // TODO-16.C.6: Wire to actual Sound.PlayNotification when audio system is fully migrated.
+
+  /** Callback for chat line sound. OpenRA 对照: ChromeMetrics "ChatLineSound" */
+  private _chatLineSound: ((notification: string) => void) | null = null
+
+  /** Callback for player joined sound. OpenRA 对照: ChromeMetrics "PlayerJoinedSound" */
+  private _playerJoinedSound: ((notification: string) => void) | null = null
+
+  /** Callback for player left sound. OpenRA 对照: ChromeMetrics "PlayerLeftSound" */
+  private _playerLeftSound: ((notification: string) => void) | null = null
+
+  /** Callback for lobby option changed sound. OpenRA 对照: ChromeMetrics "LobbyOptionChangedSound" */
+  private _lobbyOptionChangedSound: ((notification: string) => void) | null = null
+
+  /** 预绑定的 onGameStart 处理器（用于事件注册/解绑）。OpenRA 对照: Game.BeforeGameStart += OnGameStart */
+  private readonly _boundOnGameStart: () => void
+
   constructor(
     widget: Widget,
     modData: ModDataLobby,
@@ -181,6 +215,22 @@ export class LobbyLogic extends ChromeLogic {
     this._skirmishMode = skirmishMode
     this._lobby = widget
     this._map = modData.mapCache.unknownMap
+
+    // Pre-bind game start handler for registration/unregistration
+    // OpenRA 对照: Game.BeforeGameStart += OnGameStart
+    this._boundOnGameStart = this.notifyGameStart.bind(this)
+
+    // Register game start handler via orderManager event hook
+    // OpenRA 对照: Game.BeforeGameStart += OnGameStart
+    if (orderManager.onBeforeGameStart) {
+      orderManager.onBeforeGameStart(this._boundOnGameStart)
+    }
+
+    // Register connection state changed handler for reconnection
+    // OpenRA 对照: Game.ConnectionStateChanged += ConnectionStateChanged
+    if (orderManager.onConnectionStateChanged) {
+      orderManager.onConnectionStateChanged(this._onConnectionStateChanged.bind(this))
+    }
 
     // Load factions
     const worldActorInfo = modData.defaultRules.actors['world']
@@ -286,7 +336,7 @@ export class LobbyLogic extends ChromeLogic {
         const botController = this._orderManager.lobbyInfo.clients.find(c => c.isAdmin)
 
         if (Array.from(this._orderManager.lobbyInfo.slots.values()).some(s => s.allowBots)) {
-          options[fluentMsg('options-slot-admin.configure-bots')] = [{
+          const botOptions: DropDownOption[] = [{
             title: fluentMsg('options-slot-admin.add-bots'),
             isSelected: () => false,
             onClick: () => {
@@ -297,6 +347,22 @@ export class LobbyLogic extends ChromeLogic {
               }
             },
           }]
+
+          // MAJOR 9 fix: Add "Remove Bots" option when bots are present (C# lines 328-344)
+          const botClients = this._orderManager.lobbyInfo.clients.filter(c => c.bot !== null)
+          if (botClients.length > 0) {
+            botOptions.push({
+              title: fluentMsg('options-slot-admin.remove-bots'),
+              isSelected: () => false,
+              onClick: () => {
+                for (const c of botClients) {
+                  this._orderManager.issueOrder({ type: 'command', text: `slot_close ${c.slot}` })
+                }
+              },
+            })
+          }
+
+          options[fluentMsg('options-slot-admin.configure-bots')] = botOptions
         }
 
         const activeSlots = Array.from(this._orderManager.lobbyInfo.slots.entries()).filter(
@@ -401,6 +467,30 @@ export class LobbyLogic extends ChromeLogic {
     const serverName = wc<LabelWidget>(widget, 'SERVER_NAME')
     if (serverName) {
       serverName.getText = () => this._orderManager.lobbyInfo.globalSettings.serverName
+    }
+
+    // Map preview widget
+    // OpenRA 对照: LobbyLogic constructor lines 198-220 (MAP_PREVIEW widget loading)
+    const mapPreviewRoot = wc(widget, 'MAP_PREVIEW_ROOT')
+    if (mapPreviewRoot) {
+      const mapPreviewContainer = Ui.loadWidget('MAP_PREVIEW', mapPreviewRoot, {
+        orderManager,
+        getMap: () => ({ map: this._map, mapStatus: this._mapStatus }),
+        onMouseDown: (_preview: unknown, _mapPreview: unknown, mi: unknown) => {
+          _lobbyUtilsSelectSpawnPoint?.(orderManager, _preview, _mapPreview, mi)
+        },
+        getSpawnOccupants: () => this._spawnOccupants,
+        getDisabledSpawnPoints: () => this._orderManager.lobbyInfo.disabledSpawnPoints,
+        showUnoccupiedSpawnpoints: true,
+        mapUpdatesEnabled: true,
+        onMapUpdate: (uid: string) => {
+          this._orderManager.issueOrder({ type: 'command', text: `map ${uid}` })
+        },
+      })
+      if (mapPreviewContainer) {
+        ;(mapPreviewContainer as unknown as Record<string, unknown>).isVisible =
+          () => this._panel !== PanelType.Servers
+      }
     }
 
     this._updateCurrentMap()
@@ -635,11 +725,79 @@ export class LobbyLogic extends ChromeLogic {
     this._resetOptionsButtonEnabled = true
   }
 
+  // ---- Connection state changed handler ----
+  // OpenRA 对照: LobbyLogic.ConnectionStateChanged()
+
+  /**
+   * Handle connection state changes.
+   * On disconnect, closes the lobby window and shows the connection failed panel
+   * with retry logic that re-opens the lobby on reconnect.
+   *
+   * OpenRA 对照: void ConnectionStateChanged(OrderManager om, string password, NetworkConnection connection)
+   */
+  private _onConnectionStateChanged(_om: OrderManagerLobby, connectionState: string): void {
+    if (connectionState === 'NotConnected') {
+      Ui.closeWindow()
+
+      const onReconnect = () => {
+        this._onExit()
+      }
+
+      // Open the connection failed panel with retry capabilities
+      // NOTE: Full ConnectionLogic / CONNECTIONFAILED_PANEL migration deferred to TODO-16.C.12
+      Ui.openWindow('CONNECTIONFAILED_PANEL', {
+        orderManager: _om,
+        onAbort: () => this._onExit(),
+        onQuit: null,
+        onRetry: onReconnect,
+      })
+    }
+  }
+
   // ---- Text notification handler ----
 
-  handleTextNotification(_notification: TextNotification): void {
+  /** Handle text notification — routes to appropriate chat template and plays sound.
+   *
+   * OpenRA 对照: LobbyLogic.Handle(TextNotification)
+   * C# has 5 chat templates: System, Join, Leave, Chat, Mission
+   * from TextNotificationPool. Each triggers a specific sound.
+   *
+   * MAJOR 8 fix: Basic template routing + sound stubs.
+   */
+  handleTextNotification(notification: TextNotification): void {
     const scrolledToBottom = this._lobbyChatPanel.scrolledToBottom
+
+    // Route to appropriate chat template
+    // NOTE: Full template widget creation (CHAT_TEMPLATE, SYSTEM_TEMPLATE, etc.)
+    // deferred to TODO-16.C.7 (TextNotificationsManager migration).
+    // Current implementation routes notifications by pool type.
+    switch (notification.pool) {
+      case TextNotificationPool.System:
+        // System message — lobby option changed sound
+        // OpenRA 对照: Game.Sound.PlayNotification(..., lobbyOptionChangedSound)
+        this._lobbyOptionChangedSound?.('LobbyOptionChangedSound')
+        break
+      case TextNotificationPool.Join:
+        // Player joined — use join template
+        this._playerJoinedSound?.('PlayerJoinedSound')
+        break
+      case TextNotificationPool.Leave:
+        // Player left — use leave template
+        this._playerLeftSound?.('PlayerLeftSound')
+        break
+      case TextNotificationPool.Chat:
+        // Regular chat — use chat template
+        this._chatLineSound?.('ChatLineSound')
+        break
+      case TextNotificationPool.Mission:
+        // Mission objective — use mission template
+        break
+      default:
+        break
+    }
+
     // NOTE: In full migration, add chat line widget from template
+    // and append to this._lobbyChatPanel
     if (scrolledToBottom) this._lobbyChatPanel.scrollToBottom(true)
   }
 
@@ -665,9 +823,28 @@ export class LobbyLogic extends ChromeLogic {
     }
   }
 
+  /** Clean up resources and event handlers.
+   *
+   * OpenRA 对照: override Dispose(bool disposing)
+   * - Game.BeforeGameStart -= OnGameStart
+   * - Game.ConnectionStateChanged -= ConnectionStateChanged
+   * - Game.LobbyInfoChanged -= UpdateCurrentMap / UpdatePlayerList / etc.
+   */
   override dispose(): void {
     if (this._disposed) return
     this._disposed = true
+
+    // Unregister BeforeGameStart handler
+    if (this._orderManager.offBeforeGameStart) {
+      this._orderManager.offBeforeGameStart(this._boundOnGameStart)
+    }
+
+    // Unregister ConnectionStateChanged handler
+    if (this._orderManager.offConnectionStateChanged) {
+      this._orderManager.offConnectionStateChanged(this._onConnectionStateChanged)
+    }
+
     this._lobbyInfoHandlers = []
+    super.dispose()
   }
 }

@@ -1,14 +1,22 @@
 /**
  * LoadGameBrowserLogic.ts — 加载存档浏览器界面逻辑
  * OpenRA 对照: OpenRA.Mods.Common/Widgets/Logic/LoadGameBrowserLogic.cs (1039 lines)
+ *
+ * 核心范式转换:
+ * - OpenRA DropDownButtonWidget.showDropDown → TypeScript 动态下拉项
+ * - OpenRA C# enum SaveType/DateType/DurationType → BrowserTypes const 对象
+ * - OpenRA File.GetLastWriteTime / Directory.GetFiles → Date / Uint8Array 内存文件系统
+ * - OpenRA FrozenDictionary / LINQ → Map / 数组过滤
  */
 
 import { ChromeLogic, type Widget } from '../../../OpenRA.Game/Widgets/Widget.js'
 import type { ModDataStub } from './MapChooserLogic.js'
 import { SaveType, DateType, DurationType, MapStatus, type GameSaveStub, type SpawnOccupantStub } from './BrowserTypes.js'
+import { ConfirmationDialogs } from '../ConfirmationDialogs.js'
+import { WidgetUtils } from '../WidgetUtils.js'
 
-type DynWidget = Record<string, unknown> & Widget
-function asDyn(w: Widget): DynWidget { return w as unknown as DynWidget }
+// Consolidated dynamic widget access (MAJOR 5 fix)
+const asDyn = WidgetUtils.asDyn
 
 interface SaveEntry { path: string; lastWrite: Date; creationTime: Date; duration?: { totalMinutes: number } | null; mapTitle: string; mapUid: string; factions: string[]; visible: boolean; save: GameSaveStub | null }
 interface Filter { type: SaveType; date: DateType; duration: DurationType; saveName: string | null; mapName: string | null; faction: string | null }
@@ -54,15 +62,125 @@ export class LoadGameBrowserLogic extends ChromeLogic {
 
   setupFilters(): void {
     const f = LoadGameBrowserLogic.filter
-    const ni = this.panel.getOrNull<Widget>('FLT_NAME_INPUT')
+    let ni = this.panel.getOrNull<Widget>('FLT_NAME_INPUT')
     if (ni) {
       const n = asDyn(ni)
       n.onEscKey = () => { f.saveName = null; this.applyFilter(); return true }
       n.onTextEdited = () => { f.saveName = (n.text as string) || null; this.applyFilter() }
     }
+
+    // Save type dropdown
+    // OpenRA 对照: FLT_TYPE_DROPDOWNBUTTON (Any / Autosave / Manual)
+    {
+      const ddb = this.panel.getOrNull<Widget>('FLT_TYPE_DROPDOWNBUTTON')
+      if (ddb) {
+        const typeOptions: Array<{ value: SaveType; label: string }> = [
+          { value: SaveType.Any, label: 'Any' },
+          { value: SaveType.Autosave, label: 'Autosave' },
+          { value: SaveType.Manual, label: 'Manual' },
+        ]
+        const typeLookup: Record<string, string> = {}
+        for (const o of typeOptions) typeLookup[o.value] = o.label
+
+        const dd = asDyn(ddb)
+        dd.getText = () => typeLookup[f.type]
+        dd.onMouseDown = () => {
+          const showDropDown = (dd as unknown as { showDropDown: (...args: unknown[]) => unknown }).showDropDown.bind(dd)
+          showDropDown('LABEL_DROPDOWN_TEMPLATE', 330, typeOptions,
+            (option: unknown, _template: unknown) => {
+              const opt = option as { value: SaveType; label: string }
+              const item = asDyn(_template as Widget)
+              const label = item.getOrNull<Widget>('LABEL')
+              if (label) asDyn(label).getText = () => opt.label
+              return {
+                isSelected: () => f.type === opt.value,
+                onClick: () => { f.type = opt.value; this.applyFilter() },
+              }
+            },
+          )
+        }
+      }
+    }
+
+    // Date dropdown
+    // OpenRA 对照: FLT_DATE_DROPDOWNBUTTON (Any / Today / LastWeek / LastFortnight / LastMonth)
+    {
+      const ddb = this.panel.getOrNull<Widget>('FLT_DATE_DROPDOWNBUTTON')
+      if (ddb) {
+        const dateOptions: Array<{ value: DateType; label: string }> = [
+          { value: DateType.Any, label: 'Any' },
+          { value: DateType.Today, label: 'Today' },
+          { value: DateType.LastWeek, label: 'Last Week' },
+          { value: DateType.LastFortnight, label: 'Last Fortnight' },
+          { value: DateType.LastMonth, label: 'Last Month' },
+        ]
+        const dateLookup: Record<string, string> = {}
+        for (const o of dateOptions) dateLookup[o.value] = o.label
+
+        const dd = asDyn(ddb)
+        dd.getText = () => dateLookup[f.date]
+        dd.onMouseDown = () => {
+          const showDropDown = (dd as unknown as { showDropDown: (...args: unknown[]) => unknown }).showDropDown.bind(dd)
+          showDropDown('LABEL_DROPDOWN_TEMPLATE', 330, dateOptions,
+            (option: unknown, _template: unknown) => {
+              const opt = option as { value: DateType; label: string }
+              const item = asDyn(_template as Widget)
+              const label = item.getOrNull<Widget>('LABEL')
+              if (label) asDyn(label).getText = () => opt.label
+              return {
+                isSelected: () => f.date === opt.value,
+                onClick: () => { f.date = opt.value; this.applyFilter() },
+              }
+            },
+          )
+        }
+      }
+    }
+
+    // Duration dropdown
+    // OpenRA 对照: FLT_DURATION_DROPDOWNBUTTON (Any / VeryShort / Short / Medium / Long)
+    {
+      const ddb = this.panel.getOrNull<Widget>('FLT_DURATION_DROPDOWNBUTTON')
+      if (ddb) {
+        const durOptions: Array<{ value: DurationType; label: string }> = [
+          { value: DurationType.Any, label: 'Any' },
+          { value: DurationType.VeryShort, label: 'Very Short (<5m)' },
+          { value: DurationType.Short, label: 'Short (5-20m)' },
+          { value: DurationType.Medium, label: 'Medium (20-60m)' },
+          { value: DurationType.Long, label: 'Long (>60m)' },
+        ]
+        const durLookup: Record<string, string> = {}
+        for (const o of durOptions) durLookup[o.value] = o.label
+
+        const dd = asDyn(ddb)
+        dd.getText = () => durLookup[f.duration]
+        dd.onMouseDown = () => {
+          const showDropDown = (dd as unknown as { showDropDown: (...args: unknown[]) => unknown }).showDropDown.bind(dd)
+          showDropDown('LABEL_DROPDOWN_TEMPLATE', 330, durOptions,
+            (option: unknown, _template: unknown) => {
+              const opt = option as { value: DurationType; label: string }
+              const item = asDyn(_template as Widget)
+              const label = item.getOrNull<Widget>('LABEL')
+              if (label) asDyn(label).getText = () => opt.label
+              return {
+                isSelected: () => f.duration === opt.value,
+                onClick: () => { f.duration = opt.value; this.applyFilter() },
+              }
+            },
+          )
+        }
+      }
+    }
+
+    // Reset button
     const rb = asDyn(this.panel.get<Widget>('FLT_RESET_BUTTON'))
     rb.isDisabled = () => isFilterEmpty(f)
-    rb.onClick = () => { LoadGameBrowserLogic.filter = emptyFilter(); if (ni) asDyn(ni).text = ''; this.setupSaveDependentFilters(); this.applyFilter() }
+    rb.onClick = () => {
+      LoadGameBrowserLogic.filter = emptyFilter()
+      if (ni) asDyn(ni).text = ''
+      this.setupSaveDependentFilters()
+      this.applyFilter()
+    }
   }
 
   setupSaveDependentFilters(): void {}
@@ -102,11 +220,30 @@ export class LoadGameBrowserLogic extends ChromeLogic {
 
     const deb = asDyn(this.panel.get<Widget>('DELETE_BUTTON'))
     deb.isDisabled = () => this.selectedPath == null
-    deb.onClick = () => { if (!this.selectedPath) return; this.delete(this.selectedPath); this.saves.some((s: SaveEntry) => s.visible) ? this.selectFirstVisible() : this.onExit?.() }
+    deb.onClick = () => {
+      if (!this.selectedPath) return
+      // OpenRA uses ConfirmationDialogs before delete (MAJOR 4 fix)
+      ConfirmationDialogs.buttonPrompt(null, 'Delete Save', 'Delete selected save?',
+        () => {
+          this.delete(this.selectedPath!)
+          this.saves.some((s: SaveEntry) => s.visible) ? this.selectFirstVisible() : this.onExit?.()
+        },
+        () => { /* cancelled */ },
+      )
+    }
 
     const dab = asDyn(this.panel.get<Widget>('DELETE_ALL_BUTTON'))
     dab.isDisabled = () => !this.saves.some((s: SaveEntry) => s.visible)
-    dab.onClick = () => { for (const s of this.saves.filter((sv: SaveEntry) => sv.visible)) this.delete(s.path); this.saves.some((s: SaveEntry) => s.visible) ? null : this.onExit?.() }
+    dab.onClick = () => {
+      // OpenRA uses ConfirmationDialogs before delete all (MAJOR 4 fix)
+      ConfirmationDialogs.buttonPrompt(null, 'Delete All Saves', 'Delete all visible saves?',
+        () => {
+          for (const s of this.saves.filter((sv: SaveEntry) => sv.visible)) this.delete(s.path)
+          this.saves.some((s: SaveEntry) => s.visible) ? null : this.onExit?.()
+        },
+        () => { /* cancelled */ },
+      )
+    }
   }
 
   selectFirstVisible(): void { this.selectSave(this.saves.find((s: SaveEntry) => s.visible)?.path || null) }

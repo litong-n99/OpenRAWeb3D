@@ -15,7 +15,7 @@
  * - C# Game.Renderer.Resolution / DisplayCount / NativeResolution → 渲染状态回调
  */
 
-import { Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'
+import { Widget, ChromeLogic } from '../../../../OpenRA.Game/Widgets/Widget.js'
 import type { SettingsLogic } from './SettingsLogic.js'
 import { SettingsUtils } from './SettingsUtils.js'
 import { CheckboxWidget } from '../../CheckboxWidget.js'
@@ -213,7 +213,12 @@ class CachedTransform<T> {
  *
  * OpenRA 对照: public class DisplaySettingsLogic : ChromeLogic
  */
-export class DisplaySettingsLogic {
+/**
+ * NOTE: ADR-16.2 — DisplaySettingsLogic extends ChromeLogic for OpenRA parity.
+ * tick() is a no-op in web rendering since widget delegates handle frame updates;
+ * dispose() is a no-op since settings state is owned externally.
+ */
+export class DisplaySettingsLogic extends ChromeLogic {
   private readonly graphicSettings: GraphicSettings
   private readonly gameSettings: GameSettingsState
   private readonly renderer: RendererState
@@ -254,6 +259,8 @@ export class DisplaySettingsLogic {
     renderer: RendererState,
     viewportSizes: ViewportSizesProvider,
   ) {
+    super()
+
     this.graphicSettings = graphicSettings
     this.gameSettings = gameSettings
     this.renderer = renderer
@@ -965,5 +972,27 @@ export class DisplaySettingsLogic {
         return item
       },
     )
+  }
+
+  // ---------------------------------------------------------------------------
+  // ChromeLogic interface
+  // ---------------------------------------------------------------------------
+
+  /** Per-frame tick. No-op — widget delegates handle visual updates.
+   *
+   * OpenRA 对照: ChromeLogic.Tick()
+   */
+  tick(): void {
+    // No per-frame logic needed — widget delegates (isVisible/getText)
+    // handle frame-dependent state via closure over settings objects.
+  }
+
+  /** Clean up resources.
+   *
+   * OpenRA 对照: ChromeLogic.Dispose()
+   */
+  override dispose(): void {
+    // Settings state is owned externally; no GPU resources to release.
+    super.dispose()
   }
 }

@@ -10,7 +10,7 @@
  * - C# Developer settings visibility toggle → 可见性委托
  */
 
-import { Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'
+import { Widget, ChromeLogic } from '../../../../OpenRA.Game/Widgets/Widget.js'
 import type { SettingsLogic } from './SettingsLogic.js'
 import { SettingsUtils } from './SettingsUtils.js'
 import { CheckboxWidget } from '../../CheckboxWidget.js'
@@ -58,7 +58,10 @@ export interface AdvancedServerSettings {
  *
  * OpenRA 对照: public class AdvancedSettingsLogic : ChromeLogic
  */
-export class AdvancedSettingsLogic {
+/**
+ * NOTE: ADR-16.2 — AdvancedSettingsLogic extends ChromeLogic for OpenRA parity.
+ */
+export class AdvancedSettingsLogic extends ChromeLogic {
   private readonly debugSettings: DebugSettings
   private readonly gameSettings: AdvancedGameSettings
   private readonly serverSettings: AdvancedServerSettings
@@ -88,6 +91,8 @@ export class AdvancedSettingsLogic {
     gameSettings: AdvancedGameSettings,
     serverSettings: AdvancedServerSettings,
   ) {
+    super()
+
     this.debugSettings = debugSettings
     this.gameSettings = gameSettings
     this.serverSettings = serverSettings
@@ -282,5 +287,17 @@ export class AdvancedSettingsLogic {
       this.debugSettings.enableDebugCommandsInReplays = false
       this.debugSettings.enableSimulationPerfLogging = false
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ChromeLogic interface
+  // ---------------------------------------------------------------------------
+
+  tick(): void {
+    // No per-frame logic needed.
+  }
+
+  override dispose(): void {
+    super.dispose()
   }
 }

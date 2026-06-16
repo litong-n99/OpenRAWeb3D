@@ -21,7 +21,13 @@ import type { ColorBlockWidget } from '../../ColorBlockWidget.js'
 import { WidgetUtils } from '../../WidgetUtils.js'
 
 // ---------------------------------------------------------------------------
-// Helper: access child widget by ID from widget tree
+// Consolidated widget child access (MAJOR 5 fix)
+// ---------------------------------------------------------------------------
+
+const widgetChild = WidgetUtils.getChildWidget
+
+// ---------------------------------------------------------------------------
+// Types imported from LobbyTypes
 // ---------------------------------------------------------------------------
 
 import {
@@ -39,12 +45,14 @@ import {
 } from './LobbyTypes.js'
 
 // ---------------------------------------------------------------------------
-// Helper: access child widget by ID from widget tree
+// Module-level CachedTransform caches — avoid per-call allocation
+// in setup functions that are re-invoked on lobby updates.
+// Keyed by parent widget so each slot/faction widget gets its own instance.
 // ---------------------------------------------------------------------------
 
-function widgetChild<T extends Widget = Widget>(parent: Widget, id: string): T | undefined {
-  return (parent as unknown as Record<string, unknown>)[id] as T | undefined
-}
+const _truncSlotCache = new WeakMap<Widget, CachedTransform<string, string>>()
+const _truncFactionCache = new WeakMap<Widget, CachedTransform<string, string>>()
+const _handicapLabelCache = new WeakMap<Widget, CachedTransform<number, string>>()
 
 // ---------------------------------------------------------------------------
 // Fluent message stub (TODO-16.C.1)
@@ -245,7 +253,7 @@ export function showFactionDropDown(
  */
 export function showColorDropDown(
   dropdown: DropDownButtonWidget,
-  _currentColor: string,
+  getCurrentColor: () => string,
   _faction: string,
   onColorPicked: (color: string) => void,
 ): void {
@@ -256,7 +264,8 @@ export function showColorDropDown(
   ]
 
   function setupItem(color: string, _template: unknown): unknown {
-    const selected = () => _currentColor === color
+    // Use getter to always read current color, not the value at dropdown-open time
+    const selected = () => getCurrentColor() === color
     const onClick = () => onColorPicked(color)
     return { selected, onClick, label: `#${color}`, color }
   }
@@ -508,10 +517,15 @@ export function setupEditableSlotWidget(
   slotOpts.isVisible = () => true
   slotOpts.isDisabled = () => orderManager.localClient?.isReady ?? false
 
-  const truncated = new CachedTransform<string, string>(name => {
-    const width = slotOpts.bounds.width - slotOpts.bounds.height
-    return WidgetUtils.truncateText(name, width, '14px Arial')
-  })
+  // Reuse CachedTransform to avoid per-update allocation (MAJOR 2 fix)
+  let truncated = _truncSlotCache.get(parent)
+  if (!truncated) {
+    truncated = new CachedTransform<string, string>(name => {
+      const width = slotOpts.bounds.width - slotOpts.bounds.height
+      return WidgetUtils.truncateText(name, width, '14px Arial')
+    })
+    _truncSlotCache.set(parent, truncated)
+  }
 
   const closed = fluentMsg('options-lobby-slot.closed')
   const open = fluentMsg('options-lobby-slot.open')
@@ -794,14 +808,19 @@ export function setupFactionWidget(
 ): void {
   const factionName = widgetChild<LabelWidget>(parent, 'FACTIONNAME')
   if (factionName) {
-    const truncated = new CachedTransform<string, string>(f =>
-      WidgetUtils.truncateText(
-        fluentMsg(factions[f]?.name || f),
-        factionName.bounds.width,
-        '14px Arial',
-      ),
-    )
-    factionName.getText = () => truncated.update(client.faction)
+    // Reuse CachedTransform to avoid per-update allocation (MAJOR 2 fix)
+    let truncated = _truncFactionCache.get(parent)
+    if (!truncated) {
+      truncated = new CachedTransform<string, string>(f =>
+        WidgetUtils.truncateText(
+          fluentMsg(factions[f]?.name || f),
+          factionName.bounds.width,
+          '14px Arial',
+        ),
+      )
+      _truncFactionCache.set(parent, truncated)
+    }
+    factionName.getText = () => truncated!.update(client.faction)
   }
 
   const factionFlag = widgetChild<ImageWidget>(parent, 'FACTIONFLAG')
@@ -834,7 +853,7 @@ export function setupEditableColorWidget(
 
   colorDropdown.isDisabled = () => slot.lockColor || (orderManager.localClient?.isReady ?? false)
   colorDropdown.onMouseDown = () =>
-    showColorDropDown(colorDropdown, client.color, client.faction, (color) => {
+    showColorDropDown(colorDropdown, () => client.color, client.faction, (color) => {
       orderManager.issueOrder({ type: 'command', text: `color ${client.index} ${color}` })
     })
 
@@ -924,8 +943,13 @@ export function setupEditableHandicapWidget(
   dropdown.isDisabled = () => slot.lockHandicap || (orderManager.localClient?.isReady ?? false)
   dropdown.onMouseDown = () => showHandicapDropDown(dropdown, client, orderManager)
 
-  const handicapLabel = new CachedTransform<number, string>(h => `${h}%`)
-  dropdown.getText = () => handicapLabel.update(client.handicap)
+  // Reuse CachedTransform to avoid per-update allocation (MAJOR 2 fix)
+  let handicapLabel = _handicapLabelCache.get(parent)
+  if (!handicapLabel) {
+    handicapLabel = new CachedTransform<number, string>(h => `${h}%`)
+    _handicapLabelCache.set(parent, handicapLabel)
+  }
+  dropdown.getText = () => handicapLabel!.update(client.handicap)
 
   hideChildWidget(parent, 'HANDICAP')
 }

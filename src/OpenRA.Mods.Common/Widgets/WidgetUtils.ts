@@ -18,6 +18,7 @@ import { CachedTransform } from '../../OpenRA.Game/Primitives/CachedTransform.js
 import { ChromeProvider } from '../../OpenRA.Game/Graphics/ChromeProvider.js'
 import { WinState } from '../../OpenRA.Game/Player.js'
 import { ClientState } from '../../OpenRA.Game/Network/UnitOrders.js'
+import type { Widget } from '../../OpenRA.Game/Widgets/Widget.js'
 import type { Color } from './LabelWidget.js'
 import type { LabelWithTooltipWidget } from './LabelWithTooltipWidget.js'
 import type { ButtonWidget } from './ButtonWidget.js'
@@ -1139,5 +1140,43 @@ export class WidgetUtils {
     element.style.backgroundSize = `${scaledW}px ${scaledH}px`
     element.style.backgroundPosition = 'center'
     element.style.backgroundRepeat = 'no-repeat'
+  }
+
+  // ---------------------------------------------------------------------------
+  // getChildWidget — consolidated typed child widget access
+  // Replaces wc()/widgetChild()/asDyn() in Lobby and Browser files.
+  // OpenRA 对照: widget.Get<T>(id) via YAML-bound widget tree
+  //
+  // NOTE: Uses direct property access (like OpenRA's widget tree) rather
+  // than recursive tree search, since child widgets are stored as direct
+  // properties on parent by the YAML widget loader.
+  // ---------------------------------------------------------------------------
+
+  /** Get a child widget by ID with typed access.
+   *
+   * Preferred usage: `Widget.getOrNull<T>(id)` for recursive tree search.
+   * Use this only when the widget tree uses direct property binding.
+   *
+   * @param parent — parent widget
+   * @param id — child widget ID
+   * @returns typed widget or undefined
+   */
+  static getChildWidget<T extends Widget = Widget>(
+    parent: Widget,
+    id: string,
+  ): T | undefined {
+    return (parent as unknown as Record<string, unknown>)[id] as T | undefined
+  }
+
+  /** Dynamic property accessor for widget duck-typing.
+   *
+   * Consolidates the asDyn() pattern from Browser files into a single utility.
+   * Prefer typed widget access via get<T>() / getOrNull<T>() when possible.
+   *
+   * @param w — widget to access dynamically
+   * @returns the same widget cast to Record<string, unknown> & Widget
+   */
+  static asDyn(w: Widget): Record<string, unknown> & Widget {
+    return w as unknown as Record<string, unknown> & Widget
   }
 }

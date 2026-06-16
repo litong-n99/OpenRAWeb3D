@@ -239,13 +239,64 @@ export class MainMenuLogic extends ChromeLogic {
   /** 是否已抓取新闻。OpenRA 对照: fetchedNews */
   private static _fetchedNews = false
 
-  /** 新闻面板是否打开。 */
+  /** 新闻面板是否打开。OpenRA 对照: _newsOpen */
   private _newsOpen = false
 
   /** 获取新闻面板打开状态。 */
   get isNewsOpen(): boolean {
     return this._newsOpen
   }
+
+  /** 缓存的新闻条目。OpenRA 对照: newsPanel items */
+  private _newsItems: NewsItem[] = []
+
+  /** 公开只读的新闻条目列表（用于 UI 渲染）。 */
+  get newsItems(): readonly NewsItem[] { return this._newsItems }
+
+  /** 获取静态 fetchedNews 标志。 */
+  static get fetchedNews(): boolean { return MainMenuLogic._fetchedNews }
+
+  // ---------------------------------------------------------------------------
+  // News panel (MAJOR 10 fix)
+  // OpenRA 对照: MainMenuLogic.GetNews + DisplayNews
+  //
+  // In C# OpenRA, news is fetched via WebServices.GetNews() and displayed as a
+  // scrolling panel embedded in the main menu background. This TypeScript
+  // implementation provides the state management and placeholder content.
+  // TODO-16.C.5: Add real HTTP fetch + DOM-based news panel widget rendering.
+  // ---------------------------------------------------------------------------
+
+  /** 抓取并填充新闻条目。OpenRA 对照: GetNews()
+   *
+   * Current implementation populates placeholder news with engine version.
+   * Full HTTP-based news fetching is deferred to TODO-16.C.5.
+   */
+  fetchAndDisplayNews(): void {
+    if (MainMenuLogic._fetchedNews) return
+    MainMenuLogic._fetchedNews = true
+
+    this._newsItems = [{
+      title: 'Welcome to OpenRAWeb3D',
+      author: 'OpenRAWeb3D Team',
+      dateTime: new Date(),
+      content: `Engine version: ${this._game.engineVersion}\n\n` +
+        'Full news integration coming in a future update.',
+    }]
+    this._newsOpen = true
+  }
+
+  /** 关闭新闻面板。OpenRA 对照: _newsOpen = false */
+  closeNews(): void {
+    this._newsOpen = false
+  }
+
+  // ---- 预绑定处理函数（用于 dispose 时正确解绑） ----
+  // NOTE: 存储 .bind(this) 引用以便 off 时能匹配相同函数对象
+  // OpenRA 对照: C# 委托引用直接相等，不需要预绑定
+
+  private readonly _boundRemoteConnect: (endpoint: unknown) => void
+  private readonly _boundOpenMenuBasedOnLastGame: () => void
+  private readonly _boundRemoveShellmapUI: () => void
 
   // ---- 引用 ----
 
@@ -275,29 +326,42 @@ export class MainMenuLogic extends ChromeLogic {
     this._world = world
     this._game = game
 
+    // 预绑定函数引用，确保 dispose 时可以正确解绑
+    // OpenRA 对照: C# 委托直接使用 -= 同引用解绑；TS 中 .bind(this) 创建新对象
+    this._boundRemoteConnect = this._onRemoteDirectConnect.bind(this)
+    this._boundOpenMenuBasedOnLastGame = this._openMenuBasedOnLastGame.bind(this)
+    this._boundRemoveShellmapUI = this._removeShellmapUI.bind(this)
+
     this._wireMainMenu()
     this._wireSingleplayerMenu()
     this._wireExtrasMenu()
     this._wireMapEditorMenu()
 
     // 注册远程直连事件
-    if (game.onRemoteDirectConnect) {
-      game.onRemoteDirectConnect = this._onRemoteDirectConnect.bind(this)
+    // OpenRA 对照: Game.OnRemoteDirectConnect += OnRemoteDirectConnect
+    if (game.onRemoteDirectConnect !== undefined) {
+      game.onRemoteDirectConnect = this._boundRemoteConnect
     }
 
     // 检查版本更新
     this._checkVersionUpdate()
 
-    // 标记新闻面板已关闭
+    // 初始化新闻状态并开始获取（MAJOR 10 fix）
     this._newsOpen = false
+
+    // Initiate news fetching in the background.
+    // In C#, this is done via WebServices.GetNews() after shellmap loads.
+    // TODO-16.C.5: Move to onShellmapLoaded callback once real HTTP fetch is added.
+    void this.fetchAndDisplayNews()
 
     // 启动流程
     this.menuType = MenuType.StartupPrompts
     this._onIntroductionComplete()
 
     // Shellmap 加载完成后打开基于上次游戏的菜单
-    if (game.onShellmapLoaded) {
-      game.onShellmapLoaded = this._openMenuBasedOnLastGame.bind(this)
+    // OpenRA 对照: Game.OnShellmapLoaded += OpenMenuBasedOnLastGame
+    if (game.onShellmapLoaded !== undefined) {
+      game.onShellmapLoaded = this._boundOpenMenuBasedOnLastGame
     }
   }
 
@@ -459,8 +523,9 @@ export class MainMenuLogic extends ChromeLogic {
     ;(mapEditorMenu as any).isVisible = () => this.menuType === MenuType.MapEditor
 
     // NOTE: Game.BeforeGameStart += RemoveShellmapUI
+    // OpenRA 对照: Game.BeforeGameStart += RemoveShellmapUI
     if (this._game.beforeGameStart) {
-      this._game.beforeGameStart(() => this._removeShellmapUI())
+      this._game.beforeGameStart(this._boundRemoveShellmapUI)
     }
 
     // 选择地图回调
@@ -721,14 +786,23 @@ export class MainMenuLogic extends ChromeLogic {
     // 主菜单无每帧逻辑
   }
 
-  /** 清理事件订阅。OpenRA 对照: Dispose(bool) */
+  /** 清理事件订阅。OpenRA 对照: Dispose(bool)
+   *
+   * OpenRA 对照:
+   * - Game.OnRemoteDirectConnect -= OnRemoteDirectConnect
+   * - Game.BeforeGameStart -= RemoveShellmapUI
+   * - Game.OnShellmapLoaded -= OpenMenuBasedOnLastGame
+   */
   override dispose(): void {
-    // 清理事件订阅
+    // 清理事件订阅 — 使用预绑定的函数引用以确保解绑匹配
     if (this._game.offRemoteDirectConnect) {
-      this._game.offRemoteDirectConnect(this._onRemoteDirectConnect.bind(this))
+      this._game.offRemoteDirectConnect(this._boundRemoteConnect)
+    }
+    if (this._game.offBeforeGameStart) {
+      this._game.offBeforeGameStart(this._boundRemoveShellmapUI)
     }
     if (this._game.offShellmapLoaded) {
-      this._game.offShellmapLoaded(this._openMenuBasedOnLastGame.bind(this))
+      this._game.offShellmapLoaded(this._boundOpenMenuBasedOnLastGame)
     }
     super.dispose()
   }

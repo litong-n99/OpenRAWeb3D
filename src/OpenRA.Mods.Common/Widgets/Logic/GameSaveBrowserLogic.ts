@@ -6,9 +6,11 @@
 import { ChromeLogic, type Widget } from '../../../OpenRA.Game/Widgets/Widget.js'
 import type { ModDataStub } from './MapChooserLogic.js'
 import { MapStatus, type GameSaveStub, type SlotClientStub, type SpawnOccupantStub } from './BrowserTypes.js'
+import { ConfirmationDialogs } from '../ConfirmationDialogs.js'
+import { WidgetUtils } from '../WidgetUtils.js'
 
-type DynWidget = Record<string, unknown> & Widget
-function asDyn(w: Widget): DynWidget { return w as unknown as DynWidget }
+// Consolidated dynamic widget access (MAJOR 5 fix)
+const asDyn = WidgetUtils.asDyn
 
 export class GameSaveBrowserLogic extends ChromeLogic {
   readonly panel: Widget; readonly modData: ModDataStub; readonly onExit: (() => void) | null; readonly onStart: (() => void) | null
@@ -41,11 +43,24 @@ export class GameSaveBrowserLogic extends ChromeLogic {
 
     const deb = asDyn(widget.get<Widget>('DELETE_BUTTON'))
     deb.isDisabled = () => this.selectedSave == null
-    deb.onClick = () => { if (!this.selectedPath) return; this.delete(this.selectedPath); this.selectFirstVisible() }
+    deb.onClick = () => {
+      if (!this.selectedPath) return
+      // OpenRA uses ConfirmationDialogs before delete (MAJOR 4 fix)
+      ConfirmationDialogs.buttonPrompt(null, 'Delete Save', 'Delete selected save?',
+        () => { this.delete(this.selectedPath!); this.selectFirstVisible() },
+        () => { /* cancelled */ },
+      )
+    }
 
     const dab = asDyn(widget.get<Widget>('DELETE_ALL_BUTTON'))
     dab.isDisabled = () => this.games.length === 0
-    dab.onClick = () => { for (const s of [...this.games]) this.delete(s); onExit?.() }
+    dab.onClick = () => {
+      // OpenRA uses ConfirmationDialogs before delete all (MAJOR 4 fix)
+      ConfirmationDialogs.buttonPrompt(null, 'Delete All Saves', 'Delete all saves?',
+        () => { for (const s of [...this.games]) this.delete(s); onExit?.() },
+        () => { /* cancelled */ },
+      )
+    }
 
     this.selectFirstVisible()
   }

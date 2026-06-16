@@ -165,7 +165,7 @@ export class SettingsUtils {
       }
 
       if (!hasVisibleChildren) {
-        row.visible = false
+        row.isVisible = () => false
       }
     }
 

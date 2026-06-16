@@ -15,7 +15,7 @@
  * - C# WidgetUtils.TruncateText → 简单字符串截断
  */
 
-import { Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'
+import { Widget, ChromeLogic } from '../../../../OpenRA.Game/Widgets/Widget.js'
 import type { SettingsLogic } from './SettingsLogic.js'
 import { SettingsUtils } from './SettingsUtils.js'
 import { CheckboxWidget } from '../../CheckboxWidget.js'
@@ -112,7 +112,10 @@ export interface MusicPlaylistCallbacks {
  *
  * OpenRA 对照: public class AudioSettingsLogic : ChromeLogic
  */
-export class AudioSettingsLogic {
+/**
+ * NOTE: ADR-16.2 — AudioSettingsLogic extends ChromeLogic for OpenRA parity.
+ */
+export class AudioSettingsLogic extends ChromeLogic {
   private readonly audioSettings: AudioSettings
   private readonly soundSystem: SoundSystem
   private readonly musicPlaylist: MusicPlaylistCallbacks | null
@@ -145,6 +148,8 @@ export class AudioSettingsLogic {
     soundSystem: SoundSystem,
     musicPlaylist?: MusicPlaylistCallbacks,
   ) {
+    super()
+
     this.audioSettings = audioSettings
     this.soundSystem = soundSystem
     this.musicPlaylist = musicPlaylist ?? null
@@ -415,5 +420,17 @@ export class AudioSettingsLogic {
     // NOTE: OpenRA uses WidgetUtils.TruncateText with font measurement.
     // In DOM-based rendering, text truncation is handled by CSS text-overflow.
     return text
+  }
+
+  // ---------------------------------------------------------------------------
+  // ChromeLogic interface
+  // ---------------------------------------------------------------------------
+
+  tick(): void {
+    // No per-frame logic needed.
+  }
+
+  override dispose(): void {
+    super.dispose()
   }
 }
