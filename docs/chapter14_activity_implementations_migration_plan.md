@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 14 -- Activity Implementations
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.3 (Traits) + `docs/chapter14_activity_implementations_analysis.md`
-> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phase B COMPLETE (6/6 files migrated, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files migrated, ~180 tests); Phase D IN PROGRESS (3/7 migrated, Batch 1 complete); Phases E-F PLANNING (0/13 migrated)
+> **Chapter Status**: Phase A COMPLETE (11/11 files migrated, 82 tests, 3 acceptance test pages R2 APPROVED); Phase B COMPLETE (6/6 files migrated, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files migrated, ~180 tests); Phase D IN PROGRESS (5/7 migrated, Batch 1-2 complete); Phases E-F PLANNING (0/13 migrated)
 > **Planning Date**: 2026-06-15
 > **Last Updated**: 2026-06-16
 > **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
@@ -191,7 +191,7 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 | A: Movement | 11 | ~1,500 | ~3,400 | ~180 | **COMPLETE (11/11, 82 tests, 3 E2E pages R2 APPROVED)** |
 | B: Combat | 6 | ~789 | ~1,700 | ~100 | **COMPLETE (6/6, ~70 tests, R2 APPROVED)** |
 | C: Aircraft | 12 | ~1,627 | ~3,700 | ~140 | **COMPLETE (12/12, ~180 tests, 5 E2E pages)** |
-| D: Economic | 7 | ~1,375 | ~3,300 | ~120 | **IN PROGRESS (3/7 migrated, Batch 1 complete, detailed plan at [chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md))** |
+| D: Economic | 7 | ~1,375 | ~3,300 | ~120 | **IN PROGRESS (5/7 migrated, Batch 1-2 complete, detailed plan at [chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md))** |
 | E: Transport & Enter | 6 | ~732 | ~1,800 | ~90 | PLANNING |
 | F: Utility & Misc | 8 | ~647 | ~1,500 | ~70 | PLANNING |
 | **Total** | **49** | **~6,510** | **~15,200** | **~690** | **Phase A+B+C COMPLETE (29/49); D IN PROGRESS; E-F PLANNING** |
@@ -474,7 +474,7 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 ### 3.4 Phase D: Economic Activities
 
-**Status**: IN PROGRESS (3/7 migrated, Batch 1 complete) — detailed plan at [docs/chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md)
+**Status**: IN PROGRESS (5/7 migrated, Batch 1-2 complete) — detailed plan at [docs/chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md)
 **Complexity**: HIGH (`Resupply.cs` 327 lines, `FindAndDeliverResources.cs` 263 lines, `GenericDockSequence.cs` 216 lines)
 **Blocked by**: Phase A (`Move`, `MoveToDock`), Chapter 10 (`Harvester`, `ResourceLayer`), Chapter 11 (`Building`, `DockClientManager`)
 **Blocks**: Phase C (`ReturnToBase`), Phase E (`PickupUnit`, `DeliverUnit` indirectly)
@@ -488,18 +488,18 @@ The following infrastructure from Chapters 2-13 is available for Chapter 14:
 
 **Implementation Order** (see [chapter14_phase_d_plan.md](docs/chapter14_phase_d_plan.md) for full details):
 1. Batch 1: MoveToDock, GenericDockSequence, Resupply (core infrastructure) ✅ COMPLETE
-2. Batch 2: HarvestResource, FindAndDeliverResources (resource loop) — IN PROGRESS
-3. Batch 3: Sell, LayMines (specialized)
+2. Batch 2: HarvestResource, FindAndDeliverResources (resource loop) ✅ COMPLETE
+3. Batch 3: Sell, LayMines (specialized) — IN PROGRESS
 
 #### TODO-14.D.1 `src/OpenRA.Mods.Common/Activities/FindAndDeliverResources.ts`
-- [ ] Port `FindAndDeliverResources` state machine (find resource, harvest, find refinery, deliver)
-- [ ] Unit tests: full harvest cycle, no-resources behavior, refinery selection
-- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.5
+- [x] Port `FindAndDeliverResources` state machine (find resource, harvest, find refinery, deliver)
+- [x] Unit tests: full harvest cycle, no-resources behavior, refinery selection
+- [x] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.5
 
 #### TODO-14.D.2 `src/OpenRA.Mods.Common/Activities/HarvestResource.ts`
-- [ ] Port `HarvestResource` (harvest tick at resource cell)
-- [ ] Unit tests: harvest progress, resource depletion
-- [ ] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.4
+- [x] Port `HarvestResource` (harvest tick at resource cell)
+- [x] Unit tests: harvest progress, resource depletion
+- [x] Detailed plan: `docs/chapter14_phase_d_plan.md` Section 4.4
 
 #### TODO-14.D.3 `src/OpenRA.Mods.Common/Activities/MoveToDock.ts`
 - [x] Port `MoveToDock` (approach dock and align)
