@@ -695,7 +695,11 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
   // OpenRA 对照: Tick()
   // ---------------------------------------------------------------------------
 
-  /** 每帧调用 — 处理持续按钮按下和平滑滚动。
+  /** 每帧调用 — 处理持续按钮按下。
+   *
+   * 注意：平滑滚动更新 (_updateSmoothScrolling) 已移至 render()，
+   * 以确保在 DOM 更新前计算最新滚动位置（匹配 OpenRA DrawOuter 时序）。
+   *
    * OpenRA 对照: ScrollPanelWidget.Tick() */
   override tick(): void {
     // 持续按下上/下按钮时滚动
@@ -706,9 +710,6 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
       this.scroll(-1)
     }
 
-    // 更新平滑滚动
-    this._updateSmoothScrolling()
-
     // 更新箭头按钮的禁用状态
     this._upDisabled =
       this._thumbHeight === 0 || this._currentListOffset >= 0
@@ -717,7 +718,7 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
       this._currentListOffset <=
         this.bounds.height - this.contentHeight
 
-    // 更新 DOM 滑块位置和大小
+    // 更新 DOM 滑块位置和大小（连续滚动响应）
     this._syncThumbToDOM()
   }
 
@@ -1095,6 +1096,8 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
       this._ensureScrollbarElement(el)
     }
 
+    // 更新平滑滚动（匹配 OpenRA DrawOuter 时序 — 在内容变换之前计算）
+    this._updateSmoothScrolling()
     // 更新内容变换
     this._updateContentTransform()
     // 同步滑块

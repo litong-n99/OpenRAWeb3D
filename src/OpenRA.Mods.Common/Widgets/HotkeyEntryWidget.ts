@@ -354,6 +354,14 @@ export class HotkeyEntryWidget extends InputWidget {
         event.stopPropagation()
         return true
 
+      case KeyCode.BACKSPACE:
+        // Backspace 取消绑定（清除热键）
+        // OpenRA 对照: HotkeyEntryWidget.HandleKeyPress Keycode.BACKSPACE 分支
+        this.key = Hotkey.Invalid
+        this.yieldKeyboardFocus()
+        event.stopPropagation()
+        return true
+
       default: {
         // 捕获热键
         const mods = domEventModifiers(event)

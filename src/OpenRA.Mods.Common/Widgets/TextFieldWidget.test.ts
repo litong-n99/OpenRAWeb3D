@@ -261,6 +261,36 @@ describe('TextFieldWidget — removeInvalidCharacters', () => {
     })
   })
 
+  describe('Filename type', () => {
+    beforeEach(() => { w.type = TextFieldType.Filename })
+
+    it('strips Windows invalid filename characters', () => {
+      // < > : " / \ | ? * are all invalid
+      expect(w.removeInvalidCharacters('test<file>:name"|?.txt')).toBe('testfilename.txt')
+    })
+
+    it('strips backslash and forward slash', () => {
+      expect(w.removeInvalidCharacters('path/to/file\\name.txt')).toBe('pathtofilename.txt')
+    })
+
+    it('strips control characters', () => {
+      expect(w.removeInvalidCharacters('test\x00file\x1fname.txt')).toBe('testfilename.txt')
+    })
+
+    it('preserves valid filename characters', () => {
+      expect(w.removeInvalidCharacters('valid-file_name (1).txt')).toBe('valid-file_name (1).txt')
+    })
+
+    it('returns empty string for all-invalid input', () => {
+      expect(w.removeInvalidCharacters('<>:"/\\|?*')).toBe('')
+    })
+
+    it('preserves unicode characters (web extension)', () => {
+      // Unlike Windows desktop, web filenames often support unicode
+      expect(w.removeInvalidCharacters('ファイル名.txt')).toBe('ファイル名.txt')
+    })
+  })
+
   describe('Float type', () => {
     beforeEach(() => { w.type = TextFieldType.Float })
 

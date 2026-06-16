@@ -1137,14 +1137,11 @@ describe('ScrollPanelWidget', () => {
       panel.scrollTo(-200, true)
       expect(panel.scrollPosition).toBe(0) // Not yet moved
 
-      // First tick initializes _lastSmoothScrollTime
-      panel.tick()
-      // Second tick actually moves (dt > 0)
-      // We need to ensure enough time has passed, so use a micro-delay
-      // Since tick uses performance.now(), consecutive ticks with no delay
-      // may have dt=0 and not move. Let's simulate time passing.
-      panel['_lastSmoothScrollTime'] = performance.now() - 100 // pretend 100ms passed
-      panel.tick()
+      // First render initializes _lastSmoothScrollTime
+      panel.render()
+      // Pretend 100ms passed since last render
+      panel['_lastSmoothScrollTime'] = performance.now() - 100
+      panel.render()
       // Should have moved toward -200
       expect(panel.scrollPosition).toBeLessThan(0)
     })
@@ -1157,9 +1154,9 @@ describe('ScrollPanelWidget', () => {
 
       // Now set target very close to current
       panel.scrollTo(-200.3, true)
-      // After tick, should snap
+      // After render, should snap
       panel['_lastSmoothScrollTime'] = performance.now() - 50 // ensure dt > 0
-      panel.tick()
+      panel.render()
       expect(panel.scrollPosition).toBe(-200.3)
     })
 
@@ -1168,11 +1165,31 @@ describe('ScrollPanelWidget', () => {
       panel.smoothScrollSpeed = 0.05 // below minimum
       panel.scrollTo(-200, true)
 
-      const beforeTick = panel.scrollPosition
+      const beforeRender = panel.scrollPosition
       panel['_lastSmoothScrollTime'] = performance.now() - 50
-      panel.tick()
+      panel.render()
       // Even with low speed, should move (clamped to 0.1 minimum)
-      expect(panel.scrollPosition).toBeLessThanOrEqual(beforeTick)
+      expect(panel.scrollPosition).toBeLessThanOrEqual(beforeRender)
+    })
+
+    it('smooth scroll is applied during render (not tick)', () => {
+      // Verify the fix for MAJOR #1: _updateSmoothScrolling runs in render(),
+      // ensuring smooth scroll position is computed right before DOM updates.
+      panel.contentHeight = 1000
+      panel.smoothScrollSpeed = 1.0
+      panel.scrollTo(-300, true)
+      expect(panel.scrollPosition).toBe(0)
+
+      // Calling tick() should NOT advance smooth scroll position
+      panel['_lastSmoothScrollTime'] = performance.now() - 100
+      panel.tick()
+      // scrollPosition still 0 because smooth scroll moved to render()
+      expect(panel.scrollPosition).toBe(0)
+
+      // Calling render() should advance smooth scroll
+      panel['_lastSmoothScrollTime'] = performance.now() - 100
+      panel.render()
+      expect(panel.scrollPosition).toBeLessThan(0)
     })
   })
 

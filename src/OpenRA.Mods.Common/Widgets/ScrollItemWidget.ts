@@ -76,7 +76,7 @@ export class ScrollItemWidget extends ButtonWidget {
     s._widthExpr = this._widthExpr
     s._heightExpr = this._heightExpr
     s.logic = [...this.logic]
-    s.visible = false // 克隆时默认不可见（匹配 OpenRA: IsVisible = () => false）
+    s.visible = this.visible
     s.disabled = this.disabled
     s.background = this.background
     s.depressed = this.depressed

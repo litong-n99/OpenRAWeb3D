@@ -204,11 +204,15 @@ describe('ScrollItemWidget', () => {
       expect(doubleClicked).toBe(true)
     })
 
-    it('should copy visible (but clone is not visible by default in OpenRA pattern)', () => {
+    it('should preserve visible state from source (OpenRA behavior)', () => {
       widget.visible = true
       const clone = widget.clone()
-      // clone sets visible = false matching OpenRA pattern
-      expect(clone.visible).toBe(false)
+      // Clone inherits source's visible value (matching OpenRA copy constructor)
+      expect(clone.visible).toBe(true)
+
+      widget.visible = false
+      const clone2 = widget.clone()
+      expect(clone2.visible).toBe(false)
     })
 
     it('should clone child widgets', () => {

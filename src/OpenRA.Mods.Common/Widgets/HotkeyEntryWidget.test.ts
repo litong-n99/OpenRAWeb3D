@@ -166,6 +166,22 @@ describe('HotkeyEntryWidget', () => {
   })
 
   describe('keyboard event handling', () => {
+    it('clears binding on Backspace key press', () => {
+      widget.setValue(new Hotkey(KeyCode.A, Modifiers.None))
+      widget.isValid = () => true
+      widget.takeKeyboardFocus()
+
+      const onLoseFocus = vi.fn()
+      widget.onLoseFocus = onLoseFocus
+
+      const backspaceEvent = makeKeyEvent('Backspace')
+      const result = widget.handleEvent(backspaceEvent)
+
+      expect(result).toBe(true)
+      expect(widget.getValue()).toBe(Hotkey.Invalid)
+      expect(onLoseFocus).toHaveBeenCalled()
+    })
+
     it('clears binding on Escape key press', () => {
       widget.setValue(new Hotkey(KeyCode.A, Modifiers.None))
       widget.takeKeyboardFocus()

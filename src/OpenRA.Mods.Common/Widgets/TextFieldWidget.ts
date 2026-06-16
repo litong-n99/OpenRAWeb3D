@@ -498,6 +498,7 @@ export class TextFieldWidget extends InputWidget {
   /** 根据当前类型过滤无效字符。
    *
    * - Text/Password: 无过滤
+   * - Filename: 过滤 Windows 非法文件名字符和控制字符
    * - Integer: 仅允许数字和可选前导负号
    * - Float: 允许数字、一个小数点和可选前导负号
    *
@@ -511,6 +512,13 @@ export class TextFieldWidget extends InputWidget {
           return '-' + input.slice(1).replace(/\D/g, '')
         }
         return input.replace(/\D/g, '')
+      }
+
+      case TextFieldType.Filename: {
+        // Strip Windows invalid filename characters and control characters
+        // OpenRA 对照: TextFieldWidget.RemoveInvalidCharacters Filename 分支
+        //   Path.GetInvalidFileNameChars() → [<>:"/\\|?*\x00-\x1f]
+        return input.replace(/[<>:"\/\\|?*\x00-\x1f]/g, '')
       }
 
       case TextFieldType.Float: {
