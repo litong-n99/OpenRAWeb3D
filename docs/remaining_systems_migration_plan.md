@@ -528,33 +528,41 @@ BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditi
 
 ### 3.9 Chapter 16: UI Widget Extensions
 
-**Objective**: Implement the remaining Chrome UI widgets beyond the core framework (Ch5 Phase D) and world interaction (Ch5 Phase E).
+> **Detailed Plan**: [docs/chapter16_ui_widget_extensions_migration_plan.md](docs/chapter16_ui_widget_extensions_migration_plan.md) -- 65 files (23 Phase A + 17 Phase B + 25 Phase C), ~16,230 C# lines, 6 ADRs.
 
-**Prerequisites**: Chapter 5 (Widget core, Ch5 Phases C-D), Chapter 11 (Production), Chapter 12 (Shroud)
+**Objective**: Implement the remaining Chrome UI widgets and menu screen Logic classes beyond the core framework (Ch5 Phase D) and world interaction (Ch5 Phase E).
 
-#### Phase A: Production & Management Widgets
+**Prerequisites**: Chapter 5 (Widget core, Ch5 Phases C-D), Chapter 11 (Production), Chapter 12 (Shroud), Chapter 13 (Support Powers)
 
-| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
-|:---:|:---|:---|:---:|:---:|
-| 1 | `Widgets/ProductionPaletteWidget.cs` | `src/OpenRA.Mods.Common/Widgets/ProductionPaletteWidget.ts` | 649 | HIGH |
-| 2 | `Widgets/ProductionTabsWidget.cs` | `src/OpenRA.Mods.Common/Widgets/ProductionTabsWidget.ts` | 370 | MEDIUM |
-| 3 | `Widgets/SupportPowersWidget.cs` | `src/OpenRA.Mods.Common/Widgets/SupportPowersWidget.ts` | 298 | MEDIUM |
-| 4 | `Widgets/ControlGroupsWidget.cs` | `src/OpenRA.Mods.Common/Widgets/ControlGroupsWidget.ts` | 173 | LOW |
-| 5 | `Widgets/ResourceBarWidget.cs` | `src/OpenRA.Mods.Common/Widgets/ResourceBarWidget.ts` | 107 | LOW |
+**Status**: PLANNING (0/65 migrated, 0%)
 
-#### Phase B: Map & Observer Widgets
+#### Phase A: Primitive UI Controls (23 files)
 
-| # | OpenRA Source | Target TypeScript File | Complexity |
-|:---:|:---|:---|:---:|
-| 6+ | RadarWidget (530), ObserverProductionIconsWidget (281), MapPreviewWidget (233), ObserverArmyIconsWidget (211), ObserverSupportPowerIconsWidget (199), StrategicProgressWidget (106) | | MEDIUM-HIGH |
+Building-block widgets that other screens depend on. All extend the existing `Widget` base from Ch5 Phase D and are independent of each other (fully parallelizable).
 
-#### Phase C: Common UI Controls
+| # | OpenRA Source | Lines (C#) | Complexity |
+|:---:|:---|:---:|:---:|
+| 1-23 | ButtonWidget (298), TextFieldWidget (617), ScrollPanelWidget (527), DropDownButtonWidget (256), HotkeyEntryWidget (162), SliderWidget (145), LabelWidget (132), TooltipContainerWidget (114), ImageWidget (98), ScrollItemWidget (97), CheckboxWidget (90), LabelWithHighlightWidget (86), SpriteWidget (82), ColorBlockWidget (80), LabelWithTooltipWidget (64), GradientColorBlockWidget (57), ExponentialSliderWidget (50), GridLayout (48), LabelForInputWidget (48), ListLayout (47), BackgroundWidget (43), RGBASpriteWidget (39), PasswordFieldWidget (23) | LOW-HIGH |
 
-| # | OpenRA Source | Target TypeScript File | Complexity |
-|:---:|:---|:---|:---:|
-| 12+ | ButtonWidget (298), TextFieldWidget (617), DropDownButtonWidget (256), SliderWidget (145), LabelWidget (132), CheckboxWidget (90), ImageWidget (98), HotkeyEntryWidget (162), ScrollPanelWidget (527), ScrollItemWidget (97), TooltipContainerWidget (114), ColorMixerWidget (189), VideoPlayerWidget (313), ScrollableLineGraphWidget (602), PerfGraphWidget (194), ConfirmationDialogs (194), TextNotificationsDisplayWidget (138), LineGraphWidget (234), LabelWithHighlightWidget (86) | | LOW-MEDIUM |
+#### Phase B: Game HUD Widgets & Utilities (17 files)
 
-**Widgets Total**: ~40 files, ~10,678 C# lines in original source.
+In-game HUD overlay widgets and shared utility infrastructure. Depends on Phase A primitive controls.
+
+| # | OpenRA Source | Lines (C#) | Complexity |
+|:---:|:---|:---:|:---:|
+| 24-40 | ProductionPaletteWidget (649), RadarWidget (530), WidgetUtils (428), ProductionTabsWidget (370), SupportPowersWidget (298), ConfirmationDialogs (194), ColorMixerWidget (189), ControlGroupsWidget (173), TextNotificationsDisplayWidget (138), ResourceBarWidget (107), StrategicProgressWidget (106), SupportPowerTimerWidget (97), ResourcePreviewWidget (92), ProgressBarWidget (85), LogicKeyListenerWidget (36), ProductionTypeButtonWidget (28), LogicTickerWidget (22) | LOW-HIGH |
+
+#### Phase C: Menu Screen Logic (25 files)
+
+Menu screen behavior classes (ChromeLogic subclasses) for main menu, lobby, settings, and browser screens. Depends on Phase A + Phase B (WidgetUtils).
+
+| # | OpenRA Source | Lines (C#) | Complexity |
+|:---:|:---|:---:|:---:|
+| 41-65 | LobbyLogic (1056), LoadGameBrowserLogic (1039), ServerListLogic (892), ReplayBrowserLogic (883), LobbyUtils (707), MapChooserLogic (660), MissionBrowserLogic (631), GameSaveBrowserLogic (599), MainMenuLogic (566), DisplaySettingsLogic (575), MapGeneratorLogic (463), HotkeysSettingsLogic (379), EncyclopediaLogic (318), ConnectionLogic (282), ServerCreationLogic (257), MapPreviewWidget (233), InputSettingsLogic (232), LobbyOptionsLogic (198), SettingsLogic (197), GamePlaySettingsLogic (192), AudioSettingsLogic (173), MusicPlayerLogic (170), CreditsLogic (97), AdvancedSettingsLogic (91), SettingsUtils (77) | LOW-HIGHEST |
+
+**Deferred to other chapters**: Editor widgets (17 files → Ch21). **Deferred to optional sub-phase**: Hotkey Logic (14 files ~800 lines), Observer HUD (2 files ~887 lines), Installation UI (5 files), Perf/Graph widgets (2 files ~796 lines).
+
+**Widgets Total**: 65 files (core), ~16,230 C# lines in original source. Estimated ~35,000 TS implementation lines + ~25,500 test lines, ~755 tests.
 
 ---
 
