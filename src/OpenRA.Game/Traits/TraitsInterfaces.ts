@@ -1562,9 +1562,9 @@ export interface IMove {
 
   /** Move to a target for attacking/interaction.
    *
-   * OpenRA 对照: IMove.MoveToTarget(Target)
+   * OpenRA 对照: IMove.MoveToTarget(Target, WPos?, Color?)
    */
-  moveToTarget(source: IGameActor, target: Target): Activity
+  moveToTarget(source: IGameActor, target: Target, initialTargetPosition?: WPos): Activity
 
   /** Move onto a target's cell (for passenger/transport interactions).
    *

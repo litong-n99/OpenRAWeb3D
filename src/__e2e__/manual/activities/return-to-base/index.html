@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>返航活动 - ReturnToBase + FlyIdle | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 400px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #flight-stats {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #flight-stats .val { color: #aad; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>返航活动 - ReturnToBase + FlyIdle (Aircraft Resupply)</h1>
+    <div class="subtitle">ID: activities/return-to-base | 验证: 寻找基地 | 盘旋等待 | 着陆补给</div>
+  </div>
+  <div id="controls">
+    <label>飞机类型:</label>
+    <select id="sel-aircraft">
+      <option value="vtol">VTOL (垂直起降)</option>
+      <option value="fixed">固定翼 (非VTOL)</option>
+      <option value="hover">悬停 (CanHover)</option>
+    </select>
+    <span class="sep">|</span>
+    <button id="btn-return">返航 (ReturnToBase)</button>
+    <button id="btn-idle">盘旋 (FlyIdle)</button>
+    <button id="btn-no-base">模拟无基地</button>
+    <span class="sep">|</span>
+    <button id="btn-reset">重置</button>
+    <span class="hint">绿色=可用基地 | 灰色=不可用基地 | 观察返航与盘旋行为</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>寻找基地:</b> 飞机找到最近的可用基地 (绿色)，绿色目标线指向基地。</li>
+        <li><b>无可用基地:</b> 悬停飞机在最近的基地附近盘旋等待；非悬停飞机做 FlyIdle 等待。</li>
+        <li><b>着陆补给:</b> 到达基地后着陆，补给完成后可再次起飞。</li>
+        <li><b>FlyIdle 盘旋:</b> 非悬停飞机以 <span class="metric">idleSpeed</span> 做圆形盘旋，每 tick 转向 <span class="metric">256 WAngle (90°)</span>。</li>
+        <li><b>目标线:</b> 返航时绿色目标线 (#00FF00)，无基地时目标线消失。</li>
+      </ul>
+    </div>
+    <div id="flight-stats">
+      飞机位置: <span class="val" id="st-pos">0, 0, 0</span><br>
+      状态: <span class="val" id="st-state">待机</span><br>
+      目标基地: <span class="val" id="st-target-base">-</span><br>
+      基地距离: <span class="val" id="st-base-dist">-</span><br>
+      目标线: <span class="val" id="st-target-line">-</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

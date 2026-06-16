@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activities - Attack 攻击活动 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 320px; min-width: 320px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0 0 8px; font-size: 16px; color: #8af; }
+    #left-panel h3 { margin: 12px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel button, #left-panel select {
+      padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      width: 100%; text-align: left;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #4a9; }
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; text-align: center; }
+
+    .expected-box {
+      background: rgba(13,17,23,0.6); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 12px; line-height: 1.6;
+    }
+    .expected-box h4 { margin: 0 0 6px; color: #8f8; font-size: 13px; }
+    .expected-box ul { margin: 4px 0; padding-left: 18px; }
+    .expected-box li { margin: 3px 0; }
+    .expected-box .metric { color: #aad; font-family: monospace; }
+
+    .stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+    .stat-row .label { color: #889; }
+    .stat-row .value { color: #eee; font-family: 'Consolas', monospace; font-weight: 600; }
+    .stat-row .value.attack { color: #e94560; }
+    .stat-row .value.turn { color: #ffcc00; }
+    .stat-row .value.move { color: #44cc44; }
+    .stat-row .value.idle { color: #888; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+    #viewport { flex: 1; position: relative; background: #0d1117; }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 600px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #333; }
+
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #click-hint {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 16px; font-size: 12px; color: #a0b0d0;
+      pointer-events: none;
+    }
+
+    #attack-flash {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 48px; font-weight: bold; color: #e94560;
+      opacity: 0; pointer-events: none; transition: opacity 0.1s;
+      text-shadow: 0 0 20px rgba(233,69,96,0.8);
+    }
+    #attack-flash.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. Attack 攻击活动测试</h2>
+      <div class="stat-row"><span class="label">攻击状态:</span><span class="value" id="stat-attack-status">空闲</span></div>
+      <div class="stat-row"><span class="label">当前朝向 (WAngle):</span><span class="value" id="stat-facing">-</span></div>
+      <div class="stat-row"><span class="label">目标朝向 (WAngle):</span><span class="value" id="stat-target-facing">-</span></div>
+      <div class="stat-row"><span class="label">与目标距离:</span><span class="value" id="stat-distance">-</span></div>
+      <div class="stat-row"><span class="label">武器射程:</span><span class="value" id="stat-range">-</span></div>
+      <div class="stat-row"><span class="label">开火次数:</span><span class="value" id="stat-fire-count">0</span></div>
+      <div class="stat-row"><span class="label">目标线颜色:</span><span class="value" id="stat-line-color">-</span></div>
+
+      <h3>场景控制</h3>
+      <div class="btn-row">
+        <button id="btn-pause">暂停</button>
+        <button id="btn-resume" class="active">运行</button>
+      </div>
+      <div class="btn-row">
+        <button id="btn-speed-1x" class="active">1x</button>
+        <button id="btn-speed-2x">2x</button>
+        <button id="btn-speed-4x">4x</button>
+      </div>
+      <button id="btn-reset">重置场景</button>
+
+      <h3>预设场景</h3>
+      <button id="btn-scene-in-range">目标在射程内 (直接攻击)</button>
+      <button id="btn-scene-out-range">目标在射程外 (移动后攻击)</button>
+      <button id="btn-scene-needs-turn">目标在射程内但需转向</button>
+      <button id="btn-scene-moving-target">移动目标 (追击)</button>
+      <button id="btn-scene-min-range">目标在最小射程内 (需后退)</button>
+
+      <h3>参数调整</h3>
+      <div class="btn-row">
+        <button id="btn-range-3">射程3格</button>
+        <button id="btn-range-5" class="active">射程5格</button>
+        <button id="btn-range-8">射程8格</button>
+      </div>
+      <div class="btn-row">
+        <button id="btn-turn-slow">慢转向</button>
+        <button id="btn-turn-normal" class="active">正常转向</button>
+        <button id="btn-turn-fast">快转向</button>
+      </div>
+
+      <h3>B. 期望结果</h3>
+      <div class="expected-box">
+        <h4>1. 射程检测与移动</h4>
+        <ul>
+          <li>目标在射程外时，单位<span class="metric">自动移动</span>进入射程</li>
+          <li>移动到位后自动转为攻击状态，无人工干预</li>
+          <li>目标在最小射程内时，单位<span class="metric">后退</span>拉开距离</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>2. 转向与开火</h4>
+        <ul>
+          <li>单位必须先<span class="metric">转向面对目标</span>才能开火</li>
+          <li>转向使用最短弧，WAngle 0=北，逆时针递增</li>
+          <li>转向完成后状态变为"攻击中"，出现<span class="metric">红色开火闪烁</span></li>
+          <li>开火时目标受到可见伤害反馈（颜色变红）</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>3. 目标线渲染</h4>
+        <ul>
+          <li>红色虚线 (#E94560) 从单位指向当前目标</li>
+          <li>目标线随单位移动<span class="metric">实时更新</span></li>
+          <li>目标死亡或无效后目标线<span class="metric">立即消失</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="click-hint">左键点击地面设置攻击目标 | 右键点击设置单位位置</div>
+        <div id="attack-flash">FIRE</div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#3399f2"></div>攻击单位 (蓝色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#e94560"></div>目标单位 (红色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffcc00"></div>射程范围</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#e94560"></div>目标线 (红色虚线)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#444"></div>射程外区域</div>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span>网格: <span id="info-grid">20x20</span></span>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

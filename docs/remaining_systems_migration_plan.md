@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Remaining Systems (Chapters 8-21)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md`
-> **Chapter Status**: IN PROGRESS (101 files migrated: Ch8 57/57 + Ch9 30/30 + Ch13 14/14; ~264 remaining in Ch10-12 + Ch14-21)
+> **Chapter Status**: IN PROGRESS (101 files migrated: Ch8 57/57 + Ch9 30/30 + Ch13 14/14; ~288 remaining in Ch10-12 + Ch14-21)
 > **Created**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162 files, 100%)
 >
@@ -112,7 +112,7 @@ The remaining ~250+ files are organized into 14 chapters (8-21), each representi
 | **11** | Production & Building System | ~25 | HIGH | Production queues, building placement, construction. Depends on Movement and Economy. |
 | **12** | Shroud & Fog of War | ~15 | MEDIUM | Exploration/visibility system. Required for full gameplay but not blocking combat tests. |
 | **13** | Support Powers | 14 | MEDIUM | ~~Airstrike, Nuke, ParaDrop, Chronoshift. Depends on Combat + Effects.~~ **COMPLETE (14/14, 285 tests, R2 APPROVED)** |
-| **14** | Activity Implementations | ~25 | HIGH | Move, Attack, Fly, Harvest activities. Depends on Ch8-9. |
+| **14** | Activity Implementations | 49 | HIGH | Move, Attack, Fly, Harvest activities. Depends on Ch8-9. |
 | **15** | Order Generators | ~11 | MEDIUM | UI order creation (PlaceBuilding, Repair, Guard). Depends on Ch5+Ch8. |
 | **16** | UI Widget Extensions | ~40 | LOW | ProductionPalette, Radar, Observer widgets. Depends on Ch5+Ch11. |
 | **17** | Replay & Save System | ~10 | MEDIUM | Replay recording/playback. Depends on Ch6 network layer. |
@@ -121,7 +121,7 @@ The remaining ~250+ files are organized into 14 chapters (8-21), each representi
 | **20** | Scripting System | ~7 | LOW | Lua mission scripting bridge. Depends on Ch8-13. |
 | **21** | Editor & Utilities | ~15 | LOW | Map editor, brushes, utility commands. Depends on Ch4+Ch5. |
 
-**Total estimated files**: ~365 (~299 remaining; 66 migrated = Ch8 57 + Ch9 30 + Ch13 14 = 101 migrated)
+**Total estimated files**: ~389 (~288 remaining; 101 migrated = Ch8 57 + Ch9 30 + Ch13 14). Chapters 10-12 are tracked separately in their own detailed plans.
 
 ---
 
@@ -412,43 +412,98 @@ BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditi
 
 ### 3.7 Chapter 14: Activity Implementations
 
-**Objective**: Implement the concrete Activity subclasses (Move, Attack, Fly, Harvest, etc.) that drive actor behavior state machines.
+**Objective**: Implement the 49 concrete Activity subclasses (Move, Attack, Fly, Harvest, etc.) that drive actor behavior state machines. Base class `Activity.cs` and `CallFunc.cs` already migrated in Chapter 3 Phase F.
 
-**Prerequisites**: Activity base class (Ch3 Phase F), Chapter 9 (Movement), Chapter 8 (Combat)
+**Prerequisites**: Activity base class (Ch3 Phase F) -- COMPLETE; Chapter 9 (Movement) -- COMPLETE; Chapter 8 (Combat) -- COMPLETE.
 
-#### Phase A: Movement Activities (6 files)
+**Detailed Plan**: [docs/chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md) -- 49 concrete files + 2 already-migrated base files, 6 phases (A-F). Phases A-D COMPLETE (36/49 files); Phases E-F PLANNING (0/13).
 
-| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
-|:---:|:---|:---|:---:|:---:|
-| 1 | `Activities/Move.cs` | `src/OpenRA.Mods.Common/Activities/Move.ts` | -- | HIGH |
-| 2 | `Activities/MoveAdjacentTo.cs` | `src/OpenRA.Mods.Common/Activities/MoveAdjacentTo.ts` | -- | MEDIUM |
-| 3 | `Activities/MoveOnto.cs` | `src/OpenRA.Mods.Common/Activities/MoveOnto.ts` | -- | LOW |
-| 4 | `Activities/MoveWithinRange.cs` | `src/OpenRA.Mods.Common/Activities/MoveWithinRange.ts` | -- | MEDIUM |
-| 5 | `Activities/MoveToDock.cs` | `src/OpenRA.Mods.Common/Activities/MoveToDock.ts` | 150 | MEDIUM |
-| 6 | `Activities/Drag.cs` | `src/OpenRA.Mods.Common/Activities/Drag.ts` | -- | LOW |
-
-#### Phase B: Combat Activities (4 files)
+#### Phase A: Movement Activities (11 files)
 
 | # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
 |:---:|:---|:---|:---:|:---:|
-| 7 | `Activities/Attack.cs` | `src/OpenRA.Mods.Common/Activities/Attack.ts` | 283 | HIGH |
-| 8 | `Activities/FlyAttack.cs` | `src/OpenRA.Mods.Common/Activities/FlyAttack.ts` | -- | MEDIUM |
-| 9 | `Activities/Hunt.cs` | `src/OpenRA.Mods.Common/Activities/Hunt.ts` | 49 | LOW |
-| 10 | `Activities/AttackMoveActivity.cs` | `src/OpenRA.Mods.Common/Activities/AttackMoveActivity.ts` | -- | LOW |
+| 1 | `Activities/Move/Move.cs` | `src/OpenRA.Mods.Common/Activities/Move/Move.ts` | 640 | HIGHEST |
+| 2 | `Activities/Move/MoveAdjacentTo.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveAdjacentTo.ts` | 159 | MEDIUM |
+| 3 | `Activities/Move/MoveOnto.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveOnto.ts` | 60 | LOW |
+| 4 | `Activities/Move/MoveOntoAndTurn.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveOntoAndTurn.ts` | 43 | LOW |
+| 5 | `Activities/Move/MoveWithinRange.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveWithinRange.ts` | 78 | MEDIUM |
+| 6 | `Activities/Move/Drag.cs` | `src/OpenRA.Mods.Common/Activities/Move/Drag.ts` | 73 | LOW |
+| 7 | `Activities/Move/Nudge.cs` | `src/OpenRA.Mods.Common/Activities/Move/Nudge.ts` | 64 | LOW |
+| 8 | `Activities/Move/Follow.cs` | `src/OpenRA.Mods.Common/Activities/Move/Follow.ts` | 89 | MEDIUM |
+| 9 | `Activities/Move/LocalMoveIntoTarget.cs` | `src/OpenRA.Mods.Common/Activities/Move/LocalMoveIntoTarget.ts` | 89 | LOW |
+| 10 | `Activities/Move/AttackMoveActivity.cs` | `src/OpenRA.Mods.Common/Activities/Move/AttackMoveActivity.ts` | 108 | MEDIUM |
+| 11 | `Activities/Move/MoveCooldownHelper.cs` | `src/OpenRA.Mods.Common/Activities/Move/MoveCooldownHelper.ts` | 100 | LOW |
 
-#### Phase C: Aircraft Activities (4 files)
+#### Phase B: Combat Activities (5 files)
 
-| # | OpenRA Source | Target TypeScript File | Complexity |
-|:---:|:---|:---|:---:|
-| 11+ | Fly, FlyIdle, FlyForward, FlyFollow, FlyOffMap, Land, TakeOff | | MEDIUM |
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
+|:---:|:---|:---|:---:|:---:|
+| 1 | `Activities/Attack.cs` | `src/OpenRA.Mods.Common/Activities/Attack.ts` | 283 | HIGH |
+| 2 | `Activities/Hunt.cs` | `src/OpenRA.Mods.Common/Activities/Hunt.ts` | 49 | LOW |
+| 3 | `Activities/CaptureActor.cs` | `src/OpenRA.Mods.Common/Activities/CaptureActor.ts` | 158 | MEDIUM |
+| 4 | `Activities/Demolish.cs` | `src/OpenRA.Mods.Common/Activities/Demolish.ts` | 89 | LOW |
+| 5 | `Activities/Turn.cs` | `src/OpenRA.Mods.Common/Activities/Turn.ts` | 47 | LOW |
 
-#### Phase D: Economic & Other Activities (~9 files)
+#### Phase C: Aircraft Activities (12 files)
 
-| # | OpenRA Source | Target TypeScript File | Complexity |
-|:---:|:---|:---|:---:|
-| 18+ | HarvestResource, FindAndDeliverResources, DeliverUnit, DeliverBulkOrder, DonateCash, DonateExperience, Sell, Demolish, CaptureActor, Enter, UnloadCargo, PickupUnit, RepairBridge, Resupply, ReturnToBase, RideTransport, Transform, Wait, Nudge, LayMines, DeployForGrantedCondition, RemoveSelf, SimpleTeleport, Turn, Parachute, InstantRepair | | LOW-MEDIUM |
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
+|:---:|:---|:---|:---:|:---:|
+| 1 | `Activities/Air/Fly.cs` | `src/OpenRA.Mods.Common/Activities/Air/Fly.ts` | 283 | HIGH |
+| 2 | `Activities/Air/FlyAttack.cs` | `src/OpenRA.Mods.Common/Activities/Air/FlyAttack.ts` | 316 | HIGH |
+| 3 | `Activities/Air/FlyFollow.cs` | `src/OpenRA.Mods.Common/Activities/Air/FlyFollow.ts` | 99 | MEDIUM |
+| 4 | `Activities/Air/FlyForward.cs` | `src/OpenRA.Mods.Common/Activities/Air/FlyForward.ts` | 64 | LOW |
+| 5 | `Activities/Air/FlyIdle.cs` | `src/OpenRA.Mods.Common/Activities/Air/FlyIdle.ts` | 66 | LOW |
+| 6 | `Activities/Air/FlyOffMap.cs` | `src/OpenRA.Mods.Common/Activities/Air/FlyOffMap.ts` | 70 | LOW |
+| 7 | `Activities/Air/Land.cs` | `src/OpenRA.Mods.Common/Activities/Air/Land.ts` | 276 | HIGH |
+| 8 | `Activities/Air/TakeOff.cs` | `src/OpenRA.Mods.Common/Activities/Air/TakeOff.ts` | 73 | LOW |
+| 9 | `Activities/Air/ReturnToBase.cs` | `src/OpenRA.Mods.Common/Activities/Air/ReturnToBase.ts` | 140 | MEDIUM |
+| 10 | `Activities/Air/FallToEarth.cs` | `src/OpenRA.Mods.Common/Activities/Air/FallToEarth.ts` | 64 | LOW |
+| 11 | `Activities/Air/DeliverBulkOrder.cs` | `src/OpenRA.Mods.Common/Activities/Air/DeliverBulkOrder.ts` | 118 | MEDIUM |
+| 12 | `Activities/Parachute.cs` | `src/OpenRA.Mods.Common/Activities/Parachute.ts` | 58 | LOW |
 
-**Activity Total**: ~26 files, ~3,438 C# lines in original source.
+#### Phase D: Economic Activities (7 files)
+
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
+|:---:|:---|:---|:---:|:---:|
+| 1 | `Activities/HarvestResource.cs` | `src/OpenRA.Mods.Common/Activities/HarvestResource.ts` | 124 | MEDIUM |
+| 2 | `Activities/FindAndDeliverResources.cs` | `src/OpenRA.Mods.Common/Activities/FindAndDeliverResources.ts` | 263 | HIGH |
+| 3 | `Activities/MoveToDock.cs` | `src/OpenRA.Mods.Common/Activities/MoveToDock.ts` | 150 | MEDIUM |
+| 4 | `Activities/GenericDockSequence.cs` | `src/OpenRA.Mods.Common/Activities/GenericDockSequence.ts` | 216 | HIGH |
+| 5 | `Activities/Resupply.cs` | `src/OpenRA.Mods.Common/Activities/Resupply.ts` | 327 | HIGH |
+| 6 | `Activities/Sell.cs` | `src/OpenRA.Mods.Common/Activities/Sell.ts` | 58 | LOW |
+| 7 | `Activities/LayMines.cs` | `src/OpenRA.Mods.Common/Activities/LayMines.ts` | 237 | MEDIUM |
+
+#### Phase E: Transport & Enter Activities (6 files) ✅ COMPLETE (2026-06-16)
+
+> **Status**: ALL FILES COMPLETE (6/6, 48 tests, ~1,451 TS lines). Enter.ts migrated in Phase B (shared base). SimpleTeleport migrated. New file: TransportActivityInterfaces.ts (duck-typed trait interfaces, 388 lines).
+
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| 1 | `Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | 163 | HIGH | **COMPLETE (Phase B)** |
+| 2 | `Activities/RideTransport.cs` | `src/OpenRA.Mods.Common/Activities/RideTransport.ts` | 93 | LOW | **COMPLETE** |
+| 3 | `Activities/UnloadCargo.cs` | `src/OpenRA.Mods.Common/Activities/UnloadCargo.ts` | 153 | MEDIUM | **COMPLETE** |
+| 4 | `Activities/PickupUnit.cs` | `src/OpenRA.Mods.Common/Activities/PickupUnit.ts` | 181 | MEDIUM | **COMPLETE** |
+| 5 | `Activities/DeliverUnit.cs` | `src/OpenRA.Mods.Common/Activities/DeliverUnit.ts` | 112 | MEDIUM | **COMPLETE** |
+| 6 | `Activities/SimpleTeleport.cs` | `src/OpenRA.Mods.Common/Activities/SimpleTeleport.ts` | 30 | LOW | **COMPLETE** |
+| + | *New* (no OpenRA equivalent) | `Activities/TransportActivityInterfaces.ts` | -- | -- | **COMPLETE** |
+
+#### Phase F: Utility & Miscellaneous Activities (8 files) ✅ COMPLETE (2026-06-16)
+
+> **Status**: ALL FILES COMPLETE (8/8, 45 tests, ~1,115 TS lines). Wait.ts + RemoveSelf.ts expanded from Phase E stubs. New file: UtilityActivityInterfaces.ts (duck-typed trait interfaces, 170 lines). Chapter 14: 49/49 (100%).
+
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| 1 | `Activities/Wait.cs` | `src/OpenRA.Mods.Common/Activities/Wait.ts` | 56 | LOW | **COMPLETE** (Phase E stub→full) |
+| 2 | `Activities/Transform.cs` | `src/OpenRA.Mods.Common/Activities/Transform.ts` | 189 | MEDIUM | **COMPLETE** |
+| 3 | `Activities/RemoveSelf.cs` | `src/OpenRA.Mods.Common/Activities/RemoveSelf.ts` | 26 | LOW | **COMPLETE** (Phase E stub→full) |
+| 4 | `Activities/DeployForGrantedCondition.cs` | `src/OpenRA.Mods.Common/Activities/DeployForGrantedCondition.ts` | 87 | LOW | **COMPLETE** |
+| 5 | `Activities/DonateCash.cs` | `src/OpenRA.Mods.Common/Activities/DonateCash.ts` | 52 | LOW | **COMPLETE** |
+| 6 | `Activities/DonateExperience.cs` | `src/OpenRA.Mods.Common/Activities/DonateExperience.ts` | 66 | LOW | **COMPLETE** |
+| 7 | `Activities/RepairBridge.cs` | `src/OpenRA.Mods.Common/Activities/RepairBridge.ts` | 89 | LOW | **COMPLETE** |
+| 8 | `Activities/InstantRepair.cs` | `src/OpenRA.Mods.Common/Activities/InstantRepair.ts` | 82 | LOW | **COMPLETE** |
+| + | *New* (no OpenRA equivalent) | `Activities/UtilityActivityInterfaces.ts` | -- | -- | **COMPLETE** |
+
+**Activity Total**: 49 concrete files, ~6,510 C# lines in original source (plus `Activity.cs` and `CallFunc.cs` already migrated in Chapter 3).
 
 ---
 

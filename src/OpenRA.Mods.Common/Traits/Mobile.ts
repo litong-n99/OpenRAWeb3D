@@ -83,9 +83,10 @@ import { PathGraph } from '../Pathfinder/IPathGraph.js'
  * OpenRA 对照: MoveResult enum
  */
 export const MoveResult = {
-  Moving: 0,
-  Consumed: 1,
-  Blocked: 2,
+  InProgress: 0,
+  CompleteCanceled: 1,
+  CompleteDestinationReached: 2,
+  CompleteDestinationBlocked: 3,
 } as const
 
 export type MoveResult = (typeof MoveResult)[keyof typeof MoveResult]
@@ -124,7 +125,8 @@ export interface IFullMove {
     target: Target,
     minRange: WDist,
     maxRange: WDist,
-    initialTarget?: Target,
+    initialTargetPosition?: WPos,
+    targetLineColor?: ColorStub,
   ): Activity
 
   /** Return to the actor's home cell.
@@ -492,7 +494,7 @@ export class Mobile
   private _notifyFinishedMoving: INotifyFinishedMoving[] = []
   private _requireForceMove: boolean = false
   private _isBlocking: boolean = false
-  private _moveResult: MoveResult = MoveResult.Moving
+  private _moveResult: MoveResult = MoveResult.InProgress
   private _turnToMove: boolean = false
   private _locomotor: ILocomotor | null = null
 
@@ -1291,7 +1293,8 @@ export class Mobile
     _target: Target,
     _minRange: WDist,
     _maxRange: WDist,
-    _initialTarget?: Target,
+    _initialTargetPosition?: WPos,
+    _targetLineColor?: ColorStub,
   ): Activity {
     return new ReturnToCellActivity() as unknown as Activity
   }
@@ -1416,11 +1419,11 @@ export class Mobile
 
   /** Move onto a target for attacking/interaction.
    *
-   * OpenRA 对照: IMove.MoveToTarget(Target)
+   * OpenRA 对照: IMove.MoveToTarget(Target, WPos?, Color?)
    *
    * TODO-9.A.10: Full Move activity deferred to Ch14.
    */
-  moveToTarget(_source: IGameActor, _target: Target): Activity {
+  moveToTarget(_source: IGameActor, _target: Target, _initialTargetPosition?: WPos): Activity {
     return new ReturnToCellActivity() as unknown as Activity
   }
 

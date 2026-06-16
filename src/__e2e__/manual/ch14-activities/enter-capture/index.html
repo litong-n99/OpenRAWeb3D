@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activities - Enter + CaptureActor 占领活动 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 320px; min-width: 320px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0 0 8px; font-size: 16px; color: #8af; }
+    #left-panel h3 { margin: 12px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel button, #left-panel select {
+      padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      width: 100%; text-align: left;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #4a9; }
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; text-align: center; }
+
+    .expected-box {
+      background: rgba(13,17,23,0.6); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 12px; line-height: 1.6;
+    }
+    .expected-box h4 { margin: 0 0 6px; color: #8f8; font-size: 13px; }
+    .expected-box ul { margin: 4px 0; padding-left: 18px; }
+    .expected-box li { margin: 3px 0; }
+    .expected-box .metric { color: #aad; font-family: monospace; }
+
+    .stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+    .stat-row .label { color: #889; }
+    .stat-row .value { color: #eee; font-family: 'Consolas', monospace; font-weight: 600; }
+    .stat-row .value.approaching { color: #44cc44; }
+    .stat-row .value.entering { color: #ffcc00; }
+    .stat-row .value.exiting { color: #3399f2; }
+    .stat-row .value.finished { color: #888; }
+    .stat-row .value.captured { color: #e94560; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+    #viewport { flex: 1; position: relative; background: #0d1117; }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 600px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #333; }
+
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #click-hint {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 16px; font-size: 12px; color: #a0b0d0;
+      pointer-events: none;
+    }
+
+    #capture-overlay {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 36px; font-weight: bold; color: #e94560;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+      text-shadow: 0 0 20px rgba(233,69,96,0.8);
+    }
+    #capture-overlay.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. Enter + CaptureActor 占领测试</h2>
+      <div class="stat-row"><span class="label">工程师状态:</span><span class="value" id="stat-engineer-state">空闲</span></div>
+      <div class="stat-row"><span class="label">Enter状态:</span><span class="value" id="stat-enter-state">-</span></div>
+      <div class="stat-row"><span class="label">工程师位置:</span><span class="value" id="stat-engineer-pos">-</span></div>
+      <div class="stat-row"><span class="label">目标建筑:</span><span class="value" id="stat-target-building">-</span></div>
+      <div class="stat-row"><span class="label">建筑归属:</span><span class="value" id="stat-building-owner">敌方</span></div>
+      <div class="stat-row"><span class="label">建筑HP:</span><span class="value" id="stat-building-hp">100/100</span></div>
+      <div class="stat-row"><span class="label">目标线颜色:</span><span class="value" id="stat-line-color">-</span></div>
+      <div class="stat-row"><span class="label">占领次数:</span><span class="value" id="stat-capture-count">0</span></div>
+
+      <h3>场景控制</h3>
+      <div class="btn-row">
+        <button id="btn-pause">暂停</button>
+        <button id="btn-resume" class="active">运行</button>
+      </div>
+      <div class="btn-row">
+        <button id="btn-speed-1x" class="active">1x</button>
+        <button id="btn-speed-2x">2x</button>
+        <button id="btn-speed-4x">4x</button>
+      </div>
+      <button id="btn-reset">重置场景</button>
+
+      <h3>预设场景</h3>
+      <button id="btn-scene-basic">基础占领 (工程师接近建筑)</button>
+      <button id="btn-scene-consumed">消耗式占领 (工程师进入后消失)</button>
+      <button id="btn-scene-sabotage">破坏模式 (HP高时破坏而非占领)</button>
+      <button id="btn-scene-cancel">取消占领 (目标死亡)</button>
+
+      <h3>交互控制</h3>
+      <button id="btn-start-capture">开始占领</button>
+      <button id="btn-cancel-capture">取消占领</button>
+      <div class="btn-row">
+        <button id="btn-owner-enemy" class="active">敌方建筑</button>
+        <button id="btn-owner-friendly">己方建筑</button>
+      </div>
+
+      <h3>B. 期望结果</h3>
+      <div class="expected-box">
+        <h4>1. 接近阶段 (Approaching)</h4>
+        <ul>
+          <li>工程师沿<span class="metric">最短路径</span>移动到目标建筑相邻格</li>
+          <li>状态显示为"接近中"，目标线显示为<span class="metric">绿色</span></li>
+          <li>移动速度约 0.025 格/帧 (1x 速度)</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>2. 进入阶段 (Entering)</h4>
+        <ul>
+          <li>到达相邻格后，工程师<span class="metric">进入建筑格子</span></li>
+          <li>状态变为"进入中"，工程师模型与建筑重叠</li>
+          <li>进入完成后触发占领/破坏逻辑</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>3. 占领/破坏结果</h4>
+        <ul>
+          <li>占领成功：建筑归属变为<span class="metric">己方</span>，颜色从红变蓝</li>
+          <li>消耗式占领：工程师<span class="metric">消失</span> (disposed)</li>
+          <li>破坏模式：建筑HP减少，工程师保留</li>
+          <li>屏幕中央显示"CAPTURED!"或"SABOTAGED!"提示</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="click-hint">左键点击地面移动工程师 | 右键点击设置建筑位置</div>
+        <div id="capture-overlay">CAPTURED!</div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#3399f2"></div>工程师 (蓝色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#e94560"></div>敌方建筑 (红色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#44cc44"></div>己方建筑 (绿色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffcc00"></div>目标线</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#666"></div>已占领建筑</div>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span>网格: <span id="info-grid">20x20</span></span>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
