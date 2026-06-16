@@ -19,6 +19,7 @@ import { Activity, TargetLineNode } from '../../OpenRA.Game/Activities/Activity.
 import type { GameActor } from '../../OpenRA.Game/Actor.ts'
 import type { ColorStub, IDockHost } from '../../OpenRA.Game/Traits/TraitsInterfaces.ts'
 import { Target } from '../../OpenRA.Game/Traits/Target.ts'
+import { WPos } from '../../OpenRA.Game/WPos.ts'
 import { Wait } from './Wait.ts'
 import { MoveCooldownHelper } from './Move/MoveCooldownHelper.ts'
 import type { INotifyDockClientMoving } from './EconomicActivityInterfaces.ts'
@@ -381,6 +382,12 @@ export interface DockClientManagerLike {
   /** 当前预约的对接主机 actor。 */
   readonly reservedHostActor: GameActor | null
 
+  /** 上次预约的对接主机 (用于搜索回退)。 */
+  readonly lastReservedHost: { dockPosition: WPos } | null
+
+  /** 对接目标线颜色。 */
+  readonly dockLineColor: ColorStub
+
   /** 查找最近的可用对接主机。
    *
    *  @param actor — 可选的特定 actor 搜索
@@ -508,6 +515,8 @@ function createStubDockClientManager(): DockClientManagerLike {
     info: { searchForDockDelay: 25 },
     reservedHost: null,
     reservedHostActor: null,
+    lastReservedHost: null,
+    dockLineColor: { r: 0, g: 1, b: 0, a: 1 },
     closestDock: () => null,
     availableDockHosts: () => [],
     reserveHost: () => false,
