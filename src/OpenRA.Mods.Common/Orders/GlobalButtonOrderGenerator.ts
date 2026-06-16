@@ -131,8 +131,12 @@ export abstract class GlobalButtonOrderGenerator extends OrderGenerator {
   /** The trait interface key to match. */
   private readonly _traitKey: string
 
-  /** Typed world reference. */
-  private readonly _gw: IGlobalButtonOrderGeneratorWorld
+  /** Typed world reference. Available to subclasses for direct access.
+   *
+   * NOTE: Protected (not private) so subclasses like SellOrderGenerator
+   * can access it directly in their getCursor() override without unsafe casts.
+   */
+  protected readonly _gw: IGlobalButtonOrderGeneratorWorld
 
   // ---------------------------------------------------------------------------
   // Constructor
@@ -414,14 +418,11 @@ export class SellOrderGenerator extends GlobalButtonOrderGenerator {
     if (orders.length === 0) return 'sell-blocked'
 
     // Find the actor at cell and check its Sellable traits for cursor
-    const gw: IGlobalButtonOrderGeneratorWorld | undefined =
-      (this as unknown as { _gw?: IGlobalButtonOrderGeneratorWorld })._gw
-    if (!gw) return 'sell-blocked'
-
-    const localPlayer = gw.localPlayer
+    // Uses protected _gw field directly (no unsafe cast needed after MAJOR #1 fix)
+    const localPlayer = this._gw.localPlayer
     if (!localPlayer) return 'sell-blocked'
 
-    const actorsAtCell = gw.actorMap.getActorsAt(cell)
+    const actorsAtCell = this._gw.actorMap.getActorsAt(cell)
     for (const a of actorsAtCell) {
       const actor = a as unknown as IUnitOrderActor
       if (actor.owner !== localPlayer) continue

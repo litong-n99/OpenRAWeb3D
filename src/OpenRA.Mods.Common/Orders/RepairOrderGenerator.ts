@@ -184,6 +184,10 @@ export class RepairOrderGenerator extends OrderGenerator {
 
     // 2. Check damage state: skip undamaged actors
     // OpenRA 对照: if (underCursor.GetDamageState() == DamageState.Undamaged) yield break
+    //
+    // NOTE: getDamageState() is guaranteed by the C# IHealth interface at compile time.
+    // In TS, since we use duck-type stubs, we defensive-call via optional chaining
+    // (?.()) as the trait interface is not yet fully migrated.
     const damageState = (underCursor as unknown as { getDamageState?(): number }).getDamageState?.()
     if (damageState === DamageState.Undamaged) return
 

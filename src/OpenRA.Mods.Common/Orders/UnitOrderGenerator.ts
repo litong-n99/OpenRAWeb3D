@@ -2,6 +2,12 @@
  * UnitOrderGenerator.ts — 单位指令序生成器：所有标准单位命令（移动、攻击、维修、俘获等）的核心生成器
  * OpenRA 对照: OpenRA.Mods.Common/Orders/UnitOrderGenerator.cs (224 lines)
  *
+ * 类继承差异说明:
+ * - C#: UnitOrderGenerator : IOrderGenerator （直接实现接口，不通过 OrderGenerator 基类）
+ * - TS: UnitOrderGenerator extends OrderGenerator （继承基类以复用按钮分发、cancelInputMode 等基础设施）
+ *   OrderGenerator 提供了 actionButton/cancelButton 解析和鼠标事件调度，
+ *   TS 子类只需实现 orderInner/getCursor/render 等抽象方法即可。
+ *
  * 核心范式转换:
  * - C# ScreenMap.ActorsAtMouse(mi) 2D 屏幕哈希 → TS ActorMap.getActorsAt(cell) CPU 空间哈希
  * - C# LINQ .SelectMany(trait => trait.Orders) → TS .flatMap()
@@ -327,7 +333,7 @@ export class UnitOrderGenerator extends OrderGenerator {
       return Target.fromActor(highestPriLive as unknown as IActorRef)
     }
 
-    // 2. Frozen actors at the cell
+    // 2. Frozen actors at the cell — collect all matches, pick highest priority
     // OpenRA 对照: world.ScreenMap.FrozenActorsAtMouse(world.RenderPlayer, mi)
     //   .Where(a => a.Info.HasTraitInfo<ITargetableInfo>() && a.Visible && a.HasRenderables)
     //   .WithHighestSelectionPriority(worldPixel, mi.Modifiers)
@@ -336,20 +342,32 @@ export class UnitOrderGenerator extends OrderGenerator {
         cell,
         world.renderPlayer,
       )
-      for (const fa of frozenActors) {
-        if (
+      const matchingFrozen = frozenActors.filter(
+        (fa) =>
           fa.info.hasTraitInfo('ITargetableInfo') &&
           fa.visible &&
-          fa.hasRenderables
-        ) {
-          return Target.fromFrozenActor({
-            isValid: fa.isValid,
-            visible: fa.visible,
-            hidden: !fa.visible,
-            centerPosition: fa.centerPosition,
-            targetablePositions: null,
-          })
-        }
+          fa.hasRenderables,
+      )
+      if (matchingFrozen.length > 0) {
+        // Sort by selectionPriority descending (cast to access optional field)
+        // Tiebreak: keep original order (stable sort) — C# WithHighestSelectionPriority
+        // uses centerPosition proximity tiebreak when priorities are equal.
+        // NOTE: Frozen actors may not carry selectionPriority; default to 0.
+        matchingFrozen.sort((a, b) => {
+          const pa =
+            (a as unknown as { selectionPriority?: number }).selectionPriority ?? 0
+          const pb =
+            (b as unknown as { selectionPriority?: number }).selectionPriority ?? 0
+          return pb - pa
+        })
+        const bestFa = matchingFrozen[0]
+        return Target.fromFrozenActor({
+          isValid: bestFa.isValid,
+          visible: bestFa.visible,
+          hidden: !bestFa.visible,
+          centerPosition: bestFa.centerPosition,
+          targetablePositions: null,
+        })
       }
     }
 
@@ -372,6 +390,9 @@ export class UnitOrderGenerator extends OrderGenerator {
     if (actors.length === 0) return null
 
     // Sort by selection priority descending, then by actorId ascending (stable tiebreak)
+    // PERF: [...actors].sort(...) allocates a new array per call. For frequent calls
+    // (e.g., in a render loop), a reduce() O(N) max-finding pass could be used
+    // instead to avoid the intermediate array allocation.
     const sorted = [...actors].sort((a, b) => {
       const pa = (a as unknown as { selectionPriority?: number }).selectionPriority ?? 0
       const pb = (b as unknown as { selectionPriority?: number }).selectionPriority ?? 0
@@ -574,6 +595,12 @@ export class UnitOrderGenerator extends OrderGenerator {
           '',
         )) {
           // Resolve cursor: try getCursor if available, otherwise null
+          //
+          // NOTE: This typeof / getCursor duck-type check relies on the
+          // UnitOrderTargeter implementation detail that targeters which
+          // provide a cursor expose a getCursor() method. Other IOrderTargeter
+          // implementations may not expose this method; in those cases, cursor
+          // falls back to null and the final cursor is determined by getCursor().
           let cursor: string | null = null
           const targeterWithCursor = order as unknown as { getCursor?(): string }
           if (typeof targeterWithCursor.getCursor === 'function') {
@@ -714,8 +741,13 @@ export class UnitOrderGenerator extends OrderGenerator {
     //     && (a.Actor.Owner.IsAlliedWith(world.RenderPlayer) || !world.FogObscures(a.Actor)))
     //   .WithHighestSelectionPriority(xy, mi.Modifiers)
     //
-    // NOTE: Without ScreenMap, we search all actors in the world and filter.
-    // Full implementation should use actorMap with viewport projection.
+    // TODO(ch15-perf): O(N) linear scan over all world actors — potential hotspot.
+    // With hundreds/thousands of actors, this per-frame scan is costly. The C#
+    // implementation uses ScreenMap (a 2D spatial hash keyed by screen pixel
+    // bins) for O(1) lookups. In Babylon.js, the equivalent would be a
+    // viewport-frustum-based cell-quadrant lookup via actorMap with spatial
+    // indexing (e.g., a sparse grid of cell buckets). Until then, this
+    // linear scan is the simplest correct solution.
     const selectableActors: IUnitOrderActor[] = []
     for (const a of world.actors) {
       const actor = a as unknown as IUnitOrderActor
