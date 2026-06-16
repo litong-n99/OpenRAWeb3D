@@ -344,7 +344,7 @@ export class AutoSave implements ITick {
     const hours = now.getUTCHours().toString().padStart(2, '0')
     const minutes = now.getUTCMinutes().toString().padStart(2, '0')
     const seconds = now.getUTCSeconds().toString().padStart(2, '0')
-    const dateTime = `${year}${month}${day}T${hours}${minutes}${seconds}Z`
+    const dateTime = `${year}-${month}-${day}T${hours}${minutes}${seconds}Z`
 
     const fileName = `${AUTO_SAVE_PATTERN}${dateTime}${SAVE_FILE_EXTENSION}`
 

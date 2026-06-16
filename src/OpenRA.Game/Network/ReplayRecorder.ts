@@ -16,9 +16,11 @@
  */
 
 import { tryParseOrderPacket } from './Order.js'
+import type { ReplayMetadata } from '../FileFormats/ReplayMetadata.js'
 import {
-  ReplayMetadata,
   MetaStartMarker,
+  MetaVersion,
+  MetaEndMarker,
 } from '../FileFormats/ReplayMetadata.js'
 
 // ---------------------------------------------------------------------------
@@ -256,15 +258,18 @@ export class ReplayRecorder {
     // 如果连接了元数据，则为元数据尾部预留空间
     const hasMetadata = this.metadata !== null
     let metadataSize = 0
+    let cachedJsonString = ''
+    let cachedEncodedBytes: Uint8Array | null = null
     if (hasMetadata) {
-      // MetaStartMarker + 元数据尾部
-      // 我们需要计算 ReplayMetadata 尾部的大小。
-      // 临时写入以确定大小（写入到临时缓冲区）。
-      const tempJson = this.metadata!.gameInfo.toJSONString()
-      const tempEncoded = new TextEncoder().encode(tempJson)
+      // Pre-compute JSON once to avoid double string encoding (once for size
+      // calculation, once inside writeToBuffer). The cached bytes are passed
+      // to a direct write below instead of calling writeToBuffer which would
+      // internally call toJSONString() + TextEncoder.encode() again.
+      cachedJsonString = this.metadata!.gameInfo.toJSONString()
+      cachedEncodedBytes = new TextEncoder().encode(cachedJsonString)
       // MetaStartMarker(4) + MetaVersion(4) + stringLen(4) + stringBytes + dataLen(4) + MetaEndMarker(4)
       metadataSize =
-        INT32_SIZE * 5 + tempEncoded.length // = 20 + stringBytes
+        INT32_SIZE * 5 + cachedEncodedBytes.length // = 20 + stringBytes
     }
 
     const totalSize = packetSectionSize + metadataSize
@@ -287,15 +292,38 @@ export class ReplayRecorder {
       offset += chunk.data.length
     }
 
-    // 写入 MetaStartMarker（标记数据包部分结束）
-    if (hasMetadata) {
-      view.setInt32(offset, MetaStartMarker, true)
-      // ReplayMetadata.writeToBuffer 将在内部写入 MetaStartMarker，
-      // 但 OpenRA 的格式是数据包部分以 clientId == MetaStartMarker 结束，
-      // 然后 ReplayMetadata.Write 写入完整的元数据块（以 MetaStartMarker 开头）。
-      // 所以这里我们只需让 writeToBuffer 从当前位置开始写入即可。
+    // 写入元数据尾部（使用预先计算的编码字节以避免双重 JSON 编码）
+    if (hasMetadata && cachedEncodedBytes !== null) {
+      // NOTE: 使用直接写入而非 writeToBuffer，因为我们已经预先计算了 JSON 字节。
+      // writeToBuffer 会在内部再次调用 toJSONString() + TextEncoder.encode()。
+      const stringByteLength = cachedEncodedBytes.length
+      const dataLength = 4 + stringByteLength // 长度前缀 + 字符串字节
 
-      this.metadata!.writeToBuffer(buffer, offset)
+      // MetaStartMarker
+      view.setInt32(offset, MetaStartMarker, true)
+      // MetaVersion
+      view.setInt32(offset + 4, MetaVersion, true)
+      // 字符串长度前缀
+      view.setInt32(offset + 8, stringByteLength, true)
+      // 字符串字节
+      buffer.set(cachedEncodedBytes, offset + 12)
+      // dataLength
+      view.setInt32(offset + 12 + stringByteLength, dataLength, true)
+      // MetaEndMarker
+      view.setInt32(
+        offset + 12 + stringByteLength + 4,
+        MetaEndMarker,
+        true,
+      )
+
+      const writtenSize = 20 + stringByteLength
+      // 断言：写入的元数据大小必须与预先计算的值一致
+      if (writtenSize !== metadataSize) {
+        throw new Error(
+          `ReplayRecorder: metadata write size mismatch ` +
+          `(expected ${metadataSize}, wrote ${writtenSize})`,
+        )
+      }
     }
 
     return buffer

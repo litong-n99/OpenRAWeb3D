@@ -16,6 +16,22 @@ import { WinState } from './Player.js'
 import { MapGenerationArgs } from './Map/MapGenerationArgs.js'
 
 // ---------------------------------------------------------------------------
+// PlayerColor — player color representation
+// ---------------------------------------------------------------------------
+
+/**
+ * Player color stored as RGBA components.
+ *
+ * OpenRA 对照: GameInformation.Player.Color (Color struct)
+ */
+export interface PlayerColor {
+  r: number
+  g: number
+  b: number
+  a: number
+}
+
+// ---------------------------------------------------------------------------
 // GameInformationPlayer — 内部玩家信息类（对应 OpenRA GameInformation.Player）
 // ---------------------------------------------------------------------------
 
@@ -39,6 +55,12 @@ export class GameInformationPlayer {
    * OpenRA 对照: Player.ClientIndex
    */
   playerId: number
+
+  /** 玩家颜色（RGBA）。
+   *
+   * OpenRA 对照: Player.Color
+   */
+  color: PlayerColor
 
   /** 阵营内部名称（如 "allies", "soviet"）。
    *
@@ -75,6 +97,44 @@ export class GameInformationPlayer {
    * OpenRA 对照: Player.IsBot
    */
   isBot: boolean
+
+  /** Bot AI 类型名称（如 "EasyBot", "HardBot"）。
+   *
+   * OpenRA 对照: Player.BotType
+   *
+   * null 表示非 Bot 玩家。
+   */
+  botType: string | null
+
+  /** 阵营显示名称（本地化版本）。
+   *
+   * OpenRA 对照: Player.DisplayFactionName
+   */
+  displayFactionName: string
+
+  /** 用于显示的阵营 ID。
+   *
+   * OpenRA 对照: Player.DisplayFactionId
+   */
+  displayFactionId: string
+
+  /** 阵营是否随机分配。
+   *
+   * OpenRA 对照: Player.IsRandomFaction
+   */
+  isRandomFaction: boolean
+
+  /** 出生点是否随机分配。
+   *
+   * OpenRA 对照: Player.IsRandomSpawnPoint
+   */
+  isRandomSpawnPoint: boolean
+
+  /** 唯一玩家标识（用于跨回放/存档的玩家关联）。
+   *
+   * OpenRA 对照: Player.Fingerprint
+   */
+  fingerprint: string
 
   /** 断开连接时的游戏帧编号（0 = 未断开）。
    *
@@ -116,12 +176,19 @@ export class GameInformationPlayer {
   constructor(playerName: string) {
     this.playerName = playerName
     this.playerId = 0
+    this.color = { r: 0, g: 0, b: 0, a: 255 }
     this.factionId = ''
     this.factionName = ''
     this.team = 0
     this.spawnPoint = 0
     this.isHuman = true
     this.isBot = false
+    this.botType = null
+    this.displayFactionName = ''
+    this.displayFactionId = ''
+    this.isRandomFaction = false
+    this.isRandomSpawnPoint = false
+    this.fingerprint = ''
     this.disconnectFrame = 0
     this.winState = WinState.Undefined
     this.outcomeTimestampUtc = null
@@ -129,7 +196,7 @@ export class GameInformationPlayer {
   }
 
   /**
-   * 将此播放器序列化为纯 JSON 对象。
+   * 将此玩家序列化为纯 JSON 对象。
    *
    * OpenRA 对照: FieldSaver.Save(Player) → MiniYaml nodes
    *
@@ -137,16 +204,23 @@ export class GameInformationPlayer {
    *
    * @returns 用于 JSON.stringify 的纯对象
    */
-  toJSON(): Record<string, unknown> {
+  toJSONObject(): Record<string, unknown> {
     return {
       playerName: this.playerName,
       playerId: this.playerId,
+      color: this.color,
       factionId: this.factionId,
       factionName: this.factionName,
       team: this.team,
       spawnPoint: this.spawnPoint,
       isHuman: this.isHuman,
       isBot: this.isBot,
+      botType: this.botType,
+      displayFactionName: this.displayFactionName,
+      displayFactionId: this.displayFactionId,
+      isRandomFaction: this.isRandomFaction,
+      isRandomSpawnPoint: this.isRandomSpawnPoint,
+      fingerprint: this.fingerprint,
       disconnectFrame: this.disconnectFrame,
       winState: this.winState,
       outcomeTimestampUtc: this.outcomeTimestampUtc?.toISOString() ?? null,
@@ -167,12 +241,19 @@ export class GameInformationPlayer {
       (data.playerName as string) ?? '',
     )
     player.playerId = (data.playerId as number) ?? 0
+    player.color = parseColorFromJSON(data.color)
     player.factionId = (data.factionId as string) ?? ''
     player.factionName = (data.factionName as string) ?? ''
     player.team = (data.team as number) ?? 0
     player.spawnPoint = (data.spawnPoint as number) ?? 0
     player.isHuman = (data.isHuman as boolean) ?? true
     player.isBot = (data.isBot as boolean) ?? false
+    player.botType = (data.botType as string) ?? null
+    player.displayFactionName = (data.displayFactionName as string) ?? ''
+    player.displayFactionId = (data.displayFactionId as string) ?? ''
+    player.isRandomFaction = (data.isRandomFaction as boolean) ?? false
+    player.isRandomSpawnPoint = (data.isRandomSpawnPoint as boolean) ?? false
+    player.fingerprint = (data.fingerprint as string) ?? ''
     player.disconnectFrame = (data.disconnectFrame as number) ?? 0
     player.winState =
       (data.winState as WinState) ?? WinState.Undefined
@@ -335,7 +416,7 @@ export class GameInformation {
       finalGameTick: this.finalGameTick,
       startTimeUtc: this.startTimeUtc.toISOString(),
       endTimeUtc: this.endTimeUtc?.toISOString() ?? null,
-      players: this.players.map((p) => p.toJSON()),
+      players: this.players.map((p) => p.toJSONObject()),
       disabledSpawnPoints: Array.from(this.disabledSpawnPoints),
       mapGenerationArgs: this.mapGenerationArgs
         ? Object.fromEntries(
@@ -421,14 +502,40 @@ export class GameInformation {
    *
    * OpenRA 对照: GameInformation.AddPlayer(OpenRA.Player, Session)
    *
-   * 简化版工厂方法：使用默认值创建玩家。
-   * 调用方可直接对返回的实例设置属性。
+   * 接受字符串（仅玩家名称）或 Partial<GameInformationPlayer> 选项对象。
+   * 返回的实例已添加到 players 列表，调用方可进一步设置属性。
    *
-   * @param playerName — 玩家显示名称
+   * @param optionsOrName — 玩家显示名称，或包含 playerName 的选项对象
    * @returns 新创建的 GameInformationPlayer 实例（已添加到 players 列表）
    */
-  addPlayer(playerName: string): GameInformationPlayer {
-    const player = new GameInformationPlayer(playerName)
+  addPlayer(
+    optionsOrName: string | (Partial<GameInformationPlayer> & { playerName: string }),
+  ): GameInformationPlayer {
+    let player: GameInformationPlayer
+    if (typeof optionsOrName === 'string') {
+      player = new GameInformationPlayer(optionsOrName)
+    } else {
+      player = new GameInformationPlayer(optionsOrName.playerName)
+      // Apply optional fields from the options object
+      if (optionsOrName.playerId !== undefined) player.playerId = optionsOrName.playerId
+      if (optionsOrName.color) player.color = optionsOrName.color
+      if (optionsOrName.factionId !== undefined) player.factionId = optionsOrName.factionId
+      if (optionsOrName.factionName !== undefined) player.factionName = optionsOrName.factionName
+      if (optionsOrName.team !== undefined) player.team = optionsOrName.team
+      if (optionsOrName.spawnPoint !== undefined) player.spawnPoint = optionsOrName.spawnPoint
+      if (optionsOrName.isHuman !== undefined) player.isHuman = optionsOrName.isHuman
+      if (optionsOrName.isBot !== undefined) player.isBot = optionsOrName.isBot
+      if (optionsOrName.botType !== undefined) player.botType = optionsOrName.botType
+      if (optionsOrName.displayFactionName !== undefined) player.displayFactionName = optionsOrName.displayFactionName
+      if (optionsOrName.displayFactionId !== undefined) player.displayFactionId = optionsOrName.displayFactionId
+      if (optionsOrName.isRandomFaction !== undefined) player.isRandomFaction = optionsOrName.isRandomFaction
+      if (optionsOrName.isRandomSpawnPoint !== undefined) player.isRandomSpawnPoint = optionsOrName.isRandomSpawnPoint
+      if (optionsOrName.fingerprint !== undefined) player.fingerprint = optionsOrName.fingerprint
+      if (optionsOrName.disconnectFrame !== undefined) player.disconnectFrame = optionsOrName.disconnectFrame
+      if (optionsOrName.winState !== undefined) player.winState = optionsOrName.winState
+      if (optionsOrName.outcomeTimestampUtc !== undefined) player.outcomeTimestampUtc = optionsOrName.outcomeTimestampUtc
+      if (optionsOrName.playerActorId !== undefined) player.playerActorId = optionsOrName.playerActorId
+    }
     this.players.push(player)
     return player
   }
@@ -457,6 +564,29 @@ export class GameInformation {
  * @param value — Size 的未知 JSON 值
  * @returns Size 对象，默认为 { width: 0, height: 0 }
  */
+/**
+ * 从 JSON 值解析 PlayerColor 对象。
+ *
+ * @param value — 颜色的未知 JSON 值（对象 {r,g,b,a} 或 undefined）
+ * @returns PlayerColor 对象，默认为 { r: 0, g: 0, b: 0, a: 255 }
+ */
+function parseColorFromJSON(value: unknown): PlayerColor {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value)
+  ) {
+    const obj = value as Record<string, unknown>
+    return {
+      r: (obj.r as number) ?? 0,
+      g: (obj.g as number) ?? 0,
+      b: (obj.b as number) ?? 0,
+      a: (obj.a as number) ?? 255,
+    }
+  }
+  return { r: 0, g: 0, b: 0, a: 255 }
+}
+
 function parseSizeFromJSON(
   value: unknown,
 ): { width: number; height: number } {

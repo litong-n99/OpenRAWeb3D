@@ -324,8 +324,8 @@ describe('AutoSave', () => {
       const filename = (goSave.mock.calls[0] as [string, boolean])[0]
       expect(filename).toContain('autosave-')
       expect(filename).toContain('.orasav')
-      // ISO datetime without separators
-      expect(filename).toMatch(/autosave-\d{8}T\d{6}Z\.orasav/)
+      // ISO datetime with hyphens (matching C# yyyy-MM-ddTHHmmssZ format)
+      expect(filename).toMatch(/autosave-\d{4}-\d{2}-\d{2}T\d{6}Z\.orasav/)
     })
 
     it('resets timer after triggering save', () => {

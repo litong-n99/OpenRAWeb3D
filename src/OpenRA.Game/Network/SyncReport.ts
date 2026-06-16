@@ -166,7 +166,10 @@ export interface SyncReportWorld {
 export interface SyncReportOrderManager {
   readonly netFrameNumber: number
   readonly world: SyncReportWorld | null
-  readonly localClient: { readonly index: number } | null
+  readonly localClient: {
+    readonly index: number
+    readonly name?: string
+  } | null
 }
 
 // ---------------------------------------------------------------------------
@@ -329,7 +332,8 @@ export class SyncReport {
       .replace(/[:.]/g, '')
       .replace(/-/g, '')
 
-    const localIndex = this._orderManager.localClient?.index
+    const localClient = this._orderManager.localClient
+    const localIndex = localClient?.index
 
     const lines: string[] = []
     const log = (text: string) => lines.push(text)
@@ -344,6 +348,11 @@ export class SyncReport {
 
         log('--- Sync Report ---')
         log(`Player Index: ${localIndex}`)
+        if (localClient?.name) {
+          log(`Player: ${localClient.name}`)
+        }
+        log(`Platform: ${navigator.userAgent}`)
+        log('TODO: Game ID: (requires ModData)')
         log(`Sync for net frame ${r.frame} -------------`)
         log(`SharedRandom: ${r.syncedRandom} (#${r.totalCount})`)
         log('Synced Traits:')

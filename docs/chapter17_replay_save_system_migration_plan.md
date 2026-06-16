@@ -734,6 +734,8 @@ Some components can be deferred to a later phase without blocking core functiona
 - Binary format validation tests must compare against known-good files from OpenRA desktop
 - The JSON-instead-of-MiniYaml evolution is transparent to the binary framing layer
 
+**Notable Divergence**: Frame number prefix within order packets uses **big-endian** encoding (matching the network protocol layer's `OrderPacket.serialize` convention). This differs from OpenRA desktop's little-endian frame prefix but maintains internal consistency within the TypeScript networking stack. All other multi-byte values (packet length, client ID, metadata markers, offsets) remain little-endian per OpenRA desktop format.
+
 ### ADR-17.2: Abstract Storage Provider for File I/O
 
 **Decision**: All filesystem operations (read, write, delete, enumerate) go through an `IStorageProvider` interface. The default implementation uses **IndexedDB** for persistent storage with a virtual path hierarchy (object stores with composite keys). Alternative implementations: File System Access API / OPFS for directory browsing, in-memory for unit testing, `Blob` download/upload for file exchange.

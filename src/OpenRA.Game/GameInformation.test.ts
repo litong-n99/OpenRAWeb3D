@@ -31,62 +31,83 @@ describe('GameInformationPlayer', () => {
 
     expect(p.playerName).toBe('TestPlayer')
     expect(p.playerId).toBe(0)
+    expect(p.color).toEqual({ r: 0, g: 0, b: 0, a: 255 })
     expect(p.factionId).toBe('')
     expect(p.factionName).toBe('')
     expect(p.team).toBe(0)
     expect(p.spawnPoint).toBe(0)
     expect(p.isHuman).toBe(true)
     expect(p.isBot).toBe(false)
+    expect(p.botType).toBeNull()
+    expect(p.displayFactionName).toBe('')
+    expect(p.displayFactionId).toBe('')
+    expect(p.isRandomFaction).toBe(false)
+    expect(p.isRandomSpawnPoint).toBe(false)
+    expect(p.fingerprint).toBe('')
     expect(p.disconnectFrame).toBe(0)
     expect(p.winState).toBe(WinState.Undefined)
     expect(p.outcomeTimestampUtc).toBeNull()
     expect(p.playerActorId).toBeNull()
   })
 
-  it('toJSON serializes all fields', () => {
+  it('toJSONObject serializes all fields', () => {
     const p = new GameInformationPlayer('TestPlayer')
     p.playerId = 3
+    p.color = { r: 255, g: 0, b: 0, a: 255 }
     p.factionId = 'allies'
     p.factionName = 'Allies'
     p.team = 1
     p.spawnPoint = 2
     p.isHuman = true
     p.isBot = false
+    p.botType = null
+    p.displayFactionName = 'Allies (Localized)'
+    p.displayFactionId = 'allies-display'
+    p.isRandomFaction = false
+    p.isRandomSpawnPoint = true
+    p.fingerprint = 'fp-abc-123'
     p.disconnectFrame = 100
     p.winState = WinState.Won
     const outcomeDate = new Date('2024-06-15T12:00:00.000Z')
     p.outcomeTimestampUtc = outcomeDate
     p.playerActorId = 42
 
-    const json = p.toJSON()
+    const json = p.toJSONObject()
 
     expect(json.playerName).toBe('TestPlayer')
     expect(json.playerId).toBe(3)
+    expect(json.color).toEqual({ r: 255, g: 0, b: 0, a: 255 })
     expect(json.factionId).toBe('allies')
     expect(json.factionName).toBe('Allies')
     expect(json.team).toBe(1)
     expect(json.spawnPoint).toBe(2)
     expect(json.isHuman).toBe(true)
     expect(json.isBot).toBe(false)
+    expect(json.botType).toBeNull()
+    expect(json.displayFactionName).toBe('Allies (Localized)')
+    expect(json.displayFactionId).toBe('allies-display')
+    expect(json.isRandomFaction).toBe(false)
+    expect(json.isRandomSpawnPoint).toBe(true)
+    expect(json.fingerprint).toBe('fp-abc-123')
     expect(json.disconnectFrame).toBe(100)
     expect(json.winState).toBe(WinState.Won)
     expect(json.outcomeTimestampUtc).toBe('2024-06-15T12:00:00.000Z')
     expect(json.playerActorId).toBe(42)
   })
 
-  it('toJSON serializes null outcomeTimestampUtc as null', () => {
+  it('toJSONObject serializes null outcomeTimestampUtc as null', () => {
     const p = new GameInformationPlayer('Bot')
     p.isHuman = false
     p.isBot = true
 
-    const json = p.toJSON()
+    const json = p.toJSONObject()
     expect(json.outcomeTimestampUtc).toBeNull()
   })
 
-  it('toJSON serializes null playerActorId as null', () => {
+  it('toJSONObject serializes null playerActorId as null', () => {
     const p = new GameInformationPlayer('P')
 
-    const json = p.toJSON()
+    const json = p.toJSONObject()
     expect(json.playerActorId).toBeNull()
   })
 
@@ -94,12 +115,19 @@ describe('GameInformationPlayer', () => {
     const data: Record<string, unknown> = {
       playerName: 'RestoredPlayer',
       playerId: 5,
+      color: { r: 0, g: 255, b: 0, a: 128 },
       factionId: 'soviet',
       factionName: 'Soviet',
       team: 2,
       spawnPoint: 4,
       isHuman: false,
       isBot: true,
+      botType: 'HardBot',
+      displayFactionName: 'Soviet Union',
+      displayFactionId: 'soviet',
+      isRandomFaction: true,
+      isRandomSpawnPoint: false,
+      fingerprint: 'fp-xyz',
       disconnectFrame: 500,
       winState: WinState.Lost,
       outcomeTimestampUtc: '2024-01-01T00:00:00.000Z',
@@ -110,12 +138,19 @@ describe('GameInformationPlayer', () => {
 
     expect(p.playerName).toBe('RestoredPlayer')
     expect(p.playerId).toBe(5)
+    expect(p.color).toEqual({ r: 0, g: 255, b: 0, a: 128 })
     expect(p.factionId).toBe('soviet')
     expect(p.factionName).toBe('Soviet')
     expect(p.team).toBe(2)
     expect(p.spawnPoint).toBe(4)
     expect(p.isHuman).toBe(false)
     expect(p.isBot).toBe(true)
+    expect(p.botType).toBe('HardBot')
+    expect(p.displayFactionName).toBe('Soviet Union')
+    expect(p.displayFactionId).toBe('soviet')
+    expect(p.isRandomFaction).toBe(true)
+    expect(p.isRandomSpawnPoint).toBe(false)
+    expect(p.fingerprint).toBe('fp-xyz')
     expect(p.disconnectFrame).toBe(500)
     expect(p.winState).toBe(WinState.Lost)
     expect(p.outcomeTimestampUtc).toBeInstanceOf(Date)
@@ -134,10 +169,17 @@ describe('GameInformationPlayer', () => {
 
     expect(p.playerName).toBe('MinimalPlayer')
     expect(p.playerId).toBe(0)
+    expect(p.color).toEqual({ r: 0, g: 0, b: 0, a: 255 })
     expect(p.factionId).toBe('')
     expect(p.team).toBe(0)
     expect(p.isHuman).toBe(true)
     expect(p.isBot).toBe(false)
+    expect(p.botType).toBeNull()
+    expect(p.displayFactionName).toBe('')
+    expect(p.displayFactionId).toBe('')
+    expect(p.isRandomFaction).toBe(false)
+    expect(p.isRandomSpawnPoint).toBe(false)
+    expect(p.fingerprint).toBe('')
     expect(p.winState).toBe(WinState.Undefined)
     expect(p.outcomeTimestampUtc).toBeNull()
     expect(p.playerActorId).toBeNull()
@@ -153,31 +195,45 @@ describe('GameInformationPlayer', () => {
     expect(p.outcomeTimestampUtc).toBeNull()
   })
 
-  it('fromJSON toJSON round-trip preserves all data', () => {
+  it('fromJSON toJSONObject round-trip preserves all data', () => {
     const original = new GameInformationPlayer('RoundTrip')
     original.playerId = 10
+    original.color = { r: 100, g: 200, b: 50, a: 255 }
     original.factionId = 'gdi'
     original.factionName = 'GDI'
     original.team = 3
     original.spawnPoint = 5
     original.isHuman = true
     original.isBot = false
+    original.botType = null
+    original.displayFactionName = 'Global Defense Initiative'
+    original.displayFactionId = 'gdi-display'
+    original.isRandomFaction = false
+    original.isRandomSpawnPoint = true
+    original.fingerprint = 'fingerprint-001'
     original.disconnectFrame = 0
     original.winState = WinState.Won
     original.outcomeTimestampUtc = new Date('2025-06-16T10:30:00.000Z')
     original.playerActorId = 99
 
-    const json = original.toJSON()
+    const json = original.toJSONObject()
     const restored = GameInformationPlayer.fromJSON(json)
 
     expect(restored.playerName).toBe(original.playerName)
     expect(restored.playerId).toBe(original.playerId)
+    expect(restored.color).toEqual(original.color)
     expect(restored.factionId).toBe(original.factionId)
     expect(restored.factionName).toBe(original.factionName)
     expect(restored.team).toBe(original.team)
     expect(restored.spawnPoint).toBe(original.spawnPoint)
     expect(restored.isHuman).toBe(original.isHuman)
     expect(restored.isBot).toBe(original.isBot)
+    expect(restored.botType).toBe(original.botType)
+    expect(restored.displayFactionName).toBe(original.displayFactionName)
+    expect(restored.displayFactionId).toBe(original.displayFactionId)
+    expect(restored.isRandomFaction).toBe(original.isRandomFaction)
+    expect(restored.isRandomSpawnPoint).toBe(original.isRandomSpawnPoint)
+    expect(restored.fingerprint).toBe(original.fingerprint)
     expect(restored.disconnectFrame).toBe(original.disconnectFrame)
     expect(restored.winState).toBe(original.winState)
     expect(restored.outcomeTimestampUtc?.toISOString()).toBe(
@@ -226,6 +282,34 @@ describe('GameInformation', () => {
     expect(player.isBot).toBe(false)
     expect(player.winState).toBe(WinState.Undefined)
     expect(player.outcomeTimestampUtc).toBeNull()
+  })
+
+  it('addPlayer with options sets provided fields', () => {
+    const info = new GameInformation()
+    const player = info.addPlayer({
+      playerName: 'Commander',
+      factionId: 'allies',
+      isHuman: true,
+      isBot: false,
+      team: 1,
+      spawnPoint: 3,
+      color: { r: 0, g: 0, b: 255, a: 255 },
+      isRandomFaction: true,
+      fingerprint: 'fp-001',
+    })
+
+    expect(player.playerName).toBe('Commander')
+    expect(player.factionId).toBe('allies')
+    expect(player.isHuman).toBe(true)
+    expect(player.isBot).toBe(false)
+    expect(player.team).toBe(1)
+    expect(player.spawnPoint).toBe(3)
+    expect(player.color).toEqual({ r: 0, g: 0, b: 255, a: 255 })
+    expect(player.isRandomFaction).toBe(true)
+    expect(player.fingerprint).toBe('fp-001')
+    // Fields not specified should have defaults
+    expect(player.isRandomSpawnPoint).toBe(false)
+    expect(player.botType).toBeNull()
   })
 
   it('humanPlayers filters only human players', () => {

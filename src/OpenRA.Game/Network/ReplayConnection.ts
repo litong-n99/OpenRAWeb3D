@@ -22,6 +22,7 @@ import {
   tryParseDisconnect,
   tryParseSync,
   tryParseOrderPacket,
+  OrderType,
 } from './Order.js'
 import { ReplayMetadata, MetaStartMarker } from '../FileFormats/ReplayMetadata.js'
 import type { OrderManagerStub, LobbyInfoStub } from './UnitOrders.js'
@@ -35,6 +36,24 @@ const INT32_SIZE = 4
 
 /** 默认 orderLatency（单帧）——回放播放可以安全地以最低延迟处理。 */
 const DEFAULT_ORDER_LATENCY = 1
+
+/**
+ * GameSpeed name → orderLatency mapping.
+ *
+ * OpenRA 对照: GameSpeeds trait dictionary (Mods.Common/Traits/World/GameSpeeds.cs)
+ *
+ * Each game speed level defines a different order latency (frames).
+ * Slower speeds use higher latency to accommodate network delay.
+ * 'normal', 'fast', and 'fastest' all use latency=1 (no extra delay).
+ */
+const GAME_SPEED_LATENCIES: Record<string, number> = {
+  'default': 1,
+  'slowest': 3,
+  'slower': 2,
+  'normal': 1,
+  'fast': 1,
+  'fastest': 1,
+}
 
 // ---------------------------------------------------------------------------
 // Chunk — 内部数据包分组（对应 OpenRA ReplayConnection.Chunk）
@@ -178,8 +197,8 @@ export class ReplayConnection implements IConnection {
     for (const entry of allPackets) {
       const isSpecial =
         entry.data.length > 4 &&
-        (entry.data[4] === 0xbf /* Disconnect */ ||
-          entry.data[4] === 0x65 /* SyncHash */)
+        (entry.data[4] === OrderType.Disconnect ||
+          entry.data[4] === OrderType.SyncHash)
 
       // 将每个数据包添加到当前积累中
       currentPackets.push({ clientId: entry.clientId, packet: entry.data })
@@ -191,6 +210,8 @@ export class ReplayConnection implements IConnection {
 
       if (entry.frame === 0) {
         // Frame-0 常规数据包：解析 StartGame 和 SyncInfo
+        // NOTE: Frame-0 packets are preserved in currentPackets (matching C#).
+        // They will be replayed as immediate orders during receive().
         const parsed = tryParseOrderPacket(entry.data)
         if (parsed) {
           for (const order of parsed.packet.getOrders(null)) {
@@ -201,12 +222,6 @@ export class ReplayConnection implements IConnection {
             }
           }
         }
-        // 从当前积累中移除 frame-0 数据包（它们不属于任何块）
-        // 但保留特殊数据包（断开/同步），它们需要通过 receive() 处理。
-        // 由于我们已经遍历了该数据包，现在将它留待下一次常规帧迭代处理。
-        // 实际上，我们只从 currentPackets 中移除最后一项（frame-0 常规数据包）。
-        currentPackets.pop()
-        // 特殊数据包可能在 frame-0 常规数据包之后到达——它们已存在于 currentPackets 中。
       } else {
         // Frame-N+ 常规数据包：完成当前块
         if (currentPackets.length > 0) {
@@ -227,8 +242,13 @@ export class ReplayConnection implements IConnection {
       // 这些数据包没有下一个帧可以关联——将它们附加到最后一个块中
       if (chunks.length > 0) {
         chunks[chunks.length - 1].packets.push(...currentPackets)
+      } else {
+        // 孤立数据包：只包含 frame-0 数据且没有后续帧，只能丢弃
+        console.warn(
+          `ReplayConnection: discarding ${currentPackets.length} orphan packet(s) ` +
+          `— replay contains only frame-0 data with no subsequent frames`,
+        )
       }
-      // 如果没有块，则这些数据包作为孤立数据包被丢弃（没有帧就无法重放）
     }
 
     this.isValid = isValid
@@ -236,9 +256,13 @@ export class ReplayConnection implements IConnection {
     this.tickCount = tickCount
     this._chunks = chunks
 
-    // 4. 计算 orderLatency
-    // TODO-17.B.2: 当 GameSpeeds 完全迁移后，通过 GameSpeeds 集成正确的游戏速度映射
-    this._orderLatency = DEFAULT_ORDER_LATENCY
+    // 4. 计算 orderLatency（从 LobbyInfo 的 gamespeed 选项解析）
+    const gameSpeedOption = this.lobbyInfo.globalSettings.optionOrDefault(
+      'gamespeed',
+      'normal',
+    ) as string
+    this._orderLatency =
+      GAME_SPEED_LATENCIES[gameSpeedOption] ?? DEFAULT_ORDER_LATENCY
   }
 
   // ---------------------------------------------------------------------------
