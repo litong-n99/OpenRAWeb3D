@@ -29,7 +29,7 @@
 | **Chapter 15 planned files (Order Generators)** | 11 (3 Phases A-C), **11/11 (100%, ALL PHASES COMPLETE, 206 tests)**. Plan: [chapter15_order_generators_migration_plan.md](docs/chapter15_order_generators_migration_plan.md) |
 | **Chapter 16 planned files (UI Widget Extensions)** | 65 (3 Phases A-C planned, detailed plan: [chapter16_ui_widget_extensions_migration_plan.md](docs/chapter16_ui_widget_extensions_migration_plan.md)), 0/65 migrated, PLANNING |
 | **Chapter 17 planned files (Replay & Save)** | ~6 (1 Phase A planned), 0/6 migrated |
-| **Chapter 18 planned files (Server System)** | ~9 (1 Phase A planned), 0/9 migrated |
+| **Chapter 18 planned files (Server System)** | 9 (Phases TBD, detailed plan: [chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)), 0/9 migrated, PLANNING |
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |

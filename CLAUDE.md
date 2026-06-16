@@ -14,6 +14,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 **Chapter 13 Plan**: [docs/chapter13_support_powers_migration_plan.md](docs/chapter13_support_powers_migration_plan.md)
 **Chapter 15 Plan**: [docs/chapter15_order_generators_migration_plan.md](docs/chapter15_order_generators_migration_plan.md)
 **Chapter 17 Plan**: [docs/chapter17_replay_save_system_migration_plan.md](docs/chapter17_replay_save_system_migration_plan.md)
+**Chapter 18 Plan**: [docs/chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -69,7 +70,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Order Generators (Ch15) | **ALL PHASES COMPLETE (11/11, 100%, 206 tests, Phases A-B-C all APPROVED)**. Plan: [chapter15_order_generators_migration_plan.md](docs/chapter15_order_generators_migration_plan.md) |
 | UI Widget Extensions (Ch16) | Planned (~40 files, 3 phases A-C) |
 | Replay & Save (Ch17) | Planned (~6 files, 1 phase A) |
-| Server System (Ch18) | Planned (~9 files, 1 phase A) |
+| Server System (Ch18) | Planned (9 files, Phases TBD, detailed plan: [chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)) |
 | Mod-Specific Content (Ch19) | Planned (~83 files, 2 phases CNC+D2K) |
 | Scripting System (Ch20) | Planned (~7 files, 1 phase A) |
 | Editor & Utilities (Ch21) | Planned (~15 files, 2 phases A-B) |
