@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 18 -- Server System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.6 (Network/Server) + Section 4.3 (Traits)
-> **Chapter Status**: PLANNING (0/9 migrated, 0%)
+> **Chapter Status**: IMPLEMENTING (3/9 migrated, 33%, Phase A COMPLETE)
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%), Chapter 6 Phase A (Order + Connection + OrderManager) COMPLETE, Chapter 6 Phase B (Sync hash) COMPLETE, Chapter 17 COMPLETE (GameSave, ReplayRecorder, ReplayConnection)
 >
@@ -123,11 +123,11 @@ The following infrastructure from Chapters 2-7 and Chapter 17 is available for C
 
 | Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Protocol and Interfaces | 3 | 169 | ~500 | ~30 | NOT STARTED |
+| A: Protocol and Interfaces | 3 | 169 | 504 | 52 | COMPLETE |
 | B: Server Core | 1 | 1,594 | ~2,200 | ~80 | NOT STARTED |
 | C: Connection Layer | 2 | 359 | ~800 | ~45 | NOT STARTED |
 | D: Support Systems | 3 | 415 | ~900 | ~50 | NOT STARTED |
-| **Total** | **9** | **~2,537** | **~4,400** | **~205** | **NOT STARTED** |
+| **Total** | **9** | **~2,537** | **~4,400** | **~205** | **IMPLEMENTING (Phase A COMPLETE)** |
 
 ---
 
@@ -135,7 +135,7 @@ The following infrastructure from Chapters 2-7 and Chapter 17 is available for C
 
 ### 3.1 Phase A: Protocol and Interfaces Foundation
 
-**Status**: NOT STARTED (0/3)
+**Status**: COMPLETE (3/3 migrated, 52 tests)
 **Complexity**: Low
 **Blocked by**: Nothing (pure constants and interface definitions)
 **Blocks**: Phase B (Server.ts uses ProtocolVersion constants + TraitInterfaces), Phase C (Connection.ts uses ProtocolVersion binary protocol definitions)
@@ -151,7 +151,7 @@ The following infrastructure from Chapters 2-7 and Chapter 17 is available for C
 
 #### 3.1.1 ProtocolVersion
 
-- [ ] **TODO-18.A.1** `src/OpenRA.Game/Server/ProtocolVersion.ts` (82 lines C#) -- Binary protocol constants and documentation:
+- [x] **TODO-18.A.1** `src/OpenRA.Game/Server/ProtocolVersion.ts` (82 lines C#) -- Binary protocol constants and documentation:
   - Export `Handshake = 7` and `Orders = 21` constants
   - Full JSDoc documenting the packet structure:
     - `[length: int32][clientId: int32][frame: int32][orders: byte[]]` framing
@@ -171,7 +171,7 @@ The following infrastructure from Chapters 2-7 and Chapter 17 is available for C
 
 #### 3.1.2 TraitInterfaces
 
-- [ ] **TODO-18.A.2** `src/OpenRA.Game/Server/TraitInterfaces.ts` (63 lines C#) -- Server trait interfaces and base class:
+- [x] **TODO-18.A.2** `src/OpenRA.Game/Server/TraitInterfaces.ts` (63 lines C#) -- Server trait interfaces and base class:
   - `export interface IInterpretCommand { interpretCommand(server: Server, conn: Connection, client: SessionClient, cmd: string): boolean }`
   - `export interface INotifySyncLobbyInfo { lobbyInfoSynced(server: Server): void }`
   - `export interface INotifyServerStart { serverStarted(server: Server): void }`
@@ -190,14 +190,14 @@ The following infrastructure from Chapters 2-7 and Chapter 17 is available for C
 
 #### 3.1.3 Exts
 
-- [ ] **TODO-18.A.3** `src/OpenRA.Game/Server/Exts.ts` (24 lines C#) -- Server utility extensions:
+- [x] **TODO-18.A.3** `src/OpenRA.Game/Server/Exts.ts` (24 lines C#) -- Server utility extensions:
   - `export function except<T>(array: readonly T[], item: T): T[]` -- returns new array excluding all occurrences of `item`
   - Implementation: `array.filter(x => x !== item)`
   - Used by `Server.ts` in lobby sync logic to exclude specific clients from broadcast lists
   - JSDoc: `/** Excludes a single element from an iterable. OpenRA match: Server/Exts.cs */`
   - Reference: `OpenRA/OpenRA.Game/Server/Exts.cs`
 
-**Phase A Summary**: 3 files, ~169 C# lines. Target: `ProtocolVersion.ts` + `TraitInterfaces.ts` + `Exts.ts`. Estimated ~30 tests (~600 test lines). All three files are independent and can be parallel-assigned.
+**Phase A Summary**: COMPLETE. 3 files migrated: `ProtocolVersion.ts` (206 lines), `TraitInterfaces.ts` (257 lines), `Exts.ts` (41 lines). Total: 504 TS implementation lines, 52 tests (16 + 22 + 14). Commits: `da21496` (initial implementation), `0b9b8d3` (review fixes).
 
 ---
 
