@@ -1131,6 +1131,64 @@ export interface IValidateOrder {
 }
 
 // ---------------------------------------------------------------------------
+// MouseActionType — classifies order generators for button resolution
+// OpenRA 对照: OpenRA.Game/Settings/MouseActionType.cs (enum)
+// ---------------------------------------------------------------------------
+
+/**
+ * Classifies order generators for action/cancel button resolution.
+ *
+ * OpenRA 对照: MouseActionType enum
+ *
+ * Each order generator specifies its action type, and the game settings
+ * map this to a concrete mouse button (e.g., left-click, right-click)
+ * based on the player's configured mouse control style.
+ */
+export const MouseActionType = {
+  /** Context-sensitive orders (e.g., move, attack, repair) — default right-click. */
+  Contextual: 0,
+  /** Confirmation orders (e.g., force-attack, guard) — dedicated confirm button. */
+  ConfirmOrder: 1,
+  /** Building placement orders — dedicated build button. */
+  PlaceBuilding: 2,
+  /** Global command orders (e.g., sell, power down, beacon) — dedicated global button. */
+  GlobalCommand: 3,
+} as const
+
+export type MouseActionType = (typeof MouseActionType)[keyof typeof MouseActionType]
+
+// ---------------------------------------------------------------------------
+// IMouseSettings — injected mouse settings for button resolution
+// OpenRA 对照: Game.Settings.Game (subset: MouseControlStyle, ResolveActionButton, ResolveCancelButton)
+// ---------------------------------------------------------------------------
+
+/**
+ * Game settings subset for mouse control logic (injected, not global).
+ *
+ * OpenRA 对照: GameSettings.Game (subset)
+ *
+ * The C# code reads `Game.Settings.Game` as a global singleton. In TS,
+ * settings are injected via constructor to avoid hidden coupling and
+ * enable unit testing with mock settings.
+ */
+export interface IMouseSettings {
+  /** Mouse control style (e.g., "classic", "standard"). */
+  readonly mouseControlStyle: string
+
+  /** Resolve the action button for a given action type.
+   *
+   * OpenRA 对照: GameSettings.ResolveActionButton(MouseActionType)
+   */
+  resolveActionButton(actionType: MouseActionType): number
+
+  /** Resolve the cancel button for a given action type.
+   *
+   * OpenRA 对照: GameSettings.ResolveCancelButton(MouseActionType)
+   */
+  resolveCancelButton(actionType: MouseActionType): number
+}
+
+// ---------------------------------------------------------------------------
 // IOrderGenerator — generates orders from player input
 // OpenRA 对照: OpenRA.Orders.IOrderGenerator
 // ---------------------------------------------------------------------------
@@ -1150,19 +1208,36 @@ export interface IOrderGenerator {
    */
   readonly orderGeneratorKey: string
 
+  /** The mouse button that triggers this generator's action.
+   *
+   * OpenRA 对照: IOrderGenerator.ActionButton { get; }
+   *
+   * Resolved from game settings based on the generator's MouseActionType.
+   * Orders are dispatched when this button is pressed down.
+   *
+   * NOTE: Optional for backward compatibility with existing implementations
+   * (PlaceBuildingOrderGenerator resolves buttons internally). Required
+   * for generators extending the OrderGenerator abstract base class.
+   */
+  readonly actionButton?: number
+
   /** Process mouse input and yield orders.
    *
    * OpenRA 对照: IOrderGenerator.Order(World, CPos, int2, MouseInput)
    *
    * @param world — the game world
    * @param cell — the map cell under the cursor
-   * @param modifiers — keyboard modifiers active
+   * @param modifiers — keyboard modifiers active (backward-compatible position)
+   * @param worldPixel — screen pixel position (int2, x/y pair; optional, C# extended sig)
+   * @param mi — mouse input event (button, event type; optional, C# extended sig)
    * @returns an iterable of orders (empty = no order)
    */
   order(
     world: WorldStub,
     cell: CPos,
     modifiers: TargetModifiers,
+    worldPixel?: { readonly x: number; readonly y: number },
+    mi?: unknown,
   ): Generator<Order | null>
 
   /** Called each logic tick to update state.
@@ -1170,6 +1245,21 @@ export interface IOrderGenerator {
    * OpenRA 对照: IOrderGenerator.Tick(World)
    */
   tick(world: WorldStub): void
+
+  /** Render below the shroud layer (visible only in explored terrain).
+   *
+   * OpenRA 对照: IOrderGenerator.Render(WorldRenderer, World)
+   *
+   * NOTE: In Babylon.js, render ordering is handled by renderingGroupId.
+   * This method should add meshes to the scene with the appropriate group.
+   * Default implementation is a no-op (most generators don't need below-shroud rendering).
+   *
+   * Optional for backward compatibility with existing implementations.
+   */
+  render?(
+    worldRenderer: WorldRendererStub,
+    world: WorldStub,
+  ): void
 
   /** Render above the shroud layer (visible through fog-of-war).
    *
@@ -1195,9 +1285,28 @@ export interface IOrderGenerator {
    *
    * @param world — the game world
    * @param cell — the map cell under the cursor
-   * @returns the cursor name string
+   * @param worldPixel — screen pixel position (optional, from C# int2 param)
+   * @param mi — mouse input event (optional, from C# MouseInput param)
+   * @returns the cursor name string (e.g., "move", "attack", "default")
    */
-  getCursor(world: WorldStub, cell: CPos): string
+  getCursor(
+    world: WorldStub,
+    cell: CPos,
+    worldPixel?: { readonly x: number; readonly y: number },
+    mi?: unknown,
+  ): string
+
+  /** Deactivate this generator and clean up any resources.
+   *
+   * OpenRA 对照: IOrderGenerator.Deactivate()
+   *
+   * Called when this generator is removed from the world (canceled,
+   * replaced, or the order was issued). Subclasses should dispose
+   * any GPU resources (meshes, textures) and clear visual feedback.
+   *
+   * Optional for backward compatibility with existing implementations.
+   */
+  deactivate?(): void
 
   /** Handle a keyboard input event.
    *
@@ -1217,6 +1326,24 @@ export interface IOrderGenerator {
    * @returns true if the event was handled
    */
   handleMouseInput(mouseInput: unknown): boolean
+
+  /** Called when the player's selection changes.
+   *
+   * OpenRA 对照: IOrderGenerator.SelectionChanged(World, IEnumerable<Actor>)
+   *
+   * Generators can override this to cancel the input mode if the
+   * selection becomes invalid (e.g., guard mode without guard-capable units).
+   * Default implementation is a no-op.
+   *
+   * Optional for backward compatibility with existing implementations.
+   *
+   * @param world — the game world
+   * @param selected — the newly selected actors
+   */
+  selectionChanged?(
+    world: WorldStub,
+    selected: readonly unknown[],
+  ): void
 }
 
 /**
