@@ -326,6 +326,36 @@ describe('ConfirmationDialogs', () => {
       expect(onConfirm).toHaveBeenCalledTimes(1)
     })
 
+    it('only calls onConfirm once when Enter pressed on focused confirm button', () => {
+      // Regression test for MAJOR #1: stopPropagation + preventDefault
+      // prevent the overlay handler and browser synthetic click from
+      // also firing onConfirm.
+      const onConfirm = vi.fn()
+
+      ConfirmationDialogs.buttonPrompt(
+        null,
+        'Title',
+        'Body',
+        onConfirm,
+        vi.fn(),
+      )
+
+      const overlay = getFirstOverlay()!
+      const confirmButton = Array.from(overlay.querySelectorAll('button')).find(
+        (b) => b.textContent === 'OK',
+      )!
+
+      // Dispatch Enter keydown on the confirm button with bubbles=true
+      // After the fix, stopPropagation should prevent the overlay from also catching it
+      const event = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+      })
+      confirmButton.dispatchEvent(event)
+
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+    })
+
     it('handles Escape key as cancel', () => {
       const onCancel = vi.fn()
 
@@ -344,6 +374,35 @@ describe('ConfirmationDialogs', () => {
         bubbles: true,
       })
       overlay.dispatchEvent(event)
+
+      expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('only calls onCancel once when Escape pressed on focused cancel button', () => {
+      // Regression test for MAJOR #1: stopPropagation prevents
+      // the overlay handler from also firing onCancel.
+      const onCancel = vi.fn()
+
+      ConfirmationDialogs.buttonPrompt(
+        null,
+        'Title',
+        'Body',
+        vi.fn(),
+        onCancel,
+      )
+
+      const overlay = getFirstOverlay()!
+      const cancelButton = Array.from(overlay.querySelectorAll('button')).find(
+        (b) => b.textContent === 'Cancel',
+      )!
+
+      // Dispatch Escape keydown on the cancel button with bubbles=true
+      // After the fix, stopPropagation should prevent the overlay from also catching it
+      const event = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+      })
+      cancelButton.dispatchEvent(event)
 
       expect(onCancel).toHaveBeenCalledTimes(1)
     })

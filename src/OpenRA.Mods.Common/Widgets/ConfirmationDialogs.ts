@@ -132,6 +132,7 @@ export class ConfirmationDialogs {
       })
       cancelBtn.addEventListener('keydown', (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
+          e.stopPropagation(); // 阻止冒泡到 overlay，防止 onCancel 触发两次
           ConfirmationDialogs._closeModal(overlay)
           onCancel()
         }
@@ -164,6 +165,14 @@ export class ConfirmationDialogs {
         ConfirmationDialogs._closeModal(overlay)
         onConfirm()
       })
+      confirmBtn.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          e.preventDefault(); // 阻止浏览器合成 click 事件
+          e.stopPropagation(); // 阻止冒泡到 overlay，防止 onConfirm 触发两次
+          ConfirmationDialogs._closeModal(overlay);
+          onConfirm();
+        }
+      });
       // 自动聚焦确认按钮
       setTimeout(() => confirmBtn.focus(), 0)
       buttonContainer.appendChild(confirmBtn)

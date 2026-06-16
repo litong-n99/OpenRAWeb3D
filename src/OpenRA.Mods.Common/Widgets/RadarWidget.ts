@@ -791,8 +791,15 @@ export class RadarWidget extends Widget {
   cellToMinimapPixel(uv: MPos): { x: number; y: number } {
     if (!this.mapInfo) return { x: 0, y: 0 }
 
-    let dx = this._previewScale * this._cellWidth * (uv.u - this.mapInfo.bounds.left)
-    const dy = this._previewScale * (uv.v - this.mapInfo.bounds.top)
+    // NOTE: 使用 Math.trunc() 匹配 C# 的 (int) 截断语义 (RadarWidget.cs:487-488)
+    // C#: var dx = (int)(previewScale * cellWidth * (uv.U - world.Map.Bounds.Left));
+    // C#: var dy = (int)(previewScale * (uv.V - world.Map.Bounds.Top));
+    let dx = Math.trunc(
+      this._previewScale * this._cellWidth * (uv.u - this.mapInfo.bounds.left),
+    )
+    const dy = Math.trunc(
+      this._previewScale * (uv.v - this.mapInfo.bounds.top),
+    )
 
     // Odd rows are shifted right by 1px
     if (this._isRectangularIsometric && (uv.v & 1) === 1) {
@@ -800,8 +807,8 @@ export class RadarWidget extends Widget {
     }
 
     return {
-      x: Math.round(this._mapRect.x + dx),
-      y: Math.round(this._mapRect.y + dy),
+      x: this._mapRect.x + dx,
+      y: this._mapRect.y + dy,
     }
   }
 
@@ -832,6 +839,23 @@ export class RadarWidget extends Widget {
       }
     } else {
       // RectangularIsometric
+      //
+      // NOTE: 本公式与 C# 源码完全一致 (RadarWidget.cs:502-511):
+      //   float y = v / 2.0f - u;
+      //   float x = v - y;
+      //   return new float2(724 * (x - y), 724 * (x + y));
+      //
+      // 数学推导 (代入展开验证):
+      //   x = v - y = v - (v/2 - u) = v/2 + u
+      //   y = v/2 - u
+      //   x - y = (v/2 + u) - (v/2 - u) = 2u
+      //   x + y = (v/2 + u) + (v/2 - u) = v
+      // 因此: worldX = 724 * 2u = 1448*u, worldY = 724 * v
+      // (u, v 是经过 mapRect 和 cellWidth 归一化的细胞空间坐标)
+      //
+      // C# RadarWidget.cs 的 MinimapPixelToWorldCoords 中不包含 screenPxPosition
+      // 调用；该调用仅出现在 GetCursor() (C#:295-307) 中用于触发 OrderGenerator
+      // 光标查询，与坐标变换无关。
       const y = v / 2.0 - u
       const x = v - y
       return {
