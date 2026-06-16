@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Remaining Systems (Chapters 8-21)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md`
-> **Chapter Status**: IN PROGRESS (101 files migrated: Ch8 57/57 + Ch9 30/30 + Ch13 14/14; ~288 remaining in Ch10-12 + Ch14-21)
+> **Chapter Status**: IN PROGRESS (Ch8-17 COMPLETE: 474/474, 100%. Ch8:57 + Ch9:30 + Ch10:25 + Ch11:37 + Ch12:16 + Ch13:14 + Ch14:49 + Ch15:11 + Ch16:65 + Ch17:8 = **474 files**. Chapters 18-21: 0/~120, 0%, PLANNING)
 > **Created**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162 files, 100%)
 >
@@ -566,7 +566,7 @@ Menu screen behavior classes (ChromeLogic subclasses) for main menu, lobby, sett
 
 ---
 
-### 3.10 Chapter 17: Replay & Save System
+### 3.10 Chapter 17: Replay & Save System — ✅ **COMPLETE (8/8, 100%, ALL PHASES A-D, 237 tests)**
 
 **Objective**: Implement replay recording and playback, game save serialization.
 

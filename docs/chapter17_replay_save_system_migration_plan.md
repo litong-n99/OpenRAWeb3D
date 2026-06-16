@@ -1,8 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 17 — Replay & Save System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.6 (Network/Replay) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (5/8 migrated, 62.5%, Phases A+B+C COMPLETE)
+> **Chapter Status**: **COMPLETE (8/8 migrated, 100%, ALL PHASES A-D COMPLETE, 237 tests)**
 > **Planning Date**: 2026-06-16
+> **Completion Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%), Chapter 6 Phase A (Order + Connection) COMPLETE
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -131,8 +132,8 @@ The following infrastructure from Chapters 2-7 is available for Chapter 17:
 | A: Foundation | 2 | 347 | 482+274=~756 | ~61 | ✅ COMPLETE |
 | B: Replay | 2 | 255 | 336+508=~844 | ~51 | ✅ COMPLETE |
 | C: GameSave | 1 | 333 | ~1,215 | ~69 | ✅ COMPLETE |
-| D: SyncReport + Traits | 3 | 513 | ~900 | ~45 | PLANNING |
-| **Total** | **8** | **~1,448** | **~3,250** | **~160** | **PLANNING** |
+| D: SyncReport + Traits | 3 | 513 | 248+278+329=~855 | ~56 | ✅ COMPLETE |
+| **Total** | **8** | **~1,448** | **~3,696** | **~237** | **✅ COMPLETE** |
 
 ---
 
@@ -392,9 +393,10 @@ The critical architectural consideration is that `GameSave.DispatchOrders()` and
 
 ### 3.4 Phase D: Sync Reporting & Save Support Traits
 
-**Status**: 📋 PLANNING (0/3 migrated)
+**Status**: ✅ COMPLETE (3/3 migrated, 56 tests)
 **Complexity**: Low-Medium
-**Blocked by**: Phase C (AutoSave triggers GameSave; GameSaveViewportManager implements IGameSaveTraitData consumed by GameSave's trait data collection), Chapter 6 Phase B (ISync interface, Sync.Hash for SyncReport)
+**Review**: PENDING (commit `0092808`)
+**Blocked by**: Phase C (AutoSave triggers GameSave; GameSaveViewportManager implements IGameSaveTraitData consumed by GameSave's trait data collection), Chapter 6 Phase B (ISync interface, Sync.Hash for SyncReport) — COMPLETE
 **Blocks**: Nothing (leaf nodes — no other files depend on these)
 
 **Description**: Phase D contains three independent files that build on the save infrastructure. `SyncReport` is a diagnostic tool for debugging network desyncs — it snapshots sync state (ISync trait values, effects, pending orders) across recent frames in a ring buffer and dumps a detailed report when a desync is detected. `AutoSave` is a world trait that periodically triggers `GameSave` based on a configurable interval, with automatic file rotation. `GameSaveViewportManager` implements `IGameSaveTraitData` to save and restore the viewport camera position across save/load cycles.
@@ -413,7 +415,7 @@ The most technically interesting file is `SyncReport`: the C# version uses runti
 
 #### 3.4.1 SyncReport
 
-- [ ] **TODO-17.D.1** `src/OpenRA.Game/Network/SyncReport.ts` (342 lines C#) — Desync diagnostic report generator:
+- [x] **TODO-17.D.1** `src/OpenRA.Game/Network/SyncReport.ts` (342 lines C#) ✅ — Desync diagnostic report generator:
   - `NumSyncReports = 7` (ring buffer size — captures last 7 frames)
   - Inner `Report` class: `Frame: number`, `SyncedRandom: number`, `TotalCount: number`, `Traits: TraitReport[]`, `Effects: EffectReport[]`, `Orders: ClientOrder[]`
   - Inner `TraitReport` interface: `ActorID: number`, `Type: string`, `Owner: string`, `Trait: string`, `Hash: number`, `NamesValues: Record<string, unknown>`
@@ -456,7 +458,7 @@ The most technically interesting file is `SyncReport`: the C# version uses runti
 
 #### 3.4.2 AutoSave
 
-- [ ] **TODO-17.D.2** `src/OpenRA.Mods.Common/Traits/World/AutoSave.ts` (106 lines C#) — Automatic save trait with file rotation:
+- [x] **TODO-17.D.2** `src/OpenRA.Mods.Common/Traits/World/AutoSave.ts` (106 lines C#) ✅ — Automatic save trait with file rotation:
   - `AutoSaveSettings` class (shared settings module):
     - `AutoSaveInterval: number` — frequency in seconds (0 = disabled, default 0)
     - `AutoSaveMaxFileCount: number` — max files to keep (default 10, minimum 3)
@@ -489,7 +491,7 @@ The most technically interesting file is `SyncReport`: the C# version uses runti
 
 #### 3.4.3 GameSaveViewportManager
 
-- [ ] **TODO-17.D.3** `src/OpenRA.Mods.Common/Traits/Player/GameSaveViewportManager.ts` (65 lines C#) — Viewport state save/restore across save/load:
+- [x] **TODO-17.D.3** `src/OpenRA.Mods.Common/Traits/Player/GameSaveViewportManager.ts` (65 lines C#) ✅ — Viewport state save/restore across save/load:
   - `GameSaveViewportManagerInfo` class implementing `ITraitInfo`:
     - `[TraitLocation(SystemActors.Player)]`
     - `create(init: ActorInitializer): GameSaveViewportManager`
