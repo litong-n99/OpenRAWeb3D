@@ -123,3 +123,7 @@ Verify that the RadarWidget Canvas minimap correctly renders terrain colors, act
 - Shroud updating via Shroud.CellVisibility changes is not live (requires manual button clicks)
 - The minimap does not rotate with camera angle — it's always top-down
 - Sprite icons for actors are not rendered (colored dots instead)
+
+---
+
+**审核状态**: ✅ 全部审核通过 (R1, 1 BLOCKER + 2 MAJOR 已修复, ebe3807)

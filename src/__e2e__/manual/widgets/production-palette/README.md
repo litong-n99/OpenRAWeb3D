@@ -101,3 +101,7 @@ Verify that the ProductionPaletteWidget correctly renders a grid of production i
 - Pause/resume via right-click is not tested
 - Building placement pickup is not tested
 - Sound notifications are disabled
+
+---
+
+**审核状态**: ✅ 全部审核通过 (R1, 1 BLOCKER + 2 MAJOR 已修复, ebe3807)
