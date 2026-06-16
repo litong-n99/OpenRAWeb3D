@@ -77,12 +77,16 @@ Acceptance Tester 提交前必须经过 Reviewer 的测试页面审核：
 为每个需人工验证的模块创建独立路由：
 
 ```
-格式：/test/[module-name]/[test-case-id]
+格式：/test/{chapter}/{test-case}/
 示例：
-  /test/renderer/sprite-batch-rendering
-  /test/terrain/cell-ramp-visual
-  /test/combat/projectile-trajectory
-  /test/ui/cursor-animation
+  /test/ch02-rendering/animation-frame-switching/
+  /test/ch04-map-terrain/cell-ramp-visual/
+  /test/ch08-weapons-combat/projectile-lifecycle/
+  /test/ch14-activities/fly/
+
+URL 模式：
+- {chapter}：ch{num}-{title} 格式，{num} 为 2 位章节号，{title} 为 kebab-case 章节主题名（来自项目的 CLAUDE.md 章节列表）
+- {test-case}：描述性的 kebab-case 测试用例名
 ```
 
 文件存储位置：
@@ -90,16 +94,18 @@ Acceptance Tester 提交前必须经过 Reviewer 的测试页面审核：
 src/__e2e__/manual/
 ├── index.html          ← 总页面（Hub）：自动发现并列出所有测试页面
 ├── main.ts             ← 自动发现逻辑（import.meta.glob），HMR 感知
-└── [module-name]/
-    └── [test-case-id]/
+└── ch{num}-{title}/    ← 每个章节一个目录，名称来自 CLAUDE.md 章节列表
+    └── {test-case-id}/ ← 章节下的测试用例（kebab-case）
         ├── index.html  ← 测试页面入口
         ├── main.ts     ← 测试用例逻辑 + Babylon.js 场景搭建
         └── README.md   ← 期望结果 + 检验流程文档
 ```
 
 重要说明：
-- **Hub 页面自动发现**：`src/__e2e__/manual/main.ts` 使用 `import.meta.glob('./**/index.html', { eager: false })` 自动发现所有子目录中的测试页面。创建新测试页面**无需手动注册路由**，只需创建目录和文件即可。
-- **开发模式访问**：测试页面在 dev 模式下通过 `/test/[module-name]/[test-case-id]/` 访问（例如 `/test/hardware-palette/color-accuracy/`）。`vite.config.ts` 中的自定义插件负责将 `/test/` URL 重写为文件系统路径。
+- **章节目录命名**：`ch{num}-{title}` 格式，`{num}` 为 2 位数字章节号（如 `02`, `14`），`{title}` 为 kebab-case 章节主题名，应与项目 CLAUDE.md 中的章节标题一致（如 `ch02-rendering`, `ch14-activities`）。
+- **多测试用例合并**：同一章节的多个测试用例作为子目录放在共享的章节目录下，而非各自独立的顶级目录。
+- **Hub 页面自动发现**：`src/__e2e__/manual/main.ts` 使用 `import.meta.glob('./**/index.html', { eager: false })` 自动发现任意深度的测试页面。创建新测试页面**无需手动注册路由**，只需创建目录和文件即可。
+- **开发模式访问**：测试页面在 dev 模式下通过 `/test/{chapter}/{test-case}/` 访问（例如 `/test/ch02-rendering/animation-frame-switching/`）。`vite.config.ts` 中的自定义插件负责将 `/test/` URL 重写为文件系统路径。
 - **生产构建排除**：`npm run build` 通过 `build.rollupOptions.input` 仅包含 `index.html`，测试页面不会出现在 `dist/` 中。
 
 ### 2. 测试页面必须包含以下区域
@@ -132,7 +138,7 @@ src/__e2e__/manual/
 ## 检验流程
 
 1. **准备工作**
-   - 打开测试页面：`http://localhost:5173/test/[module]/[id]/`
+   - 打开测试页面：`http://localhost:5173/test/{chapter}/{id}/`
    - 确认环境信息栏显示 "WebGL 2.0" 引擎
    - 设置屏幕分辨率为 1920×1080（1x 缩放）
 
@@ -183,12 +189,12 @@ src/__e2e__/manual/
 1. **确认模块名称和测试点**：从任务描述中提取 module-name 和 test-case-id
 2. **读取相关源码**：理解需要验证的组件/功能的实现方式
 3. **设计期望结果**：基于 OpenRA 原始行为 + 迁移文档（`docs/`），写出至少 3 条可量化期望
-4. **创建测试文件**：
+4. **创建测试文件**（放在 `src/__e2e__/manual/ch{num}-{title}/{test-case-id}/` 下）：
    - `index.html`：Vite 入口 + 布局（标题区 + 沙盒区 + 信息栏区）
    - `main.ts`：Babylon.js 场景搭建 + 组件加载 + 交互控件
    - `README.md`：期望结果 + 完整检验流程
-5. **无需注册路由**：Hub 页面通过 `import.meta.glob` 自动发现新目录，`vite.config.ts` 中的 `vite-plugin-test-routes` 插件已将 `/test/...` 映射到文件系统路径。创建文件后重启 dev server 即可。
-6. **自检**：确认 `npx tsc --noEmit` 通过，Vite 开发服务器能正常加载页面（访问 `http://localhost:5173/test/[module-name]/[test-case-id]/` 和 Hub 页面 `http://localhost:5173/test/`）
+5. **无需注册路由**：Hub 页面通过 `import.meta.glob` 自动发现新目录（支持任意深度），`vite.config.ts` 中的 `vite-plugin-test-routes` 插件已将 `/test/...` 映射到文件系统路径。创建文件后重启 dev server 即可。
+6. **自检**：确认 `npx tsc --noEmit` 通过，Vite 开发服务器能正常加载页面（访问 `http://localhost:5173/test/{chapter}/{test-case-id}/` 和 Hub 页面 `http://localhost:5173/test/`）
 
 ### 页面布局模板
 
@@ -219,7 +225,7 @@ src/__e2e__/manual/
 <body>
   <div id="header">
     <h1>[A. 测试标题]</h1>
-    <div class="subtitle">ID: [module-name]/[test-case-id] | 期望结果见 README.md</div>
+    <div class="subtitle">ID: {chapter}/{test-case-id} | 期望结果见 README.md</div>
   </div>
   <div id="controls">
     <!-- C. 交互控件 -->
@@ -255,11 +261,11 @@ src/__e2e__/manual/
 
 每完成一个测试页面，确认以下文件已创建并提交：
 
-- [ ] `src/__e2e__/manual/[module]/[id]/index.html` — 测试页面入口
-- [ ] `src/__e2e__/manual/[module]/[id]/main.ts` — 测试用例逻辑
-- [ ] `src/__e2e__/manual/[module]/[id]/README.md` — 期望结果 + 检验流程
+- [ ] `src/__e2e__/manual/{chapter}/{id}/index.html` — 测试页面入口
+- [ ] `src/__e2e__/manual/{chapter}/{id}/main.ts` — 测试用例逻辑
+- [ ] `src/__e2e__/manual/{chapter}/{id}/README.md` — 期望结果 + 检验流程
 - [ ] `npx tsc --noEmit` 通过
-- [ ] 页面在 `http://localhost:5173/test/[module]/[id]/` 可访问（Hub 页面自动发现，无需修改 Vite 配置或手动注册路由）
+- [ ] 页面在 `http://localhost:5173/test/{chapter}/{id}/` 可访问（Hub 页面自动发现，无需修改 Vite 配置或手动注册路由）
 - [ ] 环境信息栏正确显示 UA / 视口 / 引擎 / FPS
 - [ ] 至少 3 条可量化的期望结果
 - [ ] README.md 包含完整检验流程（含边界测试）

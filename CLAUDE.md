@@ -280,8 +280,8 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
     manual/
       index.html            ← Hub page: auto-lists all test pages (served at /test/)
       main.ts               ← Auto-discovery via import.meta.glob
-      [module-name]/        ← Per-module test page directories
-        [test-case-id]/     ← Individual test cases
+      ch{num}-{title}/      ← Per-chapter test page directories (e.g., ch02-rendering)
+        {test-case-id}/     ← Individual test cases (kebab-case)
           index.html        ← Test page entry
           main.ts           ← Test logic + Babylon.js scene
           README.md         ← Expected results + verification steps
@@ -468,7 +468,7 @@ The project includes a framework for manual visual acceptance testing of modules
 |-----|---------|---------|
 | `/` | `index.html` | Main application |
 | `/test/` | `src/__e2e__/manual/index.html` | Hub page listing all test pages |
-| `/test/[module]/[case]/` | `src/__e2e__/manual/[module]/[case]/index.html` | Individual test case |
+| `/test/{ch-num-title}/{test-case}/` | `src/__e2e__/manual/{ch-num-title}/{test-case}/index.html` | Individual test case |
 
 All `/test/` URLs are available only in dev mode (`npm run dev`). Production builds (`npm run build`) exclude all test pages from `dist/` via `build.rollupOptions.input` (only `index.html` is included).
 
@@ -480,13 +480,14 @@ All `/test/` URLs are available only in dev mode (`npm run dev`). Production bui
 
 ### Creating a New Test Page
 
-1. Create a directory: `src/__e2e__/manual/[module-name]/[test-case-id]/`
+1. Create a directory: `src/__e2e__/manual/ch{num}-{title}/{test-case-id}/`
+   where `ch{num}-{title}` matches the chapter (e.g., `ch02-rendering`, `ch14-activities`), and `{test-case-id}` is a descriptive kebab-case name
 2. Add three files inside:
    - `index.html` -- HTML entry point with inline styles and layout (see page template in `.claude/agents/acceptance-test-assistant.md`)
    - `main.ts` -- TypeScript logic + Babylon.js scene setup
    - `README.md` -- Expected results (at least 3 quantifiable criteria) + verification step-by-step
 3. No config changes needed -- the hub page auto-discovers the new directory on next dev server start
-4. Access the page at `http://localhost:5173/test/[module-name]/[test-case-id]/`
+4. Access the page at `http://localhost:5173/test/ch{num}-{title}/{test-case-id}/`
 
 The agent responsible for creating these test pages is defined in `.claude/agents/acceptance-test-assistant.md`.
 
