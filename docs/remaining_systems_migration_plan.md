@@ -473,16 +473,19 @@ BlocksProjectiles, Crushable, AutoCrusher, TransformCrusherOnCrush, GrantConditi
 | 6 | `Activities/Sell.cs` | `src/OpenRA.Mods.Common/Activities/Sell.ts` | 58 | LOW |
 | 7 | `Activities/LayMines.cs` | `src/OpenRA.Mods.Common/Activities/LayMines.ts` | 237 | MEDIUM |
 
-#### Phase E: Transport & Enter Activities (6 files)
+#### Phase E: Transport & Enter Activities (6 files) ✅ COMPLETE (2026-06-16)
 
-| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
-|:---:|:---|:---|:---:|:---:|
-| 1 | `Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | 163 | HIGH |
-| 2 | `Activities/RideTransport.cs` | `src/OpenRA.Mods.Common/Activities/RideTransport.ts` | 93 | LOW |
-| 3 | `Activities/UnloadCargo.cs` | `src/OpenRA.Mods.Common/Activities/UnloadCargo.ts` | 153 | MEDIUM |
-| 4 | `Activities/PickupUnit.cs` | `src/OpenRA.Mods.Common/Activities/PickupUnit.ts` | 181 | MEDIUM |
-| 5 | `Activities/DeliverUnit.cs` | `src/OpenRA.Mods.Common/Activities/DeliverUnit.ts` | 112 | MEDIUM |
-| 6 | `Activities/SimpleTeleport.cs` | `src/OpenRA.Mods.Common/Activities/SimpleTeleport.ts` | 30 | LOW |
+> **Status**: ALL FILES COMPLETE (6/6, 48 tests, ~1,451 TS lines). Enter.ts migrated in Phase B (shared base). SimpleTeleport migrated. New file: TransportActivityInterfaces.ts (duck-typed trait interfaces, 388 lines).
+
+| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity | Status |
+|:---:|:---|:---|:---:|:---:|:---:|
+| 1 | `Activities/Enter.cs` | `src/OpenRA.Mods.Common/Activities/Enter.ts` | 163 | HIGH | **COMPLETE (Phase B)** |
+| 2 | `Activities/RideTransport.cs` | `src/OpenRA.Mods.Common/Activities/RideTransport.ts` | 93 | LOW | **COMPLETE** |
+| 3 | `Activities/UnloadCargo.cs` | `src/OpenRA.Mods.Common/Activities/UnloadCargo.ts` | 153 | MEDIUM | **COMPLETE** |
+| 4 | `Activities/PickupUnit.cs` | `src/OpenRA.Mods.Common/Activities/PickupUnit.ts` | 181 | MEDIUM | **COMPLETE** |
+| 5 | `Activities/DeliverUnit.cs` | `src/OpenRA.Mods.Common/Activities/DeliverUnit.ts` | 112 | MEDIUM | **COMPLETE** |
+| 6 | `Activities/SimpleTeleport.cs` | `src/OpenRA.Mods.Common/Activities/SimpleTeleport.ts` | 30 | LOW | **COMPLETE** |
+| + | *New* (no OpenRA equivalent) | `Activities/TransportActivityInterfaces.ts` | -- | -- | **COMPLETE** |
 
 #### Phase F: Utility & Miscellaneous Activities (8 files)
 

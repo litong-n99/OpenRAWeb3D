@@ -1131,10 +1131,10 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | In Progress | 0 | 0% |
 | Completed | 11 | 3% |
 
-### Chapter 14: Activity Implementations (Phase A+B+C+D COMPLETE, 36/49 files)
+### Chapter 14: Activity Implementations (Phase A+B+C+D+E COMPLETE, 42/49 files)
 
 > **Migration Plan**: [docs/chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md)
-> **Created**: 2026-06-15 | **Updated**: 2026-06-16 | **Status**: Phase A COMPLETE (11/11 files, 82 tests, 3 E2E pages R2 APPROVED); Phase B COMPLETE (6/6 files, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files, ~180 tests); Phase D COMPLETE (7/7 files, 161 tests)
+> **Created**: 2026-06-15 | **Updated**: 2026-06-16 | **Status**: Phase A COMPLETE (11/11 files, 82 tests, 3 E2E pages R2 APPROVED); Phase B COMPLETE (6/6 files, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files, ~180 tests); Phase D COMPLETE (7/7 files, 161 tests); Phase E COMPLETE (6/6 files, 48 tests)
 > **Prerequisite**: Chapters 2-13 COMPLETE (341/341 core files, 100%)
 
 | Phase | Description | Files | Complexity | Status |
@@ -1143,7 +1143,7 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 | Phase B | Combat Activities | 6 | HIGH-LOW | **COMPLETE (6/6, ~70 tests, R2 APPROVED)** |
 | Phase C | Aircraft Activities | 12 | HIGH-LOW | **COMPLETE (12/12, ~180 tests)** |
 | Phase D | Economic Activities | 7 | HIGH-LOW | **COMPLETE (7/7, 161 tests)** |
-| Phase E | Transport & Enter | 6 | HIGH-LOW | PLANNING (0/6) |
+| Phase E | Transport & Enter | 6 | HIGH-LOW | **COMPLETE (6/6, ~48 tests)** |
 | Phase F | Utility & Miscellaneous | 8 | MEDIUM-LOW | PLANNING (0/8) |
 
 **Phase A Completed: Movement Activities (11 files, 2026-06-15)**
@@ -1202,6 +1202,32 @@ Chapter 3+4+5 (Prerequisites) -- ALREADY COMPLETE
 - **ADR-14.7**: Enter Pattern as Shared Abstract Base (Split: Phase B Minimal + Phase E Full)
 
 **Unblocks**: Phase C (`FlyAttack` uses `Attack` pattern), Phase D (`MoveToDock`), Phase E (`Enter` full extensions), Phase F (`DeployForGrantedCondition`)
+
+**Phase E Completed: Transport & Enter Activities (6 files, 2026-06-16)**
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| TransportActivityInterfaces.ts | ~388 | -- | -- | Duck-typed interfaces: CargoLike, PassengerLike, CarryallLike, CarryableLike, IPositionableLike, AircraftLike, INotifyLoadCargo, INotifyUnloadCargo |
+| SimpleTeleport.ts | ~73 | ~70 | ~5 | Single-tick teleport to CPos destination |
+| RideTransport.ts | ~175 | ~175 | ~10 | Extends Enter: Passenger enters Cargo transport |
+| UnloadCargo.ts | ~275 | ~180 | ~9 | Unloads passengers from Cargo: move/wait, choose exit, frame-end spawn |
+| PickupUnit.ts | ~310 | ~190 | ~14 | Carryall picks up Carryable: Intercept→LockCarryable→Pickup state machine |
+| DeliverUnit.ts | ~230 | ~100 | ~7 | Carryall delivers carried unit: Land→Wait→ReleaseUnit→TakeOff |
+| **Total** | **~1,451** | **~715** | **~48** | 6 test files, 5 passed |
+
+**Implementation details**:
+- `TransportActivityInterfaces.ts` (~388 TS): Duck-typed interfaces for missing Cargo/Passenger/Carryall/Carryable traits. CargoLike has load/unload/peek/canLoad/canUnload/isEmpty/hasSpace. CarryallLike has reserveCarryable/attachCarryable/detachCarryable. IPositionableLike has setPosition/setCenterPosition/canEnterCell/getAvailableSubCell. LockResponse enum: { Success, Failed, Pending }.
+- `SimpleTeleport.ts` (~73 TS): Simplest Phase E activity. Single tick: sets Mobile.setPosition(self, destination), increments generation, returns true. Throws without Mobile trait.
+- `RideTransport.ts` (~175 TS): Extends Enter base class. tryStartEnter validates Cargo availability and Aircraft altitude. onEnterComplete loads passenger via frame-end action and removes from world. cancel/unreserve on cancel/onLastRun.
+- `UnloadCargo.ts` (~275 TS): Cargo->passenger unload orchestration. onFirstRun: Land/Move + Wait(beforeUnloadDelay). tick: peek passenger, choose exit subCell from adjacent cells, frame-end setPosition + addActor + notify. takeOffAfterUnload flag for aircraft.
+- `PickupUnit.ts` (~310 TS): Carryall pickup activity. 3-state: Intercept (fly to target, distance check) → LockCarryable (call lockForPickup, queue Land+Wait+AttachUnit+TakeOff) → Pickup. Nested AttachUnit class removes cargo from world and calls carryall.attachCarryable. Uses WRot.fromYaw for WVec rotation. Static factories for child activities (Fly/FlyIdle/Land/Wait/TakeOff).
+- `DeliverUnit.ts` (~230 TS): Carryall delivery. onFirstRun: Land→Wait→ReleaseUnit→TakeOff sequence. Nested ReleaseUnit: frame-end position cargo, addActor, carryall.detachCarryable, carryable.unreserve+detached. targetLineNodes for visual targeting.
+
+**Key Architecture Decisions**:
+- Duck-typed trait interfaces (same pattern as Phase D EconomicActivityInterfaces) since Cargo/Passenger/Carryall/Carryable traits are deferred to Chapters 11/19
+- Static factory pattern for child activities (_landFactory, _moveFactory, etc.) to avoid circular imports and enable test injection
+- Frame-end world mutations for addActor/removeActor operations (per ADR-14.5)
+- WVec.rotate(WRot.fromYaw(WAngle)) for carryall offset calculations
 
 ---
 
@@ -1592,7 +1618,7 @@ TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResour
 
 ---
 
-### Chapter 14: Activity Implementations (Phase A+B+C+D COMPLETE, 36/49 migrated)
+### Chapter 14: Activity Implementations (Phase A+B+C+D+E COMPLETE, 42/49 migrated)
 
 > **Migration Plan**: [docs/chapter14_activity_implementations_migration_plan.md](docs/chapter14_activity_implementations_migration_plan.md)
 > **Created**: 2026-06-15 | **Updated**: 2026-06-16 | **Status**: Phase A COMPLETE (11/11 files, 82 tests, 3 E2E pages R2 APPROVED); Phase B COMPLETE (6/6 files, ~70 tests, R2 APPROVED); Phase C COMPLETE (12/12 files, ~180 tests); Phase D COMPLETE (7/7 files, 161 tests)
