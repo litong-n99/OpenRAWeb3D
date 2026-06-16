@@ -12,15 +12,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Mock @babylonjs/core
 // ---------------------------------------------------------------------------
 
-vi.mock('@babylonjs/core', () => {
-  return {
-    Vector3: function Vector3(this: { x: number; y: number; z: number }, x = 0, y = 0, z = 0) {
-      this.x = x
-      this.y = y
-      this.z = z
-    },
-  }
-})
+vi.mock('@babylonjs/core', () => ({
+  Vector3: class {},
+}))
 
 // ---------------------------------------------------------------------------
 // Import module under test (MUST be after vi.mock)
