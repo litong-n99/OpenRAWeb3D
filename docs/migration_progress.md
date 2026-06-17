@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-17
-> **Current phase**: Chapters 2-18 ALL PHASES COMPLETE (484/484, 100%). Chapters 19-21: 0/~105 (0%).
-> **Overall status**: Chapters 2-18 COMPLETE: 484/484 (100%). Chapters 19-21: 0/~105 (0%). Total project: ~589 files estimated, ~484 complete (82.2%).
+> **Current phase**: Chapters 2-18 ALL PHASES COMPLETE (484/484, 100%). Chapter 19: 0/119 (0%, PLANNING). Chapters 20-21: 0/~22 (0%).
+> **Overall status**: Chapters 2-18 COMPLETE: 484/484 (100%). Chapter 19: 0/119 (0%, PLANNING, 4 phases A-D + 45 deferred). Chapters 20-21: 0/~22 (0%). Total project: ~625 files estimated, ~484 complete (77.4%).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -30,10 +30,10 @@
 | **Chapter 16 planned files (UI Widget Extensions)** | 65 (3 Phases A-C, ALL PHASES COMPLETE. Plan: [chapter16_ui_widget_extensions_migration_plan.md](docs/chapter16_ui_widget_extensions_migration_plan.md)), 65/65 migrated, 100%, 1,900+ tests |
 | **Chapter 17 planned files (Replay & Save)** | 8 (4 Phases A-D, ALL PHASES COMPLETE. Plan: [chapter17_replay_save_system_migration_plan.md](docs/chapter17_replay_save_system_migration_plan.md)), 8/8 migrated, 100%, 237 tests |
 | **Chapter 18 planned files (Server System)** | 10 (4 Phases A-D, ALL PHASES COMPLETE. Plan: [chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)), 10/10 migrated, 100%, ALL PHASES A-D COMPLETE, 240 tests |
-| **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
+| **Chapter 19 planned files (Mod-Specific C&C/D2K)** | **119** (4 Phases A-D planned, 45 deferred). Plan: [chapter19_mod_content_migration_plan.md](docs/chapter19_mod_content_migration_plan.md). Phase A (C&C Core): 47 files, Phase B (D2K): 17 files, Phase C (Rendering/Voxel): 37 files, Phase D (Infrastructure): 18 files. 0/119 migrated. |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
-| **Overall project completion** | Chapters 2-15 complete (401/401 = 100%). Chapters 16-21: 83/~190 (44%, Ch16-18 COMPLETE). Total project: ~591 files estimated, ~484 complete (81.9%). |
+| **Overall project completion** | Chapters 2-18 complete (484/484 = 100%). Chapter 19: 0/119 (0%, PLANNING). Chapters 20-21: 0/~22 (0%). Total project: ~625 files estimated, ~484 complete (77.4%). |
 
 > **Note**: Chapters 2-13 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests), Phase B-Optional (8 files, 203 tests). **Chapter 11 ALL PHASES COMPLETE (37 files: 14 Phase A + 23 Phase B, ~9,571 TS lines, ~771 tests, 2 review rounds per phase)**. Phase A (14 files, ~4,216 TS lines, ~296 tests): ProductionQueue.ts (~1,554 TS), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS), ProductionParadrop.ts (~148 TS), ProductionFromMapEdge.ts (~123 TS), ProductionAirdrop.ts (~156 TS), Exit.ts (~228 TS), RallyPoint.ts (~268 TS), PrimaryBuilding.ts (~185 TS), plus prereqs (Buildable, TechTree, PowerManager, DeveloperMode, ActorInitializer). Phase B (23 files, ~5,355 TS lines, ~475 tests): Building.ts (~550 TS), BuildingInfluence.ts (~180 TS), BuildingUtils.ts (~260 TS), PlaceBuilding.ts (~470 TS), PlaceBuildingOrderGenerator.ts (~600 TS), plus gap additions (ActorMap, GivesBuildableArea, LineBuildNode, Plug/Pluggable, etc.). **Chapter 12 ALL PHASES COMPLETE (16 files, Phase A APPROVED)**: Shroud.ts, ShroudRenderer.ts, FrozenActorLayer.ts, Cloak.ts, AffectsShroud.ts, FrozenUnderFog.ts, RevealsMap.ts, PlayerRadarTerrain.ts, CreatesShroud.ts, RevealsShroud.ts, HiddenUnderShroud.ts, HiddenUnderFog.ts, DetectCloaked.ts, ShroudExts.ts, ShroudPalette.ts, RevealsShroudMultiplier.ts. **Chapter 13 ALL PHASES COMPLETE (14 files + 1 interface, Phase A APPROVED, 285 tests)**: SupportPower.ts (745 TS), SupportPowerManager.ts (864 TS), AirstrikePower.ts (599 TS), NukePower.ts (731 TS), ParatroopersPower.ts (622 TS), ProduceActorPower.ts (316 TS), SpawnActorPower.ts (442 TS), GrantExternalConditionPower.ts (511 TS), DirectionalSupportPower.ts (154 TS), SelectDirectionalTarget.ts (485 TS), SupportPowerChargeBar.ts (271 TS), WithSupportPowerActivationAnimation.ts (255 TS), WithSupportPowerActivationOverlay.ts (310 TS), SupportPowerCrateAction.ts (118 TS). **Chapter 14 ALL PHASES COMPLETE (49/49 files, 100%, Phases A-F, 82+70+~180+161+~48+45 tests, 3 E2E pages)**: Phase A (11 files, 82 tests): Move.ts (~1,400 TS), MoveAdjacentTo.ts (~200 TS), MoveOnto.ts (~80 TS), MoveOntoAndTurn.ts (~70 TS), MoveWithinRange.ts (~120 TS), Drag.ts (~90 TS), Nudge.ts (~80 TS), Follow.ts (~130 TS), LocalMoveIntoTarget.ts (~110 TS), AttackMoveActivity.ts (~160 TS), MoveCooldownHelper.ts (~120 TS). Phase B (6 files, ~70 tests): Enter.ts (~350 TS), Attack.ts (~620 TS), Hunt.ts (~110 TS), CaptureActor.ts (~340 TS), Demolish.ts (~180 TS), Turn.ts (~90 TS). Phase C (12 files, ~180 tests): Fly.ts (~370 TS), TakeOff.ts (~120 TS), Land.ts (~360 TS), FlyForward.ts (~80 TS), FlyIdle.ts (~110 TS), FlyOffMap.ts (~110 TS), FlyAttack.ts (~400 TS), FlyFollow.ts (~130 TS), ReturnToBase.ts (~270 TS), FallToEarth.ts (~120 TS), DeliverBulkOrder.ts (~230 TS), Parachute.ts (~110 TS), plus shared `AircraftFlightUtils.ts`. Phase D (7 files, 161 tests): MoveToDock.ts, GenericDockSequence.ts, Resupply.ts, HarvestResource.ts, FindAndDeliverResources.ts, Sell.ts, LayMines.ts, plus shared `EconomicActivityInterfaces.ts`. Phase E (7 files, ~48 tests): EnterTransport.ts, ExitTransport.ts, UnloadCargo.ts, DeliverUnit.ts, PickupUnit.ts, RideTransport.ts, Transform.ts. Phase F (8+1 files, ~45 tests): MovePart.ts, RepairBuilding.ts, RepairBridge.ts, TeleportAttack.ts, ChronoResourceDelivery.ts, Infiltrate.ts, Disguise.ts, DonateSupplies.ts, plus shared `ActivityInterfaces.ts`. Commits: `4501c29` (Phase A), `d307624` (Phase A review), `68d9e14` (E2E), `b58a891` (Phase D), `487ba29` (Phase D fix), `1545492` (Phase E), `3b78f83` (Phase F), `bf09913` (merge ALL PHASES). **Chapter 15 ALL PHASES COMPLETE (11/11 files, 100%, Phases A-C, 59+104+43 = 206 tests)**: Phase A: OrderGenerator.ts (275 lines, 29 tests), EnterAlliedActorTargeter.ts (262 lines, 30 tests), TraitsInterfaces.ts (IOrderGenerator interface + MouseActionType + IMouseSettings). Phase B: UnitOrderGenerator.ts (~460 lines, 42 tests), RepairOrderGenerator.ts (~200 lines, 21 tests), BeaconOrderGenerator.ts (~120 lines, 13 tests), GlobalButtonOrderGenerator.ts (~300 lines, 28 tests). Phase C: GuardOrderGenerator.ts (~260 lines, 28 tests), ForceModifiersOrderGenerator.ts (~200 lines, 15 tests). All 3 Phases APPROVED (Phase A R1, Phase B R2, Phase C R2, 0 BLOCKERs across all). Commits: `d47edf3` (plan), `cb792bd` (Phase A), `5070c5b` (Phase B), `af57cb2` (Phase C), `cb6f6aa`/`5d1f760`/`ff3d917` (review fixes), `016798e`/`59e7933` (docs).
 
@@ -1879,3 +1879,71 @@ Total: 8 files, 237 tests, ~4,900 TS lines. Commits: `57750d6` (docs finalize), 
 | **5** | Stretch Goals | 20, 21 | ~8 | Phase 1-4 |
 
 **Total estimated**: ~72 weeks (single developer) or ~20-24 weeks (3-4 developers with parallel tracks)
+
+---
+
+## Chapter 19: Mod-Specific Content (PLANNING, 0/119, 0%)
+
+> **Migration Plan**: [docs/chapter19_mod_content_migration_plan.md](docs/chapter19_mod_content_migration_plan.md)
+> **Created**: 2026-06-17 | **Updated**: 2026-06-17
+> **Status**: PLANNING (0/119 files, 4 Phases A-D + 45 deferred)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed | 0 | 0% |
+| In Progress | 0 | 0% |
+| Pending | 119 | 100% |
+| Deferred | 45 | Post-MVP |
+| Already Migrated (prior chapters) | 8 | N/A |
+| **Total planned** | **119** | **100%** |
+
+### Phase Overview
+
+| Phase | Description | Files | C# Lines | Est. TS Lines | Est. Tests | Status |
+|:---|:---|:---:|:---:|:---:|:---:|:---|
+| A | C&C Core Traits (Chrono, GPS, Infiltration, Attack, Support Powers, Misc) | 47 | ~6,600 | ~8,000 | ~280 | PLANNING |
+| B | D2K Mod Traits (Sandworm, Spice, Building, Visual) | 17 | ~2,000 | ~2,500 | ~90 | PLANNING |
+| C | C&C Rendering & Voxel (Render traits, Graphics, Voxel pipeline, Projectiles, Activities) | 37 | ~4,700 | ~5,000 | ~200 | PLANNING |
+| D | Supporting Infrastructure (File formats, Sprite loaders, Interfaces) | 18 | ~2,500 | ~3,000 | ~120 | PLANNING |
+| **Subtotal** | **4 Phases** | **119** | **~15,800** | **~18,500** | **~690** | **PLANNING (0%)** |
+| | | | | | | |
+| Deferred | Build tools, video, audio, map generators, scripting | 45 | ~7,300 | 0 | 0 | DEFERRED |
+| Already Migrated | FileSystem + ClassicFacingBodyOrientation + JumpjetLocomotor + ShroudPalette | 8 | ~600 | ~1,500 | Done | COMPLETE (Ch5/7/9/12) |
+
+### Key Architecture Decisions (10 ADRs)
+
+| ADR | Title |
+|-----|-------|
+| ADR-19.1 | Voxel Rendering Strategy — build-time `.vxl`→`.glb` conversion |
+| ADR-19.2 | Mod-specific code lazy loading via dynamic `import()` |
+| ADR-19.3 | Infiltration trait composition pattern (priority-ordered stacking) |
+| ADR-19.4 | Sandworm underground state via mesh visibility + collision toggle |
+| ADR-19.5 | Chronoshift deferred teleport (queue in tick, apply in frameEndActions) |
+| ADR-19.6 | Multi-part voxel model hierarchy via parent-child TransformNode |
+| ADR-19.7 | Sprite sequence loader factory pattern |
+| ADR-19.8 | File format compression — line-for-line port strategy |
+| ADR-19.9 | Legacy utility commands as build-time Node.js tools |
+| ADR-19.10 | Proprietary audio/video — AUD/VOC build-time conversion, VQA/WSA deferred |
+
+### Phase Dependencies
+
+```
+Ch2-18 Foundation → Phase D (Infrastructure) → Phase A (C&C Core) → Phase C (Rendering/Voxel)
+                                          ↘ Phase B (D2K) ↗
+```
+
+Phase D must begin early (sprite loaders + file formats unblock all other phases). Phases A and B can run in parallel with Phase D. Phase C depends on Phase A + D.
+
+### Deferred Items (Post-MVP)
+
+| Category | Files | Lines | Reason |
+|----------|:---:|:---:|--------|
+| Utility Commands (C&C 11 + D2K 2) | 13 | ~3,200 | Build-time Node.js tools |
+| Video loaders/formats (VqaVideo, WsaVideo, VqaLoader, WsaLoader) | 4 | ~833 | Video playback deferred (ADR-19B) |
+| Audio loaders (AudLoader, VocLoader) | 2 | ~468 | Build-time conversion to WAV/Opus (ADR-19C) |
+| Map generators (TSMapGenerator, D2kMapGenerator) | 2 | ~1,639 | Requires MapGenerator infrastructure (ADR-19.5) |
+| Scripting properties (4 C&C) | 4 | ~170 | Depends on Chapter 20 |
+| Other (CncLoadScreen, Installer, Widgets, Editor, Xcc databases, PurchaseWidgetLogic) | 11 | ~990 | Low priority / editor-only / build tools |
+| **Subtotal Deferred** | **45** | **~7,300** | |
+
+

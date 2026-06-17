@@ -618,6 +618,8 @@ Menu screen behavior classes (ChromeLogic subclasses) for main menu, lobby, sett
 
 ### 3.12 Chapter 19: Mod-Specific Content (C&C + D2K)
 
+> **Detailed Plan**: [docs/chapter19_mod_content_migration_plan.md](docs/chapter19_mod_content_migration_plan.md) — Complete file mapping table, TODO checklist, 10 ADRs, risk matrix, and test strategy (2026-06-17).
+
 **Objective**: Implement mod-specific traits for Command & Conquer (RA/TD/TS) and Dune 2000.
 
 **Prerequisites**: All gameplay chapters (8-13)
