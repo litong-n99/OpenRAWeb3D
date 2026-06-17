@@ -84,4 +84,33 @@ describe('DamagesConcreteWarhead', () => {
     warhead.loadFromJSON({ Damage: 10, Delay: 5 })
     expect(warhead.delay).toBe(5)
   })
+
+  describe('regression: TargetType.Invalid guard (MAJOR #8)', () => {
+    it('returns empty when firedBy is dead', () => {
+      warhead.damage = 200
+      const deadActor = createMockActor()
+      ;(deadActor as unknown as Record<string, unknown>).isDead = true
+      ;((deadActor.world as unknown as { worldActor: { trait: ReturnType<typeof vi.fn> } }).worldActor.trait).mockReturnValue({ hitTile: vi.fn() })
+
+      const effects = warhead.doImpactInWorld(WPos.Zero, deadActor, {
+        sourceActor: deadActor, damageModifiers: [],
+        impactPosition: WPos.Zero,
+        impactOrientation: new WRot(WAngle.Zero, WAngle.Zero, WAngle.Zero),
+      })
+      expect(effects).toEqual([])
+    })
+
+    it('returns empty when firedBy is disposed', () => {
+      warhead.damage = 200
+      const disposedActor = createMockActor()
+      ;(disposedActor as unknown as Record<string, unknown>).disposed = true
+
+      const effects = warhead.doImpactInWorld(WPos.Zero, disposedActor, {
+        sourceActor: disposedActor, damageModifiers: [],
+        impactPosition: WPos.Zero,
+        impactOrientation: new WRot(WAngle.Zero, WAngle.Zero, WAngle.Zero),
+      })
+      expect(effects).toEqual([])
+    })
+  })
 })

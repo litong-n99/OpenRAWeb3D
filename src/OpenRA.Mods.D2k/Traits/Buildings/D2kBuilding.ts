@@ -226,8 +226,8 @@ export class D2kBuilding extends Building {
         const gridSize = worldMap.gridsize
 
         if (!terrainInfo.templates) {
-          console.warn('D2kBuilding: No template-based terrain info available for concrete placement.')
-          return
+          // OpenRA 对照: throw new InvalidDataException("D2kBuilding requires a template-based tileset.")
+          throw new Error('D2kBuilding requires a template-based tileset.')
         }
 
         const template = terrainInfo.templates.get(info.concreteTemplate)

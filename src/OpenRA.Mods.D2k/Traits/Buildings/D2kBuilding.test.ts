@@ -227,4 +227,50 @@ describe('D2kBuilding', () => {
       expect(building.damageThreshold).toBe(0)
     })
   })
+
+  describe('regression: throw on missing templates (MAJOR #5)', () => {
+    it('throws Error when terrain info has no templates', () => {
+      const info = new D2kBuildingInfo({
+        concretePrerequisites: [],
+        startOnThreshold: false,
+        damageTerrainTypes: ['Rock'],
+      })
+      const topLeft = new CPos(5, 5)
+      const map = createMockMap()
+      const health: IHealthMinimal = { maxHP: 1000, hp: 1000, inflictDamage: vi.fn() }
+
+      // Must provide a BuildableTerrainLayer (so layer !== null) to reach
+      // the template check, but omit templates to trigger the error.
+      const layerStub = { addTile: vi.fn() }
+      const actor = createMockActor({
+        Health: health,
+        world: {
+          map: {
+            getTerrainInfo: vi.fn(() => ({ type: 'Concrete' })),
+            customTerrain: { 0: 255 },
+            contains: vi.fn(() => true),
+            gridsize: { X: 128, Y: 128 },
+            rules: {
+              terrainInfo: {
+                getTerrainInfo: vi.fn(() => ({ type: 'Concrete' })),
+                // Deliberately omit templates to trigger the error
+              },
+            },
+          },
+          worldActor: {
+            BuildableTerrainLayer: layerStub,
+            BuildingInfluence: { getBuildingsAt: vi.fn(() => []) },
+          } as unknown as IGameActor,
+        },
+      })
+
+      const building = new D2kBuilding(info, topLeft, map)
+      building.created(actor)
+
+      // Should throw because terrain info has no templates
+      expect(() => building.addedToWorld(actor)).toThrow(
+        'D2kBuilding requires a template-based tileset.',
+      )
+    })
+  })
 })

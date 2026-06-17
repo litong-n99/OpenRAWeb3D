@@ -236,6 +236,7 @@ function createMinimalDeliveryAnimation(
   image: string,
   _pauseFn: () => boolean,
 ): Animation {
+  let pendingCallback: (() => void) | null = null
   const obj: Record<string, unknown> = {
     image,
     isDecoration: false,
@@ -243,14 +244,20 @@ function createMinimalDeliveryAnimation(
     hasSequence(_seq: string): boolean { return true },
     play(_seq: string): void { obj.currentSequence = { name: _seq } },
     // NOTE: In the real Animation, playThen starts the sequence and calls
-    // callback when the sequence completes. Here we just set the sequence
-    // without calling the callback to avoid infinite recursion in tests.
-    playThen(_seq: string, _callback: () => void): void {
+    // callback when the animation sequence completes (after all frames).
+    // This stub invokes the callback on the next tick() to avoid stack
+    // overflow from recursive loops (e.g. playDeliveryOverlay).
+    playThen(_seq: string, callback: () => void): void {
       obj.currentSequence = { name: _seq }
-      // Don't call _callback() synchronously — it causes stack overflow
-      // when playDeliveryOverlay loops via playThen.
+      pendingCallback = callback
     },
-    tick(): void { /* no-op */ },
+    tick(): void {
+      if (pendingCallback) {
+        const cb = pendingCallback
+        pendingCallback = null
+        cb()
+      }
+    },
   }
   return obj as unknown as Animation
 }

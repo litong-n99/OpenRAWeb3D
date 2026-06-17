@@ -165,12 +165,26 @@ export class SonicBlast implements IProjectile {
     this._pos = args.source
     this._target = args.passiveTarget
 
-    // Apply inaccuracy
+    // Apply inaccuracy (对应 OpenRA WVec.FromPDF + maxInaccuracyOffset / 1024)
     if (info.inaccuracy.length > 0) {
       const maxInaccuracyOffset = this._computeInaccuracy(info, args)
-      const randAngle = (world.sharedRandom?.next(0, 6283) ?? Math.trunc(Math.random() * 6283)) / 1000
-      const offsetX = Math.trunc(maxInaccuracyOffset * Math.cos(randAngle) / 1024)
-      const offsetY = Math.trunc(maxInaccuracyOffset * Math.sin(randAngle) / 1024)
+      const rng = world.sharedRandom
+      // WVec.FromPDF(SharedRandom, 2): two independent Gaussian-like axes,
+      // each averaging 2 uniform samples in [-1024, 1024). Per Central Limit
+      // Theorem this approximates a normal distribution.
+      // OpenRA: target += WVec.FromPDF(world.SharedRandom, 2) * maxInaccuracyOffset / 1024
+      const pdfSamples = 2
+      let sumX = 0, sumY = 0
+      for (let s = 0; s < pdfSamples; s++) {
+        sumX += rng
+          ? rng.next(-1024, 1024)
+          : Math.trunc(Math.random() * 2048) - 1024
+        sumY += rng
+          ? rng.next(-1024, 1024)
+          : Math.trunc(Math.random() * 2048) - 1024
+      }
+      const offsetX = Math.trunc((sumX / pdfSamples) * maxInaccuracyOffset / 1024)
+      const offsetY = Math.trunc((sumY / pdfSamples) * maxInaccuracyOffset / 1024)
       this._target = WPos.add(this._target, new WVec(offsetX, offsetY, 0))
     }
 
@@ -234,7 +248,9 @@ export class SonicBlast implements IProjectile {
         impactOrientation: new WRot(
           WAngle.Zero,
           this._getVerticalAngle(this._args.source, this._target),
-          this._args.facing ?? WAngle.Zero,
+          (this._args.weapon as unknown as { currentMuzzleFacing?: () => WAngle }).currentMuzzleFacing?.()
+            ?? this._args.facing
+            ?? WAngle.Zero,
         ),
         source: this._args.source,
         // HACK: weapon type cast — ProjectileArgs.weapon is WeaponInfo | undefined
@@ -275,27 +291,17 @@ export class SonicBlast implements IProjectile {
     for (let i = 1; i < range.length; i++) {
       const outer = range[i]?.length ?? 0
       if (outer > distance) {
-        return this._int2Lerp(
-          falloff[i - 1] ?? 100,
-          falloff[i] ?? 100,
-          distance - inner,
-          outer - inner,
-          1, // divisor for Lerp scaling: OpenRA int2.Lerp maps mul/div to [a,b]
-        )
+        // int2.Lerp(low, high, d, dh): low + (high - low) * d / dh
+        const low = falloff[i - 1] ?? 100
+        const high = falloff[i] ?? 100
+        const d = distance - inner
+        const dh = outer - inner
+        return Math.trunc(low + (high - low) * d / dh)
       }
       inner = outer
     }
 
     return 0
-  }
-
-  // -----------------------------------------------------------------------
-  // int2Lerp (对应 OpenRA int2.Lerp)
-  // -----------------------------------------------------------------------
-
-  private _int2Lerp(low: number, high: number, d: number, dl: number, dh: number): number {
-    if (dh <= dl) return low
-    return Math.trunc(low + ((high - low) * (d - dl)) / (dh - dl))
   }
 
   // -----------------------------------------------------------------------

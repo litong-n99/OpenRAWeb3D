@@ -222,16 +222,26 @@ export class WithCrumbleOverlay extends ConditionalTrait<WithCrumbleOverlayInfo>
  * @returns a duck-typed Animation object
  */
 function createMinimalAnimation(_image: string): Animation {
+  let pendingCallback: (() => void) | null = null
   const obj = {
     image: _image,
     currentSequence: null as { name: string } | null,
     hasSequence(_seq: string): boolean { return true },
     play(_seq: string): void { obj.currentSequence = { name: _seq } },
+    // NOTE: playThen defers the callback to the next tick() to avoid
+    // synchronous stack issues. This matches the real Animation's behavior
+    // where the callback fires when all frames have completed.
     playThen(_seq: string, callback: () => void): void {
       obj.currentSequence = { name: _seq }
-      callback()
+      pendingCallback = callback
     },
-    tick(): void { /* no-op */ },
+    tick(): void {
+      if (pendingCallback) {
+        const cb = pendingCallback
+        pendingCallback = null
+        cb()
+      }
+    },
   }
   return obj as unknown as Animation
 }

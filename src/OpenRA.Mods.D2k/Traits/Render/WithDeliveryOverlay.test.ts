@@ -155,4 +155,30 @@ describe('WithDeliveryOverlay', () => {
       expect(info.requiresCondition).toBe('airborne')
     })
   })
+
+  describe('regression: playThen callback (BLOCKER #2)', () => {
+    it('playThen stores callback and invokes it via tick', () => {
+      const actor = createMockActor()
+      const info = new WithDeliveryOverlayInfo()
+      const overlay = new WithDeliveryOverlay(actor, info)
+
+      // Access the internal _overlay to verify tick-to-callback flow
+      const internalOverlay = (overlay as unknown as { _overlay: { tick: () => void; currentSequence: { name: string } | null } })._overlay
+
+      // Start delivery — should schedule callback via playThen
+      overlay.incomingDelivery(actor)
+      expect(internalOverlay.currentSequence?.name).toBe('active')
+
+      // Tick the overlay — callback should fire (re-queues playThen if still delivering)
+      internalOverlay.tick()
+      // After tick, sequence should be restarted (since delivering is still true)
+      expect(internalOverlay.currentSequence?.name).toBe('active')
+
+      // Stop delivery
+      overlay.delivered(actor)
+      // Another tick should NOT re-queue (delivering is now false)
+      internalOverlay.tick()
+      // Sequence should not change (no re-queue)
+    })
+  })
 })

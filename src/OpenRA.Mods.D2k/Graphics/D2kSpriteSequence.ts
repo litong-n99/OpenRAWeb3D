@@ -11,6 +11,9 @@
  * - C# Combine sections → TS combine arrays in JSON
  */
 
+import type { ISpriteSequence } from '../../OpenRA.Game/Graphics/Animation.js'
+import type { Sprite } from '../../OpenRA.Game/Graphics/Sprite.js'
+
 // ---------------------------------------------------------------------------
 // SpriteReservation interface (minimal, from DefaultSpriteSequence)
 // ---------------------------------------------------------------------------
@@ -149,16 +152,41 @@ export interface D2kSpriteSequenceConfig {
  *
  * OpenRA 对照: DefaultSpriteSequence.ParseFilenames()
  *
- * A frame specifier format: "name" or "name[first..last]"
+ * Supported formats:
+ * - "name" → uses frames array if provided, otherwise defaults to frame 0
+ * - "name[first..last]" → expands range into frame indices
+ * - "name" with frames=[0,1,2,3] → explicit frame list
  *
- * @param image — the base image name
- * @param frames — optional frame range (e.g., [0, 1, 2] or range)
+ * @param image — the base image name (may include [first..last] pattern)
+ * @param frames — optional frame list
  * @returns array of ISpriteFrame
  */
 export function parseFilenames(
   image: string,
   frames?: number[],
 ): ISpriteFrame[] {
+  // Check for [first..last] range pattern in the image name
+  const rangeMatch = image.match(/^(.+?)\[(\d+)\.\.(\d+)\]$/)
+  if (rangeMatch) {
+    const baseName = rangeMatch[1]!
+    const first = Number(rangeMatch[2]!)
+    const last = Number(rangeMatch[3]!)
+    const count = Math.abs(last - first) + 1
+    const step = first <= last ? 1 : -1
+    const expandedFrames: number[] = []
+    for (let i = 0; i < count; i++) {
+      expandedFrames.push(first + i * step)
+    }
+    return [
+      {
+        filename: baseName,
+        location: { x: 0, y: 0 },
+        loadFrames: count,
+        frames: expandedFrames,
+      },
+    ]
+  }
+
   if (!frames || frames.length === 0) {
     return [{ filename: image, location: { x: 0, y: 0 }, loadFrames: 1, frames: [0] }]
   }
@@ -214,24 +242,15 @@ export function parseCombineFilenames(
  * - ConvertShroudToFog: fog-of-war sprite variant
  * - Uses R8Loader.RemappableFrame for D2K-specific frame processing
  */
-export class D2kSpriteSequence {
+export class D2kSpriteSequence implements ISpriteSequence {
   /** The base image for this sequence.
    *
    * OpenRA 对照: DefaultSpriteSequence.Image
    */
   readonly image: string
 
-  /** The sequence name.
-   *
-   * OpenRA 对照: DefaultSpriteSequence.Sequence
-   */
-  readonly sequence: string
-
-  /** Sprites reserved for loading.
-   *
-   * OpenRA 对照: DefaultSpriteSequence.spritesToLoad
-   */
-  readonly spritesToLoad: SpriteReservation[] = []
+  /** Internal sequence name storage. */
+  private readonly _name: string
 
   // D2K-specific configuration
   readonly remapColor: { r: number; g: number; b: number; a: number }
@@ -245,6 +264,42 @@ export class D2kSpriteSequence {
   readonly _offset: { x: number; y: number }
   readonly _blendMode: number
 
+  /** Sprites reserved for loading.
+   *
+   * OpenRA 对照: DefaultSpriteSequence.spritesToLoad
+   */
+  readonly spritesToLoad: SpriteReservation[] = []
+
+  // -----------------------------------------------------------------------
+  // ISpriteSequence implementation
+  // -----------------------------------------------------------------------
+
+  /** @returns the sequence name. */
+  get name(): string { return this._name }
+
+  /** @returns the number of frames in this sequence. */
+  get length(): number { return this._frames.length }
+
+  /** @returns the default tick interval for animation playback. */
+  get tick(): number { return 40 }
+
+  /** @returns the sprite rendering scale. */
+  get scale(): number { return 1 }
+
+  /** @returns the Z offset for depth sorting. */
+  get zOffset(): number { return this._offset.y }
+
+  /** @returns the shadow Z offset. */
+  get shadowZOffset(): number { return -5 }
+
+  /** @returns whether to ignore world tint (terrain lighting/color overlays). */
+  get ignoreWorldTint(): boolean { return false }
+
+  /** @returns the bounding rectangle for this sequence. */
+  get bounds(): { x: number; y: number; width: number; height: number } {
+    return { x: 0, y: 0, width: 0, height: 0 }
+  }
+
   constructor(
     cache: ISpriteCache,
     image: string,
@@ -252,7 +307,7 @@ export class D2kSpriteSequence {
     config: D2kSpriteSequenceConfig,
   ) {
     this.image = image
-    this.sequence = sequence
+    this._name = sequence
 
     // Load D2K-specific fields
     this.remapColor = config.remapColor ?? { r: 0, g: 0, b: 0, a: 0 }
@@ -336,9 +391,13 @@ export class D2kSpriteSequence {
    *
    * OpenRA 对照: D2kSpriteSequence.ReserveSprites(ModData, string, SpriteCache, MiniYaml, MiniYaml)
    *
+   * Handles both standard filename patterns and Combine sections.
+   *
    * @param cache — the sprite cache
+   * @param image — the sprite image name
+   * @param sequence — the sequence name
    * @param config — sequence configuration
-   * @param defaults — default values (unused in TS, merged in caller)
+   * @returns array of sprite reservations
    */
   static reserveSprites(
     cache: ISpriteCache,
@@ -348,27 +407,141 @@ export class D2kSpriteSequence {
   ): SpriteReservation[] {
     const seq = new D2kSpriteSequence(cache, image, sequence, config)
 
-    // Handle combine nodes
-    // In full migration, 'Combine' sections would be processed here
-    // For now, standard filename parsing is sufficient
+    // Handle Combine sections
+    // OpenRA 对照: DefaultSpriteSequence.ReserveSprites combineNode handling
+    // In D2K, Combine sections allow stitching multiple sprite files together
+    // with per-section transformations (flipX, flipY, offset).
+    if ('combine' in config && Array.isArray((config as Record<string, unknown>)['combine'])) {
+      const combineSections = (config as Record<string, unknown>)['combine'] as D2kSpriteSequenceConfig[]
+      for (const subConfig of combineSections) {
+        const subFrames = subConfig.frames ?? [0]
+        const subOffset = subConfig.offset ?? { x: 0, y: 0 }
+        const subFlipX = subConfig.flipX ?? false
+        const subFlipY = subConfig.flipY ?? false
+
+        const filenames = parseCombineFilenames(
+          null, 'tileset', subFrames, subConfig,
+        )
+        for (const f of filenames) {
+          const adjustFrame = seq.createAdjustFrame()
+          const token = cache.reserveSprites(
+            f.filename,
+            f.loadFrames,
+            f.location,
+            adjustFrame,
+          )
+          seq.spritesToLoad.push({
+            token,
+            offset: {
+              x: (subOffset.x || 0) + (seq._offset.x || 0),
+              y: (subOffset.y || 0) + (seq._offset.y || 0),
+            },
+            flipX: subFlipX !== seq._flipX,
+            flipY: subFlipY !== seq._flipY,
+            blendMode: seq._blendMode,
+            zRamp: seq._zRamp,
+            frames: f.frames,
+          } as SpriteReservation)
+        }
+      }
+    }
 
     return seq.spritesToLoad
   }
 
   // -----------------------------------------------------------------------
-  // GetSprite (corresponding to DefaultSpriteSequence.GetSprite)
+  // ISpriteSequence — GetSprite
+  // 对应 OpenRA DefaultSpriteSequence.GetSprite / D2kSpriteSequence
   // -----------------------------------------------------------------------
 
-  /** Get the sprite at the given frame index.
+  /** Get the sprite at the given frame index for the specified facing.
    *
-   * OpenRA 对照: DefaultSpriteSequence.GetSprite(int)
+   * OpenRA 对照: DefaultSpriteSequence.GetSprite(int frame, WAngle facing)
    *
-   * @param _frame — frame index
-   * @returns a minimal sprite object (stub — full implementation in Ch2)
+   * @param frame — frame index
+   * @param _facing — facing angle (used when facings > 1)
+   * @returns the sprite for this frame+facing
    */
-  getSprite(_frame: number): unknown {
-    // TODO-19.B.17: Full sprite retrieval depends on Sheet/Sprite
-    // infrastructure from Ch2. Returns stub for now.
-    return { bounds: { x: 0, y: 0, width: 0, height: 0 } }
+  getSprite(_frame: number, _facing: number): Sprite {
+    // Return a stub matching Sprite shape. Full implementation depends on
+    // Sheet infrastructure from Ch2 (Sprite.ts, Sheet.ts).
+    // TODO-19.B.17: Use pre-resolved sprites from Sheet/SpriteCache when
+    // the rendering pipeline is fully migrated.
+    return {
+      sheet: null as unknown as Sprite['sheet'],
+      bounds: { x: 0, y: 0, width: 0, height: 0 },
+      blendMode: 0 as unknown as Sprite['blendMode'],
+      channel: 4 as Sprite['channel'],
+      zRamp: this._zRamp,
+      size: { x: 0, y: 0, z: 0 },
+      offset: { x: this._offset.x, y: this._offset.y, z: 0 },
+      top: 0, left: 0, bottom: 1, right: 1,
+    } as Sprite
+  }
+
+  /** Get the sprite with rotation for the given frame and facing.
+   *
+   * OpenRA 对照: DefaultSpriteSequence.GetSprite(int frame, WAngle facing, out WAngle rotation)
+   */
+  getSpriteWithRotation(frame: number, facing: number): { sprite: Sprite; rotation: number } {
+    return { sprite: this.getSprite(frame, facing), rotation: 0 }
+  }
+
+  /** Get alpha value for a frame.
+   *
+   * OpenRA 对照: DefaultSpriteSequence.GetAlpha(int frame)
+   */
+  getAlpha(_frame: number): number { return 1 }
+
+  /** Get shadow sprite for a frame and facing.
+   *
+   * OpenRA 对照: DefaultSpriteSequence.GetShadow(int frame, WAngle facing)
+   */
+  getShadow(_frame: number, _facing: number): Sprite | null { return null }
+}
+
+// ---------------------------------------------------------------------------
+// D2kSpriteSequenceLoader (对应 OpenRA D2kSpriteSequenceLoader)
+// ---------------------------------------------------------------------------
+
+/** Loader for D2K sprite sequences.
+ *
+ * OpenRA 对照: D2kSpriteSequenceLoader : DefaultSpriteSequenceLoader
+ *
+ * Creates D2kSpriteSequence instances from JSON sequence definitions.
+ * Extends the default loader with D2K-specific color remapping, shadow
+ * mapping, and fog-of-war sprite handling.
+ */
+export class D2kSpriteSequenceLoader {
+  /** Create a D2K sprite sequence from configuration.
+   *
+   * OpenRA 对照: D2kSpriteSequenceLoader.CreateSequence(ModData, string, SpriteCache, string, string, MiniYaml, MiniYaml)
+   *
+   * @param cache — the sprite cache
+   * @param image — the sprite image name
+   * @param sequence — the sequence name (e.g., "idle", "walk")
+   * @param data — sequence-specific configuration
+   * @param defaults — default configuration inherited from the image node
+   * @returns a configured D2kSpriteSequence
+   */
+  createSequence(
+    cache: ISpriteCache,
+    image: string,
+    sequence: string,
+    data: D2kSpriteSequenceConfig,
+    defaults: D2kSpriteSequenceConfig = {},
+  ): D2kSpriteSequence {
+    const merged: D2kSpriteSequenceConfig = {
+      remapColor: data.remapColor ?? defaults.remapColor,
+      useShadow: data.useShadow ?? defaults.useShadow,
+      convertShroudToFog: data.convertShroudToFog ?? defaults.convertShroudToFog,
+      frames: data.frames ?? defaults.frames,
+      flipX: data.flipX ?? defaults.flipX,
+      flipY: data.flipY ?? defaults.flipY,
+      zRamp: data.zRamp ?? defaults.zRamp,
+      offset: data.offset ?? defaults.offset,
+      blendMode: data.blendMode ?? defaults.blendMode,
+    }
+    return new D2kSpriteSequence(cache, image, sequence, merged)
   }
 }

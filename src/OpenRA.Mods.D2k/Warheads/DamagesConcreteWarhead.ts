@@ -57,10 +57,17 @@ export class DamagesConcreteWarhead extends Warhead {
    * @returns empty array (effect applied immediately to terrain layer)
    */
   doImpactInWorld(pos: WPos, firedBy: IGameActor, _args: WarheadArgs): WarheadEffect[] {
+    // OpenRA 对照: if (target.Type == TargetType.Invalid) return
+    // In the TS version, doImpactInWorld receives a pre-resolved WPos.
+    // Guard against dead/disposed actors and invalid positions (which
+    // correspond to TargetType.Invalid in the C# source).
+    if (firedBy.isDead || firedBy.disposed) return []
+
     const world = firedBy.world as unknown as {
       worldActor?: { trait?: <T>(name: string) => T | undefined }
       map?: { cellContaining: (pos: WPos) => { X: number; Y: number } }
     }
+    if (!world) return []
 
     const layer = world.worldActor?.trait?.<IBuildableTerrainLayerAccess>('BuildableTerrainLayer')
     if (!layer) return []

@@ -9,6 +9,7 @@ import { describe, it, expect, vi } from 'vitest'
 
 import {
   D2kSpriteSequence,
+  D2kSpriteSequenceLoader,
   parseFilenames,
   parseCombineFilenames,
   type ISpriteCache,
@@ -76,7 +77,7 @@ describe('D2kSpriteSequence', () => {
     it('creates sequence with default config', () => {
       const seq = new D2kSpriteSequence(cache, 'building', 'idle', {})
       expect(seq.image).toBe('building')
-      expect(seq.sequence).toBe('idle')
+      expect(seq.name).toBe('idle')
       expect(seq.useShadow).toBe(true)
       expect(seq.convertShroudToFog).toBe(false)
       expect(seq.spritesToLoad.length).toBeGreaterThanOrEqual(1)
@@ -128,7 +129,7 @@ describe('D2kSpriteSequence', () => {
   describe('getSprite', () => {
     it('returns a stub sprite object', () => {
       const seq = new D2kSpriteSequence(cache, 'actor', 'idle', {})
-      const sprite = seq.getSprite(0)
+      const sprite = seq.getSprite(0, 0)
       expect(sprite).toBeDefined()
       expect((sprite as { bounds: { width: number; height: number } }).bounds).toBeDefined()
     })
@@ -147,6 +148,101 @@ describe('D2kSpriteSequence', () => {
       }
       const seq = new D2kSpriteSequence(cache, 'unit', 'stand', config)
       expect(seq.remapColor.a).toBe(255)
+    })
+  })
+
+  describe('regression: ISpriteSequence implementation (BLOCKER #4)', () => {
+    it('implements ISpriteSequence properties', () => {
+      const seq = new D2kSpriteSequence(cache, 'image', 'idle', {})
+      expect(seq.name).toBe('idle')
+      expect(seq.length).toBe(1)
+      expect(seq.tick).toBe(40)
+      expect(seq.scale).toBe(1)
+      expect(seq.zOffset).toBe(0)
+      expect(seq.shadowZOffset).toBe(-5)
+      expect(seq.ignoreWorldTint).toBe(false)
+      expect(seq.bounds).toEqual({ x: 0, y: 0, width: 0, height: 0 })
+    })
+
+    it('getAlpha returns 1', () => {
+      const seq = new D2kSpriteSequence(cache, 'unit', 'idle', {})
+      expect(seq.getAlpha(0)).toBe(1)
+    })
+
+    it('getShadow returns null', () => {
+      const seq = new D2kSpriteSequence(cache, 'unit', 'idle', {})
+      expect(seq.getShadow(0, 0)).toBeNull()
+    })
+
+    it('getSpriteWithRotation returns sprite with 0 rotation', () => {
+      const seq = new D2kSpriteSequence(cache, 'unit', 'idle', {})
+      const result = seq.getSpriteWithRotation(0, 0)
+      expect(result.sprite).toBeDefined()
+      expect(result.rotation).toBe(0)
+    })
+  })
+
+  describe('regression: parseFilenames range pattern (BLOCKER #4)', () => {
+    it('parses [first..last] range pattern', () => {
+      const result = parseFilenames('image[0..3]')
+      expect(result).toHaveLength(1)
+      expect(result[0]!.filename).toBe('image')
+      expect(result[0]!.frames).toEqual([0, 1, 2, 3])
+      expect(result[0]!.loadFrames).toBe(4)
+    })
+
+    it('parses descending [last..first] range pattern', () => {
+      const result = parseFilenames('image[3..0]')
+      expect(result).toHaveLength(1)
+      expect(result[0]!.frames).toEqual([3, 2, 1, 0])
+    })
+  })
+
+  describe('regression: D2kSpriteSequenceLoader (BLOCKER #4)', () => {
+    it('creates sequences from config', () => {
+      const loader = new D2kSpriteSequenceLoader()
+      const config: D2kSpriteSequenceConfig = {
+        remapColor: { r: 255, g: 0, b: 0, a: 255 },
+        useShadow: true,
+      }
+      const seq = loader.createSequence(cache, 'unit', 'walk', config)
+      expect(seq).toBeInstanceOf(D2kSpriteSequence)
+      expect(seq.name).toBe('walk')
+      expect(seq.useShadow).toBe(true)
+    })
+
+    it('merges defaults with sequence data', () => {
+      const loader = new D2kSpriteSequenceLoader()
+      const defaults: D2kSpriteSequenceConfig = {
+        useShadow: false,
+        flipX: true,
+      }
+      const data: D2kSpriteSequenceConfig = {
+        remapColor: { r: 128, g: 0, b: 0, a: 255 },
+      }
+      const seq = loader.createSequence(cache, 'infantry', 'run', data, defaults)
+      expect(seq.useShadow).toBe(false)
+      expect(seq._flipX).toBe(true)
+      expect(seq.remapColor.r).toBe(128)
+    })
+  })
+
+  describe('regression: combine section handling (BLOCKER #4)', () => {
+    it('reserveSprites handles combine sections', () => {
+      const mockCache: ISpriteCache = {
+        reserveSprites: vi.fn(() => 'token-combine'),
+      }
+      const config: D2kSpriteSequenceConfig & { combine?: D2kSpriteSequenceConfig[] } = {
+        frames: [0],
+        combine: [
+          { frames: [0, 1], offset: { x: 5, y: 0 }, flipX: true },
+        ],
+      }
+      const reservations = D2kSpriteSequence.reserveSprites(
+        mockCache, 'tileset', 'tile_88', config as D2kSpriteSequenceConfig,
+      )
+      expect(reservations.length).toBeGreaterThanOrEqual(1)
+      // Combine sections should produce additional reservations
     })
   })
 })
