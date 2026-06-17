@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tesla闪电电弧 - TeslaZap + ChargeOverlay | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 420px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .phase { color: #af8; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Tesla闪电电弧 — TeslaZapRenderable 闪电生成 + 充能叠加动画</h1>
+    <div class="subtitle">ID: ch19-cnc/tesla-zap | 验证: 闪电弧生成 (LinesMesh) | dim/bright分层 | 充能叠加序列</div>
+  </div>
+  <div id="controls">
+    <button id="btn-fire" class="active">发射闪电</button>
+    <button id="btn-continuous">连续发射</button>
+    <span class="sep">|</span>
+    <label>Bright Zaps:</label>
+    <select id="sel-bright">
+      <option value="1">1 (默认)</option>
+      <option value="2">2</option>
+      <option value="4">4</option>
+      <option value="0">0</option>
+    </select>
+    <span class="sep">|</span>
+    <label>Dim Zaps:</label>
+    <select id="sel-dim">
+      <option value="2">2 (默认)</option>
+      <option value="1">1</option>
+      <option value="4">4</option>
+      <option value="0">0</option>
+    </select>
+    <span class="sep">|</span>
+    <label>持续时间:</label>
+    <input type="range" id="rng-duration" min="1" max="10" value="2" step="1">
+    <span id="lbl-duration" style="font-size:12px;min-width:30px;">2 ticks</span>
+    <span class="sep">|</span>
+    <label>充能动画:</label>
+    <button id="btn-charge">触发充能</button>
+    <button id="btn-reset">重置</button>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>闪电弧生成:</b> 从Tesla线圈(白色塔)到目标(红色球)生成闪电。使用 <span class="metric">LinesMesh</span> 和动态顶点</li>
+        <li><b>Dim/Bright分层:</b> Bright闪电 <span class="metric">纯白色 #FFFFFF</span> (核心), Dim闪电 <span class="metric">淡蓝色 #AACCFF</span> (边缘)</li>
+        <li><b>Zap持续时间:</b> 默认 <span class="metric">2 ticks (80ms @ 25fps)</span>, 之后闪电消失</li>
+        <li><b>闪电路径:</b> 锯齿形随机偏移, 幅值与源-目标距离的 <span class="metric">25%</span> 成正比</li>
+        <li><b>充能叠加动画:</b> 线圈顶部的电弧球从 <span class="metric">0 增长到 0.25</span> 世界单位, 持续 <span class="metric">8 ticks (320ms)</span> 后开火</li>
+        <li><b>充能放射光:</b> 球体 emissive 强度从 <span class="metric">0.1 → 1.0</span> 线性递增</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      闪电数: <span class="val" id="st-zaps">0</span><br>
+      Bright: <span class="val" id="st-bright">1</span> &nbsp; Dim: <span class="val" id="st-dim">2</span><br>
+      剩余tick: <span class="val" id="st-ticks">0</span><br>
+      充能阶段: <span class="phase" id="st-charge">-</span><br>
+      充能进度: <span class="val" id="st-charge-progress">0.0</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

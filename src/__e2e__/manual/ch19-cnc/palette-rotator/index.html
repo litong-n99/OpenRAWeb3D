@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>光照色板旋转特效 - LightPaletteRotator | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 420px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #palette-display {
+      display: flex; flex-wrap: wrap; gap: 2px; margin-top: 6px;
+      font-family: monospace; font-size: 10px;
+    }
+    #palette-display .swatch {
+      width: 18px; height: 18px; border: 1px solid #444; border-radius: 2px;
+    }
+    #palette-display .swatch.highlight {
+      border-color: #0ff; border-width: 2px; border-style: solid;
+    }
+    #palette-display .swatch.source {
+      border-color: #ff0; border-width: 2px; border-style: solid;
+    }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>光照色板旋转特效 - LightPaletteRotator</h1>
+    <div class="subtitle">ID: ch19-cnc/palette-rotator | 验证: rotationIndices 循环 | modifyIndex=103 | timeStep=0.5</div>
+  </div>
+  <div id="controls">
+    <button id="btn-start" class="active">开始旋转</button>
+    <button id="btn-pause">暂停</button>
+    <span class="sep">|</span>
+    <label>速度 (timeStep):</label>
+    <input type="range" id="rng-speed" min="0.1" max="3.0" value="0.5" step="0.1">
+    <span id="lbl-speed" style="font-size:12px;min-width:30px;">0.5</span>
+    <span class="sep">|</span>
+    <label>修改索引:</label>
+    <input type="range" id="rng-modify" min="0" max="255" value="103" step="1">
+    <span id="lbl-modify" style="font-size:12px;min-width:30px;">103</span>
+    <span class="sep">|</span>
+    <button id="btn-reset">重置</button>
+    <span class="hint">观察: 色板索引 103 处颜色在 230~239 之间来回循环</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>5 个彩色方块:</b> 方块 3（modifyIndex=103）的颜色应<span class="metric">周期性变化</span>，在蓝白之间闪烁</li>
+        <li><b>旋转索引:</b> 顺序为 <span class="metric">230→231→...→239→238→...→231</span> (18 个位置，13 个唯一颜色)</li>
+        <li><b>速度:</b> timeStep=<span class="metric">0.5</span> 时每 2 tick 切换一次索引。1秒(25 tick)切换约 <span class="metric">12.5 次</span></li>
+        <li><b>完整循环:</b> rotationIndices 长度 <span class="metric">18</span>，完整循环需 <span class="metric">18 ÷ timeStep = 36 ticks (1.44s)</span></li>
+        <li><b>排除色板:</b> excludePalettes 中的色板不受影响 (保持原色)</li>
+        <li><b>参考方块:</b> 左侧 4 个参考方块颜色不变；右侧第 5 个(方块#3, index 103)颜色随旋转变化</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      t (累计): <span class="val" id="st-t">0.0</span><br>
+      rotationIndex: <span class="val" id="st-ridx">0</span> / 18<br>
+      当前源索引: <span class="val" id="st-srcidx">230</span><br>
+      当前颜色 (index 103): <span class="val" id="st-color">#000000</span><br>
+      运行: <span class="val" id="st-running">false</span><br>
+      <div style="margin-top:6px;font-size:11px;color:#888;">rotationIndices (当前位置标记 *):</div>
+      <div id="st-seq" style="font-family:monospace;font-size:11px;color:#aad;">[230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 238, 237, 236, 235, 234, 233, 232, 231]</div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

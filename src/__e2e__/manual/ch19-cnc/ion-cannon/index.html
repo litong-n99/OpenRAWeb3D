@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>离子炮轨道打击 - IonCannon Beam + Ground Splash | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 400px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .phase { color: #af8; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>离子炮轨道打击 — IonCannon 光束下降 + 地面溅射粒子</h1>
+    <div class="subtitle">ID: ch19-cnc/ion-cannon | 验证: 光束下降时序 | 武器冲击 | 动画完成 | 地面溅射</div>
+  </div>
+  <div id="controls">
+    <button id="btn-fire" class="active">发射离子炮</button>
+    <button id="btn-multi">三次连射</button>
+    <span class="sep">|</span>
+    <label>武器延迟 (ticks):</label>
+    <input type="range" id="rng-delay" min="5" max="30" value="15" step="1">
+    <span id="lbl-delay" style="font-size:12px;min-width:30px;">15</span>
+    <span class="sep">|</span>
+    <label>光束速度:</label>
+    <select id="sel-speed">
+      <option value="fast">快速 (每tick 2.0u)</option>
+      <option value="normal" selected>正常 (每tick 0.5u)</option>
+      <option value="slow">慢速 (每tick 0.2u)</option>
+    </select>
+    <button id="btn-reset">重置</button>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>光束下降 (Beam Descent):</b> 蓝色半透明圆柱从 <span class="metric">Y=8.0 (天空)</span> 下降到 <span class="metric">Y=0 (地面)</span></li>
+        <li><b>下降速度:</b> 正常模式每 tick <span class="metric">0.5</span> 世界单位, 总共 <span class="metric">16 ticks (640ms)</span> 到达地面</li>
+        <li><b>武器冲击 (Weapon Impact):</b> 光束到达地面后延迟 <span class="metric">15 ticks (600ms)</span> 触发 impact</li>
+        <li><b>地面溅射 (Ground Splash):</b> 粒子系统爆发, 粒子数 <span class="metric">50+</span>, 颜色 #88BBFF 蓝色调, 持续 <span class="metric">0.8s</span></li>
+        <li><b>动画完成:</b> 光束+粒子消失后移除效果 (isDestroyed=true)</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      阶段: <span class="phase" id="st-phase">IDLE</span><br>
+      光束高度: <span class="val" id="st-height">8.00</span> 世界单位<br>
+      武器延迟: <span class="val" id="st-delay">15</span> ticks<br>
+      已冲击: <span class="val" id="st-impacted">false</span><br>
+      粒子活跃: <span class="val" id="st-particles">0</span><br>
+      已销毁: <span class="val" id="st-destroyed">false</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

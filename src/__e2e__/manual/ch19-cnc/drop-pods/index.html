@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>空投降落舱 - DropPodImpact Descent + Scatter | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 420px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .phase { color: #af8; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>空投降落舱 — DropPodImpact 下降 + 地面冲击 + 散布</h1>
+    <div class="subtitle">ID: ch19-cnc/drop-pods | 验证: 舱体下降动画 | 冲击时序 | 散布模式 | 单位部署</div>
+  </div>
+  <div id="controls">
+    <button id="btn-drop" class="active">投放舱体</button>
+    <button id="btn-swarm">集群投放 (5舱)</button>
+    <span class="sep">|</span>
+    <label>舱数:</label>
+    <select id="sel-count">
+      <option value="1">1 舱</option>
+      <option value="3">3 舱</option>
+      <option value="5" selected>5 舱</option>
+    </select>
+    <span class="sep">|</span>
+    <label>散布半径:</label>
+    <input type="range" id="rng-scatter" min="0" max="500" value="200" step="10">
+    <span id="lbl-scatter" style="font-size:12px;min-width:30px;">200</span> WDist
+    <span class="sep">|</span>
+    <label>下降速度:</label>
+    <select id="sel-speed">
+      <option value="fast">快速 (每tick 1.0u)</option>
+      <option value="normal" selected>正常 (每tick 0.25u)</option>
+      <option value="slow">慢速 (每tick 0.1u)</option>
+    </select>
+    <button id="btn-reset">重置</button>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>舱体下降:</b> 从天空 <span class="metric">Y=6.0</span> 下降到地面 <span class="metric">Y=0</span>, 正常速度 <span class="metric">0.25u/tick (24 ticks/960ms)</span></li>
+        <li><b>冲击时序:</b> 到达地面后延迟 <span class="metric">12 ticks (480ms)</span> 触发武器冲击 (impact=true)</li>
+        <li><b>冲击效果:</b> 地面 <span class="metric">冲击波环</span> (ring 从半径0扩展到1.5), 粒子爆发</li>
+        <li><b>散布模式:</b> 多舱体在目标周围的圆内均匀散布, 半径<span class="metric">200 WDist (~0.2u)</span></li>
+        <li><b>单位部署:</b> 冲击后 <span class="metric">8 ticks</span> 出现小型单位指示器 (蓝色立方体)</li>
+        <li><b>粒子尾迹:</b> 舱体下降时有<span class="metric">橙色 #FF8800</span> 粒子尾迹, 模拟大气再入</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      阶段: <span class="phase" id="st-phase">IDLE</span><br>
+      活跃舱体: <span class="val" id="st-pods">0</span><br>
+      已冲击: <span class="val" id="st-impacted">0</span><br>
+      已部署: <span class="val" id="st-deployed">0</span><br>
+      地面目标: <span class="val" id="st-target">0, -3</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPS卫星升空 - GpsSatellite | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 420px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .alert { color: #ff0; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>GPS卫星升空效果 - GpsSatellite</h1>
+    <div class="subtitle">ID: ch19-cnc/gps-satellite | 验证: 发射→升空→入轨→GPS激活 生命周期</div>
+  </div>
+  <div id="controls">
+    <button id="btn-launch" class="active">发射卫星 (Launch)</button>
+    <span class="sep">|</span>
+    <label>revealDelay:</label>
+    <input type="range" id="rng-delay" min="10" max="200" value="60" step="10">
+    <span id="lbl-delay" style="font-size:12px;min-width:40px;">60 ticks</span>
+    <span class="sep">|</span>
+    <label>模拟速率:</label>
+    <select id="sel-speed">
+      <option value="1">1x (25 ticks/s)</option>
+      <option value="2">2x (50 ticks/s)</option>
+      <option value="5">5x (125 ticks/s)</option>
+      <option value="10">10x 快速</option>
+    </select>
+    <button id="btn-reset">重置</button>
+    <span class="hint">观察: 卫星每 tick 上升 +427 Z，到达 revealDelay 后入轨</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>发射：</b> 卫星在 launch structure 上方创建，起始高度 <span class="metric">Z = launchPos.Z</span></li>
+        <li><b>升空：</b> 每 tick 位置 <span class="metric">Z += 427</span> (WDist 单位)。卫星持续上升</li>
+        <li><b>入轨 (tick > revealDelay):</b> reachedOrbit = true，调用 <span class="metric">GpsWatcher.ReachedOrbit()</span></li>
+        <li><b>GPS激活后：</b> 卫星停止上升，tick() 立即返回 (不再移动)</li>
+        <li><b>入轨高度:</b> <span class="metric">Z_initial + (revealDelay + 1) * 427 = 起步 + ~26047 WDist (@ 60 tick delay)</span></li>
+        <li><b>完成后移除:</b> 效果被世界移除 (frameEndTask → Remove + ScreenMap.Remove)</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      tick 计数: <span class="val" id="st-ticks">0</span><br>
+      revealDelay: <span class="val" id="st-delay">60</span><br>
+      当前位置 Z: <span class="val" id="st-posz">0</span> WDist<br>
+      上升速度: <span class="val" id="st-speed">427</span> WDist/tick<br>
+      reachedOrbit: <span class="val" id="st-orbit">false</span><br>
+      <span id="st-gps" class="alert" style="display:none;">GPS 已激活!</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多部件Voxel模型 - Body+Turret+Barrel层级 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 420px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .phase { color: #af8; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>多部件Voxel模型层级 — Body+Turret+Barrel TransformNode链</h1>
+    <div class="subtitle">ID: ch19-cnc/voxel-body | 验证: 3级TransformNode层次结构 | 方向旋转 | 炮管反冲偏移链</div>
+  </div>
+  <div id="controls">
+    <button id="btn-auto" class="active">自动旋转演示</button>
+    <button id="btn-pause">暂停</button>
+    <span class="sep">|</span>
+    <label>身体朝向 (WAngle):</label>
+    <input type="range" id="rng-body" min="0" max="1023" value="0" step="1">
+    <span id="lbl-body" style="font-size:12px;min-width:40px;">0 (N)</span>
+    <span class="sep">|</span>
+    <label>炮塔偏航 (Yaw):</label>
+    <input type="range" id="rng-turret" min="-512" max="512" value="0" step="1">
+    <span id="lbl-turret" style="font-size:12px;min-width:40px;">0</span>
+    <span class="sep">|</span>
+    <label>反冲 (Recoil):</label>
+    <input type="range" id="rng-recoil" min="0" max="200" value="0" step="1">
+    <span id="lbl-recoil" style="font-size:12px;min-width:30px;">0</span>
+    <button id="btn-fire">开火 (脉冲反冲)</button>
+    <button id="btn-reset">重置</button>
+    <span class="hint">观察: 3级层次结构中的旋转传播和反冲偏差</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>层次结构:</b> 身体(根) → 炮塔(子) → 炮管(孙)。旋转沿链传播, 炮塔随身体转, 炮管随炮塔转</li>
+        <li><b>身体朝向:</b> WAngle <span class="metric">0=北(负Z)</span>, 逆时针递增。角度<span class="metric">256=东(正X)</span>, <span class="metric">512=南(正Z)</span>, <span class="metric">768=西(负X)</span></li>
+        <li><b>炮塔旋转:</b> 相对于身体的局部偏航。炮塔<span class="metric">顺时针(从上俯视)</span>为正角度,WAngle <span class="metric">256</span> 使炮塔指向东</li>
+        <li><b>反冲偏移链:</b> 反冲<code>{X:-recoil, Y:0, Z:0}</code>施加到炮管局部偏移 → 通过炮塔+身体变换链累积到世界空间</li>
+        <li><b>层级显示:</b> 三色部件: <span class="metric">青色=身体</span>, <span class="metric">橙色=炮塔</span>, <span class="metric">红色=炮管</span>。白色连线显示父子关系</li>
+        <li><b>自动演示:</b> 身体持续旋转(每tick <span class="metric">+8 WAngle</span>), 炮塔偏航正弦摆动(<span class="metric">+64 sin(t*0.05)</span>), 演示完整的旋转传播链</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      身体朝向: <span class="val" id="st-body">0</span> WAngle (<span class="phase" id="st-body-dir">N</span>)<br>
+      炮塔偏航: <span class="val" id="st-turret">0</span> WAngle<br>
+      炮管反冲: <span class="val" id="st-recoil">0</span> WDist<br>
+      炮管世界偏移: <span class="val" id="st-barrel-offset">0, 0, 0</span><br>
+      层级状态: <span class="phase" id="st-hierarchy">-</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

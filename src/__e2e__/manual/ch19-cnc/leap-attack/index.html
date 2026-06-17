@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>跳跃攻击抛物线 - Leap + LeapAttack Parabolic Arc | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 420px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .phase { color: #af8; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>跳跃攻击抛物线 — Leap XY/Z分离轨迹 + LeapAttack 目标追踪</h1>
+    <div class="subtitle">ID: ch19-cnc/leap-attack | 验证: sin高度曲线抛物线弧 | 攻击触发 | 目标追踪</div>
+  </div>
+  <div id="controls">
+    <button id="btn-leap" class="active">执行跳跃</button>
+    <button id="btn-auto">自动连续跳跃</button>
+    <span class="sep">|</span>
+    <label>速度 (WDist/tick):</label>
+    <input type="range" id="rng-speed" min="100" max="800" value="300" step="10">
+    <span id="lbl-speed" style="font-size:12px;min-width:30px;">300</span>
+    <span class="sep">|</span>
+    <label>最大高度:</label>
+    <input type="range" id="rng-height" min="100" max="800" value="256" step="16">
+    <span id="lbl-height" style="font-size:12px;min-width:30px;">256</span> WDist
+    <span class="sep">|</span>
+    <label>目标位置:</label>
+    <select id="sel-target">
+      <option value="near">近距 (5 cells)</option>
+      <option value="mid" selected>中距 (10 cells)</option>
+      <option value="far">远距 (18 cells)</option>
+    </select>
+    <button id="btn-reset">重置</button>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>二维 XY 插值:</b> 跳跃者在起点和目标之间的XY平面用 <span class="metric">WPos.lerp</span> 线性插值</li>
+        <li><b>Z轴抛物线:</b> 高度使用 <span class="metric">sin(t * PI)</span> 曲线, 最大高度 <span class="metric">256 WDist (默认)</span></li>
+        <li><b>弧线对称:</b> 高度在跳跃中点 (t=0.5) 达到峰值, 起点和终点高度为 <span class="metric">0</span></li>
+        <li><b>速度控制:</b> totalTicks = <span class="metric">距离 / speed</span>, 最少 1 tick</li>
+        <li><b>攻击触发:</b> 到达目标后触发 <span class="metric">doAttack</span> (目标变红闪烁)</li>
+        <li><b>轨迹可视化:</b> 粉红色 <span class="metric">LinesMesh</span> 显示完整的正弦抛物线路径</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      阶段: <span class="phase" id="st-phase">IDLE</span><br>
+      当前tick: <span class="val" id="st-tick">0</span> / 总tick: <span class="val" id="st-total">0</span><br>
+      归一化进度 (t): <span class="val" id="st-progress">0.00</span><br>
+      当前高度 (Z): <span class="val" id="st-height">0</span> WDist<br>
+      当前位置 (XY): <span class="val" id="st-pos">0, 0</span><br>
+      跳跃完成: <span class="val" id="st-complete">false</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+    <span>WPos坐标系: Z=高度 (sin抛物线)</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多层步兵精灵渲染 - Infantry Body Layers | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 450px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .phase { color: #af8; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>多层步兵精灵渲染 — Infantry Body + Disguise + Attack Overlay + Harvester Layers</h1>
+    <div class="subtitle">ID: ch19-cnc/infantry-body | 验证: 伪装图像切换 | 攻击叠加调色板 | 采集车满载率图像切换 | 空闲叠加层</div>
+  </div>
+  <div id="controls">
+    <button id="btn-disguise" class="active">伪装: 切换身份</button>
+    <button id="btn-attack">攻击: 枪口火焰</button>
+    <button id="btn-idle-overlay">空闲叠加: 切换</button>
+    <span class="sep">|</span>
+    <label>满载率:</label>
+    <input type="range" id="rng-fullness" min="0" max="100" value="30" step="1">
+    <span id="lbl-fullness" style="font-size:12px;min-width:30px;">30</span>%
+    <span class="sep">|</span>
+    <label>显示模式:</label>
+    <select id="sel-mode">
+      <option value="all">所有层同时显示</option>
+      <option value="body-only">仅身体层</option>
+      <option value="overlay-only">仅叠加层</option>
+      <option value="exploded">分解视图 (X偏移)</option>
+    </select>
+    <button id="btn-reset">重置</button>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>身体层 (Body Layer):</b> 绿色 <span class="metric">#338844</span> 基础步兵网格。此为底层渲染</li>
+        <li><b>伪装层 (Disguise Layer):</b> 点击切换身份在 <span class="metric">3种伪装</span> 间循环: 无伪装 → 盟军步兵 (#6688CC) → 苏联步兵 (#CC4444)</li>
+        <li><b>攻击叠加层 (Attack Overlay):</b> 黄色 <span class="metric">#FFCC00</span> 枪口火焰平面, 持续 <span class="metric">400ms</span> 后自动隐藏</li>
+        <li><b>空闲叠加层 (Idle Overlay):</b> 蓝色 <span class="metric">#4488FF</span> 间歇性闪烁, 周期约 <span class="metric">2s (50 ticks)</span></li>
+        <li><b>采集车满载率 (Harvester Fullness):</b> 满载率 0→100% 时身体颜色从 <span class="metric">#338844 (空)</span> 渐变到 <span class="metric">#CCAA22 (满)</span></li>
+        <li><b>分层Z-order:</b> 身体(Z=0) > 伪装(Z=-0.01) > 空闲叠加(Z=0.01) > 攻击叠加(Z=0.02)</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      当前伪装: <span class="phase" id="st-disguise">无</span><br>
+      攻击可见: <span class="val" id="st-attack">false</span><br>
+      空闲叠加: <span class="val" id="st-idle">true</span><br>
+      满载率: <span class="val" id="st-fullness">30</span>%<br>
+      当前图像: <span class="phase" id="st-image">e1</span><br>
+      显示模式: <span class="val" id="st-mode">all</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

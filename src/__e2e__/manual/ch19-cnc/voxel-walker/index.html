@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voxel步行机甲动画 - Walker Body Animation | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 420px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .phase { color: #af8; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Voxel步行机甲动画 — Walker Body Animation 肢体变换</h1>
+    <div class="subtitle">ID: ch19-cnc/voxel-walker | 验证: 三种运动状态(静止/行走/转向)下的腿部和身体动画 | ModelAnimation帧回调</div>
+  </div>
+  <div id="controls">
+    <button id="btn-idle" class="active">静止 (Idle)</button>
+    <button id="btn-walk">行走 (Walking)</button>
+    <button id="btn-turn">转向 (Turning)</button>
+    <span class="sep">|</span>
+    <label>动画速度:</label>
+    <input type="range" id="rng-speed" min="1" max="50" value="12" step="1">
+    <span id="lbl-speed" style="font-size:12px;min-width:30px;">12 tick/周期</span>
+    <span class="sep">|</span>
+    <label>行走方向:</label>
+    <select id="sel-dir">
+      <option value="0">北 (WAngle 0)</option>
+      <option value="256">东 (WAngle 256)</option>
+      <option value="512">南 (WAngle 512)</option>
+      <option value="768">西 (WAngle 768)</option>
+    </select>
+    <button id="btn-reset">重置</button>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>静止动画:</b> 身体轻微上下浮动 ±<span class="metric">0.05</span> (呼吸效果)。腿部无交替摆动, 保持<span class="metric">0.1</span>间距</li>
+        <li><b>行走动画:</b> 左腿与右腿交替摆动, 相位差 <span class="metric">180度 (π)</span>。摆幅 <span class="metric">±0.25</span> 世界单位</li>
+        <li><b>转向动画:</b> 身体绕Y轴旋转。外侧腿摆动幅度 <span class="metric">±0.35</span> > 内侧腿 <span class="metric">±0.15</span></li>
+        <li><b>动画帧回调:</b> 每 <span class="metric">40ms (1 tick @ 25fps)</span> 更新一次肢体TransformNode位置/旋转</li>
+        <li><b>脚部着地检测:</b> 腿部Y轴位置 ≤ <span class="metric">0.02</span> 时脚部颜色变亮 (#88FF88), 抬腿时变暗 (#448844)</li>
+        <li><b>状态切换:</b> 状态切换在 <span class="metric">1帧内</span>完成, 无跳变或穿模</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      状态: <span class="phase" id="st-state">Idle</span><br>
+      帧: <span class="val" id="st-frame">0</span> / 周期: <span class="val" id="st-cycle">12</span><br>
+      左腿角度: <span class="val" id="st-legL">0.00</span> rad<br>
+      右腿角度: <span class="val" id="st-legR">0.00</span> rad<br>
+      身体Y浮动: <span class="val" id="st-bodyY">0.00</span> world-units<br>
+      身体朝向: <span class="val" id="st-heading">0</span> WAngle (<span class="phase" id="st-dir">N</span>)
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAD坦克自爆序列 - MadTank DetonationSequence | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls button.danger { border-color: #a44; color: #faa; }
+    #controls button.danger:hover { background: #3a1a1a; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none; max-width: 420px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #status-panel .warn { color: #faa; font-family: monospace; }
+    #status-panel .ok { color: #af8; font-family: monospace; }
+    #phase-indicator {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 28px; font-weight: bold; color: #f44; text-shadow: 0 0 20px rgba(255,0,0,0.6);
+      pointer-events: none; user-select: none; opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>MAD坦克自爆序列 - MadTank DetonationSequence</h1>
+    <div class="subtitle">ID: ch19-cnc/mad-tank-detonation | 验证: onFirstRun→initiate→charge(96t)→detonate(42t)→onLastRun</div>
+  </div>
+  <div id="controls">
+    <button id="btn-detonate" class="danger">启动自爆序列 (Detonate)</button>
+    <button id="btn-detonate-attack">指向目标引爆 (DetonateAttack)</button>
+    <span class="sep">|</span>
+    <label>充能延迟:</label>
+    <input type="range" id="rng-charge" min="24" max="192" value="96" step="8">
+    <span id="lbl-charge" style="font-size:12px;min-width:30px;">96</span>
+    <label>引爆延迟:</label>
+    <input type="range" id="rng-detonate" min="10" max="100" value="42" step="2">
+    <span id="lbl-detonate" style="font-size:12px;min-width:30px;">42</span>
+    <label>重击间隔:</label>
+    <input type="range" id="rng-thump" min="2" max="24" value="8" step="1">
+    <span id="lbl-thump" style="font-size:12px;min-width:20px;">8</span>
+    <span class="sep">|</span>
+    <button id="btn-cancel">取消 (Cancel)</button>
+    <button id="btn-reset">重置</button>
+    <span class="hint">观察: 屏幕震动渐强 | 引擎发光 → 最终爆炸自毁</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>Initiate (tick 0):</b> 授予 deployed condition，播放 <span class="metric">piston thump</span> 循环动画，设置 isInterruptible=false</li>
+        <li><b>Charge (tick 1-96):</b> 每 <span class="metric">thumpInterval=8</span> tick 触发一次 thump 伤害 AoE，屏幕震动渐强</li>
+        <li><b>Charge sound (tick 96):</b> 播放 <span class="metric">madchrg2.aud</span> 充能音效提示</li>
+        <li><b>Detonate (tick 138=96+42):</b> 触发 <span class="metric">detonationWeapon</span> AoE 伤害，播放 <span class="metric">madexplo.aud</span> 爆炸音，self.kill()</li>
+        <li><b>总时长:</b> <span class="metric">chargeDelay + detonationDelay = 138 ticks (5.52s @ 25fps)</span></li>
+        <li><b>取消:</b> 序列中调用 cancel() 设置 isCancelling=true，tick() 立即返回 true 中止</li>
+      </ul>
+    </div>
+    <div id="status-panel">
+      阶段: <span class="val" id="st-phase">待命</span><br>
+      已过 tick: <span class="val" id="st-ticks">0</span> / <span class="val" id="st-total">138</span><br>
+      thump 次数: <span class="val" id="st-thumps">0</span><br>
+      initiated: <span class="val" id="st-initiated">false</span><br>
+      isCancelling: <span class="val" id="st-cancelling">false</span><br>
+      isInterruptible: <span class="val" id="st-intr">true</span>
+    </div>
+    <div id="phase-indicator">DETONATE!</div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+    <span>tick率: <span id="info-tickrate">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
