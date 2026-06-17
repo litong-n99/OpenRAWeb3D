@@ -229,7 +229,8 @@ function applyDisplayMode(mode: string): void {
       attackOverlay.position.z = 0.02
       attackOverlay.isVisible = isAttacking
       idleOverlay.position.z = 0.01
-      idleOverlay.isVisible = idleVisible
+      idleOverlay.isVisible = true  // force-visible in 'all' mode, regardless of toggle state
+      idleVisible = true
       break
     case 'body-only':
       disguiseOverlay.isVisible = false

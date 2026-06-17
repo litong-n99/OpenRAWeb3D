@@ -44,6 +44,7 @@ interface PodState {
   shockwave: Mesh | null
   deployedUnit: Mesh | null
   impactParticles: ParticleSystem | null
+  impactParticleTimeout: ReturnType<typeof setTimeout> | null
   phase: 'DESCENDING' | 'IMPACTING' | 'DEPLOYED' | 'COMPLETE'
   height: number
   impactTimer: number
@@ -162,6 +163,7 @@ function createPod(scatterX: number, scatterZ: number, podIndex: number): PodSta
     shockwave: null,
     deployedUnit: null,
     impactParticles: null,
+    impactParticleTimeout: null,
     phase: 'DESCENDING',
     height: POD_START_Y,
     impactTimer: IMPACT_DELAY,
@@ -207,8 +209,11 @@ function createImpactShockwave(pod: PodState, index: number): void {
   particles.maxEmitPower = 2
   particles.start()
   pod.impactParticles = particles
-  // Auto-stop after 15 ticks
-  setTimeout(() => particles.stop(), 600)
+  // Auto-stop after 15 ticks: store timeout handle for cleanup on reset
+  pod.impactParticleTimeout = setTimeout(() => {
+    particles.stop()
+    pod.impactParticleTimeout = null
+  }, 600)
 }
 
 function createDeployedUnit(pod: PodState, index: number): void {
@@ -243,6 +248,7 @@ function clearAllPods(): void {
     if (pod.trail) { pod.trail.stop(); pod.trail.dispose() }
     if (pod.shockwave) pod.shockwave.dispose()
     if (pod.deployedUnit) pod.deployedUnit.dispose()
+    if (pod.impactParticleTimeout) { clearTimeout(pod.impactParticleTimeout); pod.impactParticleTimeout = null }
     if (pod.impactParticles) { pod.impactParticles.stop(); pod.impactParticles.dispose() }
   }
   activePods = []
@@ -336,7 +342,7 @@ engine.runRenderLoop(() => {
           }
           if (pod.height <= 0) {
             pod.phase = 'IMPACTING'
-            if (pod.trail) { pod.trail.stop() }
+            if (pod.trail) { pod.trail.stop(); pod.trail.dispose(); pod.trail = null }
           }
           break
 

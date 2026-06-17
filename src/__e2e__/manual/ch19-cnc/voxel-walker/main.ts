@@ -79,6 +79,8 @@ class WalkerModel {
   cycleLength: number = 12 // ticks per animation cycle
   heading: number = 0 // WAngle
   bodyYOffset: number = 0
+  // Track materials for proper disposal
+  private materials: StandardMaterial[] = []
 
   constructor(scene: Scene) {
     // Body
@@ -87,6 +89,7 @@ class WalkerModel {
     const bodyMat = new StandardMaterial('walkerBodyMat', scene)
     bodyMat.diffuseColor = new Color3(0.3, 0.5, 0.4)
     bodyMat.emissiveColor = new Color3(0.05, 0.1, 0.08)
+    this.materials.push(bodyMat)
 
     this.bodyMesh = new Mesh('walkerBodyMesh', scene)
     const torso = MeshBuilder.CreateBox('torso', { width: 1.0, height: 0.7, depth: 0.8 }, scene)
@@ -95,6 +98,7 @@ class WalkerModel {
     // Head
     const headMat = new StandardMaterial('headMat', scene)
     headMat.diffuseColor = new Color3(0.4, 0.6, 0.5)
+    this.materials.push(headMat)
     const head = MeshBuilder.CreateBox('head', { width: 0.4, height: 0.35, depth: 0.4 }, scene)
     head.position.y = 1.7
     head.material = headMat
@@ -109,6 +113,7 @@ class WalkerModel {
 
     const leftLegMat = new StandardMaterial('leftLegMat', scene)
     leftLegMat.diffuseColor = new Color3(0.25, 0.4, 0.35)
+    this.materials.push(leftLegMat)
     const leftLegMesh = MeshBuilder.CreateBox('leftLegMesh', { width: 0.2, height: 0.6, depth: 0.2 }, scene)
     leftLegMesh.position.y = -0.3
     leftLegMesh.material = leftLegMat
@@ -117,6 +122,7 @@ class WalkerModel {
     // Left Foot
     const leftFootMat = new StandardMaterial('leftFootMat', scene)
     leftFootMat.diffuseColor = new Color3(0.2, 0.53, 0.2)
+    this.materials.push(leftFootMat)
     this.leftFoot = MeshBuilder.CreateBox('leftFoot', { width: 0.25, height: 0.1, depth: 0.3 }, scene)
     this.leftFoot.position.y = -0.65
     this.leftFoot.material = leftFootMat
@@ -136,6 +142,7 @@ class WalkerModel {
 
     const rightLegMat = new StandardMaterial('rightLegMat', scene)
     rightLegMat.diffuseColor = new Color3(0.25, 0.4, 0.35)
+    this.materials.push(rightLegMat)
     const rightLegMesh = MeshBuilder.CreateBox('rightLegMesh', { width: 0.2, height: 0.6, depth: 0.2 }, scene)
     rightLegMesh.position.y = -0.3
     rightLegMesh.material = rightLegMat
@@ -143,6 +150,7 @@ class WalkerModel {
 
     const rightFootMat = new StandardMaterial('rightFootMat', scene)
     rightFootMat.diffuseColor = new Color3(0.2, 0.53, 0.2)
+    this.materials.push(rightFootMat)
     this.rightFoot = MeshBuilder.CreateBox('rightFoot', { width: 0.25, height: 0.1, depth: 0.3 }, scene)
     this.rightFoot.position.y = -0.65
     this.rightFoot.material = rightFootMat
@@ -249,14 +257,13 @@ class WalkerModel {
   }
 
   dispose(): void {
-    this.leftFoot.dispose()
-    this.rightFoot.dispose()
-    this.leftLeg.mesh.dispose()
-    this.leftLeg.node.dispose()
-    this.rightLeg.mesh.dispose()
-    this.rightLeg.node.dispose()
-    this.bodyMesh.dispose()
+    // Dispose root node: recursively disposes all children (meshes, limbs, feet)
     this.bodyNode.dispose()
+    // Dispose all tracked materials (not auto-disposed by mesh dispose by default)
+    for (const mat of this.materials) {
+      mat.dispose()
+    }
+    this.materials = []
   }
 
   private updateFootColors(): void {

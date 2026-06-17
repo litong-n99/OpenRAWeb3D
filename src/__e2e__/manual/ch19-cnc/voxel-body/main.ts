@@ -253,11 +253,15 @@ function buildModelHierarchy(): void {
 function applyBodyFacing(wangle: number): void {
   bodyFacing = ((wangle % WANGLE_MAX) + WANGLE_MAX) % WANGLE_MAX
   // WAngle 0 = North = -Z direction
-  // Convert WAngle to rotation around Y axis
-  // WAngle 0 → facing -Z → rotation.y = 0
-  // WAngle 256 → facing +X → rotation.y = PI/2
+  // Convert WAngle to rotation around Y axis:
+  //   WAngle 0   → facing -Z → rotation.y = PI
+  //   WAngle 256 → facing +X → rotation.y = PI/2
+  //   WAngle 512 → facing +Z → rotation.y = 0
+  //   WAngle 768 → facing -X → rotation.y = 3PI/2
+  // Formula: rotation.y = PI - radians  (since wangle increases CCW from North,
+  //   but Babylon.js rotation.y increases CCW from +Z/South)
   const radians = wangleToRadians(bodyFacing)
-  bodyNode.rotation.y = radians + Math.PI
+  bodyNode.rotation.y = Math.PI - radians
 }
 
 function applyTurretYaw(yaw: number): void {

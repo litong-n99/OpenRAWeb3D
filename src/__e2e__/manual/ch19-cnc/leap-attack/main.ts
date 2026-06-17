@@ -328,12 +328,12 @@ engine.runRenderLoop(() => {
     }
 
     if (!leapState.jumpComplete) {
-      // Tick the leap
-      leapState.ticks++
-
-      // Update leaper position
+      // Compute position BEFORE incrementing ticks so t=0 uses ticks=0 (origin)
       const pos = getLeapPosition(leapState)
       leaperMesh.position = new Vector3(pos.x, pos.y, pos.z)
+
+      // Tick the leap (increment AFTER position compute)
+      leapState.ticks++
 
       // Check arrival
       if (leapState.ticks >= leapState.totalLength) {

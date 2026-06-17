@@ -22,7 +22,7 @@
 3. **速度控制 (Speed)**:
    - totalLength = max(floor(distance / speed), 1)
    - 可量化指标: speed=100 时同一距离需要更多 ticks (10 cells → 10240/100 = 102 ticks)
-   - 可量化指标: speed=800 时同一距离需要较少 ticks (10 cells → 10240/800 = 13 ticks)
+   - 可量化指标: speed=800 时同一距离需要较少 ticks (10 cells → 10240/800 = 12 ticks)
    - 可量化指标: 最少 1 tick (当 distance < speed 时)
 
 4. **攻击触发 (Attack Trigger)**:
@@ -39,7 +39,7 @@
    - 近距 (5 cells ≈ 5120 WDist): 弧线短, tick 数少
    - 中距 (10 cells ≈ 10240 WDist): 弧线中等
    - 远距 (18 cells ≈ 18432 WDist): 弧线长, tick 数多
-   - 可量化指标: speed=300 时: 近=17 ticks, 中=34 ticks, 远=62 ticks
+   - 可量化指标: speed=300 时: 近=17 ticks, 中=34 ticks, 远=61 ticks
 
 ---
 
@@ -60,7 +60,7 @@
 - 调整速度为 100, 点击跳跃
 - 观察跳跃变慢 (102 ticks = ~4.1 秒)
 - 调整速度为 800, 点击跳跃
-- 观察跳跃变快 (13 ticks = ~0.52 秒)
+- 观察跳跃变快 (12 ticks = ~0.48 秒)
 - 预期: ✅ speed 与 duration 成反比
 
 ### 4. 步骤三: 高度变化
@@ -82,7 +82,7 @@
 
 ### 7. 边界测试
 - **极端速度**: speed=800 远距 (18 cells)
-  - 预期: ✅ 总 tick 数 = ceil(18432/800) = 24
+  - 预期: ✅ 总 tick 数 = floor(18432/800) = 23
 - **极端高度**: height=800 且 speed=100
   - 预期: ✅ 轨迹曲线极高且平缓
 
