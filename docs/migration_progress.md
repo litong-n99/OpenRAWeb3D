@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-17
-> **Current phase**: Chapters 2-17 ALL PHASES COMPLETE (474/474, 100%). Chapter 18 Phase A+B COMPLETE (5/9, 55.6%). Chapters 18-21: 5/~120 (4%).
-> **Overall status**: Chapters 2-17 COMPLETE: 474/474 (100%). Chapters 18-21: 5/~120 (4%, Ch18 Phase A+B COMPLETE). Total project: ~594 files estimated, ~479 complete (80.6%).
+> **Current phase**: Chapters 2-18 ALL PHASES COMPLETE (484/484, 100%). Chapters 19-21: 0/~105 (0%).
+> **Overall status**: Chapters 2-18 COMPLETE: 484/484 (100%). Chapters 19-21: 0/~105 (0%). Total project: ~589 files estimated, ~484 complete (82.2%).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -29,11 +29,11 @@
 | **Chapter 15 planned files (Order Generators)** | 11 (3 Phases A-C), **11/11 (100%, ALL PHASES COMPLETE, 206 tests)**. Plan: [chapter15_order_generators_migration_plan.md](docs/chapter15_order_generators_migration_plan.md) |
 | **Chapter 16 planned files (UI Widget Extensions)** | 65 (3 Phases A-C, ALL PHASES COMPLETE. Plan: [chapter16_ui_widget_extensions_migration_plan.md](docs/chapter16_ui_widget_extensions_migration_plan.md)), 65/65 migrated, 100%, 1,900+ tests |
 | **Chapter 17 planned files (Replay & Save)** | 8 (4 Phases A-D, ALL PHASES COMPLETE. Plan: [chapter17_replay_save_system_migration_plan.md](docs/chapter17_replay_save_system_migration_plan.md)), 8/8 migrated, 100%, 237 tests |
-| **Chapter 18 planned files (Server System)** | 9 (4 Phases A-D, detailed plan: [chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)), 5/9 migrated, 55.6%, Phase A+B COMPLETE |
+| **Chapter 18 planned files (Server System)** | 10 (4 Phases A-D, ALL PHASES COMPLETE. Plan: [chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)), 10/10 migrated, 100%, ALL PHASES A-D COMPLETE, 240 tests |
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | ~83 (2 Phases A-B planned), 0/83 migrated |
 | **Chapter 20 planned files (Scripting System)** | ~7 (1 Phase A planned), 0/7 migrated |
 | **Chapter 21 planned files (Editor & Utilities)** | ~15 (2 Phases A-B planned), 0/15 migrated |
-| **Overall project completion** | Chapters 2-15 complete (401/401 = 100%). Chapters 16-21: 78/~185 (42%, Ch16-17 COMPLETE, Ch18 Phase A+B COMPLETE). Total project: ~586 files estimated, ~479 complete (81.7%). |
+| **Overall project completion** | Chapters 2-15 complete (401/401 = 100%). Chapters 16-21: 83/~190 (44%, Ch16-18 COMPLETE). Total project: ~591 files estimated, ~484 complete (81.9%). |
 
 > **Note**: Chapters 2-13 are fully complete. Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests), Phase B-Optional (8 files, 203 tests). **Chapter 11 ALL PHASES COMPLETE (37 files: 14 Phase A + 23 Phase B, ~9,571 TS lines, ~771 tests, 2 review rounds per phase)**. Phase A (14 files, ~4,216 TS lines, ~296 tests): ProductionQueue.ts (~1,554 TS), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS), ProductionParadrop.ts (~148 TS), ProductionFromMapEdge.ts (~123 TS), ProductionAirdrop.ts (~156 TS), Exit.ts (~228 TS), RallyPoint.ts (~268 TS), PrimaryBuilding.ts (~185 TS), plus prereqs (Buildable, TechTree, PowerManager, DeveloperMode, ActorInitializer). Phase B (23 files, ~5,355 TS lines, ~475 tests): Building.ts (~550 TS), BuildingInfluence.ts (~180 TS), BuildingUtils.ts (~260 TS), PlaceBuilding.ts (~470 TS), PlaceBuildingOrderGenerator.ts (~600 TS), plus gap additions (ActorMap, GivesBuildableArea, LineBuildNode, Plug/Pluggable, etc.). **Chapter 12 ALL PHASES COMPLETE (16 files, Phase A APPROVED)**: Shroud.ts, ShroudRenderer.ts, FrozenActorLayer.ts, Cloak.ts, AffectsShroud.ts, FrozenUnderFog.ts, RevealsMap.ts, PlayerRadarTerrain.ts, CreatesShroud.ts, RevealsShroud.ts, HiddenUnderShroud.ts, HiddenUnderFog.ts, DetectCloaked.ts, ShroudExts.ts, ShroudPalette.ts, RevealsShroudMultiplier.ts. **Chapter 13 ALL PHASES COMPLETE (14 files + 1 interface, Phase A APPROVED, 285 tests)**: SupportPower.ts (745 TS), SupportPowerManager.ts (864 TS), AirstrikePower.ts (599 TS), NukePower.ts (731 TS), ParatroopersPower.ts (622 TS), ProduceActorPower.ts (316 TS), SpawnActorPower.ts (442 TS), GrantExternalConditionPower.ts (511 TS), DirectionalSupportPower.ts (154 TS), SelectDirectionalTarget.ts (485 TS), SupportPowerChargeBar.ts (271 TS), WithSupportPowerActivationAnimation.ts (255 TS), WithSupportPowerActivationOverlay.ts (310 TS), SupportPowerCrateAction.ts (118 TS). **Chapter 14 ALL PHASES COMPLETE (49/49 files, 100%, Phases A-F, 82+70+~180+161+~48+45 tests, 3 E2E pages)**: Phase A (11 files, 82 tests): Move.ts (~1,400 TS), MoveAdjacentTo.ts (~200 TS), MoveOnto.ts (~80 TS), MoveOntoAndTurn.ts (~70 TS), MoveWithinRange.ts (~120 TS), Drag.ts (~90 TS), Nudge.ts (~80 TS), Follow.ts (~130 TS), LocalMoveIntoTarget.ts (~110 TS), AttackMoveActivity.ts (~160 TS), MoveCooldownHelper.ts (~120 TS). Phase B (6 files, ~70 tests): Enter.ts (~350 TS), Attack.ts (~620 TS), Hunt.ts (~110 TS), CaptureActor.ts (~340 TS), Demolish.ts (~180 TS), Turn.ts (~90 TS). Phase C (12 files, ~180 tests): Fly.ts (~370 TS), TakeOff.ts (~120 TS), Land.ts (~360 TS), FlyForward.ts (~80 TS), FlyIdle.ts (~110 TS), FlyOffMap.ts (~110 TS), FlyAttack.ts (~400 TS), FlyFollow.ts (~130 TS), ReturnToBase.ts (~270 TS), FallToEarth.ts (~120 TS), DeliverBulkOrder.ts (~230 TS), Parachute.ts (~110 TS), plus shared `AircraftFlightUtils.ts`. Phase D (7 files, 161 tests): MoveToDock.ts, GenericDockSequence.ts, Resupply.ts, HarvestResource.ts, FindAndDeliverResources.ts, Sell.ts, LayMines.ts, plus shared `EconomicActivityInterfaces.ts`. Phase E (7 files, ~48 tests): EnterTransport.ts, ExitTransport.ts, UnloadCargo.ts, DeliverUnit.ts, PickupUnit.ts, RideTransport.ts, Transform.ts. Phase F (8+1 files, ~45 tests): MovePart.ts, RepairBuilding.ts, RepairBridge.ts, TeleportAttack.ts, ChronoResourceDelivery.ts, Infiltrate.ts, Disguise.ts, DonateSupplies.ts, plus shared `ActivityInterfaces.ts`. Commits: `4501c29` (Phase A), `d307624` (Phase A review), `68d9e14` (E2E), `b58a891` (Phase D), `487ba29` (Phase D fix), `1545492` (Phase E), `3b78f83` (Phase F), `bf09913` (merge ALL PHASES). **Chapter 15 ALL PHASES COMPLETE (11/11 files, 100%, Phases A-C, 59+104+43 = 206 tests)**: Phase A: OrderGenerator.ts (275 lines, 29 tests), EnterAlliedActorTargeter.ts (262 lines, 30 tests), TraitsInterfaces.ts (IOrderGenerator interface + MouseActionType + IMouseSettings). Phase B: UnitOrderGenerator.ts (~460 lines, 42 tests), RepairOrderGenerator.ts (~200 lines, 21 tests), BeaconOrderGenerator.ts (~120 lines, 13 tests), GlobalButtonOrderGenerator.ts (~300 lines, 28 tests). Phase C: GuardOrderGenerator.ts (~260 lines, 28 tests), ForceModifiersOrderGenerator.ts (~200 lines, 15 tests). All 3 Phases APPROVED (Phase A R1, Phase B R2, Phase C R2, 0 BLOCKERs across all). Commits: `d47edf3` (plan), `cb792bd` (Phase A), `5070c5b` (Phase B), `af57cb2` (Phase C), `cb6f6aa`/`5d1f760`/`ff3d917` (review fixes), `016798e`/`59e7933` (docs).
 
@@ -204,7 +204,10 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 
 | Date | File | Developer | Reviewer | Notes |
 |------|------|-----------|----------|-------|
-| 2026-06-17 | **Ch18 Phase B Server Core** (2 files, 87 tests) | migration-develop | migration-review | Phase B COMPLETE (R2 APPROVED). 2 implementation files: SessionTypes.ts (696 lines, 35 tests) -- full Session/Client/Slot/GlobalSettings types, serialization/deserialization. Server.ts (2,398 lines, 52 tests) -- complete game server orchestrator: WebSocket transport abstraction, client lifecycle (accept/validate/drop), order broadcasting (unicast/broadcast), sync hash verification, lobby synchronization (info/clients/slots/global), game start/end, chat/command interpretation, save/load integration, player defeat tracking, ping quality monitoring. Combined Phase A+B: 5/9 files, ~3,598 TS lines, 139 tests. Commits: `374e0ad` (initial implementation). Chapter 18: 5/9 (55.6%). |
+| 2026-06-17 | **MILESTONE: Chapter 18 ALL PHASES COMPLETE (10/10 files, 100%, 240 tests)** | migration-develop, migration-review | migration-docs | ALL 4 PHASES A-D COMPLETE: 10/10 (100%). Phase A: 3 files, 52 tests. Phase B: 2 files, 87 tests. Phase C: 2 files, 57 tests. Phase D: 3 files, 44 tests. Total: 10 implementation files (5,183 TS lines), 10 test files (4,288 test lines), 240 tests. Commits: `da21496` + `0b9b8d3` (Phase A), `374e0ad` + `d86ae8f` (Phase B), `64756ef` (Phase C), `031f275` (Phase D). Full suite: all passing. |
+| 2026-06-17 | **Ch18 Phase D Server Support Systems** (3 files, 44 tests) | migration-develop | migration-review | Phase D COMPLETE. 3 implementation files: VoteKickTracker.ts (375 lines, ~16 tests) -- vote-to-kick lifecycle, eligible vote counting, cooldown enforcement, admin dead-but-online edge case handling. MapStatusCache.ts (306 lines, ~15 tests) -- cached map validation status, async remote linting via queueMicrotask, ILintServerMapPass interface. PlayerMessageTracker.ts (188 lines, ~13 tests) -- chat flood control with join cooldown, message count limits, admin bypass, DisableChatEntry order dispatch. Total: 869 TS implementation lines, 44 tests, ~1,327 test lines. Commit: `031f275`. Chapter 18: 10/10 (100%, ALL PHASES COMPLETE). |
+| 2026-06-17 | **Ch18 Phase C Connection Layer** (2 files, 57 tests) | migration-develop | migration-review | Phase C COMPLETE. 2 implementation files: Connection.ts (425 lines, ~30 tests) -- per-client WebSocket connection handler, packet header/data state machine, ping measurement, multi-packet buffering, send queue, dispose/close lifecycle. OrderBuffer.ts (293 lines, ~27 tests) -- dynamic order timing system, per-player delta median computation, tick scale adjustment (1.0-1.1 range), baseline player tracking, player removal handling. Total: 718 TS implementation lines, 57 tests (30 + 27), ~1,074 test lines. Commit: `64756ef`. Chapter 18: 7/10 (70%). |
+| 2026-06-17 | **Ch18 Phase B Server Core** (2 files, 87 tests) | migration-develop | migration-review | Phase B COMPLETE (R2 APPROVED). 2 implementation files: SessionTypes.ts (695 lines, 35 tests) -- full Session/Client/Slot/GlobalSettings types, serialization/deserialization. Server.ts (2,397 lines, 52 tests) -- complete game server orchestrator: WebSocket transport abstraction, client lifecycle (accept/validate/drop), order broadcasting (unicast/broadcast), sync hash verification, lobby synchronization (info/clients/slots/global), game start/end, chat/command interpretation, save/load integration, player defeat tracking, ping quality monitoring. Combined Phase A+B: 5/10 files, ~3,596 TS lines, 139 tests. Commits: `374e0ad` (initial implementation), `d86ae8f` (docs). Chapter 18: 5/10 (50%). |
 | 2026-06-17 | **Ch18 Phase A Protocol & Interfaces Foundation** (3 files, 52 tests) | migration-develop | migration-review | Phase A COMPLETE. 3 implementation files: ProtocolVersion.ts (206 lines, 16 tests) -- binary protocol constants, packet framing, order type byte enum, handshake flow documentation. TraitInterfaces.ts (257 lines, 22 tests) -- 9 server trait interfaces (IInterpretCommand, INotifySyncLobbyInfo, INotifyServerStart, INotifyServerEmpty, INotifyServerShutdown, IStartGame, IClientJoined, IEndGame, ITick), ServerTrait abstract base, DebugServerTrait debug implementation. Exts.ts (41 lines, 14 tests) -- `except()` utility function. All 3 files independent, zero internal deps, zero deps on rest of codebase. 3 test files, 52 tests all passing (16 + 22 + 14). Commits: `da21496` (initial implementation), `0b9b8d3` (review fixes). Chapter 18: 3/9 (33%). |
 || 2026-06-16 | **Ch15 Phase C Extended Order Generators** (2 files, 43 tests) | migration-develop | migration-review | Phase C APPROVED (R2, 0 BLOCKERs, 0 MAJORs, 0 MINORs). 2 implementation files: GuardOrderGenerator.ts (~260 lines, 28 tests) -- guard command mode extending UnitOrderGenerator, friendly guardable unit targeting, selectionChanged auto-cancel, FriendlyGuardableUnits static helper. ForceModifiersOrderGenerator.ts (~200 lines, 15 tests) -- modifier key passthrough decorator extending UnitOrderGenerator, modifiers.or() bitwise OR, cancelOnFirstUse behavior, clearSelectionOnLeftClick=false override. 2 test files, 43 tests all passing (28 + 15). 9869 total tests pass. Commits: `af57cb2` (implementation), `ff3d917` (review fixes). Chapter 15: 11/11 (100%, ALL PHASES COMPLETE). |
 | 2026-06-16 | **Ch15 Phase B Core Order Generators** (4 files, 104 tests) | migration-develop | migration-review | Phase B APPROVED (R2, 0 BLOCKERs, 0 MAJORs, 0 MINORs). 4 implementation files: UnitOrderGenerator.ts (~460 lines, 42 tests) -- main unit command generator, targetForInput resolution (live actor > frozen actor > cell), orderForUnit two-pass trait iteration, cursor resolution, CreateGroup APM tracking. RepairOrderGenerator.ts (~200 lines, 21 tests) -- repair cursor mode, RepairableBuilding/Repairable/RepairableNear paths, game-over auto-cancel. BeaconOrderGenerator.ts (~120 lines, 13 tests) -- one-shot beacon placement, suppressVisualFeedback. GlobalButtonOrderGenerator.ts (~300 lines, 28 tests) -- generic base (traitKey string parameter), PowerDownOrderGenerator + SellOrderGenerator concretions. 4 test files, 104 tests all passing (42+21+13+28). 9826 total tests pass. Commits: `5070c5b` (implementation), `5d1f760` (review fixes). Chapter 15: 7/11 (64%, Phases A-B COMPLETE). |
@@ -1711,6 +1714,130 @@ TraitsInterfaces expansion (IDockHost, IAcceptResources, IResourceLayer, IResour
 - **ADR-14.7**: Enter Pattern as Shared Abstract Base
 
 **Unblocks**: Phase B (Attack, Hunt, CaptureActor, Demolish, Turn), Phase D (MoveToDock), Phase E (Enter, UnloadCargo, Resupply, PickupUnit, DeliverUnit), Phase F (DeployForGrantedCondition)
+
+---
+
+### Chapter 15: Order Generators (COMPLETE, 11/11, 100%, 206 tests)
+
+> **Migration Plan**: [docs/chapter15_order_generators_migration_plan.md](docs/chapter15_order_generators_migration_plan.md)
+> **Status**: ALL PHASES COMPLETE (11/11, 100%, 206 tests)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Order Generator Foundation | 3 | LOW-MEDIUM | **COMPLETE (3/3, 59 tests, R1 APPROVED)** |
+| Phase B | Core Order Generators | 4 | MEDIUM | **COMPLETE (4/4, 104 tests, R2 APPROVED)** |
+| Phase C | Extended Order Generators | 2 | MEDIUM | **COMPLETE (2/2, 43 tests, R2 APPROVED)** |
+
+Phase A: OrderGenerator.ts (275 lines, 29 tests), EnterAlliedActorTargeter.ts (262 lines, 30 tests), TraitsInterfaces.ts (IOrderGenerator + MouseActionType + IMouseSettings).
+
+Phase B: UnitOrderGenerator.ts (~460 lines, 42 tests), RepairOrderGenerator.ts (~200 lines, 21 tests), BeaconOrderGenerator.ts (~120 lines, 13 tests), GlobalButtonOrderGenerator.ts (~300 lines, 28 tests).
+
+Phase C: GuardOrderGenerator.ts (~260 lines, 28 tests), ForceModifiersOrderGenerator.ts (~200 lines, 15 tests).
+
+Plus 3 already-migrated from Ch11: UnitOrderTargeter, DeployOrderTargeter, PlaceBuildingOrderGenerator.
+Total: 11 files, ~1,870 TS lines, 206 tests. ALL PHASES APPROVED (0 BLOCKERs across all rounds).
+Commits: `d47edf3` (plan), `cb792bd` (Phase A), `5070c5b` (Phase B), `af57cb2` (Phase C), `016798e`/`59e7933` (docs).
+
+---
+
+### Chapter 16: UI Widget Extensions (COMPLETE, 65/65, 100%, 1,900+ tests)
+
+> **Migration Plan**: [docs/chapter16_ui_widget_extensions_migration_plan.md](docs/chapter16_ui_widget_extensions_migration_plan.md)
+> **Status**: ALL PHASES COMPLETE (65/65, 100%, 1,900+ tests)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Primitive UI Controls | 23+7 deps | LOW-HIGH | **COMPLETE (30/30, 998 tests)** |
+| Phase B | Game HUD Widgets & Utilities | 17 | LOW-HIGH | **COMPLETE (17/17, 577 tests)** |
+| Phase C | Menu Screen Logic | 25 | LOW-HIGH | **COMPLETE (25/25, 325 tests)** |
+
+Total: 65 files, 1,900+ tests, ~28,200 TS implementation lines across all phases.
+
+---
+
+### Chapter 17: Replay & Save System (COMPLETE, 8/8, 100%, 237 tests)
+
+> **Migration Plan**: [docs/chapter17_replay_save_system_migration_plan.md](docs/chapter17_replay_save_system_migration_plan.md)
+> **Status**: ALL PHASES COMPLETE (8/8, 100%, 237 tests)
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | GameInformation + ReplayMetadata | 2 | LOW-MEDIUM | **COMPLETE (2/2, 60 tests)** |
+| Phase B | ReplayRecorder + ReplayConnection | 2 | HIGH | **COMPLETE (2/2, 67 tests)** |
+| Phase C | GameSave + SlotClient | 2 | HIGH | **COMPLETE (2/2, 54 tests)** |
+| Phase D | SyncReport + AutoSave + GameSaveViewportManager | 2 | MEDIUM | **COMPLETE (2/2, 56 tests)** |
+
+Total: 8 files, 237 tests, ~4,900 TS lines. Commits: `57750d6` (docs finalize), `60ea67a` (review fixes), `0092808` (Phase D).
+
+---
+
+### Chapter 18: Server System (COMPLETE, 10/10, 100%, 240 tests)
+
+> **Migration Plan**: [docs/chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)
+> **Created**: 2026-06-16 | **Updated**: 2026-06-17 | **Status**: ALL PHASES COMPLETE (10/10, 100%, 240 tests)
+> **Prerequisite**: Chapters 2-7 + 17 COMPLETE
+
+| Phase | Description | Files | Complexity | Status |
+|-------|-------------|:---:|:---:|--------|
+| Phase A | Protocol and Interfaces Foundation | 3 | LOW | **COMPLETE (3/3, 52 tests, R1 APPROVED)** |
+| Phase B | Server Core | 2 | HIGHEST | **COMPLETE (2/2, 87 tests, R2 APPROVED)** |
+| Phase C | Connection Layer | 2 | LOW-MEDIUM | **COMPLETE (2/2, 57 tests)** |
+| Phase D | Support Systems | 3 | LOW | **COMPLETE (3/3, 44 tests)** |
+
+**Phase A Completed (2026-06-17)**:
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| ProtocolVersion.ts | 206 | 116 | 16 | Binary protocol constants (Handshake=7, Orders=21), order type byte enum, handshake flow documentation |
+| TraitInterfaces.ts | 257 | 248 | 22 | 9 server trait interfaces, ServerTrait abstract base, DebugServerTrait |
+| Exts.ts | 41 | 106 | 14 | `except()` utility function |
+| **Total** | **504** | **470** | **52** | Commits: `da21496` (initial), `0b9b8d3` (review fixes) |
+
+**Phase B Completed (2026-06-17)**:
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| SessionTypes.ts | 695 | 621 | 35 | Session, SessionClient (20+ fields), SessionSlot, SessionGlobalSettings, ConnectionQuality enum, serialization |
+| Server.ts | 2,397 | 796 | 52 | Complete game server: IServerTransport/IClientTransport interfaces, WebSocket lifecycle, client validation, order broadcasting, sync hash verification, lobby synchronization, game start/end, chat/commands, save/load, player defeat |
+| **Total** | **3,092** | **1,417** | **87** | Commits: `374e0ad` (initial), `d86ae8f` (docs). R2 APPROVED (2 review rounds) |
+
+**Phase C Completed (2026-06-17)**:
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| Connection.ts | 425 | 544 | ~30 | Per-client WebSocket handler, header/data state machine, ping measurement, send queue, dispose/close |
+| OrderBuffer.ts | 293 | 530 | ~27 | Dynamic order timing, per-player delta median, tick scale (1.0-1.1), baseline player, player removal |
+| **Total** | **718** | **1,074** | **57** | Commit: `64756ef` |
+
+**Phase D Completed (2026-06-17)**:
+
+| File | Lines (impl) | Lines (test) | Tests | Notes |
+|:---|:---:|:---:|:---:|:---|
+| VoteKickTracker.ts | 375 | 605 | ~16 | Vote-to-kick lifecycle, eligible counting, cooldown, admin edge cases |
+| MapStatusCache.ts | 306 | 380 | ~15 | Cached map validation, async remote linting, ILintServerMapPass |
+| PlayerMessageTracker.ts | 188 | 342 | ~13 | Chat flood control, join cooldown, message limits, admin bypass |
+| **Total** | **869** | **1,327** | **44** | Commit: `031f275` |
+
+**Chapter 18 Overall Stats**:
+
+| Metric | Value |
+|--------|:---:|
+| Total implementation files | 10 |
+| Total test files | 10 |
+| TS implementation lines | 5,183 |
+| TS test lines | 4,288 |
+| Combined TS lines | 9,471 |
+| Total tests | 240 |
+| Review rounds | 5+ across all phases |
+| BLOCKERs remaining | 0 |
+
+**Key Architecture Decisions (from chapter plan)**:
+- ADR-18.1: Node.js game server with `ws` WebSocket library
+- ADR-18.2: Web Worker hosted server for peer-hosted games
+- ADR-18.3: Event-driven architecture replaces thread-based polling
+- ADR-18.4: Session type consolidation in SessionTypes.ts
+- ADR-18.5: Binary protocol preserved byte-for-byte over WebSocket
+- ADR-18.6: IServerTransport interface for runtime-agnostic server
 
 ---
 

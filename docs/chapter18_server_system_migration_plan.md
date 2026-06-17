@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 18 -- Server System
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.6 (Network/Server) + Section 4.3 (Traits)
-> **Chapter Status**: IMPLEMENTING (5/9 files, 55.6%, Phase A COMPLETE, Phase B COMPLETE)
+> **Chapter Status**: COMPLETE (10/10 files, 100%, ALL PHASES A-D COMPLETE, 240 tests)
 > **Planning Date**: 2026-06-16
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162, 100%), Chapter 6 Phase A (Order + Connection + OrderManager) COMPLETE, Chapter 6 Phase B (Sync hash) COMPLETE, Chapter 17 COMPLETE (GameSave, ReplayRecorder, ReplayConnection)
 >
@@ -111,23 +111,23 @@ The following infrastructure from Chapters 2-7 and Chapter 17 is available for C
 
 | Metric | Count |
 |--------|-------|
-| **Total mapped files** | 9 |
+| **Total mapped files** | 10 |
 | **Phase A (Protocol and Interfaces)** | 3 files |
-| **Phase B (Server Core)** | 1 file (+ SessionTypes.ts support module) |
+| **Phase B (Server Core)** | 2 files (Server.ts + SessionTypes.ts) |
 | **Phase C (Connection Layer)** | 2 files |
 | **Phase D (Support Systems)** | 3 files |
 | **HIGHEST complexity** | 1 file (Server.ts) |
 | **MEDIUM complexity** | 2 files |
-| **LOW complexity** | 6 files |
+| **LOW complexity** | 7 files |
 | **Total OpenRA C# source lines** | ~2,537 |
 
-| Phase | Files | C# Lines | TS Lines (est.) | Tests (est.) | Status |
+| Phase | Files | C# Lines | TS Lines | Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
 | A: Protocol and Interfaces | 3 | 169 | 504 | 52 | COMPLETE |
-| B: Server Core | 2 | ~2,290 | ~3,094 | 87 | COMPLETE |
-| C: Connection Layer | 2 | 359 | ~800 | ~45 | NOT STARTED |
-| D: Support Systems | 3 | 415 | ~900 | ~50 | NOT STARTED |
-| **Total** | **9** | **~3,233** | **~5,298** | **~234** | **IMPLEMENTING (55.6%, Phase A+B COMPLETE)** |
+| B: Server Core | 2 | ~2,290 | 3,092 | 87 | COMPLETE |
+| C: Connection Layer | 2 | 359 | 718 | 57 | COMPLETE |
+| D: Support Systems | 3 | 415 | 869 | 44 | COMPLETE |
+| **Total** | **10** | **~3,233** | **5,183** | **240** | **COMPLETE (100%, ALL PHASES A-D COMPLETE)** |
 
 ---
 
@@ -513,13 +513,13 @@ The biggest paradigm shift is replacing the thread-based event loop (`BlockingCo
 - `DataView` little-endian on all multi-byte writes; validate with known reference frames from C# output
 - `RecordOrder` checks for sync hash packet by examining `data[0]` byte before forwarding
 
-**Phase B Summary**: COMPLETE. 2 files migrated: `SessionTypes.ts` (696 lines, 35 tests), `Server.ts` (2,398 lines, 52 tests). Total: ~3,094 TS implementation lines, 87 tests (35 + 52). Commits: `374e0ad` (initial implementation). Review: R2 APPROVED (2 review rounds).
+**Phase B Summary**: COMPLETE. 2 files migrated: `SessionTypes.ts` (695 lines, 35 tests), `Server.ts` (2,397 lines, 52 tests). Total: ~3,092 TS implementation lines, 87 tests (35 + 52), ~1,417 test lines. Commits: `374e0ad` (initial implementation), `d86ae8f` (docs). Review: R2 APPROVED (2 review rounds).
 
 ---
 
 ### 3.3 Phase C: Connection Layer
 
-**Status**: NOT STARTED (0/2)
+**Status**: COMPLETE (2/2)
 **Complexity**: Low-Medium
 **Blocked by**: Phase A (ProtocolVersion constants for binary protocol), Phase B (Server type reference for callback signatures)
 **Blocks**: Nothing (leaf node from a dependency perspective)
@@ -541,7 +541,7 @@ In the WebSocket world, `Connection.ts` is dramatically simplified compared to t
 
 #### 3.3.1 Connection (Server-Side)
 
-- [ ] **TODO-18.C.1** `src/OpenRA.Game/Server/Connection.ts` (220 lines C#) -- Per-client WebSocket connection handler:
+- [x] **TODO-18.C.1** `src/OpenRA.Game/Server/Connection.ts` (220 lines C#) -- Per-client WebSocket connection handler:
   - Constants: `MaxOrderLength = 131072` (128 kB), `MaxPingSamples = 15` (seconds of ping history)
   - Properties: `playerIndex: number`, `authToken: string`, `endPoint: string`, `connectionTimer: number` (set to `Date.now()` at construction), `validated: boolean`, `lastOrdersFrame: number`, `timeoutMessageShown: boolean`
   - `timeSinceLastResponse: number` getter -- computes `Date.now() - lastReceivedTime`
@@ -589,7 +589,7 @@ In the WebSocket world, `Connection.ts` is dramatically simplified compared to t
 
 #### 3.3.2 OrderBuffer
 
-- [ ] **TODO-18.C.2** `src/OpenRA.Game/Server/OrderBuffer.ts` (139 lines C#) -- Dynamic order timing system:
+- [x] **TODO-18.C.2** `src/OpenRA.Game/Server/OrderBuffer.ts` (139 lines C#) -- Dynamic order timing system:
   - Constants: `NumberOfFrames = 20`, `Interval = 1000` (1 second), `MaxTickScale = 1.1` (10% max slowdown)
   - `EmptyValue = -1` sentinel for "no timestamp recorded yet"
   - Internal state: `gameTimer: number` (set via `performance.now()`), `nextUpdate: number`, `timestep: number`, `ticksPerInterval: number`, `baselinePlayer: number`, `players: number[]`
@@ -635,13 +635,13 @@ In the WebSocket world, `Connection.ts` is dramatically simplified compared to t
     - If even: `(sorted[(n - 1) / 2] + sorted[n / 2]) / 2`
   - Reference: `OpenRA/OpenRA.Game/Server/OrderBuffer.cs`
 
-**Phase C Summary**: 2 files, ~359 C# lines. Target: `Connection.ts` + `OrderBuffer.ts`. Estimated ~45 tests (~1,200 test lines). Both files can be parallel-assigned after Phase A+B are complete.
+**Phase C Summary**: COMPLETE. 2 files migrated: `Connection.ts` (425 lines, ~30 tests), `OrderBuffer.ts` (293 lines, ~27 tests). Total: 718 TS implementation lines, 57 tests (30 + 27), ~1,074 test lines. Commit: `64756ef`.
 
 ---
 
 ### 3.4 Phase D: Server Support Systems
 
-**Status**: NOT STARTED (0/3)
+**Status**: COMPLETE (3/3)
 **Complexity**: Low
 **Blocked by**: Phase B (Server type reference for callback signatures + ServerSettings)
 **Blocks**: Nothing (leaf nodes)
@@ -661,7 +661,7 @@ All three files are pure logic with no rendering or binary protocol dependencies
 
 #### 3.4.1 VoteKickTracker
 
-- [ ] **TODO-18.D.1** `src/OpenRA.Game/Server/VoteKickTracker.ts` (223 lines C#) -- Vote-to-kick system:
+- [x] **TODO-18.D.1** `src/OpenRA.Game/Server/VoteKickTracker.ts` (223 lines C#) -- Vote-to-kick system:
   - Fluent message key constants: `InsufficientVotes`, `AlreadyVoted`, `VoteKickStarted`, `UnableToStartAVote`, `VoteKickProgress`, `VoteKickEnded`
   - Properties: `server: Server` (back-reference), `voteTracker: Map<number, boolean>`, `failedVoteKickers: Map<SessionClient, number>`
   - `voteKickTimer: number | null` (millisecond timestamp when vote started, null = no active vote)
@@ -695,7 +695,7 @@ All three files are pure logic with no rendering or binary protocol dependencies
 
 #### 3.4.2 MapStatusCache
 
-- [ ] **TODO-18.D.2** `src/OpenRA.Game/Server/MapStatusCache.ts` (106 lines C#) -- Map validation status cache:
+- [x] **TODO-18.D.2** `src/OpenRA.Game/Server/MapStatusCache.ts` (106 lines C#) -- Map validation status cache:
   - `export interface ILintServerMapPass { run(emitError: (msg: string) => void, emitWarning: (msg: string) => void, modData: ModData, map: MapPreview, mapRules: Ruleset): void }`
   - Properties: `cache: Map<MapPreview, MapStatus>`, `onStatusChanged: (uid: string, status: MapStatus) => void`
   - `enableRemoteLinting: boolean` -- only enabled for dedicated servers with lint checks on
@@ -719,7 +719,7 @@ All three files are pure logic with no rendering or binary protocol dependencies
 
 #### 3.4.3 PlayerMessageTracker
 
-- [ ] **TODO-18.D.3** `src/OpenRA.Game/Server/PlayerMessageTracker.ts` (86 lines C#) -- Chat flood control:
+- [x] **TODO-18.D.3** `src/OpenRA.Game/Server/PlayerMessageTracker.ts` (86 lines C#) -- Chat flood control:
   - Properties: `server: Server`, `messageTracker: Map<number, number[]>` (playerIndex -> array of message timestamps)
   - `dispatchOrdersToClient` and `sendFluentMessageTo` functions (bound from Server instance)
   - `constructor(server: Server, dispatchOrdersToClient: ..., sendFluentMessageTo: ...)`
@@ -734,7 +734,7 @@ All three files are pure logic with no rendering or binary protocol dependencies
     - Return `false` (message allowed)
   - Reference: `OpenRA/OpenRA.Game/Server/PlayerMessageTracker.cs`
 
-**Phase D Summary**: 3 files, ~415 C# lines. Target: `VoteKickTracker.ts` + `MapStatusCache.ts` + `PlayerMessageTracker.ts`. Estimated ~50 tests (~1,200 test lines). All three files are independent and can be parallel-assigned after Phase B is complete.
+**Phase D Summary**: COMPLETE. 3 files migrated: `VoteKickTracker.ts` (375 lines, ~16 tests), `MapStatusCache.ts` (306 lines, ~15 tests), `PlayerMessageTracker.ts` (188 lines, ~13 tests). Total: 869 TS implementation lines, 44 tests (16 + 15 + 13), ~1,327 test lines. Commit: `031f275`.
 
 ---
 
@@ -743,17 +743,17 @@ All three files are pure logic with no rendering or binary protocol dependencies
 ```
 Chapters 2-7 + Chapter 17 (COMPLETE -- Foundation)
   │
-  ├── Phase A (ProtocolVersion + TraitInterfaces + Exts: 3 files)
+  ├── Phase A (ProtocolVersion + TraitInterfaces + Exts: 3 files) ✅ COMPLETE
   │     │
-  │     └── Phase B (Server.ts + SessionTypes.ts: 1 + 1 files)
+  │     └── Phase B (Server.ts + SessionTypes.ts: 2 files) ✅ COMPLETE
   │           │    also depends on: Ch6 Phase A (Order, Connection client-side),
   │           │    Ch6 Phase C (Session/Ruleset), Ch17 Phase A (GameInformation),
   │           │    Ch17 Phase B (ReplayRecorder), Ch17 Phase C (GameSave)
   │           │
-  │           ├── Phase C (Connection.ts + OrderBuffer.ts: 2 files)
+  │           ├── Phase C (Connection.ts + OrderBuffer.ts: 2 files) ✅ COMPLETE
   │           │     └── (leaf -- nothing depends on connection layer)
   │           │
-  │           └── Phase D (VoteKickTracker + MapStatusCache + PlayerMessageTracker: 3 files)
+  │           └── Phase D (VoteKickTracker + MapStatusCache + PlayerMessageTracker: 3 files) ✅ COMPLETE
   │                 └── (leaf -- nothing depends on support systems)
   │
   └── Phase C (Connection.ts references ProtocolVersion.OrderType constants from Phase A)
@@ -1102,15 +1102,15 @@ The `ws` library is a devDependency since it is only needed for server builds.
 
 ## Migration Order and Phasing Strategy
 
-| Batch | Phase | Files | Est. Time | Parallelizable |
-|:---:|:---|:---:|:---:|:---:|
-| 1 | A | 3 (ProtocolVersion + TraitInterfaces + Exts) | 1 session | YES -- all three independent |
-| 1 | Support | 1 (SessionTypes.ts) | 0.5 session | YES -- runs in parallel with Phase A |
-| 2 | B | 1 (Server.ts, 1594 lines) | 2-3 sessions | NO -- deepest focus file |
-| 3 | C | 2 (Connection.ts + OrderBuffer.ts) | 1 session | YES -- two files parallel |
-| 3 | D | 3 (VoteKickTracker + MapStatusCache + PlayerMessageTracker) | 1 session | YES -- three files parallel with Phase C |
+| Batch | Phase | Files | Est. Time | Parallelizable | Status |
+|:---:|:---|:---:|:---:|:---|:---:|
+| 1 | A | 3 (ProtocolVersion + TraitInterfaces + Exts) | 1 session | YES -- all three independent | DONE |
+| 1 | Support | 1 (SessionTypes.ts) | 0.5 session | YES -- runs in parallel with Phase A | DONE |
+| 2 | B | 1 (Server.ts, 1594 lines C#) | 2-3 sessions | NO -- deepest focus file | DONE |
+| 3 | C | 2 (Connection.ts + OrderBuffer.ts) | 1 session | YES -- two files parallel | DONE |
+| 3 | D | 3 (VoteKickTracker + MapStatusCache + PlayerMessageTracker) | 1 session | YES -- three files parallel with Phase C | DONE |
 
-**Total estimated**: ~5-6 development sessions for implementation + ~2-3 sessions for review rounds. Server.ts at 1594 lines is the pacing item.
+**Total completed**: ALL 4 PHASES DONE. 10 implementation files, 5,183 TS lines, 240 tests, 10 test files (4,288 test lines). Commits: `da21496` + `0b9b8d3` (Phase A), `374e0ad` + `d86ae8f` (Phase B), `64756ef` (Phase C), `031f275` (Phase D).
 
 ---
 
