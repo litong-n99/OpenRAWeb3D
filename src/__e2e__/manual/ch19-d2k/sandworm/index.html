@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>沙虫系统 - 地下移动 + 出地 + 吞食攻击 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #e9a23b; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 380px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #e9a23b; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #worm-stats {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #worm-stats .val { color: #e9a23b; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>沙虫系统 - 地下移动 + 出地 + 吞食攻击 (Sandworm)</h1>
+    <div class="subtitle">ID: ch19-d2k/sandworm | 验证: 状态机 | 出地动画 | 吞食动画 | 噪声追踪</div>
+  </div>
+  <div id="controls">
+    <label>状态控制:</label>
+    <button id="btn-scan" class="active">触发目标扫描</button>
+    <button id="btn-emerge">强制出地</button>
+    <button id="btn-attack">发起吞食攻击</button>
+    <button id="btn-submerge">强制下潜</button>
+    <button id="btn-disappear">消失 (ChanceToDisappear)</button>
+    <span class="sep">|</span>
+    <label>移动半径:</label>
+    <input type="range" id="rng-radius" min="1" max="20" value="5" style="width:80px">
+    <span id="lbl-radius">5</span>
+    <span class="sep">|</span>
+    <label>噪声源:</label>
+    <button id="btn-noise">生成噪声源</button>
+    <button id="btn-clear-noise">清除噪声源</button>
+    <span class="sep">|</span>
+    <label>消失概率%:</label>
+    <input type="range" id="rng-disappear" min="0" max="100" value="100" style="width:80px">
+    <span id="lbl-disappear">100</span>
+    <span class="sep">|</span>
+    <button id="btn-reset">重置</button>
+    <span class="hint">拖拽相机观察 | 沙虫地下移动/出地/吞食/下潜状态机</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>状态机:</b> 沙虫在 7 个状态间切换: <span class="metric">Burrowed</span> (地下, 不可见)、<span class="metric">Wandering</span> (随机移动)、<span class="metric">MovingToNoise</span> (追踪噪声)、<span class="metric">Emerging</span> (出地, Y轴上升)、<span class="metric">Attacking</span> (吞食目标, 目标缩小消失)、<span class="metric">Submerging</span> (下潜, Y轴下降)、Disappear (缩放消失)。核心可视状态为前 4 种。</li>
+        <li><b>地下移动:</b> 沙虫在地下时 <span class="metric">Y &lt; 0</span> 且半透明 (alpha &lt; 0.3)，按 WAngle 朝向移动。WAngle <span class="metric">0 = 北(负Z), 逆时针递增</span>。</li>
+        <li><b>出地动画:</b> 沙虫从 Y &lt; 0 上升到 Y &gt; 0，持续约 <span class="metric">AttackDelay 30 ticks</span> (约 1.2 秒 @ 25fps)。</li>
+        <li><b>吞食动画:</b> 目标单位从正常大小缩放到 <span class="metric">scale = 0</span>，持续约 <span class="metric">ReturnDelay 60 ticks</span> (约 2.4 秒 @ 25fps)。</li>
+        <li><b>噪声追踪:</b> 沙虫通过 <span class="metric">AttractsWorms</span> 噪声源追踪目标。噪声强度可视化径向圆圈，沙虫向噪声向量方向移动。</li>
+        <li><b>消失概率:</b> 攻击后 <span class="metric">ChanceToDisappear (默认 100%)</span> 决定沙虫是否消失。消失时播放缩小+淡出动画。</li>
+        <li><b>近距离攻击:</b> 目标在 <span class="metric">IgnoreNoiseAttackRange (3 cells)</span> 内时，无视噪声直接攻击。</li>
+      </ul>
+    </div>
+    <div id="worm-stats">
+      状态: <span class="val" id="st-state">Burrowed (地下)</span><br>
+      位置: <span class="val" id="st-pos">0, 0, 0</span><br>
+      朝向: <span class="val" id="st-facing">0</span> (WAngle)<br>
+      深度: <span class="val" id="st-depth">-3.0</span> WDist<br>
+      目标: <span class="val" id="st-target">-</span><br>
+      攻击倒计时: <span class="val" id="st-countdown">-</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

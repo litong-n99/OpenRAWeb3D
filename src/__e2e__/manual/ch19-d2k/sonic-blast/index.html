@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音波爆炸 - SonicBlast 弹道 + 环扩展 + 光束段 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4af; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 380px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #4af; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #blast-stats {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #blast-stats .val { color: #4af; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>音波爆炸 - SonicBlast 弹道 + 环扩展 + 光束段 (SonicBlast Projectile + Renderer)</h1>
+    <div class="subtitle">ID: ch19-d2k/sonic-blast | 验证: lerpQuadratic轨迹 | 环扩展 | 伤害衰减 | 散布锥</div>
+  </div>
+  <div id="controls">
+    <label>弹道控制:</label>
+    <button id="btn-fire" class="active">发射音波</button>
+    <button id="btn-pause">暂停/恢复</button>
+    <button id="btn-step">单步前进</button>
+    <span class="sep">|</span>
+    <label>速度 (WDist/tick):</label>
+    <input type="range" id="rng-speed" min="32" max="512" value="128" style="width:100px">
+    <span id="lbl-speed">128</span>
+    <span class="sep">|</span>
+    <label>散布 (Inaccuracy):</label>
+    <input type="range" id="rng-inaccuracy" min="0" max="512" value="64" style="width:80px">
+    <span id="lbl-inaccuracy">64</span>
+    <span class="sep">|</span>
+    <label>散布类型:</label>
+    <select id="sel-inacctype">
+      <option value="Maximum">Maximum</option>
+      <option value="PerCellIncrement">PerCellIncrement</option>
+      <option value="Absolute">Absolute</option>
+    </select>
+    <span class="sep">|</span>
+    <button id="btn-spread">显示散布区域</button>
+    <button id="btn-reset">重置</button>
+    <span class="hint">观察弹道直线 + 环扩展 + 伤害衰减颜色渐变</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>直线弹道:</b> 音波从 <span class="metric">Source</span> (绿球) 沿直线传播到 <span class="metric">Target</span> (红球)。轨迹采用 <span class="metric">WPos.lerpQuadratic</span> 插值，WAngle 0=北(负Z), CCW。</li>
+        <li><b>环扩展:</b> 每个 <span class="metric">DamageInterval</span> tick 步骤位置出现扩展环。环使用 SonicBlastRenderer <span class="metric">Size=16, Zoom=2.5</span>。</li>
+        <li><b>伤害衰减 (Falloff):</b> 环颜色从源端的 <span class="metric">亮橙 #FF6600</span> (100%) 变为远端的 <span class="metric">暗红 #660000</span> (0%)，线性插值。</li>
+        <li><b>散布 (Inaccuracy):</b> 散布在 Target 处为世界空间矩形区域，宽度为 <span class="metric">inaccuracy</span>。实际偏移通过 <span class="metric">WVec.FromPDF</span> 直接加到 Target。光束段渲染为 <span class="metric">SonicBlastRenderable</span>。</li>
+        <li><b>最小距离 (MinDistance):</b> 音波至少传播 <span class="metric">MinDistance</span> WDist，若目标太近则延长弹道。</li>
+        <li><b>速度随机化:</b> 若 speed[] 有 2 个值，速度在 [min, max] 之间随机选取。速度影响环间距。</li>
+      </ul>
+    </div>
+    <div id="blast-stats">
+      弹道 tick: <span class="val" id="st-tick">0 / 0</span><br>
+      当前位置: <span class="val" id="st-pos">-</span><br>
+      传播距离: <span class="val" id="st-distance">0</span> WDist<br>
+      当前衰减: <span class="val" id="st-falloff">100%</span><br>
+      速度: <span class="val" id="st-speed">128</span> WDist/tick<br>
+      状态: <span class="val" id="st-state">待发射</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

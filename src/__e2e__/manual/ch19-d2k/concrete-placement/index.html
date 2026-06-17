@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>混凝土放置 - 建筑预览 + 崩塌覆盖 + 投送覆盖 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 225px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 380px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #4a9; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #build-stats {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #build-stats .val { color: #4a9; font-family: monospace; }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>混凝土放置 - 建筑预览 + 崩塌覆盖 + 投送覆盖 (BuildableTerrainLayer + Preview + Overlays)</h1>
+    <div class="subtitle">ID: ch19-d2k/concrete-placement | 验证: 混凝土渲染 | 绿/红/不安全预览 | 崩塌覆盖 | 投送覆盖</div>
+  </div>
+  <div id="controls">
+    <label>混凝土:</label>
+    <button id="btn-place-concrete">放置混凝土</button>
+    <button id="btn-damage-concrete">伤害混凝土 (-3000)</button>
+    <button id="btn-remove-concrete">移除混凝土</button>
+    <span class="sep">|</span>
+    <label>预览:</label>
+    <button id="btn-preview" class="active">显示放置预览</button>
+    <button id="btn-toggle-unsafe">切换不安全地形</button>
+    <span class="sep">|</span>
+    <label>覆盖:</label>
+    <button id="btn-crumble">崩塌覆盖 (Crumble)</button>
+    <button id="btn-delivery">投送覆盖 (Delivery)</button>
+    <span class="sep">|</span>
+    <button id="btn-reset">重置</button>
+    <span class="hint">右键点击地面选择建筑位置 | 观察混凝土/预览/覆盖效果</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>混凝土板:</b> 灰色半透明砖块 <span class="metric">#808080, alpha 0.6</span>，放置在选定单元格上。强度 <span class="metric">MaxStrength = 9000</span>。强度显示为数字标签。</li>
+        <li><b>放置预览 (绿/红/不安全):</b> 有效单元格 <span class="metric">#00FF00 (绿色, alpha 0.5)</span>，无效单元格 <span class="metric">#FF0000 (红色, alpha 0.5)</span>，不安全岩石地形 <span class="metric">#FF8800 (橙色, alpha 0.5)</span>。</li>
+        <li><b>崩塌覆盖 (WithCrumbleOverlay):</b> 低血量建筑显示 <span class="metric">crumble-overlay</span> 序列动画。覆盖为半透明裂纹纹理，颜色 <span class="metric">#888888, alpha 0.7</span>。</li>
+        <li><b>投送覆盖 (WithDeliveryOverlay):</b> Carryall 投送时单位显示 <span class="metric">active</span> 序列动画。覆盖在单位上方，有旋转和平移动画。</li>
+        <li><b>混凝土伤害 (DamagesConcreteWarhead):</b> 伤害混凝土板时强度递减 <span class="metric">3000/次</span>，低于 1 时自动移除。</li>
+        <li><b>建筑保护:</b> 建筑下方的混凝土单元格不受伤害 (Building blocks damage to cells under footprint)。</li>
+      </ul>
+    </div>
+    <div id="build-stats">
+      模式: <span class="val" id="st-mode">预览模式</span><br>
+      选定单元格: <span class="val" id="st-cell">-</span><br>
+      混凝土强度: <span class="val" id="st-strength">-</span><br>
+      预览状态: <span class="val" id="st-preview">-</span><br>
+      不安全地形: <span class="val" id="st-unsafe">禁用</span><br>
+      崩塌覆盖: <span class="val" id="st-crumble">非活跃</span><br>
+      投送覆盖: <span class="val" id="st-delivery">非活跃</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
