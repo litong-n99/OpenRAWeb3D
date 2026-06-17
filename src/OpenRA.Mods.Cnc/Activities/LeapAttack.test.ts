@@ -60,8 +60,8 @@ function makeSelf(loc?: CPos, center?: WPos): GameActor {
   } as unknown as GameActor
 }
 
-function makeTargetActor(self: GameActor, loc?: CPos): any {
-  return {
+function makeTargetActor(_self: GameActor, loc?: CPos): any {
+  const self2 = {
     type: TargetType.Actor,
     actor: {
       location: loc ?? new CPos(20, 20),
@@ -80,7 +80,10 @@ function makeTargetActor(self: GameActor, loc?: CPos): any {
     ),
     isValidFor: () => true,
     isInRange: () => false, // Not in range → triggers movement
+    positions: [new WPos((loc?.X ?? 20) * 1024 + 512, (loc?.Y ?? 20) * 1024 + 512, 0)],
+    recalculate: () => [self2, false] as [any, boolean],
   }
+  return self2
 }
 
 // ---------------------------------------------------------------------------
@@ -172,8 +175,10 @@ describe('LeapAttack', () => {
 
     it('returns false for out-of-range targets (queues move)', () => {
       const self = makeSelf()
+      const base = makeTargetActor(self)
       const target: any = {
-        ...makeTargetActor(self),
+        ...base,
+        positions: base.positions ?? [new WPos(20 * 1024 + 512, 20 * 1024 + 512, 0)],
         isInRange: () => false, // Not in range
       }
       const attack = makeAttack()
@@ -186,7 +191,9 @@ describe('LeapAttack', () => {
 
     it('returns true when target is hidden with no fallback', () => {
       const self = makeSelf()
-      const target: any = {
+      // eslint-disable-next-line prefer-const
+      let target: any
+      target = {
         type: TargetType.Actor,
         actor: {
           location: new CPos(20, 20),
@@ -199,6 +206,7 @@ describe('LeapAttack', () => {
         centerPosition: new WPos(20 * 1024, 20 * 1024, 0),
         isValidFor: () => true,
         isInRange: () => false,
+        recalculate: () => [target, true] as [any, boolean],
       }
       const attack = makeAttack()
 
@@ -211,7 +219,9 @@ describe('LeapAttack', () => {
 
     it('returns false when all armaments are reloading', () => {
       const self = makeSelf()
-      const target: any = {
+      // eslint-disable-next-line prefer-const
+      let target: any
+      target = {
         type: TargetType.Actor,
         actor: {
           location: new CPos(10, 10), // Same cell as self
@@ -226,6 +236,7 @@ describe('LeapAttack', () => {
         centerPosition: new WPos(10 * 1024 + 512, 10 * 1024 + 512, 0),
         isValidFor: () => true,
         isInRange: () => true, // In range
+        recalculate: () => [target, false] as [any, boolean],
       }
       const attack = makeAttack()
       attack.armaments = [{ isReloading: true }]
@@ -248,7 +259,7 @@ describe('LeapAttack', () => {
         hasValidTargetPriority: () => true,
       }
 
-      la.stanceChanged(self, autoTarget, 0, 1, 0)
+      la.stanceChanged(self, autoTarget, 0, 1)
       // forceAttack=true → no change
       expect(la.target).toBeDefined()
     })
@@ -264,7 +275,7 @@ describe('LeapAttack', () => {
         hasValidTargetPriority: () => false,
       }
 
-      la.stanceChanged(self, autoTarget as any, 0, 1, 0)
+      la.stanceChanged(self, autoTarget as any, 0, 1)
       // No existing lastVisibleTarget -> this only tests non-crash
       expect(la).toBeDefined()
     })

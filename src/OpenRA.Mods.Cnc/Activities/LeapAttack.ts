@@ -9,12 +9,9 @@
  * - C# BitSet<TargetableType> → TypeScript Set<string>
  * - C# WDist / WPos integer arithmetic → TypeScript same
  * - C# QueueChild(Mobile.MoveWithinRange/Leap/Turn) → TypeScript queueChild
- * - C# MoveCooldownHelper → TypeScript simplified cooldown tracker
+ * - C# MoveCooldownHelper → TypeScript cooldown tracker with non-null return
  * - C# TargetLineNode → TypeScript TargetLineNode from Activity.ts
  * - C# yield return → TypeScript override method returning array
- *
- * NOTE: Full MoveCooldownHelper, Turn activity, and Mobile trait are needed
- * for full functionality. These are stubbed with minimal duck-typed interfaces.
  */
 
 // ---------------------------------------------------------------------------
@@ -22,7 +19,6 @@
 // ---------------------------------------------------------------------------
 
 import { Activity, TargetLineNode } from '../../OpenRA.Game/Activities/Activity.js'
-import { type ActivityState } from '../../OpenRA.Game/Activities/Activity.js'
 import type { GameActor } from '../../OpenRA.Game/Actor.js'
 import { Target, TargetType } from '../../OpenRA.Game/Traits/Target.js'
 import type { Target as TargetType_ } from '../../OpenRA.Game/Traits/Target.js'
@@ -30,32 +26,34 @@ import { WPos } from '../../OpenRA.Game/WPos.js'
 import { WDist } from '../../OpenRA.Game/WDist.js'
 import { CPos } from '../../OpenRA.Game/CPos.js'
 import type { ColorStub } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { Leap } from './Leap.js'
 
 // ---------------------------------------------------------------------------
-// MoveCooldownHelper (simplified)
-// OpenRA 对照: MoveCooldownHelper
+// MoveCooldownHelper
+// OpenRA 对照: OpenRA.Mods.Common.Activities.MoveCooldownHelper
 // ---------------------------------------------------------------------------
 
-/** Simplified move cooldown tracker.
+/** Move cooldown tracker — prevents excessive movement re-queueing.
  *
  * OpenRA 对照: MoveCooldownHelper
- *
- * Prevents excessive movement queueing by tracking cooldown ticks.
  */
 class MoveCooldownHelper {
   private _cooldown: number = 0
 
-  tick(_targetIsHidden: boolean): boolean | null {
+  /** Check cooldown. Returns true if movement is blocked by cooldown.
+   *
+   * OpenRA 对照: MoveCooldownHelper.Tick(bool)
+   */
+  tick(_targetIsHiddenActor: boolean): boolean | null {
     if (this._cooldown > 0) {
       this._cooldown--
-      return null // Waiting for cooldown
+      return true // Block movement until cooldown expires
     }
-    // null means "proceed with logic" (no abort)
-    return null
+    return null // Proceed
   }
 
   notifyMoveQueued(): void {
-    this._cooldown = 3 // Simple cooldown
+    this._cooldown = 3
   }
 }
 
@@ -63,10 +61,6 @@ class MoveCooldownHelper {
 // Trait interfaces (duck-typed)
 // ---------------------------------------------------------------------------
 
-/** Minimal AttackLeap trait for leap attack.
- *
- * OpenRA 对照: AttackLeap (subset of public members)
- */
 interface AttackLeapLike {
   readonly info: AttackLeapInfoLike
   isAiming: boolean
@@ -75,6 +69,8 @@ interface AttackLeapLike {
   hasAnyValidWeapons(target: TargetType_): boolean
   get armaments(): readonly ArmamentLike[]
   doAttack(self: GameActor, target: TargetType_): void
+  grantLeapCondition(self: GameActor): void
+  revokeLeapCondition(self: GameActor): void
 }
 
 interface AttackLeapInfoLike {
@@ -82,33 +78,30 @@ interface AttackLeapInfoLike {
   readonly leapCondition: string
 }
 
-/** Minimal Armament interface.
- *
- * OpenRA 对照: Armament
- */
 interface ArmamentLike {
   get isReloading(): boolean
 }
 
-/** Minimal Mobile trait for movement.
- *
- * OpenRA 对照: Mobile (subset)
- */
 interface MobileLike {
   readonly fromSubCell: number
+  readonly toSubCell: number
   readonly facing: number
   moveWithinRange(
     target: TargetType_,
     minRange: WDist,
     maxRange: WDist,
     initialCenterPosition: WPos,
-    color?: ColorStub,
+    color?: ColorStub | null,
   ): Activity
+  setCenterPosition(self: GameActor, pos: WPos): void
+  setLocation(self: GameActor, destCell: CPos, destSubCell: number, fromCell: CPos, fromSubCell: number): void
+  updateMovement(): void
 }
 
-// ---------------------------------------------------------------------------
-// IActor (simplified for target Owner)
-// ---------------------------------------------------------------------------
+interface EdibleByLeapLike {
+  canLeap(leaper: GameActor): boolean
+  getLeapAtBy(leaper: GameActor): boolean
+}
 
 interface TargetActorStub {
   location: CPos
@@ -116,6 +109,7 @@ interface TargetActorStub {
   isDead: boolean
   canBeViewedByPlayer(owner: unknown): boolean
   getEnabledTargetTypes(): Set<string>
+  traits?: Map<string, unknown>
 }
 
 // ---------------------------------------------------------------------------
@@ -123,15 +117,8 @@ interface TargetActorStub {
 // OpenRA 对照: LeapAttack : Activity, IActivityNotifyStanceChanged
 // ---------------------------------------------------------------------------
 
-/**
- * Activity that moves toward a target and then executes a leap attack.
- *
- * OpenRA 对照: LeapAttack
- *
- * Manages target tracking, range checking, weapon reload validation,
- * and queues child activities (Turn, MoveWithinRange, Leap).
- */
 export class LeapAttack extends Activity {
+  private readonly _info: AttackLeapInfoLike
   private readonly _attack: AttackLeapLike
   private readonly _mobile: MobileLike
   private readonly _allowMovement: boolean
@@ -159,39 +146,51 @@ export class LeapAttack extends Activity {
     super()
     this._target = target
     this._targetLineColor = targetLineColor
+    this._info = info
     this._attack = attack
     this._allowMovement = allowMovement
     this._forceAttack = forceAttack
 
-    // Resolve Mobile via duck-typing
     const selfAny = self as unknown as { traits?: Map<string, unknown> }
     this._mobile = selfAny.traits?.get('Mobile') as unknown as MobileLike
     this._moveCooldownHelper = new MoveCooldownHelper()
-    void info // Used via attack.info pattern
 
-    // Cache initial last-visible-target data
-    // OpenRA: if target is visible, cache it
+    // Cache initial last-visible-target data (OpenRA: constructor caching)
+    this._cacheLastVisibleTarget(self, target)
+  }
+
+  /** Cache last-visible-target data from the initial target.
+   *
+   * OpenRA 对照: LeapAttack constructor visibility caching
+   */
+  private _cacheLastVisibleTarget(self: GameActor, target: TargetType_): void {
     if (target.type === TargetType.Actor) {
       const actor = (target as unknown as { actor?: TargetActorStub }).actor
       if (actor && actor.canBeViewedByPlayer(self.owner)) {
         this._lastVisibleTarget = Target.fromPos(target.centerPosition)
-        this._lastVisibleMinRange =
-          attack.getMinimumRangeVersusTarget(target)
-        this._lastVisibleMaxRange =
-          attack.getMaximumRangeVersusTarget(target)
+        this._lastVisibleMinRange = this._attack.getMinimumRangeVersusTarget(target)
+        this._lastVisibleMaxRange = this._attack.getMaximumRangeVersusTarget(target)
         this._lastVisibleOwner = actor.owner
         this._lastVisibleTargetTypes = actor.getEnabledTargetTypes()
       }
+    } else if (target.type === TargetType.FrozenActor) {
+      const frozen = (target as unknown as { frozenActor?: { owner: unknown; targetTypes: Set<string> } }).frozenActor
+      if (frozen) {
+        this._lastVisibleTarget = Target.fromPos(target.centerPosition)
+        this._lastVisibleMinRange = this._attack.getMinimumRangeVersusTarget(target)
+        this._lastVisibleMaxRange = this._attack.getMaximumRangeVersusTarget(target)
+        this._lastVisibleOwner = frozen.owner
+        this._lastVisibleTargetTypes = frozen.targetTypes
+      }
     } else if (target.type === TargetType.Terrain) {
       this._lastVisibleTarget = Target.fromPos(target.centerPosition)
-      this._lastVisibleMinRange = attack.getMinimumRangeVersusTarget(target)
-      this._lastVisibleMaxRange = attack.getMaximumRangeVersusTarget(target)
+      this._lastVisibleMinRange = this._attack.getMinimumRangeVersusTarget(target)
+      this._lastVisibleMaxRange = this._attack.getMaximumRangeVersusTarget(target)
     }
   }
 
   // ---------------------------------------------------------------------------
   // OnFirstRun
-  // OpenRA 对照: LeapAttack.OnFirstRun(Actor)
   // ---------------------------------------------------------------------------
 
   protected override onFirstRun(_self: GameActor): void {
@@ -200,27 +199,20 @@ export class LeapAttack extends Activity {
 
   // ---------------------------------------------------------------------------
   // Tick
-  // OpenRA 对照: LeapAttack.Tick(Actor)
   // ---------------------------------------------------------------------------
 
   override tick(self: GameActor): boolean {
     if (this.isCanceling) return true
 
-    // Recalculate target visibility
-    // NOTE: In OpenRA, target = target.Recalculate(self.Owner, out targetIsHiddenActor)
-    // For migration, we check target.Type for valid/invalid
-    const targetIsHiddenActor =
-      this._target.type === TargetType.Actor &&
-      !(this._target as unknown as { actor?: TargetActorStub }).actor
-        ?.canBeViewedByPlayer(self.owner)
+    // OpenRA: target = target.Recalculate(self.Owner, out targetIsHiddenActor)
+    const [recalculated, targetIsHiddenActor] = this._target.recalculate(self.owner)
+    this._target = recalculated
 
-    // Cache last visible target if visible
+    // Cache last visible target when still visible
     if (!targetIsHiddenActor && this._target.type === TargetType.Actor) {
       this._lastVisibleTarget = Target.fromPos(this._target.centerPosition)
-      this._lastVisibleMinRange =
-        this._attack.getMinimumRangeVersusTarget(this._target)
-      this._lastVisibleMaxRange =
-        this._attack.getMaximumRangeVersusTarget(this._target)
+      this._lastVisibleMinRange = this._attack.getMinimumRangeVersusTarget(this._target)
+      this._lastVisibleMaxRange = this._attack.getMaximumRangeVersusTarget(this._target)
       const actor = (this._target as unknown as { actor?: TargetActorStub }).actor
       if (actor) {
         this._lastVisibleOwner = actor.owner
@@ -229,7 +221,8 @@ export class LeapAttack extends Activity {
     }
 
     this._useLastVisibleTarget =
-      targetIsHiddenActor || !this._target.isValidFor(self)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      targetIsHiddenActor || !this._target.isValidFor(self as any)
 
     // Move cooldown check
     const cooldownResult = this._moveCooldownHelper.tick(targetIsHiddenActor)
@@ -238,15 +231,15 @@ export class LeapAttack extends Activity {
     // Target hidden/dead with no fallback
     if (
       this._useLastVisibleTarget &&
-      this._lastVisibleTarget &&
-      !this._lastVisibleTarget.isValidFor(self)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (!this._lastVisibleTarget || !this._lastVisibleTarget.isValidFor(self as any))
     ) {
-      return true // Give up
+      return true
     }
 
     const pos = (self as unknown as { centerPosition: WPos }).centerPosition ?? WPos.Zero
     const checkTarget = this._useLastVisibleTarget
-      ? (this._lastVisibleTarget ?? this._target)
+      ? (this._lastVisibleTarget!)
       : this._target
 
     // Range check
@@ -254,7 +247,6 @@ export class LeapAttack extends Activity {
       !checkTarget.isInRange(pos, this._lastVisibleMaxRange) ||
       checkTarget.isInRange(pos, this._lastVisibleMinRange)
     ) {
-      // Out of range or too close
       if (
         !this._allowMovement ||
         WDist.equals(this._lastVisibleMaxRange, WDist.Zero) ||
@@ -264,40 +256,37 @@ export class LeapAttack extends Activity {
       }
 
       this._moveCooldownHelper.notifyMoveQueued()
-
-      // Queue child: mobile.MoveWithinRange
-      const moveChild = this._mobile.moveWithinRange(
-        this._target,
-        this._lastVisibleMinRange,
-        this._lastVisibleMaxRange,
-        checkTarget.centerPosition,
+      this.queueChild(
+        this._mobile.moveWithinRange(
+          this._target,
+          this._lastVisibleMinRange,
+          this._lastVisibleMaxRange,
+          checkTarget.centerPosition,
+        ),
       )
-      this.queueChild(moveChild)
       return false
     }
 
     // Ready to leap, but target isn't visible as actor
-    if (
-      targetIsHiddenActor ||
-      this._target.type !== TargetType.Actor
-    ) {
+    if (targetIsHiddenActor || this._target.type !== TargetType.Actor) {
       return true
     }
 
     // Target not valid for leaping
     if (
-      !this._target.isValidFor(self) ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      !this._target.isValidFor(self as any) ||
       !this._attack.hasAnyValidWeapons(this._target)
     ) {
       return true
     }
 
     // Check EdibleByLeap
-    const targetActor = (this._target as unknown as { actor?: TargetActorStub & { traits?: Map<string, unknown> } }).actor
+    const targetActor = (this._target as unknown as { actor?: TargetActorStub }).actor
     if (!targetActor) return true
 
     const edible = targetActor.traits?.get('EdibleByLeap') as unknown as
-      | { canLeap(actor: GameActor): boolean }
+      | EdibleByLeapLike
       | undefined
     if (!edible || !edible.canLeap(self)) return true
 
@@ -306,46 +295,49 @@ export class LeapAttack extends Activity {
 
     // Resolve target mobile for sub-cell positioning
     const targetMobile = targetActor.traits?.get('Mobile') as unknown as
-      | { toSubCell: number }
+      | MobileLike
       | undefined
     const targetSubcell = targetMobile?.toSubCell ?? -1 // SubCell.Any
 
-    // NOTE: Need map reference for CenterOfSubCell
+    // Compute origin and destination world positions
     const worldAny = (self as unknown as { world?: { map?: { centerOfSubCell(cell: CPos, subCell: number): WPos } } }).world
+    const map = worldAny?.map
 
-    const destination = worldAny?.map?.centerOfSubCell?.(
-      targetActor.location ?? CPos.Zero,
-      targetSubcell,
-    ) ?? WPos.Zero
-    const origin = worldAny?.map?.centerOfSubCell?.(
+    const destination = map?.centerOfSubCell?.(targetActor.location ?? CPos.Zero, targetSubcell) ?? WPos.Zero
+    const origin = map?.centerOfSubCell?.(
       (self as unknown as { location: CPos }).location ?? CPos.Zero,
       this._mobile.fromSubCell,
     ) ?? WPos.Zero
 
-    // Calculate desired facing (Yaw from origin to destination)
-    const diffX = destination.X - origin.X
-    const diffY = destination.Y - origin.Y
-    const desiredFacing = Math.atan2(diffY, diffX) // Radians, approximate
-
-    // NOTE: OpenRA uses WAngle.Yaw from WVec
-    if (this._mobile.facing !== Math.round(desiredFacing * (1024 / (2 * Math.PI)))) {
-      // Queue Turn activity
-      // TODO: Create Turn activity matching the pattern
-      // QueueChild(new Turn(self, desiredFacing));
-      // For now: skip turn and proceed
+    // Compute desired facing
+    const diff = WPos.subtract(destination, origin)
+    const desiredFacing = diff.yaw.angle
+    if (this._mobile.facing !== desiredFacing) {
+      // Queue Turn activity (OpenRA: new Turn(self, desiredFacing))
+      this.queueChild(new TurnActivityProxy(self, desiredFacing))
+      return false
     }
 
     // Queue the Leap activity
-    // NOTE: Leap constructor requires full trait references
-    // This is a deferred integration point
-    // QueueChild(new Leap(target, mobile, targetMobile, info.Speed.Length, attack, edible));
+    // NOTE: LeapAttack's MobileLike is a superset of Leap's MobileLike.
+    // Cast to bridge the structural type gap between the two duck-typed interfaces.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.queueChild(
+      new Leap(
+        this._target,
+        this._mobile as any,
+        (targetMobile as any) ?? null,
+        this._info.speed.length,
+        this._attack,
+        edible,
+      ),
+    )
 
     return false
   }
 
   // ---------------------------------------------------------------------------
   // OnLastRun
-  // OpenRA 对照: LeapAttack.OnLastRun(Actor)
   // ---------------------------------------------------------------------------
 
   protected override onLastRun(_self: GameActor): void {
@@ -353,40 +345,38 @@ export class LeapAttack extends Activity {
   }
 
   // ---------------------------------------------------------------------------
-  // IActivityNotifyStanceChanged (integrated as method)
-  // OpenRA 对照: LeapAttack.StanceChanged()
+  // IActivityNotifyStanceChanged — 4 params matching C# signature
+  // OpenRA 对照: void StanceChanged(Actor self, AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
   // ---------------------------------------------------------------------------
 
   stanceChanged(
     self: GameActor,
     autoTarget: {
-      hasValidTargetPriority(
-        self: GameActor,
-        owner: unknown,
-        targetTypes: Set<string>,
-      ): boolean
+      hasValidTargetPriority(self: GameActor, owner: unknown, targetTypes: Set<string>): boolean
     },
-    _oldStance: number,
-    newStance: number,
     oldStance: number,
+    newStance: number,
   ): void {
+    // OpenRA: if (newStance > oldStance || forceAttack) return
     if (newStance > oldStance || this._forceAttack) return
 
+    // OpenRA: if lastVisibleTarget is invalid we could never view the target
     if (
-      !this._lastVisibleTarget?.isValidFor(self) ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      !this._lastVisibleTarget?.isValidFor(self as any) ||
       !autoTarget.hasValidTargetPriority(
-        self,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        self as any,
         this._lastVisibleOwner,
         this._lastVisibleTargetTypes,
       )
     ) {
-      this._target = Target.fromInvalid()
+      this._target = Target.Invalid
     }
   }
 
   // ---------------------------------------------------------------------------
   // TargetLineNodes
-  // OpenRA 对照: LeapAttack.TargetLineNodes(Actor)
   // ---------------------------------------------------------------------------
 
   override targetLineNodes(_self: GameActor): TargetLineNode[] {
@@ -426,5 +416,32 @@ export class LeapAttack extends Activity {
 
   get lastVisibleTarget(): TargetType_ | null {
     return this._lastVisibleTarget
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TurnActivityProxy — minimal Turn activity
+// OpenRA 对照: Turn(Actor self, int desiredFacing)
+// ---------------------------------------------------------------------------
+
+class TurnActivityProxy extends Activity {
+  private _self: GameActor
+  private _desiredFacing: number
+
+  constructor(self: GameActor, desiredFacing: number) {
+    super()
+    this._self = self
+    this._desiredFacing = desiredFacing
+  }
+
+  override tick(self: GameActor): boolean {
+    const mobile = (self as unknown as { traits?: Map<string, unknown> }).traits?.get('Mobile') as unknown as
+      | { facing: number }
+      | undefined
+    if (mobile) {
+      mobile.facing = this._desiredFacing
+    }
+    void this._self
+    return true
   }
 }

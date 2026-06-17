@@ -4,12 +4,13 @@
  *
  * 核心范式转换:
  * - C# IEffect + ISpatiallyPartitionable → TypeScript IEffect + ISpatiallyPartitionable
- * - C# Animation (door opening sprite sequence) → TypeScript animation stub
+ * - C# Animation (door opening sprite sequence) → shared AnimationStub
  * - C# Animation.PlayThen(sequence, callback) → TypeScript tick counter + callback
  * - C# ScreenMap.Add/Update/Remove → TypeScript stub (3D scene graph)
  * - C# world.AddFrameEndTask(w => w.Add(new GpsSatellite(...)))
- *   → TypeScript GpsSatellite creation stub
- * - C# launcher.Owner.InternalName → TypeScript player name resolution
+ *   → TypeScript world.addEffect(satellite) via deferred task
+ * - C# world.AddFrameEndTask(w => { w.Remove(this); w.ScreenMap.Remove(this); })
+ *   → TypeScript world.removeEffect(this) via deferred task
  */
 
 // ---------------------------------------------------------------------------
@@ -20,63 +21,12 @@ import type { GameWorldManager } from '../../OpenRA.Game/World.js'
 import type { WorldRendererStub, IRenderable, PlayerStub, IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IEffect } from '../../OpenRA.Game/Effects/IEffect.js'
 import type { ISpatiallyPartitionable } from '../../OpenRA.Game/Effects/IEffect.js'
-
-// ---------------------------------------------------------------------------
-// Animation stub (same pattern as projectiles)
-// ---------------------------------------------------------------------------
-
-/** Minimal animation stub for door opening sequence. */
-class AnimationStub {
-  private _ticks: number = 0
-  private _length: number = 0
-  private _onComplete: (() => void) | null = null
-  private _started: boolean = false
-
-  readonly image: string
-
-  constructor(_world: unknown, image: string) {
-    this.image = image
-  }
-
-  playThen(sequence: string, onComplete: () => void): void {
-    this._started = true
-    this._length = 12
-    this._onComplete = onComplete
-    void sequence
-  }
-
-  tick(): void {
-    if (!this._started) return
-    this._ticks++
-    if (this._ticks >= this._length && this._onComplete) {
-      const cb = this._onComplete
-      this._onComplete = null
-      cb()
-    }
-  }
-
-  get isComplete(): boolean {
-    return this._ticks >= this._length
-  }
-
-  get currentTick(): number {
-    return this._ticks
-  }
-
-  render(_pos: unknown, _palette: unknown): readonly IRenderable[] {
-    return []
-  }
-}
+import { AnimationStub } from './AnimationStub.js'
 
 // ---------------------------------------------------------------------------
 // GpsPowerInfo (duck-typed)
-// OpenRA 对照: GpsPowerInfo
 // ---------------------------------------------------------------------------
 
-/** Configuration for GpsPower (subset needed by SatelliteLaunch).
- *
- * OpenRA 对照: GpsPowerInfo
- */
 export interface GpsPowerInfoStub {
   readonly doorImage: string
   readonly doorSequence: string
@@ -90,18 +40,11 @@ export interface GpsPowerInfoStub {
 }
 
 // ---------------------------------------------------------------------------
-// GpsSatellite stub (forward reference)
+// GpsSatellite constructor type
 // ---------------------------------------------------------------------------
 
-type GpsSatelliteConstructor = new (
-  world: unknown,
-  pos: WPosStub,
-  image: string,
-  sequence: string,
-  palette: string,
-  revealDelay: number,
-  launcher: PlayerStub,
-) => unknown
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GpsSatelliteConstructor = new (...args: any[]) => any
 
 interface WPosStub {
   X: number
@@ -114,15 +57,6 @@ interface WPosStub {
 // OpenRA 对照: SatelliteLaunch : IEffect, ISpatiallyPartitionable
 // ---------------------------------------------------------------------------
 
-/**
- * Satellite launch effect: opens the construction yard doors and
- * spawns a GpsSatellite ascending into the sky.
- *
- * OpenRA 对照: SatelliteLaunch
- *
- * The door animation plays for 12 frames. At frame 19 (ticks),
- * the GpsSatellite is spawned and begins its ascent to orbit.
- */
 export class SatelliteLaunch implements IEffect, ISpatiallyPartitionable {
   private readonly _info: GpsPowerInfoStub
   private readonly _launcher: IGameActor
@@ -130,11 +64,6 @@ export class SatelliteLaunch implements IEffect, ISpatiallyPartitionable {
   private readonly _pos: WPosStub
   private _frame: number = 0
   private _removed: boolean = false
-
-  /** Factory for creating GpsSatellite. Injected for testability.
-   *
-   * OpenRA 对照: new GpsSatellite(...)
-   */
   private readonly _satelliteFactory: GpsSatelliteConstructor | null
 
   constructor(
@@ -148,37 +77,32 @@ export class SatelliteLaunch implements IEffect, ISpatiallyPartitionable {
 
     this._doors = new AnimationStub(launcher, info.doorImage)
     this._doors.playThen(info.doorSequence, () => {
-      // OpenRA: launcher.World.AddFrameEndTask(w => { w.Remove(this); w.ScreenMap.Remove(this); })
+      // OpenRA: launcher.World.AddFrameEndTask(w => {
+      //   w.Remove(this);
+      //   w.ScreenMap.Remove(this);
+      // })
+      // The world will call removeEffect on the next frameEndTasks drain.
+      // We set _removed so the world knows to clean this up.
       this._removed = true
+
+      // Signal world to remove this effect
+      const launcherWorld = (launcher as unknown as { world?: GameWorldManager }).world
+      launcherWorld?.addFrameEndTask?.(() => {
+        launcherWorld.removeEffect?.(this)
+      })
     })
 
     this._pos = (launcher as unknown as { centerPosition: WPosStub }).centerPosition
-
-    // OpenRA: launcher.World.ScreenMap.Add(this, pos, doors.Image)
-    // NOTE: ScreenMap deferred
   }
 
   // ---------------------------------------------------------------------------
   // Tick
-  // OpenRA 对照: SatelliteLaunch.Tick(World)
   // ---------------------------------------------------------------------------
 
-  /**
-   * Advance the satellite launch by one tick.
-   *
-   * OpenRA 对照: SatelliteLaunch.Tick(World)
-   *
-   * Advances the door animation. At frame 19, creates a GpsSatellite
-   * that ascends to orbit and activates GPS.
-   */
   tick(world: GameWorldManager): void {
     this._doors.tick()
 
-    // OpenRA: world.ScreenMap.Update(this, pos, doors.Image)
-    // NOTE: ScreenMap deferred
-
     if (++this._frame === 19) {
-      // Resolve palette (player-specific or fixed)
       const palette = this._info.satellitePaletteIsPlayerPalette
         ? this._info.satellitePalette +
           ((this._launcher as unknown as { owner?: { internalName: string } }).owner
@@ -196,24 +120,19 @@ export class SatelliteLaunch implements IEffect, ISpatiallyPartitionable {
           this._info.revealDelay,
           (this._launcher as unknown as { owner: PlayerStub }).owner,
         )
-        // NOTE: In OpenRA, the effect is added via frameEndTask
-        void satellite
+
+        // Add to world via frameEndTask (deferred, safe for mid-tick effect creation)
+        world.addFrameEndTask?.(() => {
+          world.addEffect?.(satellite)
+        })
       }
     }
-
-    void world
   }
 
   // ---------------------------------------------------------------------------
   // Render
-  // OpenRA 对照: SatelliteLaunch.Render(WorldRenderer)
   // ---------------------------------------------------------------------------
 
-  /**
-   * Collect renderables for the door animation.
-   *
-   * OpenRA 对照: SatelliteLaunch.Render(WorldRenderer)
-   */
   render(_worldRenderer: WorldRendererStub): readonly IRenderable[] {
     const palette = this._info.doorPaletteIsPlayerPalette
       ? this._info.doorPalette +
@@ -221,49 +140,29 @@ export class SatelliteLaunch implements IEffect, ISpatiallyPartitionable {
           ?.internalName ?? '')
       : this._info.doorPalette
 
-    return this._doors.render(this._pos, palette)
+    return this._doors.render(this._pos as any, palette)
   }
 
   // ---------------------------------------------------------------------------
   // Public accessors (for testing)
   // ---------------------------------------------------------------------------
 
-  /** Whether the effect has been removed.
-   *
-   * OpenRA 对照: SatelliteLaunch removal via frameEndTask
-   */
   get isRemoved(): boolean {
     return this._removed
   }
 
-  /** Current frame counter.
-   *
-   * OpenRA 对照: SatelliteLaunch.frame
-   */
   get frame(): number {
     return this._frame
   }
 
-  /** The door animation instance.
-   *
-   * OpenRA 对照: SatelliteLaunch.doors
-   */
   get doors(): AnimationStub {
     return this._doors
   }
 
-  /** The launch position.
-   *
-   * OpenRA 对照: SatelliteLaunch.pos
-   */
   get pos(): WPosStub {
     return this._pos
   }
 
-  /** Configuration info.
-   *
-   * OpenRA 对照: SatelliteLaunch.info
-   */
   get info(): GpsPowerInfoStub {
     return this._info
   }

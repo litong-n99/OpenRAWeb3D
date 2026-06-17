@@ -24,53 +24,7 @@ import type { WorldRendererStub, IRenderable } from '../../OpenRA.Game/Traits/Tr
 import type { IProjectile } from '../../OpenRA.Mods.Common/Projectiles/Bullet.js'
 import type { PlayerStub } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
-
-// ---------------------------------------------------------------------------
-// Animation stub
-// ---------------------------------------------------------------------------
-
-/** Minimal animation stub (same pattern as IonCannon). */
-class AnimationStub {
-  private _ticks: number = 0
-  private _length: number = 0
-  private _onComplete: (() => void) | null = null
-  private _started: boolean = false
-
-  readonly image: string
-
-  constructor(_world: unknown, image: string) {
-    this.image = image
-  }
-
-  playThen(sequence: string, onComplete: () => void): void {
-    this._started = true
-    this._length = 12
-    this._onComplete = onComplete
-    void sequence
-  }
-
-  tick(): void {
-    if (!this._started) return
-    this._ticks++
-    if (this._ticks >= this._length && this._onComplete) {
-      const cb = this._onComplete
-      this._onComplete = null
-      cb()
-    }
-  }
-
-  get isComplete(): boolean {
-    return this._ticks >= this._length
-  }
-
-  get currentTick(): number {
-    return this._ticks
-  }
-
-  render(_pos: WPos, _palette: unknown): readonly IRenderable[] {
-    return []
-  }
-}
+import { AnimationStub } from '../Effects/AnimationStub.js'
 
 // ---------------------------------------------------------------------------
 // DropPodImpact — projectile implementation
@@ -153,7 +107,7 @@ export class DropPodImpact implements IProjectile {
       const warheadArgs = {
         weapon: this._weapon,
         source: this._target.centerPosition,
-        sourceActor: this._firedBy.playerActor,
+        sourceActor: (this._firedBy as unknown as { playerActor?: unknown }).playerActor,
         weaponTarget: this._target,
       }
 
@@ -188,7 +142,10 @@ export class DropPodImpact implements IProjectile {
 
   private _finish(world: GameWorldManager): void {
     this._removed = true
-    void world
+    // OpenRA: world.AddFrameEndTask(w => w.Remove(this))
+    world.addFrameEndTask?.(() => {
+      world.removeEffect?.(this)
+    })
   }
 
   // ---------------------------------------------------------------------------

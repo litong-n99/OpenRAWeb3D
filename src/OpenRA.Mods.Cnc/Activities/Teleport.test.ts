@@ -107,7 +107,8 @@ describe('Teleport', () => {
       traits.set('Mobile', makeMobile((cell) => { setPosCell = cell }))
 
       const self = makeSelf(traits)
-      const teleporter = { ...self }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const teleporter: any = { ...self }
 
       const tp = new Teleport(teleporter, dest, null, false, false, 'chrono', true)
       const result = tp.tick(self)

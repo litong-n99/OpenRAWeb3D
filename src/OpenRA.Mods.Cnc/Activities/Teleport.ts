@@ -23,7 +23,6 @@
 import { Activity } from '../../OpenRA.Game/Activities/Activity.js'
 import type { GameActor } from '../../OpenRA.Game/Actor.js'
 import { CPos } from '../../OpenRA.Game/CPos.js'
-import { WPos } from '../../OpenRA.Game/WPos.js'
 
 // ---------------------------------------------------------------------------
 // Trait interfaces (duck-typed)
@@ -103,8 +102,15 @@ export class Teleport extends Activity {
   ) {
     super()
 
-    // Validate maximum distance
-    // OpenRA: if (maximumDistance > max) throw InvalidOperationException
+    // OpenRA: Validate maximumDistance against map's max tile search range
+    // var max = teleporter.World.Map.Grid.MaximumTileSearchRange;
+    const maxTileSearchRange = 50 // Default: OpenRA map grid max
+    if (maximumDistance !== null && maximumDistance > maxTileSearchRange) {
+      throw new Error(
+        `Teleport distance cannot exceed MaximumTileSearchRange (${maxTileSearchRange}). Got: ${maximumDistance}`,
+      )
+    }
+
     this._teleporter = teleporter
     this._destination = destination
     this._maximumDistance = maximumDistance
@@ -198,10 +204,11 @@ export class Teleport extends Activity {
         while (!cargo.isEmpty()) {
           const unloadedActor = cargo.unload(self)
           // Kill all units unloaded into the void
+          // OpenRA: a.Kill(teleporter) — death attributed to teleporter, not self
           const killTrait = (unloadedActor as unknown as { kill?: (teleporter: GameActor) => void })
             .kill
-          if (killTrait) {
-            killTrait(self)
+          if (killTrait && this._teleporter) {
+            killTrait(this._teleporter)
           }
         }
       }
@@ -248,11 +255,14 @@ export class Teleport extends Activity {
   // ---------------------------------------------------------------------------
 
   /**
-   * Find the best valid destination cell near the target.
+   * Find the best valid destination cell near the target using FindTilesInCircle.
    *
    * OpenRA 对照: Teleport.ChooseBestDestinationCell(Actor, CPos)
    *
-   * Returns the first explored and enterable cell within range.
+   * OpenRA algorithm:
+   * 1. If maximumDistance is set, restrict search to tiles within that radius of self.Location
+   * 2. Start from desired destination, expand outward by distance via FindTilesInCircle
+   * 3. Return the first explored + enterable cell
    */
   private _chooseBestDestinationCell(self: GameActor): CPos | null {
     if (this._teleporter === null) return null
@@ -271,43 +281,62 @@ export class Teleport extends Activity {
 
     if (!positionable) return null
 
-    // Check if the direct destination is valid
     const shroud = (this._teleporter as unknown as { owner?: { shroud?: { isExplored(cell: CPos): boolean } } }).owner?.shroud
+    const selfLocation = (self as unknown as { location: CPos }).location
 
-    if (
-      positionable.canEnterCell(this._destination) &&
-      (!shroud || shroud.isExplored(this._destination))
-    ) {
-      return this._destination
-    }
+    // Build restricted tile set if maximumDistance is specified
+    let restrictTo: Set<number> | null = null
+    const maxRadius = this._maximumDistance ?? 50
 
-    // Simpler fallback: try 8 adjacent cells (simplifies FindTilesInCircle)
-    const maxRange = this._maximumDistance ?? 50
-    const offsets: [number, number][] = []
-    for (let r = 1; r <= Math.min(maxRange, 10); r++) {
-      for (let dx = -r; dx <= r; dx++) {
-        for (let dy = -r; dy <= r; dy++) {
-          if (Math.abs(dx) === r || Math.abs(dy) === r) {
-            offsets.push([dx, dy])
-          }
-        }
+    if (this._maximumDistance !== null) {
+      restrictTo = new Set<number>()
+      const tiles = this._findTilesInCircle(selfLocation, this._maximumDistance)
+      for (const tile of tiles) {
+        restrictTo.add(tile.X * 65536 + tile.Y)
       }
     }
 
-    for (const [dx, dy] of offsets) {
-      const candidate = new CPos(
-        this._destination.X + dx,
-        this._destination.Y + dy,
-      )
-      if (
-        positionable.canEnterCell(candidate) &&
-        (!shroud || shroud.isExplored(candidate))
-      ) {
-        return candidate
+    // Expand search from destination outward by increasing radius
+    for (let r = 0; r <= maxRadius; r++) {
+      const tiles = this._findTilesInCircle(this._destination, r)
+      // Sort by distance to destination (closest first)
+      tiles.sort((a, b) => {
+        const da = Math.abs(a.X - this._destination.X) + Math.abs(a.Y - this._destination.Y)
+        const db = Math.abs(b.X - this._destination.X) + Math.abs(b.Y - this._destination.Y)
+        return da - db
+      })
+
+      for (const tile of tiles) {
+        // Skip tiles outside the restricted area
+        const key = tile.X * 65536 + tile.Y
+        if (restrictTo !== null && !restrictTo.has(key)) continue
+
+        // Check shroud explored
+        if (shroud && !shroud.isExplored(tile)) continue
+
+        // Check enterable
+        if (!positionable.canEnterCell(tile)) continue
+
+        return tile
       }
     }
 
     return null
+  }
+
+  /** Find all tiles within a given radius (Manhattan) of a center cell.
+   *
+   * OpenRA 对照: OpenRA.Map.FindTilesInCircle(CPos, int)
+   */
+  private _findTilesInCircle(center: CPos, radius: number): CPos[] {
+    const result: CPos[] = []
+    for (let dx = -radius; dx <= radius; dx++) {
+      const maxDy = radius - Math.abs(dx)
+      for (let dy = -maxDy; dy <= maxDy; dy++) {
+        result.push(new CPos(center.X + dx, center.Y + dy))
+      }
+    }
+    return result
   }
 
   // ---------------------------------------------------------------------------

@@ -34,12 +34,13 @@ function makeActor(): IGameActor {
 }
 
 function makePlayer(overrides?: {
+  internalName?: string
   isAlliedWithOwner?: boolean
   gpsWatcher?: { granted: boolean; grantedAllies: boolean }
   shroud?: { getVisibility?: () => number }
 }): PlayerStub {
   const player: any = {
-    internalName: 'Multi0',
+    internalName: overrides?.internalName ?? 'Multi0',
     isAlliedWith: () => overrides?.isAlliedWithOwner ?? false,
     shroud: overrides?.shroud ?? { getVisibility: () => ShroudVisibility.Explored },
     playerActor: {
@@ -106,7 +107,7 @@ describe('GpsDotEffect', () => {
 
       effect.tick(world)
 
-      const state = effect.dotStates.get(0)
+      const state = effect.dotStates.get('Multi0')
       expect(state).toBeDefined()
     })
 
@@ -115,8 +116,8 @@ describe('GpsDotEffect', () => {
       const info = makeInfo()
       const effect = new GpsDotEffect(actor, info)
 
-      const p1 = makePlayer({ shroud: { getVisibility: () => ShroudVisibility.Explored } })
-      const p2 = makePlayer({ shroud: { getVisibility: () => ShroudVisibility.Explored } })
+      const p1 = makePlayer({ internalName: 'Multi0', shroud: { getVisibility: () => ShroudVisibility.Explored } })
+      const p2 = makePlayer({ internalName: 'Multi1', shroud: { getVisibility: () => ShroudVisibility.Explored } })
       const world = makeWorld([p1, p2])
 
       effect.tick(world)
@@ -145,7 +146,7 @@ describe('GpsDotEffect', () => {
       })
       effect.tick(makeWorld([player]))
 
-      const state = effect.dotStates.get(0)
+      const state = effect.dotStates.get('Multi0')
       expect(state?.visible).toBe(false)
     })
 
@@ -160,7 +161,7 @@ describe('GpsDotEffect', () => {
       })
       effect.tick(makeWorld([player]))
 
-      const state = effect.dotStates.get(0)
+      const state = effect.dotStates.get('Multi0')
       expect(state?.visible).toBe(false)
     })
 
@@ -175,7 +176,7 @@ describe('GpsDotEffect', () => {
       })
       effect.tick(makeWorld([player]))
 
-      const state = effect.dotStates.get(0)
+      const state = effect.dotStates.get('Multi0')
       expect(state?.visible).toBe(false)
     })
   })

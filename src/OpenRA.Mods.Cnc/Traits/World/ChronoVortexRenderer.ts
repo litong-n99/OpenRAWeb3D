@@ -106,6 +106,35 @@ export class ChronoVortexRenderer {
   private _disposed: boolean = false
 
   constructor(_self: IGameActor) {
+    // -----------------------------------------------------------------------
+    // .lut file loading plan (TODO-19.C.39-LUT)
+    // OpenRA loads 48 .lut files (hole0000.lut through hole0047.lut) from the
+    // map's file system. Each .lut file contains 64x64 = 4096 pixels × 4 bytes
+    // (BGRA) spread across a 512×512 sheet in an 8×6 grid. The loading logic
+    // from OpenRA:
+    //
+    //   for (var f = 0; f < 48; f++) {
+    //     var row = f / 8; var col = f % 8;
+    //     using (var stream = self.World.Map.Open($"hole{f:D04}.lut")) {
+    //       for (var y = 0; y < 64; y++) {
+    //         var i = 2048 * (64 * row + y) + 256 * col;
+    //         for (var x = 0; x < 64; x++) {
+    //           data[i++] = (byte)(stream.ReadUInt8() + 128 - x);
+    //           data[i++] = (byte)(stream.ReadUInt8() + 128 - y);
+    //           data[i++] = stream.ReadUInt8();
+    //           data[i++] = 255;
+    //         }
+    //       }
+    //     }
+    //   }
+    //
+    // For web migration: .lut files are pre-converted at build time into
+    // a single 512×512 RGBA8 texture (vortex_sheet.png). At runtime, the
+    // Babylon.js engine loads this pre-baked texture via RawTexture.
+    // The vertex UV coordinates in this buffer already target the correct
+    // sub-regions, so runtime .lut loading is NOT needed.
+    // -----------------------------------------------------------------------
+
     // Build 48-frame vertex buffer (48 frames x 6 vertices = 288)
     // Each frame is a quad: -32..32 with corresponding UV sub-region
     const vertices: VortexVertex[] = []

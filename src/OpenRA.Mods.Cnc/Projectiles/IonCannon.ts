@@ -21,88 +21,7 @@ import type { WorldRendererStub, IRenderable } from '../../OpenRA.Game/Traits/Tr
 import type { IProjectile } from '../../OpenRA.Mods.Common/Projectiles/Bullet.js'
 import type { PlayerStub } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
-
-// ---------------------------------------------------------------------------
-// Animation stub (deferred to Phase C rendering)
-// ---------------------------------------------------------------------------
-
-/** Minimal animation stub for the ion cannon beam.
- *
- * OpenRA 对照: Animation (OpenRA.Graphics.Animation)
- *
- * Tracks frame progression and invokes a completion callback.
- * Actual sprite rendering is deferred to Phase C rendering.
- */
-class AnimationStub {
-  private _ticks: number = 0
-  private _length: number = 0
-  private _onComplete: (() => void) | null = null
-  private _started: boolean = false
-
-  /** The image/sequence name this animation uses.
-   *
-   * OpenRA 对照: Animation.Image
-   */
-  readonly image: string
-
-  constructor(_world: unknown, image: string) {
-    this.image = image
-  }
-
-  /** Start playing a sequence, then call onComplete.
-   *
-   * OpenRA 对照: Animation.PlayThen(sequence, callback)
-   *
-   * NOTE: In OpenRA, this plays the animation and automatically calls
-   * the callback after the last frame. We approximate with a frame counter
-   * based on typical animation lengths (12 frames).
-   */
-  playThen(sequence: string, onComplete: () => void): void {
-    this._started = true
-    this._length = 12 // Approximate: most C&C animations are 12 frames
-    this._onComplete = onComplete
-    void sequence // reserved for rendering pass
-  }
-
-  /** Advance the animation by one frame.
-   *
-   * OpenRA 对照: Animation.Tick()
-   */
-  tick(): void {
-    if (!this._started) return
-    this._ticks++
-    if (this._ticks >= this._length && this._onComplete) {
-      const cb = this._onComplete
-      this._onComplete = null
-      cb()
-    }
-  }
-
-  /** Whether the animation has finished playing.
-   *
-   * OpenRA 对照: Animation.PlayThen → callback invoked
-   */
-  get isComplete(): boolean {
-    return this._ticks >= this._length
-  }
-
-  /** Total ticks elapsed since start.
-   *
-   * OpenRA 对照: Animation.tick counter
-   */
-  get currentTick(): number {
-    return this._ticks
-  }
-
-  /** Get renderables for this animation at the given position.
-   *
-   * OpenRA 对照: Animation.Render(WPos, PaletteReference)
-   */
-  render(_pos: WPos, _palette: unknown): readonly IRenderable[] {
-    // NOTE: Visual rendering deferred to Phase C
-    return []
-  }
-}
+import { AnimationStub } from '../Effects/AnimationStub.js'
 
 // ---------------------------------------------------------------------------
 // IonCannon — projectile implementation
@@ -131,8 +50,6 @@ export class IonCannon implements IProjectile {
     report?: string | null
     impact(target: unknown, warheadArgs: unknown): void
   }
-  private readonly _launchPos: WPos
-
   private _weaponDelay: number
   private _impacted: boolean = false
   private _removed: boolean = false
@@ -141,7 +58,7 @@ export class IonCannon implements IProjectile {
     firedBy: PlayerStub,
     weapon: IonCannon['_weapon'],
     world: unknown,
-    launchPos: WPos,
+    _launchPos: WPos,
     target: { centerPosition: WPos },
     effect: string,
     sequence: string,
@@ -153,7 +70,6 @@ export class IonCannon implements IProjectile {
     this._target = target
     this._palette = palette
     this._weaponDelay = delay
-    this._launchPos = launchPos
 
     this._anim = new AnimationStub(world, effect)
     this._anim.playThen(sequence, () => this._finish(world as GameWorldManager))
@@ -162,7 +78,7 @@ export class IonCannon implements IProjectile {
     // OpenRA: Game.Sound.Play(SoundType.World, weapon.Report, world, launchPos)
     // NOTE: Audio system deferred — stub records the intent for testing
     if (weapon.report && weapon.report.length > 0) {
-      void launchPos // reserved
+      void _launchPos // reserved for audio
     }
   }
 
@@ -185,7 +101,7 @@ export class IonCannon implements IProjectile {
       const warheadArgs = {
         weapon: this._weapon,
         source: this._target.centerPosition,
-        sourceActor: this._firedBy.playerActor,
+        sourceActor: (this._firedBy as unknown as { playerActor?: unknown }).playerActor,
         weaponTarget: this._target,
       }
 
@@ -224,7 +140,9 @@ export class IonCannon implements IProjectile {
   private _finish(world: GameWorldManager): void {
     this._removed = true
     // OpenRA: world.AddFrameEndTask(w => w.Remove(this))
-    void world
+    world.addFrameEndTask?.(() => {
+      world.removeEffect?.(this)
+    })
   }
 
   // ---------------------------------------------------------------------------

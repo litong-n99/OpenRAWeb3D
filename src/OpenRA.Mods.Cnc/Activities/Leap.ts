@@ -200,23 +200,23 @@ export class Leap extends Activity {
     }
 
     // OpenRA: position = length > 1 ? WPos.Lerp(origin, targetPosition, ticks, length - 1) : targetPosition
+    // XY separation from Z: Lerp computes flat-ground XY trajectory,
+    // Z (height) is computed separately from a sin-based parabolic curve.
     let position: WPos
     if (this._length > 1) {
-      position = WPos.lerp(
+      const lerpPos = WPos.lerp(
         this._origin,
         this._targetPosition,
         this._ticks,
         this._length - 1,
       )
+      // 3D parabolic arc: XY from Lerp, Z from sin-based height curve
+      const t = this._ticks / (this._length - 1)
+      const height = Math.floor(Math.sin(t * Math.PI) * 256) // Max height: 256 units
+      position = new WPos(lerpPos.X, lerpPos.Y, this._origin.Z + height)
     } else {
       position = this._targetPosition
     }
-
-    // NOTE: 3D parabolic arc — add height offset based on sin curve
-    // For Babylon.js rendering, the Z-axis represents height
-    const t = this._length > 1 ? this._ticks / (this._length - 1) : 1
-    const heightOffset = Math.sin(t * Math.PI) * 256 // Max height: 256 units
-    position = new WPos(position.X, position.Y, position.Z + Math.floor(heightOffset))
 
     this._mobile.setCenterPosition(self, position)
 

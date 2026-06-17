@@ -220,9 +220,8 @@ export class TeslaZap implements IProjectile {
   tick(world: GameWorldManager): void {
     if (this._ticksUntilRemove-- <= 0) {
       // OpenRA: world.AddFrameEndTask(w => w.Remove(this))
-      // NOTE: frameEndTask — deferred removal handled by GameWorldManager
       world.addFrameEndTask?.(() => {
-        void world /* remove effect */
+        world.removeEffect?.(this)
       })
     }
 

@@ -115,7 +115,7 @@ interface VisibilityModifierLike {
 export class GpsDotEffect implements IEffect, IEffectAnnotation {
   private readonly _actor: IGameActor
   private readonly _info: GpsDotInfo
-  private readonly _dotStates: Map<number, DotState>
+  private readonly _dotStates: Map<string, DotState>
   private readonly _visibilityModifiers: VisibilityModifierLike[]
   private _playerCount: number = 0
 
@@ -158,7 +158,7 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
 
     // Hide if actor appears owned by an allied player
     const owner = (this._actor as unknown as { effectiveOwner?: { owner?: PlayerStub } }).effectiveOwner?.owner
-    if (owner !== null && owner !== undefined && toPlayer.isAlliedWith?.(owner)) {
+    if (owner !== null && owner !== undefined && (toPlayer as unknown as { isAlliedWith?: (o: unknown) => boolean }).isAlliedWith?.(owner)) {
       return false
     }
 
@@ -193,9 +193,12 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
     const players: PlayerStub[] = (world as unknown as { players: PlayerStub[] }).players ?? []
     this._playerCount = players.length
 
-    for (let i = 0; i < players.length; i++) {
-      const player = players[i]
-      let state = this._dotStates.get(i)
+    for (const player of players) {
+      // Key by player internal name (survives player join/leave/reorder)
+      const key = (player as unknown as { internalName: string }).internalName
+      if (!key) continue
+
+      let state = this._dotStates.get(key)
 
       // Lazy-init player state
       if (!state) {
@@ -206,7 +209,7 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
           watcher ?? { granted: false, grantedAllies: false },
           null, // FrozenActorLayer deferred
         )
-        this._dotStates.set(i, state)
+        this._dotStates.set(key, state)
       }
 
       state.visible = this._shouldRender(state, player)
@@ -249,8 +252,8 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
   // Public accessors (for testing)
   // ---------------------------------------------------------------------------
 
-  /** Per-player visibility state. */
-  get dotStates(): Map<number, DotState> {
+  /** Per-player visibility state. Keyed by player InternalName. */
+  get dotStates(): Map<string, DotState> {
     return this._dotStates
   }
 
