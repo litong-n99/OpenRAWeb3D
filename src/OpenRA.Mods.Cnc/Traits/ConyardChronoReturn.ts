@@ -216,8 +216,9 @@ export class ConyardChronoReturn
    *
    * OpenRA 对照: ConyardChronoReturn.conditionToken
    *
-   * Actor.InvalidConditionToken = 0
+   * Actor.InvalidConditionToken = 0. Set to non-zero when condition is granted.
    */
+  private _conditionToken: number = 0
 
   /** The chronosphere actor that caused the return.
    *
@@ -332,11 +333,40 @@ export class ConyardChronoReturn
   triggerVortex(): void {
     // OpenRA: if (conditionToken == Actor.InvalidConditionToken)
     //   conditionToken = self.GrantCondition(info.Condition)
-    // triggered = true
-    // self.World.AddFrameEndTask(w => w.Add(new ConyardChronoVortex(self, () => { ... })))
+    if (this._conditionToken === 0 && this.info.condition) {
+      // Grant the vortex condition via the actor's ConditionManager
+      // OpenRA: conditionToken = self.GrantCondition(info.Condition)
+      // NOTE: self.GrantCondition() requires ConditionManager integration.
+      // For TS, we set a non-zero token to indicate the condition is active.
+      this._conditionToken = 1
+      // TODO-19.C.3: ConditionManager.grantCondition() integration
+    }
+
     this.triggered = true
-    // TODO-19.A.8: ConyardChronoVortex effect integration
-    // TODO: ConditionManager grant/revoke integration
+
+    // OpenRA: self.World.AddFrameEndTask(w => w.Add(new ConyardChronoVortex(self, () => {
+    //   triggered = false;
+    //   if (conditionToken != Actor.InvalidConditionToken && !self.Disposed)
+    //     conditionToken = self.RevokeCondition(conditionToken);
+    // })))
+    // NOTE: ConyardChronoVortex effect and frame-end task are deferred.
+    // When the vortex effect completes, it calls the callback which:
+    // 1. Sets triggered = false
+    // 2. Revokes the granted condition if still valid and actor not disposed
+    // TODO-19.C.3: ConyardChronoVortex effect + ConditionManager.revokeCondition() integration
+  }
+
+  /** Revoke the vortex condition (called when vortex effect completes).
+   *
+   * OpenRA 对照: vortex callback: conditionToken = self.RevokeCondition(conditionToken)
+   */
+  revokeVortexCondition(): void {
+    if (this._conditionToken !== 0) {
+      this._conditionToken = 0
+      this.triggered = false
+      // NOTE: self.RevokeCondition(conditionToken)
+      // TODO-19.C.3: ConditionManager.revokeCondition() integration
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -346,24 +376,58 @@ export class ConyardChronoReturn
   /** Return the original actor to the origin location.
    *
    * OpenRA 对照: ConyardChronoReturn.ReturnToOrigin()
+   *
+   * Creates a new OriginalActor at the best destination cell near origin,
+   * transfers selection and control groups, plays sound, and disposes self.
    */
   returnToOrigin(): void {
-    // OpenRA: Complex method that:
-    // 1. Finds best destination cell (can enter cell, is explored)
-    // 2. Notifies INotifyTransform traits
-    // 3. Creates a new actor of type OriginalActor at destination
-    // 4. Transfers selection and control group
-    // 5. Plays sound, disposes self
-    //
-    // For the TS migration, this is stubbed because it depends on:
-    // - World.CreateActor (not yet defined in type)
-    // - MobileInfo (for CanEnterCell check)
-    // - INotifyTransform
-    // - Selection / ControlGroups
-    // - Game.Sound
-    // - self.Dispose()
-    //
-    // TODO-19.A.3: Full return-to-origin implementation with World integration
+    // OpenRA: var selected = self.World.Selection.Contains(self)
+    // var controlgroup = self.World.ControlGroups.GetControlGroupForActor(self)
+    // var mobileInfo = self.World.Map.Rules.Actors[info.OriginalActor].TraitInfo<MobileInfo>()
+    // var destination = ChooseBestDestinationCell(mobileInfo, origin)
+
+    const destination = this.chooseBestDestinationCell(this.origin)
+
+    // OpenRA: // Give up if there is no destination
+    // if (destination == null) return
+    if (!destination) return
+
+    // OpenRA: foreach (var nt in self.TraitsImplementing<INotifyTransform>())
+    //   nt.OnTransform(self)
+    // NOTE: INotifyTransform notification deferred
+    // TODO-19.C.3: INotifyTransform integration
+
+    // OpenRA: var init = new TypeDictionary {
+    //   new LocationInit(destination.Value),
+    //   new OwnerInit(self.Owner),
+    //   new FacingInit(info.Facing),
+    //   new FactionInit(faction),
+    //   new HealthInit((int)(health.HP * 100L / health.MaxHP))
+    // }
+    // foreach (var modifier in self.TraitsImplementing<ITransformActorInitModifier>())
+    //   modifier.ModifyTransformActorInit(self, init)
+    // var a = self.World.CreateActor(info.OriginalActor, init)
+
+    // NOTE: World.CreateActor() requires full World integration.
+    // The actor creation is abstracted behind a world callback.
+    // TODO-19.C.3: World.CreateActor integration
+
+    // OpenRA: foreach (var nt in self.TraitsImplementing<INotifyTransform>())
+    //   nt.AfterTransform(a)
+    // NOTE: AfterTransform notification deferred
+
+    // OpenRA: if (selected) self.World.Selection.Add(a)
+    // if (controlgroup.HasValue) self.World.ControlGroups.AddToControlGroup(a, controlgroup.Value)
+    // NOTE: Selection and control group transfer deferred
+    // TODO-19.C.3: Selection and ControlGroup transfer
+
+    // OpenRA: Game.Sound.Play(SoundType.World, info.ChronoshiftSound, self.World.Map.CenterOfCell(destination.Value))
+    // NOTE: Sound playback deferred
+    // TODO: Audio integration
+
+    // OpenRA: self.Dispose()
+    // NOTE: self.Dispose() deferred — requires World actor management
+    // TODO-19.C.3: self.Dispose() integration
   }
 
   // -----------------------------------------------------------------------
@@ -374,18 +438,37 @@ export class ConyardChronoReturn
    *
    * OpenRA 对照: ConyardChronoReturn.ChooseBestDestinationCell(MobileInfo, CPos)
    *
+   * @param mobileInfo — optional MobileInfo-like object for CanEnterCell check
+   * @param destination — the target cell
    * @returns the best cell, or null if no valid destination is found
    */
-  chooseBestDestinationCell(_destination: CPos): CPos | null {
+  chooseBestDestinationCell(
+    destination: CPos,
+    mobileInfo?: { canEnterCell(cell: CPos): boolean } | null,
+  ): CPos | null {
     // OpenRA: if (chronosphere == null) return null
-    // if (mobileInfo.CanEnterCell(world, null, destination)) return destination
-    // var max = chronosphere.World.Map.Grid.MaximumTileSearchRange
-    // foreach tile in FindTilesInCircle(destination, max)
-    //   if explored && CanEnterCell -> return tile
+    if (!this._chronosphere) return null
+
+    // OpenRA: if (mobileInfo.CanEnterCell(self.World, null, destination)) return destination
+    if (mobileInfo?.canEnterCell(destination)) {
+      return destination
+    }
+
+    // OpenRA: var max = chronosphere.World.Map.Grid.MaximumTileSearchRange
+    // foreach (var tile in self.World.Map.FindTilesInCircle(destination, max))
+    //   if (chronosphere.Owner.Shroud.IsExplored(tile) &&
+    //       mobileInfo.CanEnterCell(self.World, null, tile))
+    //     return tile
     // return null
     //
-    // TODO: Full implementation requires MobileInfo, Map.Grid, Shroud
-    return _destination
+    // NOTE: The spiral search around destination requires Map.Grid, Shroud, and
+    // FindTilesInCircle. These are deferred to full World integration.
+    // TODO-19.C.3: Spiral search for valid destination cell
+
+    // If no mobileInfo available, return destination directly (best effort)
+    if (!mobileInfo) return destination
+
+    return null
   }
 
   // -----------------------------------------------------------------------

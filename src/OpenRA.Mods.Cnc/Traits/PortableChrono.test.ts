@@ -235,53 +235,57 @@ describe('PortableChrono', () => {
   })
 
   describe('issueOrder', () => {
-    it('returns null for unknown order ID', () => {
+    it('returns default order for unknown order ID', () => {
       const result = trait.issueOrder(actor, { orderID: 'Unknown', orderPriority: 0, isQueued: false, canTarget: () => false, targetOverridesSelection: () => false }, {}, false)
-      expect(result).toBeNull()
+      expect(result).toBeDefined()
+      expect(result.orderName).toBe('Unknown')
     })
 
     it('returns deploy order for PortableChronoDeploy', () => {
-      const result = trait.issueOrder(actor, { orderID: 'PortableChronoDeploy', orderPriority: 5, isQueued: false, canTarget: () => false, targetOverridesSelection: () => false }, {}, false)
-      expect(result).not.toBeNull()
-      expect(result!.orderString).toBe('PortableChronoDeploy')
+      const result = trait.issueOrder(actor, { orderID: 'PortableChronoDeploy', orderPriority: 5, isQueued: false, canTarget: () => false, targetOverridesSelection: () => false }, {}, false) as any
+      expect(result).toBeDefined()
+      expect(result.orderString).toBe('PortableChronoDeploy')
     })
 
     it('returns teleport order for PortableChronoTeleport', () => {
-      const result = trait.issueOrder(actor, { orderID: 'PortableChronoTeleport', orderPriority: 5, isQueued: false, canTarget: () => false, targetOverridesSelection: () => false }, {}, true)
-      expect(result).not.toBeNull()
-      expect(result!.orderString).toBe('PortableChronoTeleport')
-      expect(result!.queued).toBe(true)
+      const result = trait.issueOrder(actor, { orderID: 'PortableChronoTeleport', orderPriority: 5, isQueued: false, canTarget: () => false, targetOverridesSelection: () => false }, {}, true) as any
+      expect(result).toBeDefined()
+      expect(result.orderString).toBe('PortableChronoTeleport')
+      expect(result.queued).toBe(true)
     })
   })
 
   describe('resolveOrder', () => {
     it('resets charge time after teleport order', () => {
       trait.resolveOrder(actor, {
+        orderName: 'PortableChronoTeleport',
         orderString: 'PortableChronoTeleport',
+        targetString: '',
+        extraData: undefined,
         target: { cell: new CPos(10, 10) },
         queued: false,
-      })
+      } as any)
       expect(trait.chargeTick).toBe(100)
     })
 
     it('does nothing for non-teleport orders', () => {
-      trait.resolveOrder(actor, { orderString: 'Attack', queued: false })
+      trait.resolveOrder(actor, { orderName: 'Attack', targetString: '', extraData: undefined, orderString: 'Attack', queued: false } as any)
       expect(trait.chargeTick).toBe(0)
     })
 
     it('does nothing when target is missing', () => {
-      trait.resolveOrder(actor, { orderString: 'PortableChronoTeleport', queued: false })
+      trait.resolveOrder(actor, { orderName: 'PortableChronoTeleport', targetString: '', extraData: undefined, orderString: 'PortableChronoTeleport', queued: false } as any)
       expect(trait.chargeTick).toBe(0)
     })
   })
 
   describe('voicePhraseForOrder', () => {
     it('returns voice for teleport order', () => {
-      expect(trait.voicePhraseForOrder(actor, { orderString: 'PortableChronoTeleport' })).toBe('Action')
+      expect(trait.voicePhraseForOrder(actor, { orderName: 'PortableChronoTeleport', targetString: '', extraData: undefined, orderString: 'PortableChronoTeleport' } as any)).toBe('Action')
     })
 
     it('returns null for other orders', () => {
-      expect(trait.voicePhraseForOrder(actor, { orderString: 'Attack' })).toBeNull()
+      expect(trait.voicePhraseForOrder(actor, { orderName: 'Attack', targetString: '', extraData: undefined, orderString: 'Attack' } as any)).toBeNull()
     })
   })
 })
@@ -319,11 +323,11 @@ describe('PortableChronoOrderTargeter', () => {
     })
 
     it('returns true with ForceMove modifier', () => {
-      expect(targeter.canTarget(actor, {}, 1  as any, '')).toBe(true)
+      expect(targeter.canTarget(actor, {}, 4 as any, '')).toBe(true) // ForceMove = 4
     })
 
     it('sets isQueued with ForceQueue modifier', () => {
-      targeter.canTarget(actor, {}, 9  as any, '') // 1 (ForceMove) | 8 (ForceQueue) = 9
+      targeter.canTarget(actor, {}, 6 as any, '') // ForceMove(4) | ForceQueue(2) = 6
       expect(targeter.isQueued).toBe(true)
     })
   })

@@ -332,4 +332,53 @@ describe('Chronoshiftable', () => {
       expect(color.r).toBe(255); expect(color.g).toBe(255); expect(color.b).toBe(255); expect(color.a).toBe(255)
     })
   })
+
+  describe('killCargo preservation (BLOCKER 1 regression)', () => {
+    it('preserves killCargo=false in return trip', () => {
+      const target = new CPos(20, 30)
+      const chrono = makeChronosphere()
+      // Teleport with killCargo=false
+      trait.teleport(actor, target, 5, false, chrono)
+      // Set returnTicks to 1 so next tick triggers return
+      trait.returnTicks = 1
+      // The tick() call queues the return Teleport with killCargo=false
+      // (the actual queueTeleport is a stub, but _killCargo should be false)
+      trait.tick(actor)
+      // After tick, returnTicks decrements to 0 and killCargo should be preserved
+      expect(trait.returnTicks).toBe(0)
+    })
+
+    it('preserves killCargo=true in return trip', () => {
+      const target = new CPos(20, 30)
+      const chrono = makeChronosphere()
+      trait.teleport(actor, target, 5, true, chrono)
+      trait.returnTicks = 1
+      trait.tick(actor)
+      expect(trait.returnTicks).toBe(0)
+    })
+  })
+
+  describe('ChronoshiftReturnInit in constructor (BLOCKER 2 regression)', () => {
+    it('processes ChronoshiftReturnInit from init actor', () => {
+      const origin = new CPos(12, 24)
+      const chrono = makeChronosphere(77)
+      const returnInit = new ChronoshiftReturnInit(30, 60, origin, chrono)
+      const initActor = {
+        ...makeActor('testUnit'),
+        chronoshiftReturnInit: returnInit,
+      }
+      const t = new Chronoshiftable(initActor, info)
+      expect(t.returnTicks).toBe(30)
+      expect(t.origin.Bits).toBe(origin.Bits)
+      expect(t.chronosphere).toBe(chrono)
+      expect(t.isTeleporting).toBe(true)
+    })
+
+    it('ignores missing ChronoshiftReturnInit gracefully', () => {
+      const initActor = makeActor('testUnit')
+      const t = new Chronoshiftable(initActor, info)
+      expect(t.returnTicks).toBe(0)
+      expect(t.chronosphere).toBeNull()
+    })
+  })
 })

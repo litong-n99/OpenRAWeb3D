@@ -191,6 +191,23 @@ export class GpsPower
   constructor(self: IGameActor, info: GpsPowerInfo) {
     super(self, info)
     this.self = self
+
+    // OpenRA: owner = self.Owner.PlayerActor.Trait<GpsWatcher>(); owner.GpsAdd(self);
+    // Resolve GpsWatcher from the player actor and register GPS on construction
+    const selfAny = self as unknown as Record<string, unknown>
+    const owner = selfAny['owner'] as PlayerStub | undefined
+    if (owner) {
+      const ownerAny = owner as unknown as Record<string, unknown>
+      const playerActor = ownerAny['playerActor'] as IGameActor | undefined
+      if (playerActor) {
+        const playerActorAny = playerActor as unknown as Record<string, unknown>
+        const gw = playerActorAny['gpsWatcher'] as GpsWatcher | undefined
+        if (gw) {
+          this._gpsOwner = gw
+          gw.gpsAdd(this.self)
+        }
+      }
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -199,6 +216,12 @@ export class GpsPower
 
   charged(self: IGameActor, key: string): void {
     super.charged(self, key)
+    // OpenRA: self.Owner.PlayerActor.Trait<SupportPowerManager>().Powers[key].Activate(new Order())
+    // Auto-activate GPS when fully charged. In TS, the SupportPowerManager
+    // activation pathway is deferred, but we ensure GPS is registered.
+    if (this._gpsOwner) {
+      this._gpsOwner.gpsAdd(self)
+    }
   }
 
   activate(
@@ -254,17 +277,19 @@ export class GpsPower
   // -----------------------------------------------------------------------
 
   tick(_self: IGameActor): void {
-    const activeRadar = !this._gpsOwner // simplified: always active when watcher exists
-      || !(this.info as unknown as GpsPowerInfo).requiresActiveRadar
-      || this._hasActiveRadar()
+    // OpenRA: bool NoActiveRadar { get { return !self.World.ActorsHavingTrait<ProvidesRadar>(...).Any(...) } }
+    const requiresRadar = (this.info as unknown as GpsPowerInfo).requiresActiveRadar
+    const noActiveRadar = requiresRadar && !this._hasActiveRadar()
 
     const isPaused = (this as unknown as Record<string, unknown>)['isTraitPaused'] as boolean | undefined
     const paused = isPaused === true
 
-    if (!this._wasPaused && (paused || !activeRadar)) {
+    // OpenRA: if (!wasPaused && (IsTraitPaused || (info.RequiresActiveRadar && NoActiveRadar)))
+    if (!this._wasPaused && (paused || noActiveRadar)) {
       this._wasPaused = true
       this._removeGps()
-    } else if (this._wasPaused && !paused && activeRadar) {
+    } else if (this._wasPaused && !paused && !noActiveRadar) {
+      // OpenRA: else if (wasPaused && !IsTraitPaused && !(info.RequiresActiveRadar && NoActiveRadar))
       this._wasPaused = false
       if (this._gpsOwner) {
         this._gpsOwner.gpsAdd(this.self)

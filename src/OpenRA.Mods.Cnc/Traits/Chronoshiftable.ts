@@ -206,6 +206,12 @@ export class Chronoshiftable
    */
   private _duration: number = 0
 
+  /** Whether the cargo should be killed on the return trip.
+   *
+   * OpenRA 对照: Chronoshiftable.killCargo
+   */
+  private _killCargo: boolean = true
+
   /** The actor's positionable trait (for CanEnterCell checks).
    *
    * OpenRA 对照: Chronoshiftable.iPositionable
@@ -236,9 +242,18 @@ export class Chronoshiftable
     super(info)
     this.self = init
 
-    // OpenRA: Check for ChronoshiftReturnInit
-    // In TS, this is handled by the actor initialization system.
-    // The returnInit values are set via the setReturnState method.
+    // Process ChronoshiftReturnInit from actor initializer
+    // OpenRA: var returnInit = init.GetOrDefault<ChronoshiftReturnInit>(info.InstanceName)
+    const actorAny = init as unknown as Record<string, unknown>
+    const returnInit = actorAny['chronoshiftReturnInit'] as ChronoshiftReturnInit | undefined
+    if (returnInit) {
+      this.setReturnState(
+        returnInit.ticks,
+        returnInit.duration,
+        returnInit.origin,
+        returnInit.chronosphere,
+      )
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -288,7 +303,7 @@ export class Chronoshiftable
         this._chronosphere ?? self,
         this.origin,
         null, // maxDistance: no limit for return
-        true, // killCargo
+        this._killCargo, // killCargo — preserved from original teleport call
         this.info.chronoshiftSound,
         false, // flashScreen: false for return
         true,  // returnToOrigin
@@ -348,6 +363,7 @@ export class Chronoshiftable
 
     this._duration = duration
     this._chronosphere = chronosphere
+    this._killCargo = killCargo
 
     // Set up the teleport
     queueTeleport(

@@ -226,9 +226,69 @@ describe('GpsPower', () => {
   })
 
   describe('charged()', () => {
-    it('calls super.charged()', () => {
-      // Verify it does not throw
+    it('does not throw', () => {
       expect(() => power.charged(actor, 'GpsPower')).not.toThrow()
+    })
+
+    it('auto-registers GPS when watcher is set (MAJOR 3 regression)', () => {
+      power.setGpsOwner(watcher)
+      expect(watcher.providerCount).toBe(1)
+      // charged() should re-register GPS
+      power.charged(actor, 'GpsPower')
+      expect(watcher.providerCount).toBe(1) // Already registered, no duplicate
+    })
+
+    it('does not throw when watcher is null', () => {
+      power.charged(actor, 'GpsPower')
+      // No watcher set, should not throw
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Constructor GpsWatcher resolution (BLOCKER 3 regression)
+  // -----------------------------------------------------------------------
+
+  describe('constructor GpsWatcher resolution', () => {
+    it('resolves GpsWatcher from owner on construction', () => {
+      const gw = new GpsWatcher()
+      const playerActor = {
+        actorId: 0,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        info: { name: 'player' },
+        gpsWatcher: gw,
+      }
+      const building = {
+        actorId: 42,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        info: { name: 'gpsBuilding' },
+        owner: {
+          playerName: 'testPlayer',
+          playerActor,
+        },
+      }
+      const gpsInfo = new GpsPowerInfo({ orderName: 'GpsPower' })
+      const p = new GpsPower(building as unknown as IGameActor, gpsInfo)
+      // The constructor should have resolved the GpsWatcher and called gpsAdd
+      expect(p.gpsOwner).toBe(gw)
+      expect(gw.providerCount).toBe(1)
+    })
+
+    it('handles missing owner gracefully', () => {
+      const building = {
+        actorId: 42,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        info: { name: 'gpsBuilding' },
+        // No owner
+      }
+      const gpsInfo = new GpsPowerInfo({ orderName: 'GpsPower' })
+      const p = new GpsPower(building as unknown as IGameActor, gpsInfo)
+      expect(p.gpsOwner).toBeNull()
     })
   })
 })

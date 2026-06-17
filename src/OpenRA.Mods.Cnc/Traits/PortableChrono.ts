@@ -22,56 +22,44 @@
  * MoveTo / MoveWithinRange activities are deferred to Ch9/Ch14.
  */
 
-import { ConditionalTrait } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { ConditionalTrait, TargetModifiers } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type {
   ConditionalTraitInfo as IConditionalTraitInfo,
   IGameActor,
   ITick,
   ISync,
   ISelectionBar,
+  IIssueOrder,
+  IResolveOrder,
+  IOrderTargeter,
   ITraitInfo,
+  TargetStub,
+  Order,
   ColorStub,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { CPos } from '../../OpenRA.Game/CPos.js'
 
 // ---------------------------------------------------------------------------
-// Forward stubs
+// Order type for PortableChrono — extends imported Order with extra fields
+// needed for internal operation while staying compatible with IResolveOrder
 // ---------------------------------------------------------------------------
 
-interface OrderStub {
+/** Target with cell info for PortableChrono order resolution. */
+interface PortableChronoTarget {
+  readonly cell?: CPos | null
+  readonly centerPosition?: unknown
+}
+
+interface PortableChronoOrder extends Order {
   readonly orderString: string
   readonly subjectId?: number
-  readonly target?: unknown
+  readonly target?: PortableChronoTarget
   readonly queued?: boolean
-  readonly extraData?: number
 }
 
-interface TargetStub {
-  readonly centerPosition?: unknown
-  readonly type?: number
-  readonly cell?: CPos | null
-}
-
-interface IOrderTargeterStub {
-  readonly orderID: string
-  readonly orderPriority: number
-  readonly isQueued: boolean
-  canTarget(
-    actor: IGameActor,
-    target: TargetStub,
-    modifiers: TargetModifiersStub,
-    cursor: string,
-  ): boolean
-  targetOverridesSelection(actor: IGameActor, target: TargetStub, actorsAt: readonly IGameActor[], xy: CPos, modifiers: TargetModifiersStub): boolean
-}
-
-type TargetModifiersStub = number & { readonly __brand: 'TargetModifiers' }
-
-const TargetModifiers = {
-  None: 0 as TargetModifiersStub,
-  ForceMove: 1 as TargetModifiersStub,
-  ForceQueue: 8 as TargetModifiersStub,
-} as const
+// ---------------------------------------------------------------------------
+// IOrderTargeter is imported from TraitsInterfaces and used directly
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // PortableChronoInfo
@@ -244,7 +232,7 @@ export class PortableChronoInfo implements ITraitInfo, IConditionalTraitInfo {
  */
 export class PortableChrono
   extends ConditionalTrait<PortableChronoInfo>
-  implements ITick, ISync, ISelectionBar
+  implements ITick, ISync, ISelectionBar, IIssueOrder, IResolveOrder
 {
   /** The actor holding this device.
    *
@@ -258,9 +246,23 @@ export class PortableChrono
    */
   chargeTick: number = 0
 
+  /** Reference to the World object for OrderGenerator coordination.
+   *
+   * Set via setWorld() during initialization.
+   */
+  private _world: Record<string, unknown> | null = null
+
   constructor(self: IGameActor, info: PortableChronoInfo) {
     super(info)
     this.self = self
+  }
+
+  /** Set the World reference (called during actor initialization).
+   *
+   * @param world — the World object (minimal stub supporting OrderGenerator)
+   */
+  setWorld(world: Record<string, unknown> | null): void {
+    this._world = world
   }
 
   // -----------------------------------------------------------------------
@@ -287,7 +289,7 @@ export class PortableChrono
    *
    * OpenRA 对照: PortableChrono.Orders
    */
-  get orders(): readonly IOrderTargeterStub[] {
+  get orders(): readonly IOrderTargeter[] {
     if (this.isTraitDisabled) return []
 
     return [
@@ -303,58 +305,90 @@ export class PortableChrono
    */
   issueOrder(
     self: IGameActor,
-    order: IOrderTargeterStub,
+    order: IOrderTargeter,
     target: TargetStub,
     queued: boolean,
-  ): OrderStub | null {
+  ): Order {
     if (order.orderID === 'PortableChronoDeploy') {
       // OpenRA: Switch the global order generator instead of actually issuing an order
       // HACK: self.World.OrderGenerator = new PortableChronoOrderGenerator(self, this)
+      if (this._world) {
+        this._world['orderGenerator'] = new PortableChronoOrderGenerator(self, this)
+      }
       // HACK: return fake Order to stop game complaining
       return {
+        orderName: order.orderID,
+        targetString: '',
+        extraData: undefined,
         orderString: order.orderID,
         subjectId: self.actorId,
         target,
         queued,
-      }
+      } as PortableChronoOrder
     }
 
     if (order.orderID === 'PortableChronoTeleport') {
       return {
+        orderName: order.orderID,
+        targetString: '',
+        extraData: undefined,
         orderString: order.orderID,
         subjectId: self.actorId,
         target,
         queued,
-      }
+      } as PortableChronoOrder
     }
 
-    return null
+    // Fallback: return a default order (matches C# non-null return)
+    return {
+      orderName: order.orderID,
+      targetString: '',
+      extraData: undefined,
+    }
   }
 
   /** Resolve an issued order.
    *
    * OpenRA 对照: PortableChrono.ResolveOrder(Actor, Order)
    */
-  resolveOrder(_self: IGameActor, order: OrderStub): void {
-    if (order.orderString !== 'PortableChronoTeleport') return
-    if (!order.target) return
+  resolveOrder(self: IGameActor, order: Order): void {
+    // Check orderName (matches structured Order type from TraitsInterfaces)
+    const orderName = (order as PortableChronoOrder).orderString ?? order.orderName
+    if (orderName !== 'PortableChronoTeleport') return
 
-    // OpenRA: if (target.Type == TargetType.Invalid) return - check for null cell
+    const target = (order as PortableChronoOrder).target
+    if (!target) return
 
-    // NOTE: maxDistance from this.info.hasDistanceLimit / this.info.maxDistance
+    // OpenRA: if (target.Type == TargetType.Invalid) return
+    // Check for null cell
+    if (!target.cell) return
 
-    if (!order.queued) {
+    const queued = (order as PortableChronoOrder).queued ?? false
+
+    if (!queued) {
       // self.CancelActivity()
-      // TODO: Activity cancellation
+      // TODO-9.3.1: Activity cancellation
     }
 
     // OpenRA: var cell = self.World.Map.CellContaining(order.Target.CenterPosition)
-    // if (maxDistance != null)
+    const cell = target.cell!
+    const maxDistance = this.info.hasDistanceLimit ? this.info.maxDistance : null
+
+    // OpenRA: if (maxDistance != null)
     //   self.QueueActivity(move.MoveWithinRange(order.Target, WDist.FromCells(maxDistance.Value)))
-    //
     // self.QueueActivity(new Teleport(self, cell, maxDistance, Info.KillCargo, Info.FlashScreen, Info.ChronoshiftSound))
     // self.QueueActivity(move.MoveTo(cell, 5))
     // self.ShowTargetLines()
+
+    // NOTE: Activity queuing requires Move and Teleport activities (deferred to Ch9/Ch14/19.C.5)
+    // The Teleport call parameters match OpenRA:
+    //   new Teleport(self, cell, maxDistance, killCargo, flashScreen, chronoshiftSound)
+    // TODO-19.C.5: Queue Teleport activity
+    // TODO-9.3.1: Queue MoveWithinRange activity when maxDistance != null
+    // TODO-9.3.1: Queue MoveTo activity
+    void self
+    void cell
+    void maxDistance
 
     // Reset charge time after teleport
     this.resetChargeTime()
@@ -368,8 +402,9 @@ export class PortableChrono
    *
    * OpenRA 对照: PortableChrono.IOrderVoice.VoicePhraseForOrder(Actor, Order)
    */
-  voicePhraseForOrder(_self: IGameActor, order: OrderStub): string | null {
-    return order.orderString === 'PortableChronoTeleport'
+  voicePhraseForOrder(_self: IGameActor, order: Order): string | null {
+    const orderName = (order as PortableChronoOrder).orderString ?? order.orderName
+    return orderName === 'PortableChronoTeleport'
       ? this.info.voice
       : null
   }
@@ -448,7 +483,7 @@ export class PortableChrono
  *
  * OpenRA 对照: PortableChronoOrderTargeter (sealed nested class)
  */
-export class PortableChronoOrderTargeter implements IOrderTargeterStub {
+export class PortableChronoOrderTargeter implements IOrderTargeter {
   readonly orderID = 'PortableChronoTeleport'
   readonly orderPriority = 5
 
@@ -472,9 +507,10 @@ export class PortableChronoOrderTargeter implements IOrderTargeterStub {
   canTarget(
     self: IGameActor,
     _target: TargetStub,
-    modifiers: TargetModifiersStub,
+    modifiers: TargetModifiers,
     cursor: string,
   ): boolean {
+    // NOTE: TargetModifiers.ForceMove = 4, ForceQueue = 2 (matches C# flags enum)
     if ((modifiers & TargetModifiers.ForceMove) !== 0) {
       // OpenRA: var xy = self.World.Map.CellContaining(target.CenterPosition)
       // IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue)
@@ -503,7 +539,7 @@ export class PortableChronoOrderTargeter implements IOrderTargeterStub {
     _target: TargetStub,
     _actorsAt: readonly IGameActor[],
     _xy: CPos,
-    _modifiers: TargetModifiersStub,
+    _modifiers: TargetModifiers,
   ): boolean {
     return true
   }
@@ -566,7 +602,7 @@ export class PortableChronoOrderGenerator {
    *
    * OpenRA 对照: PortableChronoOrderGenerator.OrderInner(World, CPos, int2, MouseInput)
    */
-  orderInner(cell: CPos, shiftHeld: boolean): OrderStub[] {
+  orderInner(cell: CPos, shiftHeld: boolean): PortableChronoOrder[] {
     const self = this.self
     if (!self.isInWorld) return []
     if (cell.Bits === selfLocation(self).Bits) return []
@@ -576,6 +612,9 @@ export class PortableChronoOrderGenerator {
 
     // Cancel input mode (open world.CancelInputMode)
     return [{
+      orderName: 'PortableChronoTeleport',
+      targetString: '',
+      extraData: undefined,
       orderString: 'PortableChronoTeleport',
       subjectId: self.actorId,
       target: { cell },

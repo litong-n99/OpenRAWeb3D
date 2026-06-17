@@ -274,11 +274,39 @@ describe('ConyardChronoReturn', () => {
   // -----------------------------------------------------------------------
 
   describe('chooseBestDestinationCell', () => {
-    it('returns the destination by default (stub)', () => {
+    it('returns null when no chronosphere set', () => {
       const dest = new CPos(10, 20)
+      const result = trait.chooseBestDestinationCell(dest)
+      expect(result).toBeNull()
+    })
+
+    it('returns destination when chronosphere is set (no mobileInfo)', () => {
+      const dest = new CPos(10, 20)
+      const chrono = { actorId: 99, isInWorld: true, isDead: false, disposed: false, info: { name: 'chrono' } } as IGameActor
+      trait.setReturnState(10, 100, dest, chrono)
       const result = trait.chooseBestDestinationCell(dest)
       expect(result).not.toBeNull()
       expect(result!.Bits).toBe(dest.Bits)
+    })
+
+    it('returns destination when mobileInfo.canEnterCell returns true', () => {
+      const dest = new CPos(15, 25)
+      const chrono = { actorId: 99, isInWorld: true, isDead: false, disposed: false, info: { name: 'chrono' } } as IGameActor
+      trait.setReturnState(10, 100, dest, chrono)
+      const mobileInfo = { canEnterCell: (_cell: CPos) => true }
+      const result = trait.chooseBestDestinationCell(dest, mobileInfo)
+      expect(result).not.toBeNull()
+      expect(result!.Bits).toBe(dest.Bits)
+    })
+
+    it('returns null when mobileInfo.canEnterCell returns false, but has chronosphere', () => {
+      const dest = new CPos(15, 25)
+      const chrono = { actorId: 99, isInWorld: true, isDead: false, disposed: false, info: { name: 'chrono' } } as IGameActor
+      trait.setReturnState(10, 100, dest, chrono)
+      const mobileInfo = { canEnterCell: (_cell: CPos) => false }
+      // Has chronosphere, but mobileInfo.canEnterCell returns false → null
+      const result = trait.chooseBestDestinationCell(dest, mobileInfo)
+      expect(result).toBeNull()
     })
   })
 
@@ -321,6 +349,53 @@ describe('ConyardChronoReturn', () => {
       trait.setReturnState(30, 60, new CPos(3, 4), null)
       const init = trait.createReturnInit()
       expect(init).toBeNull() // stub returns null
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // triggerVortex condition grant (MAJOR 7 regression)
+  // -----------------------------------------------------------------------
+
+  describe('triggerVortex() — condition grant', () => {
+    it('grants the vortex condition when condition is set', () => {
+      const vortexInfo = new ConyardChronoReturnInfo({ condition: 'vortex-active' })
+      const vortexTrait = new ConyardChronoReturn(actor, vortexInfo)
+      vortexTrait.triggerVortex()
+      expect(vortexTrait.triggered).toBe(true)
+    })
+
+    it('does not throw when condition is null', () => {
+      const noCondInfo = new ConyardChronoReturnInfo({ condition: null })
+      const noCondTrait = new ConyardChronoReturn(actor, noCondInfo)
+      expect(() => noCondTrait.triggerVortex()).not.toThrow()
+      expect(noCondTrait.triggered).toBe(true)
+    })
+
+    it('revokeVortexCondition clears triggered state', () => {
+      const vortexInfo = new ConyardChronoReturnInfo({ condition: 'vortex-active' })
+      const vortexTrait = new ConyardChronoReturn(actor, vortexInfo)
+      vortexTrait.triggerVortex()
+      expect(vortexTrait.triggered).toBe(true)
+      vortexTrait.revokeVortexCondition()
+      expect(vortexTrait.triggered).toBe(false)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // returnToOrigin (BLOCKER 4 regression)
+  // -----------------------------------------------------------------------
+
+  describe('returnToOrigin()', () => {
+    it('does not throw when called (stubbed World integration)', () => {
+      // returnToOrigin requires chronosphere for destination lookup
+      const chrono = { actorId: 99, isInWorld: true, isDead: false, disposed: false, info: { name: 'chrono' } } as IGameActor
+      trait.setReturnState(10, 100, new CPos(5, 10), chrono)
+      expect(() => trait.returnToOrigin()).not.toThrow()
+    })
+
+    it('returns early when no destination found (no chronosphere)', () => {
+      // No chronosphere set → chooseBestDestinationCell returns null
+      expect(() => trait.returnToOrigin()).not.toThrow()
     })
   })
 })

@@ -114,8 +114,12 @@ class TraitPair<T> {
 export class GpsWatcherInfo implements ITraitInfo {
   readonly instanceName?: string
 
-  create(_init: IGameActor): GpsWatcher {
-    return new GpsWatcher()
+  create(init: IGameActor): GpsWatcher {
+    // OpenRA: return new GpsWatcher(init.Self.Owner)
+    // Extract owner PlayerStub from init actor
+    const initAny = init as unknown as Record<string, unknown>
+    const owner = (initAny['owner'] as PlayerStub) ?? null
+    return new GpsWatcher(owner)
   }
 }
 
@@ -162,6 +166,12 @@ export class GpsWatcher implements ISync, IPreventsShroudReset {
   // Private state
   // -----------------------------------------------------------------------
 
+  /** The player who owns this watcher.
+   *
+   * OpenRA 对照: GpsWatcher.owner
+   */
+  private readonly _owner: PlayerStub | null
+
   /** Whether this player has explored the terrain (via launch or ally).
    *
    * OpenRA 对照: GpsWatcher.explored
@@ -179,6 +189,20 @@ export class GpsWatcher implements ISync, IPreventsShroudReset {
    * OpenRA 对照: GpsWatcher.notifyOnRefresh (HashSet<TraitPair<IOnGpsRefreshed>>)
    */
   private readonly _notifyOnRefresh = new Set<TraitPair<IOnGpsRefreshed>>()
+
+  /** Other GpsWatcher instances for ally coordination (set externally).
+   *
+   * OpenRA 对照: allyWatchers (computed via World in C#)
+   */
+  private _allyWatchers: readonly GpsWatcher[] = []
+
+  // -----------------------------------------------------------------------
+  // Constructor
+  // -----------------------------------------------------------------------
+
+  constructor(owner: PlayerStub | null = null) {
+    this._owner = owner
+  }
 
   // -----------------------------------------------------------------------
   // GPS provider management
@@ -263,22 +287,20 @@ export class GpsWatcher implements ISync, IPreventsShroudReset {
     const wasGranted = this.granted
     const wasGrantedAllies = this.grantedAllies
 
-    // Check if any allied watcher has Granted or Launched
-    // NOTE: allyWatchers check requires world access. Since we can't
-    // query allies from this trait alone, the caller must ensure
-    // ally watches are kept in sync. For the base implementation,
-    // GrantedAllies is managed by external coordination.
-    const allyHasGranted = false // TODO-19.A.6: World-level ally coordination via GpsPower
-    const allyHasLaunched = false // TODO-19.A.6: World-level ally coordination via GpsPower
+    // OpenRA: var allyWatchers = owner.World.ActorsWithTrait<GpsWatcher>()
+    //   .Where(kv => kv.Actor.Owner.IsAlliedWith(owner)).ToList()
+    // GrantedAllies = allyWatchers.Any(w => w.Trait.Granted)
+    const allyHasGranted = this._allyWatchers.some(w => w.granted)
+    const allyHasLaunched = this._allyWatchers.some(w => w.launched)
 
     this.granted = this._actors.size > 0 && this.launched
     this.grantedAllies = allyHasGranted
 
     // Explore all terrain on first launch (or first ally launch)
+    // OpenRA: if (!explored && (Launched || allyWatchers.Any(w => w.Trait.Launched)))
     if (!this._explored && (this.launched || allyHasLaunched)) {
       this._explored = true
-      // NOTE: Shroud.ExploreAll() requires access to Player.Shroud.
-      // In OpenRA this is: owner.Shroud.ExploreAll()
+      // NOTE: owner.Shroud.ExploreAll() requires Player.Shroud access.
       // The actual shroud exploration is triggered by GpsPower when
       // it detects the GPS state change.
       // TODO-19.A.6: Coordinate shroud exploration with GpsPower.
@@ -287,11 +309,7 @@ export class GpsWatcher implements ISync, IPreventsShroudReset {
     // Notify listeners if state changed
     if (wasGranted !== this.granted || wasGrantedAllies !== this.grantedAllies) {
       this._notifyOnRefresh.forEach((tp) => {
-        // NOTE: Player reference not available from IGameActor alone.
-        // The owner is known by the listener (e.g., FrozenUnderFogUpdatedByGps
-        // stores a PlayerDictionary). We pass a stub.
-        const owner: PlayerStub = { playerName: 'gpsOwner' }
-        tp.trait.onGpsRefresh(tp.actor, owner)
+        tp.trait.onGpsRefresh(tp.actor, this._owner ?? { playerName: 'gpsOwner' })
       })
     }
   }
@@ -359,6 +377,26 @@ export class GpsWatcher implements ISync, IPreventsShroudReset {
    */
   get listenerCount(): number {
     return this._notifyOnRefresh.size
+  }
+
+  /** Set the ally watchers for ally GPS coordination.
+   *
+   * OpenRA 对照: allyWatchers computation in RefreshGranted()
+   *
+   * Called by GpsPower or World-level coordination to keep ally
+   * watcher references in sync.
+   */
+  setAllyWatchers(watchers: readonly GpsWatcher[]): void {
+    this._allyWatchers = watchers
+    this.refreshGranted()
+  }
+
+  /** Get the owner player reference.
+   *
+   * OpenRA 对照: GpsWatcher.owner
+   */
+  get owner(): PlayerStub | null {
+    return this._owner
   }
 
   /** Set explored state (for test injection during ally coordination).

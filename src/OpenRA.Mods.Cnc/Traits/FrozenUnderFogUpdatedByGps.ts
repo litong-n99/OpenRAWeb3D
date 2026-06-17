@@ -140,6 +140,13 @@ export class FrozenUnderFogUpdatedByGps
    */
   private readonly _traits = new Map<number, Traits>()
 
+  /** Reverse mapping from player name to index for O(1) lookup.
+   *
+   * OpenRA 对照: traits[player] — PlayerDictionary uses Player as key directly.
+   * Since TS uses number keys, this reverse map provides O(1) player-to-index.
+   */
+  private readonly _playerNameToIndex = new Map<string, number>()
+
   constructor(init: IGameActor) {
     this.self = init
     // NOTE: PlayerDictionary is auto-populated in OpenRA. In TypeScript,
@@ -165,6 +172,7 @@ export class FrozenUnderFogUpdatedByGps
   }): void {
     if (this._traits.has(playerIndex)) return
     this._traits.set(playerIndex, new Traits(player, this))
+    this._playerNameToIndex.set(player.playerName, playerIndex)
   }
 
   // -------------------------------------------------------------------------
@@ -220,6 +228,7 @@ export class FrozenUnderFogUpdatedByGps
       }
     }
     this._traits.clear()
+    this._playerNameToIndex.clear()
   }
 
   // -------------------------------------------------------------------------
@@ -273,20 +282,15 @@ export class FrozenUnderFogUpdatedByGps
    *
    * OpenRA 对照: FrozenUnderFogUpdatedByGps.ActOnFrozenActorForPlayer(Player, FrozenActorAction)
    */
-  private actOnFrozenActorForPlayer(_player: PlayerStub, action: FrozenActorAction): void {
-    // Find the Traits entry for this player
-    for (const t of this._traits.values()) {
-      // NOTE: In OpenRA, this uses the Player reference for lookup.
-      // In TypeScript, we iterate all entries. For performance in
-      // production, a player-to-Traits index should be added.
-      if (t.gpsWatcher) {
-        // Match by checking if this watcher belongs to the player
-        // We don't have a direct player reference on GpsWatcher, so
-        // apply to all matching entries.
-        this.actOnFrozenActorForTraits(t, action)
-        return // Only act once
-      }
-    }
+  private actOnFrozenActorForPlayer(player: PlayerStub, action: FrozenActorAction): void {
+    // O(1) lookup via player name to index reverse map
+    const index = this._playerNameToIndex.get(player.playerName)
+    if (index === undefined) return
+
+    const t = this._traits.get(index)
+    if (!t) return
+
+    this.actOnFrozenActorForTraits(t, action)
   }
 
   /**

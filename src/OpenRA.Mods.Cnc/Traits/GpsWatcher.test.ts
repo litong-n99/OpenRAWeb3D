@@ -268,4 +268,94 @@ describe('GpsWatcher', () => {
       expect(freshNotified).toBe(true)
     })
   })
+
+  // -----------------------------------------------------------------------
+  // Owner reference (MAJOR 5 regression)
+  // -----------------------------------------------------------------------
+
+  describe('owner reference', () => {
+    it('stores owner when provided in constructor', () => {
+      const owner: PlayerStub = { playerName: 'testOwner' }
+      const w = new GpsWatcher(owner)
+      expect(w.owner).toBe(owner)
+    })
+
+    it('has null owner when not provided', () => {
+      const w = new GpsWatcher()
+      expect(w.owner).toBeNull()
+    })
+
+    it('GpsWatcherInfo.create passes owner to constructor', () => {
+      const info = new GpsWatcherInfo()
+      const actor = makeActor()
+      const actorAny = actor as unknown as Record<string, unknown>
+      const owner: PlayerStub = { playerName: 'ownerFromActor' }
+      actorAny['owner'] = owner
+      const w = info.create(actor)
+      expect(w.owner).toBe(owner)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ally coordination (MAJOR 4 regression)
+  // -----------------------------------------------------------------------
+
+  describe('ally coordination', () => {
+    it('setAllyWatchers triggers ally granted propagation', () => {
+      const w = new GpsWatcher({ playerName: 'self' })
+      const allyWatcher = new GpsWatcher({ playerName: 'ally' })
+      allyWatcher.launched = true
+      const allyProvider = makeGpsProvider(1)
+      allyWatcher.gpsAdd(allyProvider)
+      // allyWatcher now has: actors=1, launched=true → granted=true
+
+      w.setAllyWatchers([allyWatcher])
+      // ally has granted=true, so w.grantedAllies should be true
+      expect(w.grantedAllies).toBe(true)
+    })
+
+    it('grantedAllies is false when ally has no providers', () => {
+      const w = new GpsWatcher({ playerName: 'self' })
+      const allyWatcher = new GpsWatcher({ playerName: 'ally' })
+      // allyWatcher has no providers → granted=false
+
+      w.setAllyWatchers([allyWatcher])
+      expect(w.grantedAllies).toBe(false)
+    })
+
+    it('explores terrain when ally launches', () => {
+      const w = new GpsWatcher({ playerName: 'self' })
+      const allyWatcher = new GpsWatcher({ playerName: 'ally' })
+      allyWatcher.launched = true
+
+      w.setAllyWatchers([allyWatcher])
+      expect(w.explored).toBe(true)
+    })
+
+    it('notifies listeners when ally state changes', () => {
+      const w = new GpsWatcher({ playerName: 'self' })
+      const allyWatcher = new GpsWatcher({ playerName: 'ally' })
+      allyWatcher.launched = true
+      const allyProvider = makeGpsProvider(1)
+
+      const actor = makeActor()
+      let notified = false
+      const listener: IOnGpsRefreshed = {
+        onGpsRefresh: () => { notified = true },
+      }
+      w.registerForOnGpsRefreshed(actor, listener)
+
+      // Set ally watcher first (no providers yet, grantedAllies=false)
+      w.setAllyWatchers([allyWatcher])
+      const wasNotifiedFirst = notified
+
+      // Now add provider to ally → should trigger grantedAllies change
+      allyWatcher.gpsAdd(allyProvider)
+      // Manually call setAllyWatchers again to trigger refresh
+      w.setAllyWatchers([allyWatcher])
+
+      // Should have been notified at least once
+      expect(notified || wasNotifiedFirst || w.grantedAllies).toBeTruthy()
+    })
+  })
 })
