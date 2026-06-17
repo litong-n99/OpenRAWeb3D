@@ -27,13 +27,13 @@ import {
 // Helper: integer linear interpolation
 // ---------------------------------------------------------------------------
 
-/** Integer linear interpolation: a + (b - a) * mu / muMax.
+/** Integer linear interpolation: a + (b - a) * mul / div.
  *
- * OpenRA 对照: int2.Lerp(int, int, int, int)
+ * OpenRA 对照: int2.Lerp(int a, int b, int mul, int div)
  */
-function lerpInt(a: number, b: number, mu: number, muMax: number): number {
-  if (muMax <= 0) return a
-  return Math.round(a + (b - a) * mu / muMax)
+function lerpInt(a: number, b: number, mul: number, div: number): number {
+  if (div <= 0) return a
+  return Math.round(a + (b - a) * mul / div)
 }
 
 // ---------------------------------------------------------------------------
@@ -371,39 +371,24 @@ export class SpiceBloom implements ITick, INotifyKilled {
   // Projectile launching
   // ---------------------------------------------------------------------------
 
-  /** Launch projectiles with staggered delays.
+  /** Launch projectiles with staggered delays using FireProjectilesEffect.
    *
-   * Simplified version of OpenRA's FireProjectilesEffect.
+   * OpenRA 对照: new FireProjectilesEffect(projectiles, burstInterval)
    */
   private launchProjectiles(
     self: IGameActor,
     projectiles: ProjectileArgsStub[],
-    _burstInterval: number,
+    burstInterval: number,
   ): void {
     const world = self.world as {
-      addFrameEndTask?: (task: () => void) => void
       add?: (effect: unknown) => void
+      remove?: (effect: unknown) => void
+      screenMap?: { remove?: (effect: unknown) => void }
     } | undefined
 
-    for (const args of projectiles) {
-      const weapon = args.weapon
-      if (!weapon.projectile) continue
-
-      // Create the projectile
-      const projectile = weapon.projectile.create?.(args)
-      if (projectile) {
-        world?.add?.(projectile)
-      }
-
-      // Play weapon sound
-      if (weapon.report && weapon.report.length > 0) {
-        this.playSound(self, weapon.report, args.source)
-      }
+    if (world?.add) {
+      world.add(new FireProjectilesEffect(projectiles, burstInterval))
     }
-
-    // NOTE: Full FireProjectilesEffect deferred — launches sequentially with
-    // delay between each burst. Simplified to launch all immediately.
-    // TODO-19.B.5-FIREPROJ: Implement staggered projectile launching with delay.
   }
 
   // ---------------------------------------------------------------------------
@@ -551,12 +536,74 @@ export class SpiceBloom implements ITick, INotifyKilled {
     world?.addFrameEndTask?.(task)
   }
 
-  /** Play a world sound. */
-  private playSound(self: IGameActor, sound: string, pos: unknown): void {
-    const world = self.world as {
-      game?: { sound?: { play?: (type: string, sound: string, pos: unknown) => void } }
-    } | undefined
-    world?.game?.sound?.play?.('World', sound, pos)
+}
+
+// ---------------------------------------------------------------------------
+// FireProjectilesEffect
+// OpenRA 对照: SpiceBloom.FireProjectilesEffect : IEffect
+// ---------------------------------------------------------------------------
+
+/** Fires projectiles one by one with a delay between each burst.
+ *
+ * OpenRA 对照: SpiceBloom.FireProjectilesEffect (inner class, IEffect)
+ *
+ * Uses a stack-based approach: pops one projectile per burst, with
+ * `burstInterval` ticks between each pop. When the stack is empty,
+ * self-removes from the world.
+ */
+class FireProjectilesEffect {
+  private readonly _projectiles: ProjectileArgsStub[]
+  private _delay: number
+  private readonly _delayInfo: number
+
+  /**
+   * OpenRA 对照: FireProjectilesEffect(Stack<ProjectileArgs>, int delayInfo)
+   */
+  constructor(projectiles: ProjectileArgsStub[], delayInfo: number) {
+    this._projectiles = [...projectiles] // copy to reverse for stack-like pop
+    this._delay = delayInfo
+    this._delayInfo = delayInfo
+  }
+
+  /** Execute one tick: decrement delay, fire next projectile when ready.
+   *
+   * OpenRA 对照: FireProjectilesEffect.Tick(World)
+   *
+   * When projectiles are exhausted, self-removes from world.
+   */
+  tick(world: {
+    addFrameEndTask?: (task: (w: unknown) => void) => void
+    remove?: (effect: unknown) => void
+    screenMap?: { remove?: (effect: unknown) => void }
+    add?: (effect: unknown) => void
+    game?: { sound?: { play?: (type: string, sound: string, pos: unknown) => void } }
+  }): void {
+    if (this._projectiles.length === 0) {
+      world.addFrameEndTask?.(w => {
+        ;(w as { remove?: (e: unknown) => void }).remove?.(this)
+        ;(w as { screenMap?: { remove?: (e: unknown) => void } }).screenMap?.remove?.(this)
+      })
+      return
+    }
+
+    if (--this._delay > 0) return
+
+    this._delay = this._delayInfo
+    const args = this._projectiles.pop()!
+    const weapon = args.weapon
+
+    if (weapon.projectile) {
+      const projectile = weapon.projectile.create?.(args)
+      if (projectile) {
+        world.addFrameEndTask?.(w => {
+          ;(w as { add?: (e: unknown) => void }).add?.(projectile)
+        })
+      }
+
+      if (weapon.report && weapon.report.length > 0) {
+        world.game?.sound?.play?.('World', weapon.report, args.source)
+      }
+    }
   }
 }
 

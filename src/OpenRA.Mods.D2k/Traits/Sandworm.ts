@@ -15,6 +15,7 @@
 import { CPos } from '../../OpenRA.Game/CPos'
 import { WDist } from '../../OpenRA.Game/WDist'
 import { WVec } from '../../OpenRA.Game/WVec'
+import { WRot } from '../../OpenRA.Game/WRot'
 import type {
   IGameActor,
   ITick,
@@ -25,7 +26,6 @@ import { ConditionalTrait } from '../../OpenRA.Game/Traits/TraitsInterfaces'
 import { Target } from '../../OpenRA.Game/Traits/Target'
 import { AttackSource } from '../../OpenRA.Mods.Common/Traits/Attack/AttackBase'
 import type { AttractsWorms } from './AttractsWorms'
-import { AttractsWormsInfo } from './AttractsWorms'
 
 // ---------------------------------------------------------------------------
 // SandwormInfo
@@ -201,6 +201,18 @@ export class Sandworm
    */
   private _manager: unknown | null = null
 
+  /** Cached Mobile trait for movement checks.
+   *
+   * OpenRA 对照: Sandworm.mobile (Mobile, from constructor)
+   */
+  private readonly _mobile: MobileStub
+
+  /** Cached AttackBase trait for attack operations.
+   *
+   * OpenRA 对照: Sandworm.attackTrait (AttackBase, from constructor)
+   */
+  private readonly _attackTrait: AttackBaseStub | null
+
   // ---------------------------------------------------------------------------
   // Construction
   // OpenRA 对照: Sandworm(Actor self, SandwormInfo info) : base(self, info)
@@ -230,6 +242,10 @@ export class Sandworm
 
     // Initialize target rescan
     this._targetCountdown = info.targetRescanInterval
+
+    // Cache traits (matching C# pattern)
+    this._mobile = this.resolveMobile(self)
+    this._attackTrait = this.resolveAttackTrait(self)
 
     // Resolve ActorSpawnManager from world actor
     this._manager = this.resolveSpawnManager(self)
@@ -294,10 +310,10 @@ export class Sandworm
   private pickTargetLocation(_self: IGameActor): CPos | null {
     const centerPos = this.getActorCenterPosition()
     const offset = new WVec(0, -1024 * this._effectiveMoveRadius, 0)
-    // NOTE: Simplified rotation — full WRot.Rotate would need WRot
-    // For the wander pattern, we use a simplified approach:
-    // rotate the Y-offset by a random facing angle
-    const target = WVec.add(centerPos, offset)
+    // Rotate the offset by a random facing angle (OpenRA: WRot.FromFacing(random.Next(256)))
+    const randomFacing = this.getSharedRandomNext(0, 256)
+    const rotatedOffset = offset.rotate(WRot.fromFacing(randomFacing))
+    const target = WVec.add(centerPos, rotatedOffset)
     const map = this.getWorldMap()
     if (!map) return null
 
@@ -400,7 +416,7 @@ export class Sandworm
     }
 
     // Aggregate noise from all AttractsWorms actors in range
-    const noiseDirection = this.aggregateNoise(self)
+    let noiseDirection = this.aggregateNoise(self)
 
     // No target was found
     if (noiseDirection === null || WVec.equals(noiseDirection, WVec.Zero))
@@ -411,17 +427,16 @@ export class Sandworm
     if (!map) return
 
     let moveTo = map.cellContaining(WVec.add(centerPos, noiseDirection))
-    const mobile = this.getMobile()
 
-    while (!map.contains(moveTo) || !this.canEnterCell(mobile, moveTo)) {
+    while (!map.contains(moveTo) || !this.canEnterCell(this._mobile, moveTo)) {
       // Without this check, this while can be an infinite loop
       if (CPos.equals(moveTo, this.getActorLocation())) {
         this.cancelActivity(self)
         return
       }
 
-      const halfNoise = WVec.divide(noiseDirection, 2)
-      moveTo = map.cellContaining(WVec.add(centerPos, halfNoise))
+      noiseDirection = WVec.divide(noiseDirection, 2)
+      moveTo = map.cellContaining(WVec.add(centerPos, noiseDirection))
     }
 
     // Don't get stuck when the noise is distributed evenly
@@ -474,10 +489,9 @@ export class Sandworm
       this.wormInfo.ignoreNoiseAttackRange,
     )
 
-    const attackTrait = this.getAttackTrait()
     for (const actor of actors) {
       const target = Target.fromActor(actor as unknown as import('../../OpenRA.Game/Traits/IActorRef').IActorRef)
-      if (attackTrait && attackTrait.hasAnyValidWeapons(target)) {
+      if (this._attackTrait && this._attackTrait.hasAnyValidWeapons(target)) {
         return target
       }
     }
@@ -509,13 +523,12 @@ export class Sandworm
     for (const actor of actors) {
       // Check if actor has AttractsWormsInfo (via actor config)
       const actorInfo = this.getActorInfo(actor)
-      if (!actorInfo?.hasTraitInfo?.(AttractsWormsInfo.name ?? 'AttractsWorms')) {
+      if (!actorInfo?.hasTraitInfo?.('AttractsWorms')) {
         continue
       }
 
-      const mobile = this.getMobile()
       const loc = this.getActorLocationOf(actor)
-      if (!this.canEnterCell(mobile, loc)) continue
+      if (!this.canEnterCell(this._mobile, loc)) continue
 
       // Get the AttractsWorms trait instances
       const traits = this.getActorTraits<AttractsWorms>(actor, 'AttractsWorms')
@@ -549,9 +562,8 @@ export class Sandworm
    * @param target — the target to attack
    */
   private attackTarget(self: IGameActor, target: Target): void {
-    const attackTrait = this.getAttackTrait()
-    if (attackTrait) {
-      attackTrait.attackTarget(
+    if (this._attackTrait) {
+      this._attackTrait.attackTarget(
         self,
         target,
         AttackSource.AutoTarget,
@@ -597,9 +609,12 @@ export class Sandworm
     return map ?? null
   }
 
-  /** Get the Mobile trait (duck-typed). */
-  private getMobile(): MobileStub {
-    const selfAny = this._self as unknown as {
+  /** Resolve the Mobile trait from the actor (called once in constructor).
+   *
+   * OpenRA 对照: self.Trait<Mobile>()
+   */
+  private resolveMobile(self: IGameActor): MobileStub {
+    const selfAny = self as unknown as {
       trait?: <T>(name: string) => T | undefined
     }
     if (typeof selfAny.trait === 'function') {
@@ -609,9 +624,12 @@ export class Sandworm
     return defaultMobileStub
   }
 
-  /** Get the AttackBase trait (duck-typed). */
-  private getAttackTrait(): AttackBaseStub | null {
-    const selfAny = this._self as unknown as {
+  /** Resolve the AttackBase trait from the actor (called once in constructor).
+   *
+   * OpenRA 对照: self.Trait<AttackBase>()
+   */
+  private resolveAttackTrait(self: IGameActor): AttackBaseStub | null {
+    const selfAny = self as unknown as {
       trait?: <T>(name: string) => T | undefined
     }
     if (typeof selfAny.trait === 'function') {
@@ -692,9 +710,8 @@ export class Sandworm
     const a = self as unknown as {
       queueActivity?: (activity: unknown, queued?: boolean) => void
     }
-    const mobile = this.getMobile()
-    if (a.queueActivity && mobile.moveWithinRange) {
-      const activity = mobile.moveWithinRange(target, range)
+    if (a.queueActivity && this._mobile.moveWithinRange) {
+      const activity = this._mobile.moveWithinRange(target, range)
       a.queueActivity(activity, false)
     }
   }
@@ -708,9 +725,8 @@ export class Sandworm
     const a = self as unknown as {
       queueActivity?: (activity: unknown, queued?: boolean) => void
     }
-    const mobile = this.getMobile()
-    if (a.queueActivity && mobile.moveTo) {
-      const activity = mobile.moveTo(cell, nearEnough)
+    if (a.queueActivity && this._mobile.moveTo) {
+      const activity = this._mobile.moveTo(cell, nearEnough)
       a.queueActivity(activity, false)
     }
   }

@@ -19,6 +19,8 @@ import {
 } from '../../OpenRA.Mods.Common/Traits/Attack/AttackFrontal'
 import { AttackSource } from '../../OpenRA.Mods.Common/Traits/Attack/AttackBase'
 import type { Armament } from '../../OpenRA.Mods.Common/Traits/Armament'
+import { SwallowActor } from '../Activities/SwallowActor'
+import type { Sandworm } from './Sandworm'
 
 // ---------------------------------------------------------------------------
 // AttackSwallowInfo
@@ -211,25 +213,45 @@ export class AttackSwallow extends AttackFrontal {
 
   /** Create a SwallowActor activity instance.
    *
-   * NOTE: Creates the SwallowActor class — deferred import to avoid
-   * circular dependency. The SwallowActor module imports AttackSwallow.
+   * OpenRA 对照: new SwallowActor(self, target, a, facing)
+   *
+   * Resolves the facing and sandworm traits from self to construct
+   * the full SwallowActor activity. Import is safe because
+   * SwallowActor uses `import type { AttackSwallow }` (no runtime circular dep).
    */
   private createSwallowActor(
-    _self: IGameActor,
-    _target: Target,
-    _armament: Armament,
+    self: IGameActor,
+    target: Target,
+    armament: Armament,
   ): unknown {
-    // Returns a SwallowActor-like object (duck-typed to avoid
-    // hard import of SwallowActor which creates a circular dependency).
-    // The SwallowActor is activated by the activity system via queueActivity.
-    // NOTE: Full SwallowActor integration requires importing from
-    // Activities/SwallowActor — deferred to avoid circular deps.
-    return {
-      tick: () => false,
-      cancel: () => {},
-      queue: () => {},
-      onActorDisposeOuter: () => {},
-    }
+    const facing = this.resolveFacing(self)
+    const sandworm = this.resolveSandworm(self)
+    // Sandworm trait is required (Required<TraitInfo<SandwormInfo>> in C#)
+    // Fallback to a minimal stub only if the trait system is not yet wired
+    const worm = sandworm ?? {
+      isAttacking: false,
+      wormInfo: { chanceToDisappear: 100 },
+    } as unknown as Sandworm
+    return new SwallowActor(
+      self,
+      target,
+      armament,
+      facing,
+      this,
+      worm,
+    )
+  }
+
+  /** Resolve the IFacing trait from the actor. */
+  private resolveFacing(self: IGameActor): unknown {
+    const fn = (self as unknown as { trait?: <T>(name: string) => T | undefined }).trait
+    return fn?.<unknown>('IFacing') ?? null
+  }
+
+  /** Resolve the Sandworm trait from the actor. */
+  private resolveSandworm(self: IGameActor): Sandworm | null {
+    const fn = (self as unknown as { trait?: <T>(name: string) => T | undefined }).trait
+    return fn?.<Sandworm>('Sandworm') ?? null
   }
 }
 

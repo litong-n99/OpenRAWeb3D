@@ -288,7 +288,10 @@ export class SwallowActor extends Activity {
    * @returns whether armament.CheckFire succeeded
    */
   private attackTargets(self: IGameActor, targets: IGameActor[]): boolean {
-    const targetLocation = this.getActorLocation(targets[0]!)
+    // OpenRA 对照: var targetLocation = target.Actor.Location (field, not parameter)
+    const targetActor = this._target.actor as unknown as IGameActor | null
+    if (!targetActor) return false
+    const targetLocation = this.getActorLocation(targetActor)
 
     for (const t of targets) {
       const targetClose = t // capture for closure

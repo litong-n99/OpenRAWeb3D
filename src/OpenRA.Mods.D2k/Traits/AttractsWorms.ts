@@ -24,13 +24,13 @@ import {
 // ---------------------------------------------------------------------------
 
 /**
- * Integer linear interpolation: a + (b - a) * (mu - mu0) / (mu1 - mu0).
+ * Integer linear interpolation: a + (b - a) * mul / div.
  *
- * OpenRA 对照: int2.Lerp(int, int, int, int)
+ * OpenRA 对照: int2.Lerp(int a, int b, int mul, int div)
  */
-function lerpInt(a: number, b: number, mu: number, mu0: number, mu1: number): number {
-  if (mu1 <= mu0) return a
-  return Math.round(a + (b - a) * (mu - mu0) / (mu1 - mu0))
+function lerpInt(a: number, b: number, mul: number, div: number): number {
+  if (div <= 0) return a
+  return Math.round(a + (b - a) * mul / div)
 }
 
 // ---------------------------------------------------------------------------
@@ -171,9 +171,8 @@ export class AttractsWorms extends ConditionalTrait<AttractsWormsInfo> {
         return lerpInt(
           this.info.falloff[i - 1]!,
           this.info.falloff[i]!,
-          distance,
-          inner,
-          outer,
+          distance - inner,
+          outer - inner,
         )
 
       inner = outer
