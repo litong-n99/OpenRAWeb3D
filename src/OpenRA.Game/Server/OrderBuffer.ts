@@ -59,9 +59,6 @@ const EmptyValue = -1
 export class OrderBuffer {
   // ---- Private State ----
 
-  /** Monotonic timer reference (set at start via performance.now()). */
-  private _gameTimer = 0
-
   /** Next timestamp at which tick scales should be recomputed. */
   private _nextUpdate = 0
 
@@ -167,8 +164,7 @@ export class OrderBuffer {
       this._deltas.set(player, [])
     }
 
-    this._gameTimer = performance.now()
-    this._nextUpdate = this._gameTimer + Interval
+    this._nextUpdate = performance.now() + Interval
   }
 
   // ---------------------------------------------------------------------------

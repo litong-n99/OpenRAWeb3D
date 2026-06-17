@@ -58,6 +58,11 @@ const PingInterval = 1000
  *   Server.OnConnectionPacket(Connection, int, byte[])
  *   Server.OnConnectionDisconnect(Connection)
  *   Server.OnConnectionPing(Connection, int[])
+ *
+ * @remarks
+ * queueLength (byte 9 of ping packets) is intentionally omitted from the
+ * callback signature — the current Server implementation does not use it,
+ * matching the simplified web architecture.
  */
 export interface ServerCallbacks {
   _onConnectionPacket(conn: Connection, frame: number, data: Uint8Array): void
@@ -191,6 +196,11 @@ export class Connection {
    * OpenRA 对照: static byte[] CreatePingFrame()
    *   MemoryStream(21), Write(13), Write(0), Write(0), WriteByte(0x20),
    *   Write(Game.RunTime)
+   *
+   * @remarks
+   * SERVER->CLIENT frames have a 12-byte header [length: int32][clientId:
+   * int32][frame: int32]. CLIENT->SERVER frames (received in _handleMessage)
+   * have an 8-byte header [length: int32][frame: int32].
    */
   static createPingFrame(): Uint8Array {
     const dataLength = 1 + 8 // 1 byte OrderType.Ping + 8 bytes timestamp

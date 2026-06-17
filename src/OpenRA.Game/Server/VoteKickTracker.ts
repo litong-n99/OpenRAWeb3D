@@ -79,6 +79,9 @@ export class VoteKickTracker {
    * 仅管理员和存活（非观战者、未战败）的玩家有投票权。
    *
    * OpenRA 对照: VoteKickTracker.ClientHasPower(Session.Client)
+   *
+   * @param client -- 待检查的客户端会话
+   * @returns true 如果客户端有投票资格
    */
   private clientHasPower(client: SessionClient): boolean {
     return (
@@ -308,6 +311,14 @@ export class VoteKickTracker {
    * 结束投票并阻止发起者在冷却期内发起新投票。
    *
    * OpenRA 对照: VoteKickTracker.EndKickVoteAndBlockKicker()
+   *
+   * @remarks
+   * Unlike OpenRA C# which incorrectly uses
+   * kickeeConn.ConnectionTimer.ElapsedMilliseconds (a different time base
+   * than the stored value from
+   * voteKickerStarter.Conn.ConnectionTimer.ElapsedMilliseconds), we use
+   * Date.now() absolute timestamps for both storage and comparison, fixing
+   * a subtle cooldown timing bug.
    */
   private endKickVoteAndBlockKicker(): void {
     if (this.voteStartTime === null) return
@@ -335,6 +346,7 @@ export class VoteKickTracker {
    * OpenRA 对照: VoteKickTracker.EndKickVote(bool sendMessage = true)
    *
    * @param sendMessage — 是否发送投票结束的 Fluent 消息
+   * @returns 无返回值，执行状态清理副作用
    */
   private endKickVote(sendMessage: boolean = true): void {
     if (this.voteStartTime === null) return

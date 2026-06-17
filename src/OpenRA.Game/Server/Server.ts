@@ -386,7 +386,13 @@ export class Server {
   /** Map pool restriction (frozen set of allowed map UIDs). */
   mapPool: ReadonlySet<string> | null = null
 
-  /** Default to the next frame for Local -- MP servers take from GameSpeed. */
+  /**
+   * Order latency (frames to project orders into the future).
+   * Defaults to 1 for Local/Skirmish (non-Multiplayer) servers.
+   * Multiplayer servers override this from GameSpeed.orderLatency in startGame().
+   *
+   * OpenRA 对照: Server.OrderLatency
+   */
   orderLatency: number = 1
 
   /** Vote kick tracker. */
@@ -708,16 +714,13 @@ export class Server {
     const totalLength = 12 + data.length
     const result = new Uint8Array(totalLength)
     const view = new DataView(result.buffer)
-    view.setInt32(0, data.length + 4, true) // length = data length + 4 (client ID is after length)
-    // NOTE: The C# code writes length = data.Length + 4, then client, then frame
-    // Length field counts bytes AFTER itself. So total = 4 (length field) + data.length + 4 (client+frame)
-    // Actually re-reading C#:
-    //   ms.Write(data.Length + 4);  // int32: dataLength + 4
-    //   ms.Write(client);           // int32: client
-    //   ms.Write(frame);            // int32: frame
-    //   ms.Write(data);             // bytes
-    // The total written is: 4 + 4 + 4 + data.Length = 12 + data.Length
-    // The length field value is: data.Length + 4 (remaining bytes after length: client+frame+data)
+    // Frame layout (OpenRA C#: MemoryStream.Write sequence):
+    //   [0..3]  int32 LE: length = data.length + 4  (bytes after this field: client+frame+data)
+    //   [4..7]  int32 LE: client
+    //   [8..11] int32 LE: frame
+    //   [12..]  data payload bytes
+    // Total: 4 + 4 + 4 + data.length = 12 + data.length
+    view.setInt32(0, data.length + 4, true)
     view.setInt32(4, client, true)
     view.setInt32(8, frame, true)
     result.set(data, 12)
@@ -812,14 +815,16 @@ export class Server {
   }
 
   /**
-   * Generate a random auth token (base64-encoded 256 random bytes).
+   * Generate a cryptographically secure random auth token
+   * (base64-encoded 256 random bytes).
+   *
+   * NOTE: Uses crypto.getRandomValues() instead of MersenneTwister for
+   * cryptographic-strength entropy. The C# original lacks a CSPRNG due to
+   * platform constraints; the web platform provides one natively.
    */
   private _generateAuthToken(): string {
     const bytes = new Uint8Array(256)
-    for (let i = 0; i < 256; i++) {
-      bytes[i] = this.random.next() & 0xFF
-    }
-    // Base64 encode (simple implementation)
+    crypto.getRandomValues(bytes)
     return btoa(String.fromCharCode(...bytes))
   }
 
@@ -847,6 +852,9 @@ export class Server {
         return Date.now() - conn._lastReceivedTime
       },
 
+      // _lastReceivedTime and _transport are internal properties
+      // not exposed on the public Connection interface. They are accessed
+      // via (conn as any) casts within the server tick and message handlers.
       _lastReceivedTime: Date.now(),
       _transport: transport,
 
@@ -864,6 +872,10 @@ export class Server {
     } as Connection & { _lastReceivedTime: number; _transport: IClientTransport }
 
     // Register message handler
+    // NOTE: (conn as any) accesses internal properties (_lastReceivedTime,
+    // _transport) that are added to the object literal above but not exposed
+    // on the public Connection interface. These casts are temporary until
+    // Phase C when Connection becomes a proper class (TODO-18.C).
     transport.onMessage((data: Uint8Array) => {
       ;(conn as any)._lastReceivedTime = Date.now()
       self._onConnectionPacket(conn, 0, data)
@@ -1169,8 +1181,8 @@ export class Server {
 
     // MOTD for dedicated servers
     if (this.type === ServerType.Dedicated) {
-      // NOTE: In browser mode, we skip MOTD file reading
-      // In Node.js mode, read from path.join(platformSupportDir, 'motd.txt')
+      // NOTE: In browser mode, we skip MOTD file reading.
+      // TODO-18.B: In Node.js mode, read from path.join(platformSupportDir, 'motd.txt')
       this._sendOrderTo(newConn, 'Message', 'Welcome, have fun and good luck!')
     }
 
@@ -1260,7 +1272,8 @@ export class Server {
     }
 
     // Send Disconnect order to remaining clients
-    const disconnectPacket = new Uint8Array(9)
+    // 5 bytes: [0xBF: byte][playerIndex: int32 LE]
+    const disconnectPacket = new Uint8Array(5)
     const dpView = new DataView(disconnectPacket.buffer)
     disconnectPacket[0] = OrderType.Disconnect
     dpView.setInt32(1, toDrop.playerIndex, true)
@@ -1666,7 +1679,7 @@ export class Server {
       this._dispatchServerOrdersToClients(
         Order.fromTargetString(
           'SyncInfo',
-          JSON.stringify(this.lobbyInfo.globalSettings.serialize()),
+          this.lobbyInfo.serialize(),
           true,
         ).serialize(),
       )
@@ -1757,6 +1770,14 @@ export class Server {
    * OpenRA 对照: Server.HandleSyncOrder(int, byte[])
    */
   private _handleSyncOrder(frame: number, packet: Uint8Array): void {
+    // Defensive: packet must be at least 13 bytes (1 type + 4 hash + 8 defeatState)
+    if (packet.length < SYNC_HASH_ORDER_LENGTH) {
+      this._log(
+        `Dropped undersized sync order at frame ${frame}: length ${packet.length}, min ${SYNC_HASH_ORDER_LENGTH}.`,
+      )
+      return
+    }
+
     const existingSync = this._syncForFrame.get(frame)
 
     if (existingSync) {
@@ -1823,11 +1844,11 @@ export class Server {
     this._recorder?.receiveFrame(from, frame, data)
 
     if (data.length > 0 && data[0] === OrderType.SyncHash) {
-      if (data.length === 4 + SYNC_HASH_ORDER_LENGTH) {
+      if (data.length === SYNC_HASH_ORDER_LENGTH) {
         this._handleSyncOrder(frame, data)
       } else {
         this._log(
-          `Dropped sync order with length ${data.length} from client ${from}. Expected length ${4 + SYNC_HASH_ORDER_LENGTH}.`,
+          `Dropped sync order with length ${data.length} from client ${from}. Expected length ${SYNC_HASH_ORDER_LENGTH}.`,
         )
       }
     }
@@ -2335,6 +2356,18 @@ export class Server {
   /** @inheritdoc Server.SyncLobbyGlobalSettings */
   syncLobbyGlobalSettings(): void {
     this._syncLobbyGlobalSettings()
+  }
+
+  /**
+   * Update the status of a map and sync lobby info if the current map
+   * is affected.
+   *
+   * OpenRA 对照: Server.MapStatusChanged(string, MapStatus)
+   */
+  mapStatusChanged(uid: string, status: MapStatus): void {
+    if (this.lobbyInfo.globalSettings.map === uid)
+      this.lobbyInfo.globalSettings.mapStatus = status
+    this.syncLobbyInfo()
   }
 
   /** Public dispatch for server traits to use. */

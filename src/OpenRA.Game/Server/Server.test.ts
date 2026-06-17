@@ -17,6 +17,7 @@ import { Server, type IClientTransport } from './Server.js'
 import { ServerState, ServerType, WinState, defaultServerSettings, SessionClient } from './SessionTypes.js'
 import { OrderType } from './ProtocolVersion.js'
 import { GameInformation, GameInformationPlayer } from '../GameInformation.js'
+import { SYNC_HASH_ORDER_LENGTH } from '../Network/Order.js'
 
 // ---------------------------------------------------------------------------
 // Mock ModData
@@ -689,5 +690,107 @@ describe('defaultServerSettings', () => {
     expect(settings.floodLimitMessageCount).toBe(5)
     expect(settings.floodLimitCooldown).toBe(5000)
     expect(settings.voteKickTimer).toBe(30000)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// BLOCKER-1 Regression: _recordOrder accepts valid 13-byte sync hash packet
+// ---------------------------------------------------------------------------
+
+describe('_recordOrder sync hash length check (BLOCKER-1 regression)', () => {
+  it('records valid 13-byte sync hash and is NOT dropped', () => {
+    const { server } = createTestServer()
+    // Build a valid 13-byte sync hash: [0x65][4-byte hash][8-byte defeatState]
+    const packet = new Uint8Array(SYNC_HASH_ORDER_LENGTH)
+    packet[0] = OrderType.SyncHash // 0x65
+    // Fill hash bytes with non-zero dummy data
+    packet[1] = 0xDE
+    packet[2] = 0xAD
+    packet[3] = 0xBE
+    packet[4] = 0xEF
+    // defeatState all zeros (no defeats)
+
+    ;(server as any)._recordOrder(1, packet, 0)
+
+    // The packet should NOT be dropped -- it should be stored in _syncForFrame
+    expect((server as any)._syncForFrame.has(1)).toBe(true)
+    const stored = (server as any)._syncForFrame.get(1)
+    expect(stored.length).toBe(SYNC_HASH_ORDER_LENGTH)
+    expect(stored[0]).toBe(OrderType.SyncHash)
+  })
+
+  it('drops oversized sync hash packet (> 13 bytes)', () => {
+    const { server } = createTestServer()
+    const packet = new Uint8Array(17) // incorrect size
+    packet[0] = OrderType.SyncHash
+
+    ;(server as any)._recordOrder(1, packet, 0)
+
+    // Should NOT be stored -- length does not match
+    expect((server as any)._syncForFrame.has(1)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// BLOCKER-2 Regression: disconnect packet is exactly 5 bytes
+// ---------------------------------------------------------------------------
+
+describe('_dropClient disconnect packet size (BLOCKER-2 regression)', () => {
+  it('creates a disconnect packet of exactly 5 bytes', () => {
+    const { server, transport } = createTestServer(ServerType.Local)
+
+    // Create TWO mock client transports; client2 will capture ALL sent data
+    const allSent: Uint8Array[] = []
+    const clientTransport1 = createMockClientTransport('127.0.0.1:1111')
+    const clientTransport2 = createMockClientTransport('127.0.0.1:2222')
+
+    // Connect both clients
+    transport._triggerConnection(clientTransport1)
+    transport._triggerConnection(clientTransport2)
+    expect(server.conns.length).toBe(2)
+
+    // Validate both
+    const conn1 = server.conns[0]
+    conn1.validated = true
+    const conn2 = server.conns[1]
+    conn2.validated = true
+
+    // Add correspondng lobby clients
+    const c1 = new SessionClient()
+    c1.index = conn1.playerIndex
+    c1.name = 'Player1'
+    c1.state = 1
+    const c2 = new SessionClient()
+    c2.index = conn2.playerIndex
+    c2.name = 'Player2'
+    c2.state = 1
+    server.lobbyInfo.clients.push(c1, c2)
+
+    // Replace client2's send to capture ALL data sent to it
+    clientTransport2.send = vi.fn((data: Uint8Array) => {
+      allSent.push(data)
+      return true
+    })
+
+    // Drop client1 -- client2 should receive FluentMessage(s) + disconnect frame
+    ;(server as any)._dropClient(conn1)
+
+    // Find the disconnect frame in all sent data
+    // The disconnect frame is a CreateFrame wrapper: [length:4][client:4][frame:4][payload]
+    // Payload: [0xBF:1 byte][playerIndex:4 bytes LE] = 5 bytes
+    // Full frame: 12 header + 5 payload = 17 bytes
+    const disconnectFrames = allSent.filter(
+      (data) => data.length >= 13 && data[12] === OrderType.Disconnect,
+    )
+    expect(disconnectFrames.length).toBe(1)
+    const frame = disconnectFrames[0]
+    expect(frame.length).toBe(17)
+    // Extract payload (skip 12-byte frame header)
+    const payload = new Uint8Array(frame.buffer, frame.byteOffset + 12, 5)
+    expect(payload.length).toBe(5)
+    expect(payload[0]).toBe(OrderType.Disconnect) // 0xBF
+    // Verify playerIndex in the disconnect packet (playerIndex is int32 LE at byte 1)
+    const pv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength)
+    expect(pv.getInt32(1, true)).toBe(conn1.playerIndex)
   })
 })

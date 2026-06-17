@@ -151,9 +151,9 @@ export class MapStatusCache {
       }
 
       // 本地已安装的地图不需要 lint 检查
-      // NOTE: MapPreview.MapStatus.Available = 2
+      // NOTE: C# MapPreview.MapStatus.Available = 2 maps to MapStatus.Playable = 2
       status =
-        this.enableRemoteLinting && map.status !== 2
+        this.enableRemoteLinting && map.status !== MapStatus.Playable
           ? MapStatus.Validating
           : MapStatus.Playable
 

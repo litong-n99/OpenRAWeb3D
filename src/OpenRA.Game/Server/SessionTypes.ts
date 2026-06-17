@@ -46,6 +46,8 @@ export const ClientState = {
   NotReady: 0,
   Ready: 1,
   Invalid: 2,
+  /** Client has been disconnected (matches C# `Disconnected = 1000`). */
+  Disconnected: 1000,
 } as const
 
 export type ClientState = (typeof ClientState)[keyof typeof ClientState]
@@ -78,6 +80,8 @@ export type WinState = (typeof WinState)[keyof typeof WinState]
  *   UnsafeCustomRules = 8,
  */
 export const MapStatus = {
+  /** Map status not yet determined (matches C# `Unknown = 0`). */
+  Unknown: 0,
   Validating: 1,
   Playable: 2,
   Incompatible: 4,
@@ -487,6 +491,22 @@ export class Session {
       if (!slot.closed && !this.clientInSlot(key)) {
         return key
       }
+    }
+    return null
+  }
+
+  /**
+   * Find the first empty slot that allows bots (not closed, no client,
+   * allowBots flag set).
+   *
+   * OpenRA 对照: Session.FirstEmptyBotSlot()
+   *
+   * @returns slot key string, or null if no bot-eligible slot is available
+   */
+  firstEmptyBotSlot(): string | null {
+    for (const [key, slot] of this.slots) {
+      if (!slot.closed && !this.clientInSlot(key) && slot.allowBots)
+        return key
     }
     return null
   }

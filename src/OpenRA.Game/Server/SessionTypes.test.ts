@@ -39,6 +39,10 @@ describe('ClientState enum', () => {
     expect(ClientState.Ready).toBe(1)
     expect(ClientState.Invalid).toBe(2)
   })
+
+  it('has Disconnected = 1000 matching C#', () => {
+    expect(ClientState.Disconnected).toBe(1000)
+  })
 })
 
 describe('WinState enum', () => {
@@ -51,6 +55,7 @@ describe('WinState enum', () => {
 
 describe('MapStatus bitfield', () => {
   it('has correct power-of-2 values matching C# [Flags]', () => {
+    expect(MapStatus.Unknown).toBe(0)
     expect(MapStatus.Validating).toBe(1)
     expect(MapStatus.Playable).toBe(2)
     expect(MapStatus.Incompatible).toBe(4)
@@ -440,6 +445,61 @@ describe('Session', () => {
     slot.closed = true
     session.slots.set('Multi0', slot)
     expect(session.firstEmptySlot()).toBeNull()
+  })
+
+  it('firstEmptyBotSlot returns first bot-eligible empty slot', () => {
+    const session = new Session()
+    const slot1 = new SessionSlot()
+    slot1.playerReference = 'Multi0'
+    slot1.allowBots = false
+    session.slots.set('Multi0', slot1)
+
+    const slot2 = new SessionSlot()
+    slot2.playerReference = 'Multi1'
+    slot2.allowBots = true
+    session.slots.set('Multi1', slot2)
+
+    const slot3 = new SessionSlot()
+    slot3.playerReference = 'Multi2'
+    slot3.allowBots = true
+    session.slots.set('Multi2', slot3)
+
+    // Both Multi1 and Multi2 allow bots and are empty
+    expect(session.firstEmptyBotSlot()).toBe('Multi1')
+  })
+
+  it('firstEmptyBotSlot skips slots occupied by clients', () => {
+    const session = new Session()
+    const slot1 = new SessionSlot()
+    slot1.playerReference = 'Multi0'
+    slot1.allowBots = true
+    session.slots.set('Multi0', slot1)
+
+    // Occupy Multi0 with a client
+    const client = new SessionClient()
+    client.index = 1
+    client.name = 'Alice'
+    client.slot = 'Multi0'
+    session.clients.push(client)
+
+    // No other bot-eligible slots
+    expect(session.firstEmptyBotSlot()).toBeNull()
+  })
+
+  it('firstEmptyBotSlot skips closed slots even with allowBots', () => {
+    const session = new Session()
+    const slot = new SessionSlot()
+    slot.playerReference = 'Multi0'
+    slot.allowBots = true
+    slot.closed = true
+    session.slots.set('Multi0', slot)
+
+    expect(session.firstEmptyBotSlot()).toBeNull()
+  })
+
+  it('firstEmptyBotSlot returns null when no bot-eligible slots exist', () => {
+    const session = new Session()
+    expect(session.firstEmptyBotSlot()).toBeNull()
   })
 
   it('clientWithIndex finds client by index', () => {
