@@ -16,6 +16,7 @@ import {
   type SupportPowerInfo,
   type ISupportPowerManager,
   type ISupportPowerInstance,
+  type ISupportPower,
 } from '../../../OpenRA.Mods.Common/Traits/SupportPowers/SupportPower.js'
 import type { IGameActor, ITraitInfo } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
@@ -300,6 +301,14 @@ export class DischargeableSupportPowerInstance implements ISupportPowerInstance 
   // Properties
   // -------------------------------------------------------------------------
 
+  /** Base-level Active: true when at least one instance is not trait-paused.
+   *
+   * OpenRA 对照: SupportPowerInstance.Active (base property)
+   */
+  private get _baseActive(): boolean {
+    return this.instances.some((i) => !i.isTraitPaused)
+  }
+
   get remainingTicks(): number {
     return Math.floor(this._remainingSubTicks / 100)
   }
@@ -329,7 +338,8 @@ export class DischargeableSupportPowerInstance implements ISupportPowerInstance 
     this._notifiedCharging = false
 
     // Fully depleting the charge disables the power until recharged
-    if (!this.active || this._remainingSubTicks >= this.totalTicks * 100) {
+    // C#: if (!Active || ...) — Active is base property checking Instances
+    if (!this._baseActive || this._remainingSubTicks >= this.totalTicks * 100) {
       this._available = false
     }
 
@@ -361,7 +371,8 @@ export class DischargeableSupportPowerInstance implements ISupportPowerInstance 
       this._available = true
     }
 
-    if (this._active && !this.active) {
+    // C#: if (active && !Active) — Active is base property
+    if (this._active && !this._baseActive) {
       this._deactivate()
     }
 
@@ -398,7 +409,8 @@ export class DischargeableSupportPowerInstance implements ISupportPowerInstance 
    * OpenRA 对照: Target()
    */
   target(): void {
-    if (this._available && this.active) {
+    // C#: if (available && Active) — Active is base property
+    if (this._available && this._baseActive) {
       const world = (this._manager.self as any).world
       if (world?.issueOrder) {
         world.issueOrder({
@@ -465,7 +477,8 @@ export class DischargeableSupportPowerInstance implements ISupportPowerInstance 
   }
 
   private _getTextOverride(): string | null {
-    if (!this.active) return null
+    // C#: if (!Active || ...) — Active is base property
+    if (!this._baseActive) return null
     return this._active
       ? this.info.activeText
       : this._available

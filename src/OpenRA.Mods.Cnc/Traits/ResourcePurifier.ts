@@ -203,9 +203,7 @@ export class ResourcePurifier extends ConditionalTrait<ResourcePurifierInfo> {
    *
    * @param self — the refinery actor
    */
-  override tick(self: IGameActor): void {
-    super.tick(self)
-
+  tick(self: IGameActor): void {
     if (this._currentDisplayValue > 0 && --this._currentDisplayTick <= 0) {
       // C#: world.AddFrameEndTask(w => w.Add(new FloatingText(...)))
       // NOTE: FloatingText rendering deferred to Phase C.

@@ -187,20 +187,53 @@ export class EnergyWall {
   // Private helpers
   // -------------------------------------------------------------------------
 
-  /** Simple boolean expression evaluator.
+  /** Boolean expression evaluator.
    *
-   * OpenRA 对照: BooleanExpression.Evaluate()
+   * OpenRA 对照: BooleanExpression.Evaluate(IReadOnlyDictionary<string, int>)
    *
-   * NOTE: Full BooleanExpression parsing is deferred. This handles the simple
-   * case of a single variable name being present in the conditions map.
+   * Handles OR (||) and AND (&&) operators with !-prefixed negation.
+   * Variables are truthy when the condition count is > 0.
    */
   private _evaluateCondition(
     expr: string,
     conditions: ReadonlyMap<string, number>,
   ): boolean {
     if (!expr) return false
-    // Simple case: single variable present and non-zero
-    const value = conditions.get(expr)
+
+    // Split on || (lowest precedence)
+    const orParts = expr.split(/\|\|/)
+    for (const orPart of orParts) {
+      if (this._evaluateAnd(orPart.trim(), conditions)) return true
+    }
+    return false
+  }
+
+  /** Evaluate an AND expression (series of && separated terms). */
+  private _evaluateAnd(
+    expr: string,
+    conditions: ReadonlyMap<string, number>,
+  ): boolean {
+    if (!expr) return false
+
+    const andParts = expr.split(/&&/)
+    for (const andPart of andParts) {
+      if (!this._evaluateTerm(andPart.trim(), conditions)) return false
+    }
+    return true
+  }
+
+  /** Evaluate a single term (possibly negated variable name). */
+  private _evaluateTerm(
+    term: string,
+    conditions: ReadonlyMap<string, number>,
+  ): boolean {
+    if (!term) return false
+    // Handle ! negation
+    if (term.startsWith('!')) {
+      const varName = term.slice(1)
+      return !this._evaluateTerm(varName, conditions)
+    }
+    const value = conditions.get(term)
     return value !== undefined && value > 0
   }
 

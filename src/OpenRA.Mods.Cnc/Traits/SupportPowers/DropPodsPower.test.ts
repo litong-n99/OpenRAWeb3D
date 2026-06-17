@@ -15,13 +15,13 @@ describe('DropPodsPowerInfo', () => {
 })
 
 describe('DropPodsPower', () => {
-  function makeWorld(): any {
+  function makeWorld(terrainType = 'Clear'): any {
     return {
       map: {
         contains: () => true,
         centerOfCell: (c: any) => ({ X: c.X * 1024, Y: c.Y * 1024, Z: 0 }),
         cellContaining: () => ({ X: 5, Y: 5 }),
-        getTerrainInfo: () => ({ type: 'Water' }),
+        getTerrainInfo: () => ({ type: terrainType }),
       },
       actorMap: { getActorsAt: () => [] },
       sharedRandom: { nextInt: (max: number) => 0 },

@@ -345,6 +345,12 @@ export class DetonationSequence {
   /** Whether the sequence has been initiated. */
   private _initiated: boolean = false
 
+  /** IMove trait resolved from self.
+   *
+   * OpenRA 对照: IMove move = self.Trait<IMove>()
+   */
+  private readonly _move: unknown = null
+
   constructor(
     self: IGameActor,
     mad: MadTank,
@@ -354,6 +360,9 @@ export class DetonationSequence {
     this.mad = mad
     this.target = target
     this._assignTargetOnFirstRun = !target || target === DetonationSequence.INVALID_TARGET
+
+    // C#: move = self.Trait<IMove>()
+    this._move = (self as any).traitsImplementing?.('IMove')?.[0] ?? null
   }
 
   // -------------------------------------------------------------------------
@@ -387,6 +396,20 @@ export class DetonationSequence {
 
     // Check if target is still valid
     if (!this._initiated) {
+      // C#: if (target.Type != TargetType.Invalid && !move.CanEnterTargetNow(self, target))
+      // { QueueChild(new MoveAdjacentTo(...)); return false; }
+      const targetType = (this.target as any)?.type
+      if (
+        targetType !== undefined &&
+        targetType !== -1 &&
+        this._move &&
+        typeof (this._move as any).canEnterTargetNow === 'function' &&
+        !(this._move as any).canEnterTargetNow(this.self, this.target)
+      ) {
+        // NOTE: QueueChild(new MoveAdjacentTo(...)) deferred — activity system
+        return false
+      }
+
       // If the target is invalid, abort
       if (!this.target || this.target === DetonationSequence.INVALID_TARGET) {
         return true

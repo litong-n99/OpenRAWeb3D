@@ -23,6 +23,14 @@ import { WVec } from '../../../OpenRA.Game/WVec.js'
 import { WRot } from '../../../OpenRA.Game/WRot.js'
 
 // ---------------------------------------------------------------------------
+// Default landable terrain types
+// In C#, these come from AircraftInfo.LandableTerrainTypes per unit type.
+// We use typical C&C terrain types as defaults; tests can override.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_LANDABLE_TERRAIN_TYPES = ['Clear', 'Rough', 'Road', 'Ore', 'Beach']
+
+// ---------------------------------------------------------------------------
 // DropPodsPowerInfo
 // OpenRA 对照: DropPodsPowerInfo : SupportPowerInfo, IRulesetLoaded
 // ---------------------------------------------------------------------------
@@ -194,10 +202,10 @@ export class DropPodsPower extends SupportPower {
     for (const unitType of this._unitTypes) {
       // NOTE: In C#, this reads AircraftInfo and FallsToEarthInfo from actor rules.
       // In TypeScript, these are computed from the actor info at ruleset load time.
-      // For migration, we use simplified defaults.
-      const altitude = 0 // aircraftInfo.CruiseAltitude.Length
-      const speed = 0 // aircraftInfo.Speed
-      const velocity = 1 // FallsToEarthInfo.Velocity.Length
+      // For migration, we use sensible defaults (typical C&C aircraft values).
+      const altitude = 1280 // typical AircraftInfo.CruiseAltitude.Length (~5 cells)
+      const speed = 128 // typical AircraftInfo.Speed
+      const velocity = 128 // typical FallsToEarthInfo.Velocity.Length
       const facing = info.podFacing
 
       // delta = new WVec(0, -altitude * speed / velocity, 0).Rotate(WRot.FromYaw(facing))
@@ -219,9 +227,23 @@ export class DropPodsPower extends SupportPower {
         }
       })
 
-      // Landable terrain types
-      this._landableTypes.set(unitType, new Set())
+      // Landable terrain types — populated from actor rules in C#.
+      // Default to typical C&C landable terrains (Clear, Rough, Road, etc.).
+      // Tests can override via setLandableTypes().
+      this._landableTypes.set(
+        unitType,
+        new Set(DEFAULT_LANDABLE_TERRAIN_TYPES),
+      )
     }
+  }
+
+  /** Set landable terrain types for a specific unit type (for testing or config).
+   *
+   * In C#, these come from AircraftInfo.LandableTerrainTypes via rules.
+   * This method provides an injection point for test environments.
+   */
+  setLandableTypes(unitType: string, types: ReadonlySet<string>): void {
+    this._landableTypes.set(unitType.toLowerCase(), new Set(types))
   }
 
   // -------------------------------------------------------------------------

@@ -132,6 +132,12 @@ export class TDGunboat {
    */
   private _speedModifiers: number[] = []
 
+  /** NotifyCenterPositionChanged subscribers.
+   *
+   * OpenRA 对照: INotifyCenterPositionChanged[] notifyCenterPositionChanged
+   */
+  private _notifyCenterPositionChanged: { centerPositionChanged(actor: IGameActor, animOffsetX: number, animOffsetY: number): void }[] = []
+
   /** Whether the actor is currently in the world.
    */
   private _inWorld: boolean = false
@@ -331,6 +337,15 @@ export class TDGunboat {
       world.updateMaps?.(self, this)
       world.actorMap?.addInfluence?.(self, this)
     }
+
+    // C#: notifyCenterPositionChanged is invoked on every position change
+    if (this._notifyCenterPositionChanged.length > 0) {
+      for (const n of this._notifyCenterPositionChanged) {
+        if (typeof n.centerPositionChanged === 'function') {
+          n.centerPositionChanged(self, 0, 0)
+        }
+      }
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -347,6 +362,10 @@ export class TDGunboat {
         (sm: any) => sm.getSpeedModifier?.(),
       ) ?? []
     this._cachedLocation = this.topLeft
+
+    // C#: notifyCenterPositionChanged = self.TraitsImplementing<INotifyCenterPositionChanged>().ToArray()
+    this._notifyCenterPositionChanged =
+      (self as any).traitsImplementing?.('INotifyCenterPositionChanged') ?? []
   }
 
   // -----------------------------------------------------------------------

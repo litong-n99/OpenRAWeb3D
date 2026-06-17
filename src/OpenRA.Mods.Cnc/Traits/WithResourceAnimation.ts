@@ -14,7 +14,7 @@
  * for the renderer to consume.
  */
 
-import type { IGameActor, ITraitInfo } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { IGameActor, ITraitInfo } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -193,10 +193,22 @@ export class WithResourceAnimation {
     if (!world) return
 
     // Collect visible resource cells of matching types
+    // C#: iterates worldRenderer.Viewport.AllVisibleCells.CandidateMapCoords.
+    // In TypeScript, we query the resource renderer for cells of matching types.
     const cells: unknown[] = []
-    // NOTE: In OpenRA, this iterates worldRenderer.Viewport.AllVisibleCells.
-    // In TypeScript, we use a simplified cell collection from the map.
-    // The actual viewport-visible cell set requires WorldRenderer integration.
+    const map = world.map
+    const renderer = this._resourceRenderer as any
+    if (map && renderer && typeof renderer.getRenderedResourceType === 'function') {
+      // Use all map cells (simplified; viewport filtering deferred to Phase C)
+      const allCells = map.allCells?.() ?? []
+      for (const cell of allCells) {
+        if (!map.contains?.(cell)) continue
+        const type = renderer.getRenderedResourceType(cell)
+        if (type && this.info.types.has(type)) {
+          cells.push(cell)
+        }
+      }
+    }
 
     const ratio = randomInRange(world.localRandom, this.info.ratio)
     const maxSpawns = Math.max(1, Math.floor(cells.length * ratio / 100))

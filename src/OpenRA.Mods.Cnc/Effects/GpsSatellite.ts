@@ -117,6 +117,10 @@ export class GpsSatellite {
    * GPS activation when the reveal delay expires.
    */
   tick(_world: unknown): void {
+    // Once orbit is reached, stop all processing.
+    // In C#, the effect is removed via AddFrameEndTask after reachedOrbit.
+    if (this._reachedOrbit) return
+
     // Advance animation
     // NOTE: anim.Tick() — deferred to Phase C rendering
     this._tickCounter++
@@ -129,7 +133,7 @@ export class GpsSatellite {
       Z: this.pos.Z + 427,
     }
 
-    // Check if GPS should activate
+    // Check if GPS should activate (one-shot: only on the tick that exceeds revealDelay)
     if (this._tickCounter > this.revealDelay) {
       this._reachedOrbit = true
 

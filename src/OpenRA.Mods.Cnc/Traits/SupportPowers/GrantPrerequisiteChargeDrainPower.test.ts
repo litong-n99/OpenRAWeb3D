@@ -109,19 +109,24 @@ describe('DischargeableSupportPowerInstance', () => {
 
   it('should accept discharge from external sources', () => {
     const inst = makeInstance()
+    // Pre-tick to decrease remainingSubTicks from maximum, giving headroom
+    // before the discharge add so we don't hit the cap immediately
+    for (let i = 0; i < 20; i++) inst.tick() // decreases by 20 * 100 = 2000
     ;(inst as any)._available = true
     inst.activate({ extraData: 1 })
     const beforeTicks = inst.remainingSubTicks
     inst.discharge(1000)
     inst.tick()
+    // After discharge + modifier, remainingSubTicks should increase
+    // (orig + 300 + 1000) but still stay within cap
     expect(inst.remainingSubTicks).toBeGreaterThan(beforeTicks)
   })
 
   it('should show overlay text when active', () => {
     const inst = makeInstance()
     ;(inst as any)._available = true
-    ;(inst as any).active = true // Force active state for the instance's consumer
     inst.activate({ extraData: 1 })
+    // After activation, _active is true and _baseActive checks instances
     expect(inst.iconOverlayTextOverride()).toBe('ACTIVE')
   })
 })

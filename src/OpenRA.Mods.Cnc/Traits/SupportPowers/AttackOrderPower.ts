@@ -16,6 +16,7 @@ import {
   type SupportPowerInfo,
   type OrderStub,
   type ISupportPowerManager,
+  type ISupportPower,
 } from '../../../OpenRA.Mods.Common/Traits/SupportPowers/SupportPower.js'
 import type { IGameActor, ITraitInfo } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
@@ -220,8 +221,12 @@ export class SelectAttackPowerTarget {
   readonly cursorBlocked: string
 
   private readonly _manager: ISupportPowerManager
-  private readonly _self: IGameActor
   private readonly _attack: unknown
+  /** Cached power entry for this order (contains instances list for range checks).
+   *
+   * OpenRA 对照: instance = manager.GetPowersForActor(self).FirstOrDefault()
+   */
+  private readonly _powerEntry: { active: boolean; ready: boolean; instances: ISupportPower[] } | undefined
 
   constructor(
     self: IGameActor,
@@ -230,12 +235,15 @@ export class SelectAttackPowerTarget {
     cursor: string,
     attack: unknown,
   ) {
-    this._self = self
     this._manager = manager
     this.order = order
     this.cursor = cursor
     this._attack = attack
     this.cursorBlocked = `${cursor}-blocked`
+
+    // C#: instance = manager.GetPowersForActor(self).FirstOrDefault()
+    // Caches the power entry struct for this order so isValidTarget can iterate instances.
+    this._powerEntry = manager.powers.get(order)
   }
 
   /** Check if a cell is a valid target.
@@ -251,23 +259,24 @@ export class SelectAttackPowerTarget {
     const map = w?.map
     if (!map?.contains(cell)) return false
 
-    // Check if any unpaused instance can reach this cell
-    const instances =
-      this._manager.powers.get(this.order)?.instances ?? []
+    // C#: instance.Instances.Any(a => !a.IsTraitPaused && (a.Self.CenterPosition - pos).HorizontalLengthSquared < range)
+    if (!this._powerEntry) return false
+
     const maxRange =
       typeof (this._attack as any)?.getMaximumRange === 'function'
         ? (this._attack as any).getMaximumRange()
         : 0
     const rangeSq = maxRange * maxRange
 
-    for (const instance of instances) {
-      if ((instance as any).isTraitPaused) continue
+    const cellCenter = map.centerOfCell?.(cell)
+    if (!cellCenter) return false
 
-      const selfPos = (instance as any).self?.centerPosition
+    const instances = this._powerEntry.instances ?? []
+    for (const inst of instances) {
+      if ((inst as any).isTraitPaused) continue
+
+      const selfPos = (inst as any).self?.centerPosition
       if (!selfPos) continue
-
-      const cellCenter = map.centerOfCell?.(cell)
-      if (!cellCenter) continue
 
       const dx = selfPos.X - cellCenter.X
       const dy = selfPos.Y - cellCenter.Y

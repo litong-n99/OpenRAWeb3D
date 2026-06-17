@@ -48,7 +48,7 @@ describe('LightPaletteRotator', () => {
   it('should modify non-excluded palettes', () => {
     const info = new LightPaletteRotatorInfo({ timeStep: 1 })
     const trait = new LightPaletteRotator(info)
-    trait.tick({} as any) // t=1, rotate=0
+    // Do not tick — test at initial state (rotate=0, source=rotationIndices[0]=230)
 
     const palette = new Uint32Array(256)
     palette[230] = 0x12345678 // source color at rotationIndex[0]

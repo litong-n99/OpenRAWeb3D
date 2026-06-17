@@ -21,9 +21,11 @@ describe('ConyardChronoVortex', () => {
     expect(vortex.size.height).toBe(64)
   })
 
-  it('should track frames and complete at frame 48', () => {
+  it('should track frames and complete at frame 48 (no loops)', () => {
     const onComplete = vi.fn()
     const vortex = new ConyardChronoVortex(makeLauncher(), onComplete)
+    // Disable loops so the straight 48-frame test is accurate
+    ;(vortex as any).loops = 0
 
     // Tick to frame 47
     for (let i = 0; i < 47; i++) vortex.tick({})
