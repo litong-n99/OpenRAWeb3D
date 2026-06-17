@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 19 -- Mod-Specific Content (C&C + D2K)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.x (Mod-Specific) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (Phases A-B-C COMPLETE: 101/119, 85%; 45 deferred to build-time / post-MVP)
+> **Chapter Status**: COMPLETE (119/119, 100%, ALL PHASES A-D COMPLETE; 45 deferred to build-time / post-MVP)
 > **Planning Date**: 2026-06-17
 > **Prerequisite**: Chapters 2-18 COMPLETE (484/484, 100%. Ch8 Weapons, Ch9 Movement, Ch10 Resources, Ch11 Buildings, Ch12 Shroud, Ch13 Support Powers, Ch14 Activities, Ch15 Order Generators)
 >
@@ -972,12 +972,12 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 ### 3.4 Phase D: Supporting Infrastructure
 
-**Status**: 📋 待迁移 (0/18 migrated, 0 tests)
+**Status**: ✅ 已完成 (18/18 migrated, ~120 tests)
 **Complexity**: LOW-MEDIUM (Blowfish + BlowfishKeyProvider are HIGH; most others LOW)
 **Blocked by**: Ch5 (FileSystem for format readers), Ch2 (ISpriteLoader for sprite loaders)
 **Blocks**: Unblocks Phase A-C (sprite loaders needed for sprite sequences; file formats needed for voxel data reading)
 
-**Description**: Phase D implements the foundational file formats, sprite loaders, compression algorithms, and interfaces used by all other phases. These files have no game-logic dependencies — they are pure data processing. Because they are prerequisites for other phases, Phase D should begin early and run in parallel with Phase A.
+**Description**: Phase D implements the foundational file formats, sprite loaders, compression algorithms, and interfaces used by all other phases. These files have no game-logic dependencies — they are pure data processing.
 
 **Paradigm Shifts**:
 - C# `BinaryReader` on `Stream` → TypeScript `DataView` on `Uint8Array` (no Stream abstraction in browser)
@@ -987,7 +987,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.4.1 File Formats (6 files)
 
-- [ ] **TODO-19.D.1** `src/OpenRA.Mods.Cnc/FileFormats/Blowfish.ts` (410 lines C#) — Blowfish encryption cipher:
+- [x] **TODO-19.D.1** `src/OpenRA.Mods.Cnc/FileFormats/Blowfish.ts` (410 lines C#) — Blowfish encryption cipher:
   - Pure TypeScript implementation of the Blowfish block cipher (64-bit blocks)
   - `encipher(uint32 * 2)` — encrypt one block
   - `decipher(uint32 * 2)` — decrypt one block
@@ -995,93 +995,93 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - **Precision requirement**: encrypt/decrypt must produce byte-identical output to C# Blowfish for all test vectors
   - Used for decrypting encrypted MIX file headers
 
-- [ ] **TODO-19.D.2** `src/OpenRA.Mods.Cnc/FileFormats/BlowfishKeyProvider.ts` (491 lines C#) — Blowfish key derivation from game EXE:
+- [x] **TODO-19.D.2** `src/OpenRA.Mods.Cnc/FileFormats/BlowfishKeyProvider.ts` (491 lines C#) — Blowfish key derivation from game EXE:
   - Analyzes game executable to extract decryption key
   - Byte pattern matching to locate key constants in binary
   - Produces 56-byte Blowfish key from located constants
   - Used only at asset-load time (build time). Runtime can use hardcoded key for known games.
 
-- [ ] **TODO-19.D.3** `src/OpenRA.Mods.Cnc/FileFormats/LCWCompression.ts` (167 lines C#) — Lempel-Castle-Welch (LCW) decompression:
+- [x] **TODO-19.D.3** `src/OpenRA.Mods.Cnc/FileFormats/LCWCompression.ts` (167 lines C#) — Lempel-Castle-Welch (LCW) decompression:
   - Pure TypeScript decompression from `Uint8Array` input → `Uint8Array` output
   - Used by SHP sprite format (Tiberian Dawn)
   - **Precision requirement**: decompress must produce byte-identical output to C# for all test vectors
   - Stream decoding with variable-length back-reference + raw copy commands
 
-- [ ] **TODO-19.D.4** `src/OpenRA.Mods.Cnc/FileFormats/LZOCompression.ts` (291 lines C#) — LZO decompression:
+- [x] **TODO-19.D.4** `src/OpenRA.Mods.Cnc/FileFormats/LZOCompression.ts` (291 lines C#) — LZO decompression:
   - Pure TypeScript decompression from `Uint8Array` input → `Uint8Array` output
   - Used by TS voxel data and terrain formats
   - Larger, more complex than LCW
   - **Precision requirement**: decompress must produce byte-identical output to C# for all test vectors
 
-- [ ] **TODO-19.D.5** `src/OpenRA.Mods.Cnc/FileFormats/XORDeltaCompression.ts` (82 lines C#) — XOR delta decompression:
+- [x] **TODO-19.D.5** `src/OpenRA.Mods.Cnc/FileFormats/XORDeltaCompression.ts` (82 lines C#) — XOR delta decompression:
   - Pure TypeScript decompression from `Uint8Array` input → `Uint8Array` output
   - XOR each byte with previous frame for video frame decoding (WSA frames)
   - Simple algorithm; used as dependency for WSA video (deferred)
 
-- [ ] **TODO-19.D.6** `src/OpenRA.Mods.Cnc/FileFormats/AudReader.ts` (205 lines C#) — AUD audio format reader:
+- [x] **TODO-19.D.6** `src/OpenRA.Mods.Cnc/FileFormats/AudReader.ts` (205 lines C#) — AUD audio format reader:
   - Parses Westwood AUD audio container format
   - Extracts PCM/ADPCM audio data with sample rate and format metadata
   - **ADR-19.4**: Used at build time for AUD→WAV conversion. Runtime TS is thin validation wrapper.
 
 #### 3.4.2 Sprite Loaders (7 files)
 
-- [ ] **TODO-19.D.7** `src/OpenRA.Mods.Cnc/SpriteLoaders/ShpTDLoader.ts` (330 lines C#) — Tiberian Dawn SHP sprite loader:
+- [x] **TODO-19.D.7** `src/OpenRA.Mods.Cnc/SpriteLoaders/ShpTDLoader.ts` (330 lines C#) — Tiberian Dawn SHP sprite loader:
   - Implements `ISpriteLoader`
   - Parses SHP format with LCW-compressed frames
   - TD-specific frame count and offset logic
   - Integration: Ch2 `SpriteLoader` infrastructure
 
-- [ ] **TODO-19.D.8** `src/OpenRA.Mods.Cnc/SpriteLoaders/ShpD2Loader.ts` (171 lines C#) — Dune 2000 SHP variant:
+- [x] **TODO-19.D.8** `src/OpenRA.Mods.Cnc/SpriteLoaders/ShpD2Loader.ts` (171 lines C#) — Dune 2000 SHP variant:
   - Implements `ISpriteLoader`
   - D2K-specific SHP format (similar to TD but with variant header)
   - Different frame count handling
 
-- [ ] **TODO-19.D.9** `src/OpenRA.Mods.Cnc/SpriteLoaders/ShpRemasteredLoader.ts` (121 lines C#) — Remastered SHP loader:
+- [x] **TODO-19.D.9** `src/OpenRA.Mods.Cnc/SpriteLoaders/ShpRemasteredLoader.ts` (121 lines C#) — Remastered SHP loader:
   - Implements `ISpriteLoader`
   - Wraps remastered sprite data (higher resolution)
   - Thin wrapper; most logic in base SHP loader
 
-- [ ] **TODO-19.D.10** `src/OpenRA.Mods.Cnc/SpriteLoaders/TmpTDLoader.ts` (101 lines C#) — Tiberian Dawn terrain TMP loader:
+- [x] **TODO-19.D.10** `src/OpenRA.Mods.Cnc/SpriteLoaders/TmpTDLoader.ts` (101 lines C#) — Tiberian Dawn terrain TMP loader:
   - Implements `ISpriteLoader` for terrain tiles
   - TD-specific TMP format: 24×24 pixel tiles with palette lookup
   - Integration: Ch4 terrain sprite pipeline
 
-- [ ] **TODO-19.D.11** `src/OpenRA.Mods.Cnc/SpriteLoaders/TmpRALoader.ts` (98 lines C#) — Red Alert terrain TMP loader:
+- [x] **TODO-19.D.11** `src/OpenRA.Mods.Cnc/SpriteLoaders/TmpRALoader.ts` (98 lines C#) — Red Alert terrain TMP loader:
   - Implements `ISpriteLoader` for terrain tiles
   - RA-specific TMP variant
 
-- [ ] **TODO-19.D.12** `src/OpenRA.Mods.Cnc/SpriteLoaders/TmpTSLoader.ts` (199 lines C#) — Tiberian Sun terrain TMP loader:
+- [x] **TODO-19.D.12** `src/OpenRA.Mods.Cnc/SpriteLoaders/TmpTSLoader.ts` (199 lines C#) — Tiberian Sun terrain TMP loader:
   - Implements `ISpriteLoader` for terrain tiles
   - TS-specific TMP with LZO-compressed tile data
   - More complex than TD/RA TMP due to LZO compression
 
-- [ ] **TODO-19.D.13** `src/OpenRA.Mods.D2k/SpriteLoaders/R8Loader.ts` (229 lines C#) — D2K R8 sprite format loader:
+- [x] **TODO-19.D.13** `src/OpenRA.Mods.D2k/SpriteLoaders/R8Loader.ts` (229 lines C#) — D2K R8 sprite format loader:
   - Implements `ISpriteLoader`
   - Dune 2000-specific R8 sprite format
   - 8-bit indexed color with D2K-specific palette
 
 #### 3.4.3 Interfaces & Utilities (3 files)
 
-- [ ] **TODO-19.D.14** `src/OpenRA.Mods.Cnc/TraitsInterfaces.ts` (18 lines C#) — C&C-specific trait interfaces:
+- [x] **TODO-19.D.14** `src/OpenRA.Mods.Cnc/TraitsInterfaces.ts` (18 lines C#) — C&C-specific trait interfaces:
   - `INotifyTeslaCharging` — single-method interface for Tesla charge event
   - Minimal file; only 1 interface
 
-- [ ] **TODO-19.D.15** `src/OpenRA.Mods.Cnc/Util.ts` (315 lines C#) — C&C utility functions:
+- [x] **TODO-19.D.15** `src/OpenRA.Mods.Cnc/Util.ts` (315 lines C#) — C&C utility functions:
   - `ClassicIndexFacing(facing, steps)` — converts WAngle to classic 8-dir index
   - `ClassicQuantizeFacing(facing, steps)` — quantizes facing to nearest classic direction
   - Non-linear facing mapping (0-31 → 0-7 with specific East/West bias)
   - Used by `ClassicFacingBodyOrientation` (already migrated) and `ClassicSpriteSequence`
 
-- [ ] **TODO-19.D.16** `src/OpenRA.Mods.D2k/PackageLoaders/D2kSoundResources.ts` (94 lines C#) — D2K sound resource packaging:
+- [x] **TODO-19.D.16** `src/OpenRA.Mods.D2k/PackageLoaders/D2kSoundResources.ts` (94 lines C#) — D2K sound resource packaging:
   - Loads and registers D2K-specific sound files
   - `soundFormat: string` — D2K sound format (D2K AUD variant)
   - Integration: Ch7 `Sound` + `SoundDevice`
 
-**Phase D Summary**: 18 files, ~2,500 C# lines source. Key HIGH complexity: Blowfish (410 lines), BlowfishKeyProvider (491 lines). Status: 📋 PLANNING.
+**Phase D Summary**: 18 files, ~2,500 C# lines source. Key HIGH complexity: Blowfish (410 lines), BlowfishKeyProvider (491 lines). Status: ✅ COMPLETE (ALL APPROVED). Commits: `d4ded91`, `29ec098`, `b93be83`, `847b07f`, `4573480`.
 
 ---
 
-### Chapter 19 Final Status: 101/119 files (85%, Phases A-B-C COMPLETE). Phase A: 47/47 (100%, R2 APPROVED, ~528 tests), Phase B: 17/17 (100%, R2 APPROVED, ~234 tests), Phase C: 37/37 (100%, R2 APPROVED, ~200 tests), Phase D: 0/18. Deferred: 45 files (~7,300 lines). Already Migrated: 8 files.
+### Chapter 19 Final Status: 119/119 files (100%, ALL PHASES A-D COMPLETE). Phase A: 47/47 (100%, R2 APPROVED, ~528 tests), Phase B: 17/17 (100%, R2 APPROVED, ~234 tests), Phase C: 37/37 (100%, R2 APPROVED, ~200 tests), Phase D: 18/18 (100%, ALL APPROVED, ~120 tests). Deferred: 45 files (~7,300 lines). Already Migrated: 8 files.
 
 ---
 
