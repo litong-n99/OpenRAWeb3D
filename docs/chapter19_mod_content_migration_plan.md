@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 19 -- Mod-Specific Content (C&C + D2K)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.x (Mod-Specific) + Section 4.3 (Traits)
-> **Chapter Status**: PLANNING (0/97 files, 0%; 45 deferred to build-time / post-MVP)
+> **Chapter Status**: IN PROGRESS (Phase A COMPLETE: 47/119, 40%; 45 deferred to build-time / post-MVP)
 > **Planning Date**: 2026-06-17
 > **Prerequisite**: Chapters 2-18 COMPLETE (484/484, 100%. Ch8 Weapons, Ch9 Movement, Ch10 Resources, Ch11 Buildings, Ch12 Shroud, Ch13 Support Powers, Ch14 Activities, Ch15 Order Generators)
 >
@@ -294,7 +294,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 | Phase | Files | C# Lines | Est. TS Lines | Est. Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: C&C Core Traits | 47 | ~6,600 | ~8,000 | ~280 | PLANNING |
+| A: C&C Core Traits | 47 | ~6,600 | ~8,000 | ~528 | ✅ COMPLETE (R2 APPROVED) |
 | B: D2K Mod Traits | 17 | ~2,000 | ~2,500 | ~90 | PLANNING |
 | C: C&C Rendering & Voxel | 37 | ~4,700 | ~5,000 | ~200 | PLANNING |
 | D: Supporting Infrastructure | 18 | ~2,500 | ~3,000 | ~120 | PLANNING |
@@ -312,7 +312,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 ### 3.1 Phase A: C&C Core Traits
 
-**Status**: 📋 待迁移 (0/47 migrated, 0 tests)
+**Status**: ✅ COMPLETE (47/47 migrated, ~528 tests, R2 APPROVED)
 **Complexity**: MEDIUM-HIGH (ChronoshiftPower + Disguise are HIGH; most others LOW-MEDIUM)
 **Blocked by**: Chapters 8 (Weapons), 9 (Movement), 10 (Resources), 11 (Buildings), 12 (Shroud), 13 (Support Powers), 14 (Activities)
 **Blocks**: Phase B (D2K traits extend similar patterns), Phase C (Chrono renderers use Chronoshiftable/PortableChrono)
@@ -329,7 +329,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.1.1 Chrono Technology (5 files)
 
-- [ ] **TODO-19.A.1** `src/OpenRA.Mods.Cnc/Traits/Chronoshiftable.ts` (192 lines C#) — Actor trait allowing chronoshift teleport:
+- [x] **TODO-19.A.1** `src/OpenRA.Mods.Cnc/Traits/Chronoshiftable.ts` (192 lines C#) — Actor trait allowing chronoshift teleport:
   - Implements `ITick`, `INotifyCreated`, `ISync`
   - `teleportAction`: queue teleport to target cell during tick
   - `returnToOrigin`: chronoshift return after duration expires
@@ -337,7 +337,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - Integration: queues `ChronoshiftableOrder` via `OrderManager`; triggers `ChronoVortexRenderer`
   - **3D**: teleport = `TransformNode.position` instant update + `PostProcess` screen flash on arrival
 
-- [ ] **TODO-19.A.2** `src/OpenRA.Mods.Cnc/Traits/PortableChrono.ts` (286 lines C#) — Infantry-portable chronoshift device:
+- [x] **TODO-19.A.2** `src/OpenRA.Mods.Cnc/Traits/PortableChrono.ts` (286 lines C#) — Infantry-portable chronoshift device:
   - Implements `IIssueOrder`, `IResolveOrder`, `ITick`
   - `chargeDuration: number` ticks between uses
   - `maxDistance: WDist` maximum teleport range
@@ -345,14 +345,14 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - Charge state managed via `ConditionManager` token grant/revoke
   - **3D**: teleport range displayed as green circle indicator (Babylon.js `GroundMesh` decal)
 
-- [ ] **TODO-19.A.3** `src/OpenRA.Mods.Cnc/Traits/ConyardChronoReturn.ts` (245 lines C#) — Construction yard chrono-return on low HP:
+- [x] **TODO-19.A.3** `src/OpenRA.Mods.Cnc/Traits/ConyardChronoReturn.ts` (245 lines C#) — Construction yard chrono-return on low HP:
   - Implements `ITick`, `INotifyDamage`
   - Monitors `Health` trait for HP threshold crossing
   - Triggers chronoshift return to original build location
   - `returnDelay: number` ticks before auto-return
   - **3D**: chrono-vortex particle effect at original build site on arrival
 
-- [ ] **TODO-19.A.4** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/ChronoshiftPower.ts` (394 lines C#) — Chronosphere superweapon:
+- [x] **TODO-19.A.4** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/ChronoshiftPower.ts` (394 lines C#) — Chronosphere superweapon:
   - Extends Ch13 `SupportPower` with area-select targeting
   - `range: WDist` chronoshift area radius
   - `duration: number` ticks before units return
@@ -360,33 +360,33 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - `affectsBuildings: boolean` — can shift buildings
   - **3D**: area selection = Babylon.js `GroundMesh` circle overlay. Teleport effect = `PostProcess` fullscreen chroma-shift
 
-- [ ] **TODO-19.A.5** `src/OpenRA.Mods.Cnc/Traits/PaletteEffects/ChronoshiftPostProcessEffect.ts` (56 lines C#) — Screen color-shift during chronoshift:
+- [x] **TODO-19.A.5** `src/OpenRA.Mods.Cnc/Traits/PaletteEffects/ChronoshiftPostProcessEffect.ts` (56 lines C#) — Screen color-shift during chronoshift:
   - Applies palette rotation to screen during chronoshift duration
   - `chromaOffset: number` color-shift intensity
   - **3D**: Babylon.js `PostProcess` with custom `FragmentOutput` chroma-shift shader
 
 #### 3.1.2 GPS / Sensors (4 files)
 
-- [ ] **TODO-19.A.6** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/GpsPower.ts` (123 lines C#) — GPS satellite support power:
+- [x] **TODO-19.A.6** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/GpsPower.ts` (123 lines C#) — GPS satellite support power:
   - Extends Ch13 `SupportPower`
   - `revealDelay: number` ticks until global shroud reveal
   - On activation: grants `GpsWatcher` condition to all allied players
   - On satellite destroyed: revokes watcher condition
   - Integration: Ch12 `FrozenUnderFogUpdatedByGps` + `GpsDot` visibility
 
-- [ ] **TODO-19.A.7** `src/OpenRA.Mods.Cnc/Traits/GpsWatcher.ts` (114 lines C#) — GPS reveal condition manager:
+- [x] **TODO-19.A.7** `src/OpenRA.Mods.Cnc/Traits/GpsWatcher.ts` (114 lines C#) — GPS reveal condition manager:
   - Implements `ITick`, `INotifyCreated`
   - Watches for active GPS power on owning player
   - Grants/revokes `GpsWatcher` condition token on all allied actors
   - `gpsRadius: WDist` — reveal radius around watcher (defaults to full map)
 
-- [ ] **TODO-19.A.8** `src/OpenRA.Mods.Cnc/Traits/GpsDot.ts` (58 lines C#) — GPS minimap dot for revealed actors:
+- [x] **TODO-19.A.8** `src/OpenRA.Mods.Cnc/Traits/GpsDot.ts` (58 lines C#) — GPS minimap dot for revealed actors:
   - ConditionalTrait: only visible when GPS reveal is active
   - Renders a tiny dot on the minimap for all revealed enemy actors
   - `color: Color` dot color (red = enemy, blue = ally)
   - **3D**: minimap dot = CSS pixel dot on Canvas2D minimap (Chapter 16 RadarWidget)
 
-- [ ] **TODO-19.A.9** `src/OpenRA.Mods.Cnc/Traits/FrozenUnderFogUpdatedByGps.ts` (110 lines C#) — GPS-updated frozen actor visibility:
+- [x] **TODO-19.A.9** `src/OpenRA.Mods.Cnc/Traits/FrozenUnderFogUpdatedByGps.ts` (110 lines C#) — GPS-updated frozen actor visibility:
   - Extends Ch12 `FrozenUnderFog` with GPS awareness
   - When GPS is active, frozen actors update to current state (live position)
   - When GPS deactivates, frozen actors freeze again at last known position
@@ -394,7 +394,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.1.3 Infiltration System (9 files)
 
-- [ ] **TODO-19.A.10** `src/OpenRA.Mods.Cnc/Traits/Infiltration/Infiltrates.ts` (156 lines C#) — Base infiltration trait:
+- [x] **TODO-19.A.10** `src/OpenRA.Mods.Cnc/Traits/Infiltration/Infiltrates.ts` (156 lines C#) — Base infiltration trait:
   - Implements `IIssueOrder`, `IResolveOrder`
   - `types: string[]` — infiltration target types (e.g., "Building", "Defense")
   - Enters target building via `Enter` activity
@@ -402,42 +402,42 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - Self-destructs after successful infiltration
   - Integration: Ch14 `Enter` activity for movement into target
 
-- [ ] **TODO-19.A.11** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForCash.ts` (100 lines C#) — Steal cash on infiltrate:
+- [x] **TODO-19.A.11** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForCash.ts` (100 lines C#) — Steal cash on infiltrate:
   - `percentage: number` — percentage of target player's cash to steal
   - `minimum: number` — minimum cash amount to steal
   - Transfers cash from target player to infiltrator's player via `PlayerResources`
 
-- [ ] **TODO-19.A.12** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForDecoration.ts` (59 lines C#) — Apply visual decoration on infiltrate:
+- [x] **TODO-19.A.12** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForDecoration.ts` (59 lines C#) — Apply visual decoration on infiltrate:
   - `sequence: string` — decoration sequence to apply to infiltrated building
   - Decoration lasts `duration: number` ticks
 
-- [ ] **TODO-19.A.13** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForExploration.ts` (79 lines C#) — Reveal shroud on infiltrate:
+- [x] **TODO-19.A.13** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForExploration.ts` (79 lines C#) — Reveal shroud on infiltrate:
   - Grants temporary shroud reveal around infiltrated building
   - `radius: WDist` reveal radius
   - `duration: number` reveal duration in ticks
   - Integration: Ch12 `Shroud` reveal mechanism
 
-- [ ] **TODO-19.A.14** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForPowerOutage.ts` (83 lines C#) — Cause power outage on infiltrate:
+- [x] **TODO-19.A.14** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForPowerOutage.ts` (83 lines C#) — Cause power outage on infiltrate:
   - Disables player power for `duration: number` ticks
   - All buildings lose power (production queues pause, radar disables)
   - Integration: Ch11 `PowerManager`
 
-- [ ] **TODO-19.A.15** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForSupportPower.ts` (80 lines C#) — Grant one-time support power use:
+- [x] **TODO-19.A.15** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForSupportPower.ts` (80 lines C#) — Grant one-time support power use:
   - Grants target player a single use of the specified `SupportPower`
   - `power: string` — support power name to grant
   - Integration: Ch13 `SupportPowerManager`
 
-- [ ] **TODO-19.A.16** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForSupportPowerReset.ts` (77 lines C#) — Reset support power cooldown:
+- [x] **TODO-19.A.16** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForSupportPowerReset.ts` (77 lines C#) — Reset support power cooldown:
   - Resets charge timer on target player's specified support power
   - `power: string` — support power to reset
   - Integration: Ch13 `SupportPower` charge system
 
-- [ ] **TODO-19.A.17** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForTransform.ts` (72 lines C#) — Transform infiltrated building:
+- [x] **TODO-19.A.17** `src/OpenRA.Mods.Cnc/Traits/Infiltration/InfiltrateForTransform.ts` (72 lines C#) — Transform infiltrated building:
   - Transforms the infiltrated building into a different actor type
   - `intoActor: string` — target actor type after transformation
   - Integration: Ch11 `Transforms` building trait
 
-- [ ] **TODO-19.A.18** `src/OpenRA.Mods.Cnc/Activities/Infiltrate.ts` (79 lines C#) — Infiltration activity:
+- [x] **TODO-19.A.18** `src/OpenRA.Mods.Cnc/Activities/Infiltrate.ts` (79 lines C#) — Infiltration activity:
   - Extends Ch14 `Enter` activity
   - On entering target: triggers `Infiltrates.ResolveOrder()`
   - Self-disposes after triggering infiltration effects
@@ -445,26 +445,26 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.1.4 Attack Variants (4 files)
 
-- [ ] **TODO-19.A.19** `src/OpenRA.Mods.Cnc/Traits/Attack/AttackLeap.ts` (72 lines C#) — Leap-based attack trait:
+- [x] **TODO-19.A.19** `src/OpenRA.Mods.Cnc/Traits/Attack/AttackLeap.ts` (72 lines C#) — Leap-based attack trait:
   - Extends Ch8 `AttackFrontal`
   - `leapSpeed: WDist` speed of leap toward target
   - On attack: initiates `Leap` activity toward target, then deals damage on landing
   - **3D**: leap = parabolic arc animation (`Vector3.Lerp` with Y-axis height curve)
 
-- [ ] **TODO-19.A.20** `src/OpenRA.Mods.Cnc/Traits/Attack/AttackPopupTurreted.ts` (135 lines C#) — Pop-up turret attack:
+- [x] **TODO-19.A.20** `src/OpenRA.Mods.Cnc/Traits/Attack/AttackPopupTurreted.ts` (135 lines C#) — Pop-up turret attack:
   - Extends Ch8 `AttackTurreted` with pop-up state
   - Turret is hidden underground until target detected
   - `popUpDelay: number` ticks before turret emerges
   - `closeDelay: number` ticks before turret hides after target lost
   - **3D**: turret mesh Y-axis animation: hidden (below ground) → emerge (lerp up) → attack → hide (lerp down)
 
-- [ ] **TODO-19.A.21** `src/OpenRA.Mods.Cnc/Traits/Attack/AttackTDGunboatTurreted.ts` (83 lines C#) — TD Gunboat turret attack:
+- [x] **TODO-19.A.21** `src/OpenRA.Mods.Cnc/Traits/Attack/AttackTDGunboatTurreted.ts` (83 lines C#) — TD Gunboat turret attack:
   - Extends Ch8 `AttackTurreted` for naval gunboat-specific facing
   - `localOffset: WVec` turret offset on hull
   - Works with `TDGunboat` water movement trait
   - **3D**: turret node rotation on parent hull TransformNode
 
-- [ ] **TODO-19.A.22** `src/OpenRA.Mods.Cnc/Traits/Attack/AttackTesla.ts` (174 lines C#) — Tesla coil attack with charge-up:
+- [x] **TODO-19.A.22** `src/OpenRA.Mods.Cnc/Traits/Attack/AttackTesla.ts` (174 lines C#) — Tesla coil attack with charge-up:
   - Extends Ch8 `AttackBase`
   - `chargeDelay: number` ticks charge-up before firing
   - During charge: `INotifyTeslaCharging` event for visual charge animation
@@ -473,39 +473,39 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.1.5 Support Powers (5 files)
 
-- [ ] **TODO-19.A.23** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/AttackOrderPower.ts` (157 lines C#) — Target-and-attack support power:
+- [x] **TODO-19.A.23** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/AttackOrderPower.ts` (157 lines C#) — Target-and-attack support power:
   - Extends Ch13 `SupportPower` with `IIssueOrder` for targeting
   - Orders the target actor to attack a specified position/actor
   - Used for paradrop-attack, chrono-attack, etc.
   - **3D**: targeting indicator = Babylon.js `GroundMesh` decal at target
 
-- [ ] **TODO-19.A.24** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/DropPodsPower.ts` (191 lines C#) — Drop pods support power:
+- [x] **TODO-19.A.24** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/DropPodsPower.ts` (191 lines C#) — Drop pods support power:
   - Extends Ch13 `SupportPower`
   - `unit: string` — unit type to drop
   - `podCount: number` — number of drop pods
   - `podScatter: WDist` — random scatter radius
   - **3D**: drop pod = vertically descending `Mesh` with particle trail + ground-impact `SpriteEffect` on landing
 
-- [ ] **TODO-19.A.25** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/GrantPrerequisiteChargeDrainPower.ts` (197 lines C#) — Prerequisite-granting drain power:
+- [x] **TODO-19.A.25** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/GrantPrerequisiteChargeDrainPower.ts` (197 lines C#) — Prerequisite-granting drain power:
   - Extends Ch13 `SupportPower`
   - Grants prerequisite to owner (unlocks tech) while active
   - Drains power while active (continuous cost)
   - Toggle on/off via support power activation
 
-- [ ] **TODO-19.A.26** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/IonCannonPower.ts` (104 lines C#) — Ion cannon superweapon:
+- [x] **TODO-19.A.26** `src/OpenRA.Mods.Cnc/Traits/SupportPowers/IonCannonPower.ts` (104 lines C#) — Ion cannon superweapon:
   - Extends Ch13 `SupportPower`
   - `weapon: string` — weapon fired from orbit
   - Fires `IonCannon` projectile from sky to ground target
   - **3D**: ion beam = descending `CylinderMesh` with bright blue `ShaderMaterial` + ground splash particle system
 
-- [ ] **TODO-19.A.27** `src/OpenRA.Mods.Cnc/Effects/GpsSatellite.ts` (60 lines C#) — GPS satellite launch effect:
+- [x] **TODO-19.A.27** `src/OpenRA.Mods.Cnc/Effects/GpsSatellite.ts` (60 lines C#) — GPS satellite launch effect:
   - Implements Ch3 `IEffect` interface
   - Satellite launch animation and GPS activation sequence
   - **3D**: satellite = small `Mesh` rising from launch structure into sky
 
 #### 3.1.6 Miscellaneous Traits (11 files)
 
-- [ ] **TODO-19.A.28** `src/OpenRA.Mods.Cnc/Traits/Disguise.ts` (335 lines C#) — Actor disguise system:
+- [x] **TODO-19.A.28** `src/OpenRA.Mods.Cnc/Traits/Disguise.ts` (335 lines C#) — Actor disguise system:
   - Implements `ITick`, `INotifyAttack`, `IIssueOrder`
   - `disguisedAsActor: string` — actor type being impersonated
   - Disguise applied on creation; broken on attack
@@ -513,7 +513,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - `revealOnAttack: boolean` — breaks disguise on first attack
   - **3D**: disguised mesh = swap to disguised actor's mesh. Reveal = swap back to real mesh
 
-- [ ] **TODO-19.A.29** `src/OpenRA.Mods.Cnc/Traits/MadTank.ts` (255 lines C#) — MAD tank detonation sequence:
+- [x] **TODO-19.A.29** `src/OpenRA.Mods.Cnc/Traits/MadTank.ts` (255 lines C#) — MAD tank detonation sequence:
   - Implements `ITick`, `IIssueOrder`, `IResolveOrder`
   - `detonationDelay: number` ticks countdown after activation
   - During countdown: screen shake intensifies, engine glow increases
@@ -521,53 +521,53 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - Self-destructs after detonation
   - **3D**: countdown = mesh vibration (random micro-offset) + emissive intensity ramp-up
 
-- [ ] **TODO-19.A.30** `src/OpenRA.Mods.Cnc/Traits/Cloneable.ts` (29 lines C#) — Marks actor as cloneable:
+- [x] **TODO-19.A.30** `src/OpenRA.Mods.Cnc/Traits/Cloneable.ts` (29 lines C#) — Marks actor as cloneable:
   - ConditionalTrait indicating actor can be cloned by `ClonesProducedUnits`
   - Simple boolean flag trait, no tick logic
 
-- [ ] **TODO-19.A.31** `src/OpenRA.Mods.Cnc/Traits/Buildings/ClonesProducedUnits.ts` (76 lines C#) — Clone units produced by this building:
+- [x] **TODO-19.A.31** `src/OpenRA.Mods.Cnc/Traits/Buildings/ClonesProducedUnits.ts` (76 lines C#) — Clone units produced by this building:
   - When this building produces a unit from `Cloneable`, spawns a duplicate
   - `clones: number` — extra clone count (default 1)
   - Spawns clone at rally point with same facing
 
-- [ ] **TODO-19.A.32** `src/OpenRA.Mods.Cnc/Traits/EnergyWall.ts` (111 lines C#) — Energy wall blocker:
+- [x] **TODO-19.A.32** `src/OpenRA.Mods.Cnc/Traits/EnergyWall.ts` (111 lines C#) — Energy wall blocker:
   - ConditionalTrait: blocks movement when active
   - `adjacentCell: boolean` — blocks adjacent cells too
   - `maxRange: WDist` — wall segment length
   - Power-dependent (deactivates if no power)
   - Integration: Ch11 `PowerManager` for power dependency
 
-- [ ] **TODO-19.A.33** `src/OpenRA.Mods.Cnc/Traits/EdibleByLeap.ts` (37 lines C#) — Marks actor as edible by leap attack:
+- [x] **TODO-19.A.33** `src/OpenRA.Mods.Cnc/Traits/EdibleByLeap.ts` (37 lines C#) — Marks actor as edible by leap attack:
   - ConditionalTrait indicating actor can be consumed by `AttackLeap`
   - Simple flag trait; consumed actor is destroyed on successful leap
 
-- [ ] **TODO-19.A.34** `src/OpenRA.Mods.Cnc/Traits/HarvesterHuskModifier.ts` (39 lines C#) — Custom harvester husk appearance:
+- [x] **TODO-19.A.34** `src/OpenRA.Mods.Cnc/Traits/HarvesterHuskModifier.ts` (39 lines C#) — Custom harvester husk appearance:
   - Overrides default harvester husk actor type
   - `huskActor: string` — custom husk actor to spawn
 
-- [ ] **TODO-19.A.35** `src/OpenRA.Mods.Cnc/Traits/ResourcePurifier.ts` (91 lines C#) — Resource purification multiplier:
+- [x] **TODO-19.A.35** `src/OpenRA.Mods.Cnc/Traits/ResourcePurifier.ts` (91 lines C#) — Resource purification multiplier:
   - Implements `ITick`, `INotifyCreated`
   - `modifier: number` — cash multiplier for harvested resources
   - Affects all harvesters owned by owning player
   - Integration: Ch10 `PlayerResources` + `Harvester`
 
-- [ ] **TODO-19.A.36** `src/OpenRA.Mods.Cnc/Traits/TDGunboat.ts` (242 lines C#) — Tiberian Dawn gunboat water unit:
+- [x] **TODO-19.A.36** `src/OpenRA.Mods.Cnc/Traits/TDGunboat.ts` (242 lines C#) — Tiberian Dawn gunboat water unit:
   - Implements `ITick`, `IMove`
   - Water-only movement with gunboat-specific facing logic
   - `waterTileset: string` — valid water terrain types
   - Integration: Ch9 `Mobile` locomotion on water cells only
 
-- [ ] **TODO-19.A.37** `src/OpenRA.Mods.Cnc/Traits/DrainPrerequisitePowerOnDamage.ts` (62 lines C#) — Drain power requirement on damage:
+- [x] **TODO-19.A.37** `src/OpenRA.Mods.Cnc/Traits/DrainPrerequisitePowerOnDamage.ts` (62 lines C#) — Drain power requirement on damage:
   - When actor takes damage, temporarily removes a prerequisite (disabling tech)
   - `prerequisite: string` — prerequisite to drain
   - `duration: number` — drain duration
 
-- [ ] **TODO-19.A.38** `src/OpenRA.Mods.Cnc/Traits/TransferTimedExternalConditionOnTransform.ts` (63 lines C#) — Transfer conditions during transform:
+- [x] **TODO-19.A.38** `src/OpenRA.Mods.Cnc/Traits/TransferTimedExternalConditionOnTransform.ts` (63 lines C#) — Transfer conditions during transform:
   - When actor transforms, transfers timed external conditions to the new actor
   - `conditions: string[]` — conditions to transfer
   - Integration: Ch3 `ConditionManager`
 
-- [ ] **TODO-19.A.39** `src/OpenRA.Mods.Cnc/Traits/TransformsNearResources.ts` (102 lines C#) — Transform when resources are near:
+- [x] **TODO-19.A.39** `src/OpenRA.Mods.Cnc/Traits/TransformsNearResources.ts` (102 lines C#) — Transform when resources are near:
   - Implements `ITick`
   - When resources of specified type are within `range: WDist`, triggers actor transform
   - `intoActor: string` — target actor type after transformation
@@ -576,51 +576,51 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.1.7 World / Resource Traits (5 files)
 
-- [ ] **TODO-19.A.40** `src/OpenRA.Mods.Cnc/Traits/World/TSResourceLayer.ts` (127 lines C#) — Tiberian Sun resource layer:
+- [x] **TODO-19.A.40** `src/OpenRA.Mods.Cnc/Traits/World/TSResourceLayer.ts` (127 lines C#) — Tiberian Sun resource layer:
   - Extends Ch10 `ResourceLayer`
   - TS-specific resource types (Tiberium, Blue Tiberium, Veins)
   - `resourceDensity: number` — resource regeneration rate
   - `maxDensity: number` — maximum resource density per cell
 
-- [ ] **TODO-19.A.41** `src/OpenRA.Mods.Cnc/Traits/World/TSTiberiumRenderer.ts` (96 lines C#) — Tiberian Sun Tiberium renderer:
+- [x] **TODO-19.A.41** `src/OpenRA.Mods.Cnc/Traits/World/TSTiberiumRenderer.ts` (96 lines C#) — Tiberian Sun Tiberium renderer:
   - Extends Ch10 `ResourceRenderer`
   - TS-specific tiberium sprite variants (green + blue crystal)
   - **3D**: tiberium = pre-generated TerrainSpriteLayer mesh with TS-specific sprite UV mappings
 
-- [ ] **TODO-19.A.42** `src/OpenRA.Mods.Cnc/Traits/World/TSVeinsRenderer.ts` (430 lines C#) — Tiberian Sun Veins resource renderer:
+- [x] **TODO-19.A.42** `src/OpenRA.Mods.Cnc/Traits/World/TSVeinsRenderer.ts` (430 lines C#) — Tiberian Sun Veins resource renderer:
   - Extends Ch10 `ResourceRenderer`
   - Vein-specific growth/spread rendering with connected-line visual
   - `maxSpreadRadius: number` — veins max spread from source
   - `growthRate: number` — vein spread rate per tick
   - **3D**: veins = connected-line `LinesMesh` with vein color gradient + growth animation
 
-- [ ] **TODO-19.A.43** `src/OpenRA.Mods.Cnc/Traits/World/TSShroudPalette.ts` (52 lines C#) — Tiberian Sun shroud palette:
+- [x] **TODO-19.A.43** `src/OpenRA.Mods.Cnc/Traits/World/TSShroudPalette.ts` (52 lines C#) — Tiberian Sun shroud palette:
   - Extends Ch12 `ShroudPalette` (already migrated)
   - TS-specific shroud coloring (darker grey)
   - Thin subclass; minimal new logic
 
-- [ ] **TODO-19.A.44** `src/OpenRA.Mods.Cnc/Traits/World/WithResourceAnimation.ts` (108 lines C#) — Resource gather animation for harvester:
+- [x] **TODO-19.A.44** `src/OpenRA.Mods.Cnc/Traits/World/WithResourceAnimation.ts` (108 lines C#) — Resource gather animation for harvester:
   - Plays `sequence: string` animation when harvester is gathering
   - `armDelay: number` delay before animation starts
   - Integration: Ch10 `Harvester` + Ch7 `RenderSprites`
 
 #### 3.1.8 Conditions & Palette Effects (3 files)
 
-- [ ] **TODO-19.A.45** `src/OpenRA.Mods.Cnc/Traits/Conditions/GrantConditionOnJumpjetLayer.ts` (59 lines C#) — Grant condition when on jumpjet layer:
+- [x] **TODO-19.A.45** `src/OpenRA.Mods.Cnc/Traits/Conditions/GrantConditionOnJumpjetLayer.ts` (59 lines C#) — Grant condition when on jumpjet layer:
   - Grants `condition: string` when actor enters jumpjet-capable terrain
   - Integration: Ch9 `JumpjetLocomotor` (already migrated) + Ch3 `ConditionManager`
 
-- [ ] **TODO-19.A.46** `src/OpenRA.Mods.Cnc/Traits/PaletteEffects/LightPaletteRotator.ts` (66 lines C#) — Rotating light palette effect:
+- [x] **TODO-19.A.46** `src/OpenRA.Mods.Cnc/Traits/PaletteEffects/LightPaletteRotator.ts` (66 lines C#) — Rotating light palette effect:
   - `speed: number` — palette rotation speed
   - `palettes: string[]` — affected palette names
   - **3D**: palette rotation = cyclic `ShaderMaterial` uniform update for dynamic lighting effect
 
-- [ ] **TODO-19.A.47** `src/OpenRA.Mods.Cnc/Effects/ConyardChronoVortex.ts` (63 lines C#) — Construction yard chrono-vortex effect:
+- [x] **TODO-19.A.47** `src/OpenRA.Mods.Cnc/Effects/ConyardChronoVortex.ts` (63 lines C#) — Construction yard chrono-vortex effect:
   - Implements Ch3 `IEffect`
   - Spawns chrono-vortex particle effect at construction yard during chronoshift
   - **3D**: vortex = rotating `ParticleSystem` with spiral particle trajectory + blue chroma tint
 
-**Phase A Summary**: 47 files, ~6,600 C# lines source. Key HIGH complexity: ChronoshiftPower (394 lines), Disguise (335 lines), TSVeinsRenderer (430 lines). Status: 📋 PLANNING.
+**Phase A Summary**: 47 files, ~6,600 C# lines source. Key HIGH complexity: ChronoshiftPower (394 lines), Disguise (335 lines), TSVeinsRenderer (430 lines). Status: ✅ COMPLETE (ALL APPROVED R2). 4 implementation batches across 8 commits: `34b29e4` (HIGH complexity traits), `0b4f059` (Chrono+GPS), `b67b989` (Infiltration+Attack), `f8347b4` (A5-A8). 4 review rounds: `62f4d19`, `87f1c64`, `699f5bf`, `fa9e61c`. All 47 files with ~528 tests.
 
 ---
 
@@ -1081,7 +1081,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 ---
 
-### Chapter 19 Final Status: 0/119 files (0%, PLANNING). Phase A: 0/47, Phase B: 0/17, Phase C: 0/37, Phase D: 0/18. Deferred: 45 files (~7,300 lines). Already Migrated: 8 files.
+### Chapter 19 Final Status: 47/119 files (40%, Phase A COMPLETE). Phase A: 47/47 (100%, R2 APPROVED, ~528 tests), Phase B: 0/17, Phase C: 0/37, Phase D: 0/18. Deferred: 45 files (~7,300 lines). Already Migrated: 8 files.
 
 ---
 
