@@ -290,10 +290,12 @@ export class ScriptContext implements IScriptContext {
    * Delegates to ScriptRegistry.getActorCommands().
    */
   getActorCommands(info: ActorInfoStub): readonly ActorPropertyRegistration[] {
-    // Default trait check: all traits pass (no filter)
-    // The actual trait filtering happens in ScriptActorInterface._initializeBindings()
-    // where it has access to the actor's specific traits
-    return ScriptRegistry.getActorCommands(info, () => true)
+    // Attempt trait checking from the ActorInfo
+    // Falls back to all-pass if the actor info doesn't provide a check function
+    const hasTrait = (traitName: string): boolean => {
+      return (info as any).hasTraitInfo?.(traitName) ?? true
+    }
+    return ScriptRegistry.getActorCommands(info, hasTrait)
   }
 
   /**

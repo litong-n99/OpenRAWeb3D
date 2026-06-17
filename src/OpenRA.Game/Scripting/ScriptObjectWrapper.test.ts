@@ -322,7 +322,7 @@ describe('ScriptObjectWrapper', () => {
       wrapper.testBind([obj])
 
       const fn = wrapper.get('add') as Function
-      expect(() => fn(1)).toThrow(/not optional/)
+      expect(() => fn(1)).toThrow(/required but was not provided/)
     })
   })
 })

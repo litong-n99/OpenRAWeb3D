@@ -263,15 +263,15 @@ export class ScriptTypes {
 
       case 'Actor':
         // Unwrap ScriptActorInterface to IGameActor
-        if (ScriptTypes._isScriptObjectWrapper(value)) {
-          return (value as any)._actor ?? value
+        if (typeof value === 'object' && value !== null && '_actor' in (value as Record<string, unknown>)) {
+          return (value as any)._actor
         }
         throw new Error(`Cannot convert ${typeof value} to Actor`)
 
       case 'Player':
         // Unwrap ScriptPlayerInterface to PlayerStub
-        if (ScriptTypes._isScriptObjectWrapper(value)) {
-          return (value as any)._player ?? value
+        if (typeof value === 'object' && value !== null && '_player' in (value as Record<string, unknown>)) {
+          return (value as any)._player
         }
         throw new Error(`Cannot convert ${typeof value} to Player`)
 
@@ -414,10 +414,6 @@ export class ScriptTypes {
     )
   }
 
-  /** Check if an object is a script wrapper (has _actor or _player). */
-  private static _isScriptObjectWrapper(obj: unknown): obj is Record<string, unknown> {
-    return typeof obj === 'object' && obj !== null
-  }
 }
 
 // ---------------------------------------------------------------------------

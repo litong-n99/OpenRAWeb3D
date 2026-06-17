@@ -265,7 +265,7 @@ export abstract class ScriptObjectWrapper {
           continue
         }
         throw new Error(
-          `Argument '${params[i].name}' of '${desc.name}' is not optional`,
+          `Argument '${params[i].name}' is required but was not provided (method: ${desc.name})`,
         )
       }
 

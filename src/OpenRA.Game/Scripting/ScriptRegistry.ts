@@ -17,6 +17,7 @@ import type {
   ActorPropertyRegistration,
   PlayerPropertyRegistration,
   ActorInitRegistration,
+  IScriptContext,
 } from './ScriptMemberDescriptor.js'
 
 // ---------------------------------------------------------------------------
@@ -76,7 +77,7 @@ export class ScriptRegistry {
    */
   static registerGlobal(
     name: string,
-    ctor: new (context: import('./ScriptMemberDescriptor.js').IScriptContext) => any,
+    ctor: new (context: IScriptContext) => any,
     description?: string,
   ): void {
     if (_globals.has(name)) {
@@ -282,6 +283,10 @@ export class ScriptRegistry {
     // (tests, Phase A) there may legitimately be no registrations yet.
     // The ScriptContext will log warnings instead.
     // Phase C+ adds actual Property/Global subclasses.
+    //
+    // NOTE: ActorInit validation is deferred to Phase C when ActorGlobal.Create()
+    // is implemented. At that point, validate() should ensure at least
+    // 'Location', 'Owner', and 'Facing' inits are registered.
   }
 
   /**

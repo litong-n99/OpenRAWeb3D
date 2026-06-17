@@ -204,6 +204,20 @@ describe('ScriptTypes', () => {
       expect(ScriptTypes.fromScriptValue(null, 'Actor')).toBeNull()
     })
 
+    it('throws when passing ScriptPlayerInterface to fromScriptValue with Actor type', () => {
+      // Stub: has _player but NOT _actor (mimics ScriptPlayerInterface shape)
+      const playerWrapper = { _player: { playerName: 'Commander' } }
+      expect(() => ScriptTypes.fromScriptValue(playerWrapper, 'Actor'))
+        .toThrow(/Cannot convert/)
+    })
+
+    it('throws when passing ScriptActorInterface to fromScriptValue with Player type', () => {
+      // Stub: has _actor but NOT _player (mimics ScriptActorInterface shape)
+      const actorWrapper = { _actor: { actorId: 1, isInWorld: true, isDead: false, disposed: false } }
+      expect(() => ScriptTypes.fromScriptValue(actorWrapper, 'Player'))
+        .toThrow(/Cannot convert/)
+    })
+
     it('round-trips CPos → toScriptValue → fromScriptValue', () => {
       const original = new CPos(50, 60)
       const scriptVal = ScriptTypes.toScriptValue(original, stubContext)

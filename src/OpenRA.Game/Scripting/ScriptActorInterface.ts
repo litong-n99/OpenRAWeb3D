@@ -54,7 +54,7 @@ export abstract class ScriptActorProperties {
    *
    * OpenRA 对照: [ScriptPropertyGroup("category")] attribute
    *
-   * Subclasses MUST override this with a static value.
+   * @abstract — Subclasses MUST override with a static value.
    */
   static readonly category: string
 
@@ -66,6 +66,8 @@ export abstract class ScriptActorProperties {
    *
    * Empty array means no traits required (e.g., BaseActorProperties
    * for destroyed-actor-safe properties).
+   *
+   * @abstract — Subclasses MUST override with a static value.
    */
   static readonly requiredTraits: readonly string[]
 
@@ -74,6 +76,8 @@ export abstract class ScriptActorProperties {
    * OpenRA 对照: [ExposedForDestroyedActors] attribute
    *
    * Only BaseActorProperties sets this to true.
+   *
+   * @abstract — Subclasses MUST override with a static value.
    */
   static readonly exposedForDestroyedActors: boolean
 }
