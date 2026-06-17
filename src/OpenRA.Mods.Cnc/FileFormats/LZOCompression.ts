@@ -50,11 +50,11 @@ export const LZOCompression = {
     destOffset: number,
   ): number {
     const sv = new DataView(src.buffer, src.byteOffset, src.byteLength)
-    const dv = new DataView(dest.buffer, dest.byteOffset, dest.byteLength)
+    const dv = new DataView(dest.buffer, dest.byteOffset + destOffset, dest.byteLength - destOffset)
     const ipEnd = srcOffset + srcLength
 
     let ip = srcOffset
-    let op = destOffset
+    let op = 0 // DataView starts at dest[destOffset], so op=0 writes to dest[destOffset]
     let t = 0 // current tag/count — the key state variable
 
     // State control

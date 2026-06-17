@@ -92,5 +92,22 @@ describe('LZOCompression', () => {
       expect(err2).not.toBeNull()
       expect(err1!.constructor.name).toBe(err2!.constructor.name)
     })
+
+    // Regression: MAJOR — DataView bounds with subarray dest buffers
+    it('writes to correct offset with subarray destination', () => {
+      const parent = new Uint8Array(200).fill(0xcd)
+      // Create a subarray starting at offset 20, length 100
+      const subDest = parent.subarray(20, 120)
+      // Pass destOffset=10: writes should land at parent[20+10] = parent[30]
+      const src = new Uint8Array([22, 1, 2, 3, 4, 5, 0, 0, 0, 0, 0])
+      // This will throw RangeError on truncated data, but the DataView bounds
+      // should be correctly constrained to the subarray + destOffset range
+      expect(() => {
+        LZOCompression.decodeInto(src, 0, src.length, subDest, 10)
+      }).toThrow(RangeError)
+      // Verify parent bytes before subarray start and before destOffset are untouched
+      expect(parent[19]).toBe(0xcd)
+      expect(parent[29]).toBe(0xcd)
+    })
   })
 })

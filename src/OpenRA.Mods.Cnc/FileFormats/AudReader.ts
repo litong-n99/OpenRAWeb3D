@@ -271,8 +271,13 @@ function _decodeWestwood(input: Uint8Array, output: Uint8Array, outputSize: numb
 
       case 2:
         if ((count & 0x20) !== 0) {
-          // Sign-extend: count treated as signed 6-bit; shift left 3 then right 3
-          const signedVal = ((count << 26) >> 26) // sign extend 6-bit to 32-bit
+          // Sign-extend 5-bit value (bit 4 is sign) to 32-bit.
+          // C#: (sbyte)((sbyte)count << 3) >> 3
+          //   count is in [0,63]. (sbyte)count is [-128,127].
+          //   For count [32,47]: (sbyte)(count<<3) wraps to [0,120], >>3 -> [0,15]
+          //   For count [48,63]: (sbyte)(count<<3) wraps to [-128,-8], >>3 -> [-16,-1]
+          // TS equivalent: mask to 5 bits, sign-extend from bit 4
+          const signedVal = ((count & 0x1f) << 27) >> 27
           sample = _clamp(sample + signedVal, 0, 255)
           output[w++] = sample
         } else {

@@ -220,6 +220,57 @@ describe('AudReader', () => {
         AudReader.decodeWestwoodCompressed(input, output, 100)
       }).not.toThrow()
     })
+
+    // Regression: BLOCKER — sign-extension was 6-bit, must be 5-bit
+    it('case 2 sign-extension: count=32 produces delta=0 (not -32)', () => {
+      // 0xA0 = case 2 (bits 7-6 = 10), count=32, sign-extension branch (bit 5 set)
+      const input = new Uint8Array([0xA0])
+      const output = new Uint8Array(4)
+      const result = AudReader.decodeWestwoodCompressed(input, output, 4)
+      // sample starts at 0x80, delta=0 -> unchanged
+      expect(result).toBe(1)
+      expect(output[0]).toBe(0x80)
+    })
+
+    it('case 2 sign-extension: count=40 produces delta=8 (not -24)', () => {
+      // 0xA8 = case 2, count=40, sign-extension branch
+      const input = new Uint8Array([0xA8])
+      const output = new Uint8Array(4)
+      const result = AudReader.decodeWestwoodCompressed(input, output, 4)
+      // sample starts at 0x80, delta=8 -> 0x88
+      expect(result).toBe(1)
+      expect(output[0]).toBe(0x88)
+    })
+
+    it('case 2 sign-extension: count=47 produces delta=15 (not -17)', () => {
+      // 0xAF = case 2, count=47, sign-extension branch
+      const input = new Uint8Array([0xAF])
+      const output = new Uint8Array(4)
+      const result = AudReader.decodeWestwoodCompressed(input, output, 4)
+      // sample starts at 0x80, delta=15 -> 0x8F
+      expect(result).toBe(1)
+      expect(output[0]).toBe(0x8f)
+    })
+
+    it('case 2 sign-extension: count=48 produces delta=-16', () => {
+      // 0xB0 = case 2, count=48, sign-extension branch
+      const input = new Uint8Array([0xB0])
+      const output = new Uint8Array(4)
+      const result = AudReader.decodeWestwoodCompressed(input, output, 4)
+      // sample starts at 0x80, delta=-16 -> 0x70
+      expect(result).toBe(1)
+      expect(output[0]).toBe(0x70)
+    })
+
+    it('case 2 sign-extension: count=63 produces delta=-1', () => {
+      // 0xBF = case 2, count=63, sign-extension branch
+      const input = new Uint8Array([0xBF])
+      const output = new Uint8Array(4)
+      const result = AudReader.decodeWestwoodCompressed(input, output, 4)
+      // sample starts at 0x80, delta=-1 -> 0x7F
+      expect(result).toBe(1)
+      expect(output[0]).toBe(0x7f)
+    })
   })
 
   describe('audioDataOffset', () => {
