@@ -27,7 +27,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const FRAME_REGEX = /^(.+?[-_])(\d{4})\.tga$/i
-const META_REGEX = /\{"size":\[(\d+),(\d+)\],"crop":\[(\d+),(\d+),(\d+),(\d+)\]\}/
+const META_REGEX = /^\{"size":\[(\d+),(\d+)\],"crop":\[(\d+),(\d+),(\d+),(\d+)\]\}$/
 
 // ---------------------------------------------------------------------------
 // TGA 帧 (对应 OpenRA TgaSprite.TgaFrame)
@@ -300,10 +300,10 @@ function extractEntry(
   }
   if (entry.compression === 8) {
     // Deflate — use browser's DecompressionStream
-    // For now, we return empty; deflate decompression requires async
-    // NOTE: In the browser, use DecompressionStream('deflate-raw')
-    // This simplified implementation only handles stored entries.
-    // Remastered SHP ZIP files typically use stored mode.
+    // TODO-19.D.9: Implement deflate decompression.
+    // Options: fflate library (sync), or browser DecompressionStream (async).
+    // Remastered SHP ZIP files typically use stored mode, so this is
+    // unlikely to be hit in practice.
     throw new Error(
       `ZIP entry "${entry.name}" is deflate-compressed, which requires async decompression.`,
     )

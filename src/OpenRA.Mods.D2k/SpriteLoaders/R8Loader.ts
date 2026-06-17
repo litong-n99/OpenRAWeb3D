@@ -7,13 +7,13 @@
  * - C# uint[] Palette → Uint32Array
  * - C# MemoryMarshal.Cast → Uint32Array/Uint16Array 视图
  * - C# unsafe fixed(byte*) → 直接索引访问
- * - C# PlayerColorRemap → 简化的 240-255 区间重映射
+ * - C# PlayerColorRemap → TODO-19.D.16 (需要 PlayerColorRemap 类)
  *
  * R8 格式是 Dune 2000 专用的精灵格式，每帧包含:
  * - 类型标记 (0=nop, 1=含调色板, 2=使用上一个调色板)
  * - 宽度、高度、偏移量
  * - 像素数据 (8-bit 索引色 或 16-bit RGB5551 打包)
- * - 可选的 256 色调色板 (RGB5551 打包 → ARGB8888)
+ * - 可选的 256 色调色板 (RGB5551 打包 → BGRA8888)
  */
 
 import {
@@ -29,6 +29,109 @@ import {
 // ---------------------------------------------------------------------------
 
 const PALETTE_SIZE = 256
+
+// ---------------------------------------------------------------------------
+// Frame 头部解析辅助 (被 R8Frame 构造和 advancePastFrame 共享)
+// ---------------------------------------------------------------------------
+
+/** R8 帧头部解析结果。 */
+interface R8FrameHeader {
+  type: number
+  width: number
+  height: number
+  x: number
+  y: number
+  paletteHandle: number
+  bpp: number
+  frameHeight: number
+  frameWidth: number
+  /** 像素数据开始的偏移量。 */
+  dataStart: number
+  /** 整个帧结束后的偏移量。 */
+  endOffset: number
+}
+
+/**
+ * 解析 R8 帧的头部并计算结束偏移量。
+ *
+ * OpenRA 对照: R8Loader.Frame(Stream, uint[]) 构造函数的字段解析部分
+ *
+ * R8Frame 构造函数和 advancePastFrame 的共享逻辑。
+ */
+function parseR8FrameHeader(
+  buffer: Uint8Array,
+  dv: DataView,
+  offset: number,
+): R8FrameHeader | null {
+  let pos = offset
+
+  // Scan forward until we find some data (skip zero bytes)
+  let type = buffer[pos]!
+  pos++
+  while (type === 0 && pos < buffer.length) {
+    type = buffer[pos]!
+    pos++
+  }
+
+  if (pos > buffer.length) return null
+
+  const width = dv.getInt32(pos, true)
+  pos += 4
+  const height = dv.getInt32(pos, true)
+  pos += 4
+  const x = dv.getInt32(pos, true)
+  pos += 4
+  const y = dv.getInt32(pos, true)
+  pos += 4
+
+  // imageHandle (skip 4 bytes)
+  pos += 4
+  const paletteHandle = dv.getInt32(pos, true)
+  pos += 4
+
+  const bpp = buffer[pos]!
+  pos++
+  if (bpp !== 8 && bpp !== 16) {
+    throw new Error(`R8 Error: ${bpp} bits per pixel are not supported.`)
+  }
+
+  const frameHeight = buffer[pos]!
+  pos++
+  const frameWidth = buffer[pos]!
+  pos++
+
+  // Skip alignment byte
+  pos++
+
+  const dataStart = pos
+
+  // Pixel data
+  if (bpp === 16) {
+    pos += width * height * 2
+  } else {
+    pos += width * height
+  }
+
+  // Palette data (if type==1 and paletteHandle!=0)
+  if (type === 1 && paletteHandle !== 0) {
+    // Skip palHeader(4+4) + palette(256*2)
+    pos += 8 + PALETTE_SIZE * 2
+  }
+
+  return {
+    type,
+    width,
+    height,
+    x,
+    y,
+    paletteHandle,
+    bpp,
+    frameHeight,
+    frameWidth,
+    dataStart,
+    endOffset: pos,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Frame (对应 OpenRA R8Loader.Frame)
@@ -47,8 +150,22 @@ class R8Frame implements ISpriteFrame {
   readonly data: Uint8Array
   readonly disableExportPadding = true
 
-  /** 调色板 ARGB 值 (256 个 uint32)，如果没有新调色板则为 null。 */
+  /** 调色板 BGRA 值 (256 个 uint32)，如果没有新调色板则为 null。 */
   readonly palette: Uint32Array | null
+
+  /**
+   * 计算帧占用的总字节数 (用于跳转到下一帧)。
+   *
+   * OpenRA 对照: advancePastFrame (提取到共享静态方法)
+   */
+  static calcEndOffset(
+    buffer: Uint8Array,
+    dv: DataView,
+    offset: number,
+  ): number {
+    const header = parseR8FrameHeader(buffer, dv, offset)
+    return header ? header.endOffset : buffer.length
+  }
 
   constructor(
     buffer: Uint8Array,
@@ -56,22 +173,20 @@ class R8Frame implements ISpriteFrame {
     offset: number,
     lastPalette: Uint32Array | null,
   ) {
-    // Scan forward until we find some data (skip zero bytes)
-    let type = buffer[offset]!
-    offset++
-    while (type === 0 && offset < buffer.length) {
-      type = buffer[offset]!
-      offset++
+    const header = parseR8FrameHeader(buffer, dv, offset)
+    if (!header) {
+      // Truncated frame — create empty
+      this.type = SpriteFrameType.Indexed8
+      this.size = { width: 0, height: 0 }
+      this.frameSize = { width: 0, height: 0 }
+      this.offset = { x: 0, y: 0 }
+      this.data = new Uint8Array(0)
+      this.palette = null
+      return
     }
 
-    const width = dv.getInt32(offset, true)
-    offset += 4
-    const height = dv.getInt32(offset, true)
-    offset += 4
-    const x = dv.getInt32(offset, true)
-    offset += 4
-    const y = dv.getInt32(offset, true)
-    offset += 4
+    const { type, width, height, x, y, paletteHandle, bpp, frameHeight, frameWidth, dataStart } =
+      header
 
     this.size = { width, height }
     this.offset = {
@@ -79,97 +194,64 @@ class R8Frame implements ISpriteFrame {
       y: height / 2 - y,
     }
 
-    // imageHandle (skip 4 bytes)
-    offset += 4
-    // paletteHandle
-    const paletteHandle = dv.getInt32(offset, true)
-    offset += 4
-
-    const bpp = buffer[offset]!
-    offset++
-    if (bpp !== 8 && bpp !== 16) {
-      throw new Error(`R8 Error: ${bpp} bits per pixel are not supported.`)
-    }
-
-    const frameHeight = buffer[offset]!
-    offset++
-    const frameWidth = buffer[offset]!
-    offset++
     this.frameSize = { width: frameWidth, height: frameHeight }
 
-    // Skip alignment byte
-    offset++
+    let pos = dataStart
 
     if (bpp === 16) {
       this.data = new Uint8Array(width * height * 4)
       this.type = SpriteFrameType.Bgra32
 
       // Read 16-bit packed pixels (2 bytes per pixel)
-      // C# reads Data[..(Data.Length / 2)] — first half as packed 16-bit
-
-      // The C# code reads the raw 16-bit packed data into the first half of the byte buffer,
+      // C# reads Data[..(Data.Length / 2)] — first half as packed 16-bit,
       // then unpacks in reverse order
-      const rawBytes = buffer.subarray(offset, offset + width * height * 2)
-      offset += width * height * 2
+      const rawBytes = buffer.subarray(pos, pos + width * height * 2)
+      pos += width * height * 2
 
-      // Unpack RGB5551 → ARGB8888 (reverse order, matching C#)
+      // Unpack RGB5551 → BGRA8888 (reverse order, matching C#)
+      // C# packing: (0xFF << 24) | ((packed & 0x7C00) << 9) | ((packed & 0x3E0) << 6) | ((packed & 0x1f) << 3)
+      // In little-endian uint32, bytes are laid out as: [B, G, R, A]
       for (let i = width * height - 1; i >= 0; i--) {
         const packed =
           (rawBytes[i * 2 + 1]! << 8) | rawBytes[i * 2]!
         const dstIdx = i * 4
-        this.data[dstIdx] = 0xff // A
-        this.data[dstIdx + 1] = ((packed & 0x7c00) >> 7) & 0xff // B = bits 10-14
-        this.data[dstIdx + 2] = ((packed & 0x03e0) >> 2) & 0xff // G = bits 5-9
-        this.data[dstIdx + 3] = ((packed & 0x001f) << 3) & 0xff // R = bits 0-4
-
-        // Actually the C# packing is: (0xFF << 24) | ((packed & 0x7C00) << 9) | ((packed & 0x3E0) << 6) | ((packed & 0x1f) << 3)
-        // This gives: A=0xFF, R=(packed>>10)&0x1F<<3, G=(packed>>5)&0x1F<<3, B=packed&0x1F<<3
-        // So RGBA layout: R, G, B, A (since it's stored as uint32 LE)
-        // In uint32 LE: byte[0]=R, byte[1]=G, byte[2]=B, byte[3]=A
         const r = ((packed >> 10) & 0x1f) << 3
         const g = ((packed >> 5) & 0x1f) << 3
         const b = (packed & 0x1f) << 3
-        this.data[dstIdx] = r     // R → byte[0]
+        this.data[dstIdx] = b     // B → byte[0]
         this.data[dstIdx + 1] = g // G → byte[1]
-        this.data[dstIdx + 2] = b // B → byte[2]
+        this.data[dstIdx + 2] = r // R → byte[2]
         this.data[dstIdx + 3] = 0xff // A → byte[3]
       }
     } else {
       // 8-bit indexed
       this.data = new Uint8Array(
-        buffer.subarray(offset, offset + width * height),
+        buffer.subarray(pos, pos + width * height),
       )
-      offset += width * height
+      pos += width * height
       this.type = SpriteFrameType.Indexed8
     }
 
     // Read palette
     if (type === 1 && paletteHandle !== 0) {
       // Skip header (2 uint32)
-      const palHeader1 = dv.getUint32(offset, true)
-      offset += 4
-      const palHeader2 = dv.getUint32(offset, true)
-      offset += 4
-
-      // NOTE: C# skips these header values. We read them for potential validation.
-      void palHeader1
-      void palHeader2
+      pos += 8
 
       this.palette = new Uint32Array(PALETTE_SIZE)
 
       // Read palette as 16-bit RGB5551 packed values
-      const palRaw = buffer.subarray(offset, offset + PALETTE_SIZE * 2)
-      offset += PALETTE_SIZE * 2
+      const palRaw = buffer.subarray(pos, pos + PALETTE_SIZE * 2)
+      pos += PALETTE_SIZE * 2
 
-      // Unpack RGB5551 → ARGB8888 (reverse order, matching C#)
+      // Unpack RGB5551 → BGRA8888 (reverse order, matching C#)
       for (let i = 255; i >= 0; i--) {
         const packed =
           (palRaw[i * 2 + 1]! << 8) | palRaw[i * 2]!
         const r = ((packed >> 10) & 0x1f) << 3
         const g = ((packed >> 5) & 0x1f) << 3
         const b = (packed & 0x1f) << 3
-        // BGRA: B, G, R, A
-        this.palette[i] = (0xff << 24) | (b << 16) | (g << 8) | r
+        // BGRA byte layout in LE uint32: byte[0]=B, byte[1]=G, byte[2]=R, byte[3]=A
+        this.palette[i] = (0xff << 24) | (r << 16) | (g << 8) | b
       }
 
       // Remap index 0 to transparent
@@ -336,15 +418,15 @@ class R8LoaderImpl implements ISpriteLoader {
   /**
    * 玩家颜色重映射。
    *
-   * OpenRA 对照: PlayerColorRemap 逻辑
+   * OpenRA 对照: PlayerColorRemap.GetRemappedColor
    *
-   * 仅处理 240-255 区间的调色板索引重映射。
+   * TODO-19.D.16: 实现完整的 PlayerColorRemap 逻辑。
+   * 当前为占位实现，直接返回原始颜色。
+   * 完整实现需要创建 PlayerColorRemap 类 (对应 OpenRA.Graphics.PlayerColorRemap)。
    */
   static remapColor(originalArgb: number): number {
-    // Simplified PlayerColorRemap — for D2K, remap indices 240-255
-    // based on the player's remap color.
-    // Full implementation would use the PlayerColorRemap table.
-    // For now, we return the original color unmodified.
+    // TODO-19.D.16: Implement full PlayerColorRemap.
+    // OpenRA uses: new PlayerColorRemap(indices, remap).GetRemappedColor(color, i).ToArgb()
     return originalArgb
   }
 
@@ -363,16 +445,13 @@ class R8LoaderImpl implements ISpriteLoader {
     let offset = 0
 
     while (offset < data.length) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const frame: R8Frame = new R8Frame(data, dv, offset, lastPalette)
       if (frame.palette !== null) {
         lastPalette = frame.palette
       }
       rawFrames.push(frame)
-      // Advance to next frame; the R8Frame constructor doesn't tell us exact bytes consumed
-      // We need to track position manually
-      // Re-read frame to get exact bytes consumed
-      offset = R8LoaderImpl.advancePastFrame(data, dv, offset)
+      // Advance to next frame using shared calcEndOffset
+      offset = R8Frame.calcEndOffset(data, dv, offset)
     }
 
     const frames: ISpriteFrame[] = rawFrames.map((f) =>
@@ -380,58 +459,6 @@ class R8LoaderImpl implements ISpriteLoader {
     )
 
     return { frames, metadata: null }
-  }
-
-  /**
-   * 计算需要跳过多少字节才能到达下一帧。
-   * R8 格式没有帧长度字段，需要解析所有可变长度字段。
-   */
-  private static advancePastFrame(
-    buffer: Uint8Array,
-    dv: DataView,
-    offset: number,
-  ): number {
-    let pos = offset
-
-    // Scan forward past zero bytes (same as R8Frame constructor)
-    let type = buffer[pos]!
-    pos++
-    while (type === 0 && pos < buffer.length) {
-      type = buffer[pos]!
-      pos++
-    }
-
-    // Layout after type byte: width(4)+height(4)+x(4)+y(4)+imageHandle(4)+paletteHandle(4)
-    const width = dv.getInt32(pos, true)
-    pos += 4  // past width
-    const height = dv.getInt32(pos, true)
-    pos += 4  // past height
-    pos += 4  // past x
-    pos += 4  // past y
-    pos += 4  // past imageHandle
-    const paletteHandle = dv.getInt32(pos, true)
-    pos += 4  // past paletteHandle
-
-    const bpp = buffer[pos]!
-    pos++
-
-    // Skip: frameHeight(1) + frameWidth(1) + alignment(1)
-    pos += 3
-
-    // Pixel data
-    if (bpp === 16) {
-      pos += width * height * 2
-    } else {
-      pos += width * height
-    }
-
-    // Palette data (if type==1 and paletteHandle!=0)
-    if (type === 1 && paletteHandle !== 0) {
-      // Skip: palHeader(4+4) + palette(256*2)
-      pos += 8 + PALETTE_SIZE * 2
-    }
-
-    return pos
   }
 }
 

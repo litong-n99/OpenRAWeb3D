@@ -2,7 +2,7 @@
  * R8Loader.test.ts — Dune 2000 R8 sprite loader unit tests
  *
  * Tests focus on: format detection, frame parsing (8-bit and 16-bit),
- * palette extraction, RemappableFrame BGRA conversion.
+ * palette extraction, RemappableFrame BGRA conversion, and byte order correctness.
  */
 
 import { describe, it, expect } from 'vitest'
@@ -147,6 +147,50 @@ describe('R8Loader', () => {
     expect(result).not.toBeNull()
     expect(result!.frames).toHaveLength(1)
     expect(result!.frames[0]!.type).toBe(SpriteFrameType.Bgra32)
+  })
+
+  it('16-bit frame produces BGRA byte order', () => {
+    // Test regression for BLOCKER R1: the byte order was RGBA, must be BGRA.
+    // Build a 1x1 frame with known RGB5551 packed pixel, NO palette
+    // (type=0 so frame is not wrapped in RemappableFrame).
+    // Red=31=0x1F (bits 10-14), Green=0, Blue=0 → packed = 0x7C00.
+    // Expected BGRA output: B=0x00, G=0x00, R=0xF8, A=0xFF.
+    const width = 1
+    const height = 1
+    const totalSize = 29 + 2 // header(29) + 16-bit pixel data(2)
+    const buffer = new Uint8Array(totalSize)
+
+    const dv = new DataView(buffer.buffer)
+    buffer[0] = 3 // type = 3 (no palette, not type 1 or 2)
+    dv.setInt32(1, width, true)
+    dv.setInt32(5, height, true)
+    dv.setInt32(9, 0, true) // x = 0
+    dv.setInt32(13, 0, true) // y = 0
+    dv.setUint32(17, 0, true) // imageHandle
+    dv.setInt32(21, 0, true) // paletteHandle = 0
+    buffer[25] = 16 // bpp = 16
+    buffer[26] = height // frameHeight
+    buffer[27] = width // frameWidth
+    // alignment byte at 28 = 0
+    // Pixel data at offset 29: packed Red=31
+    // RGB5551: R=31=0b11111, G=0, B=0 → packed = 0x7C00
+    buffer[29] = 0x00 // low byte
+    buffer[30] = 0x7C // high byte
+
+    const result = R8Loader.tryParseSprite(buffer, 'test.r8')
+    expect(result).not.toBeNull()
+    const frame = result!.frames[0]!
+
+    // 16-bit frame should be Bgra32 (not wrapped in RemappableFrame,
+    // since palette is null)
+    expect(frame.type).toBe(SpriteFrameType.Bgra32)
+    expect(frame.data.length).toBe(4)
+
+    // BGRA byte order: byte[0]=B, byte[1]=G, byte[2]=R, byte[3]=A
+    expect(frame.data[0]).toBe(0x00) // Blue=0
+    expect(frame.data[1]).toBe(0x00) // Green=0
+    expect(frame.data[2]).toBe(0xf8) // Red=0xF8 (31 << 3)
+    expect(frame.data[3]).toBe(0xff) // Alpha=255
   })
 
   it('returns null metadata', () => {

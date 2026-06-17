@@ -330,37 +330,39 @@ class TrimmedFrame implements ISpriteFrame {
       this.offset = { x: 0, y: 0 }
       this.data = origData
       return
-    }
+    } else if (trimmedWidth > 0 && trimmedHeight > 0) {
+      // Trim frame.
+      const data = new Uint8Array(trimmedWidth * trimmedHeight)
+      for (let y = 0; y < trimmedHeight; y++) {
+        const srcStart = (y + top) * origSize.width + left
+        const dstStart = y * trimmedWidth
+        data.set(
+          origData.subarray(srcStart, srcStart + trimmedWidth),
+          dstStart,
+        )
+      }
 
-    // We must have valid trimmed dimensions at this point
-    const finalTrimWidth = trimmedWidth > 0 ? trimmedWidth : 1
-    const finalTrimHeight = trimmedHeight > 0 ? trimmedHeight : 1
+      this.size = { width: trimmedWidth, height: trimmedHeight }
+      this.frameSize = {
+        width: origSize.width,
+        height: origSize.height,
+      }
+      this.offset = {
+        x: 0.5 * (left + right - origSize.width + 1),
+        y: 0.5 * (top + bottom - origSize.height + 1),
+      }
 
-    // Trim frame.
-    const data = new Uint8Array(finalTrimWidth * finalTrimHeight)
-    for (let y = 0; y < finalTrimHeight; y++) {
-      const srcStart = (y + top) * origSize.width + left
-      const dstStart = y * finalTrimWidth
-      data.set(
-        origData.subarray(srcStart, srcStart + finalTrimWidth),
-        dstStart,
-      )
+      if (this.offset.x % 1 !== 0 || this.offset.y % 1 !== 0) {
+        throw new Error('Trimmed frame has non-integer offset.')
+      }
+      this.data = data
+    } else {
+      // Empty frame: trimmedWidth <= 0 or trimmedHeight <= 0
+      this.size = { width: 0, height: 0 }
+      this.frameSize = { width: origSize.width, height: origSize.height }
+      this.offset = { x: 0, y: 0 }
+      this.data = new Uint8Array(0)
     }
-
-    this.size = { width: finalTrimWidth, height: finalTrimHeight }
-    this.frameSize = {
-      width: origSize.width,
-      height: origSize.height,
-    }
-    this.offset = {
-      x: 0.5 * (left + right - origSize.width + 1),
-      y: 0.5 * (top + bottom - origSize.height + 1),
-    }
-
-    if (this.offset.x % 1 !== 0 || this.offset.y % 1 !== 0) {
-      throw new Error('Trimmed frame has non-integer offset.')
-    }
-    this.data = data
   }
 }
 

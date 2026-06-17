@@ -5,7 +5,7 @@
  * 核心范式转换:
  * - C# Stream s → Uint8Array buffer + DataView
  * - C# Rectangle.Union → 手动边界合并
- * - C# UnpackTileData → 线对线移植（菱形展开算法）
+ * - C# UnpackTileData → 线对线移植（菱形展开算法），返回消费的字节数
  * - TS TMP 格式: 支持额外数据区域 (悬崖面等) 和深度信息
  *
  * TMP TS 格式:
@@ -76,13 +76,14 @@ class TmpTSFrame implements ISpriteFrame {
     let pos = dataOffset + 20
 
     // Extra data is specified relative to the top-left of the template
+    // C# uses integer division: (u - v) * size.Width / 2
     const extraX =
       dv.getInt32(pos, true) -
-      ((u - v) * baseSize.width) / 2
+      Math.trunc(((u - v) * baseSize.width) / 2)
     pos += 4
     const extraY =
       dv.getInt32(pos, true) -
-      ((u + v) * baseSize.height) / 2
+      Math.trunc(((u + v) * baseSize.height) / 2)
     pos += 4
     const extraWidth = dv.getInt32(pos, true)
     pos += 4
@@ -121,44 +122,32 @@ class TmpTSFrame implements ISpriteFrame {
     this.data = new Uint8Array(boundsWidth * boundsHeight)
     this.depthData = new Uint8Array(boundsWidth * boundsHeight)
 
-    // Unpack main tile data
-    TmpTSLoaderImpl.unpackTileData(
+    const bounds: RectBounds = {
+      x: boundsLeft,
+      y: boundsTop,
+      width: boundsWidth,
+      height: boundsHeight,
+    }
+
+    // Unpack main tile data — returns actual bytes consumed from the buffer
+    const mainBytes = TmpTSLoaderImpl.unpackTileData(
       buffer,
       pos,
       this.data,
       baseSize,
-      {
-        x: boundsLeft,
-        y: boundsTop,
-        width: boundsWidth,
-        height: boundsHeight,
-      },
+      bounds,
     )
-    pos += (baseSize.height / 2) * (4 + baseSize.width) // approximate skip
-    // Actually, we need to calculate the exact size of unpacked data.
-    // The C# code advances the stream automatically.
-    // We track position by reading data sequentially.
+    pos += mainBytes
 
-    // For depth data — same offset calculation
-    // In the C# version, the stream position advances naturally after UnpackTileData
-    // We simulate this by advancing past the tile data block
-    const tileDataSize = baseSize.width * baseSize.height // approximate
-    pos = dataOffset + 20 + 4 + 4 + 4 + 4 + 4 + 12 + tileDataSize
-
-    // Unpack depth data
-    TmpTSLoaderImpl.unpackTileData(
+    // Unpack depth data — same diamond shape, follows main data in the buffer
+    const depthBytes = TmpTSLoaderImpl.unpackTileData(
       buffer,
       pos,
       this.depthData,
       baseSize,
-      {
-        x: boundsLeft,
-        y: boundsTop,
-        width: boundsWidth,
-        height: boundsHeight,
-      },
+      bounds,
     )
-    pos += tileDataSize
+    pos += depthBytes
 
     if ((flags & 0x01) === 0) return
 
@@ -279,6 +268,13 @@ class TmpTSLoaderImpl implements ISpriteLoader {
    * 菱形展开算法: 将编码的菱形数据转换为矩形。
    *
    * OpenRA 对照: TmpTSLoader.UnpackTileData(Stream, byte[], Size, Rectangle)
+   *
+   * @param buffer — 源字节缓冲区
+   * @param srcOffset — 源数据起始偏移
+   * @param data — 目标像素数据数组
+   * @param size — 瓦片逻辑尺寸
+   * @param frameBounds — 帧边界矩形
+   * @returns 消费的字节数 (用于手动位置跟踪，替代 C# Stream 的自动位置推进)
    */
   static unpackTileData(
     buffer: Uint8Array,
@@ -286,7 +282,7 @@ class TmpTSLoaderImpl implements ISpriteLoader {
     data: Uint8Array,
     size: Size,
     frameBounds: RectBounds,
-  ): void {
+  ): number {
     let width = 4
     let srcPos = srcOffset
     for (let j = 0; j < size.height; j++) {
@@ -300,6 +296,7 @@ class TmpTSLoaderImpl implements ISpriteLoader {
 
       width += (j < size.height / 2 - 1 ? 1 : -1) * 4
     }
+    return srcPos - srcOffset
   }
 
   tryParseSprite(
