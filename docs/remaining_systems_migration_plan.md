@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Remaining Systems (Chapters 8-21)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md`
-> **Chapter Status**: IN PROGRESS (Ch8-17 COMPLETE: 474/474, 100%. Ch8:57 + Ch9:30 + Ch10:25 + Ch11:37 + Ch12:16 + Ch13:14 + Ch14:49 + Ch15:11 + Ch16:65 + Ch17:8 = **474 files**. Chapters 18-21: 0/~120, 0%, PLANNING)
+> **Chapter Status**: IN PROGRESS (Ch8-19 COMPLETE: 603/603, 100%. Ch8:57 + Ch9:30 + Ch10:25 + Ch11:37 + Ch12:16 + Ch13:14 + Ch14:49 + Ch15:11 + Ch16:65 + Ch17:8 + Ch18:10 + Ch19:119 = **603 files**. Chapters 20-21: 0/~77, 0%, PLANNING -- Ch20: 62 files, Ch21: ~15 files)
 > **Created**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162 files, 100%)
 >
@@ -118,7 +118,7 @@ The remaining ~250+ files are organized into 14 chapters (8-21), each representi
 | **17** | Replay & Save System | ~10 | MEDIUM | Replay recording/playback. Depends on Ch6 network layer. |
 | **18** | Server System | ~9 | LOW | Dedicated server infrastructure. Independent of most chapters. |
 | **19** | Mod-Specific Content | ~83 | LOW | C&C (70) + D2K (13) traits. Depends on all gameplay chapters. |
-| **20** | Scripting System | ~7 | LOW | Lua mission scripting bridge. Depends on Ch8-13. |
+| **20** | Scripting System | 66 | MEDIUM | Lua mission scripting bridge. Two-tier: JSON triggers (MVP) + optional fengari Lua VM. 62 files migrated + 4 deferred. 7 phases A-G. Depends on Ch8-15. Full plan: [chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md) |
 | **21** | Editor & Utilities | ~15 | LOW | Map editor, brushes, utility commands. Depends on Ch4+Ch5. |
 
 **Total estimated files**: ~389 (~288 remaining; 101 migrated = Ch8 57 + Ch9 30 + Ch13 14). Chapters 10-12 are tracked separately in their own detailed plans.
@@ -655,23 +655,34 @@ Menu screen behavior classes (ChromeLogic subclasses) for main menu, lobby, sett
 
 ### 3.13 Chapter 20: Scripting System
 
-**Objective**: Implement the Lua scripting bridge for mission/campaign scripted behaviors.
+**Objective**: Implement the mission scripting bridge for campaign/scenario scripted behaviors. Two-tier architecture: declarative JSON triggers (MVP) + optional fengari Lua 5.3 VM (backward compatibility).
 
-**Prerequisites**: All gameplay chapters (8-13), Chapter 5 (MOD System)
+**Prerequisites**: All gameplay chapters (8-14), Chapter 5 (MOD System), Chapter 7 (Audio), Chapter 16 (UI Widgets)
 
-| # | OpenRA Source | Target TypeScript File | Lines (C#) | Complexity |
-|:---:|:---|:---|:---:|:---:|
-| 1 | `Scripting/ScriptContext.cs` | `src/OpenRA.Game/Scripting/ScriptContext.ts` | 10248 | HIGH |
-| 2 | `Scripting/ScriptMemberWrapper.cs` | `src/OpenRA.Game/Scripting/ScriptMemberWrapper.ts` | 4443 | HIGH |
-| 3 | `Scripting/ScriptTypes.cs` | `src/OpenRA.Game/Scripting/ScriptTypes.ts` | 4489 | MEDIUM |
-| 4 | `Scripting/ScriptObjectWrapper.cs` | `src/OpenRA.Game/Scripting/ScriptObjectWrapper.ts` | 2561 | MEDIUM |
-| 5 | `Scripting/ScriptMemberExts.cs` | `src/OpenRA.Game/Scripting/ScriptMemberExts.ts` | 2066 | MEDIUM |
-| 6 | `Scripting/ScriptActorInterface.cs` | `src/OpenRA.Game/Scripting/ScriptActorInterface.ts` | 1747 | MEDIUM |
-| 7 | `Scripting/ScriptPlayerInterface.cs` | `src/OpenRA.Game/Scripting/ScriptPlayerInterface.ts` | 1047 | LOW |
+**Status**: PLANNING (0/62 migrated, 0%. Full plan in `docs/chapter20_scripting_system_migration_plan.md`)
 
-**ADR-20.1**: Lua scripting in the browser uses `lua.vm.js` (compiled Lua 5.3 to JavaScript via Emscripten) or `fengari` (Lua VM in pure JS). Script triggers, objectives, and mission data are compiled from Lua to JSON at build time for non-scripted preview.
+**IMPORTANT NOTE**: The previous estimate of 7 files was incorrect -- this was based on a cursory scan of `OpenRA.Game/Scripting/` only, with wildly inaccurate line counts (ScriptContext.cs is actually 346 lines, not 10,248). The actual inventory is **66 files** (~6,339 C# lines) across 3 modules. See the full plan for the complete file mapping table and phase breakdown.
 
-**ADR-20.2**: Scripting is optional for basic gameplay. The mission system works without Lua by using JSON-based trigger definitions that cover 80% of common mission patterns.
+| Phase | Files | Description | Status |
+|-------|-------|-------------|--------|
+| A: Core Infrastructure | 6 (+1 new) | ScriptContext, ScriptRegistry, ScriptObjectWrapper, ScriptActorInterface, ScriptPlayerInterface, ScriptTypes | [ ] |
+| B: Trigger System | 3 | ScriptTriggers (21 trigger types), ScriptComponent, CallScriptFunc | [ ] |
+| C: Global API Tables | 16 | TriggerGlobal, ActorGlobal, PlayerGlobal, MapGlobal, MediaGlobal, ReinforcementsGlobal, UtilsGlobal, CameraGlobal, ColorGlobal, CoordinateGlobals, DateTimeGlobal, LightingGlobal, UserInterfaceGlobal, BeaconGlobal, AngleGlobal, RadarGlobal | [ ] |
+| D: Actor Property Groups | 29 | GeneralProperties, ProductionProperties, CombatProperties, HealthProperties, MobileProperties, AircraftProperties, TransportProperties, ConditionProperties, AmmoPoolProperties, CloakProperties, DemolitionProperties, GuardProperties, HarvesterProperties, CaptureProperties, CarryallProperties, DeliveryProperties, GainsExperienceProperties, InstantlyRepairsProperties, NukeProperties, ParadropProperties, ParatroopersProperties, RepairableBuildingProperties, ResourceProperties, ScaredCatProperties, SellableProperties, TransformProperties, AirstrikeProperties, DiplomacyProperties, PowerProperties | [ ] |
+| E: Player Property Groups | 5 | PlayerProperties, MissionObjectiveProperties, PlayerConditionProperties, PlayerExperienceProperties, PlayerStatsProperties | [ ] |
+| F: C&C Mod Properties | 4 | ChronosphereProperties, DisguiseProperties, InfiltrateProperties, IonCannonProperties | [ ] |
+| G: Lua VM (Optional) | 3-5 | fengari integration, LuaBindingAdapter, LuaValueAdapter, LuaDoc helpers | [ ] |
+| **TOTAL** | **62 + 1 new + 3-5 opt** | Target: ~575 tests | **0%** |
+
+**Architecture Decisions (summary, full ADRs in chapter plan):**
+
+**ADR-20.1**: Use fengari (pure JS Lua 5.3) for optional Lua support, not lua.vm.js (Emscripten). Fengari is tree-shakeable, ESM-compatible, and ~200KB vs ~500KB for the Emscripten version.
+
+**ADR-20.2**: JSON-based declarative trigger system as MVP (Tier 1). Handles 80%+ of mission patterns (timers, actor lifecycles, reinforcements, objectives) without Lua dependency. Lua VM loaded on-demand via dynamic `import()` only when map contains `.lua` files (Tier 2).
+
+**ADR-20.3**: ScriptRegistry replaces .NET reflection. Each Global/Properties class explicitly calls `ScriptRegistry.register()` at module import time, avoiding decorator/reflect-metadata dependency.
+
+**ADR-20.4**: Property groups mirror the exact trait dependency graph from OpenRA using `Requires<T>` pattern from Chapter 3's trait infrastructure.
 
 ---
 
