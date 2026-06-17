@@ -13,10 +13,10 @@ import {
 } from './AttackPopupTurreted.js'
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
-function makeActor(traits?: unknown): IGameActor {
+function makeActor(traitMap?: Record<string, unknown[]>): IGameActor {
   return {
     actorId: 1, isInWorld: true, isDead: false, disposed: false,
-    traitsImplementing: () => traits ?? [],
+    traitsImplementing: <T>(name: string) => (traitMap?.[name] ?? []) as T[],
   } as unknown as IGameActor
 }
 
@@ -43,7 +43,7 @@ describe('AttackPopupTurreted', () => {
       }
       const turretTrait = { faceTarget() {}, hasAchievedDesiredFacing: true }
 
-      const self = makeActor([wsBody, turretTrait])
+      const self = makeActor({ WithSpriteBody: [wsBody], Turreted: [turretTrait] })
       const init = { self, contains: () => false }
 
       const trait = new AttackPopupTurreted(init, info)
@@ -59,7 +59,7 @@ describe('AttackPopupTurreted', () => {
       }
       const turretTrait = { faceTarget() {}, hasAchievedDesiredFacing: true }
 
-      const self = makeActor([wsBody, turretTrait])
+      const self = makeActor({ WithSpriteBody: [wsBody], Turreted: [turretTrait] })
       const init = { self, contains: () => true }
 
       const trait = new AttackPopupTurreted(init, info)
@@ -70,7 +70,7 @@ describe('AttackPopupTurreted', () => {
 
     it('handles missing sprite body gracefully', () => {
       const info = new AttackPopupTurretedInfo()
-      const self = makeActor([])
+      const self = makeActor({})
       const init = { self, contains: () => false }
 
       const trait = new AttackPopupTurreted(init, info)
@@ -82,7 +82,7 @@ describe('AttackPopupTurreted', () => {
   describe('getDamageModifier', () => {
     it('returns 100 when Open', () => {
       const info = new AttackPopupTurretedInfo()
-      const self = makeActor([])
+      const self = makeActor({})
       const trait = new AttackPopupTurreted({ self, contains: () => false }, info)
       expect(trait.getDamageModifier()).toBe(100)
     })
@@ -95,7 +95,7 @@ describe('AttackPopupTurreted', () => {
         playCustomAnimation() {},
       }
       const turretTrait = { faceTarget() {} }
-      const self = makeActor([wsBody, turretTrait])
+      const self = makeActor({ WithSpriteBody: [wsBody], Turreted: [turretTrait] })
       const init = { self, contains: () => true }
 
       const trait = new AttackPopupTurreted(init, info)
@@ -103,6 +103,27 @@ describe('AttackPopupTurreted', () => {
 
       expect(trait.getState()).toBe(PopupState.Closed)
       expect(trait.getDamageModifier()).toBe(50)
+    })
+  })
+
+  describe('canAttack (pausable condition)', () => {
+    it('returns false when trait is paused', () => {
+      const info = new AttackPopupTurretedInfo()
+      const wsBody = {
+        info: { name: 'body', sequence: 'idle' },
+        playCustomAnimationRepeating() {},
+        playCustomAnimation(_s: IGameActor, _seq: string, cb: () => void) { cb() },
+      }
+      const turretTrait = { faceTarget() {}, hasAchievedDesiredFacing: true }
+      const self = makeActor({ WithSpriteBody: [wsBody], Turreted: [turretTrait] })
+      const init = { self, contains: () => false }
+
+      const trait = new AttackPopupTurreted(init, info)
+      // Force paused state (isTraitPaused is a getter on ConditionalTrait)
+      Object.defineProperty(trait, 'isTraitPaused', { value: true, writable: false })
+
+      const target = { type: 1, isValidFor: () => true } as any
+      expect(trait.canAttack(self, target)).toBe(false)
     })
   })
 
@@ -114,8 +135,8 @@ describe('AttackPopupTurreted', () => {
         playCustomAnimationRepeating() {},
         playCustomAnimation() {},
       }
-      const turretTrait = { faceTarget() {}, hasAchievedDesiredFacing: true }
-      const self = makeActor([wsBody, turretTrait])
+      const turretTrait = { faceTarget() {}, hasAchievedDesiredFacing: false }
+      const self = makeActor({ WithSpriteBody: [wsBody], Turreted: [turretTrait] })
 
       const trait = new AttackPopupTurreted({ self, contains: () => false }, info)
       expect(trait.getIdleTicks()).toBe(0)
@@ -134,8 +155,10 @@ describe('AttackPopupTurreted', () => {
         playCustomAnimationRepeating() {},
         playCustomAnimation() {},
       }
-      const turretTrait = { faceTarget() {}, hasAchievedDesiredFacing: true }
-      const self = makeActor([wsBody, turretTrait])
+      // hasAchievedDesiredFacing: false so it stays in Rotating without
+      // immediately jumping to Transitioning
+      const turretTrait = { faceTarget() {}, hasAchievedDesiredFacing: false }
+      const self = makeActor({ WithSpriteBody: [wsBody], Turreted: [turretTrait] })
 
       const trait = new AttackPopupTurreted({ self, contains: () => false }, info)
 

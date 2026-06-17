@@ -78,6 +78,13 @@ export class InfiltrateForPowerOutage implements INotifyInfiltrated {
   /** Called when the owner changes: refresh PowerManager reference.
    *
    *  OpenRA 对照: InfiltrateForPowerOutage.OnOwnerChanged()
+   *
+   *  NOTE: In OpenRA C#, INotifyOwnerChanged.OnOwnerChanged is auto-dispatched
+   *  by the trait system on ownership transfer. The TypeScript migration uses
+   *  duck-typed dispatch: callers must explicitly invoke
+   *  `(trait as { onOwnerChanged?: (self: IGameActor) => void }).onOwnerChanged?.(self)`
+   *  since there is no global trait registry. See the Actor migration docs for
+   *  the manual dispatch pattern used throughout the codebase.
    */
   onOwnerChanged(self: IGameActor): void {
     this.init(self)
@@ -102,6 +109,6 @@ export class InfiltrateForPowerOutage implements INotifyInfiltrated {
     if (!this.playerPower) this.init(self)
     this.playerPower?.triggerPowerOutage(this.info.duration)
 
-    // Sound/text notifications are stubs (require Ch7 Phase D)
+    // TODO-19.A.10-SOUND: Play infiltrated/infiltration notifications via Ch7 Sound system
   }
 }

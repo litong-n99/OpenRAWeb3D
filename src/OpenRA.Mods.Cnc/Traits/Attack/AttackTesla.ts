@@ -64,6 +64,17 @@ class ChargeAttackActivity implements IActivityNotifyStanceChanged {
   private readonly forceAttack: boolean
   private readonly targetLineColor: { r: number; g: number; b: number; a: number } | null
 
+  /** Tick counter for charge delays. Counts down from InitialChargeDelay
+   *  before first shot, then from ChargeDelay between subsequent shots.
+   *
+   *  OpenRA 对照: AttackTesla.InitialChargeDelay (22 ticks) +
+   *               AttackTesla.ChargeDelay (3 ticks per shot)
+   */
+  private chargeTick: number
+
+  /** Whether the initial charge-up phase has completed. */
+  private initialChargeComplete: boolean = false
+
   constructor(
     attack: AttackTesla,
     target: TargetType_,
@@ -74,26 +85,48 @@ class ChargeAttackActivity implements IActivityNotifyStanceChanged {
     this.target = target
     this.forceAttack = forceAttack
     this.targetLineColor = targetLineColor
+    this.chargeTick = attack.getInitialChargeDelay()
   }
 
+  /** Per-tick logic: waits for charge delay, fires INotifyTeslaCharging
+   *  during wind-up, then fires the weapon when delay expires.
+   *
+   *  OpenRA 对照: AttackTesla.ChargeAttack.Tick()
+   *  - C# yield return InitialChargeDelay → TS chargeTick countdown
+   *  - C# ChargeFire sub-activity → TS inline (TODO-19.A.22-FULL)
+   *
+   *  TODO-19.A.22-FULL: Extract ChargeFire as a separate activity with
+   *  Wait child activities for proper animation sequencing.
+   */
   tick(self: IGameActor): boolean {
     if (!this.attack.canAttack(self, this.target)) return true
     if (this.attack.getCharges() === 0) return false
 
-    const selfAny = self as unknown as {
-      traitsImplementing?: <T>(_name: string) => T[]
-    }
-    const chargingListeners =
-      selfAny.traitsImplementing?.<INotifyTeslaCharging>(
-        'INotifyTeslaCharging',
-      ) ?? []
+    // Count down the current charge delay
+    if (--this.chargeTick > 0) return false
 
-    for (const listener of chargingListeners) {
-      listener.charging(self, this.target)
+    // Fire INotifyTeslaCharging during initial charge-up
+    if (!this.initialChargeComplete) {
+      const selfAny = self as unknown as {
+        traitsImplementing?: <T>(_name: string) => T[]
+      }
+      const chargingListeners =
+        selfAny.traitsImplementing?.<INotifyTeslaCharging>(
+          'INotifyTeslaCharging',
+        ) ?? []
+
+      for (const listener of chargingListeners) {
+        listener.charging(self, this.target)
+      }
+
+      this.initialChargeComplete = true
     }
 
     this.attack.playChargeAudio(self)
     this.attack.doAttack(self, this.target)
+
+    // Reset charge delay for next shot (ChargeDelay ticks between shots)
+    this.chargeTick = this.attack.getChargeDelay()
 
     return false
   }
@@ -175,11 +208,14 @@ export class AttackTesla extends AttackBase {
   getCharges(): number { return this.charges }
   getTimeToRecharge(): number { return this.timeToRechargeInternal }
   getChargeDelay(): number { return this.teslaInfo.chargeDelay }
+  getInitialChargeDelay(): number { return this.teslaInfo.initialChargeDelay }
 
   playChargeAudio(self: IGameActor): void {
     const chargeAudio = this.teslaInfo.chargeAudio
     if (!chargeAudio) return
-    void (self as unknown as { centerPosition?: unknown }).centerPosition
-    // TODO-19.A.22-SOUND: Integrate with Ch7 Sound system
+    // TODO-19.A.22-AUDIO: Play chargeAudio sound at self.centerPosition
+    // Requires Ch7 Phase D Sound system integration.
+    // OpenRA 对照: Game.Sound.Play(SoundType.World, info.ChargeAudio, self.CenterPosition)
+    void self // reference for future sound position lookup
   }
 }

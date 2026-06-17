@@ -100,6 +100,6 @@ export class InfiltrateForExploration implements INotifyInfiltrated {
       }
     }
 
-    // Sound/text notifications are stubs (require Ch7 Phase D)
+    // TODO-19.A.13-SOUND: Play infiltrated/infiltration notifications via Ch7 Sound system
   }
 }

@@ -103,20 +103,18 @@ describe('InfiltrateForDecoration', () => {
         relationshipWith: () => PlayerRelationship.Enemy,
       }
 
-      const self = makeActor({
-        owner: {
-          world: { renderPlayer: {} },
-        } as unknown,
-      })
+      // First, infiltrate to register the infiltrator in the set
+      const self = makeActor()
       const infiltrator = makeActor({ owner: infiltratorOwner })
-
       trait.infiltrated(self, infiltrator, ['Building'])
 
-      const worldWithRender = makeActor({
-        owner: {
-          world: { renderPlayer: {} },
-        } as unknown,
-      })
+      // For shouldRender, the actor must have `world.renderPlayer`
+      // (shouldRender accesses self.world, not self.owner.world)
+      const worldWithRender = {
+        actorId: 2, isInWorld: true, isDead: false, disposed: false,
+        world: { renderPlayer: {} },
+      } as unknown as IGameActor
+
       // The infiltrator owner has Enemy relationship with render player
       const result = trait.shouldRender(worldWithRender)
       // Enemy is in validRelationships, so true

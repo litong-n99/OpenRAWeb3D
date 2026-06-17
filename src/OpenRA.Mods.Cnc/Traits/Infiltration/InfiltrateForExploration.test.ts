@@ -49,12 +49,14 @@ describe('InfiltrateForExploration', () => {
       let resetCalled = false
       let exploreTarget: unknown = null
 
-      const selfShroud = {
-        explore(other: unknown) { exploreCalled = true; exploreTarget = other },
-        resetExploration() { resetCalled = true },
-      }
+      // NOTE: implementation calls infiltratorShroud.explore(selfShroud),
+      // not selfShroud.explore(). The infiltrator steals the victim's exploration.
       const infiltratorShroud = {
+        explore(other: unknown) { exploreCalled = true; exploreTarget = other },
+      }
+      const selfShroud = {
         explore(_other: unknown) {},
+        resetExploration() { resetCalled = true },
       }
 
       const info = new InfiltrateForExplorationInfo({
@@ -90,12 +92,12 @@ describe('InfiltrateForExploration', () => {
     it('does not reset exploration when prevented', () => {
       let resetCalled = false
 
+      const infiltratorShroud = {
+        explore() {},
+      }
       const selfShroud = {
         explore() {},
         resetExploration() { resetCalled = true },
-      }
-      const infiltratorShroud = {
-        explore() {},
       }
 
       const info = new InfiltrateForExplorationInfo({ types: ['Building'] })

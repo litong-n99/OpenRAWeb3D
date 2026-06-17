@@ -60,6 +60,11 @@ class GunboatAttackActivity {
     const requested = this.attack.getRequestedTarget()
     if (this.hasTicked && requested.type === TargetType.Invalid) return true
 
+    // OpenRA 对照: attack.ChooseArmamentsForTarget(target, forceAttack).FirstOrDefault()
+    // Validate at least one armament can fire before committing to this target
+    const chosen = this.attack.chooseArmamentsForTarget(this.target as TargetType_, false)
+    if (!chosen || chosen.length === 0) return false
+
     // Use the parent's setRequestedTarget via duck-typed access
     const base = this.attack as unknown as {
       setRequestedTarget(t: TargetType_, forceAttack: boolean): void

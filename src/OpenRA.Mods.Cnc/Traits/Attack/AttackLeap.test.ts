@@ -46,11 +46,13 @@ describe('AttackLeap', () => {
       const target = {
         type: TargetType.Actor,
         actor: { location: { X: 5, Y: 5 }, owner: {} },
+        isValidFor: () => true,
       } as unknown as TargetType_
 
-      // This depends on hasAnyValidWeapons which may be false due to no armaments
+      // Without armaments, hasAnyValidWeapons returns false, so same-cell
+      // check fails and we fall through to super.canAttack (which also fails
+      // since no armaments are available)
       const result = trait.canAttack(self, target)
-      // Without armaments, hasAnyValidWeapons returns false
       expect(result).toBe(false)
     })
 

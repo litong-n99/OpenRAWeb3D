@@ -152,7 +152,11 @@ export class AttackPopupTurreted extends AttackTurreted {
   // ---------------------------------------------------------------------------
 
   override canAttack(self: IGameActor, target: TargetType_): boolean {
-    if (this.isTraitDisabled) return false
+    // NOTE: isTraitPaused guards weapon usage when trait is enabled but
+    // has no ammo or is otherwise unable to act (e.g., PauseOnCondition).
+    // Differs from isTraitDisabled which indicates the trait itself is inactive.
+    // OpenRA 对照: if (IsTraitPaused) return false
+    if (this.isTraitDisabled || this.isTraitPaused) return false
 
     if (this.state === PopupState.Closed) {
       this.state = PopupState.Transitioning

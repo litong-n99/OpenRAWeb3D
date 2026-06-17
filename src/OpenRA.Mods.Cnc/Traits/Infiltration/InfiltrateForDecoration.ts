@@ -11,12 +11,7 @@
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { PlayerRelationship } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { type INotifyInfiltrated } from './InfiltrationInterfaces.js'
-
-function typesOverlap(a: readonly string[], b: readonly string[]): boolean {
-  if (a.length === 0 || b.length === 0) return false
-  const bSet = new Set(b)
-  return a.some((t) => bSet.has(t))
-}
+import { typesOverlap } from './InfiltrationUtils.js'
 
 // ---------------------------------------------------------------------------
 // InfiltrateForDecorationInfo

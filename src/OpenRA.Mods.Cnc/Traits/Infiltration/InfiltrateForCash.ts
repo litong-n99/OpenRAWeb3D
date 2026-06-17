@@ -12,6 +12,7 @@
 
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { type INotifyInfiltrated } from './InfiltrationInterfaces.js'
+import { typesOverlap } from './InfiltrationUtils.js'
 
 // ---------------------------------------------------------------------------
 // InfiltrateForCashInfo
@@ -100,7 +101,7 @@ export class InfiltrateForCash implements INotifyInfiltrated {
     infiltrator: IGameActor,
     types: readonly string[],
   ): void {
-    if (!this.typesOverlap(this.info.types, types)) return
+    if (!typesOverlap(this.info.types, types)) return
 
     const selfOwner = self.owner as unknown as {
       playerActor?: IGameActor & {
@@ -166,17 +167,11 @@ export class InfiltrateForCash implements INotifyInfiltrated {
       )
     }
 
-    // Sound and text notifications are stub placeholders
-    // Full implementation requires Sound + TextNotificationsManager (Ch7 Phase D)
-  }
-
-  /** Check if two type arrays overlap. */
-  private typesOverlap(
-    a: readonly string[],
-    b: readonly string[],
-  ): boolean {
-    if (a.length === 0 || b.length === 0) return false
-    const bSet = new Set(b)
-    return a.some((t) => bSet.has(t))
+    // TODO-19.A.16-SOUND: Play sound/text notifications via Ch7 Sound system
+    // OpenRA 对照:
+    //   Game.Sound.PlayNotification(world.Map.Rules, infiltrator.Owner, "Speech",
+    //     info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName)
+    //   TextNotificationsManager.AddTransientLine(info.InfiltrationTextNotification, infiltrator.Owner)
+    // Full implementation requires Sound (Ch7 Phase D) + TextNotificationsManager (Ch16)
   }
 }

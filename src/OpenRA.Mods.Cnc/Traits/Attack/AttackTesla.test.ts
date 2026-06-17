@@ -7,6 +7,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('@babylonjs/core', () => ({ Engine: vi.fn(), Scene: vi.fn() }))
 
 import { AttackTesla, AttackTeslaInfo } from './AttackTesla.js'
+import type { Target as TargetType_ } from '../../../OpenRA.Game/Traits/Target.js'
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 const makeActor = (): IGameActor =>
@@ -99,6 +100,81 @@ describe('AttackTesla', () => {
       const trait = new AttackTesla(info)
 
       expect(() => trait.playChargeAudio(makeActor())).not.toThrow()
+    })
+  })
+
+  describe('ChargeAttackActivity charge delays', () => {
+    it('respects initialChargeDelay before first shot', () => {
+      const info = new AttackTeslaInfo({
+        maxCharges: 2,
+        initialChargeDelay: 3,
+        chargeDelay: 1,
+        reloadDelay: 120,
+      })
+      const trait = new AttackTesla(info)
+      // Force isTraitDisabled to false and hasAnyValidWeapons to true for unit test
+      Object.defineProperty(trait, 'isTraitDisabled', { value: false, writable: true })
+      ;(trait as any).hasAnyValidWeapons = () => true
+
+      // Track doAttack calls
+      let attackCount = 0
+      const originalDoAttack = trait.doAttack.bind(trait)
+      trait.doAttack = function (self: IGameActor, target: TargetType_) {
+        attackCount++
+        return originalDoAttack(self, target)
+      }
+
+      const self = makeActor()
+      const target = { type: 1, isValidFor: () => true } as any // Actor type
+      const activity = trait.getAttackActivity(self, 0, target, false, false, '') as {
+        tick: (s: IGameActor) => boolean
+      }
+
+      // First 2 ticks: initialChargeDelay countdown (3 → 2 → 1)
+      expect(activity.tick(self)).toBe(false) // tick 1: chargeTick 3→2 >0, return false
+      expect(activity.tick(self)).toBe(false) // tick 2: chargeTick 2→1 >0, return false
+      expect(attackCount).toBe(0) // No attack yet
+
+      // Tick 3: chargeTick 1→0, initialChargeDelay expires, first shot fires
+      expect(activity.tick(self)).toBe(false)
+      expect(attackCount).toBe(1) // First attack fired
+    })
+
+    it('respects chargeDelay between shots', () => {
+      const info = new AttackTeslaInfo({
+        maxCharges: 2,
+        initialChargeDelay: 1,
+        chargeDelay: 2,
+        reloadDelay: 120,
+      })
+      const trait = new AttackTesla(info)
+      Object.defineProperty(trait, 'isTraitDisabled', { value: false, writable: true })
+      ;(trait as any).hasAnyValidWeapons = () => true
+
+      let attackCount = 0
+      const originalDoAttack = trait.doAttack.bind(trait)
+      trait.doAttack = function (self: IGameActor, target: TargetType_) {
+        attackCount++
+        return originalDoAttack(self, target)
+      }
+
+      const self = makeActor()
+      const target = { type: 1, isValidFor: () => true } as any
+      const activity = trait.getAttackActivity(self, 0, target, false, false, '') as {
+        tick: (s: IGameActor) => boolean
+      }
+
+      // Tick 1: chargeTick 1→0, initialChargeDelay expires, first shot
+      activity.tick(self)
+      expect(attackCount).toBe(1)
+
+      // Tick 2: chargeTick 2→1, chargeDelay countdown
+      activity.tick(self)
+      expect(attackCount).toBe(1) // Still 1
+
+      // Tick 3: chargeTick 1→0, chargeDelay expires, second shot
+      activity.tick(self)
+      expect(attackCount).toBe(2) // Second attack fired
     })
   })
 })

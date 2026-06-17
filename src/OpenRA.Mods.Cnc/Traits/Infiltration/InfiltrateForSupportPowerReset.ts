@@ -91,6 +91,6 @@ export class InfiltrateForSupportPowerReset
       }
     }
 
-    // Sound/text notifications are stubs (require Ch7 Phase D)
+    // TODO-19.A.15-SOUND: Play infiltrated/infiltration notifications via Ch7 Sound system
   }
 }

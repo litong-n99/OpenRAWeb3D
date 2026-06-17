@@ -56,13 +56,13 @@ describe('AttackTDGunboatTurreted', () => {
     })
   })
 
-  describe('getWeaponsForTarget', () => {
+  describe('chooseArmamentsForTarget', () => {
     it('returns empty array when no armaments', () => {
       const info = new AttackTDGunboatTurretedInfo()
       const trait = new AttackTDGunboatTurreted(info)
       const target = { type: 0 } as any
-      const weapons = (trait as unknown as { getWeaponsForTarget: (...a: unknown[]) => unknown[] }).getWeaponsForTarget(target, false)
-      expect(weapons).toEqual([])
+      const chosen = trait.chooseArmamentsForTarget(target, false)
+      expect(chosen).toEqual([])
     })
   })
 })
