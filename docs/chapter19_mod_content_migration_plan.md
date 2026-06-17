@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 19 -- Mod-Specific Content (C&C + D2K)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.x (Mod-Specific) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (Phases A-B COMPLETE: 64/119, 54%; 45 deferred to build-time / post-MVP)
+> **Chapter Status**: IN PROGRESS (Phases A-B-C COMPLETE: 101/119, 85%; 45 deferred to build-time / post-MVP)
 > **Planning Date**: 2026-06-17
 > **Prerequisite**: Chapters 2-18 COMPLETE (484/484, 100%. Ch8 Weapons, Ch9 Movement, Ch10 Resources, Ch11 Buildings, Ch12 Shroud, Ch13 Support Powers, Ch14 Activities, Ch15 Order Generators)
 >
@@ -296,7 +296,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 |:---|:---:|:---:|:---:|:---:|:---|
 | A: C&C Core Traits | 47 | ~6,600 | ~8,000 | ~528 | ✅ COMPLETE (R2 APPROVED) |
 | B: D2K Mod Traits | 17 | ~2,000 | ~2,500 | ~234 | ✅ COMPLETE (R2 APPROVED) |
-| C: C&C Rendering & Voxel | 37 | ~4,700 | ~5,000 | ~200 | PLANNING |
+| C: C&C Rendering & Voxel | 37 | ~4,700 | ~5,000 | ~200 | ✅ COMPLETE (R2 APPROVED) |
 | D: Supporting Infrastructure | 18 | ~2,500 | ~3,000 | ~120 | PLANNING |
 | **Subtotal (Migrate)** | **119** | **~15,800** | **~18,500** | **~690** | **PLANNING** |
 | | | | | | |
@@ -762,7 +762,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 ### 3.3 Phase C: C&C Rendering, Graphics & Voxel
 
-**Status**: 📋 待迁移 (0/37 migrated, 0 tests)
+**Status**: ✅ COMPLETE (37/37 migrated, ~200 tests, R2 APPROVED)
 **Complexity**: MEDIUM-HIGH (Voxel rendering subsystem is architecturally significant; ModelRenderer is HIGH)
 **Blocked by**: Phase A (Chrono/Attack/Tesla traits provide logic; render traits depend on them), Ch2 (Renderer/Sprite/Sheet), Ch7 (RenderSprites)
 **Blocks**: Nothing (leaf phase)
@@ -779,43 +779,43 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.3.1 Render Traits (10 files)
 
-- [ ] **TODO-19.C.1** `src/OpenRA.Mods.Cnc/Traits/Render/WithBuildingBib.ts` (137 lines C#) — Building foundation bib rendering:
+- [x] **TODO-19.C.1** `src/OpenRA.Mods.Cnc/Traits/Render/WithBuildingBib.ts` (137 lines C#) — Building foundation bib rendering:
   - Renders building foundation "bib" sprite below the building
   - `sequence: string` — bib sprite sequence
   - `palette: string` — bib color palette
   - **3D**: bib = flat `GroundMesh` plane below building mesh with bib texture
 
-- [ ] **TODO-19.C.2** `src/OpenRA.Mods.Cnc/Traits/Render/WithCargo.ts` (143 lines C#) — Cargo capacity display:
+- [x] **TODO-19.C.2** `src/OpenRA.Mods.Cnc/Traits/Render/WithCargo.ts` (143 lines C#) — Cargo capacity display:
   - Shows cargo/passenger sprites on transport actor
   - `localOffset: WVec[]` — passenger display positions
   - `displayType: string` — how to display (e.g., "Default", "Passenger", "Crushable")
   - **3D**: cargo = small sprite `Meshes` positioned at offset locations on transport TransformNode
 
-- [ ] **TODO-19.C.3** ~ **TODO-19.C.10**: Similar render trait stubs for `WithDisguisingInfantryBody`, `WithEmbeddedTurretSpriteBody`, `WithGunboatBody`, `WithHarvesterSpriteBody`, `WithLandingCraftAnimation`, `WithSplitAttackPaletteInfantryBody`, `WithTeslaChargeAnimation`, `WithTeslaChargeOverlay` — each implements custom sprite rendering for specific C&C unit types using Ch7 `RenderSprites` infrastructure with 3D adaptations (Billboard sprites, ShaderMaterial palette swaps, etc.)
+- [x] **TODO-19.C.3** ~ **TODO-19.C.10**: Similar render trait stubs for `WithDisguisingInfantryBody`, `WithEmbeddedTurretSpriteBody`, `WithGunboatBody`, `WithHarvesterSpriteBody`, `WithLandingCraftAnimation`, `WithSplitAttackPaletteInfantryBody`, `WithTeslaChargeAnimation`, `WithTeslaChargeOverlay` — each implements custom sprite rendering for specific C&C unit types using Ch7 `RenderSprites` infrastructure with 3D adaptations (Billboard sprites, ShaderMaterial palette swaps, etc.)
 
 *Note: Full per-file details for C3-C10 will be elaborated during Phase C planning. Each file is LOW complexity (47-97 lines C#), involving extending `RenderSprites` with mod-specific sequence/palette overrides.*
 
 #### 3.3.2 Graphics Renderables (4 files)
 
-- [ ] **TODO-19.C.11** `src/OpenRA.Mods.Cnc/Graphics/ChronoVortexRenderable.ts` (67 lines C#) — Chrono-vortex renderable:
+- [x] **TODO-19.C.11** `src/OpenRA.Mods.Cnc/Graphics/ChronoVortexRenderable.ts` (67 lines C#) — Chrono-vortex renderable:
   - Implements `IRenderable`
   - Renders rotating vortex sprite at chronoshift departure/arrival points
   - **3D**: vortex = rotating `ParticleSystem` + `Mesh` with spiral UV animation on `ShaderMaterial`
 
-- [ ] **TODO-19.C.12** `src/OpenRA.Mods.Cnc/Graphics/TeslaZapRenderable.ts` (167 lines C#) — Tesla zap lightning renderable:
+- [x] **TODO-19.C.12** `src/OpenRA.Mods.Cnc/Graphics/TeslaZapRenderable.ts` (167 lines C#) — Tesla zap lightning renderable:
   - Implements `IRenderable`
   - Generates lightning arc between tesla coil and target
   - `zapDuration: number` — lightning flash duration
   - `boltCount: number` — number of branching bolts
   - **3D**: lightning = dynamically generated `LinesMesh` with jagged midpoint offsets + `ShaderMaterial` glow + random bolt branching
 
-- [ ] **TODO-19.C.13** `src/OpenRA.Mods.Cnc/Graphics/ClassicSpriteSequence.ts` (48 lines C#) — Classic sprite sequence format:
+- [x] **TODO-19.C.13** `src/OpenRA.Mods.Cnc/Graphics/ClassicSpriteSequence.ts` (48 lines C#) — Classic sprite sequence format:
   - Implements `ISpriteSequence`
   - C&C classic 8-direction facing with non-linear frame mapping
   - Uses `ClassicFacingBodyOrientation` for facing-to-frame conversion
   - Integration: Ch2 `Sprite`, `Sheet`, `Animation` + already-migrated `ClassicFacingBodyOrientation`
 
-- [ ] **TODO-19.C.14** `src/OpenRA.Mods.Cnc/Graphics/ClassicTilesetSpecificSpriteSequence.ts` (95 lines C#) — Tileset-specific classic sequence:
+- [x] **TODO-19.C.14** `src/OpenRA.Mods.Cnc/Graphics/ClassicTilesetSpecificSpriteSequence.ts` (95 lines C#) — Tileset-specific classic sequence:
   - Extends `ClassicSpriteSequence` with tileset-specific frame overrides
   - `tilesetOverrides: Map<string, SequenceDef>` — per-tileset frame remapping
   - Used for terrain-dependent sprite variants
@@ -824,105 +824,105 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 *Note: This is the architecturally most significant C&C subsystem. Full per-file details will be elaborated after ADR-19.1 resolution (build-time vs runtime voxel conversion). The TODO items below assume the ADR-19.1 default: runtime glTF loading with build-time `.vxl`→`.glb` conversion.*
 
-- [ ] **TODO-19.C.15** `src/OpenRA.Mods.Cnc/FileFormats/VxlReader.ts` (158 lines C#) — VXL voxel file format reader:
+- [x] **TODO-19.C.15** `src/OpenRA.Mods.Cnc/FileFormats/VxlReader.ts` (158 lines C#) — VXL voxel file format reader:
   - Parses binary `.vxl` format (Westwood voxel model): header, limb dimensions, color indices, normals
   - Outputs `VoxelData` structure: `Uint8Array` color indices per voxel + normal vectors
   - **ADR-19.1**: Used only at build time by the `.vxl`→`.glb` converter; runtime TS is thin validation wrapper
 
-- [ ] **TODO-19.C.16** `src/OpenRA.Mods.Cnc/FileFormats/HvaReader.ts` (63 lines C#) — HVA voxel animation file reader:
+- [x] **TODO-19.C.16** `src/OpenRA.Mods.Cnc/FileFormats/HvaReader.ts` (63 lines C#) — HVA voxel animation file reader:
   - Parses binary `.hva` format: frame count, per-limb transform matrices, animation flags
   - Outputs `HvaData`: `FrameTransform[]` array (position + rotation per limb per frame)
   - **ADR-19.1**: Used at build time; runtime TS is thin validation wrapper
 
-- [ ] **TODO-19.C.17** `src/OpenRA.Mods.Cnc/Graphics/Voxel.ts` (161 lines C#) — Voxel model in-memory representation:
+- [x] **TODO-19.C.17** `src/OpenRA.Mods.Cnc/Graphics/Voxel.ts` (161 lines C#) — Voxel model in-memory representation:
   - Holds parsed voxel data: limbs, frames, color palette mappings
   - `Render(worldRenderer, palette, scale, facing)` — triggers model rendering
   - **ADR-19.1**: Runtime TS loads pre-converted glTF. Voxel class becomes a thin `TransformNode` wrapper with limb node references.
 
-- [ ] **TODO-19.C.18** `src/OpenRA.Mods.Cnc/Graphics/VoxelLoader.ts` (242 lines C#) — Voxel asset loader:
+- [x] **TODO-19.C.18** `src/OpenRA.Mods.Cnc/Graphics/VoxelLoader.ts` (242 lines C#) — Voxel asset loader:
   - Loads `.vxl` + `.hva` from FileSystem, parses, caches in `VoxelCache`
   - Generates `Sheet` sprites for each voxel frame (software rasterizer output)
   - **ADR-19.1**: Runtime TS loads pre-converted `.glb` from FileSystem. VoxelLoader becomes a thin `SceneLoader` wrapper.
 
-- [ ] **TODO-19.C.19** `src/OpenRA.Mods.Cnc/Traits/World/VoxelCache.ts` (119 lines C#) — Voxel model cache:
+- [x] **TODO-19.C.19** `src/OpenRA.Mods.Cnc/Traits/World/VoxelCache.ts` (119 lines C#) — Voxel model cache:
   - Implements `IModelCache`
   - LRU cache of loaded voxel models
   - Keyed by model name + palette hash
   - **ADR-19.1**: Cache stores pre-loaded `TransformNode` hierarchies. Keyed by model name only (palette is material property).
 
-- [ ] **TODO-19.C.20** `src/OpenRA.Mods.Cnc/Traits/World/VoxelNormalsPalette.ts` (351 lines C#) — Voxel normal-to-color palette:
+- [x] **TODO-19.C.20** `src/OpenRA.Mods.Cnc/Traits/World/VoxelNormalsPalette.ts` (351 lines C#) — Voxel normal-to-color palette:
   - Generates 256-color palette based on voxel normal directions
   - `lightSource: WVec` — directional light source for shading calculation
   - Pre-computes normal angle → color mapping
   - **ADR-19.1**: Becomes a `ShaderMaterial` uniform — the normal-to-color table is uploaded as a 256×1 `RawTexture` lookup
 
-- [ ] **TODO-19.C.21** `src/OpenRA.Mods.Cnc/Traits/World/ModelRenderer.ts` (398 lines C#) — Model renderer world trait:
+- [x] **TODO-19.C.21** `src/OpenRA.Mods.Cnc/Traits/World/ModelRenderer.ts` (398 lines C#) — Model renderer world trait:
   - Renders all voxel models in the world each frame
   - Batches models by palette for efficient rendering
   - `render(worldRenderer)` — iterates all visible models, calls model.Render()
   - **ADR-19.1**: Becomes a thin manager that registers glTF-loaded `TransformNodes` in the Babylon.js scene graph. No per-frame CPU rendering.
 
-- [ ] **TODO-19.C.22** `src/OpenRA.Mods.Cnc/Graphics/ModelRenderable.ts` (294 lines C#) — Single model renderable:
+- [x] **TODO-19.C.22** `src/OpenRA.Mods.Cnc/Graphics/ModelRenderable.ts` (294 lines C#) — Single model renderable:
   - Implements `IRenderable` for one voxel model instance
   - Compute model transform (scale, rotation, world position) from actor state
   - **ADR-19.1**: `TransformNode` already handles this. ModelRenderable becomes a simple state struct mapping actor → TransformNode.
 
-- [ ] **TODO-19.C.23** `src/OpenRA.Mods.Cnc/Graphics/ModelActorPreview.ts` (79 lines C#) — Voxel model actor preview:
+- [x] **TODO-19.C.23** `src/OpenRA.Mods.Cnc/Graphics/ModelActorPreview.ts` (79 lines C#) — Voxel model actor preview:
   - Implements `IActorPreview` for voxel models in UI (build queue, sidebar)
   - Renders model at fixed camera angle for preview
   - **3D**: Small `Scene`/`RenderTargetTexture` with single model for UI preview canvas
 
-- [ ] **TODO-19.C.24** `src/OpenRA.Mods.Cnc/Graphics/UIModelRenderable.ts` (155 lines C#) — UI model renderable:
+- [x] **TODO-19.C.24** `src/OpenRA.Mods.Cnc/Graphics/UIModelRenderable.ts` (155 lines C#) — UI model renderable:
   - Implements `IRenderable` for voxel models in UI widgets (e.g., purchase dialog)
   - Fixed orthographic projection
   - **3D**: UI model = `Mesh` rendered in separate UI `Scene` with orthographic camera
 
-- [ ] **TODO-19.C.25** `src/OpenRA.Mods.Cnc/Traits/Render/RenderVoxels.ts` (189 lines C#) — Actor trait for voxel rendering:
+- [x] **TODO-19.C.25** `src/OpenRA.Mods.Cnc/Traits/Render/RenderVoxels.ts` (189 lines C#) — Actor trait for voxel rendering:
   - Replaces `RenderSprites` for voxel-based actors
   - Manages voxel model lifecycle: load model, attach to actor, update per frame
   - `model: string` — voxel model filename (without extension)
   - **3D**: Attaches pre-loaded glTF `TransformNode` as child of actor `TransformNode`
 
-- [ ] **TODO-19.C.26** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelBody.ts` (68 lines C#) — Voxel body rendering:
+- [x] **TODO-19.C.26** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelBody.ts` (68 lines C#) — Voxel body rendering:
   - Extends `RenderVoxels` for the main body limb
   - Selects body frame based on actor facing
   - **3D**: Body = root `TransformNode` with glTF mesh. Facing rotates node around Y axis.
 
-- [ ] **TODO-19.C.27** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelTurret.ts` (67 lines C#) — Voxel turret rendering:
+- [x] **TODO-19.C.27** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelTurret.ts` (67 lines C#) — Voxel turret rendering:
   - Extends `RenderVoxels` for turret limb
   - Selects turret frame based on `Turreted` trait facing
   - **3D**: Turret = child `TransformNode` of body. Rotation set from `Turreted.LocalYaw`.
 
-- [ ] **TODO-19.C.28** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelBarrel.ts` (105 lines C#) — Voxel barrel rendering:
+- [x] **TODO-19.C.28** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelBarrel.ts` (105 lines C#) — Voxel barrel rendering:
   - Extends `RenderVoxels` for barrel limb
   - Selects barrel frame based on `Armament` barrel orientation
   - **3D**: Barrel = child `TransformNode` of turret. Rotation set from `Armament` pitch.
 
-- [ ] **TODO-19.C.29** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelWalkerBody.ts` (106 lines C#) — Voxel walker body (Tiberian Sun mechs):
+- [x] **TODO-19.C.29** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelWalkerBody.ts` (106 lines C#) — Voxel walker body (Tiberian Sun mechs):
   - Extends `RenderVoxels` for walker mech animation
   - Limb animation driven by movement state (idle, walking, turning)
   - **3D**: Walker legs = separate `TransformNodes` with per-frame rotation from glTF animation clips
 
-- [ ] **TODO-19.C.30** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelUnloadBody.ts` (91 lines C#) — Voxel unloading body:
+- [x] **TODO-19.C.30** `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelUnloadBody.ts` (91 lines C#) — Voxel unloading body:
   - Extends `RenderVoxels` for cargo unload state
   - Special frame selection when transport is unloading passengers
   - **3D**: Unload = dedicated glTF animation clip triggered on unload event
 
 #### 3.3.4 Projectiles (3 files)
 
-- [ ] **TODO-19.C.31** `src/OpenRA.Mods.Cnc/Projectiles/TeslaZap.ts` (99 lines C#) — Tesla zap projectile:
+- [x] **TODO-19.C.31** `src/OpenRA.Mods.Cnc/Projectiles/TeslaZap.ts` (99 lines C#) — Tesla zap projectile:
   - Implements Ch8 `IProjectile`
   - Instant hit with visible lightning bolt renderable
   - `brightSequence: string` — target flash sequence on hit
   - **3D**: lightning bolt = `LinesMesh` + `TeslaZapRenderable`. Hit = `SpriteEffect` flash at target.
 
-- [ ] **TODO-19.C.32** `src/OpenRA.Mods.Cnc/Projectiles/IonCannon.ts` (73 lines C#) — Ion cannon orbital projectile:
+- [x] **TODO-19.C.32** `src/OpenRA.Mods.Cnc/Projectiles/IonCannon.ts` (73 lines C#) — Ion cannon orbital projectile:
   - Implements Ch8 `IProjectile`
   - Descending beam from sky to ground
   - `weapon: WeaponInfo` — weapon to fire on impact
   - **3D**: Ion beam = descending `CylinderMesh` with bright blue emissive `ShaderMaterial`. Ground splash = `ParticleSystem` burst.
 
-- [ ] **TODO-19.C.33** `src/OpenRA.Mods.Cnc/Projectiles/DropPodImpact.ts` (77 lines C#) — Drop pod ground impact:
+- [x] **TODO-19.C.33** `src/OpenRA.Mods.Cnc/Projectiles/DropPodImpact.ts` (77 lines C#) — Drop pod ground impact:
   - Implements Ch8 `IProjectile`
   - Pod descent + ground impact + unit deployment
   - `unit: string` — unit type to spawn on impact
@@ -930,20 +930,20 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.3.5 Activities (3 files)
 
-- [ ] **TODO-19.C.34** `src/OpenRA.Mods.Cnc/Activities/Leap.ts` (126 lines C#) — Leap movement activity:
+- [x] **TODO-19.C.34** `src/OpenRA.Mods.Cnc/Activities/Leap.ts` (126 lines C#) — Leap movement activity:
   - Extends Ch3 `Activity`
   - Parabolic arc jump from current position to target
   - `leapSpeed: WDist` — travel speed
   - On landing: trigger `AttackLeap` impact (if leaping at target)
   - **3D**: arc = `Vector3.Lerp` with Y-axis sin-based height curve
 
-- [ ] **TODO-19.C.35** `src/OpenRA.Mods.Cnc/Activities/LeapAttack.ts` (176 lines C#) — Leap attack activity:
+- [x] **TODO-19.C.35** `src/OpenRA.Mods.Cnc/Activities/LeapAttack.ts` (176 lines C#) — Leap attack activity:
   - Extends `Leap` with attack on landing
   - Combines leap + target damage in one activity chain
   - `attackDelay: number` — ticks between landing and attack
   - Integration: Ch14 `AttackActivity`
 
-- [ ] **TODO-19.C.36** `src/OpenRA.Mods.Cnc/Activities/Teleport.ts` (144 lines C#) — Teleport activity:
+- [x] **TODO-19.C.36** `src/OpenRA.Mods.Cnc/Activities/Teleport.ts` (144 lines C#) — Teleport activity:
   - Extends Ch3 `Activity`
   - Instant position change with visual effect
   - `teleportDuration: number` — animation time around teleport
@@ -951,22 +951,22 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.3.6 Effects (3 files)
 
-- [ ] **TODO-19.C.37** `src/OpenRA.Mods.Cnc/Effects/GpsDotEffect.ts` (119 lines C#) — GPS dot visual effect:
+- [x] **TODO-19.C.37** `src/OpenRA.Mods.Cnc/Effects/GpsDotEffect.ts` (119 lines C#) — GPS dot visual effect:
   - Implements Ch3 `IEffect`
   - Renders GPS minimap dot for revealed actors
   - `color: Color` — dot color per player
 
-- [ ] **TODO-19.C.38** `src/OpenRA.Mods.Cnc/Effects/SatelliteLaunch.ts` (58 lines C#) — Satellite launch effect:
+- [x] **TODO-19.C.38** `src/OpenRA.Mods.Cnc/Effects/SatelliteLaunch.ts` (58 lines C#) — Satellite launch effect:
   - Implements Ch3 `IEffect`
   - Satellite ascending from launch structure into sky
   - **3D**: Satellite = small `Mesh` with vertical ascent animation + particle trail
 
-- [ ] **TODO-19.C.39** `src/OpenRA.Mods.Cnc/Traits/World/ChronoVortexRenderer.ts` (114 lines C#) — Chrono-vortex world renderer:
+- [x] **TODO-19.C.39** `src/OpenRA.Mods.Cnc/Traits/World/ChronoVortexRenderer.ts` (114 lines C#) — Chrono-vortex world renderer:
   - World trait that renders chrono-vortex effects at teleport points
   - `vortexDuration: number` — vortex persistence in ticks
   - **3D**: `ParticleSystem` with spiral pattern + chroma-shift `ShaderMaterial`
 
-**Phase C Summary**: 37 files, ~4,700 C# lines source. Key HIGH complexity: ModelRenderer (398 lines). Voxel subsystem is the critical path. Status: 📋 PLANNING.
+**Phase C Summary**: 37 files, ~4,700 C# lines source. Key HIGH complexity: ModelRenderer (398 lines). Voxel subsystem is the critical path. Status: ✅ COMPLETE (ALL APPROVED R2). 6 implementation batches across 6+ commits: `0977a1e` (C3 Voxel impl), `f349c4d` (C1+C2 impl), `b87b5a2` (C4+C5+C6 impl), `f1b0b24` (C4 fix), `2682352` (C1+C2 fix), `af44d57` (C3 fix). All 37 files with ~200 tests plus 3 additional Voxel file format readers from Phase D.
 
 ---
 
@@ -1081,7 +1081,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 ---
 
-### Chapter 19 Final Status: 47/119 files (40%, Phase A COMPLETE). Phase A: 47/47 (100%, R2 APPROVED, ~528 tests), Phase B: 0/17, Phase C: 0/37, Phase D: 0/18. Deferred: 45 files (~7,300 lines). Already Migrated: 8 files.
+### Chapter 19 Final Status: 101/119 files (85%, Phases A-B-C COMPLETE). Phase A: 47/47 (100%, R2 APPROVED, ~528 tests), Phase B: 17/17 (100%, R2 APPROVED, ~234 tests), Phase C: 37/37 (100%, R2 APPROVED, ~200 tests), Phase D: 0/18. Deferred: 45 files (~7,300 lines). Already Migrated: 8 files.
 
 ---
 
