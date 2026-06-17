@@ -232,6 +232,12 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
   /** Base filename parsing (non-tileset-specific).
    *
    * OpenRA 对照: DefaultSpriteSequence.ParseFilenames base call
+   *
+   * TODO-19.C.14: This is a minimal fallback. The full C# implementation
+   * uses DefaultSpriteSequence's Filename and FilenamePattern fields to
+   * resolve sprite sheet filenames with format-string expansion (e.g.,
+   * "%d" → frame number). See OpenRA.Mods.Common/Graphics/DefaultSpriteSequence
+   * for the complete implementation (~500 lines of filename/pattern parsing).
    */
   private baseParseFilenames(): ReservationInfo[] {
     const frames = this.calculateFrameIndices()
@@ -248,6 +254,8 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
   /** Base combine filename parsing.
    *
    * OpenRA 对照: DefaultSpriteSequence.ParseCombineFilenames base call
+   *
+   * TODO-19.C.14: Minimal fallback — see baseParseFilenames for full scope.
    */
   private baseParseCombineFilenames(
     frames: readonly number[] | null,

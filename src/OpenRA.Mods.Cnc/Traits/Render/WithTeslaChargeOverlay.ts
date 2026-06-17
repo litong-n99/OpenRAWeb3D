@@ -16,6 +16,46 @@ import type { IGameActor, ITraitInfo } from '../../../OpenRA.Game/Traits/TraitsI
 import type { INotifyTeslaCharging } from './WithTeslaChargeAnimation.js'
 
 // ---------------------------------------------------------------------------
+// INotifyDamageStateChanged interface
+// OpenRA 对照: INotifyDamageStateChanged
+// ---------------------------------------------------------------------------
+
+/** Interface for traits that respond to damage state changes.
+ *
+ * OpenRA 对照: INotifyDamageStateChanged
+ */
+export interface INotifyDamageStateChanged {
+  /** Called when the actor's damage state changes.
+   *
+   * OpenRA 对照: INotifyDamageStateChanged.DamageStateChanged(Actor, AttackInfo)
+   */
+  damageStateChanged(self: IGameActor, e: { readonly damageState: number }): void
+}
+
+// ---------------------------------------------------------------------------
+// INotifySold interface
+// OpenRA 对照: INotifySold
+// ---------------------------------------------------------------------------
+
+/** Interface for traits that respond to the actor being sold.
+ *
+ * OpenRA 对照: INotifySold
+ */
+export interface INotifySold {
+  /** Called when the actor has been sold.
+   *
+   * OpenRA 对照: INotifySold.Sold(Actor)
+   */
+  sold(self: IGameActor): void
+
+  /** Called when the actor begins selling.
+   *
+   * OpenRA 对照: INotifySold.Selling(Actor)
+   */
+  selling(self: IGameActor): void
+}
+
+// ---------------------------------------------------------------------------
 // DamageState enum (from TraitsInterfaces)
 // ---------------------------------------------------------------------------
 
@@ -72,6 +112,11 @@ export interface ITeslaOverlayAnimation {
   readonly currentSequence: { readonly name: string }
   hasSequence(sequence: string): boolean
   playThen(sequence: string, onComplete: () => void): void
+  /** Replace the current animation with a new sequence.
+   *
+   * OpenRA 对照: Animation.ReplaceAnim(string sequence)
+   */
+  replaceAnim(sequence: string): void
 }
 
 /** Minimal RenderSprites interface.
@@ -158,7 +203,7 @@ export class WithTeslaChargeOverlayInfo implements ITraitInfo {
  * The overlay animation is added to RenderSprites with a visibility
  * function that returns true (hidden) when the actor is not charging.
  */
-export class WithTeslaChargeOverlay implements INotifyTeslaCharging {
+export class WithTeslaChargeOverlay implements INotifyTeslaCharging, INotifyDamageStateChanged, INotifySold {
   readonly info: WithTeslaChargeOverlayInfo
   private readonly _overlay: ITeslaOverlayAnimation
   private readonly _renderSprites: ITeslaOverlayRenderSprites
@@ -176,15 +221,22 @@ export class WithTeslaChargeOverlay implements INotifyTeslaCharging {
     // Create the overlay animation
     // C#: overlay = new Animation(init.World, renderSprites.GetImage(init.Self));
     const image = this._renderSprites?.getImage?.(self) ?? ''
+    const mutableSeqState = { name: '' }
     this._overlay = {
       name: image,
-      currentSequence: { name: '' },
+      currentSequence: mutableSeqState,
       hasSequence(_seq: string): boolean {
         return true // Duck-typed
       },
       playThen(seq: string, onComplete: () => void): void {
         void seq
+        // TODO-19.C.10: Real animation timing from the sequence's Tick
+        // (ticks * length). setTimeout(100ms) is a placeholder that does
+        // not match OpenRA's tick-synced animation system.
         setTimeout(onComplete, 100) // Simulate animation
+      },
+      replaceAnim(seq: string): void {
+        mutableSeqState.name = seq
       },
     }
 
@@ -234,7 +286,7 @@ export class WithTeslaChargeOverlay implements INotifyTeslaCharging {
   damageStateChanged(_self: IGameActor, e: { readonly damageState: number }): void {
     const sequence = normalizeSequence(this._overlay, e.damageState, this.info.sequence)
     if (this._overlay.currentSequence.name !== sequence) {
-      ;(this._overlay as any).replaceAnim?.(sequence)
+      this._overlay.replaceAnim(sequence)
     }
   }
 

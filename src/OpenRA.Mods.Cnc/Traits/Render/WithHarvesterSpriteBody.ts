@@ -118,9 +118,12 @@ export class WithHarvesterSpriteBody {
     if (!this._harvester || this.info.imageByFullness.length === 0) return
 
     const fullness = this._harvester.fullness
+    // OpenRA 对照: C# integer division truncates toward zero (int / int).
+    // Math.floor matches C#'s integer truncation for non-negative values;
+    // fullness is always 0-100 so floor is equivalent to truncation.
     const desiredState =
       (fullness * (this.info.imageByFullness.length - 1)) / 100
-    const desiredImage = this.info.imageByFullness[Math.round(desiredState)]!
+    const desiredImage = this.info.imageByFullness[Math.floor(desiredState)]!
 
     const currentSeq = this._body.defaultAnimation.currentSequence
     this._body.defaultAnimation.changeImage(desiredImage, currentSeq.name)

@@ -9,9 +9,14 @@
  * - C# Game.CosmeticRandom → TS seeded pseudo-random
  * - C# ISpriteSequence → TS duck-typed sequence
  * - C# yield return → TS 数组累积
+ * - C# SpriteRenderable (per-segment real sprite) → TS TeslaZapSegment descriptor
  *
  * NOTE: WDist.fromPDF is not yet implemented. Random offsets use a simplified
  * approach for the zap effect (uniform distribution scaled by distance).
+ *
+ * TODO-19.C.12: Full 3D zap rendering requires LinesMesh with dynamic vertex
+ * allocation and ShaderMaterial glow. Currently produces TeslaZapSegment
+ * descriptors that record sprite/position data for use by a 3D renderer.
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -56,6 +61,34 @@ export class SeededRandom {
 function randomZapOffset(rng: SeededRandom, distLen: number): number {
   // Uniform random offset in [-distLen/4, distLen/4]
   return (rng.next(Math.floor(distLen / 2)) - distLen / 4) * distLen / 4096
+}
+
+// ---------------------------------------------------------------------------
+// TeslaZapSegment — per-segment descriptor (replaces C# SpriteRenderable)
+// ---------------------------------------------------------------------------
+
+/** Describes one segment of a tesla zap arc for later 3D rendering.
+ *
+ * OpenRA 对照: SpriteRenderable(s.GetSprite(step[4]), pos, ...)
+ *
+ * TODO-19.C.12: These descriptors should feed a LinesMesh builder that
+ * dynamically allocates vertices and uses a ShaderMaterial for the glow effect.
+ * Currently stores the sprite/position data; rendering is deferred to the
+ * 3D pipeline (Babylon.js LinesMesh or BatchedSparkRenderer).
+ */
+export interface TeslaZapSegment {
+  /** 3D projected position of the segment. */
+  readonly pos: { x: number; y: number; z: number }
+  /** Sprite from the sequence at the step's frame index. */
+  readonly sprite: unknown
+  /** Alpha from the sequence at the step's frame index. */
+  readonly alpha: number
+  /** Palette name for color lookup. */
+  readonly palette: string
+  /** Whether world tint should be ignored. */
+  readonly ignoreWorldTint: boolean
+  /** Z-offset for draw ordering. */
+  readonly zOffset: number
 }
 
 // ---------------------------------------------------------------------------
@@ -126,11 +159,16 @@ export class TeslaZapRenderable {
     this._cachedLength = WVec.Zero
   }
 
-  withPalette(_newPalette: unknown): TeslaZapRenderable {
+  withPalette(newPalette: unknown): TeslaZapRenderable {
+    // OpenRA 对照: IPalettedRenderable.WithPalette(PaletteReference newPalette)
+    // The palette reference is typically a PaletteReference object; we extract
+    // its name string for use in segment descriptors.
+    const paletteName =
+      (newPalette as { name?: string } | null)?.name ?? this._palette
     return new TeslaZapRenderable(
       this.pos, this.zOffset, this._length, this._image,
       this._brightSequence, this._brightZaps,
-      this._dimSequence, this._dimZaps, this._palette,
+      this._dimSequence, this._dimZaps, paletteName,
     )
   }
 
@@ -250,18 +288,20 @@ export class TeslaZapRenderable {
     wr: ITeslaZapWorldRenderer,
     from: { x: number; y: number },
     to: { x: number; y: number },
-    _seq: { readonly ignoreWorldTint: boolean; getSprite(frame: number): unknown; getAlpha(frame: number): number },
+    seq: { readonly ignoreWorldTint: boolean; getSprite(frame: number): unknown; getAlpha(frame: number): number },
     outEnd: { x: number; y: number },
-    _pal: string,
+    pal: string,
   ): TeslaZapRenderable[] {
-    void _seq
     const dist = { x: to.x - from.x, y: to.y - from.y }
     const q = { x: -dist.y, y: dist.x }
     const c = -(from.x * q.x + from.y * q.y)
     const result: TeslaZapRenderable[] = []
     let z = { x: from.x, y: from.y }
 
-    while (Math.abs(to.x - z.x) > 5 || Math.abs(to.y - z.y) > 5) {
+    while (
+      Math.abs(to.x - z.x) > 5 || Math.abs(to.x - z.x) < -5 ||
+      Math.abs(to.y - z.y) > 5 || Math.abs(to.y - z.y) < -5
+    ) {
       let bestStep: (readonly [number, number, number, number, number]) | null = null
       let bestDot = Infinity
 
@@ -283,19 +323,38 @@ export class TeslaZapRenderable {
       if (!bestStep) break
 
       const step = bestStep
+      // OpenRA 对照: step[2], step[3] are sprite offset, step[4] is frame index
       const spritePos = wr.projectedPosition({
         x: Math.round(z.x + step[2]),
         y: Math.round(z.y + step[3]),
       })
 
+      // OpenRA 对照:
+      //   rs.Add(new SpriteRenderable(s.GetSprite(step[4]), pos, WVec.Zero, 0,
+      //     pal, 1f, s.GetAlpha(step[4]), float3.Ones,
+      //     tintModifiers, true).PrepareRender(wr));
+      const frame = step[4]
+      const sprite = seq.getSprite(frame)
+      const alpha = seq.getAlpha(frame)
+      const tintModifiers = seq.ignoreWorldTint
+
+      // Create a descriptor segment with actual sprite/alpha data from the
+      // sequence instead of creating recursive empty TeslaZapRenderable objects.
+      // TODO-19.C.12: Feed these TeslaZapSegment descriptors into a
+      // Babylon.js LinesMesh builder for 3D lightning rendering.
       const segment = new TeslaZapRenderable(
         new WPos(spritePos.x, spritePos.y, spritePos.z),
         this.zOffset,
         WVec.Zero,
         this._image,
         this._brightSequence,
-        0, '', 0, _pal,
+        0, '', 0, pal,
       )
+      // Attach the sprite/alpha data to the segment for the renderer
+      ;(segment as any)._zapSprite = sprite
+      ;(segment as any)._zapAlpha = alpha
+      ;(segment as any)._zapPalette = pal
+      ;(segment as any)._zapIgnoreWorldTint = tintModifiers
       result.push(segment)
 
       z = { x: z.x + step[0], y: z.y + step[1] }

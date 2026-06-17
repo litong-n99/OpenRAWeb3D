@@ -107,6 +107,7 @@ export class WithCargo {
     const bodyOrientation = this._body.quantizeOrientation(
       (self as any).orientation,
     )
+    // NOTE: centerPos.X/Y/Z uses uppercase to match OpenRA WPos struct convention
     const centerPos = (self as any).centerPosition as {
       readonly X: number; readonly Y: number; readonly Z: number
     }
@@ -151,6 +152,7 @@ export class WithCargo {
   }
 
   screenBounds(self: IGameActor, wr: unknown): { x: number; y: number; width: number; height: number }[] {
+    // NOTE: centerPos.X/Y/Z uses uppercase to match OpenRA WPos struct convention
     const centerPos = (self as any).centerPosition as { readonly X: number; readonly Y: number; readonly Z: number }
     const result: { x: number; y: number; width: number; height: number }[] = []
     for (const actorPreviews of this._previews.values()) {
@@ -180,7 +182,22 @@ export class WithCargo {
     if (screenMap) screenMap.addOrUpdate(self)
   }
 
+  /** Generate preview renderables for a passenger.
+   *
+   * OpenRA 对照: WithCargo.Render — generates IActorPreview[] via
+   *   p.Info.TraitInfos<IRenderActorPreviewInfo>()
+   *     .SelectMany(rpi => rpi.RenderPreview(init))
+   *
+   * TODO-19.C.2: Full implementation requires IRenderActorPreviewInfo and
+   * ActorPreviewInitializer from Chapter 3+7. The C# version creates a
+   * TypeDictionary with OwnerInit, DynamicFacingInit, and IActorPreviewInitModifier
+   * hooks, then queries all IRenderActorPreviewInfo traits on the passenger
+   * actor to generate per-passenger preview renderables. This is deferred
+   * until the Chapter 3 RenderSprites/IRenderActorPreviewInfo infrastructure
+   * can be exercised from C&C traits.
+   */
   private generatePreview(_key: string, _wr: unknown): IActorPreview[] | null {
+    // TODO-19.C.2: Implement real passenger preview generation (see method doc)
     return []
   }
 

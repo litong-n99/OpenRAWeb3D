@@ -26,6 +26,14 @@ export const MovementType = {
 } as const
 export type MovementType = (typeof MovementType)[keyof typeof MovementType]
 
+/** Bitmask of movement type flags.
+ *
+ * OpenRA 对照: MovementType flags enum — C# [Flags] attribute.
+ * Horizontal|Vertical = 3, Horizontal|Turn = 5, etc.
+ * Any non-zero value indicates the actor is moving.
+ */
+export type MovementTypeMask = number
+
 // ---------------------------------------------------------------------------
 // Duck-typed interfaces
 // ---------------------------------------------------------------------------
@@ -33,9 +41,14 @@ export type MovementType = (typeof MovementType)[keyof typeof MovementType]
 /** Minimal IMove interface.
  *
  * OpenRA 对照: IMove
+ *
+ * NOTE: currentMovementTypes is a flags bitmask (number), not a single
+ * MovementType enum value. C# uses [Flags] on the enum so
+ * Horizontal|Vertical = 3 is valid. We use `number` as the type to
+ * accept combined flag values.
  */
 export interface ILandingCraftMove {
-  readonly currentMovementTypes: MovementType
+  readonly currentMovementTypes: MovementTypeMask
 }
 
 /** Minimal Cargo interface.
@@ -204,9 +217,14 @@ export class WithLandingCraftAnimation {
     if (!map) return false
 
     // Check if moving or airborne
+    // OpenRA 对照: move.CurrentMovementTypes != MovementType.None
+    //              || self.World.Map.DistanceAboveTerrain(self.CenterPosition).Length > 0
+    const centerPos = (actor as any).centerPosition as
+      | { readonly X: number; readonly Y: number; readonly Z: number }
+      | undefined
     if (
       this._move.currentMovementTypes !== MovementType.None ||
-      map.distanceAboveTerrain?.({ length: 0 }).length > 0
+      (centerPos && map.distanceAboveTerrain?.(centerPos).length > 0)
     ) {
       return false
     }

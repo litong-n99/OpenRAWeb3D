@@ -126,6 +126,57 @@ export class WithBuildingBibInfo implements ITraitInfo {
   create(init: IGameActor): WithBuildingBib {
     return new WithBuildingBib(init, this)
   }
+
+  // -------------------------------------------------------------------------
+  // IRenderActorPreviewSpritesInfo — OpenRA 对照: RenderPreviewSprites
+  // -------------------------------------------------------------------------
+
+  /** Render actor preview sprites for placement visualization.
+   *
+   * OpenRA 对照: IRenderActorPreviewSpritesInfo.RenderPreviewSprites(
+   *   ActorPreviewInitializer, string image, int facings, PaletteReference p)
+   *
+   * TODO-19.C.1: Full implementation requires ActorPreviewInitializer and
+   * SpriteActorPreview from Chapter 3+7. The preview renders bib sprites
+   * in a placement ghost overlay using WorldRenderer sprites.
+   * Currently returns empty array for basic compatibility.
+   */
+  renderPreviewSprites(
+    _init: unknown,
+    _image: string,
+    _facings: number,
+    _p: unknown,
+  ): Iterable<unknown> {
+    // TODO-19.C.1: Implement bib preview sprites for building placement UI
+    return []
+  }
+
+  /** Actor preview inits for UseMinibib detection.
+   *
+   * OpenRA 对照: IActorPreviewInitInfo.ActorPreviewInits
+   */
+  actorPreviewInits(_actorInfo: unknown, _type: unknown): Iterable<unknown> {
+    return [new HideBibPreviewInit()]
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HideBibPreviewInit — OpenRA 对照: sealed class HideBibPreviewInit : RuntimeFlagInit
+// ---------------------------------------------------------------------------
+
+/** Sentinel init flag to suppress bib rendering in actor previews.
+ *
+ * OpenRA 对照: HideBibPreviewInit : RuntimeFlagInit
+ *
+ * When present in an ActorPreviewInitializer, bib sprites are hidden
+ * during placement preview rendering.
+ */
+export class HideBibPreviewInit {
+  /** Unique identifier for this init type.
+   *
+   * OpenRA 对照: RuntimeFlagInit — type-level sentinel
+   */
+  static readonly typeName = 'HideBibPreviewInit'
 }
 
 // ---------------------------------------------------------------------------
@@ -185,8 +236,14 @@ export class WithBuildingBib {
       const anim: IBibAnimation = {
         name: image,
         isDecoration: true,
+        // TODO-19.C.1: Real hasSequence requires the sequence set from
+        // the resolved sprite sequence data (DefaultSpriteSequence metadata).
+        // In C# this delegates to Animation.HasSequence() which checks the
+        // sequence dictionary populated during sprite loading. Without
+        // the full SpriteCache/Sheet infrastructure from Chapter 2,
+        // we assume terrain-specific bib sequences exist if the base
+        // terrain type is valid.
         hasSequence(seq: string): boolean {
-          // Duck-typed: assume sequences exist
           void seq
           return true
         },
