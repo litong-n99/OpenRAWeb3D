@@ -109,5 +109,42 @@ describe('LZOCompression', () => {
       expect(parent[19]).toBe(0xcd)
       expect(parent[29]).toBe(0xcd)
     })
+
+    // Regression: MAJOR — return value uses op (0-based) not op - destOffset
+    // Minimal valid LZO stream: first byte 20 (>17), t=3 (<4), MatchNext copies
+    // 3 bytes then reads tag=16; outer loop reads next byte=16 -> match;
+    // t>=16 (near offset), mPos===op -> eof_found, ip===ipEnd -> success.
+    // Stream: [20, A, B, C, 16, 16, 1, 0, 0] decompresses to [A, B, C].
+    it('returns correct byte count with destOffset > 0 (R3 regression)', () => {
+      // Construct minimal valid LZO stream
+      const src = new Uint8Array([20, 65, 66, 67, 16, 16, 1, 0, 0])
+      const dest = new Uint8Array(50).fill(0xcd)
+      const destOffset = 10
+
+      const result = LZOCompression.decodeInto(src, 0, src.length, dest, destOffset)
+
+      // Should return 3 (bytes decompressed), NOT destOffset-adjusted
+      expect(result).toBe(3)
+      // Verify decompressed data landed at destOffset
+      expect(dest[10]).toBe(65) // A
+      expect(dest[11]).toBe(66) // B
+      expect(dest[12]).toBe(67) // C
+      // Verify bytes before destOffset are untouched
+      expect(dest[9]).toBe(0xcd)
+      // Verify bytes after decompressed region are untouched
+      expect(dest[13]).toBe(0xcd)
+    })
+
+    it('returns correct byte count with destOffset = 0', () => {
+      const src = new Uint8Array([20, 88, 89, 90, 16, 16, 1, 0, 0])
+      const dest = new Uint8Array(50).fill(0xcc)
+
+      const result = LZOCompression.decodeInto(src, 0, src.length, dest, 0)
+
+      expect(result).toBe(3)
+      expect(dest[0]).toBe(88)
+      expect(dest[1]).toBe(89)
+      expect(dest[2]).toBe(90)
+    })
   })
 })

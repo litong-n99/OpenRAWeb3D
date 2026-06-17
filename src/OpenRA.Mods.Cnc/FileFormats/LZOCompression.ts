@@ -85,13 +85,13 @@ export const LZOCompression = {
     outer: while (true) {
       // ---- Bounds check: return error code if truncated ----
       if (ip >= ipEnd) {
-        const outLen = op - destOffset
-        return outLen > 0 ? -8 : outLen
+        // op is 0-based relative to DataView (already offset by destOffset)
+        return op > 0 ? -8 : 0
       }
 
       // ---- Non-first literal run entry ----
       if (!gtFirstLiteralRun) {
-        if (ip >= ipEnd) { const o = op - destOffset; return o > 0 ? -8 : o }
+        if (ip >= ipEnd) { return op > 0 ? -8 : 0 }
         t = sv.getUint8(ip++)
         if (t >= 16) {
           // goto match — handle below
@@ -193,8 +193,8 @@ export const LZOCompression = {
             ip += 2
             if (mPos === op) {
               // eof_found
-              const outLen = op - destOffset
-              return ip === ipEnd ? outLen : (ip < ipEnd ? -8 : -4)
+              // op is 0-based relative to DataView (already offset by destOffset)
+              return ip === ipEnd ? op : (ip < ipEnd ? -8 : -4)
             }
             mPos -= 0x4000
             { const r = _doCopyBlock(dv, op, mPos, t); op = r.op; }
