@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 19 -- Mod-Specific Content (C&C + D2K)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 4.x (Mod-Specific) + Section 4.3 (Traits)
-> **Chapter Status**: IN PROGRESS (Phase A COMPLETE: 47/119, 40%; 45 deferred to build-time / post-MVP)
+> **Chapter Status**: IN PROGRESS (Phases A-B COMPLETE: 64/119, 54%; 45 deferred to build-time / post-MVP)
 > **Planning Date**: 2026-06-17
 > **Prerequisite**: Chapters 2-18 COMPLETE (484/484, 100%. Ch8 Weapons, Ch9 Movement, Ch10 Resources, Ch11 Buildings, Ch12 Shroud, Ch13 Support Powers, Ch14 Activities, Ch15 Order Generators)
 >
@@ -295,7 +295,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 | Phase | Files | C# Lines | Est. TS Lines | Est. Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
 | A: C&C Core Traits | 47 | ~6,600 | ~8,000 | ~528 | ✅ COMPLETE (R2 APPROVED) |
-| B: D2K Mod Traits | 17 | ~2,000 | ~2,500 | ~90 | PLANNING |
+| B: D2K Mod Traits | 17 | ~2,000 | ~2,500 | ~234 | ✅ COMPLETE (R2 APPROVED) |
 | C: C&C Rendering & Voxel | 37 | ~4,700 | ~5,000 | ~200 | PLANNING |
 | D: Supporting Infrastructure | 18 | ~2,500 | ~3,000 | ~120 | PLANNING |
 | **Subtotal (Migrate)** | **119** | **~15,800** | **~18,500** | **~690** | **PLANNING** |
@@ -626,7 +626,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 ### 3.2 Phase B: D2K Mod Traits
 
-**Status**: 📋 待迁移 (0/17 migrated, 0 tests)
+**Status**: ✅ COMPLETE (17/17 migrated, ~234 tests, R2 APPROVED)
 **Complexity**: MEDIUM (Sandworm system is the most complex; others MEDIUM-LOW)
 **Blocked by**: Phase A (for shared patterns), Chapters 8 (Weapons), 9 (Movement), 10 (Resources), 11 (Buildings)
 **Blocks**: D2K mod gameplay (standalone; nothing else depends on D2K traits)
@@ -641,7 +641,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.2.1 Sandworm System (4 files)
 
-- [ ] **TODO-19.B.1** `src/OpenRA.Mods.D2k/Traits/Sandworm.ts` (150 lines C#) — Sandworm AI actor:
+- [x] **TODO-19.B.1** `src/OpenRA.Mods.D2k/Traits/Sandworm.ts` (150 lines C#) — Sandworm AI actor:
   - Implements `ITick`, `INotifyCreated`, `IAutoTarget`
   - Underground movement: follows `Wanders` pattern, invisible to enemies
   - `emergeRange: WDist` — detection range for emergence
@@ -649,20 +649,20 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - `resurfaceDelay: number` — ticks between attacks
   - **3D**: underground = mesh below terrain (Y < 0), invisible. Emerge = Y-axis lerp above ground. Movement = pathfinding on cell grid while underground.
 
-- [ ] **TODO-19.B.2** `src/OpenRA.Mods.D2k/Traits/AttackSwallow.ts` (99 lines C#) — Sandworm swallow attack:
+- [x] **TODO-19.B.2** `src/OpenRA.Mods.D2k/Traits/AttackSwallow.ts` (99 lines C#) — Sandworm swallow attack:
   - Extends Ch8 `AttackBase`
   - On attack: initiates `SwallowActor` activity
   - `swallowSound: string` — swallow sound effect
   - Target must be `Targetable` and not `ImmuneToSwallow`
   - **3D**: swallow = target mesh moves toward Sandworm mouth, scales down, then disappears
 
-- [ ] **TODO-19.B.3** `src/OpenRA.Mods.D2k/Traits/AttractsWorms.ts` (81 lines C#) — Attracts sandworm attention:
+- [x] **TODO-19.B.3** `src/OpenRA.Mods.D2k/Traits/AttractsWorms.ts` (81 lines C#) — Attracts sandworm attention:
   - `intensity: number` — worm attraction intensity (higher = preferred target)
   - `range: WDist` — attraction range
   - Worms prioritize attacking actors with higher intensity
   - ConditionalTrait (can be disabled by condition)
 
-- [ ] **TODO-19.B.4** `src/OpenRA.Mods.D2k/Activities/SwallowActor.ts` (166 lines C#) — Swallow activity:
+- [x] **TODO-19.B.4** `src/OpenRA.Mods.D2k/Activities/SwallowActor.ts` (166 lines C#) — Swallow activity:
   - Extends Ch3 `Activity`
   - Phases: approach → emerge from ground → swallow target → submerge
   - `swallowDuration: number` — ticks for swallow animation
@@ -671,7 +671,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.2.2 Spice / Resource (2 files)
 
-- [ ] **TODO-19.B.5** `src/OpenRA.Mods.D2k/Traits/SpiceBloom.ts` (213 lines C#) — Spice resource spawner:
+- [x] **TODO-19.B.5** `src/OpenRA.Mods.D2k/Traits/SpiceBloom.ts` (213 lines C#) — Spice resource spawner:
   - Implements `ITick`
   - Periodically spawns/regenerates spice resources on map
   - `growthRate: number` — spice growth per interval
@@ -679,7 +679,7 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
   - `interval: number` — growth tick interval
   - Integration: Ch10 `ResourceLayer` + `ResourceType`
 
-- [ ] **TODO-19.B.6** `src/OpenRA.Mods.D2k/Traits/World/D2kResourceRenderer.ts` (170 lines C#) — D2K spice resource renderer:
+- [x] **TODO-19.B.6** `src/OpenRA.Mods.D2k/Traits/World/D2kResourceRenderer.ts` (170 lines C#) — D2K spice resource renderer:
   - Extends Ch10 `ResourceRenderer`
   - Renders spice with D2K-specific color palette (orange/brown spice variants)
   - `spiceColors: number[]` — spice variant ARGB colors
@@ -687,32 +687,32 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.2.3 Building / Concrete (5 files)
 
-- [ ] **TODO-19.B.7** `src/OpenRA.Mods.D2k/Traits/Buildings/D2kBuilding.ts` (162 lines C#) — D2K building with concrete prerequisite:
+- [x] **TODO-19.B.7** `src/OpenRA.Mods.D2k/Traits/Buildings/D2kBuilding.ts` (162 lines C#) — D2K building with concrete prerequisite:
   - Extends Ch11 `Building` trait
   - Building can only be placed on `BuildableTerrainLayer` concrete slabs
   - `minConcreteCoverage: number` — minimum % of footprint on concrete
   - Integration: Ch11 `PlaceBuilding` + `PlaceBuildingOrderGenerator`
 
-- [ ] **TODO-19.B.8** `src/OpenRA.Mods.D2k/Traits/World/BuildableTerrainLayer.ts` (155 lines C#) — Concrete buildable terrain:
+- [x] **TODO-19.B.8** `src/OpenRA.Mods.D2k/Traits/World/BuildableTerrainLayer.ts` (155 lines C#) — Concrete buildable terrain:
   - Implements `IRenderOverlay`, `ITiledTerrainRenderer`
   - Renders concrete slab under buildings
   - `concreteTileSet: string` — concrete terrain tileset
   - `maxThickness: number` — concrete layer depth
   - **3D**: concrete = terrain splatmap layer with concrete texture. Rendered as semi-transparent overlay on terrain mesh
 
-- [ ] **TODO-19.B.9** `src/OpenRA.Mods.D2k/Traits/Buildings/D2kActorPreviewPlaceBuildingPreview.ts` (124 lines C#) — D2K building placement preview:
+- [x] **TODO-19.B.9** `src/OpenRA.Mods.D2k/Traits/Buildings/D2kActorPreviewPlaceBuildingPreview.ts` (124 lines C#) — D2K building placement preview:
   - Extends Ch11 `PlaceBuildingPreview` system
   - Previews building footprint with concrete overlay during placement
   - Shows which cells have concrete vs need concrete
   - **3D**: green (valid) / red (needs concrete) preview mesh on terrain
 
-- [ ] **TODO-19.B.10** `src/OpenRA.Mods.D2k/Warheads/DamagesConcreteWarhead.ts` (38 lines C#) — Damages concrete slabs:
+- [x] **TODO-19.B.10** `src/OpenRA.Mods.D2k/Warheads/DamagesConcreteWarhead.ts` (38 lines C#) — Damages concrete slabs:
   - Extends Ch8 `Warhead` with concrete damage
   - `damage: number` — concrete damage amount
   - Destroys concrete slabs on impact (buildings cannot be placed on damaged concrete)
   - Integration: `BuildableTerrainLayer` for concrete damage tracking
 
-- [ ] **TODO-19.B.11** `src/OpenRA.Mods.D2k/Traits/Player/HarvesterInsurance.ts` (49 lines C#) — Harvester replacement insurance:
+- [x] **TODO-19.B.11** `src/OpenRA.Mods.D2k/Traits/Player/HarvesterInsurance.ts` (49 lines C#) — Harvester replacement insurance:
   - Implements `ITick`, `INotifyCreated`
   - When a harvester is destroyed, auto-queues a replacement at the owning player's factory
   - `replacementCost: number` — % of original cost (default free)
@@ -721,42 +721,42 @@ The following C&C files were migrated in prior chapters and are **NOT** part of 
 
 #### 3.2.4 D2K Visual / Audio / Projectiles (6 files)
 
-- [ ] **TODO-19.B.12** `src/OpenRA.Mods.D2k/Traits/Render/WithCrumbleOverlay.ts` (68 lines C#) — Building crumble overlay on low HP:
+- [x] **TODO-19.B.12** `src/OpenRA.Mods.D2k/Traits/Render/WithCrumbleOverlay.ts` (68 lines C#) — Building crumble overlay on low HP:
   - Extends Ch7 `RenderSprites`
   - Shows `crumbleSequence: string` overlay animation when building HP < threshold
   - `threshold: number` — HP percentage to show crumble (0-1)
   - **3D**: crumble = semi-transparent overlay sprite on building mesh
 
-- [ ] **TODO-19.B.13** `src/OpenRA.Mods.D2k/Traits/Render/WithDeliveryOverlay.ts` (72 lines C#) — Carryall delivery overlay:
+- [x] **TODO-19.B.13** `src/OpenRA.Mods.D2k/Traits/Render/WithDeliveryOverlay.ts` (72 lines C#) — Carryall delivery overlay:
   - Shows `sequence: string` animation when unit is being delivered by carryall
   - Auto-hides after delivery complete
   - **3D**: delivery = descending sprite/Mesh from sky with shadow projection
 
-- [ ] **TODO-19.B.14** `src/OpenRA.Mods.D2k/Traits/World/SonicBlastRenderer.ts` (95 lines C#) — Sonic blast visual effect:
+- [x] **TODO-19.B.14** `src/OpenRA.Mods.D2k/Traits/World/SonicBlastRenderer.ts` (95 lines C#) — Sonic blast visual effect:
   - Implements `IRender`, `IWorldLoaded`
   - Renders sonic blast ring expansion from source
   - `speed: WDist` — ring expansion speed
   - **3D**: sonic blast = expanding ring `GroundMesh` with shader-based displacement + screen shake
 
-- [ ] **TODO-19.B.15** `src/OpenRA.Mods.D2k/Projectiles/SonicBlast.ts` (157 lines C#) — Sonic blast projectile:
+- [x] **TODO-19.B.15** `src/OpenRA.Mods.D2k/Projectiles/SonicBlast.ts` (157 lines C#) — Sonic blast projectile:
   - Implements Ch8 `IProjectile`
   - Straight-line blast traveling at high speed
   - `width: WDist` — blast width (damage area)
   - `speed: WDist` — blast travel speed per tick
   - **3D**: blast = `CylinderMesh` oriented from source to target with `ShaderMaterial` wave/glow effect
 
-- [ ] **TODO-19.B.16** `src/OpenRA.Mods.D2k/Graphics/SonicBlastRenderable.ts` (64 lines C#) — Sonic blast renderable helper:
+- [x] **TODO-19.B.16** `src/OpenRA.Mods.D2k/Graphics/SonicBlastRenderable.ts` (64 lines C#) — Sonic blast renderable helper:
   - Implements `IRenderable`
   - Renders sonic blast beam line segments
   - **3D**: `LinesMesh` with sonic blast color gradient
 
-- [ ] **TODO-19.B.17** `src/OpenRA.Mods.D2k/Graphics/D2kSpriteSequence.ts` (116 lines C#) — D2K-specific sprite sequence:
+- [x] **TODO-19.B.17** `src/OpenRA.Mods.D2k/Graphics/D2kSpriteSequence.ts` (116 lines C#) — D2K-specific sprite sequence:
   - Implements `ISpriteSequence`
   - D2K-specific frame ordering and tick timing
   - `UseD2kFacing: boolean` — D2K-specific 8-dir facing (instead of 32)
   - Integration: Ch2 `Sprite`, `Sheet`, `Animation`
 
-**Phase B Summary**: 17 files, ~2,000 C# lines source. Key HIGH complexity: none (Sandworm at MEDIUM 150 lines). Status: 📋 PLANNING.
+**Phase B Summary**: 17 files, ~2,000 C# lines source. Key HIGH complexity: none (Sandworm at MEDIUM 150 lines). Status: ✅ COMPLETE (ALL APPROVED R2). 4 implementation batches across 4 commits: `1c49537` (Sandworm+Spice impl), `5c80ec1` (Building+Visual impl), `fe21eab` (Sandworm R1 fix), `7dba413` (Building R1 fix). All 17 files with ~234 tests. Chapter 19: 64/119 (54%, Phases A-B COMPLETE).
 
 ---
 
