@@ -20,6 +20,7 @@
 import type { ModelAnimation } from '../../OpenRA.Game/Graphics/ModelAnimation'
 import type { ModelRenderer } from '../Traits/World/ModelRenderer'
 import type { ModelRenderProxy } from '../Traits/World/ModelRenderer'
+import { PaletteReference } from '../../OpenRA.Game/Graphics/PaletteReference'
 import { WPos } from '../../OpenRA.Game/WPos'
 import type { WRot } from '../../OpenRA.Game/WRot'
 import type { WVec } from '../../OpenRA.Game/WVec'
@@ -92,6 +93,15 @@ export class ModelRenderable {
    */
   private readonly _isDecoration: boolean
 
+  /** Palette reference for color remapping.
+   *
+   * OpenRA 对照: ModelRenderable.Palette (IPalettedRenderable)
+   *
+   * Under ADR-19.1 this is optional — the glTF model uses its own materials.
+   * When non-null, it provides the actor/player palette for recoloring.
+   */
+  private readonly _palette: PaletteReference | null
+
   /** Ground orientation.
    */
   private readonly _groundOrientation: WRot
@@ -114,6 +124,7 @@ export class ModelRenderable {
    * @param alpha — alpha multiplier (1.0 = fully opaque)
    * @param tint — color tint [R, G, B]
    * @param isDecoration — if true, non-interactive
+   * @param palette — palette reference for color remapping (null = no remap)
    */
   constructor(
     renderer: ModelRenderer,
@@ -129,6 +140,7 @@ export class ModelRenderable {
     alpha = 1.0,
     tint: Float32Array<ArrayBufferLike> = new Float32Array([1, 1, 1]),
     isDecoration = false,
+    palette: PaletteReference | null = null,
   ) {
     this._renderer = renderer
     this._models = models
@@ -143,6 +155,7 @@ export class ModelRenderable {
     this._alpha = alpha
     this._tint = tint
     this._isDecoration = isDecoration
+    this._palette = palette
   }
 
   // -----------------------------------------------------------------------
@@ -209,6 +222,14 @@ export class ModelRenderable {
     return this._isDecoration
   }
 
+  /** Get the palette reference.
+   *
+   * OpenRA 对照: ModelRenderable.Palette
+   */
+  get palette(): PaletteReference | null {
+    return this._palette
+  }
+
   /** Get the ground orientation.
    */
   get groundOrientation(): WRot {
@@ -242,6 +263,31 @@ export class ModelRenderable {
   // -----------------------------------------------------------------------
   // Immutable setters (matching C# interface)
   // -----------------------------------------------------------------------
+
+  /** Create a copy with a different palette for color remapping.
+   *
+   * OpenRA 对照: ModelRenderable.WithPalette(PaletteReference)
+   *
+   * Under ADR-19.1, palette applies to glTF material tint uniforms.
+   */
+  withPalette(newPalette: PaletteReference): ModelRenderable {
+    return new ModelRenderable(
+      this._renderer,
+      this._models,
+      this.pos,
+      this.zOffset,
+      this._camera,
+      this._scale,
+      this._lightSource,
+      this._lightAmbient,
+      this._lightDiffuse,
+      this._groundOrientation,
+      this._alpha,
+      this._tint,
+      this._isDecoration,
+      newPalette,
+    )
+  }
 
   /** Create a copy with a different world position offset.
    *

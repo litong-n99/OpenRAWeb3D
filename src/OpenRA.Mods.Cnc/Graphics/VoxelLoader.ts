@@ -200,7 +200,7 @@ export class VoxelLoader {
       [new Float32Array([-1, -1, -1, 1, 1, 1])],
       [new Uint8Array([1, 1, 1])],
       [1],
-      [{ start: 0, count: 0 }],
+      [{ start: 0, count: 0, geometry: undefined }],
     )
   }
 

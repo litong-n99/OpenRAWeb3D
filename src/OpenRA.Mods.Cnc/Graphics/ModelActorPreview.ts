@@ -16,6 +16,7 @@
  */
 
 import type { ModelAnimation } from '../../OpenRA.Game/Graphics/ModelAnimation'
+import { Rectangle } from '../../OpenRA.Game/Primitives/Rectangle'
 import { WAngle } from '../../OpenRA.Game/WAngle'
 import { WPos } from '../../OpenRA.Game/WPos'
 import { WRot } from '../../OpenRA.Game/WRot'
@@ -130,6 +131,35 @@ export class ModelPreview {
         WRot.None, // ground orientation — flat plane for preview
       ),
     ]
+  }
+
+  // -----------------------------------------------------------------------
+  // ScreenBounds — UI hit-testing for build queue previews
+  // -----------------------------------------------------------------------
+
+  /** Compute the screen-space bounding rectangles for UI hit-testing.
+   *
+   * OpenRA 对照: IActorPreview.ScreenBounds(WorldRenderer wr, WPos pos)
+   *
+   * @param worldPos — world position for offset computation
+   * @param screenOffsetX — screen X offset of the actor
+   * @param screenOffsetY — screen Y offset of the actor
+   * @param previewScale — preview scale factor
+   */
+  screenBounds(
+    worldPos: WPos,
+    screenOffsetX: number,
+    screenOffsetY: number,
+    previewScale: number,
+  ): Rectangle[] {
+    return this._components.map((comp) =>
+      comp.screenBounds(
+        worldPos,
+        screenOffsetX,
+        screenOffsetY,
+        previewScale * this._scale,
+      ),
+    )
   }
 
   // -----------------------------------------------------------------------

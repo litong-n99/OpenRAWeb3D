@@ -159,11 +159,9 @@ export class WithVoxelBarrel {
       const turretOffsetRotated = turreted.position().rotate(bodyOri)
       const combined = WVec.add(adjRotated, turretOffsetRotated)
 
-      // Step 3: Convert from body coordinates to world coordinates
-      // body.LocalToWorld(combined) → simplified: just add the rotation effect
-      // NOTE: Full BodyOrientation.LocalToWorld would apply the body's
-      // position offset factor; for now we return the body-relative offset
-      return combined
+      // Step 3: Convert from body-local to world coordinates
+      // body.LocalToWorld(combined) → apply body orientation rotation
+      return combined.rotate(bodyOri)
     }
 
     // Barrel rotation closure: mirrors C# BarrelRotation()

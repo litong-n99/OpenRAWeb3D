@@ -258,7 +258,7 @@ export class Voxel implements IModel {
       }
     }
 
-    const r = Math.ceil(Math.sqrt(rSquared)) + 1
+    const r = Math.floor(Math.sqrt(rSquared)) + 1
     this._aggregateBounds = Rectangle.fromLTRB(-r, -r, r, r)
     return this._aggregateBounds
   }

@@ -40,6 +40,7 @@ export const PALETTE_SIZE = 256
  * OpenRA 对照: VoxelNormalsPalette.TSNormals
  *
  * Source: sleipnirstuff.com forum (archived)
+ * Audit: 36 normals × 3 = 108 floats — verbatim match with C# TSNormals array.
  */
 export const TS_NORMALS: readonly number[] = [
   0.671214, 0.198492, -0.714194,
@@ -89,6 +90,9 @@ export const TS_NORMALS: readonly number[] = [
  * OpenRA 对照: VoxelNormalsPalette.RA2Normals
  *
  * Source: sleipnirstuff.com forum (archived)
+ * Audit: 244 normals × 3 = 732 floats — verbatim match with C# RA2Normals array.
+ *   The last 4 entries repeat [-0.328188, 0.140251, 0.934143] to pad
+ *   the palette to 244 entries (240 unique + 4 duplicates).
  */
 export const RA2_NORMALS: readonly number[] = [
   0.526578, -0.359621, -0.770317,
@@ -409,6 +413,13 @@ export class VoxelNormalsPalette {
   /** Generate the full 256-entry normal-to-color palette.
    *
    * OpenRA 对照: VoxelNormalsPalette.LoadPalettes(WorldRenderer wr)
+   *
+   * Audit (MAJOR 9 — R1 review):
+   * - Channel mapping: R=Z(2), G=Y(1), B=X(0) — matches C# `channel = {2,1,0}`
+   * - Byte conversion: `(byte)(t * 0xFF + 0.5)` → `Math.round(t * 0xff)` — equivalent
+   * - Bit packing: A<<24 | R<<16 | G<<8 | B — matches C# `| (uint)(byteVal << 8*channel[j])`
+   * - Remaining entries: 0xFF000000 (opaque black) — matches C# default
+   * - Verified: 36 TS normals × 3 = 108 floats, 244 RA2 normals × 3 = 732 floats
    */
   private static _generatePalette(normalType: NormalType): Uint32Array {
     // Channel mapping: rotate vectors so voxel coordinates

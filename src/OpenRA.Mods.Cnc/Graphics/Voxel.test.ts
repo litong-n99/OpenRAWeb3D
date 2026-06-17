@@ -8,25 +8,27 @@ import { HvaReader } from '../FileFormats/HvaReader'
 import { Rectangle } from '../../OpenRA.Game/Primitives/Rectangle'
 
 function createTestHva(): HvaReader {
-  const buf = new ArrayBuffer(16 + 8 + 16 + 12 * 4)
+  // Create a valid rigid-body transform (3x3 identity rotation + zero translation)
+  // 12 floats in row-major 3x4 layout: [1,0,0,0, 0,1,0,0, 0,0,1,0]
+  const buf = new ArrayBuffer(16 + 8 + 16 + 12 * 4) // 88 bytes
   const dv = new DataView(buf)
   let offset = 16
-  dv.setUint32(offset, 1, true); offset += 4
-  dv.setUint32(offset, 1, true); offset += 4
-  offset += 16
-  dv.setFloat32(offset, 1, true); offset += 4
-  dv.setFloat32(offset, 0, true); offset += 4
-  dv.setFloat32(offset, 0, true); offset += 4
-  dv.setFloat32(offset, 0, true); offset += 4
-  new DataView(buf).setFloat32(64, 0, true) // set row 1 col 1 = 0
-  new DataView(buf).setFloat32(68, 1, true) // actually row1col1 = 1
-  dv.setFloat32(offset, 1, true); offset += 4
-  dv.setFloat32(offset, 0, true); offset += 4
-  dv.setFloat32(offset, 0, true); offset += 4
-  dv.setFloat32(offset, 0, true); offset += 4
-  dv.setFloat32(offset, 0, true); offset += 4
-  dv.setFloat32(offset, 1, true); offset += 4
-  dv.setFloat32(offset, 0, true); offset += 4
+  dv.setUint32(offset, 1, true); offset += 4  // frameCount = 1
+  dv.setUint32(offset, 1, true); offset += 4  // limbCount = 1
+  offset += 16  // skip limb names (16 bytes)
+  // Row-major 3x4 identity: row0=[1,0,0,0], row1=[0,1,0,0], row2=[0,0,1,0]
+  dv.setFloat32(offset, 1, true); offset += 4  // row0col0 = 1
+  dv.setFloat32(offset, 0, true); offset += 4  // row0col1 = 0
+  dv.setFloat32(offset, 0, true); offset += 4  // row0col2 = 0
+  dv.setFloat32(offset, 0, true); offset += 4  // row0col3 = 0
+  dv.setFloat32(offset, 0, true); offset += 4  // row1col0 = 0
+  dv.setFloat32(offset, 1, true); offset += 4  // row1col1 = 1
+  dv.setFloat32(offset, 0, true); offset += 4  // row1col2 = 0
+  dv.setFloat32(offset, 0, true); offset += 4  // row1col3 = 0
+  dv.setFloat32(offset, 0, true); offset += 4  // row2col0 = 0
+  dv.setFloat32(offset, 0, true); offset += 4  // row2col1 = 0
+  dv.setFloat32(offset, 1, true); offset += 4  // row2col2 = 1
+  dv.setFloat32(offset, 0, true); offset += 4  // row2col3 = 0
   return HvaReader.load(new Uint8Array(buf), 'test.hva')
 }
 

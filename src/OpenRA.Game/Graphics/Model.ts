@@ -27,6 +27,10 @@ import type { Rectangle } from '../Primitives/Rectangle'
 export interface ModelRenderData {
   readonly start: number
   readonly count: number
+  /** Under ADR-19.1, holds a reference to the pre-loaded glTF TransformNode
+   * or Mesh. In C# this was a Sheet reference (texture atlas for rendered
+   * voxel faces). For placeholder/empty models, this is undefined. */
+  readonly geometry?: unknown
 }
 
 // ---------------------------------------------------------------------------

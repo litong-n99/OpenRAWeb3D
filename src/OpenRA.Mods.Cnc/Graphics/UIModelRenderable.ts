@@ -18,6 +18,7 @@
  */
 
 import type { ModelAnimation } from '../../OpenRA.Game/Graphics/ModelAnimation'
+import { PaletteReference } from '../../OpenRA.Game/Graphics/PaletteReference'
 import { WPos } from '../../OpenRA.Game/WPos'
 import type { WRot } from '../../OpenRA.Game/WRot'
 import type { ModelRenderer } from '../Traits/World/ModelRenderer'
@@ -73,6 +74,7 @@ export class UIModelRenderable {
   private readonly _lightAmbient: Float32Array
   private readonly _lightDiffuse: Float32Array
   private readonly _groundOrientation: WRot
+  private readonly _palette: PaletteReference | null
 
   // -----------------------------------------------------------------------
   // Construction
@@ -91,6 +93,7 @@ export class UIModelRenderable {
    * @param lightAmbient — ambient light [R, G, B]
    * @param lightDiffuse — diffuse light [R, G, B]
    * @param groundOrientation — ground plane orientation
+   * @param palette — palette reference for color remapping (null = no remap)
    */
   constructor(
     renderer: ModelRenderer,
@@ -105,6 +108,7 @@ export class UIModelRenderable {
     lightAmbient: Float32Array,
     lightDiffuse: Float32Array,
     groundOrientation: WRot,
+    palette: PaletteReference | null = null,
   ) {
     this._renderer = renderer
     this._models = models
@@ -118,6 +122,7 @@ export class UIModelRenderable {
     this._lightAmbient = lightAmbient
     this._lightDiffuse = lightDiffuse
     this._groundOrientation = groundOrientation
+    this._palette = palette
   }
 
   // -----------------------------------------------------------------------
@@ -170,6 +175,36 @@ export class UIModelRenderable {
    */
   get groundOrientation(): WRot {
     return this._groundOrientation
+  }
+
+  /** Get the palette reference.
+   *
+   * OpenRA 对照: UIModelRenderable.Palette
+   */
+  get palette(): PaletteReference | null {
+    return this._palette
+  }
+
+  /** Create a copy with a different palette for color remapping.
+   *
+   * OpenRA 对照: UIModelRenderable.WithPalette(PaletteReference)
+   */
+  withPalette(newPalette: PaletteReference): UIModelRenderable {
+    return new UIModelRenderable(
+      this._renderer,
+      this._models,
+      this.pos,
+      this.screenX,
+      this.screenY,
+      this.zOffset,
+      this._camera,
+      this._scale,
+      this._lightSource,
+      this._lightAmbient,
+      this._lightDiffuse,
+      this._groundOrientation,
+      newPalette,
+    )
   }
 
   // -----------------------------------------------------------------------

@@ -23,9 +23,12 @@
 
 import { WRot } from '../../../OpenRA.Game/WRot'
 import { WAngle } from '../../../OpenRA.Game/WAngle'
+import { WVec } from '../../../OpenRA.Game/WVec'
 import type { WPos } from '../../../OpenRA.Game/WPos'
+import type { IModelCache } from '../../../OpenRA.Game/Graphics/Model'
 import type { ModelAnimation } from '../../../OpenRA.Game/Graphics/ModelAnimation'
 import { ModelRenderable } from '../../Graphics/ModelRenderable'
+import { ModelPreview } from '../../Graphics/ModelActorPreview'
 import type { ModelRenderer } from '../World/ModelRenderer'
 
 // ---------------------------------------------------------------------------
@@ -139,6 +142,34 @@ export interface RenderVoxelsInfo {
    * OpenRA 对照: RenderVoxelsInfo.LightDiffuseColor
    */
   readonly lightDiffuseColor: Float32Array
+}
+
+// ---------------------------------------------------------------------------
+// IRenderActorPreviewVoxelsInfo — interface for preview voxel generation
+// ---------------------------------------------------------------------------
+
+/** Interface for trait infos that contribute voxel parts to an actor preview.
+ *
+ * OpenRA 对照: IRenderActorPreviewVoxelsInfo
+ *
+ * Each implementing trait info (WithVoxelBodyInfo, WithVoxelTurretInfo,
+ * WithVoxelBarrelInfo) has a RenderPreviewVoxels method that generates
+ * ModelAnimation instances for the preview model.
+ */
+export interface IRenderActorPreviewVoxelsInfo {
+  /** The voxel sequence name (e.g., "idle", "turret", "barrel"). */
+  readonly sequence: string
+
+  /** Generate preview model animations for the build queue / sidebar.
+   *
+   * @param cache — the model cache
+   * @param image — model image name
+   * @returns Array of ModelAnimation for the preview model
+   */
+  renderPreviewVoxels(
+    cache: IModelCache,
+    image: string,
+  ): ModelAnimation[]
 }
 
 // ---------------------------------------------------------------------------
@@ -344,5 +375,50 @@ export class RenderVoxels {
    */
   get components(): readonly ModelAnimation[] {
     return this._components
+  }
+
+  // -----------------------------------------------------------------------
+  // Static — render preview factory
+  // -----------------------------------------------------------------------
+
+  /** Generate a ModelPreview for the actor build queue / sidebar.
+   *
+   * OpenRA 对照: RenderVoxelsInfo.RenderPreview(ActorPreviewInitializer)
+   *
+   * This static factory creates a ModelPreview from the trait config,
+   * model cache, and voxel part generators (IRenderActorPreviewVoxelsInfo).
+   *
+   * @param info — RenderVoxels configuration
+   * @param renderer — the world's ModelRenderer
+   * @param modelCache — the world's model cache
+   * @param image — model image name
+   * @param cameraPitch — camera pitch from body orientation
+   * @param voxelParts — IRenderActorPreviewVoxelsInfo implementations
+   *   (e.g., WithVoxelBodyInfo, WithVoxelTurretInfo, WithVoxelBarrelInfo)
+   * @returns ModelPreview with all voxel part animations
+   */
+  static renderPreview(
+    info: RenderVoxelsInfo,
+    renderer: ModelRenderer,
+    modelCache: IModelCache,
+    image: string,
+    cameraPitch: WAngle,
+    voxelParts: IRenderActorPreviewVoxelsInfo[],
+  ): ModelPreview {
+    const components = voxelParts.flatMap((p) =>
+      p.renderPreviewVoxels(modelCache, image),
+    )
+    return new ModelPreview(
+      renderer,
+      components,
+      WVec.Zero, // preview offset is zero
+      0, // zOffset
+      info.scale,
+      info.lightPitch,
+      info.lightYaw,
+      info.lightAmbientColor,
+      info.lightDiffuseColor,
+      cameraPitch,
+    )
   }
 }

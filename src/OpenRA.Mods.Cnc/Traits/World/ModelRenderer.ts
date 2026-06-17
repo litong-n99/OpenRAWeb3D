@@ -205,8 +205,6 @@ export class ModelRenderer {
 
       const r = m.model.aggregateBounds
       const offset = m.offsetFunc()
-      const frame = m.frameFunc()
-      const bounds = m.model.bounds(frame)
 
       // Simplified screen projection using scale factor
       const ox = worldPos.X + offset.X
@@ -216,9 +214,6 @@ export class ModelRenderer {
       sTop = Math.min(sTop, (oy + r.Top * 1024) * scale / 1024)
       sRight = Math.max(sRight, (ox + r.Right * 1024) * scale / 1024)
       sBottom = Math.max(sBottom, (oy + r.Bottom * 1024) * scale / 1024)
-
-      // Track bounds for bounds computation
-      void bounds
     }
 
     // Handle empty case
