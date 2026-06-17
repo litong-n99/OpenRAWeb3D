@@ -26,7 +26,8 @@ import {
   PlayerRelationshipExts,
   TargetModifiers,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
-import type { Order } from '../../OpenRA.Game/Network/Order.js'
+import { TargetType } from '../../OpenRA.Game/Traits/Target.js'
+import { Order } from '../../OpenRA.Game/Network/Order.js'
 import type { Target } from '../../OpenRA.Game/Traits/Target.js'
 import { UnitOrderTargeter } from '../../OpenRA.Mods.Common/Orders/UnitOrderTargeter.js'
 
@@ -165,17 +166,14 @@ export class Disguise {
   }
 
   issueOrder(
-    _self: IGameActor,
+    self: IGameActor,
     order: IOrderTargeter,
     target: Target,
     queued: boolean,
   ): Order {
     if (order.orderID === 'Disguise') {
-      return {
-        orderName: order.orderID,
-        targetString: '',
-        extraData: { target, queued },
-      } as unknown as Order
+      // OpenRA: new Order(order.OrderID, self, target, queued)
+      return Order.withTarget(order.orderID, (self as any).actorId ?? 0, target, queued)
     }
     return null as unknown as Order
   }
@@ -188,14 +186,14 @@ export class Disguise {
     const os = order as any
     if (os.orderString === 'Disguise' || os.orderName === 'Disguise') {
       const target = os.target as any
-      if (target?.type === 1 /* Actor */) {
+      if (target?.type === TargetType.Actor) {
         const tgtActor = target.actor as IGameActor | undefined
         this._disguiseAs(
           (tgtActor && tgtActor !== (self as any) && (tgtActor as any).isInWorld)
             ? tgtActor : null,
         )
       }
-      if (target?.type === 2 /* FrozenActor */) {
+      if (target?.type === TargetType.FrozenActor) {
         const fa = target.frozenActor as { info: ActorInfoStub; owner: PlayerStub } | undefined
         if (fa) this._disguiseFromFrozen(fa.info, fa.owner)
       }
@@ -494,7 +492,15 @@ export class DisguiseOrderTargeter extends UnitOrderTargeter {
 
     if ((target as any).actorId === (self as any).actorId) return false
 
-    return this._disguiseInfo.targetTypes.has(((target as any).info as any)?.name ?? '')
+    // OpenRA: info.TargetTypes.Overlaps(target.GetAllTargetTypes())
+    // GetAllTargetTypes returns gameplay target type tags (e.g. 'Disguise', 'Building'),
+    // NOT the actor info name (which is the internal class name).
+    const targetAllTypes = (target as any).getAllTargetTypes?.() as Iterable<string> | undefined
+    if (!targetAllTypes) return false
+    for (const t of targetAllTypes) {
+      if (this._disguiseInfo.targetTypes.has(t)) return true
+    }
+    return false
   }
 
   canTargetFrozenActor(
@@ -516,7 +522,14 @@ export class DisguiseOrderTargeter extends UnitOrderTargeter {
     if (!PlayerRelationshipExts.hasRelationship(this._disguiseInfo.validRelationships, relationship))
       return false
 
-    const targetInfo = (target as any).info as ActorInfoStub | undefined
-    return targetInfo ? this._disguiseInfo.targetTypes.has(targetInfo.name) : false
+    // OpenRA: info.TargetTypes.Overlaps(target.Info.GetAllTargetTypes())
+    // GetAllTargetTypes is on the ActorInfo, not on the FrozenActor directly.
+    const targetInfo = (target as any).info as { getAllTargetTypes?: () => Iterable<string> } | undefined
+    const allTypes = targetInfo?.getAllTargetTypes?.()
+    if (!allTypes) return false
+    for (const t of allTypes) {
+      if (this._disguiseInfo.targetTypes.has(t)) return true
+    }
+    return false
   }
 }

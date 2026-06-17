@@ -260,6 +260,15 @@ export class TSVeinsRenderer {
   private _veinPalette: PaletteRefStub | null = null
   private _spriteLayer: TerrainSpriteLayerStub | null = null
   private _onCellChangedHooked = false
+  /** Bound listener reference — stored so disposing() can match the exact function.
+   *
+   * OpenRA 对照: event += handler (stored delegate reference)
+   *
+   * NOTE: .bind(this) creates a NEW function reference every call.
+   * We store the bound reference at construction time so that
+   * removeCellChangedListener can correctly unregister the same function.
+   */
+  private readonly _boundAddDirtyCell: (cell: CPos, resourceType: string | null) => void
 
   constructor(self: IGameActor, info: TSVeinsRendererInfo) {
     this._info = info
@@ -270,9 +279,12 @@ export class TSVeinsRenderer {
       throw new Error('TSVeinsRenderer requires IResourceLayer trait on the same actor')
     }
 
+    // Store bound reference so dispose can unregister the same function
+    this._boundAddDirtyCell = this._addDirtyCell.bind(this)
+
     // Subscribe to cell changes
     if (this._resourceLayer.addCellChangedListener) {
-      this._resourceLayer.addCellChangedListener(this._addDirtyCell.bind(this))
+      this._resourceLayer.addCellChangedListener(this._boundAddDirtyCell)
       this._onCellChangedHooked = true
     }
 
@@ -375,10 +387,15 @@ export class TSVeinsRenderer {
     }
 
     const map = this._world?.map as any
+    // Consolidated ramp lookup with safe fallbacks:
+    // 1) map.rampGet(cell)  — direct method (preferred)
+    // 2) map.ramp.get(cell) — CellLayer accessor
+    // 3) Default to 0 (flat terrain)
+    // NOTE: Removed broken 3rd fallback (map['Ramp'][cellKey(cell)])
+    //   — CellLayer uses CPos indexing, not packed integer keys.
     const ramp = typeof map?.rampGet === 'function'
       ? map.rampGet(cell)
-      : (map?.ramp && typeof map.ramp === 'object' && 'get' in map.ramp
-        ? (map.ramp as any).get(cell) : (map?.['Ramp']?.[cellKey(cell)] ?? 0))
+      : map?.ramp?.get?.(cell) ?? 0
 
     switch (ramp) {
       case 1: return Ramp1Indices
@@ -432,7 +449,7 @@ export class TSVeinsRenderer {
     if (!this._renderIndices.contains(cell)) return false
 
     const map = this._world?.map as any
-    const ramp = typeof map?.rampGet === 'function' ? map.rampGet(cell) : 0
+    const ramp = typeof map?.rampGet === 'function' ? map.rampGet(cell) : map?.ramp?.get?.(cell) ?? 0
 
     return (ramp === 0 && this._renderIndices.get(cell) !== null) ||
       this._veinholeCells.has(cellKey(cell))
@@ -445,7 +462,7 @@ export class TSVeinsRenderer {
 
   _calculateBorders(cell: CPos): Adjacency {
     const map = this._world?.map as any
-    const ramp = typeof map?.rampGet === 'function' ? map.rampGet(cell) : 0
+    const ramp = typeof map?.rampGet === 'function' ? map.rampGet(cell) : map?.ramp?.get?.(cell) ?? 0
     if (ramp !== 0) return Adjacency.None
 
     let ret: Adjacency = Adjacency.None
@@ -479,7 +496,7 @@ export class TSVeinsRenderer {
     if (this._hasBorder(cell)) return
 
     const map = this._world?.map as any
-    const ramp = typeof map?.rampGet === 'function' ? map.rampGet(cell) : 0
+    const ramp = typeof map?.rampGet === 'function' ? map.rampGet(cell) : map?.ramp?.get?.(cell) ?? 0
     if (ramp !== 0) return
 
     const adjacency = this._calculateBorders(cell)
@@ -506,8 +523,20 @@ export class TSVeinsRenderer {
 
   _updateSpriteLayers(cell: CPos, indices: number[] | null): void {
     if (indices !== null && indices.length > 0) {
-      // Random variant selection
-      const chosen = indices[Math.floor(Math.random() * indices.length)]
+      // Deterministic variant selection — avoids Math.random() for replay consistency.
+      // OpenRA 对照: Game.CosmeticRandom.Next(indices.Length)
+      // Priority: 1) world.sharedRandom (deterministic seeded RNG)
+      //           2) cell-position-based hash fallback
+      const worldRandom = this._world?.sharedRandom as { nextInt(max: number): number } | undefined
+      let chosenIndex: number
+      if (worldRandom) {
+        chosenIndex = worldRandom.nextInt(indices.length)
+      } else {
+        // Hash-based fallback: deterministic per-cell, avoids Math.random()
+        const hash = cellKey(cell) ^ 0x9e3779b9 ^ (indices.length * 0x45d9f3b)
+        chosenIndex = hash < 0 ? (-hash) % indices.length : hash % indices.length
+      }
+      const chosen = indices[chosenIndex]
       this._spriteLayer?.update(cell, this._veinSequence, this._veinPalette, chosen)
     } else {
       this._spriteLayer?.clear(cell)
@@ -550,7 +579,8 @@ export class TSVeinsRenderer {
 
   disposing(): void {
     if (this._onCellChangedHooked && this._resourceLayer.removeCellChangedListener) {
-      this._resourceLayer.removeCellChangedListener(this._addDirtyCell.bind(this))
+      // Use the stored bound reference so it matches the originally registered listener
+      this._resourceLayer.removeCellChangedListener(this._boundAddDirtyCell)
     }
     // NOTE: ActorAdded/ActorRemoved unsubscribe is handled by World.
     // In OpenRA, these are events on the World object.
@@ -673,7 +703,7 @@ export class TSVeinsRenderer {
         }
 
         // Cell is a border (flat, adjacent to vein)
-        const cellRamp = typeof map.rampGet === 'function' ? map.rampGet(cell) : 0
+        const cellRamp = typeof map.rampGet === 'function' ? map.rampGet(cell) : map.ramp?.get?.(cell) ?? 0
         if (cellRamp !== 0) continue
 
         let isBorder = false
@@ -682,7 +712,7 @@ export class TSVeinsRenderer {
           if (veinholeCells.has(cellKey(c))) { isBorder = true; break }
           const r = map.resources.get?.(c)
           if (!r) continue
-          const rRamp = typeof map.rampGet === 'function' ? map.rampGet(c) : 0
+          const rRamp = typeof map.rampGet === 'function' ? map.rampGet(c) : map.ramp?.get?.(c) ?? 0
           if (r.type === String(resourceIndex!) && rRamp === 0) { isBorder = true; break }
         }
 

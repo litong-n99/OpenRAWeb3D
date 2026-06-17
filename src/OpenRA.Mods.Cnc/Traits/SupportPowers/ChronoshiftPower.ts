@@ -33,6 +33,7 @@ import type {
   IGameActor,
   WorldRendererStub,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { TargetType } from '../../../OpenRA.Game/Traits/Target.js'
 
 // ---------------------------------------------------------------------------
 // Forward stub for not-yet-migrated Chronoshiftable (TODO-19.A.1)
@@ -284,7 +285,9 @@ export class SelectChronoshiftTarget {
 
   *render(wr: WorldRendererStub): Generator<IRenderableExt> {
     if (!this._tile) return
-    const xy = (wr as any).viewport?.viewToWorld?.(0, 0) as CPos | undefined
+    const vp = (wr as any).viewport
+    const mouse = vp?.lastMousePos ?? { x: 0, y: 0 }
+    const xy = vp?.viewToWorld?.(mouse.x, mouse.y) as CPos | undefined
     if (!xy) return
     const tiles = SupportPower.cellsMatching(xy, this._fp, this._dims)
     const pal = (wr as any).palette?.((this._p.info as ChronoshiftPowerInfo).targetOverlayPalette) as IPaletteStub
@@ -299,7 +302,15 @@ export class SelectChronoshiftTarget {
   }
 
   *renderAboveShroud(): Generator<IRenderableExt> { /* yield break */ }
-  *renderAnnotations(_wr: WorldRendererStub): Generator<IRenderableExt> { /* stub */ }
+
+  /**
+   * 渲染选择装饰 (SelectChronoshiftTarget 阶段)。
+   *
+   * OpenRA 对照: SelectChronoshiftTarget.RenderAnnotations()
+   * TODO-19.A.3: ISelectionDecorations 接口尚未完全迁移。
+   * 完全迁移后，此处应渲染范围指示器和目标选择 UI。
+   */
+  *renderAnnotations(_wr: WorldRendererStub): Generator<IRenderableExt> { /* TODO-19.A.3: ISelectionDecorations not yet migrated */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -358,7 +369,7 @@ export class SelectDestination {
       yield {
         orderName: this._order,
         subject: this._mgr.self,
-        target: { type: 1, centerPosition: undefined, cell },
+        target: { type: TargetType.Terrain, centerPosition: undefined, cell },
         queued: false,
         extraLocation: this._src,
         suppressVisualFeedback: true,
@@ -392,7 +403,9 @@ export class SelectDestination {
   }
 
   *renderAboveShroud(wr: WorldRendererStub): Generator<IRenderableExt> {
-    const xy = (wr as any).viewport?.viewToWorld?.(0, 0) as CPos | undefined
+    const vp = (wr as any).viewport
+    const mouse = vp?.lastMousePos ?? { x: 0, y: 0 }
+    const xy = vp?.viewToWorld?.(mouse.x, mouse.y) as CPos | undefined
     if (!xy) return
     const pal = (wr as any).palette?.((this._p.info as any).iconPalette ?? 'terrain') as IPaletteStub
     const owner = (this._mgr.self as any).owner as any
@@ -457,5 +470,12 @@ export class SelectDestination {
     }
   }
 
-  *renderAnnotations(_wr: WorldRendererStub): Generator<IRenderableExt> { /* stub */ }
+  /**
+   * 渲染选择装饰 (SelectDestination 阶段)。
+   *
+   * OpenRA 对照: SelectDestination.RenderAnnotations()
+   * TODO-19.A.3: ISelectionDecorations 接口尚未完全迁移。
+   * 完全迁移后，此处应渲染传送预览和有效性指示器。
+   */
+  *renderAnnotations(_wr: WorldRendererStub): Generator<IRenderableExt> { /* TODO-19.A.3: ISelectionDecorations not yet migrated */ }
 }

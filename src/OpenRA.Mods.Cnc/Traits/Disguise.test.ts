@@ -344,13 +344,35 @@ describe('DisguiseOrderTargeter', () => {
     expect(targeter.orderID).toBe('Disguise')
   })
 
-  it('canTargetActor returns true for valid target', () => {
+  it('canTargetActor returns true for valid target (uses getAllTargetTypes)', () => {
     const self = mkActor(1, 'spy', 'player1')
     const target = mkActor(2, 'rifle', 'player2')
-    target.info = { name: 'Disguise' }
+    // getAllTargetTypes returns gameplay target type tags, NOT actor info name
+    target.getAllTargetTypes = () => ['Disguise'] as any
 
     const result = targeter.canTargetActor(self, target, 0, '')
     expect(result).toBe(true)
+  })
+
+  // Regression BLOCKER #2: target tags != actor info name
+  it('canTargetActor returns true when getAllTargetTypes has matching tag, even if actor name differs', () => {
+    const self = mkActor(1, 'spy', 'player1')
+    const target = mkActor(2, 'e1', 'player2')
+    // info.name = 'e1' does NOT match 'Disguise', BUT getAllTargetTypes() returns ['Disguise']
+    target.getAllTargetTypes = () => ['Ground', 'Disguise', 'Infantry'] as any
+
+    const result = targeter.canTargetActor(self, target, 0, '')
+    expect(result).toBe(true)
+  })
+
+  it('canTargetActor returns false when getAllTargetTypes has no matching tags', () => {
+    const self = mkActor(1, 'spy', 'player1')
+    const target = mkActor(2, 'building', 'player2')
+    // info.name = 'building' does not matter; getAllTargetTypes has no 'Disguise'
+    target.getAllTargetTypes = () => ['Building', 'Defense'] as any
+
+    const result = targeter.canTargetActor(self, target, 0, '')
+    expect(result).toBe(false)
   })
 
   it('canTargetActor returns false for self', () => {
@@ -359,12 +381,49 @@ describe('DisguiseOrderTargeter', () => {
     expect(result).toBe(false)
   })
 
-  it('canTargetActor returns false when target type not in targetTypes', () => {
+  it('canTargetActor returns false when getAllTargetTypes returns undefined', () => {
     const self = mkActor(1, 'spy', 'player1')
-    const target = mkActor(2, 'building', 'player2')
-    target.info = { name: 'building' }
-
+    const target = mkActor(2, 'rifle', 'player2')
+    // No getAllTargetTypes method at all
     const result = targeter.canTargetActor(self, target, 0, '')
+    expect(result).toBe(false)
+  })
+
+  it('canTargetFrozenActor returns true when info.getAllTargetTypes has matching tag', () => {
+    const self = mkActor(1, 'spy', 'player1')
+    const frozenTarget: any = {
+      owner: { playerName: 'player2' },
+      isValid: true,
+      visible: true,
+      hidden: false,
+      centerPosition: { X: 0, Y: 0, Z: 0 },
+      info: {
+        name: 'e1', // different from 'Disguise'
+        traitInfos: () => [],
+        getAllTargetTypes: () => ['Disguise', 'Ground'] as any,
+      },
+    }
+
+    const result = targeter.canTargetFrozenActor(self, frozenTarget, 0, '')
+    expect(result).toBe(true)
+  })
+
+  it('canTargetFrozenActor returns false when info.getAllTargetTypes has no matching tags', () => {
+    const self = mkActor(1, 'spy', 'player1')
+    const frozenTarget: any = {
+      owner: { playerName: 'player2' },
+      isValid: true,
+      visible: true,
+      hidden: false,
+      centerPosition: { X: 0, Y: 0, Z: 0 },
+      info: {
+        name: 'Disguise', // name matches but getAllTargetTypes does not
+        traitInfos: () => [],
+        getAllTargetTypes: () => ['Building'] as any,
+      },
+    }
+
+    const result = targeter.canTargetFrozenActor(self, frozenTarget, 0, '')
     expect(result).toBe(false)
   })
 })

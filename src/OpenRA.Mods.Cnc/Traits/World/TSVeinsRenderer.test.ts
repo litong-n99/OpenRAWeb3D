@@ -2,7 +2,7 @@
  * TSVeinsRenderer.test.ts — TSVeinsRenderer migration unit tests
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { CPos } from '../../../OpenRA.Game/CPos.js'
 import { MPos } from '../../../OpenRA.Game/MPos.js'
 import {
@@ -272,6 +272,51 @@ describe('TSVeinsRenderer', () => {
   describe('disposing', () => {
     it('does not throw', () => {
       expect(() => renderer.disposing()).not.toThrow()
+    })
+
+    // Regression BLOCKER #3: .bind(this) creates new function reference; must store bound reference
+    it('unregisters the exact listener so it is NOT called after dispose', () => {
+      let addedListener: Function | null = null
+      let removedListener: Function | null = null
+
+      const addSpy = vi.fn((fn: Function) => { addedListener = fn })
+      const removeSpy = vi.fn((fn: Function) => { removedListener = fn })
+
+      const info = mkInfo()
+      const w = mkWorld()
+      const resourceLayer = {
+        info: {
+          tryGetTerrainType(_rt: string): string | undefined { return 'Vein' },
+          tryGetResourceIndex(_rt: string): number | undefined { return 1 },
+        },
+        getResource(_c: CPos): ResourceLayerContents { return { type: 'Veins', density: 10 } },
+        getMaxDensity(_rt: string): number { return 10 },
+        isVisible(_c: CPos): boolean { return true },
+        onCellChanged(_c: CPos, _rt: string | null): void {},
+        addCellChangedListener: addSpy,
+        removeCellChangedListener: removeSpy,
+      }
+
+      const self: any = {
+        world: w,
+        getTrait(_name: string): any { return resourceLayer },
+        info: { name: 'world' },
+        owner: { playerName: 'neutral' },
+      }
+
+      const r = new TSVeinsRenderer(self, info)
+      // Verify listener was registered during construction with exact function
+      expect(addSpy).toHaveBeenCalledTimes(1)
+      expect(addedListener).toBeDefined()
+
+      // Call dispose — should unregister the same function reference
+      r.disposing()
+      expect(removeSpy).toHaveBeenCalledTimes(1)
+      expect(removedListener).toBeDefined()
+
+      // BLOCKER #3 verification: removed function must be === to added function
+      // If .bind(this) were called again in disposing(), they would NOT match
+      expect(removedListener).toBe(addedListener)
     })
   })
 

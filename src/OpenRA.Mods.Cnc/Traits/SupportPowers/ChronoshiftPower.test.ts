@@ -507,4 +507,30 @@ describe('SelectDestination', () => {
     dest.tick()
     expect(cancelSpy).not.toHaveBeenCalled()
   })
+
+  // Regression: BLOCKER #1 — target type must be Terrain (2), not Actor (1)
+  it('orderInner produces target with Terrain type (not Actor) for cell targets', () => {
+    const self2 = mkGameActor(1, 'chronosphere', mkCPos(10, 10))
+    self2.traitsImplementing = (name: string) => {
+      if (name === 'Chronoshiftable') return [mkChronoshiftableStub(false)]
+      return []
+    }
+
+    const world2 = mkExtendedWorld()
+    world2.actorMap.getActorsAt = () => [self2]
+    self2.world = world2
+
+    const power2 = new ChronoshiftPower(self2, info)
+    const mgr2 = mkManager()
+    mgr2.self = self2
+
+    const dest2 = new SelectDestination(world2, 'order', mgr2, power2, mkCPos(5, 5))
+    const gen = dest2.orderInner(mkCPos(5, 5))
+    const result = gen.next()
+
+    // Target.FromCell() creates a Terrain target (type = 2), not Actor (type = 1)
+    expect(result.value.target.type).toBe(2) // TargetType.Terrain
+    expect(result.value.target.type).not.toBe(1) // NOT TargetType.Actor
+    expect(result.value.target.cell).toEqual(mkCPos(5, 5))
+  })
 })
