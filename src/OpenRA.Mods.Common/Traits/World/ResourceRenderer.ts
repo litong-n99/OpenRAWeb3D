@@ -584,7 +584,7 @@ export class ResourceRenderer implements IResourceRenderer, IWorldLoaded, IRende
       )
       if (rendererContents.type) {
         this.renderContents.set(cell, rendererContents)
-        this._updateRenderedSprite(cell, rendererContents)
+        this.updateRenderedSprite(cell, rendererContents)
       }
     }
   }
@@ -780,10 +780,13 @@ export class ResourceRenderer implements IResourceRenderer, IWorldLoaded, IRende
    * density relative to max density. A full cell shows the last frame;
    * an empty cell clears the sprite.
    *
+   * NOTE: Made protected (was private) to match OpenRA C# protected virtual
+   * signature. D2kResourceRenderer overrides this for rounded-border logic.
+   *
    * @param cell — the map cell to update
    * @param content — the current renderer cell contents
    */
-  private _updateRenderedSprite(cell: CPos, content: RendererCellContents): void {
+  protected updateRenderedSprite(cell: CPos, content: RendererCellContents): void {
     if (!this._spriteLayer) return
 
     if (content.density > 0 && content.sequence) {
@@ -794,9 +797,9 @@ export class ResourceRenderer implements IResourceRenderer, IWorldLoaded, IRende
         content.density,
         maxDensity,
       )
-      this._updateSpriteLayers(cell, content.sequence, frame, content.palette)
+      this.updateSpriteLayers(cell, content.sequence, frame, content.palette)
     } else {
-      this._updateSpriteLayers(cell, null, 0, null)
+      this.updateSpriteLayers(cell, null, 0, null)
     }
   }
 
@@ -811,12 +814,15 @@ export class ResourceRenderer implements IResourceRenderer, IWorldLoaded, IRende
    * OpenRA 对照: ResourceRenderer.UpdateSpriteLayers(CPos, ISpriteSequence,
    *   int, PaletteReference)
    *
+   * NOTE: Made protected (was private) to match OpenRA C# protected signature.
+   * D2kResourceRenderer calls this from its rounded-border sprite logic.
+   *
    * @param cell — the map cell
    * @param sequence — the sprite sequence, or null to clear
    * @param frame — the frame index within the sequence
    * @param palette — the palette to use for rendering
    */
-  private _updateSpriteLayers(
+  protected updateSpriteLayers(
     cell: CPos,
     sequence: ISpriteSequence | null,
     frame: number,
@@ -891,7 +897,7 @@ export class ResourceRenderer implements IResourceRenderer, IWorldLoaded, IRende
       }
 
       this.renderContents.set(cell, rendererContents)
-      this._updateRenderedSprite(cell, rendererContents)
+      this.updateRenderedSprite(cell, rendererContents)
       this._cleanDirty.push(cell)
     }
 
