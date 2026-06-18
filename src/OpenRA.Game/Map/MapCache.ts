@@ -11,8 +11,8 @@
  * - C# HashSet<string> StringPool → Set<string>
  * - C# Dictionary<string, string> mapUpdates → Map<string, string>
  * - C# ThreadPool.QueueUserWorkItem → Promise.resolve().then()
- * - C# PerfTimer → performance.now() (TODO-4.E.6)
- * - C# Log.Write → console.warn (TODO-4.E.5)
+ * - C# PerfTimer → performance.now() via PerfTimer class (RESOLVED P1-D.5)
+ * - C# Log.Write → Log.write('mapcache', LogLevel.WARN, ...) (RESOLVED P1-D.5)
  */
 
 import { Cache } from '../Primitives/Cache.js'
@@ -24,6 +24,7 @@ import { MapGridType as MapGridTypeConst } from './MapGridType.js'
 import { MapPreview, MapStatus, MapClassification, MapClassificationExts } from './MapPreview.js'
 import { MapDirectoryTracker } from './MapDirectoryTracker.js'
 import type { MersenneTwisterStub } from '../Traits/TraitsInterfaces.js'
+import { Log, LogLevel } from '../Utils/Log.js'
 
 // ---------------------------------------------------------------------------
 // Stubs for dependencies not yet migrated
@@ -291,7 +292,7 @@ export class MapCache implements Iterable<MapPreview> {
     switch (value) {
       case 'System': return MapClassification.System
       case 'User': return MapClassification.User
-      case 'Database': return MapClassification.Database
+      case 'Remote': return MapClassification.Remote
       default: return MapClassification.Unknown
     }
   }
@@ -364,9 +365,8 @@ export class MapCache implements Iterable<MapPreview> {
         }
       }
     } catch (e) {
-      console.warn(`Failed to load map: ${map}`)
-      console.warn('Details:', e)
-      // TODO-4.E.5: 在日志系统迁移后替换为 Log.Write
+      Log.write('mapcache', LogLevel.WARN, `Failed to load map: ${map}`)
+      Log.write('mapcache', LogLevel.WARN, `Details: ${String(e)}`)
     }
   }
 
@@ -508,7 +508,7 @@ export class MapCache implements Iterable<MapPreview> {
           this._previews.get(uid).completeRemoteSearch(value, mapDetailsReceived)
         }
       } catch (e) {
-        console.warn('Remote map query failed:', e)
+        Log.write('mapcache', LogLevel.WARN, `Remote map query failed: ${String(e)}`)
         // TODO-4.E.5: 在日志系统迁移后替换为 Log.Write
       }
 
@@ -610,7 +610,7 @@ export class MapCache implements Iterable<MapPreview> {
             )
             p.setMinimap(sprite)
           } catch (e) {
-            console.warn('Failed to load minimap:', e)
+            Log.write('mapcache', LogLevel.WARN, `Failed to load minimap: ${String(e)}`)
           }
         }
 
