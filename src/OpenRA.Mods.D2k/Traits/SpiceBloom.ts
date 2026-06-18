@@ -22,6 +22,7 @@ import {
   type INotifyKilled,
   type ITraitInfo,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces'
+import { Animation } from '../../OpenRA.Game/Graphics/Animation.js'
 
 // ---------------------------------------------------------------------------
 // Helper: integer linear interpolation
@@ -37,20 +38,38 @@ function lerpInt(a: number, b: number, mul: number, div: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Stub interfaces for duck-typed dependencies
+// Interfaces for duck-typed dependencies
 // ---------------------------------------------------------------------------
 
-/** Stub for Animation (2D sprite animation). */
-interface AnimationStub {
-  play(sequence: string): void
-  playRepeating(sequence: string): void
-  playThen(sequence: string, onComplete: () => void): void
-}
-
-/** Stub for RenderSprites trait. */
+/** RenderSprites trait interface for animation setup.
+ *
+ * OpenRA 对照: RenderSprites trait
+ */
 interface RenderSpritesStub {
   getImage(actor: IGameActor): string
-  add(anim: unknown): void
+  add(anim: unknown, palette?: unknown): void
+}
+
+/** SequenceSet interface for Animation construction.
+ *
+ * OpenRA 对照: ISequenceSet (from Map.Sequences)
+ */
+interface SequenceSetStub {
+  hasSequence(actorName: string, sequenceName: string): boolean
+  getSequence(actorName: string, sequenceName: string): {
+    readonly name: string
+    readonly length: number
+    readonly tick: number
+    readonly scale: number
+    readonly zOffset: number
+    readonly shadowZOffset: number
+    readonly ignoreWorldTint: boolean
+    readonly bounds: { x: number; y: number; width: number; height: number }
+    getSprite(frame: number, facing: number): unknown
+    getSpriteWithRotation(frame: number, facing: number): { sprite: unknown; rotation: number }
+    getAlpha(frame: number): number
+    getShadow(frame: number, facing: number): unknown
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -187,11 +206,23 @@ export class SpiceBloom implements ITick, INotifyKilled {
   /** The owning actor (for duck-typed access to world/services). */
   private readonly _self: IGameActor
 
-  /** Body animation (duck-typed). */
-  private _body: AnimationStub | null = null
+  /** Body animation (tick-synced Animation with sequence set).
+   *
+   * OpenRA 对照: SpiceBloom.body (Animation)
+   */
+  private _body: Animation | null = null
 
-  /** Spurt animation (duck-typed). */
-  private _spurt: AnimationStub | null = null
+  /** Spurt animation (tick-synced, plays once then hides).
+   *
+   * OpenRA 对照: SpiceBloom.spurt (Animation)
+   */
+  private _spurt: Animation | null = null
+
+  /** Whether the spurt animation is currently visible.
+   *
+   * OpenRA 对照: SpiceBloom.showSpurt (bool)
+   */
+  private _showSpurt: boolean = true
 
   /** Cached resource layer. */
   private _resourceLayer: IResourceLayerStub | null = null
@@ -262,9 +293,11 @@ export class SpiceBloom implements ITick, INotifyKilled {
         this._bodyFrame = newBodyFrame
         this._body?.play(this.info.growthSequences[this._bodyFrame]!)
 
-        // NOTE: showSpurt toggle deferred — TODO-19.B.5-ANIM
+        // Reset spurt visibility and play spurt animation once
+        // OpenRA 对照: showSpurt = true; spurt.PlayThen(SpurtSequence, () => showSpurt = false)
+        this._showSpurt = true
         this._spurt?.playThen(this.info.spurtSequence, () => {
-          // Spurt animation complete callback
+          this._showSpurt = false
         })
       }
     }
@@ -395,33 +428,55 @@ export class SpiceBloom implements ITick, INotifyKilled {
   // Animation setup
   // ---------------------------------------------------------------------------
 
-  /** Set up body and spurt animations via RenderSprites. */
+  /** Set up body and spurt animations via RenderSprites.
+   *
+   * OpenRA 对照: SpiceBloom constructor — body + spurt Animation creation
+   *
+   * Creates Animation instances backed by the world's sequence set
+   * and the actor's image name (from RenderSprites.getImage).
+   * Registers them with RenderSprites via AnimationWithOffset pattern.
+   */
   private setupAnimations(self: IGameActor, _info: SpiceBloomInfo): void {
     const rs = this.getRenderSprites(self)
     if (!rs) return
 
-    // Create body animation (duck-typed)
-    this._body = {
-      play: (_seq: string) => { /* body.play(seq) */ },
-      playRepeating: (_seq: string) => { /* body.playRepeating(seq) */ },
-      playThen: (_seq: string, _onComplete: () => void) => {},
-    }
-    // NOTE: Full Animation integration deferred — TODO-19.B.5-ANIM
-    // The actual Animation class requires World context and image loading.
-    // For now, the state transitions are tracked but the visual updates
-    // will be wired in when Animation is integrated.
+    // Get sequence set from world (Animation factory requires it)
+    const imageName = rs.getImage(self)
+    const sequences = this.getSequenceSet(self)
 
+    // Create body animation with tick-synced frame advancement
+    // OpenRA 对照: body = new Animation(self.World, rs.GetImage(self))
+    // NOTE: TypeScript duck-typing — Animation constructor expects ISequenceSet
+    // interface; our SequenceSetStub has the same shape so the cast is safe.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this._body = new Animation(
+      sequences as any,
+      imageName,
+      () => 0, // facingFunc: spice bloom doesn't rotate
+      () => self.isDead ?? false, // paused when dead
+    )
+    this._body.play(this.info.growthSequences[0]!)
+
+    // Add to RenderSprites with visibility control
+    // OpenRA 对照: rs.Add(new AnimationWithOffset(body, null, () => self.IsDead))
     rs.add(this._body)
 
-    // Create spurt animation
-    this._spurt = {
-      play: (_seq: string) => {},
-      playRepeating: (_seq: string) => {},
-      playThen: (_seq: string, onComplete: () => void) => {
-        onComplete()
-      },
-    }
+    // Create spurt animation — plays once per growth stage
+    // OpenRA 对照: spurt = new Animation(self.World, rs.GetImage(self))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this._spurt = new Animation(
+      sequences as any,
+      imageName,
+      () => 0,
+      () => !this._showSpurt, // paused when not spurting
+    )
     rs.add(this._spurt)
+
+    // Initialize spurt animation
+    // OpenRA 对照: spurt.PlayThen(info.SpurtSequence, () => showSpurt = false)
+    this._spurt.playThen(this.info.spurtSequence, () => {
+      this._showSpurt = false
+    })
   }
 
   // ---------------------------------------------------------------------------
@@ -526,6 +581,34 @@ export class SpiceBloom implements ITick, INotifyKilled {
     }
     // Fallback: calculate from cell coordinates
     return new WVec(cell.X * 1024 + 512, cell.Y * 1024 + 512, 0)
+  }
+
+  /** Get the sequence set from the world (for Animation construction).
+   *
+   * OpenRA 对照: self.World.Map.Sequences
+   */
+  private getSequenceSet(self: IGameActor): SequenceSetStub {
+    const world = self.world as {
+      map?: { sequences?: SequenceSetStub }
+    } | undefined
+    const defaultSeq: SequenceSetStub = {
+      hasSequence: () => false,
+      getSequence: () => ({
+        name: 'empty',
+        length: 0,
+        tick: 40,
+        scale: 1,
+        zOffset: 0,
+        shadowZOffset: 0,
+        ignoreWorldTint: false,
+        bounds: { x: 0, y: 0, width: 0, height: 0 },
+        getSprite: () => null,
+        getSpriteWithRotation: () => ({ sprite: null, rotation: 0 }),
+        getAlpha: () => 1,
+        getShadow: () => null,
+      }),
+    }
+    return world?.map?.sequences ?? defaultSeq
   }
 
   /** Add a frame-end task. */

@@ -270,6 +270,19 @@ export class D2kSpriteSequence implements ISpriteSequence {
    */
   readonly spritesToLoad: SpriteReservation[] = []
 
+  /** Pre-resolved sprites keyed by frame index.
+   *
+   * OpenRA 对照: DefaultSpriteSequence.sprites (Sprite[])
+   *
+   * Populated during the loadSprites() phase so getSprite() is a
+   * simple O(1) lookup instead of computing UVs each frame.
+   */
+  private _preResolvedSprites: Map<number, Sprite> | null = null
+
+  /** Default sprite returned when nothing is resolved. Pre-allocated
+   * to avoid per-frame allocation on the hot path. */
+  private _emptySprite: Sprite | null = null
+
   // -----------------------------------------------------------------------
   // ISpriteSequence implementation
   // -----------------------------------------------------------------------
@@ -458,25 +471,65 @@ export class D2kSpriteSequence implements ISpriteSequence {
    *
    * OpenRA 对照: DefaultSpriteSequence.GetSprite(int frame, WAngle facing)
    *
+   * Returns the pre-resolved sprite if available, otherwise a cached
+   * empty sprite to avoid per-frame allocation.
+   *
    * @param frame — frame index
    * @param _facing — facing angle (used when facings > 1)
    * @returns the sprite for this frame+facing
    */
-  getSprite(_frame: number, _facing: number): Sprite {
-    // Return a stub matching Sprite shape. Full implementation depends on
-    // Sheet infrastructure from Ch2 (Sprite.ts, Sheet.ts).
-    // Use pre-resolved sprites from Sheet/SpriteCache when
-    // the rendering pipeline is fully migrated.
-    return {
-      sheet: null as unknown as Sprite['sheet'],
-      bounds: { x: 0, y: 0, width: 0, height: 0 },
-      blendMode: 0 as unknown as Sprite['blendMode'],
-      channel: 4 as Sprite['channel'],
-      zRamp: this._zRamp,
-      size: { x: 0, y: 0, z: 0 },
-      offset: { x: this._offset.x, y: this._offset.y, z: 0 },
-      top: 0, left: 0, bottom: 1, right: 1,
-    } as Sprite
+  getSprite(frame: number, _facing: number): Sprite {
+    // Fast path: pre-resolved sprite from loadSprites() phase
+    if (this._preResolvedSprites) {
+      const sprite = this._preResolvedSprites.get(frame)
+      if (sprite) return sprite
+    }
+
+    // Fallback: return cached empty sprite (no per-frame allocation)
+    if (!this._emptySprite) {
+      this._emptySprite = {
+        sheet: null as unknown as Sprite['sheet'],
+        bounds: { x: 0, y: 0, width: 0, height: 0 },
+        blendMode: 0 as unknown as Sprite['blendMode'],
+        channel: 4 as Sprite['channel'],
+        zRamp: this._zRamp,
+        size: { x: 0, y: 0, z: 0 },
+        offset: { x: this._offset.x, y: this._offset.y, z: 0 },
+        top: 0, left: 0, bottom: 1, right: 1,
+      } as Sprite
+    }
+    return this._emptySprite
+  }
+
+  /** Resolve sprite frames from the sprite loader output.
+   *
+   * OpenRA 对照: DefaultSpriteSequence finalization after SheetBuilder.Add()
+   *
+   * Called during the loadSprites() phase (before rendering starts)
+   * so getSprite() becomes a simple O(1) lookup on the hot path.
+   *
+   * @param sprites — resolved Sprite objects from the sprite cache/sheet builder
+   */
+  resolveSprites(sprites: readonly Sprite[]): void {
+    this._preResolvedSprites = new Map<number, Sprite>()
+    this._emptySprite = null  // invalidate cached empty sprite
+
+    const frameList = this._frames
+    for (let i = 0; i < sprites.length && i < frameList.length; i++) {
+      const sprite = sprites[i]
+      if (sprite) {
+        this._preResolvedSprites.set(frameList[i]!, sprite)
+      }
+    }
+
+    // If frames are continuous 0..N-1, also map by sequential index
+    // for sequences that reference frames by position rather than number
+    for (let i = 0; i < sprites.length; i++) {
+      const sprite = sprites[i]
+      if (sprite && !this._preResolvedSprites.has(i)) {
+        this._preResolvedSprites.set(i, sprite)
+      }
+    }
   }
 
   /** Get the sprite with rotation for the given frame and facing.

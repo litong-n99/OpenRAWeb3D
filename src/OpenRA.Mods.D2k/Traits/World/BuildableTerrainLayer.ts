@@ -23,6 +23,7 @@
 import { CPos } from '../../../OpenRA.Game/CPos.js'
 import { MapGridType } from '../../../OpenRA.Game/Map/MapGridType.js'
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { Shroud } from '../../../OpenRA.Game/Traits/Player/Shroud.js'
 
 // ---------------------------------------------------------------------------
 // Forward interfaces for unmigrated dependencies
@@ -383,7 +384,7 @@ export class BuildableTerrainLayer {
     for (const [cellKey, entry] of this._dirty) {
       const cell = entry.cell
 
-      if (this._world.fogObscures?.(cell)) continue
+      if (this._isFogObscured(cell)) continue
       if (!this._render || !this._terrainRenderer) continue
 
       if (entry.tile !== null) {
@@ -455,6 +456,47 @@ export class BuildableTerrainLayer {
   getStrength(cell: CPos): number {
     const mposIdx = this._mposIndex(cell, this._world.map.gridsize)
     return this._strength.get(mposIdx) ?? 0
+  }
+
+  // -----------------------------------------------------------------------
+  // Fog-of-war check (对应 OpenRA world.FogObscures)
+  // -----------------------------------------------------------------------
+
+  /** Check whether a cell is obscured by fog of war.
+   *
+   * OpenRA 对照: world.FogObscures(cell)
+   *
+   * Uses the best available API in priority order:
+   * 1. world.fogObscures(cell) callback (if provided)
+   * 2. Shroud.isExplored(cell) via world actor (for explored-but-visible distinction)
+   * 3. Default: not obscured (render all cells)
+   *
+   * Cells under fog should not render concrete tiles in the world view.
+   *
+   * @param cell — the cell to check
+   * @returns true if the cell is under fog and should not be rendered
+   */
+  private _isFogObscured(cell: CPos): boolean {
+    // Path 1: Use world-provided fogObscures callback if available
+    if (typeof this._world.fogObscures === 'function') {
+      return this._world.fogObscures(cell)
+    }
+
+    // Path 2: Resolve Shroud trait from world actor and use isExplored
+    // Cells that have never been explored should not show concrete
+    const worldActor = this._world.worldActor
+    if (worldActor) {
+      const shroud = (worldActor as unknown as {
+        trait?: <T>(name: string) => T | undefined
+      }).trait?.<Shroud>('Shroud')
+      if (shroud) {
+        // A cell is obscured if it has NOT been explored (was never visible)
+        return !shroud.isExplored(cell)
+      }
+    }
+
+    // Path 3: No fog infrastructure — render all cells
+    return false
   }
 
   // -----------------------------------------------------------------------

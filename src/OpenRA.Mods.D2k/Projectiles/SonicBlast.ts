@@ -26,6 +26,7 @@ import type { WarheadArgs } from '../../OpenRA.Mods.Common/Warheads/Warhead.js'
 import type { GameWorldManager } from '../../OpenRA.Game/World.js'
 import type { ISonicBlastRendererAccess } from '../Graphics/SonicBlastRenderable.js'
 import { SonicBlastRenderable } from '../Graphics/SonicBlastRenderable.js'
+import { BlocksProjectiles } from '../../OpenRA.Mods.Common/Traits/BlocksProjectiles.js'
 
 // ---------------------------------------------------------------------------
 // InaccuracyType enum (对应 OpenRA InaccuracyType)
@@ -233,6 +234,36 @@ export class SonicBlast implements IProjectile {
     this._pos = WPos.lerpQuadratic(this._args.source, this._target, WAngle.Zero, this._ticks, this._length)
 
     // Blocking check (BlocksProjectiles.AnyBlockingActorsBetween)
+    // OpenRA 对照: SonicBlast.Tick → BlocksProjectiles.AnyBlockingActorsBetween
+    if (this._info.blockable) {
+      const sourceActor = this._args.sourceActor
+      const owner = (sourceActor as unknown as { owner?: unknown }).owner
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const worldAny: any = sourceActor.world
+
+      if (owner && worldAny.findBlockingActorsOnLine) {
+        const outHit: { hit: unknown } = { hit: null }
+        const blocked = BlocksProjectiles.anyBlockingActorsBetween(
+          worldAny,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          owner as any,
+          this._args.source,
+          this._pos,
+          this._info.width,
+          outHit,
+        )
+
+        if (blocked) {
+          this.isDestroyed = true
+          if (w.addFrameEndTask) {
+            w.addFrameEndTask(() => {
+              worldAny.remove?.(this)
+            })
+          }
+          return
+        }
+      }
+    }
 
     // Apply warhead impacts at each damage interval
     if (this._ticks % this._info.damageInterval === 0) {

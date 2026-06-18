@@ -23,6 +23,7 @@ import {
   type Float2,
   SpriteFrameType,
 } from '../../OpenRA.Game/Graphics/SpriteLoader.js'
+import { PlayerColorRemap } from '../../OpenRA.Game/Graphics/PlayerColorRemap.js'
 
 // ---------------------------------------------------------------------------
 // 调色板常量
@@ -349,8 +350,25 @@ class RemappableFrame implements ISpriteFrame {
 
     // PlayerColorRemap: remap indices 240-255 based on remapColor
     if (this.remapColor !== 0) {
+      // Convert ARGB packed remapColor → {r,g,b,a} Color shape
+      const remapA = (this.remapColor >>> 24) & 0xff
+      const remapR = (this.remapColor >>> 16) & 0xff
+      const remapG = (this.remapColor >>> 8) & 0xff
+      const remapB = this.remapColor & 0xff
+
+      // Create PlayerColorRemap once for palette indices 240-255
+      // OpenRA 对照: Enumerable.Range(240, 16).ToImmutableArray()
+      const remapIndices = Array.from({ length: 16 }, (_, i) => 240 + i)
+      const remap = new PlayerColorRemap(remapIndices, {
+        r: remapR, g: remapG, b: remapB, a: remapA,
+      })
+
       for (let i = 240; i < 256; i++) {
-        palette[i] = R8LoaderImpl.remapColor(palette[i]!)
+        palette[i] = R8LoaderImpl.remapColor(
+          palette[i]!,
+          i,
+          remap,
+        )
       }
     }
 
@@ -418,16 +436,32 @@ class R8LoaderImpl implements ISpriteLoader {
   /**
    * 玩家颜色重映射。
    *
-   * OpenRA 对照: PlayerColorRemap.GetRemappedColor
+   * OpenRA 对照: PlayerColorRemap.GetRemappedColor → Color.ToArgb()
    *
-* 实现完整的 PlayerColorRemap 逻辑。
-   * 当前为占位实现，直接返回原始颜色。
-   * 完整实现需要创建 PlayerColorRemap 类 (对应 OpenRA.Graphics.PlayerColorRemap)。
+   * Applies the pre-created PlayerColorRemap to a single palette entry.
+   * Converts between ARGB packed format and the {r,g,b,a} Color shape
+   * expected by PlayerColorRemap.
+   *
+   * @param originalArgb — the original palette color in ARGB packed format
+   * @param index — the palette index (0-255)
+   * @param remap — pre-created PlayerColorRemap instance
+   * @returns the remapped color in ARGB packed format
    */
-  static remapColor(originalArgb: number): number {
-    // Implement full PlayerColorRemap.
-    // OpenRA uses: new PlayerColorRemap(indices, remap).GetRemappedColor(color, i).ToArgb()
-    return originalArgb
+  static remapColor(
+    originalArgb: number,
+    index: number,
+    remap: PlayerColorRemap,
+  ): number {
+    // Convert ARGB packed → {r,g,b,a} Color shape
+    const a = (originalArgb >>> 24) & 0xff
+    const r = (originalArgb >>> 16) & 0xff
+    const g = (originalArgb >>> 8) & 0xff
+    const b = originalArgb & 0xff
+
+    const remapped = remap.getRemappedColor({ r, g, b, a }, index)
+
+    // Convert back to ARGB packed
+    return (remapped.a << 24) | (remapped.r << 16) | (remapped.g << 8) | remapped.b
   }
 
   tryParseSprite(
