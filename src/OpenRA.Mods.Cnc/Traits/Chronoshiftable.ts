@@ -1,18 +1,18 @@
 /**
- * Chronoshiftable.ts — 超时空传送能力（Actor可通过超时空传送）
+ * Chronoshiftable.ts -- 超时空传送能力（Actor可通过超时空传送）
  * OpenRA 对照: OpenRA.Mods.Cnc/Traits/Chronoshiftable.cs (192 lines)
  *
  * 核心范式转换:
- * - C# ConditionalTrait<ChronoshiftableInfo> → TS ConditionalTrait<ChronoshiftableInfo>
- * - C# ISync → TS ISync marker interface
- * - C# ISelectionBar → TS ISelectionBar interface
- * - C# IDeathActorInitModifier / ITransformActorInitModifier → TS same pattern
- * - C# Actor.CurrentActivity hacking (HACK comment) → TS same approach with note
- * - C# QueueActivity(new Teleport(...)) → TS forward stub for Teleport activity
- * - C# frameEndTask → TS deferral pattern (TODO for World integration)
+ * - C# ConditionalTrait<ChronoshiftableInfo> -> TS ConditionalTrait<ChronoshiftableInfo>
+ * - C# ISync -> TS ISync marker interface
+ * - C# ISelectionBar -> TS ISelectionBar interface
+ * - C# IDeathActorInitModifier / ITransformActorInitModifier -> TS same pattern
+ * - C# Actor.CurrentActivity hacking (HACK comment) -> TS same approach with note
+ * - C# QueueActivity(new Teleport(...)) -> TS Activity queuing via IGameActor.queueActivity
+ * - C# frameEndTask -> TS deferral pattern (TODO for World integration)
  *
- * NOTE: The Teleport activity (OpenRA.Mods.Cnc.Activities.Teleport) is deferred
- * to . This trait references it as a forward-declared stub.
+ * NOTE: The Teleport activity (OpenRA.Mods.Cnc.Activities.Teleport) was
+ * migrated in Chapter 19 and enhanced in Phase A with multi-tick state machine.
  */
 
 import { ConditionalTrait } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -26,6 +26,8 @@ import type {
   ITraitInfo,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { CPos } from '../../OpenRA.Game/CPos.js'
+import { Teleport } from '../Activities/Teleport.js'
+import type { GameActor } from '../../OpenRA.Game/Actor.js'
 
 // ---------------------------------------------------------------------------
 // ChronoshiftReturnInit
@@ -126,33 +128,70 @@ export class ChronoshiftableInfo implements ITraitInfo, IConditionalTraitInfo {
 }
 
 // ---------------------------------------------------------------------------
-// Teleport activity forward stub
+// Teleport activity integration
 //
 // OpenRA 对照: OpenRA.Mods.Cnc.Activities.Teleport
-// Full migration of Teleport activity.
+// Migrated in Chapter 19, enhanced in Phase A with multi-tick state machine.
 // ---------------------------------------------------------------------------
 
-/** Queue a teleport activity on the actor.
+/**
+ * Queue a Teleport activity on the actor.
  *
- * In production, this delegates to self.QueueActivity() with a Teleport
- * activity instance. For testing, this is a no-op that logs the call.
+ * In OpenRA C#, Chronoshiftable directly calls:
+ *   self.QueueActivity(new Teleport(chronosphere, target, ...))
  *
-* Replace with real Teleport activity integration.
+ * @param self -- the actor to queue the teleport on
+ * @param queued -- if false, cancel current activity before queueing
+ * @param chronosphere -- the chronosphere building actor
+ * @param target -- destination cell
+ * @param maxDistance -- maximum teleport distance (null for no limit)
+ * @param killCargo -- whether to destroy passenger units
+ * @param sound -- teleport sound effect name
+ * @param flashScreen -- whether to trigger screen flash effect
+ * @param returnToOrigin -- whether this is a return trip
+ * @param damageTypes -- damage types for kill-on-failure
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function queueTeleport(
-  _self: IGameActor,
-  _queued: boolean,
-  _chronosphere: IGameActor,
-  _target: CPos,
-  _maxDistance: number | null,
-  _killCargo: boolean,
-  _sound: string,
-  _flashScreen?: boolean,
-  _returnToOrigin?: boolean,
-  _damageTypes?: readonly string[],
+  self: IGameActor,
+  queued: boolean,
+  chronosphere: IGameActor,
+  target: CPos,
+  maxDistance: number | null,
+  killCargo: boolean,
+  sound: string,
+  flashScreen?: boolean,
+  returnToOrigin?: boolean,
+  damageTypes?: readonly string[],
 ): void {
-  // Stub — no-op in tests, replaced by real Teleport activity at runtime
+  // Create the Teleport activity matching the C# constructor signature:
+  // new Teleport(teleporter, destination, maximumDistance, killCargo,
+  //   screenFlash, sound, interruptable, killOnFailure, killDamageTypes,
+  //   preDelay, duringDelay, postDelay, returnToOrigin)
+  const teleport = new Teleport(
+    chronosphere as unknown as GameActor,   // teleporter
+    target,                                  // destination
+    maxDistance,                             // maximumDistance
+    killCargo,                               // killCargo
+    flashScreen ?? true,                     // screenFlash
+    sound,                                   // sound
+    true,                                    // interruptable (default)
+    false,                                   // killOnFailure (handled by trait)
+    damageTypes ? new Set(damageTypes) : new Set(), // killDamageTypes
+    undefined,                               // preDelayTicks (use default)
+    undefined,                               // duringDelayTicks (use default)
+    undefined,                               // postDelayTicks (use default)
+    returnToOrigin ?? false,                 // returnToOrigin
+  )
+
+  // Queue on the actor via IGameActor.queueActivity
+  // In OpenRA C#, QueueActivity(bool queued, Activity nextActivity):
+  //   if queued is false -> CancelCurrentActivity() first, then queue
+  if (self.queueActivity) {
+    if (!queued && self.cancelActivity) {
+      self.cancelActivity()
+    }
+    self.queueActivity(teleport)
+  }
 }
 
 // ---------------------------------------------------------------------------

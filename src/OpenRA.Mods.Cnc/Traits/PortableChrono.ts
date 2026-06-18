@@ -18,8 +18,8 @@
  * RangeCircleAnnotationRenderable are deferred to Phase C / Ch15.
  * Their logic is documented but the visual rendering is stubbed.
  *
- * NOTE: The Teleport activity is deferred to .
- * MoveTo / MoveWithinRange activities are deferred to Ch9/Ch14.
+ * NOTE: The Teleport activity was migrated in Ch19 and enhanced in Phase A.
+ * MoveTo / MoveWithinRange activities are deferred to Ch14.
  */
 
 import { ConditionalTrait, TargetModifiers } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -38,6 +38,8 @@ import type {
   ColorStub,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { CPos } from '../../OpenRA.Game/CPos.js'
+import { Teleport } from '../Activities/Teleport.js'
+import type { GameActor } from '../../OpenRA.Game/Actor.js'
 
 // ---------------------------------------------------------------------------
 // Order type for PortableChrono — extends imported Order with extra fields
@@ -366,8 +368,10 @@ export class PortableChrono
     const queued = (order as PortableChronoOrder).queued ?? false
 
     if (!queued) {
-      // self.CancelActivity()
-      // Activity cancellation
+      // Cancel current activity before queueing new ones
+      if (self.cancelActivity) {
+        self.cancelActivity()
+      }
     }
 
     // OpenRA: var cell = self.World.Map.CellContaining(order.Target.CenterPosition)
@@ -376,19 +380,37 @@ export class PortableChrono
 
     // OpenRA: if (maxDistance != null)
     //   self.QueueActivity(move.MoveWithinRange(order.Target, WDist.FromCells(maxDistance.Value)))
-    // self.QueueActivity(new Teleport(self, cell, maxDistance, Info.KillCargo, Info.FlashScreen, Info.ChronoshiftSound))
-    // self.QueueActivity(move.MoveTo(cell, 5))
-    // self.ShowTargetLines()
+    // TODO: MoveWithinRange requires Mobile trait and WDist -- deferred to Ch14
+    // For now, queue the Teleport directly.
 
-    // NOTE: Activity queuing requires Move and Teleport activities (deferred to Ch9/Ch14/19.C.5)
-    // The Teleport call parameters match OpenRA:
-    //   new Teleport(self, cell, maxDistance, killCargo, flashScreen, chronoshiftSound)
-    // Queue Teleport activity
-    // Queue MoveWithinRange activity when maxDistance != null
-    // Queue MoveTo activity
-    void self
-    void cell
-    void maxDistance
+    // Queue the Teleport activity
+    // OpenRA: self.QueueActivity(new Teleport(self, cell, maxDistance,
+    //   Info.KillCargo, Info.FlashScreen, Info.ChronoshiftSound))
+    if (self.queueActivity) {
+      if (!queued && self.cancelActivity) {
+        self.cancelActivity()
+      }
+      const teleport = new Teleport(
+        self as unknown as GameActor,   // teleporter (self = portable chrono user)
+        cell,                            // destination
+        maxDistance,                     // maximumDistance
+        this.info.killCargo,             // killCargo
+        this.info.flashScreen,           // screenFlash
+        this.info.chronoshiftSound,      // sound
+        true,                            // interruptable
+        false,                           // killOnFailure
+        new Set(),                       // killDamageTypes (empty)
+        undefined,                       // preDelayTicks (use default)
+        undefined,                       // duringDelayTicks (use default)
+        undefined,                       // postDelayTicks (use default)
+        false,                           // returnToOrigin (not a return trip)
+      )
+      self.queueActivity(teleport)
+    }
+
+    // OpenRA: self.QueueActivity(move.MoveTo(cell, 5))
+    // TODO: MoveTo requires Mobile trait -- deferred to Ch14
+    // self.ShowTargetLines() -- visual feedback, deferred
 
     // Reset charge time after teleport
     this.resetChargeTime()
