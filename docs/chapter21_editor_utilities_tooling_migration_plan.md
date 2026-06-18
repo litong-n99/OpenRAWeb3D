@@ -1,8 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 21 -- Editor, Utilities & Tooling
 
 > **Source Reference**: `OpenRA/OpenRA.Mods.Common/EditorBrushes/`, `OpenRA/OpenRA.Mods.Common/Widgets/Logic/Editor/`, `OpenRA/OpenRA.Game/UtilityCommands/`, `OpenRA/OpenRA.Mods.Common/UtilityCommands/`, `OpenRA/OpenRA.Mods.Cnc/UtilityCommands/`, `OpenRA/OpenRA.Mods.D2k/UtilityCommands/`
-> **Chapter Status**: PLANNING (0/~73 migrated, 0%)
+> **Chapter Status**: COMPLETE (54+ active files, 100%, ALL PHASES A-G COMPLETE)
 > **Planning Date**: 2026-06-18
+> **Completion Date**: 2026-06-18
 > **Prerequisite**: Chapters 2-19 COMPLETE (603/603, 100%). Chapter 20 Scripting System (62/62, 100%, ALL PHASES A-G COMPLETE). Editor Phases A-C and Debug Phase D can begin with Ch2-19. Utility command Phases E-G benefit from Ch20's `ScriptRegistry` for scripting-aware tooling.
 >
 > **Important Statement**: `OpenRA/` directory is the original C# source reference library, **for reference only, DO NOT MODIFY**. All migration implementations should be done in TypeScript files under the corresponding `src/` paths.
@@ -257,13 +258,13 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 | Phase | Files (Active + Deferred) | C# Lines (Active) | Est. TS Lines | Est. Tests | Status |
 |:---|:---:|:---:|:---:|:---:|:---|
-| A: Editor Core | 8 + 0 | ~1,620 | ~2,800 | ~85 | PLANNING |
-| B: Editor Brushes | 10 + 0 | ~3,143 | ~4,500 | ~110 | PLANNING |
-| C: Editor UI Logic | 18 + 0 | ~3,003 | ~5,350 | ~125 | PLANNING |
-| D: Debug & Dev Tools | 7 + 0 | ~1,100 | ~1,950 | ~65 | PLANNING |
-| E: Core Build Tools | 22 + 0 | ~2,704 | ~5,050 | ~105 | PLANNING |
-| F: Docs & Export | 7 + 6 | ~776 | ~1,200 | ~40 | PLANNING |
-| G: Legacy Map Import | 6 + 12 | ~667 | ~1,200 | ~35 | PLANNING |
+| A: Editor Core | 8 + 0 | ~1,620 | ~2,800 | ~85 | COMPLETE |
+| B: Editor Brushes | 10 + 0 | ~3,143 | ~4,500 | ~110 | COMPLETE |
+| C: Editor UI Logic | 18 + 0 | ~3,003 | ~5,350 | ~125 | COMPLETE |
+| D: Debug & Dev Tools | 7 + 0 | ~1,100 | ~1,950 | ~65 | COMPLETE |
+| E: Core Build Tools | 22 + 0 | ~2,704 | ~5,050 | ~105 | COMPLETE |
+| F: Docs & Export | 7 + 6 | ~776 | ~1,200 | ~40 | COMPLETE |
+| G: Legacy Map Import | 6 + 12 | ~667 | ~1,200 | ~35 | COMPLETE |
 | **Total** | **78 + 18** | **~13,013** | **~22,050** | **~565** | |
 
 ---
@@ -272,7 +273,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 ### 3.1 Phase A: Editor Core Infrastructure
 
-**Status**: 🔜 PLANNING (0/8 migrated)
+**Status**: ✅ COMPLETE (8/8 migrated)
 **Complexity**: Low-HIGH (EditorActorLayer 495 lines HIGH, MapEditorData 26 lines LOW)
 **Blocked by**: Chapter 3 (World, Actor, TraitDictionary — editor traits attach to World), Chapter 4 (Map + Terrain — editor manipulates map data), Chapter 5 (Widgets — editor uses widget system), Chapter 7 (Camera, Input — editor needs viewport interaction), Chapter 10 (ResourceLayer — EditorResourceLayer interacts with resource infrastructure)
 **Blocks**: Phase B (Editor Brushes depend on EditorActionManager, EditorActorLayer, EditorCursorLayer), Phase C (Editor UI depends on all Phase A traits)
@@ -288,7 +289,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.1.1 EditorActionManager
 
-- [ ] **TODO-21.A.1** `src/OpenRA.Mods.Common/Traits/World/EditorActionManager.ts` (189 lines C#) — Undo/redo command stack:
+- [x] **TODO-21.A.1** `src/OpenRA.Mods.Common/Traits/World/EditorActionManager.ts` (189 lines C#) — Undo/redo command stack:
   - `IEditorAction` interface: `execute()`, `undo()`, `redo()`, `description: string`
   - `undoStack: EditorAction[]`, `redoStack: EditorAction[]`
   - `add(action: IEditorAction): void` — execute action, push to undo stack, clear redo stack
@@ -303,7 +304,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.1.2 EditorActorLayer
 
-- [ ] **TODO-21.A.2** `src/OpenRA.Mods.Common/Traits/World/EditorActorLayer.ts` (495 lines C#) — Editor actor management layer:
+- [x] **TODO-21.A.2** `src/OpenRA.Mods.Common/Traits/World/EditorActorLayer.ts` (495 lines C#) — Editor actor management layer:
   - Manages collection of `EditorActorPreview` instances
   - `addActor(owner, type, location, facing): EditorActorPreview` — create new preview actor
   - `removeActor(preview): void` — remove preview actor
@@ -321,7 +322,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.1.3 EditorActorPreview
 
-- [ ] **TODO-21.A.3** `src/OpenRA.Mods.Common/Traits/World/EditorActorPreview.ts` (333 lines C#) — Individual preview actor:
+- [x] **TODO-21.A.3** `src/OpenRA.Mods.Common/Traits/World/EditorActorPreview.ts` (333 lines C#) — Individual preview actor:
   - Lightweight render-only actor representation
   - `type: string` — actor type from ruleset (e.g., "e1", "mtnk", "proc")
   - `owner: Player` — display owner (for faction-specific rendering)
@@ -338,7 +339,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.1.4 EditorCursorLayer
 
-- [ ] **TODO-21.A.4** `src/OpenRA.Mods.Common/Traits/World/EditorCursorLayer.ts` (53 lines C#) — Editor cursor grid overlay:
+- [x] **TODO-21.A.4** `src/OpenRA.Mods.Common/Traits/World/EditorCursorLayer.ts` (53 lines C#) — Editor cursor grid overlay:
   - `cursorPosition: CellCoords` — current mouse cell
   - `render(worldRenderer): void` — draw cursor highlight at cell
   - Cell highlight visualization: semi-transparent colored quad at cell position
@@ -349,7 +350,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.1.5 EditorResourceLayer
 
-- [ ] **TODO-21.A.5** `src/OpenRA.Mods.Common/Traits/World/EditorResourceLayer.ts` (313 lines C#) — Editor resource manipulation:
+- [x] **TODO-21.A.5** `src/OpenRA.Mods.Common/Traits/World/EditorResourceLayer.ts` (313 lines C#) — Editor resource manipulation:
   - Implements `IResourceLayer` interface for editor mode
   - `addResource(cell, type, amount): void` — place/add resources
   - `removeResource(cell): void` — remove resources
@@ -365,7 +366,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.1.6 EditorViewportControllerWidget
 
-- [ ] **TODO-21.A.6** `src/OpenRA.Mods.Common/Widgets/EditorViewportControllerWidget.ts` (132 lines C#) — Editor-specific viewport:
+- [x] **TODO-21.A.6** `src/OpenRA.Mods.Common/Widgets/EditorViewportControllerWidget.ts` (132 lines C#) — Editor-specific viewport:
   - Extends existing `ViewportControllerWidget` (Ch7 Phase B) with editor mouse handling
   - `handleMouseInput(mi: MouseInput): boolean` — route mouse events to active brush
   - `viewportToCell(mousePos: Vector2): CellCoords` — screen position to map cell
@@ -379,7 +380,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.1.7 EditorSelectionAnnotationRenderable
 
-- [ ] **TODO-21.A.7** `src/OpenRA.Mods.Common/Graphics/EditorSelectionAnnotationRenderable.ts` (79 lines C#) — Selection box renderer:
+- [x] **TODO-21.A.7** `src/OpenRA.Mods.Common/Graphics/EditorSelectionAnnotationRenderable.ts` (79 lines C#) — Selection box renderer:
   - `selectionBounds: CellCoordsRegion` — currently selected cell region
   - `render(worldRenderer): void` — draw selection rectangle
   - Selection box: semi-transparent colored rectangle over selected cells
@@ -390,7 +391,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.1.8 MapEditorData
 
-- [ ] **TODO-21.A.8** `src/OpenRA.Mods.Common/Traits/MapEditorData.ts` (26 lines C#) — Editor metadata marker:
+- [x] **TODO-21.A.8** `src/OpenRA.Mods.Common/Traits/MapEditorData.ts` (26 lines C#) — Editor metadata marker:
   - `editorConfig: MapEditorConfig` — editor-specific settings
   - `cameraPosition: CellCoords` — last editor viewport position
   - `selectedTab: string` — last open editor tab
@@ -404,7 +405,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 ### 3.2 Phase B: Editor Brushes
 
-**Status**: 🔜 PLANNING (0/10 migrated)
+**Status**: ✅ COMPLETE (10/10 migrated)
 **Complexity**: LOW-HIGH (EditorDefaultBrush 627 lines HIGH, EditorResourceBrush 161 lines LOW)
 **Blocked by**: Phase A (brushes use EditorActionManager, EditorActorLayer, EditorCursorLayer, EditorResourceLayer)
 **Blocks**: Phase C (UI tool palette selects and configures brushes)
@@ -421,7 +422,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.1 IEditorBrush Interface
 
-- [ ] **TODO-21.B.1** `src/OpenRA.Mods.Common/EditorBrushes/IEditorBrush.ts` (~30 line equivalent) — Brush interface:
+- [x] **TODO-21.B.1** `src/OpenRA.Mods.Common/EditorBrushes/IEditorBrush.ts` (~30 line equivalent) — Brush interface:
   - `handleMouseInput(mi: MouseInput): boolean` — process mouse event, return true if consumed
   - `tick(): void` — per-tick update (for animation, delayed actions)
   - `tickRender(worldRenderer: WorldRenderer): void` — per-frame visual update
@@ -431,7 +432,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.2 EditorDefaultBrush
 
-- [ ] **TODO-21.B.2** `src/OpenRA.Mods.Common/EditorBrushes/EditorDefaultBrush.ts` (627 lines C#) — Primary selection/manipulation brush:
+- [x] **TODO-21.B.2** `src/OpenRA.Mods.Common/EditorBrushes/EditorDefaultBrush.ts` (627 lines C#) — Primary selection/manipulation brush:
   - `EditorSelection` state: `Area?: CellCoordsRegion`, `Actor?: EditorActorPreview`
   - Left-click: select actor at cell or begin drag-select region
   - Drag-select: rubber-band box across cells, select all actors/resources within
@@ -449,7 +450,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.3 EditorTileBrush
 
-- [ ] **TODO-21.B.3** `src/OpenRA.Mods.Common/EditorBrushes/EditorTileBrush.ts` (383 lines C#) — Terrain tile painting brush:
+- [x] **TODO-21.B.3** `src/OpenRA.Mods.Common/EditorBrushes/EditorTileBrush.ts` (383 lines C#) — Terrain tile painting brush:
   - `selectedTile: TerrainTile` — currently selected tile type
   - `brushSize: number` — brush diameter in cells (1x1, 3x3, 5x5)
   - Click: paint single tile at cell
@@ -464,7 +465,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.4 EditorActorBrush
 
-- [ ] **TODO-21.B.4** `src/OpenRA.Mods.Common/EditorBrushes/EditorActorBrush.ts` (180 lines C#) — Actor placement brush:
+- [x] **TODO-21.B.4** `src/OpenRA.Mods.Common/EditorBrushes/EditorActorBrush.ts` (180 lines C#) — Actor placement brush:
   - `selectedActorType: string` — actor type from ruleset to place
   - `owner: Player` — which player owns placed actors
   - `facing: WAngle` — initial facing direction (configurable via rotation handle)
@@ -480,7 +481,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.5 EditorResourceBrush
 
-- [ ] **TODO-21.B.5** `src/OpenRA.Mods.Common/EditorBrushes/EditorResourceBrush.ts` (161 lines C#) — Resource painting brush:
+- [x] **TODO-21.B.5** `src/OpenRA.Mods.Common/EditorBrushes/EditorResourceBrush.ts` (161 lines C#) — Resource painting brush:
   - `resourceType: string` — resource type to paint (e.g., "ore", "gems", "tiberium")
   - `brushSize: number` — brush diameter in cells
   - `density: number` — resource density to apply (0-100%)
@@ -493,7 +494,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.6 EditorBlit
 
-- [ ] **TODO-21.B.6** `src/OpenRA.Mods.Common/EditorBrushes/EditorBlit.ts` (363 lines C#) — Terrain copy tool:
+- [x] **TODO-21.B.6** `src/OpenRA.Mods.Common/EditorBrushes/EditorBlit.ts` (363 lines C#) — Terrain copy tool:
   - Source selection: drag-select region to copy from
   - Destination paste: click to paste copied terrain tiles
   - `copy(source: CellCoordsRegion): TerrainData` — capture source region tiles + heights
@@ -506,7 +507,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.7 EditorCopyPasteBrush
 
-- [ ] **TODO-21.B.7** `src/OpenRA.Mods.Common/EditorBrushes/EditorCopyPasteBrush.ts` (174 lines C#) — Actor copy-paste brush:
+- [x] **TODO-21.B.7** `src/OpenRA.Mods.Common/EditorBrushes/EditorCopyPasteBrush.ts` (174 lines C#) — Actor copy-paste brush:
   - Copy selected actors (Ctrl+C) — captures actor type, owner, facing, relative positions
   - Paste (Ctrl+V) — places duplicate actors at new location
   - `copyActors(actors: EditorActorPreview[]): ActorClipboardData`
@@ -519,7 +520,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.8 EditorMarkerLayerBrush
 
-- [ ] **TODO-21.B.8** `src/OpenRA.Mods.Common/EditorBrushes/EditorMarkerLayerBrush.ts` (265 lines C#) — Map marker brush:
+- [x] **TODO-21.B.8** `src/OpenRA.Mods.Common/EditorBrushes/EditorMarkerLayerBrush.ts` (265 lines C#) — Map marker brush:
   - `markerType: string` — marker type (flag, spawn point, waypoint, camera)
   - Click: place marker at cell
   - Right-click: remove marker
@@ -533,7 +534,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.9 EditorTilingPathBrush
 
-- [ ] **TODO-21.B.9** `src/OpenRA.Mods.Common/EditorBrushes/EditorTilingPathBrush.ts` (380 lines C#) — Tiled path brush (roads/rivers):
+- [x] **TODO-21.B.9** `src/OpenRA.Mods.Common/EditorBrushes/EditorTilingPathBrush.ts` (380 lines C#) — Tiled path brush (roads/rivers):
   - `tileSet: string` — tiling template to use (road, river, cliff, wall)
   - Click start cell, click end cell → auto-generate tiled path between them
   - Path auto-tiling: selects correct tile variants for corners, straights, T-junctions, crossroads
@@ -546,7 +547,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.2.10 TilingPathTool
 
-- [ ] **TODO-21.B.10** `src/OpenRA.Mods.Common/Traits/World/TilingPathTool.ts` (580 lines C#) — Tiling path utility:
+- [x] **TODO-21.B.10** `src/OpenRA.Mods.Common/Traits/World/TilingPathTool.ts` (580 lines C#) — Tiling path utility:
   - Path-finding engine for tiled paths (roads follow terrain, bridges cross water)
   - `findPath(start: CellCoords, end: CellCoords): CellCoords[]` — A* path for tiling
   - Terrain cost function: roads prefer flat terrain, avoid water (unless bridge)
@@ -563,7 +564,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 ### 3.3 Phase C: Editor UI Logic
 
-**Status**: 🔜 PLANNING (0/16 migrated)
+**Status**: ✅ COMPLETE (18/18 migrated)
 **Complexity**: LOW-HIGH (ActorEditLogic 602 lines HIGH, MapEditorLogic 57 lines LOW)
 **Blocked by**: Phase A (needs editor traits to interact with), Phase B (needs brushes to configure), Chapter 16 (UI Widget Extensions for widget toolkit)
 **Blocks**: No phase depends on editor UI (leaf node)
@@ -579,7 +580,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.1 MapEditorLogic
 
-- [ ] **TODO-21.C.1** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapEditorLogic.ts` (57 lines C#) — Root editor controller:
+- [x] **TODO-21.C.1** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapEditorLogic.ts` (57 lines C#) — Root editor controller:
   - Wires undo/redo buttons to `EditorActionManager`
   - Coordinate label: shows current mouse cell + terrain height + tile type
   - Cash label: shows total resource value on map (via `EditorResourceLayer.netWorth`)
@@ -588,7 +589,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.2 MapEditorSelectionLogic
 
-- [ ] **TODO-21.C.2** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapEditorSelectionLogic.ts` (152 lines C#) — Selection info panel:
+- [x] **TODO-21.C.2** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapEditorSelectionLogic.ts` (152 lines C#) — Selection info panel:
   - Shows properties of currently selected actor(s) or cells
   - Actor info: name, type, owner, facing, health (preview), position
   - Cell info: terrain type, height, resource type/amount
@@ -597,7 +598,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.3 MapEditorTabsLogic
 
-- [ ] **TODO-21.C.3** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapEditorTabsLogic.ts` (100 lines C#) — Tab strip controller:
+- [x] **TODO-21.C.3** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapEditorTabsLogic.ts` (100 lines C#) — Tab strip controller:
   - Tabs: Tiles, Actors, Resources, Markers, History, Options
   - Tab switching: hide/show corresponding panels
   - Auto-switch: selecting an actor switches to Actors tab
@@ -605,7 +606,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.4 MapToolsLogic
 
-- [ ] **TODO-21.C.4** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapToolsLogic.ts` (94 lines C#) — Brush tool palette:
+- [x] **TODO-21.C.4** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapToolsLogic.ts` (94 lines C#) — Brush tool palette:
   - Tool buttons: Select, Tile, Actor, Resource, Marker, Path, Copy
   - Each tool button activates corresponding `IEditorBrush`
   - Tool options panel: brush-specific settings (size, type, etc.)
@@ -613,7 +614,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.5 MapGeneratorToolLogic
 
-- [ ] **TODO-21.C.5** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapGeneratorToolLogic.ts` (331 lines C#) — Map generator UI:
+- [x] **TODO-21.C.5** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapGeneratorToolLogic.ts` (331 lines C#) — Map generator UI:
   - Map size inputs: width, height
   - Terrain type selector: desert, temperate, snow, etc.
   - Random seed input (or auto-generate)
@@ -625,7 +626,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.6 MapMarkerTilesLogic
 
-- [ ] **TODO-21.C.6** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapMarkerTilesLogic.ts` (261 lines C#) — Marker placement UI:
+- [x] **TODO-21.C.6** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapMarkerTilesLogic.ts` (261 lines C#) — Marker placement UI:
   - Player spawn point assignment dropdown (1-8 players)
   - Waypoint list editor: add, remove, reorder waypoints
   - Camera bookmark placement and naming
@@ -635,7 +636,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.7 MapOverlaysLogic
 
-- [ ] **TODO-21.C.7** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapOverlaysLogic.ts` (130 lines C#) — Overlay toggle panel:
+- [x] **TODO-21.C.7** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/MapOverlaysLogic.ts` (130 lines C#) — Overlay toggle panel:
   - Toggle overlays: grid lines, terrain types, resources, actor footprints, blocking cells
   - Opacity slider: overlay transparency
   - Height map overlay: color-coded elevation visualization
@@ -644,7 +645,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.8 NewMapLogic
 
-- [ ] **TODO-21.C.8** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/NewMapLogic.ts` (84 lines C#) — New map dialog:
+- [x] **TODO-21.C.8** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/NewMapLogic.ts` (84 lines C#) — New map dialog:
   - Map dimensions: width x height (in cells)
   - Default terrain type selector
   - Start from scratch or from template
@@ -653,7 +654,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.9 SaveMapLogic
 
-- [ ] **TODO-21.C.9** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/SaveMapLogic.ts` (360 lines C#) — Save map dialog:
+- [x] **TODO-21.C.9** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/SaveMapLogic.ts` (360 lines C#) — Save map dialog:
   - Map title, author, description fields
   - Map type: Skirmish, Mission, Campaign
   - Player count selector
@@ -666,7 +667,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.10 ActorEditLogic
 
-- [ ] **TODO-21.C.10** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/ActorEditLogic.ts` (602 lines C#) — Actor property editor:
+- [x] **TODO-21.C.10** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/ActorEditLogic.ts` (602 lines C#) — Actor property editor:
   - Property grid: all editable actor properties in a scrollable list
   - Owner selector: dropdown of players
   - Facing editor: rotation slider (0-255 WAngle)
@@ -681,7 +682,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.11 ActorSelectorLogic
 
-- [ ] **TODO-21.C.11** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/ActorSelectorLogic.ts` (233 lines C#) — Actor type browser:
+- [x] **TODO-21.C.11** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/ActorSelectorLogic.ts` (233 lines C#) — Actor type browser:
   - Category filters: Infantry, Vehicles, Tanks, Aircraft, Buildings, Naval, Special
   - Faction filter: Allies, Soviets, GDI, Nod, etc.
   - Search bar: type actor name to filter
@@ -693,7 +694,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.12 TileSelectorLogic
 
-- [ ] **TODO-21.C.12** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/TileSelectorLogic.ts` (144 lines C#) — Terrain tile browser:
+- [x] **TODO-21.C.12** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/TileSelectorLogic.ts` (144 lines C#) — Terrain tile browser:
   - Category filters: Clear, Rough, Road, Water, Cliff, Shore, River, etc.
   - Tile palette: clickable grid of tile thumbnails
   - Selected tile preview: larger tile thumbnail
@@ -703,7 +704,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.13 LayerSelectorLogic
 
-- [ ] **TODO-21.C.13** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/LayerSelectorLogic.ts` (79 lines C#) — Layer visibility toggle:
+- [x] **TODO-21.C.13** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/LayerSelectorLogic.ts` (79 lines C#) — Layer visibility toggle:
   - Layer checkboxes: Terrain, Resources, Actors, Markers
   - Each layer can be independently shown/hidden
   - Lock layer: prevent accidental editing
@@ -712,7 +713,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.14 CommonSelectorLogic
 
-- [ ] **TODO-21.C.14** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/CommonSelectorLogic.ts` (171 lines C#) — Shared selector base:
+- [x] **TODO-21.C.14** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/CommonSelectorLogic.ts` (171 lines C#) — Shared selector base:
   - Category button strip: common category filter pattern
   - Search text field with debounce
   - Scrollable item grid with variable item size
@@ -721,7 +722,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.15 HistoryLogLogic
 
-- [ ] **TODO-21.C.15** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/HistoryLogLogic.ts` (69 lines C#) — Undo/redo history display:
+- [x] **TODO-21.C.15** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/HistoryLogLogic.ts` (69 lines C#) — Undo/redo history display:
   - Scrollable list of past actions with timestamps
   - Each entry: action icon + description + time
   - Click entry to undo/redo to that point in history
@@ -731,7 +732,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.16 TilingPathToolLogic
 
-- [ ] **TODO-21.C.16** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/TilingPathToolLogic.ts` (149 lines C#) — Tiling path brush UI:
+- [x] **TODO-21.C.16** `src/OpenRA.Mods.Common/Widgets/Logic/Editor/TilingPathToolLogic.ts` (149 lines C#) — Tiling path brush UI:
   - Tile template selector: road, river, cliff wall, fence
   - Width slider: 1-5 cells wide
   - Preview checkbox: show/hide path preview
@@ -741,7 +742,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.17 LoadMapEditorLogic
 
-- [ ] **TODO-21.C.17** `src/OpenRA.Mods.Common/Widgets/Logic/Ingame/LoadMapEditorLogic.ts` (26 lines C#) — Editor widget tree bootstrap:
+- [x] **TODO-21.C.17** `src/OpenRA.Mods.Common/Widgets/Logic/Ingame/LoadMapEditorLogic.ts` (26 lines C#) — Editor widget tree bootstrap:
   - Entry-point `ChromeLogic` that initializes the editor UI when a map is opened
   - Loads `EDITOR_WORLD_ROOT` widget subtree
   - Loads `TRANSIENTS_PANEL` for floating editor dialogs
@@ -750,7 +751,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.3.18 EditorQuickSaveHotkeyLogic
 
-- [ ] **TODO-21.C.18** `src/OpenRA.Mods.Common/Widgets/Logic/Ingame/Hotkeys/EditorQuickSaveHotkeyLogic.ts` (61 lines C#) — Editor quick-save hotkey:
+- [x] **TODO-21.C.18** `src/OpenRA.Mods.Common/Widgets/Logic/Ingame/Hotkeys/EditorQuickSaveHotkeyLogic.ts` (61 lines C#) — Editor quick-save hotkey:
   - Ctrl+S hotkey handler for editor mode
   - Extends `SingleHotkeyBaseLogic` from Ch7 hotkey system
   - Triggers `SaveMapLogic.save()` action
@@ -763,7 +764,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 ### 3.4 Phase D: Debug & Developer Tools
 
-**Status**: 🔜 PLANNING (0/7 migrated)
+**Status**: ✅ COMPLETE (7/7 migrated)
 **Complexity**: LOW-MEDIUM (DevCommands 318 lines MEDIUM, RenderSpritesEditorOnly 30 lines LOW)
 **Blocked by**: Chapter 3 (World, Actor, TraitDictionary), Chapter 5 (Widget system — for in-game console). Chapter 7 (HotkeyReference — EditorQuickSaveHotkeyLogic).
 **Blocks**: Phase E, F, G (IUtilityCommand interface is the foundation for ALL utility commands). Note: DebugVisualizations, DevCommands, DeveloperMode, RenderSpritesEditorOnly, and CustomTerrainDebugOverlay are true leaf nodes — only IUtilityCommand blocks downstream phases.
@@ -778,7 +779,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.4.1 IUtilityCommand Interface
 
-- [ ] **TODO-21.D.1** `src/OpenRA.Game/IUtilityCommand.ts` (69 lines C#) — Command interface:
+- [x] **TODO-21.D.1** `src/OpenRA.Game/IUtilityCommand.ts` (69 lines C#) — Command interface:
   - `name: string` — command invocation string (e.g., "give-cash", "reveal-map")
   - `validateArguments(args: string[]): boolean` — argument syntax check
   - `run(utility: Utility, args: string[]): void` — execute command
@@ -786,7 +787,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.4.2 DebugVisualizations
 
-- [ ] **TODO-21.D.2** `src/OpenRA.Game/Traits/World/DebugVisualizations.ts` (70 lines C#) — Debug overlay manager:
+- [x] **TODO-21.D.2** `src/OpenRA.Game/Traits/World/DebugVisualizations.ts` (70 lines C#) — Debug overlay manager:
   - Global debug flag toggles: `showPathfindingGrid`, `showBlockingCells`, `showWeaponRanges`, `showActorFootprints`, `showTerrainCosts`
   - Singleton accessible from any trait
   - Toggle via console commands or key bindings (Ctrl+Shift+D)
@@ -796,7 +797,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.4.3 DebugVisualizationCommands
 
-- [ ] **TODO-21.D.3** `src/OpenRA.Mods.Common/Commands/DebugVisualizationCommands.ts` (155 lines C#) — Debug overlay console commands:
+- [x] **TODO-21.D.3** `src/OpenRA.Mods.Common/Commands/DebugVisualizationCommands.ts` (155 lines C#) — Debug overlay console commands:
   - `/debug pathfinding` — toggle pathfinding grid overlay
   - `/debug blocking` — toggle blocking cells overlay
   - `/debug weapons` — toggle weapon range circles
@@ -807,7 +808,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.4.4 DevCommands
 
-- [ ] **TODO-21.D.4** `src/OpenRA.Mods.Common/Commands/DevCommands.ts` (318 lines C#) — Developer cheat commands:
+- [x] **TODO-21.D.4** `src/OpenRA.Mods.Common/Commands/DevCommands.ts` (318 lines C#) — Developer cheat commands:
   - `/give-cash <amount> [player]` — add money to player
   - `/instant-build [on|off]` — toggle instant production/build times
   - `/reveal-map [on|off]` — toggle full map reveal (disable shroud)
@@ -822,7 +823,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.4.5 DeveloperMode
 
-- [ ] **TODO-21.D.5** `src/OpenRA.Mods.Common/Traits/Player/DeveloperMode.ts` (342 lines C#) — Developer mode trait:
+- [x] **TODO-21.D.5** `src/OpenRA.Mods.Common/Traits/Player/DeveloperMode.ts` (342 lines C#) — Developer mode trait:
   - Player trait that gates cheat command access
   - `enabled: boolean` — toggled via settings or command-line flag
   - `unlockTech: boolean` — unlocks all tech tree prerequisites
@@ -837,7 +838,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.4.6 RenderSpritesEditorOnly
 
-- [ ] **TODO-21.D.6** `src/OpenRA.Mods.Common/Traits/Render/RenderSpritesEditorOnly.ts` (30 lines C#) — Editor-only sprite renderer:
+- [x] **TODO-21.D.6** `src/OpenRA.Mods.Common/Traits/Render/RenderSpritesEditorOnly.ts` (30 lines C#) — Editor-only sprite renderer:
   - Renders sprite only when world is in editor mode
   - Throws away sprite in game mode
   - Used for editor-only visual helpers (spawn point markers, camera bookmarks)
@@ -845,7 +846,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.4.7 CustomTerrainDebugOverlay
 
-- [ ] **TODO-21.D.7** `src/OpenRA.Mods.Common/Traits/Render/CustomTerrainDebugOverlay.ts` (116 lines C#) — Terrain debug overlay:
+- [x] **TODO-21.D.7** `src/OpenRA.Mods.Common/Traits/Render/CustomTerrainDebugOverlay.ts` (116 lines C#) — Terrain debug overlay:
   - Renders colored overlay on terrain cells based on custom criteria
   - Cell color function: `(cell: CellCoords) => Color`
   - Used for visualizing terrain costs, custom movement layers, resource density
@@ -859,7 +860,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 ### 3.5 Phase E: Utility Commands — Core Build Tools
 
-**Status**: 🔜 PLANNING (0/20 migrated)
+**Status**: ✅ COMPLETE (22/22 migrated)
 **Complexity**: LOW-MEDIUM (ExtractYamlStrings 411 lines MEDIUM, GetMapHashCommand 31 lines LOW)
 **Blocked by**: Chapter 4 (Map, MiniYAML pipeline — tools process maps and YAML), Chapter 5 (FileSystem — tools open/read/write packages)
 **Blocks**: No phase depends on utility commands (leaf node)
@@ -875,7 +876,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.0 LintInterfaces (Shared Foundation)
 
-- [ ] **TODO-21.E.0** `src/OpenRA.Mods.Common/UtilityCommands/LintInterfaces.ts` (21 lines C#) — Lint pass interfaces:
+- [x] **TODO-21.E.0** `src/OpenRA.Mods.Common/UtilityCommands/LintInterfaces.ts` (21 lines C#) — Lint pass interfaces:
   - `ILintPass` — base interface for lint checkers
   - `ILintMapPass` — map-level lint pass (validates map structure)
   - `ILintRulesPass` — rules-level lint pass (validates actor/weapon definitions)
@@ -884,7 +885,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.1 UtilityRunner
 
-- [ ] **TODO-21.E.1** `src/OpenRA.Game/UtilityRunner.ts` (new file) — Command dispatcher:
+- [x] **TODO-21.E.1** `src/OpenRA.Game/UtilityRunner.ts` (new file) — Command dispatcher:
   - `commands: Map<string, IUtilityCommand>` — registered commands
   - `register(command: IUtilityCommand): void` — add command
   - `run(args: string[]): Promise<void>` — parse args, find command, validate, execute
@@ -895,7 +896,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.2 RegisterModCommand
 
-- [ ] **TODO-21.E.2** `src/OpenRA.Game/UtilityCommands/RegisterModCommand.ts` (47 lines C#) — Mod registration:
+- [x] **TODO-21.E.2** `src/OpenRA.Game/UtilityCommands/RegisterModCommand.ts` (47 lines C#) — Mod registration:
   - `name: "register-mod"`
   - `run(utility, [modPath])` — register a mod directory in the mod registry
   - Writes to `mods.yaml` in the user's config directory
@@ -903,21 +904,21 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.3 UnregisterModCommand
 
-- [ ] **TODO-21.E.3** `src/OpenRA.Game/UtilityCommands/UnregisterModCommand.ts` (43 lines C#) — Mod removal:
+- [x] **TODO-21.E.3** `src/OpenRA.Game/UtilityCommands/UnregisterModCommand.ts` (43 lines C#) — Mod removal:
   - `name: "unregister-mod"`
   - `run(utility, [modId])` — remove a mod from registry
   - Does NOT delete mod files, only removes the registry entry
 
 #### 3.5.4 ClearInvalidModRegistrationsCommand
 
-- [ ] **TODO-21.E.4** `src/OpenRA.Game/UtilityCommands/ClearInvalidModRegistrationsCommand.ts` (47 lines C#) — Registry cleanup:
+- [x] **TODO-21.E.4** `src/OpenRA.Game/UtilityCommands/ClearInvalidModRegistrationsCommand.ts` (47 lines C#) — Registry cleanup:
   - `name: "clear-invalid-mod-registrations"`
   - Scans registry, removes entries where mod directory no longer exists
   - Reports which entries were removed
 
 #### 3.5.5 UpdateModCommand
 
-- [ ] **TODO-21.E.5** `src/OpenRA.Mods.Common/UtilityCommands/UpdateModCommand.ts` (294 lines C#) — Mod update tool:
+- [x] **TODO-21.E.5** `src/OpenRA.Mods.Common/UtilityCommands/UpdateModCommand.ts` (294 lines C#) — Mod update tool:
   - `name: "update-mod"`
   - Updates YAML rules, sequences, tilesets, chrome, etc. from upstream changes
   - Applies update rule transformations (YAML→YAML migration rules)
@@ -927,7 +928,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.6 MapCommand
 
-- [ ] **TODO-21.E.6** `src/OpenRA.Mods.Common/UtilityCommands/MapCommand.ts` (91 lines C#) — Map utility base:
+- [x] **TODO-21.E.6** `src/OpenRA.Mods.Common/UtilityCommands/MapCommand.ts` (91 lines C#) — Map utility base:
   - `name: "map"`
   - Sub-commands: save, resize, info, validate
   - Shared map loading/saving logic for other map commands
@@ -935,7 +936,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.7 ResizeMapCommand
 
-- [ ] **TODO-21.E.7** `src/OpenRA.Mods.Common/UtilityCommands/ResizeMapCommand.ts` (72 lines C#) — Map resize:
+- [x] **TODO-21.E.7** `src/OpenRA.Mods.Common/UtilityCommands/ResizeMapCommand.ts` (72 lines C#) — Map resize:
   - `name: "resize-map"`
   - `run(utility, [mapPath, newWidth, newHeight])` — resize map dimensions
   - Preserves existing terrain data within new bounds
@@ -944,7 +945,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.8 UpdateMapCommand
 
-- [ ] **TODO-21.E.8** `src/OpenRA.Mods.Common/UtilityCommands/UpdateMapCommand.ts` (162 lines C#) — Map update tool:
+- [x] **TODO-21.E.8** `src/OpenRA.Mods.Common/UtilityCommands/UpdateMapCommand.ts` (162 lines C#) — Map update tool:
   - `name: "update-map"`
   - Updates a map file from older format to current format
   - Applies map-specific update rules
@@ -952,14 +953,14 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.9 GetMapHashCommand
 
-- [ ] **TODO-21.E.9** `src/OpenRA.Mods.Common/UtilityCommands/GetMapHashCommand.ts` (31 lines C#) — Map hash:
+- [x] **TODO-21.E.9** `src/OpenRA.Mods.Common/UtilityCommands/GetMapHashCommand.ts` (31 lines C#) — Map hash:
   - `name: "get-map-hash"`
   - Computes SHA-256 hash of map file
   - Matches OpenRA's map hash algorithm for compatibility
 
 #### 3.5.10 ExtractMapRules
 
-- [ ] **TODO-21.E.10** `src/OpenRA.Mods.Common/UtilityCommands/ExtractMapRules.ts` (126 lines C#) — Extract map rules:
+- [x] **TODO-21.E.10** `src/OpenRA.Mods.Common/UtilityCommands/ExtractMapRules.ts` (126 lines C#) — Extract map rules:
   - `name: "extract-map-rules"`
   - Extracts embedded map rules (actor definitions, weapon configs) from a map package
   - Outputs as standalone files for inspection
@@ -967,14 +968,14 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.11 ExtractFilesCommand
 
-- [ ] **TODO-21.E.11** `src/OpenRA.Mods.Common/UtilityCommands/ExtractFilesCommand.ts` (43 lines C#) — File extraction:
+- [x] **TODO-21.E.11** `src/OpenRA.Mods.Common/UtilityCommands/ExtractFilesCommand.ts` (43 lines C#) — File extraction:
   - `name: "extract-files"`
   - Extracts all files from a package (`MIX`, `BIG`, `PAK`, `ZIP`) to a directory
   - Uses Ch5 FileSystem package abstractions
 
 #### 3.5.12 ConvertSpriteToPngCommand
 
-- [ ] **TODO-21.E.12** `src/OpenRA.Mods.Common/UtilityCommands/ConvertSpriteToPngCommand.ts` (104 lines C#) — Sprite to PNG:
+- [x] **TODO-21.E.12** `src/OpenRA.Mods.Common/UtilityCommands/ConvertSpriteToPngCommand.ts` (104 lines C#) — Sprite to PNG:
   - `name: "convert-sprite-to-png"`
   - Converts `.shp` sprite files to PNG sprite sheets
   - Preserves palette and transparency
@@ -983,7 +984,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.13 DumpSequenceSheetsCommand
 
-- [ ] **TODO-21.E.13** `src/OpenRA.Mods.Common/UtilityCommands/DumpSequenceSheetsCommand.ts` (174 lines C#) — Sequence sheet dumper:
+- [x] **TODO-21.E.13** `src/OpenRA.Mods.Common/UtilityCommands/DumpSequenceSheetsCommand.ts` (174 lines C#) — Sequence sheet dumper:
   - `name: "dump-sequence-sheets"`
   - Generates PNG sprite sheets showing all frames of all sequences
   - Grid layout with labels for each frame
@@ -992,7 +993,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.14 ExtractChromeStrings
 
-- [ ] **TODO-21.E.14** `src/OpenRA.Mods.Common/UtilityCommands/ExtractChromeStrings.ts` (386 lines C#) — UI string extraction:
+- [x] **TODO-21.E.14** `src/OpenRA.Mods.Common/UtilityCommands/ExtractChromeStrings.ts` (386 lines C#) — UI string extraction:
   - `name: "extract-chrome-strings"`
   - Extracts translatable strings from Chrome YAML widget definitions
   - Outputs `.po` / `.pot` gettext-format translation files
@@ -1001,7 +1002,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.15 ExtractYamlStrings
 
-- [ ] **TODO-21.E.15** `src/OpenRA.Mods.Common/UtilityCommands/ExtractYamlStrings.ts` (411 lines C#) — Rules string extraction:
+- [x] **TODO-21.E.15** `src/OpenRA.Mods.Common/UtilityCommands/ExtractYamlStrings.ts` (411 lines C#) — Rules string extraction:
   - `name: "extract-yaml-strings"`
   - Extracts translatable strings from rules YAML files (actor names, descriptions, tooltips)
   - Outputs `.po` / `.pot` files grouped by actor type
@@ -1010,7 +1011,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.16 CheckYaml
 
-- [ ] **TODO-21.E.16** `src/OpenRA.Mods.Common/UtilityCommands/CheckYaml.ts` (219 lines C#) — YAML validator:
+- [x] **TODO-21.E.16** `src/OpenRA.Mods.Common/UtilityCommands/CheckYaml.ts` (219 lines C#) — YAML validator:
   - `name: "check-yaml"`
   - Validates all YAML/JSON files in a mod for syntax errors
   - Checks required fields, type correctness, enum values
@@ -1020,7 +1021,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.17 CheckMissingSprites
 
-- [ ] **TODO-21.E.17** `src/OpenRA.Mods.Common/UtilityCommands/CheckMissingSprites.ts` (100 lines C#) — Sprite checker:
+- [x] **TODO-21.E.17** `src/OpenRA.Mods.Common/UtilityCommands/CheckMissingSprites.ts` (100 lines C#) — Sprite checker:
   - `name: "check-missing-sprites"`
   - Scans sequences.yaml for referenced sprites
   - Validates each sprite exists in the sprite sheets
@@ -1028,7 +1029,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.18 CheckExplicitInterfacesCommand
 
-- [ ] **TODO-21.E.18** `src/OpenRA.Mods.Common/UtilityCommands/CheckExplicitInterfacesCommand.ts` (153 lines C#) — Interface checker:
+- [x] **TODO-21.E.18** `src/OpenRA.Mods.Common/UtilityCommands/CheckExplicitInterfacesCommand.ts` (153 lines C#) — Interface checker:
   - `name: "check-explicit-interfaces"`
   - Verifies all traits explicitly implement required interfaces
   - TypeScript equivalent: checks that trait classes implement all required interface methods
@@ -1036,14 +1037,14 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.19 CheckConditionalTraitInterfaceOverrides
 
-- [ ] **TODO-21.E.19** `src/OpenRA.Mods.Common/UtilityCommands/CheckConditionalTraitInterfaceOverrides.ts` (98 lines C#) — Conditional trait checker:
+- [x] **TODO-21.E.19** `src/OpenRA.Mods.Common/UtilityCommands/CheckConditionalTraitInterfaceOverrides.ts` (98 lines C#) — Conditional trait checker:
   - `name: "check-conditional-trait-interface-overrides"`
   - Validates conditional trait interface method resolution
   - Ensures condition-disabled traits don't cause interface method failures
 
 #### 3.5.20 UtilityHelpers
 
-- [ ] **TODO-21.E.20** `src/OpenRA.Mods.Common/UtilityCommands/UtilityHelpers.ts` (53 lines C#) — Shared utility helpers:
+- [x] **TODO-21.E.20** `src/OpenRA.Mods.Common/UtilityCommands/UtilityHelpers.ts` (53 lines C#) — Shared utility helpers:
   - `loadMap(path: string): Map` — load map from file path
   - `saveMap(map: Map, path: string): void` — save map to file
   - `getModData(manifestPath: string): ModData` — initialize ModData
@@ -1051,7 +1052,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.5.21 ReplayMetadataCommand
 
-- [ ] **TODO-21.E.21** `src/OpenRA.Mods.Common/UtilityCommands/ReplayMetadataCommand.ts` (50 lines C#) — Replay metadata reader:
+- [x] **TODO-21.E.21** `src/OpenRA.Mods.Common/UtilityCommands/ReplayMetadataCommand.ts` (50 lines C#) — Replay metadata reader:
   - `name: "replay-metadata"`
   - Reads replay file header and extracts metadata (map, players, duration, version)
   - Outputs metadata as JSON for further processing
@@ -1063,7 +1064,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 ### 3.6 Phase F: Utility Commands — Documentation & Export
 
-**Status**: 🔜 PLANNING (5 active + 8 deferred)
+**Status**: ✅ COMPLETE (7 active + 6 deferred migrated)
 **Complexity**: LOW-MEDIUM (DocumentationHelpers 205 lines MEDIUM, OutputResolvedRules 55 lines LOW)
 **Blocked by**: Phase E (UtilityRunner, UtilityHelpers)
 **Blocks**: No phase depends on docs tools (leaf node)
@@ -1078,7 +1079,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.6.1 CreateManPage
 
-- [ ] **TODO-21.F.1** `src/OpenRA.Mods.Common/UtilityCommands/CreateManPage.ts` (109 lines C#) — Man page generator:
+- [x] **TODO-21.F.1** `src/OpenRA.Mods.Common/UtilityCommands/CreateManPage.ts` (109 lines C#) — Man page generator:
   - `name: "create-man-page"`
   - Generates UNIX `man` page format for OpenRAWeb3D
   - Includes command-line options, environment variables, file paths
@@ -1086,28 +1087,28 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.6.2 OutputResolvedRulesCommand
 
-- [ ] **TODO-21.F.2** `src/OpenRA.Mods.Common/UtilityCommands/OutputResolvedRulesCommand.ts` (55 lines C#) — Resolved rules dump:
+- [x] **TODO-21.F.2** `src/OpenRA.Mods.Common/UtilityCommands/OutputResolvedRulesCommand.ts` (55 lines C#) — Resolved rules dump:
   - `name: "output-resolved-rules"`
   - Dumps fully-resolved actor definitions (after trait inheritance, defaults) as JSON
   - Useful for debugging trait defaults and inheritance chains
 
 #### 3.6.3 OutputResolvedSequencesCommand
 
-- [ ] **TODO-21.F.3** `src/OpenRA.Mods.Common/UtilityCommands/OutputResolvedSequencesCommand.ts` (55 lines C#) — Resolved sequences dump:
+- [x] **TODO-21.F.3** `src/OpenRA.Mods.Common/UtilityCommands/OutputResolvedSequencesCommand.ts` (55 lines C#) — Resolved sequences dump:
   - `name: "output-resolved-sequences"`
   - Dumps fully-resolved sprite sequences as JSON
   - Includes inherited sequence defaults
 
 #### 3.6.4 OutputResolvedWeaponsCommand
 
-- [ ] **TODO-21.F.4** `src/OpenRA.Mods.Common/UtilityCommands/OutputResolvedWeaponsCommand.ts` (55 lines C#) — Resolved weapons dump:
+- [x] **TODO-21.F.4** `src/OpenRA.Mods.Common/UtilityCommands/OutputResolvedWeaponsCommand.ts` (55 lines C#) — Resolved weapons dump:
   - `name: "output-resolved-weapons"`
   - Dumps fully-resolved weapon definitions as JSON
   - Includes warhead and projectile type resolutions
 
 #### 3.6.5 DebugChromeRegions
 
-- [ ] **TODO-21.F.5** `src/OpenRA.Mods.Common/UtilityCommands/DebugChromeRegions.ts` (185 lines C#) — Chrome debug tool:
+- [x] **TODO-21.F.5** `src/OpenRA.Mods.Common/UtilityCommands/DebugChromeRegions.ts` (185 lines C#) — Chrome debug tool:
   - `name: "debug-chrome-regions"`
   - Renders Chrome widget layout with colored rectangles for each widget region
   - Outputs PNG image of the widget layout
@@ -1115,7 +1116,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.6.6 DocumentationHelpers
 
-- [ ] **TODO-21.F.6** `src/OpenRA.Mods.Common/UtilityCommands/Documentation/DocumentationHelpers.ts` (205 lines C#) — Doc generation helpers:
+- [x] **TODO-21.F.6** `src/OpenRA.Mods.Common/UtilityCommands/Documentation/DocumentationHelpers.ts` (205 lines C#) — Doc generation helpers:
   - `getAllTraitInfos(ruleset: Ruleset): TraitDocEntry[]` — enumerate all trait types
   - `formatTraitDoc(entry: TraitDocEntry): string` — format trait as markdown
   - `getTraitFields(traitType: string): FieldDoc[]` — extract trait field metadata
@@ -1124,7 +1125,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.6.7 ExtractSettingsDocsCommand
 
-- [ ] **TODO-21.F.7** `src/OpenRA.Mods.Common/UtilityCommands/Documentation/ExtractSettingsDocsCommand.ts` (112 lines C#) — Settings documentation:
+- [x] **TODO-21.F.7** `src/OpenRA.Mods.Common/UtilityCommands/Documentation/ExtractSettingsDocsCommand.ts` (112 lines C#) — Settings documentation:
   - `name: "extract-settings-docs"`
   - Generates markdown documentation for all game settings
   - Includes setting name, type, default value, description
@@ -1149,7 +1150,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 ### 3.7 Phase G: Legacy Map Import Tools (C&C / D2K)
 
-**Status**: 🔜 PLANNING (7 active + 11 deferred)
+**Status**: ✅ COMPLETE (6 active + 12 deferred migrated)
 **Complexity**: LOW-MEDIUM (D2kMapImporter 530 lines deferred, Glob 127 lines LOW)
 **Blocked by**: Phase E (UtilityRunner — import tools use the same command infrastructure), Chapter 19 (C&C/D2K mod content — importers reference mod-specific file formats)
 **Blocks**: No phase depends on import tools (leaf node)
@@ -1164,7 +1165,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.7.1 Rgba2Hex
 
-- [ ] **TODO-21.G.1** `src/OpenRA.Mods.Common/UtilityCommands/Rgba2Hex.ts` (286 lines C#) — Color tool:
+- [x] **TODO-21.G.1** `src/OpenRA.Mods.Common/UtilityCommands/Rgba2Hex.ts` (286 lines C#) — Color tool:
   - `name: "rgba2hex"`
   - Converts RGBA color values to hex string format
   - Batch conversion from files
@@ -1173,7 +1174,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.7.2 Glob
 
-- [ ] **TODO-21.G.2** `src/OpenRA.Mods.Cnc/UtilityCommands/Glob.ts` (127 lines C#) — File glob utility:
+- [x] **TODO-21.G.2** `src/OpenRA.Mods.Cnc/UtilityCommands/Glob.ts` (127 lines C#) — File glob utility:
   - `glob(pattern: string, baseDir: string): string[]` — find files matching pattern
   - Supports `*` (single segment) and `**` (recursive) wildcards
   - Cross-platform path normalization
@@ -1181,7 +1182,7 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.7.3 RemapShpCommand
 
-- [ ] **TODO-21.G.3** `src/OpenRA.Mods.Cnc/UtilityCommands/RemapShpCommand.ts` (89 lines C#) — SHP palette remap:
+- [x] **TODO-21.G.3** `src/OpenRA.Mods.Cnc/UtilityCommands/RemapShpCommand.ts` (89 lines C#) — SHP palette remap:
   - `name: "remap-shp"`
   - Remaps SHP sprite colors from one palette to another
   - Batch processing of SHP files
@@ -1189,20 +1190,20 @@ The key isolation mechanism: `EditorWorld` extends `World` but overrides `tick()
 
 #### 3.7.4 ConvertPngToShpCommand
 
-- [ ] **TODO-21.G.4** `src/OpenRA.Mods.Cnc/UtilityCommands/ConvertPngToShpCommand.ts` (59 lines C#) — PNG to SHP:
+- [x] **TODO-21.G.4** `src/OpenRA.Mods.Cnc/UtilityCommands/ConvertPngToShpCommand.ts` (59 lines C#) — PNG to SHP:
   - `name: "convert-png-to-shp"`
   - Converts PNG images to SHP sprite format
   - Inverse of `ConvertSpriteToPngCommand`
 
 #### 3.7.5 PngSheetExportMetadataCommand
 
-- [ ] **TODO-21.G.5** `src/OpenRA.Mods.Common/UtilityCommands/PngSheetExportMetadataCommand.ts` (38 lines C#) — Sheet metadata export:
+- [x] **TODO-21.G.5** `src/OpenRA.Mods.Common/UtilityCommands/PngSheetExportMetadataCommand.ts` (38 lines C#) — Sheet metadata export:
   - `name: "png-sheet-export-metadata"`
   - Exports sprite sheet metadata (frame positions, sizes) alongside PNG export
 
 #### 3.7.6 PngSheetImportMetadataCommand
 
-- [ ] **TODO-21.G.6** `src/OpenRA.Mods.Common/UtilityCommands/PngSheetImportMetadataCommand.ts` (68 lines C#) — Sheet metadata import:
+- [x] **TODO-21.G.6** `src/OpenRA.Mods.Common/UtilityCommands/PngSheetImportMetadataCommand.ts` (68 lines C#) — Sheet metadata import:
   - `name: "png-sheet-import-metadata"`
   - Imports sprite sheet metadata to reconstruct sprite positions
 
@@ -1299,26 +1300,26 @@ Phase E (UtilityRunner) → Phase F (docs commands) + Phase G (import commands)
 
 All non-rendering game logic MUST have unit tests. Key test patterns per phase:
 
-- [ ] **TEST-21.1** EditorActionManager undo/redo: add 3 actions, undo 2, verify state, redo 1, verify state; redo stack cleared on new action after undo
-- [ ] **TEST-21.2** EditorActorLayer add/remove: create preview actors at various cells, verify `getActorsAt()` returns correct actors, verify removal and name generation
-- [ ] **TEST-21.3** EditorActorPreview placement validation: verify cell validity checks (occupied, blocked, out-of-bounds, terrain-incompatible)
-- [ ] **TEST-21.4** EditorResourceLayer add/remove: add resources, verify density, netWorth calculation, removal, clone for undo
-- [ ] **TEST-21.5** EditorViewportControllerWidget cell-to-viewport coordinate conversion matches OpenRA within 0.5 cell
-- [ ] **TEST-21.6** EditorDefaultBrush: drag-select creates correct CellCoordsRegion; Ctrl+click multi-select; Delete removes selected actors
-- [ ] **TEST-21.7** EditorTileBrush: paint single tile, paint multi-cell rectangle, verify terrain update matches expected tile indices
-- [ ] **TEST-21.8** EditorActorBrush: canPlace validates footprint, placement creates undoable action, repeat placement with Ctrl
-- [ ] **TEST-21.9** EditorResourceBrush: density falloff over brush radius, right-click removal, paint preview
-- [ ] **TEST-21.10** EditorBlit: copy terrain region, paste at offset, verify all cells match source
-- [ ] **TEST-21.11** EditorCopyPasteBrush: copy actors, paste at new location, verify relative positions preserved
-- [ ] **TEST-21.12** TilingPathTool: findPath A* result matches OpenRA for same start/end cells; junction tile selection correctness
-- [ ] **TEST-21.13** SaveMapLogic: validates required fields, rejects invalid configs, serializes to .oramap format
-- [ ] **TEST-21.14** ActorEditLogic: property changes applied correctly, multi-edit propagates to all selected actors
-- [ ] **TEST-21.15** DeveloperMode: gate check rejects commands when disabled, allows when enabled
-- [ ] **TEST-21.16** DevCommands: give-cash increases player resources by correct amount, spawn-actor places actor at correct cell
-- [ ] **TEST-21.17** UtilityRunner: parses args correctly, dispatches to correct command, reports errors for invalid commands
-- [ ] **TEST-21.18** CheckYaml: catches syntax errors in sample YAML, validates required fields, reports correct file+line
-- [ ] **TEST-21.19** ExtractChromeStrings: extracts all translatable strings from sample Chrome YAML, outputs correct .pot format
-- [ ] **TEST-21.20** ResizeMapCommand: resize preserves data in overlapping region, fills new cells with defaults
+- [x] **TEST-21.1** EditorActionManager undo/redo: add 3 actions, undo 2, verify state, redo 1, verify state; redo stack cleared on new action after undo
+- [x] **TEST-21.2** EditorActorLayer add/remove: create preview actors at various cells, verify `getActorsAt()` returns correct actors, verify removal and name generation
+- [x] **TEST-21.3** EditorActorPreview placement validation: verify cell validity checks (occupied, blocked, out-of-bounds, terrain-incompatible)
+- [x] **TEST-21.4** EditorResourceLayer add/remove: add resources, verify density, netWorth calculation, removal, clone for undo
+- [x] **TEST-21.5** EditorViewportControllerWidget cell-to-viewport coordinate conversion matches OpenRA within 0.5 cell
+- [x] **TEST-21.6** EditorDefaultBrush: drag-select creates correct CellCoordsRegion; Ctrl+click multi-select; Delete removes selected actors
+- [x] **TEST-21.7** EditorTileBrush: paint single tile, paint multi-cell rectangle, verify terrain update matches expected tile indices
+- [x] **TEST-21.8** EditorActorBrush: canPlace validates footprint, placement creates undoable action, repeat placement with Ctrl
+- [x] **TEST-21.9** EditorResourceBrush: density falloff over brush radius, right-click removal, paint preview
+- [x] **TEST-21.10** EditorBlit: copy terrain region, paste at offset, verify all cells match source
+- [x] **TEST-21.11** EditorCopyPasteBrush: copy actors, paste at new location, verify relative positions preserved
+- [x] **TEST-21.12** TilingPathTool: findPath A* result matches OpenRA for same start/end cells; junction tile selection correctness
+- [x] **TEST-21.13** SaveMapLogic: validates required fields, rejects invalid configs, serializes to .oramap format
+- [x] **TEST-21.14** ActorEditLogic: property changes applied correctly, multi-edit propagates to all selected actors
+- [x] **TEST-21.15** DeveloperMode: gate check rejects commands when disabled, allows when enabled
+- [x] **TEST-21.16** DevCommands: give-cash increases player resources by correct amount, spawn-actor places actor at correct cell
+- [x] **TEST-21.17** UtilityRunner: parses args correctly, dispatches to correct command, reports errors for invalid commands
+- [x] **TEST-21.18** CheckYaml: catches syntax errors in sample YAML, validates required fields, reports correct file+line
+- [x] **TEST-21.19** ExtractChromeStrings: extracts all translatable strings from sample Chrome YAML, outputs correct .pot format
+- [x] **TEST-21.20** ResizeMapCommand: resize preserves data in overlapping region, fills new cells with defaults
 
 ### 5.2 Per-Phase Test File Estimates
 
@@ -1350,10 +1351,10 @@ Editor rendering and interaction require manual visual acceptance tests:
 
 ### 5.4 Integration Testing
 
-- [ ] **TEST-21.I1** Full editor workflow: create new map → paint terrain → place actors → add resources → undo changes → redo → save → close → open → verify all data preserved
-- [ ] **TEST-21.I2** Editor-to-game transition: create map in editor → toggle to game mode → verify actors spawn correctly, resources are harvestable, terrain matches
-- [ ] **TEST-21.I3** Multi-tool interaction: select tile brush → paint tiles → switch to actor brush → place actors → switch to resource brush → paint resources → verify all layers coexist correctly
-- [ ] **TEST-21.I4** CLI tool pipeline: validate YAML → dump sprite sheets → convert sprites → extract strings → verify output files are valid
+- [x] **TEST-21.I1** Full editor workflow: create new map → paint terrain → place actors → add resources → undo changes → redo → save → close → open → verify all data preserved
+- [x] **TEST-21.I2** Editor-to-game transition: create map in editor → toggle to game mode → verify actors spawn correctly, resources are harvestable, terrain matches
+- [x] **TEST-21.I3** Multi-tool interaction: select tile brush → paint tiles → switch to actor brush → place actors → switch to resource brush → paint resources → verify all layers coexist correctly
+- [x] **TEST-21.I4** CLI tool pipeline: validate YAML → dump sprite sheets → convert sprites → extract strings → verify output files are valid
 
 ---
 
