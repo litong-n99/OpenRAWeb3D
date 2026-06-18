@@ -556,15 +556,125 @@ describe('Shroud', () => {
   })
 
   // -------------------------------------------------------------------------
-  // Explore (deferred)
+  // Explore (cross-shroud merge)
   // -------------------------------------------------------------------------
 
   describe('explore (cross-shroud)', () => {
-    it('throws not implemented', () => {
+    it('merges exploration from another shroud on the same map', () => {
       const shroud2 = new Shroud(actor, new ShroudInfo())
-      expect(() => shroud.explore(shroud2)).toThrow(
-        'Shroud.explore(other) is not yet implemented. TODO-12.DEFERRED.6',
+
+      // Shroud A (this.shroud) explores cell (0,0)
+      shroud.exploreProjectedCells([new PPos(0, 0)])
+      shroud.tick(actor)
+
+      // Shroud B explores cell (1,1)
+      shroud2.exploreProjectedCells([new PPos(1, 1)])
+      shroud2.tick(actor)
+
+      // Merge: shroud A absorbs shroud B's exploration
+      shroud.explore(shroud2)
+      shroud.tick(actor)
+
+      // Both cells should now be explored in shroud A
+      expect(shroud.isExplored(new PPos(0, 0))).toBe(true)
+      expect(shroud.isExplored(new PPos(1, 1))).toBe(true)
+    })
+
+    it('throws when map bounds do not match', () => {
+      const grid = new MapGrid({
+        type: MapGridType.Rectangular,
+        maximumTerrainHeight: 0,
+      })
+      // Create a different-sized map (10x10 vs default 8x8)
+      const largeMap = Map.createBlank(grid, { width: 10, height: 10 }, {
+        id: 'large',
+        terrainTypes: [],
+        defaultTerrainTile: { type: 0, index: 0 },
+        getTerrainInfo: () => ({
+          terrainType: 0,
+          height: 0,
+          rampType: 0,
+          minColor: 0,
+          maxColor: 0,
+          riser: new Riser(),
+          getColor: () => 0,
+        }),
+        tryGetTerrainInfo: () => null,
+        getTerrainIndex: () => 0,
+      })
+
+      const largeActor = {
+        actorId: 2,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        owner: createMockPlayer() as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        world: { map: largeMap, worldTick: 0 } as any,
+      }
+      const shroudOnLargeMap = new Shroud(largeActor, new ShroudInfo())
+
+      expect(() => shroud.explore(shroudOnLargeMap)).toThrow(
+        'The map bounds of these shrouds do not match.',
       )
+    })
+
+    it('does not alter exploration when source shroud has nothing explored', () => {
+      const shroud2 = new Shroud(actor, new ShroudInfo())
+      shroud2.created(actor)
+
+      // Explore only cell (0,0) in shroud A
+      shroud.exploreProjectedCells([new PPos(0, 0)])
+      shroud.tick(actor)
+
+      // shroud B has nothing explored — merge should be a no-op
+      shroud.explore(shroud2)
+      shroud.tick(actor)
+
+      // shroud A should still only have (0,0) explored
+      expect(shroud.isExplored(new PPos(0, 0))).toBe(true)
+      expect(shroud.isExplored(new PPos(1, 1))).toBe(false)
+      expect(shroud.isExplored(new PPos(7, 7))).toBe(false)
+    })
+
+    it('merges touched flags only for newly explored cells', () => {
+      const shroud2 = new Shroud(actor, new ShroudInfo())
+
+      // Shroud A explores cell (0,0) — already explored before merge
+      shroud.exploreProjectedCells([new PPos(0, 0)])
+      shroud.tick(actor)
+
+      // Shroud B explores cells (0,0) and (1,1)
+      shroud2.exploreProjectedCells([new PPos(0, 0), new PPos(1, 1)])
+      shroud2.tick(actor)
+
+      // Before merge, shroud A's touched should be reset (tick cleared it)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const touchedBefore = (shroud as any)._touched as Uint8Array
+      const idxCell00 = 0 * 8 + 0  // U=0, V=0 on 8-wide map
+      expect(touchedBefore[idxCell00]).toBe(0)
+
+      // Merge
+      shroud.explore(shroud2)
+
+      // After merge, only cell (1,1) should be newly touched
+      // Cell (0,0) was already explored in shroud A, so it should NOT be touched again
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const touched = (shroud as any)._touched as Uint8Array
+      const idxCell11 = 1 * 8 + 1  // U=1, V=1 on 8-wide map
+      const idxCell77 = 7 * 8 + 7  // untouched cell
+
+      // Cell (1,1) was newly explored → touched = 1
+      expect(touched[idxCell11]).toBe(1)
+      // Cell (0,0) was already explored → touched stays 0 (not set)
+      expect(touched[idxCell00]).toBe(0)
+      // Cell (7,7) was not explored by either → touched stays 0
+      expect(touched[idxCell77]).toBe(0)
+
+      // _anyCellTouched should be true because at least one cell was touched
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((shroud as any)._anyCellTouched).toBe(true)
     })
   })
 

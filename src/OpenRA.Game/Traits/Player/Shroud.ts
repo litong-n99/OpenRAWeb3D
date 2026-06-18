@@ -565,18 +565,31 @@ export class Shroud implements ISync, INotifyCreated, ITick {
   }
 
   /**
-   * Copy explored state from another shroud.
+   * Copy explored state from another shroud into this one.
    *
    * OpenRA 对照: Shroud.Explore(Shroud)
    *
-   * NOTE: Deferred — throws Error. Full implementation requires
-   * map bounds comparison and cross-shroud exploration copy.
-   * TODO-12.DEFERRED.6
+   * For each projected cell, if the other shroud has explored it but this
+   * shroud has not, mark it as explored and touched. This is used for
+   * cross-visibility merging, e.g. when an allied player's exploration
+   * is shared.
    *
-   * @param _other — the shroud to copy from
+   * @param other — the shroud to copy from
+   * @throws Error if the map bounds of the two shrouds do not match
    */
-  explore(_other: Shroud): void {
-    throw new Error('Shroud.explore(other) is not yet implemented. TODO-12.DEFERRED.6')
+  explore(other: Shroud): void {
+    if (!this._map.bounds.equals(other._map.bounds)) {
+      throw new Error('The map bounds of these shrouds do not match.')
+    }
+
+    for (const puv of this._map.projectedCells) {
+      const index = this._index(puv)
+      if (this._explored[index] === 0 && other._explored[index] === 1) {
+        this._touched[index] = 1
+        this._anyCellTouched = true
+        this._explored[index] = 1
+      }
+    }
   }
 
   /**
