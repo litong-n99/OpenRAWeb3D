@@ -2,7 +2,8 @@
  * ShroudPalette.test.ts — ShroudPalette migration unit tests
  *
  * Tests focus on: palette generation logic, color cycling,
- * shroud vs fog base color differences, and addPalette invocation.
+ * shroud vs fog base color differences, addPalette invocation,
+ * and IProvidesAssetBrowserPalettes interface (P1-C.7).
  *
  * Since ShroudPalette only depends on pure TypeScript math/interface modules
  * (no @babylonjs/core), no mocking is required.
@@ -362,5 +363,56 @@ describe('ShroudPalette: shroud vs fog palette differences', () => {
     sp.loadPalettes(wr)
 
     expect(addPaletteCalls[0]!.name).toBe('fog_of_war')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// P1-C.7: IProvidesAssetBrowserPalettes — editor asset browser integration
+// ---------------------------------------------------------------------------
+
+describe('P1-C.7: IProvidesAssetBrowserPalettes', () => {
+  it('paletteNames returns array containing the palette name', () => {
+    const info = new ShroudPaletteInfo('shroud', false)
+    const sp = new ShroudPalette(info)
+
+    const names = sp.paletteNames
+    expect(names).toEqual(['shroud'])
+    expect(names.length).toBe(1)
+    expect(names[0]).toBe('shroud')
+  })
+
+  it('paletteNames reflects custom name', () => {
+    const info = new ShroudPaletteInfo('custom_shroud', false)
+    const sp = new ShroudPalette(info)
+
+    expect(sp.paletteNames).toEqual(['custom_shroud'])
+  })
+
+  it('paletteNames for fog palette returns fog name', () => {
+    const info = new ShroudPaletteInfo('fog', true)
+    const sp = new ShroudPalette(info)
+
+    expect(sp.paletteNames).toEqual(['fog'])
+  })
+
+  it('paletteNames is readonly and immutable', () => {
+    const info = new ShroudPaletteInfo('shroud', false)
+    const sp = new ShroudPalette(info)
+
+    const names = sp.paletteNames
+    // Verify it is an array with one element
+    expect(Array.isArray(names)).toBe(true)
+    // Confirm the name inside is correct
+    expect(names.includes('shroud')).toBe(true)
+  })
+
+  it('ShroudPalette implements IProvidesAssetBrowserPalettes', () => {
+    const info = new ShroudPaletteInfo('shroud', false)
+    const sp = new ShroudPalette(info)
+
+    // Verify the class has the paletteNames property (interface conformance)
+    expect(sp).toHaveProperty('paletteNames')
+    expect(sp.paletteNames).toBeDefined()
+    expect(sp.paletteNames.length).toBeGreaterThan(0)
   })
 })

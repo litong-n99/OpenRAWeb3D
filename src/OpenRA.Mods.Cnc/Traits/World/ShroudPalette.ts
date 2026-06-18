@@ -8,7 +8,7 @@
  * - C# Enumerable.Range(0, Palette.Size).Select(i => c[i % 8].ToArgb())
  *   → for loop building number[] + ImmutablePalette.fromColors()
  * - C# TraitInfo.Create() factory → TypeScript constructor pattern
- * - C# IProvidesAssetBrowserPalettes → TODO-12.DEFERRED.17 (editor tooling only)
+ * - C# IProvidesAssetBrowserPalettes → TS IProvidesAssetBrowserPalettes interface + implements
  *
  * NOTE: ShroudPalette is a C&C-specific world trait. It provides two hard-coded
  * 256-color palettes: "shroud" (unexplored terrain) and "fog" (fog of war).
@@ -94,6 +94,27 @@ const SHROUD_BASE: readonly number[] = [
 ]
 
 // ---------------------------------------------------------------------------
+// IProvidesAssetBrowserPalettes — editor asset browser palette provider
+// OpenRA 对照: IProvidesAssetBrowserPalettes (TraitsInterfaces.cs:362-365)
+// ---------------------------------------------------------------------------
+
+/**
+ * Interface for traits that expose palettes to the map editor asset browser.
+ *
+ * OpenRA 对照: IProvidesAssetBrowserPalettes
+ *
+ * The map editor uses this to populate its palette selector for terrain
+ * and actor color previewing.
+ */
+export interface IProvidesAssetBrowserPalettes {
+  /** The names of all palettes provided by this trait.
+   *
+   * OpenRA 对照: IProvidesAssetBrowserPalettes.PaletteNames
+   */
+  readonly paletteNames: readonly string[]
+}
+
+// ---------------------------------------------------------------------------
 // ShroudPaletteInfo — 配置元数据
 //
 // OpenRA 对照: ShroudPaletteInfo (ShroudPalette.cs:23-34)
@@ -163,10 +184,8 @@ export class ShroudPaletteInfo implements ITraitInfo {
  *
  * Color[i] = base[i % 8]，i = 0..255
  *
- * NOTE: IProvidesAssetBrowserPalettes 已推迟。
- * TODO-12.DEFERRED.17: 实现 IProvidesAssetBrowserPalettes 用于编辑器资源浏览器集成。
  */
-export class ShroudPalette implements ILoadsPalettes {
+export class ShroudPalette implements ILoadsPalettes, IProvidesAssetBrowserPalettes {
   readonly info: ShroudPaletteInfo
 
   /**
@@ -198,5 +217,21 @@ export class ShroudPalette implements ILoadsPalettes {
     }
     // NOTE: 转换为 IPaletteWorldRenderer — 运行时 WorldRenderer 总是实现 addPalette
     (wr as IPaletteWorldRenderer).addPalette(this.info.Name, ImmutablePalette.fromColors(colors))
+  }
+
+  // ---------------------------------------------------------------------------
+  // IProvidesAssetBrowserPalettes implementation
+  // OpenRA 对照: IProvidesAssetBrowserPalettes.PaletteNames
+  // ---------------------------------------------------------------------------
+
+  /** Palette names exposed for the map editor asset browser.
+   *
+   * OpenRA 对照: IProvidesAssetBrowserPalettes.PaletteNames
+   *   => yield return info.Name;
+   *
+   * @returns array containing this trait's palette name
+   */
+  get paletteNames(): readonly string[] {
+    return [this.info.Name]
   }
 }
