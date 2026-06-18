@@ -19,6 +19,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 **Chapter 20 Plan**: [docs/chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md)
 **Chapter 21 Plan**: [docs/chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md)
 **Chapter 22 Plan**: [docs/chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md)
+**Post-Migration Plan**: [docs/post_migration_completion_plan.md](docs/post_migration_completion_plan.md) (52 remaining items across 5 phases A-E)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -556,6 +557,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) | Chapter 22 game entry & application shell migration plan with TODO checklist (7 files, 5 phases A-E, ALL PHASES COMPLETE) |
 | [docs/game_entry_design.md](docs/game_entry_design.md) | Chapter 22 original architecture design document (merged into chapter22 plan) |
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-22 remaining systems migration plan (15 chapters, Ch8-20 COMPLETE, Ch21-22 PLANNING) |
+| [docs/post_migration_completion_plan.md](docs/post_migration_completion_plan.md) | Post-migration completion plan: 52 genuinely unfinished items across 5 phases A-E (Runtime Critical, 3D Rendering, Shroud/Fog, Infrastructure, Mod Polish) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
