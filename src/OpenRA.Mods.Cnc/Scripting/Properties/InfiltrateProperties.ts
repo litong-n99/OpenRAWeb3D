@@ -50,16 +50,6 @@ export class InfiltrateProperties extends ScriptActorProperties {
    * 2. If none found, throw LuaException
    * 3. Queue Infiltrate activity with target
    */
-  /**
-   * Infiltrate the target actor.
-   *
-   * OpenRA 对照: InfiltrateProperties.Infiltrate(Actor target)
-   *
-   * C# logic:
-   * 1. Find first non-disabled Infiltrates trait whose Types overlap target's enabled target types
-   * 2. If none found, throw LuaException
-   * 3. Queue Infiltrate activity with target
-   */
   Infiltrate(target: IGameActor): void {
     const infiltrates = this._infiltrates.find((x: any) => {
       if (x.isTraitDisabled) return false
