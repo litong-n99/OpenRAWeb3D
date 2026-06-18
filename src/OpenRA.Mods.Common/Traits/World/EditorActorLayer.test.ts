@@ -1,5 +1,6 @@
 /**
  * EditorActorLayer.test.ts — EditorActorLayer migration unit tests
+ * OpenRA 对照: OpenRA.Mods.Common/Traits/World/EditorActorLayer.cs
  *
  * No @babylonjs/core dependency — EditorActorLayer is a pure data model
  * that manages EditorActorPreview instances.
@@ -170,7 +171,8 @@ describe('EditorActorLayer', () => {
 
     it('identifies worldOwner correctly', () => {
       layer.createPlayers(world, { next: () => 0 })
-      // World owner is stored internally; verify via getById behaviour
+      layer.worldLoaded(world, wr)
+      // World owner is stored internally; verify via add() behaviour
       const ref = makeReference(new CPos(1, 1))
       const preview = layer.add(ref)
       // Owner should be Neutral (world owner)
@@ -270,6 +272,101 @@ describe('EditorActorLayer', () => {
       const ref = makeReference(new CPos(1, 1), undefined, 'e1')
       const preview = layer.add(ref)
       expect(preview.owner.name).toBe('Neutral')
+    })
+
+    it('throws when add called before worldLoaded (no worldRenderer)', () => {
+      const freshLayer = new EditorActorLayer(new EditorActorLayerInfo())
+      const ref = makeReference(new CPos(1, 1), 'Neutral', 'e1')
+      expect(() => freshLayer.add(ref)).toThrow(
+        'Cannot add preview before worldLoaded()',
+      )
+    })
+
+    it('throws when add called before createPlayers (no worldOwner)', () => {
+      const freshLayer = new EditorActorLayer(new EditorActorLayerInfo())
+      // worldLoaded sets worldRenderer but no createPlayers yet
+      freshLayer.worldLoaded(world, wr)
+      const ref = makeReference(new CPos(1, 1), 'Neutral', 'e1')
+      expect(() => freshLayer.add(ref)).toThrow(
+        'Cannot add preview before createPlayers() or worldLoaded()',
+      )
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // addRange — batch add with auto-generated names (BLOCKER-1 fix)
+  // ---------------------------------------------------------------------------
+
+  describe('addRange', () => {
+    beforeEach(() => {
+      layer.createPlayers(world, { next: () => 0 })
+      layer.worldLoaded(world, wr)
+    })
+
+    it('auto-generates names for all references', () => {
+      const refs = [
+        makeReference(new CPos(1, 1), 'Neutral', 'e1'),
+        makeReference(new CPos(2, 2), 'Neutral', 'e2'),
+        makeReference(new CPos(3, 3), 'Neutral', 'e3'),
+      ]
+      layer.addRange(refs)
+      expect(layer.all.length).toBe(3)
+      expect(layer.all[0].id).toBe('Actor0')
+      expect(layer.all[1].id).toBe('Actor1')
+      expect(layer.all[2].id).toBe('Actor2')
+    })
+
+    it('correctly combines with existing actors', () => {
+      layer.add(makeReference(new CPos(5, 5), 'Neutral', 'e0')) // Actor0
+      const refs = [
+        makeReference(new CPos(1, 1), 'Neutral', 'e1'),
+        makeReference(new CPos(2, 2), 'Neutral', 'e2'),
+      ]
+      layer.addRange(refs)
+      // Should get Actor1, Actor2 (Actor0 is taken)
+      expect(layer.all[1].id).toBe('Actor1')
+      expect(layer.all[2].id).toBe('Actor2')
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // addRangePreviews — batch add pre-built previews (MAJOR-3 fix)
+  // ---------------------------------------------------------------------------
+
+  describe('addRangePreviews', () => {
+    beforeEach(() => {
+      layer.createPlayers(world, { next: () => 0 })
+      layer.worldLoaded(world, wr)
+    })
+
+    it('adds multiple pre-built previews at once', () => {
+      const p1 = new EditorActorPreview(
+        wr, 'Custom_1', makeReference(new CPos(1, 1), 'Neutral', 'e1'),
+        makePlayer(), { name: 'e1' },
+      )
+      const p2 = new EditorActorPreview(
+        wr, 'Custom_2', makeReference(new CPos(2, 2), 'Neutral', 'e2'),
+        makePlayer(), { name: 'e2' },
+      )
+      layer.addRangePreviews([p1, p2])
+      expect(layer.all.length).toBe(2)
+      expect(layer.getById('Custom_1')).toBe(p1)
+      expect(layer.getById('Custom_2')).toBe(p2)
+    })
+
+    it('updates neighbour info for all added previews', () => {
+      const p1 = new EditorActorPreview(
+        wr, 'P1', makeReference(new CPos(1, 1), 'Neutral', 'e1'),
+        makePlayer(), { name: 'e1' },
+      )
+      const p2 = new EditorActorPreview(
+        wr, 'P2', makeReference(new CPos(1, 2), 'Neutral', 'e2'),
+        makePlayer(), { name: 'e2' },
+      )
+      layer.addRangePreviews([p1, p2])
+      // Both should be in the spatial index
+      expect(layer.previewsAtCell(new CPos(1, 1)).length).toBe(1)
+      expect(layer.previewsAtCell(new CPos(1, 2)).length).toBe(1)
     })
   })
 
@@ -580,6 +677,14 @@ describe('EditorActorLayer', () => {
       ]
       expect(() => layer.addRangeFromNames(refs, ['A', 'B'])).toThrow(
         'Member name count must match reference count.',
+      )
+    })
+
+    it('throws when addRangeFromNames called before worldLoaded', () => {
+      const freshLayer = new EditorActorLayer(new EditorActorLayerInfo())
+      const refs = [makeReference(new CPos(1, 1), 'Neutral', 'e1')]
+      expect(() => freshLayer.addRangeFromNames(refs, ['Test'])).toThrow(
+        'Cannot add previews before worldLoaded()',
       )
     })
   })

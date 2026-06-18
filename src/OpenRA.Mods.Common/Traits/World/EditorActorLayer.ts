@@ -624,24 +624,21 @@ export class EditorActorLayer
         1,
         Math.ceil(this.Info.BinSize / ts.width),
       )
-      // NOTE: mapCellWidth/mapCellHeight computed for debugging but not used
-      // in the simplified spatial index (no explicit domain bounds).
+      // NOTE: mapCellWidth/Height + screenWidth/Height computed here match
+      // the C# SpatiallyPartitioned constructor signature but are not used
+      // by our simplified spatial index (no explicit domain bounds). They
+      // will be consumed when the real SpatiallyPartitioned is migrated.
       void (maxX - minX)
       void (maxY - minY)
       this._cellMap = new SimpleSpatialIndex<EditorActorPreview>(cellBinSize)
 
       // 配置 screenMap
       if (map.mapSize) {
-        const screenWidth = map.mapSize.width * ts.width
-        const screenHeight = map.mapSize.height * ts.height
+        void (map.mapSize.width * ts.width)
+        void (map.mapSize.height * ts.height)
         this._screenMap = new SimpleSpatialIndex<EditorActorPreview>(
           this.Info.BinSize,
         )
-        // NOTE: C# 将 width/height 传给 SpatiallyPartitioned 构造函数，
-        // 但该实现仅使用 binSize 做参数，width/height 主要用于验证。
-        // 我们的简化实现只使用 binSize。
-        void screenWidth
-        void screenHeight
       }
     }
 
@@ -874,9 +871,14 @@ export class EditorActorLayer
    * @returns 新创建的 EditorActorPreview
    */
   add(reference: ActorReferenceMap): EditorActorPreview {
+    if (!this._worldRenderer) {
+      throw new Error(
+        'Cannot add preview before worldLoaded() — worldRenderer not set.',
+      )
+    }
     const owner = this._getOrAddOwner(reference)
     const preview = new EditorActorPreview(
-      this._worldRenderer!,
+      this._worldRenderer,
       this.nextActorName(),
       reference,
       owner,
@@ -898,6 +900,9 @@ export class EditorActorLayer
    * @param names — 对应的名称数组
    * @throws 如果两个数组长度不相等
    */
+  /**
+   * @throws Error 如果两个数组长度不相等，或 worldRenderer 未初始化。
+   */
   addRangeFromNames(
     references: readonly ActorReferenceMap[],
     names: readonly string[],
@@ -906,12 +911,18 @@ export class EditorActorLayer
       throw new Error('Member name count must match reference count.')
     }
 
+    if (!this._worldRenderer) {
+      throw new Error(
+        'Cannot add previews before worldLoaded() — worldRenderer not set.',
+      )
+    }
+
     const newPreviews: EditorActorPreview[] = []
     for (let i = 0; i < names.length; i++) {
       const owner = this._getOrAddOwner(references[i])
       newPreviews.push(
         new EditorActorPreview(
-          this._worldRenderer!,
+          this._worldRenderer,
           names[i],
           references[i],
           owner,
@@ -920,6 +931,34 @@ export class EditorActorLayer
       )
     }
     this._addRangeInternal(newPreviews)
+  }
+
+  /**
+   * 批量添加 actor，自动生成唯一名称。
+   *
+   * OpenRA 对照: EditorActorLayer.AddRange(ReadOnlySpan<ActorReference>)
+   *
+   * 使用 nextActorNames() 为每个 reference 自动生成唯一的 actor ID。
+   * 这是编辑器笔刷添加 actor 的首选方法（无需预先确定名称）。
+   *
+   * @param references — actor 配置数组
+   */
+  addRange(references: readonly ActorReferenceMap[]): void {
+    this.addRangeFromNames(references, this.nextActorNames(references.length))
+  }
+
+  /**
+   * 批量添加已构建的 preview。
+   *
+   * OpenRA 对照: EditorActorLayer.AddRange(ReadOnlySpan<EditorActorPreview>)
+   *
+   * 直接添加一个提前构建的 EditorActorPreview 数组。
+   * 用于 copy/paste 和 undo/redo 操作，这些操作中的 preview 已在外部构建。
+   *
+   * @param previews — 要批量添加的 preview
+   */
+  addRangePreviews(previews: readonly EditorActorPreview[]): void {
+    this._addRangeInternal(previews)
   }
 
   /**
@@ -1071,7 +1110,10 @@ export class EditorActorLayer
     }
 
     // 遍历 First(1)..MaxSubCell(5) 寻找空闲槽位
-    const maxSubCell = 5 // NOTE: 硬编码。C# 使用 map.Grid.SubCellOffsets.Length - 1（默认 5）。
+    // TODO-21.A.2-DEFER-8: Replace hardcoded maxSubCell=5 with
+    // world.Map.Grid.SubCellOffsets.length - 1. 当前仅支持矩形网格。
+    // Isometric 网格有不同数量的子单元格偏移。
+    const maxSubCell = 5
     for (let i = SubCell.First; i <= maxSubCell; i++) {
       const blocked = previews.some((p) => {
         const s = p.footprint.get(cell)
@@ -1205,11 +1247,19 @@ export class EditorActorLayer
       this._unsubRamp = null
     }
 
-    // 移除所有 preview
-    this.removeRange([...this._previews])
+    // 以 O(n) 方式移除所有 preview（反向迭代，避免中间 splice 重排）
+    for (let i = this._previews.length - 1; i >= 0; i--) {
+      const preview = this._previews[i]
+      // 直接从索引中移除（在之后清理数组，无需 splice）
+      const actorId = tryGetActorId(preview.id)
+      if (actorId.ok) this._previewIds.delete(actorId.id)
+      this._screenMap.remove(preview)
+      this._cellMap.remove(preview)
+      preview.removedFromEditor()
+    }
+    this._previews.length = 0
 
     // 清理集合
-    this._previews = []
     this._previewIds.clear()
     this._cellMap.clear()
     this._screenMap.clear()
@@ -1250,6 +1300,10 @@ export class EditorActorLayer
    *
    * 如果脚印为空（例如尚未初始化的 actor），回退到通过
    * CenterPosition 推导单元格。
+   *
+   * PERF: 此方法在 previewsAtCell / previewsInCellRegion 的过滤器内部被调用
+   * （每预览一次）。如果分析显示瓶颈，考虑按预览缓存足迹结果，
+   * 使用 WeakMap<EditorActorPreview, CPos[]>。
    */
   private _occupiedCells(preview: EditorActorPreview): CPos[] {
     if (preview.footprint.size === 0) {
@@ -1281,13 +1335,17 @@ export class EditorActorLayer
 
     // 回退到世界拥有者
     const owner = this._worldOwner
-    if (owner) {
-      reference.set('OwnerInit', {
-        type: 'OwnerInit',
-        value: owner.name,
-      } satisfies OwnerInit)
+    if (!owner) {
+      throw new Error(
+        'Cannot add preview before createPlayers() or worldLoaded(). ' +
+        'The editor world owner has not been set.',
+      )
     }
-    return owner!
+    reference.set('OwnerInit', {
+      type: 'OwnerInit',
+      value: owner.name,
+    } satisfies OwnerInit)
+    return owner
   }
 
   /**
@@ -1399,6 +1457,12 @@ export class EditorActorLayer
 
     if (cells.length === 0) return
 
+    // NOTE: C# iterates: cells.SelectMany(PreviewsAtCell).Distinct()
+    // (point queries per expanded cell). We use a region query
+    // (previewsInCellRegion + filter) for better batching. Both
+    // approaches produce the same set of touched previews, but ours
+    // avoids per-cell spatial-index lookups in degenerate cases
+    // where the expanded footprint spans a large area.
     const bounds = CellCoordsRegion.boundingRegion(cells)
     const touchedPreviews = this.previewsInCellRegion(bounds).filter((p) => {
       for (const cell of cells) {
