@@ -37,12 +37,37 @@ router.on('/play/:modId', (params) => {
 // Editor placeholder — Phase D 中扩展
 router.on('/editor/:modId', (params) => {
   const container = document.getElementById('mod-selector')!
-  container.innerHTML = `
-    <div style="text-align:center;padding:4rem">
-      <h1 style="color:#eee;margin-bottom:1rem">Editor</h1>
-      <p style="color:#aaa">Coming soon — ${params['modId']} map editor</p>
-      <a href="/" style="color:#6688ee;margin-top:1rem;display:inline-block">Back to Mod Selector</a>
-    </div>`
+  container.innerHTML = ''
+
+  const wrapper = document.createElement('div')
+  wrapper.style.textAlign = 'center'
+  wrapper.style.padding = '4rem'
+
+  const h1 = document.createElement('h1')
+  h1.style.color = '#eee'
+  h1.style.marginBottom = '1rem'
+  h1.textContent = 'Editor'
+  wrapper.appendChild(h1)
+
+  const p = document.createElement('p')
+  p.style.color = '#aaa'
+  // 安全: 使用 textContent，不将用户控制的 URL 参数注入 innerHTML
+  p.textContent = `Coming soon — ${params['modId']} map editor`
+  wrapper.appendChild(p)
+
+  const backLink = document.createElement('a')
+  backLink.href = '/'
+  backLink.style.color = '#6688ee'
+  backLink.style.marginTop = '1rem'
+  backLink.style.display = 'inline-block'
+  backLink.textContent = 'Back to Mod Selector'
+  backLink.addEventListener('click', (e) => {
+    e.preventDefault()
+    router.navigate('/')
+  })
+  wrapper.appendChild(backLink)
+
+  container.appendChild(wrapper)
 })
 
 // 初始分发

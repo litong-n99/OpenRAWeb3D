@@ -26,6 +26,19 @@ export interface ModEntry {
   available: boolean
 }
 
+/** 游戏世界启动模式。
+ *
+ * OpenRA 对照: OpenRA.Game/Game.cs WorldType 枚举
+ * TODO-22.B.1: 移至 Game.ts 作为正式枚举定义
+ */
+export const WorldType = {
+  Regular: 'regular',
+  Shellmap: 'shellmap',
+  Editor: 'editor',
+} as const
+
+export type WorldType = (typeof WorldType)[keyof typeof WorldType]
+
 // ---------------------------------------------------------------------------
 // ModSelector
 // ---------------------------------------------------------------------------
@@ -178,8 +191,10 @@ export class ModSelector {
    * OpenRA 对照: C# 中用户点击 mod 项后调用 `Game.InitializeAndRun(args)`
    *
    * @param modId — 要启动的 Mod ID（如 "ra", "td"）
+   * @param worldType — 世界类型（Regular/Shellmap/Editor），默认 Regular
+   *   TODO-22.B.1: Pass worldType to Game.create()
    */
-  static async launchMod(modId: string): Promise<void> {
+  static async launchMod(modId: string, worldType: WorldType = WorldType.Regular): Promise<void> {
     // 隐藏 Mod 选择器
     const modSelector = document.getElementById('mod-selector')
     if (modSelector) {
@@ -205,18 +220,23 @@ export class ModSelector {
     // NOTE: Phase A — Game 类未实现，此处显示 loading 后静默等待。
     // Phase B 将替换为:
     //   const { Game } = await import('../OpenRA.Game/Game.js')
-    //   await Game.create(canvas, modId)
+    //   await Game.create(canvas, modId, worldType)
+
     try {
       // Phase A stub: 显示渐进式加载进度，为 Phase B 准备好调用链
+      // TODO-22.B.1: worldType 传递给 Game.create()
       await new Promise(resolve => setTimeout(resolve, 100))
-      setProgress('Initializing mod...', 40)
+      setProgress(`Initializing ${worldType} mode...`, 40)
       await new Promise(resolve => setTimeout(resolve, 100))
       setProgress('Starting shellmap...', 70)
       await new Promise(resolve => setTimeout(resolve, 100))
       setProgress('Ready — engine stub (Phase B)', 100)
-      // Phase B 将在此处调用 Game.create()
+      // Phase B 将在此处调用 Game.create(canvas, modId, worldType)
     } catch (err) {
       setProgress(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`, 0)
+      // 显示错误 ~2 秒后返回 Mod 选择器，防止用户卡在加载遮罩
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      ModSelector.hide()
     }
   }
 

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ModSelector, type ModEntry } from './ModSelector'
+import { ModSelector, WorldType, type ModEntry } from './ModSelector'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -344,6 +344,27 @@ describe('ModSelector', () => {
 
       const loadingBar = document.getElementById('loading-bar')!
       expect(loadingBar.style.width).toBe('100%')
+    })
+
+    it('uses worldType in loading progress text', async () => {
+      createTestDOM()
+
+      const promise = ModSelector.launchMod('ra', WorldType.Editor)
+      await vi.runAllTimersAsync()
+      await promise
+
+      const loadingText = document.getElementById('loading-text')!
+      // 最终阶段文本固定为 Ready（不受 worldType 影响，仅中间阶段显示）
+      expect(loadingText.textContent).toBe('Ready — engine stub (Phase B)')
+    })
+
+    it('uses WorldType.Regular as default worldType', () => {
+      createTestDOM()
+
+      void ModSelector.launchMod('ra')
+
+      const loadingText = document.getElementById('loading-text')!
+      expect(loadingText.textContent).toBe('Loading engine for ra...')
     })
 
     it('does not throw when mod-selector element is missing', async () => {
