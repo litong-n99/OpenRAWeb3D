@@ -192,6 +192,44 @@ describe('UtilityRunner', () => {
   })
 
   // -----------------------------------------------------------------------
+  // run — ModRegistry injection
+  // -----------------------------------------------------------------------
+
+  describe('setModRegistry', () => {
+    it('should inject registry into Utility context', async () => {
+      const cmd = makeSpyCommand('--cmd')
+      runner.register(cmd)
+      runner.setModsProvider(() => new Map())
+
+      const mockRegistry = {
+        register: vi.fn(),
+        unregister: vi.fn(),
+        clearInvalidRegistrations: vi.fn(() => 0),
+      }
+      runner.setModRegistry(mockRegistry)
+
+      await runner.run(['--cmd'])
+
+      // Verify registry was attached to the Utility context passed to command
+      const utilityArg = cmd.runSpy.mock.calls[0][0] as Record<string, unknown>
+      expect(utilityArg).toHaveProperty('modRegistry')
+      expect(utilityArg.modRegistry).toBe(mockRegistry)
+    })
+
+    it('should not attach modRegistry when not set', async () => {
+      const cmd = makeSpyCommand('--cmd')
+      runner.register(cmd)
+      runner.setModsProvider(() => new Map())
+      // No setModRegistry call
+
+      await runner.run(['--cmd'])
+
+      const utilityArg = cmd.runSpy.mock.calls[0][0] as Record<string, unknown>
+      expect(utilityArg.modRegistry).toBeUndefined()
+    })
+  })
+
+  // -----------------------------------------------------------------------
   // registeredCommands
   // -----------------------------------------------------------------------
 

@@ -12,7 +12,10 @@
  */
 
 import { Utility, type IUtilityCommand } from '../IUtilityCommand.js'
-import type { IModRegistry } from './ModRegistration.js'
+import {
+  createNoopModRegistry,
+  type IModRegistry,
+} from './ModRegistration.js'
 import { parseModRegistrationArg } from '../../OpenRA.Mods.Common/UtilityCommands/UtilityHelpers.js'
 
 // ---------------------------------------------------------------------------
@@ -64,25 +67,5 @@ export class UnregisterModCommand implements IUtilityCommand {
       ?? createNoopModRegistry()
 
     registry.unregister(manifest, registrationType)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// createNoopModRegistry — 回退空操作实现
-// ---------------------------------------------------------------------------
-
-/** 当未注入真实注册表时的无操作回退。 */
-function createNoopModRegistry(): IModRegistry {
-  return {
-    register(): void {
-      console.warn('ModRegistry not initialized. Mod registration is a no-op.')
-    },
-    unregister(): void {
-      console.warn('ModRegistry not initialized. Mod unregistration is a no-op.')
-    },
-    clearInvalidRegistrations(): number {
-      console.warn('ModRegistry not initialized. ClearInvalidRegistrations is a no-op.')
-      return 0
-    },
   }
 }

@@ -161,3 +161,31 @@ export interface IModRegistry {
 export function hasModRegistrationFlag(value: ModRegistration, flag: ModRegistration): boolean {
   return (value & flag) !== 0
 }
+
+// ---------------------------------------------------------------------------
+// createNoopModRegistry — 共享回退（无操作）实现
+// ---------------------------------------------------------------------------
+
+/**
+ * 创建一个无操作的 IModRegistry，当未将真实注册表注入 Utility 上下文时使用。
+ *
+ * 这确保命令即使在没有注册表基础设施的环境中运行也能优雅降级。
+ * 所有方法记录一个 console.warn 并返回安全默认值。
+ *
+ * 所有三个 mod 管理命令（RegisterModCommand、UnregisterModCommand、
+ * ClearInvalidModRegistrationsCommand）共享此实现。
+ */
+export function createNoopModRegistry(): IModRegistry {
+  return {
+    register(): void {
+      console.warn('ModRegistry not initialized. Register is a no-op.')
+    },
+    unregister(): void {
+      console.warn('ModRegistry not initialized. Unregister is a no-op.')
+    },
+    clearInvalidRegistrations(): number {
+      console.warn('ModRegistry not initialized. ClearInvalidRegistrations is a no-op.')
+      return 0
+    },
+  }
+}

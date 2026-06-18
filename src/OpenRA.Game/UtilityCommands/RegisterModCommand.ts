@@ -13,7 +13,10 @@
  */
 
 import { Utility, type IUtilityCommand } from '../IUtilityCommand.js'
-import type { IModRegistry } from './ModRegistration.js'
+import {
+  createNoopModRegistry,
+  type IModRegistry,
+} from './ModRegistration.js'
 import { parseModRegistrationArg } from '../../OpenRA.Mods.Common/UtilityCommands/UtilityHelpers.js'
 
 // ---------------------------------------------------------------------------
@@ -64,37 +67,10 @@ export class RegisterModCommand implements IUtilityCommand {
 
     // 使用 utility 上的 modRegistry（如果可用）
     // NOTE: 在完整实现中，modRegistry 由 UtilityRunner 在构建 Utility 上下文时注入。
-    // 如果 modRegistry 不可用，则回退到一个空实现（不破坏其他命令）。
+    // 如果 modRegistry 不可用，则回退到无操作实现（不破坏其他命令）。
     const registry: IModRegistry = (utility as Utility & { modRegistry?: IModRegistry }).modRegistry
-      ?? createDefaultModRegistry()
+      ?? createNoopModRegistry()
 
     registry.register(manifest, launchPath, [], registrationType)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// createDefaultModRegistry — 回退（无操作）实现
-// ---------------------------------------------------------------------------
-
-/**
- * 当未将真实注册表注入 Utility 上下文时，创建一个无操作 IModRegistry。
- *
- * 这确保命令即使在没有设置完整注册表基础设施的开发/测试中也
- * 能正常失败，而非因缺少属性而崩溃。
- *
- * NOTE: 生产环境必须由 UtilityRunner 或在调用方注入真实的注册表。
- */
-function createDefaultModRegistry(): IModRegistry {
-  return {
-    register(): void {
-      console.warn('ModRegistry not initialized. Mod registration is a no-op.')
-    },
-    unregister(): void {
-      console.warn('ModRegistry not initialized. Mod unregistration is a no-op.')
-    },
-    clearInvalidRegistrations(): number {
-      console.warn('ModRegistry not initialized. ClearInvalidRegistrations is a no-op.')
-      return 0
-    },
   }
 }

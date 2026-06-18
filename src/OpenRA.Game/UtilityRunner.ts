@@ -16,6 +16,7 @@
 import { Utility, type IUtilityCommand } from './IUtilityCommand.js'
 import type { ModData } from './ModData.js'
 import type { Manifest } from './Manifest.js'
+import type { IModRegistry } from './UtilityCommands/ModRegistration.js'
 
 // ---------------------------------------------------------------------------
 // UtilityRunner — 命令调度器（对应 OpenRA Utility + Program 的结合体）
@@ -60,6 +61,15 @@ export class UtilityRunner {
    * 这在 register-mod / unregister-mod 等命令中用于查找可用的 mod。
    */
   private _modsProvider: (() => ReadonlyMap<string, Manifest>) | null = null
+
+  /**
+   * 可选的 mod 注册表，注入到 Utility 上下文中。
+   *
+   * 如果设置，run() 会将此注册表附加到 Utility 实例，
+   * 使 RegisterModCommand / UnregisterModCommand / ClearInvalidModRegistrationsCommand
+   * 能够操作真实的 mod 注册表，而非回退到无操作实现。
+   */
+  private _modRegistry: IModRegistry | null = null
 
   // ---------------------------------------------------------------------------
   // 公共 API
@@ -114,6 +124,20 @@ export class UtilityRunner {
    */
   setModsProvider(provider: () => ReadonlyMap<string, Manifest>): void {
     this._modsProvider = provider
+  }
+
+  /**
+   * 设置 mod 注册表。
+   *
+   * 注册表在执行时附加到 Utility 上下文，
+   * 使 mod 管理命令能够持久化 mod 注册。
+   *
+   * 如果未设置，mod 命令将回退到无操作实现（记录警告但不会崩溃）。
+   *
+   * @param registry — IModRegistry 实现（如 NodeModRegistry）
+   */
+  setModRegistry(registry: IModRegistry): void {
+    this._modRegistry = registry
   }
 
   /**
@@ -214,6 +238,11 @@ export class UtilityRunner {
       modData ?? ({} as ModData), // 如果没有 factory，命令无法使用 modData
       mods,
     )
+
+    // 注入 mod 注册表（使 mod 管理命令能够持久化注册）
+    if (this._modRegistry) {
+      (utility as Utility & { modRegistry: IModRegistry }).modRegistry = this._modRegistry
+    }
 
     // 执行命令
     command.run(utility, commandArgs)
