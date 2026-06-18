@@ -184,6 +184,7 @@ export type EditorActionChangeCallback = () => void
  * @TraitLocation SystemActors.EditorWorld
  */
 export class EditorActionManagerInfo implements ITraitInfo {
+  /** Trait instance name for disambiguation (convention from ITraitInfo, unused). */
   readonly instanceName?: string
 
   /** Create the EditorActionManager trait instance.
@@ -438,6 +439,7 @@ export class EditorActionManager implements IWorldLoaded {
    */
   Rewind(id: number): void {
     while (this.undoStack[this.undoStack.length - 1].id !== id) {
+      if (!this.HasUndos()) break
       this.Undo()
     }
   }
@@ -457,6 +459,7 @@ export class EditorActionManager implements IWorldLoaded {
    */
   Forward(id: number): void {
     while (this.undoStack[this.undoStack.length - 1].id !== id) {
+      if (!this.HasRedos()) break
       this.Redo()
     }
   }
@@ -477,6 +480,9 @@ export class EditorActionManager implements IWorldLoaded {
    * @returns true if there are unsaved changes
    */
   HasUnsavedItems(): boolean {
+    // Guard: nothing to check if no worldLoaded() has been called yet
+    if (this.undoStack.length === 0) return false
+
     // Modified and last action isn't the OpenMapAction (+ no redos)
     return (
       this.Modified &&

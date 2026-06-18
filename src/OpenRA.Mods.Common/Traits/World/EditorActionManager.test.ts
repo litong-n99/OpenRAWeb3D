@@ -500,6 +500,32 @@ describe('EditorActionManager', () => {
       expect(mgr.undoStack[2].id).toBe(2)
       expect(mgr.redoStack).toHaveLength(0)
     })
+
+    it('Rewind guards against infinite loop when target ID is unreachable (in redo stack)', () => {
+      mgr.worldLoaded(makeWorldStub(), makeWRStub())
+      const a1 = makeSpyAction('action 1')
+      mgr.Add(a1) // id=1
+      mgr.Undo()  // a1 is now in redo stack, undo stack has only OpenMapAction (id=0)
+
+      // id=1 is now in the redo stack — unreachable via Rewind
+      // Without the guard, this would loop forever
+      expect(() => mgr.Rewind(1)).not.toThrow()
+      // Should stop at OpenMapAction (id=0), unable to find id=1
+      expect(mgr.undoStack).toHaveLength(1)
+      expect(mgr.undoStack[0].id).toBe(0)
+    })
+
+    it('Forward guards against infinite loop when target ID is unreachable (not in redo)', () => {
+      mgr.worldLoaded(makeWorldStub(), makeWRStub())
+      const a1 = makeSpyAction('action 1')
+      mgr.Add(a1) // id=1
+
+      // id=99 does not exist anywhere — unreachable via Forward
+      // Without the guard, this would loop forever
+      expect(() => mgr.Forward(99)).not.toThrow()
+      // Redo stack is empty, so HasRedos is false, loop breaks immediately
+      expect(mgr.redoStack).toHaveLength(0)
+    })
   })
 
   // -----------------------------------------------------------------------
@@ -507,6 +533,13 @@ describe('EditorActionManager', () => {
   // -----------------------------------------------------------------------
 
   describe('HasUnsavedItems', () => {
+    it('returns false when called before worldLoaded (null safety guard)', () => {
+      // No worldLoaded() called — undoStack is empty
+      mgr.Modified = true
+      expect(() => mgr.HasUnsavedItems()).not.toThrow()
+      expect(mgr.HasUnsavedItems()).toBe(false)
+    })
+
     it('returns false when Modified is false', () => {
       mgr.worldLoaded(makeWorldStub(), makeWRStub())
       expect(mgr.HasUnsavedItems()).toBe(false)
