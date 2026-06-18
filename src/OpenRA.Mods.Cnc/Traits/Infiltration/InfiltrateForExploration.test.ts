@@ -32,6 +32,19 @@ describe('InfiltrateForExploration', () => {
       expect(info.playerExperience).toBe(0)
       expect(info.infiltratedNotification).toBeNull()
     })
+
+    it('accepts sound notification fields', () => {
+      const info = new InfiltrateForExplorationInfo({
+        infiltratedNotification: 'InfiltratedSound',
+        infiltratedTextNotification: 'Our exploration data has been stolen!',
+        infiltrationNotification: 'InfiltrationSound',
+        infiltrationTextNotification: 'Exploration data copied successfully.',
+      })
+      expect(info.infiltratedNotification).toBe('InfiltratedSound')
+      expect(info.infiltratedTextNotification).toBe('Our exploration data has been stolen!')
+      expect(info.infiltrationNotification).toBe('InfiltrationSound')
+      expect(info.infiltrationTextNotification).toBe('Exploration data copied successfully.')
+    })
   })
 
   describe('infiltrated', () => {

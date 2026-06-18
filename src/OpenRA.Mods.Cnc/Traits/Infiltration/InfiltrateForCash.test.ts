@@ -39,6 +39,19 @@ describe('InfiltrateForCash', () => {
       expect(info.playerExperience).toBe(0)
       expect(info.showTicks).toBe(true)
     })
+
+    it('accepts sound notification fields', () => {
+      const info = new InfiltrateForCashInfo({
+        infiltratedNotification: 'InfiltratedSound',
+        infiltratedTextNotification: 'Your base has been infiltrated!',
+        infiltrationNotification: 'InfiltrationSound',
+        infiltrationTextNotification: 'Cash stolen successfully.',
+      })
+      expect(info.infiltratedNotification).toBe('InfiltratedSound')
+      expect(info.infiltratedTextNotification).toBe('Your base has been infiltrated!')
+      expect(info.infiltrationNotification).toBe('InfiltrationSound')
+      expect(info.infiltrationTextNotification).toBe('Cash stolen successfully.')
+    })
   })
 
   describe('infiltrated', () => {

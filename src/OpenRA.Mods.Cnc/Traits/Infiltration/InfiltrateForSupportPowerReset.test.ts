@@ -20,6 +20,19 @@ function makeActor(ownerOverride?: unknown): IGameActor {
 }
 
 describe('InfiltrateForSupportPowerReset', () => {
+  it('accepts sound notification fields', () => {
+    const info = new InfiltrateForSupportPowerResetInfo({
+      infiltratedNotification: 'SupportPowerResetSound',
+      infiltratedTextNotification: 'All support powers have been reset!',
+      infiltrationNotification: 'InfiltrationSound',
+      infiltrationTextNotification: 'Support power timers reset.',
+    })
+    expect(info.infiltratedNotification).toBe('SupportPowerResetSound')
+    expect(info.infiltratedTextNotification).toBe('All support powers have been reset!')
+    expect(info.infiltrationNotification).toBe('InfiltrationSound')
+    expect(info.infiltrationTextNotification).toBe('Support power timers reset.')
+  })
+
   it('resets all non-disabled support powers on infiltrated actor', () => {
     const resetCalls: string[] = []
     const manager = {

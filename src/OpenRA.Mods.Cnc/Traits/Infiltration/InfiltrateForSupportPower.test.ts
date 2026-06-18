@@ -32,6 +32,19 @@ describe('InfiltrateForSupportPower', () => {
       expect(info.types).toEqual([])
       expect(info.playerExperience).toBe(0)
     })
+
+    it('accepts sound notification fields', () => {
+      const info = new InfiltrateForSupportPowerInfo({
+        infiltratedNotification: 'SupportPowerStolenSound',
+        infiltratedTextNotification: 'A support power was stolen!',
+        infiltrationNotification: 'InfiltrationSound',
+        infiltrationTextNotification: 'Support power acquired.',
+      })
+      expect(info.infiltratedNotification).toBe('SupportPowerStolenSound')
+      expect(info.infiltratedTextNotification).toBe('A support power was stolen!')
+      expect(info.infiltrationNotification).toBe('InfiltrationSound')
+      expect(info.infiltrationTextNotification).toBe('Support power acquired.')
+    })
   })
 
   describe('infiltrated', () => {

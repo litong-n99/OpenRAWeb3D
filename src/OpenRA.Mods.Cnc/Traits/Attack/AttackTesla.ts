@@ -4,21 +4,26 @@
  *
  * 核心范式转换:
  * - C# AttackTesla : AttackBase, ITick, INotifyAttack → TS extends AttackBase
- * - C# ChargeAttack : Activity, IActivityNotifyStanceChanged → TS stub activity
+ * - C# ChargeAttack : Activity, IActivityNotifyStanceChanged → TS extends Activity
+ * - C# ChargeFire : Activity → TS ChargeFireActivity extends Activity
  * - C# INotifyTeslaCharging event → TS callbacks array pattern
  * - 3D: charge animation = ShaderMaterial emissive intensity ramp-up
  *       lightning zap = LinesMesh dynamic vertex generation
  *
  * 核心架构:
  * 充电阶段: 通知 INotifyTeslaCharging → 等待 InitialChargeDelay
- * 发射阶段: doAttack() → 等待 ChargeDelay
+ * 发射阶段: ChargeFireActivity 循环发射 → 等待 ChargeDelay 间隔
  * 充能管理: MaxCharges 次射击后需等待 ReloadDelay 重新充能
  */
 
+import { Activity } from '../../../OpenRA.Game/Activities/Activity.js'
+import type { GameActor } from '../../../OpenRA.Game/Actor.js'
 import { TargetType } from '../../../OpenRA.Game/Traits/Target.js'
 import type { Target as TargetType_ } from '../../../OpenRA.Game/Traits/Target.js'
-import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { TargetLineNode } from '../../../OpenRA.Game/Activities/Activity.js'
+import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { Wait } from '../../../OpenRA.Mods.Common/Activities/Wait.js'
+import { ChargeFireActivity } from '../../Activities/ChargeFireActivity.js'
 import {
   AttackBase,
   AttackBaseInfo,
@@ -55,25 +60,30 @@ export class AttackTeslaInfo extends AttackBaseInfo {
 }
 
 // ---------------------------------------------------------------------------
-// ChargeAttackActivity
+// ChargeAttackActivity (外层充能循环)
+// OpenRA 对照: AttackTesla.ChargeAttack : Activity, IActivityNotifyStanceChanged
 // ---------------------------------------------------------------------------
 
-class ChargeAttackActivity implements IActivityNotifyStanceChanged {
+/**
+ * Outer charge-attack activity: fires INotifyTeslaCharging, plays charge
+ * audio, waits InitialChargeDelay, then queues ChargeFireActivity for
+ * repeated firing. Loops back when charges recharge.
+ *
+ * OpenRA 对照: AttackTesla.ChargeAttack
+ *
+ * Activity states:
+ * - Charging: notify listeners + play chargeAudio → Wait(InitialChargeDelay)
+ * - Fire: ChargeFireActivity fires shots with ChargeDelay cooldown between them
+ * - Cooldown/Depleted: wait for charges to recharge, then return to Charging
+ */
+class ChargeAttackActivity
+  extends Activity
+  implements IActivityNotifyStanceChanged
+{
   private readonly attack: AttackTesla
   private readonly target: TargetType_
   private readonly forceAttack: boolean
   private readonly targetLineColor: { r: number; g: number; b: number; a: number } | null
-
-  /** Tick counter for charge delays. Counts down from InitialChargeDelay
-   *  before first shot, then from ChargeDelay between subsequent shots.
-   *
-   *  OpenRA 对照: AttackTesla.InitialChargeDelay (22 ticks) +
-   *               AttackTesla.ChargeDelay (3 ticks per shot)
-   */
-  private chargeTick: number
-
-  /** Whether the initial charge-up phase has completed. */
-  private initialChargeComplete: boolean = false
 
   constructor(
     attack: AttackTesla,
@@ -81,52 +91,60 @@ class ChargeAttackActivity implements IActivityNotifyStanceChanged {
     forceAttack: boolean,
     targetLineColor: { r: number; g: number; b: number; a: number } | null,
   ) {
+    super()
     this.attack = attack
     this.target = target
     this.forceAttack = forceAttack
     this.targetLineColor = targetLineColor
-    this.chargeTick = attack.getInitialChargeDelay()
   }
 
-  /** Per-tick logic: waits for charge delay, fires INotifyTeslaCharging
-   *  during wind-up, then fires the weapon when delay expires.
+  /** Per-tick logic: if charges available, do a charge-fire cycle.
    *
    *  OpenRA 对照: AttackTesla.ChargeAttack.Tick()
-   *  - C# yield return InitialChargeDelay → TS chargeTick countdown
-   *  - C# ChargeFire sub-activity → TS inline (TODO-19.A.22-FULL)
    *
-   *  TODO-19.A.22-FULL: Extract ChargeFire as a separate activity with
-   *  Wait child activities for proper animation sequencing.
+   *  Each cycle:
+   *  1. Notify INotifyTeslaCharging listeners
+   *  2. Play charge audio (TODO integration point)
+   *  3. Queue Wait(InitialChargeDelay) + ChargeFireActivity children
+   *
+   *  When charges==0, returns false each tick until recharged.
    */
-  tick(self: IGameActor): boolean {
-    if (!this.attack.canAttack(self, this.target)) return true
-    if (this.attack.getCharges() === 0) return false
+  override tick(self: GameActor): boolean {
+    // Cast GameActor to IGameActor for attack method calls.
+    // GameActor implements IGameActor but the queueActivity method signature
+    // differs (Activity vs ActivityStub), so direct assignment is rejected.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const selfActor = self as unknown as IGameActor
 
-    // Count down the current charge delay
-    if (--this.chargeTick > 0) return false
+    if (this.isCanceling || !this.attack.canAttack(selfActor, this.target))
+      return true
 
-    // Fire INotifyTeslaCharging during initial charge-up
-    if (!this.initialChargeComplete) {
-      const selfAny = self as unknown as {
-        traitsImplementing?: <T>(_name: string) => T[]
-      }
-      const chargingListeners =
-        selfAny.traitsImplementing?.<INotifyTeslaCharging>(
-          'INotifyTeslaCharging',
-        ) ?? []
+    if (this.attack.getCharges() === 0)
+      return false
 
-      for (const listener of chargingListeners) {
-        listener.charging(self, this.target)
-      }
+    // Fire INotifyTeslaCharging listeners
+    const selfAny = self as unknown as {
+      traitsImplementing?: <T>(_name: string) => T[]
+    }
+    const chargingListeners =
+      selfAny.traitsImplementing?.<INotifyTeslaCharging>(
+        'INotifyTeslaCharging',
+      ) ?? []
 
-      this.initialChargeComplete = true
+    for (const listener of chargingListeners) {
+      listener.charging(selfActor, this.target)
     }
 
-    this.attack.playChargeAudio(self)
-    this.attack.doAttack(self, this.target)
+    this.attack.playChargeAudio(selfActor)
 
-    // Reset charge delay for next shot (ChargeDelay ticks between shots)
-    this.chargeTick = this.attack.getChargeDelay()
+    // Queue Wait(InitialChargeDelay) then ChargeFireActivity
+    const initialDelay = this.attack.getInitialChargeDelay()
+    if (initialDelay > 0) {
+      this.queueChild(new Wait(initialDelay))
+    }
+    this.queueChild(
+      new ChargeFireActivity(this.attack, this.target),
+    )
 
     return false
   }
@@ -142,7 +160,7 @@ class ChargeAttackActivity implements IActivityNotifyStanceChanged {
     void autoTarget
   }
 
-  targetLineNodes(): TargetLineNode[] {
+  override targetLineNodes(): TargetLineNode[] {
     if (this.targetLineColor !== null) {
       return [new TargetLineNode(this.target, this.targetLineColor)]
     }
@@ -210,11 +228,23 @@ export class AttackTesla extends AttackBase {
   getChargeDelay(): number { return this.teslaInfo.chargeDelay }
   getInitialChargeDelay(): number { return this.teslaInfo.initialChargeDelay }
 
+  /**
+   * Play the charge-up audio. Currently a documented integration point.
+   *
+   * OpenRA 对照: Game.Sound.Play(SoundType.World, info.ChargeAudio, self.CenterPosition)
+   *
+   * TODO: Play chargeAudio sound via Game.Sound singleton when wired.
+   * Integration point:
+   *   const world = (self as any).gameWorld
+   *   if (this.teslaInfo.chargeAudio) {
+   *     world.sound?.play("World", this.teslaInfo.chargeAudio,
+   *       (self as any).centerPosition)
+   *   }
+   */
   playChargeAudio(self: IGameActor): void {
     const chargeAudio = this.teslaInfo.chargeAudio
     if (!chargeAudio) return
-    // TODO-19.A.22-AUDIO: Play chargeAudio sound at self.centerPosition
-    // Requires Ch7 Phase D Sound system integration.
+    // TODO: Play chargeAudio sound via Game.Sound singleton when wired.
     // OpenRA 对照: Game.Sound.Play(SoundType.World, info.ChargeAudio, self.CenterPosition)
     void self // reference for future sound position lookup
   }

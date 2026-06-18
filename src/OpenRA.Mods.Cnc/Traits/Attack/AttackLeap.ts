@@ -1,11 +1,11 @@
 /**
- * AttackLeap.ts — 跳跃攻击（移动到目标位置后执行攻击）
+ * AttackLeap.ts — 跳跃攻击（移动到目标位置后执行跳跃攻击）
  * OpenRA 对照: OpenRA.Mods.Cnc/Traits/Attack/AttackLeap.cs (72 lines)
  *
  * 核心范式转换:
  * - C# AttackLeap : AttackFrontal → TS AttackLeap extends AttackFrontal
  * - C# GrantCondition/RevokeCondition → TS duck-typed condition system
- * - C# LeapAttack activity → TS stub activity reference
+ * - C# LeapAttack activity → TS LeapAttack Activity (from Cnc Activities)
  * - C# Actor.InvalidConditionToken → TS -1 sentinel
  * - C# Requires<MobileInfo> → TS duck-typed requirement (documented)
  */
@@ -13,6 +13,8 @@
 import { TargetType } from '../../../OpenRA.Game/Traits/Target.js'
 import type { Target as TargetType_ } from '../../../OpenRA.Game/Traits/Target.js'
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { GameActor } from '../../../OpenRA.Game/Actor.js'
+import { LeapAttack } from '../../Activities/LeapAttack.js'
 import {
   AttackFrontal,
   AttackFrontalInfo,
@@ -129,16 +131,14 @@ export class AttackLeap extends AttackFrontal {
   }
 
   // ---------------------------------------------------------------------------
-  // getAttackActivity — create LeapAttack activity
+  // getAttackActivity — construct LeapAttack Activity
   // ---------------------------------------------------------------------------
 
   /**
-   * Returns a LeapAttack activity.
+   * Returns a LeapAttack activity that handles movement, aiming, and the
+   * parabolic leap to the target.
    *
    * OpenRA 对照: AttackLeap.GetAttackActivity()
-   *
-   * TODO-19.A.19-LEAP-ACT: Full LeapAttack activity (parabolic arc, landing).
-   * Currently returns a stub that provides the config for the activity.
    */
   override getAttackActivity(
     self: IGameActor,
@@ -147,16 +147,25 @@ export class AttackLeap extends AttackFrontal {
     allowMove: boolean,
     forceAttack: boolean,
     targetLineColor?: string,
-  ): unknown {
-    return {
-      __type: 'LeapAttack',
-      self,
+  ): LeapAttack {
+    // Convert string color to ColorStub | null
+    const colorStub = targetLineColor
+      ? { r: 255, g: 0, b: 0, a: 255 }
+      : null
+
+    // NOTE: AttackLeap extends AttackBase which provides the duck-typed
+    // interface (canAttack, doAttack, getMinimumRangeVersusTarget, etc.)
+    // that LeapAttack expects via its AttackLeapLike interface.
+    // The cast through unknown satisfies the structural type contract.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new LeapAttack(
+      self as unknown as GameActor,
       target,
       allowMove,
       forceAttack,
-      attackTrait: this,
-      info: this.info,
-      targetLineColor: targetLineColor ?? null,
-    }
+      this as any,
+      this.info,
+      colorStub,
+    )
   }
 }

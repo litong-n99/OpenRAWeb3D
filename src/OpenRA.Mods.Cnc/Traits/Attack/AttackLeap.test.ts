@@ -7,6 +7,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('@babylonjs/core', () => ({ Engine: vi.fn(), Scene: vi.fn() }))
 
 import { AttackLeap, AttackLeapInfo } from './AttackLeap.js'
+import { LeapAttack } from '../../Activities/LeapAttack.js'
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { TargetType } from '../../../OpenRA.Game/Traits/Target.js'
 import type { Target as TargetType_ } from '../../../OpenRA.Game/Traits/Target.js'
@@ -100,16 +101,26 @@ describe('AttackLeap', () => {
   })
 
   describe('getAttackActivity', () => {
-    it('returns LeapAttack activity stub', () => {
+    it('returns a LeapAttack Activity instance', () => {
       const info = new AttackLeapInfo()
       const trait = new AttackLeap(info)
       const self = makeActor()
       const target = { type: TargetType.Actor } as unknown as TargetType_
 
-      const activity = trait.getAttackActivity(self, 0, target, true, false, '') as {
-        __type: string
-      }
-      expect(activity.__type).toBe('LeapAttack')
+      const activity = trait.getAttackActivity(self, 0, target, true, false, '')
+      expect(activity).toBeInstanceOf(LeapAttack)
+      expect(activity.target).toBeDefined()
+    })
+
+    it('passes null targetLineColor when no color string provided', () => {
+      const info = new AttackLeapInfo()
+      const trait = new AttackLeap(info)
+      const self = makeActor()
+      const target = { type: TargetType.Actor } as unknown as TargetType_
+
+      const activity = trait.getAttackActivity(self, 0, target, true, false)
+      // Should create LeapAttack without crash
+      expect(activity).toBeInstanceOf(LeapAttack)
     })
   })
 })

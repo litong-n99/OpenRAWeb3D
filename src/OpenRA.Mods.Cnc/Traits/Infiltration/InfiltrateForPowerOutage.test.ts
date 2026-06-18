@@ -29,6 +29,19 @@ describe('InfiltrateForPowerOutage', () => {
       expect(info.types).toEqual([])
       expect(info.playerExperience).toBe(0)
     })
+
+    it('accepts sound notification fields', () => {
+      const info = new InfiltrateForPowerOutageInfo({
+        infiltratedNotification: 'PowerOutageSound',
+        infiltratedTextNotification: 'Power outage detected!',
+        infiltrationNotification: 'InfiltrationSound',
+        infiltrationTextNotification: 'Power sabotaged successfully.',
+      })
+      expect(info.infiltratedNotification).toBe('PowerOutageSound')
+      expect(info.infiltratedTextNotification).toBe('Power outage detected!')
+      expect(info.infiltrationNotification).toBe('InfiltrationSound')
+      expect(info.infiltrationTextNotification).toBe('Power sabotaged successfully.')
+    })
   })
 
   describe('init', () => {

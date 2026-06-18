@@ -91,6 +91,20 @@ export class InfiltrateForSupportPowerReset
       }
     }
 
-    // TODO-19.A.15-SOUND: Play infiltrated/infiltration notifications via Ch7 Sound system
+    // TODO: Play sound via Game.Sound.Play() when Game.Sound singleton is wired.
+    // OpenRA 对照:
+    //   Game.Sound.PlayNotification(world.Map.Rules, infiltrator.Owner, "Speech",
+    //     info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName)
+    // Integration point (after support power timers are reset):
+    //   const world = (self.world as any).gameWorld
+    //   if (this.info.infiltratedNotification) {
+    //     world.sound?.playNotification(world.map.rules, selfOwner, "Speech",
+    //       this.info.infiltratedNotification, selfOwner.faction?.internalName)
+    //   }
+    //   if (this.info.infiltrationNotification) {
+    //     world.sound?.playNotification(world.map.rules, infiltratorOwner, "Speech",
+    //       this.info.infiltrationNotification, infiltratorOwner.faction?.internalName)
+    //   }
+    // Full implementation requires Game.Sound singleton + TextNotificationsManager (Ch16)
   }
 }
