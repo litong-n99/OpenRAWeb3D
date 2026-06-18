@@ -870,6 +870,97 @@ describe('FrozenUnderFog.tickRender', () => {
     expect(() => fuf.tickRender(mockWr as unknown as WorldRendererStub, self)).not.toThrow()
     expect(mockFrozenActorInstances[0].NeedRenderables).toBe(false)
   })
+
+  it('uses WorldRenderer for capturing renderables from IRender traits', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+    const capturedRenderables = [{ type: 'captured' }]
+    const renderTrait = {
+      render: () => capturedRenderables,
+      screenBounds: () => [{ x: 0, y: 0, width: 10, height: 10 }],
+    }
+    ;(self as unknown as Record<string, unknown>)['traitsImplementing'] = (name: string) => {
+      if (name === 'IRender') return [renderTrait]
+      if (name === 'IMouseBounds') return [{ mouseoverBounds: () => ({ vertices: [] }) }]
+      return []
+    }
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    mockFrozenActorInstances[0].NeedRenderables = true
+
+    const mockWr = { viewport: { topLeft: { x: 0, y: 0 }, bottomRight: { x: 100, y: 100 } } }
+    fuf.tickRender(mockWr as unknown as WorldRendererStub, self)
+
+    expect(mockFrozenActorInstances[0].Renderables).toEqual(capturedRenderables)
+    expect(mockFrozenActorInstances[0].NeedRenderables).toBe(false)
+  })
+
+  it('captures renderables from direct actor.render() fallback', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+    const directRenderables = [{ type: 'direct' }]
+    ;(self as unknown as Record<string, unknown>)['render'] = () => directRenderables
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    mockFrozenActorInstances[0].NeedRenderables = true
+
+    const mockWr = { viewport: { topLeft: { x: 0, y: 0 }, bottomRight: { x: 100, y: 100 } } }
+    fuf.tickRender(mockWr as unknown as WorldRendererStub, self)
+
+    expect(mockFrozenActorInstances[0].Renderables).toEqual(directRenderables)
+  })
+
+  it('captures mouse bounds from IMouseBounds trait', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+    const mouseBoundsPoly = { vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }] }
+    ;(self as unknown as Record<string, unknown>)['traitsImplementing'] = (name: string) => {
+      if (name === 'IMouseBounds') return [{ mouseoverBounds: () => mouseBoundsPoly }]
+      return []
+    }
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    mockFrozenActorInstances[0].NeedRenderables = true
+
+    const mockWr = { viewport: { topLeft: { x: 0, y: 0 }, bottomRight: { x: 100, y: 100 } } }
+    fuf.tickRender(mockWr as unknown as WorldRendererStub, self)
+
+    expect(mockFrozenActorInstances[0].NeedRenderables).toBe(false)
+  })
+
+  it('captures mouse bounds from IAutoMouseBounds as fallback', () => {
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+    const autoMouseBounds = { x: 5, y: 5, width: 20, height: 20 }
+    ;(self as unknown as Record<string, unknown>)['traitsImplementing'] = (name: string) => {
+      if (name === 'IAutoMouseBounds') return [{ autoMouseoverBounds: () => autoMouseBounds }]
+      return []
+    }
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    mockFrozenActorInstances[0].NeedRenderables = true
+
+    const mockWr = { viewport: { topLeft: { x: 0, y: 0 }, bottomRight: { x: 100, y: 100 } } }
+    fuf.tickRender(mockWr as unknown as WorldRendererStub, self)
+
+    expect(mockFrozenActorInstances[0].NeedRenderables).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------

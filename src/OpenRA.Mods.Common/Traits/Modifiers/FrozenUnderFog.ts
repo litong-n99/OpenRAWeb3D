@@ -4,8 +4,8 @@
  *
  * 核心范式转换:
  * - C# PlayerDictionary<FrozenState> → Map<PlayerStub, FrozenState> (O(1) lookup)
- * - C# IRenderable capture (self.Render(wr).ToArray()) → deferred (TODO-12.DEFERRED.13)
- * - C# SpriteRenderable.None render modifier → empty renderables (TODO-12.DEFERRED.13)
+ * - C# IRenderable capture (self.Render(wr).ToArray()) → _captureRenderables/_captureScreenBounds/_captureMouseBounds (P1-C.2)
+ * - C# SpriteRenderable.None render modifier → empty renderables
  * - C# ShroudExts.AnyExplored(footprint) → inline _anyExplored() helper
  * - C# event-driven visibility → direct FrozenActorLayer interaction
  * - C# startsRevealed exploration check → deferred (TODO-12.A.6.1)
@@ -34,6 +34,7 @@ import {
   type RectangleStub,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces'
 import { FrozenActor, type FrozenActorLayer } from '../../../OpenRA.Game/Traits/Player/FrozenActorLayer'
+import { Rectangle } from '../../../OpenRA.Game/Primitives/Rectangle'
 import type { Shroud } from '../../../OpenRA.Game/Traits/Player/Shroud'
 
 // ---------------------------------------------------------------------------
@@ -403,32 +404,36 @@ export class FrozenUnderFog
    * actor's renderables, screen bounds, and mouse bounds. The _isRendering
    * guard ensures modifyRender returns the original renderables during capture.
    *
-   * TODO-12.DEFERRED.13: Renderable capture. Renderables, ScreenBounds, and
-   * MouseBounds are deferred. Currently only updates NeedRenderables flag
-   * and marks frozen actors for ScreenMap updates.
+   * When an actor transitions from visible to fogged, its current renderable
+   * output is captured and stored in the FrozenActor snapshot. When the actor
+   * becomes visible again, the live actor is shown and the frozen copy is
+   * hidden.
    *
-   * @param wr — the world renderer (unused until renderable capture)
+   * @param wr — the world renderer (used for capturing renderables)
    * @param self — the actor this trait is attached to
    */
   tickRender(wr: WorldRendererStub, self: IGameActor): void {
-    void wr // unused until TODO-12.DEFERRED.13
-
     if (!this._frozenStates) return
 
     let renderables: readonly IRenderable[] | null = null
+    let bounds: readonly RectangleStub[] | null = null
+    let mouseBounds: unknown = null
 
     for (const [player, state] of this._frozenStates) {
       const frozen = state.frozenActor
       if (!frozen.NeedRenderables) continue
 
+      // Lazy-init: capture renderables from live actor once per frame
+      // (all frozen actors share the same captured output).
       if (renderables === null) {
         this._isRendering = true
         try {
-          // TODO-12.DEFERRED.13: Capture live actor renderables
-          // renderables = self.render(wr).slice()
-          // bounds = self.screenBounds(wr).slice()
-          // mouseBounds = self.mouseBounds(wr)
-          renderables = FrozenUnderFog._emptyRenderables
+          // Capture renderable output from the live actor via IRender traits.
+          // The actor exposes renderables through traitsImplementing('IRender')
+          // which each produce their renderables using the WorldRenderer.
+          renderables = this._captureRenderables(self, wr)
+          bounds = this._captureScreenBounds(self, wr)
+          mouseBounds = this._captureMouseBounds(self, wr)
         } finally {
           this._isRendering = false
         }
@@ -436,11 +441,24 @@ export class FrozenUnderFog
 
       frozen.NeedRenderables = false
       frozen.Renderables = renderables
-      // TODO-12.DEFERRED.12/13: Capture screen bounds and mouse bounds
-      // frozen.ScreenBounds = bounds
-      // frozen.MouseBounds = mouseBounds
 
-      // Add to ScreenMap for spatial query
+      // Store captured screen bounds
+      if (bounds && bounds.length > 0) {
+        const screenRects = bounds.map((b) =>
+          Rectangle.fromLTRB(b.x, b.y, b.x + b.width, b.y + b.height),
+        )
+        ;(frozen as unknown as Record<string, unknown>)['ScreenBounds'] = screenRects
+      }
+
+      // Store captured mouse bounds
+      if (mouseBounds) {
+        ;(frozen as unknown as Record<string, unknown>)['MouseBounds'] = mouseBounds
+      }
+
+      // Add to ScreenMap for spatial query.
+      // When frozen becomes visible (live actor hidden by fog), the frozen
+      // actor is added to ScreenMap so it can be picked up by spatial
+      // queries (render, mouse hit-test, etc.).
       const world = this._getWorld(self)
       if (world) {
         const screenMap = world['screenMap'] as Record<string, unknown> | undefined
@@ -580,6 +598,183 @@ export class FrozenUnderFog
     if (!state) return
 
     state.frozenActor.Invalidate()
+  }
+
+  // -------------------------------------------------------------------------
+  // Renderable capture helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Capture renderables from the live actor for frozen snapshot storage.
+   *
+   * OpenRA 对照: FrozenUnderFog.TickRender — renderable capture
+   *
+   * Iterates actor traits implementing 'IRender' and collects their
+   * renderable output. Uses the WorldRenderer for viewport-dependent
+   * rendering (e.g., culling, LOD).
+   *
+   * NOTE: Full renderable capture depends on the IRender system being
+   * fully wired (TODO-12.DEFERRED.13). Currently attempts to call
+   * traitsImplementing('IRender') and fall back to empty array.
+   *
+   * @param self — the actor to capture from
+   * @param wr — the world renderer for context
+   * @returns captured renderables (may be empty if system not yet wired)
+   */
+  private _captureRenderables(
+    self: IGameActor,
+    wr: WorldRendererStub,
+  ): readonly IRenderable[] {
+    const actorAny = self as unknown as Record<string, unknown>
+    const result: IRenderable[] = []
+
+    // Attempt to collect renderables from IRender traits
+    const renderTraits = actorAny['traitsImplementing'] as
+      | ((name: string) => readonly Record<string, unknown>[])
+      | undefined
+
+    if (renderTraits) {
+      const irTraits = renderTraits('IRender')
+      for (const trait of irTraits) {
+        const renderFn = trait['render'] as
+          | ((a: IGameActor, w: WorldRendererStub) => readonly IRenderable[])
+          | undefined
+        if (renderFn) {
+          const r = renderFn(self, wr)
+          for (const item of r) {
+            result.push(item)
+          }
+        }
+      }
+    }
+
+    // If IRender traits not available, try direct actor render method
+    if (result.length === 0) {
+      const directRender = actorAny['render'] as
+        | ((wr: WorldRendererStub) => readonly IRenderable[])
+        | undefined
+      if (directRender) {
+        const r = directRender(wr)
+        for (const item of r) {
+          result.push(item)
+        }
+      }
+    }
+
+    return result.length > 0 ? result : FrozenUnderFog._emptyRenderables
+  }
+
+  /**
+   * Capture screen bounds from the live actor.
+   *
+   * OpenRA 对照: FrozenUnderFog.TickRender — screen bounds capture
+   *
+   * Iterates actor traits implementing 'IRender' and collects their
+   * screen bounds. Falls back to direct actor.screenBounds(wr) if
+   * traits are not available.
+   *
+   * @param self — the actor to capture from
+   * @param wr — the world renderer for context
+   * @returns captured screen bounds (may be empty)
+   */
+  private _captureScreenBounds(
+    self: IGameActor,
+    wr: WorldRendererStub,
+  ): readonly RectangleStub[] {
+    const actorAny = self as unknown as Record<string, unknown>
+    const result: RectangleStub[] = []
+
+    const renderTraits = actorAny['traitsImplementing'] as
+      | ((name: string) => readonly Record<string, unknown>[])
+      | undefined
+
+    if (renderTraits) {
+      const irTraits = renderTraits('IRender')
+      for (const trait of irTraits) {
+        const sbFn = trait['screenBounds'] as
+          | ((a: IGameActor, w: WorldRendererStub) => readonly RectangleStub[])
+          | undefined
+        if (sbFn) {
+          const sb = sbFn(self, wr)
+          for (const b of sb) {
+            result.push(b)
+          }
+        }
+      }
+    }
+
+    if (result.length === 0) {
+      const directBounds = actorAny['screenBounds'] as
+        | ((wr: WorldRendererStub) => readonly RectangleStub[])
+        | undefined
+      if (directBounds) {
+        const sb = directBounds(wr)
+        for (const b of sb) {
+          result.push(b)
+        }
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * Capture mouse bounds from the live actor.
+   *
+   * OpenRA 对照: FrozenUnderFog.TickRender — mouse bounds capture
+   *
+   * Looks for IMouseBounds trait on the actor. Falls back to
+   * IAutoMouseBounds if IMouseBounds is not available.
+   *
+   * @param self — the actor to capture from
+   * @param wr — the world renderer for context
+   * @returns captured mouse bounds polygon, or null if not available
+   */
+  private _captureMouseBounds(
+    self: IGameActor,
+    wr: WorldRendererStub,
+  ): unknown {
+    const actorAny = self as unknown as Record<string, unknown>
+
+    // Try IMouseBounds trait first
+    const mouseBoundsTraits = actorAny['traitsImplementing'] as
+      | ((name: string) => readonly Record<string, unknown>[])
+      | undefined
+
+    if (mouseBoundsTraits) {
+      const mbTraits = mouseBoundsTraits('IMouseBounds')
+      for (const trait of mbTraits) {
+        const mbFn = trait['mouseoverBounds'] as
+          | ((a: IGameActor, w: WorldRendererStub) => unknown)
+          | undefined
+        if (mbFn) {
+          return mbFn(self, wr)
+        }
+      }
+    }
+
+    // Try IAutoMouseBounds
+    if (mouseBoundsTraits) {
+      const ambTraits = mouseBoundsTraits('IAutoMouseBounds')
+      for (const trait of ambTraits) {
+        const ambFn = trait['autoMouseoverBounds'] as
+          | ((a: IGameActor, w: WorldRendererStub) => unknown)
+          | undefined
+        if (ambFn) {
+          return ambFn(self, wr)
+        }
+      }
+    }
+
+    // Fall back to direct actor method
+    const directMouseBounds = actorAny['mouseBounds'] as
+      | ((wr: WorldRendererStub) => unknown)
+      | undefined
+    if (directMouseBounds) {
+      return directMouseBounds(wr)
+    }
+
+    return null
   }
 
   // -------------------------------------------------------------------------
