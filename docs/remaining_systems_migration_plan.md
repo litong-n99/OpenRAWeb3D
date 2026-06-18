@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Remaining Systems (Chapters 8-21)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md`
-> **Chapter Status**: IN PROGRESS (Ch8-19 COMPLETE: 603/603, 100%. Ch8:57 + Ch9:30 + Ch10:25 + Ch11:37 + Ch12:16 + Ch13:14 + Ch14:49 + Ch15:11 + Ch16:65 + Ch17:8 + Ch18:10 + Ch19:119 = **603 files**. Chapters 20-21: 0/~77, 0%, PLANNING -- Ch20: 62 files, Ch21: ~15 files)
+> **Chapter Status**: COMPLETE (Ch8-20 COMPLETE: 665/665, 100%. Ch8:57 + Ch9:30 + Ch10:25 + Ch11:37 + Ch12:16 + Ch13:14 + Ch14:49 + Ch15:11 + Ch16:65 + Ch17:8 + Ch18:10 + Ch19:119 + Ch20:62 = **665 files**. Chapter 21: 0/91, 0%, PLANNING — 7 phases A-G, 54 active + 25 deferred + 12 legacy import)
 > **Created**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162 files, 100%)
 >
@@ -690,19 +690,53 @@ Menu screen behavior classes (ChromeLogic subclasses) for main menu, lobby, sett
 
 **Objective**: Implement map editor tools, developer utilities, and build tooling commands.
 
-**Prerequisites**: Chapter 4 (Map), Chapter 5 (UI), Chapter 8-11 (gameplay systems)
+**Detailed Plan**: [docs/chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md)
 
-#### Phase A: Map Editor
+**Prerequisites**: Chapters 2-19 (foundation) + Chapter 20 (ScriptRegistry for scripting-aware tools)
 
-| # | OpenRA Source | Target TypeScript File | Complexity |
-|:---:|:---|:---|:---:|
-| 1+ | EditorActorLayer, EditorActorPreview, EditorActionManager, EditorCursorLayer, EditorResourceLayer, EditorViewportControllerWidget, various EditorBrushes/ | | MEDIUM-HIGH |
+**Scope**: ~91 files total (54 active + 25 deferred/absorbed/NOP + 12 legacy import deferred), 7 Phases A-G.
 
-#### Phase B: Utility Commands
+#### Phase A: Editor Core Infrastructure (8 files)
 
-| # | OpenRA Source | Target TypeScript File | Complexity |
-|:---:|:---|:---|:---:|
-| 5+ | Various UtilityCommands/, DeveloperMode, MapEditorData, TilingPathTool | | LOW |
+| # | Key Files | Complexity |
+|:---:|:---|:---:|
+| 1-8 | EditorActionManager, EditorActorLayer, EditorActorPreview, EditorCursorLayer, EditorResourceLayer, EditorViewportControllerWidget, EditorSelectionAnnotationRenderable, MapEditorData | MEDIUM-HIGH |
+
+#### Phase B: Editor Brushes (10 files)
+
+| # | Key Files | Complexity |
+|:---:|:---|:---:|
+| 9-18 | IEditorBrush, EditorDefaultBrush, EditorTileBrush, EditorActorBrush, EditorResourceBrush, EditorBlit, EditorCopyPasteBrush, EditorMarkerLayerBrush, EditorTilingPathBrush, TilingPathTool | LOW-HIGH |
+
+#### Phase C: Editor UI Logic (18 files)
+
+| # | Key Files | Complexity |
+|:---:|:---|:---:|
+| 19-36 | MapEditorLogic, SaveMapLogic, ActorEditLogic, ActorSelectorLogic, TileSelectorLogic, LoadMapEditorLogic, EditorQuickSaveHotkeyLogic, +10 more UI panels | LOW-HIGH |
+
+#### Phase D: Debug & Developer Tools (7 files)
+
+| # | Key Files | Complexity |
+|:---:|:---|:---:|
+| 37-43 | IUtilityCommand, DebugVisualizations, DebugVisualizationCommands, DevCommands, DeveloperMode, RenderSpritesEditorOnly, CustomTerrainDebugOverlay | LOW-MEDIUM |
+
+#### Phase E: Utility Commands — Core Build Tools (22 files)
+
+| # | Key Files | Complexity |
+|:---:|:---|:---:|
+| 44-65 | UtilityRunner, RegisterMod/UnregisterMod commands, MapCommand, ResizeMap, UpdateMap, ConvertSpriteToPng, DumpSequenceSheets, ExtractChromeStrings, ExtractYamlStrings, CheckYaml, LintInterfaces, +10 more | LOW-MEDIUM |
+
+#### Phase F: Utility Commands — Documentation & Export (7 active + 6 deferred)
+
+| # | Key Files | Complexity |
+|:---:|:---|:---:|
+| 66-72 | CreateManPage, OutputResolvedRules/Sequences/Weapons, DebugChromeRegions, DocumentationHelpers, ExtractSettingsDocs | LOW-MEDIUM |
+
+#### Phase G: Legacy Map Import Tools (6 active + 12 deferred)
+
+| # | Key Files | Complexity |
+|:---:|:---|:---:|
+| 73-78 | Rgba2Hex, PngSheetExport/ImportMetadata, ConvertPngToShp, Glob, RemapShp (+10 legacy map importers deferred) | LOW |
 
 ---
 

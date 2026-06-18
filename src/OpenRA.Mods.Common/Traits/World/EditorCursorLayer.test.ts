@@ -156,9 +156,8 @@ describe('EditorCursorLayer', () => {
       expect(cursor.Y).toBe(0)
     })
 
-    it('is not spatially partitionable', () => {
+    it('is not spatially partitionable (single getter serves both IRenderAboveShroud and IRenderAnnotations)', () => {
       expect(layer.spatiallyPartitionable).toBe(false)
-      expect(layer.annotationsSpatiallyPartitionable).toBe(false)
     })
   })
 
@@ -309,18 +308,12 @@ describe('EditorCursorLayer', () => {
   // -----------------------------------------------------------------------
 
   describe('spatiallyPartitionable', () => {
-    it('always returns false for renderAboveShroud', () => {
+    it('always returns false (single getter serves both IRenderAboveShroud and IRenderAnnotations)', () => {
       expect(layer.spatiallyPartitionable).toBe(false)
       const brush = makeBrush()
       layer.setBrush(brush)
+      // Still false even with brush set — editor brush renderables are always full-pass
       expect(layer.spatiallyPartitionable).toBe(false)
-    })
-
-    it('always returns false for annotations', () => {
-      expect(layer.annotationsSpatiallyPartitionable).toBe(false)
-      const brush = makeBrush()
-      layer.setBrush(brush)
-      expect(layer.annotationsSpatiallyPartitionable).toBe(false)
     })
   })
 

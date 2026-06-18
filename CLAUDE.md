@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: Chapter 19 ALL PHASES COMPLETE (119/119 files, 100%, ~1,082 tests). Chapter 18 ALL PHASES COMPLETE (10/10 files, 100%, 240 tests). Chapter 17 ALL PHASES COMPLETE (8/8 files, 100%, 237 tests). Chapter 16 ALL PHASES COMPLETE (65/65 files, 100%, 1,900+ tests). Chapter 15 ALL PHASES COMPLETE (11/11 files, 100%, 206 tests). Chapter 14 ALL PHASES COMPLETE (49/49 files, 100%, ~82+70+180+161+48+45 tests). Chapter 13 COMPLETE (Support Powers -- Phase A: 14/14 files, 285 tests). Chapter 12 COMPLETE (Shroud & Fog of War -- Phase A: 16/16 files). Chapter 20 Phase A+B+C COMPLETE (26/62, 42%).
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE, 25/25 original plan + 13 additional, ~771 tests). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 49/49 (100%, ALL PHASES COMPLETE, 82+70+~180+161+~48+45 tests). Chapter 15: 11/11 (100%, ALL PHASES COMPLETE, 206 tests). Chapter 16: 65/65 (100%, ALL PHASES COMPLETE, 1,900+ tests). Chapter 17: 8/8 (100%, ALL PHASES COMPLETE, 237 tests). Chapter 18: 10/10 (100%, ALL PHASES COMPLETE, 240 tests). Chapter 19: 119/119 (100%, ALL PHASES COMPLETE). Chapter 20: 26/62 (42%, Phase A+B+C COMPLETE). Chapter 21: 0/~15 (0%, PLANNING).
+**Phase**: ALL CHAPTERS 2-20 COMPLETE (665/665 files, 100%). Chapter 21: PLANNING.
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 49/49 (100%, ALL PHASES COMPLETE). Chapter 15: 11/11 (100%, ALL PHASES COMPLETE, 206 tests). Chapter 16: 65/65 (100%, ALL PHASES COMPLETE, 1,900+ tests). Chapter 17: 8/8 (100%, ALL PHASES COMPLETE, 237 tests). Chapter 18: 10/10 (100%, ALL PHASES COMPLETE, 240 tests). Chapter 19: 119/119 (100%, ALL PHASES COMPLETE). Chapter 20: 62/62 (100%, ALL PHASES A-G COMPLETE). Chapter 21: 0/91 (0%, PLANNING — 7 phases A-G, 54 active + 25 deferred + 12 legacy import).
 **Planning Doc**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 **Chapter 9 Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)
 **Chapter 10 Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
@@ -17,6 +17,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 **Chapter 18 Plan**: [docs/chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)
 **Chapter 19 Plan**: [docs/chapter19_mod_content_migration_plan.md](docs/chapter19_mod_content_migration_plan.md)
 **Chapter 20 Plan**: [docs/chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md)
+**Chapter 21 Plan**: [docs/chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -74,8 +75,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Replay & Save (Ch17) | COMPLETE (8/8 files, 100%, ALL PHASES A-D, 237 tests) |
 | Server System (Ch18) | COMPLETE (10/10 files, 100%, ALL PHASES A-D COMPLETE, 240 tests. Plan: [chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md)) |
 | Mod-Specific Content (Ch19) | COMPLETE (119/119 files, 100%, ALL PHASES A-D COMPLETE. 4 phases A-D + 45 deferred. Plan: [chapter19_mod_content_migration_plan.md](docs/chapter19_mod_content_migration_plan.md)) |
-| Scripting System (Ch20) | Phase A+B+C COMPLETE (26/62, 42%. Phase A: 7 files Core Infra, 128 tests. Phase B: 3 files Trigger System + 1, 88 tests. Phase C: 16 Global subclasses + 2 support, ~3,100 TS lines, 84 tests. Plan: [chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md)) |
-| Editor & Utilities (Ch21) | Planned (~15 files, 2 phases A-B) |
+| Scripting System (Ch20) | ALL PHASES A-G COMPLETE (62/62, 100%. Phase A: 7 files, 128 tests. Phase B: 3+1 files, 88 tests. Phase C: 16+2 files, 84 tests. Phase D: 29 files Actor Props. Phase E: 5 files Player Props. Phase F: 4 files C&C Props. Phase G: Lua VM fengari integration. Plan: [chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md)) |
+| Editor & Utilities (Ch21) | Planned (~91 files, 7 phases A-G, 54 active + 25 deferred + 12 legacy import). Plan: [chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) |
 
 ## Directory Layout
 
@@ -547,7 +548,8 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/chapter17_replay_save_system_migration_plan.md](docs/chapter17_replay_save_system_migration_plan.md) | Chapter 17 replay & save system migration plan with TODO checklist (8 files, 4 phases A-D, COMPLETE, 237 tests) |
 | [docs/chapter18_server_system_migration_plan.md](docs/chapter18_server_system_migration_plan.md) | Chapter 18 server system migration plan with TODO checklist (10 files, 4 phases A-D, COMPLETE, 240 tests) |
 | [docs/chapter19_mod_content_migration_plan.md](docs/chapter19_mod_content_migration_plan.md) | Chapter 19 mod-specific content migration plan with TODO checklist (119 files, 4 phases A-D, ALL PHASES COMPLETE, 45 deferred) |
-| [docs/chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md) | Chapter 20 scripting system migration plan with TODO checklist (62 files, 7 phases A-G, PLANNING, ~6,339 C# lines) |
+| [docs/chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md) | Chapter 20 scripting system migration plan with TODO checklist (62 files, 7 phases A-G, ALL PHASES COMPLETE) |
+| [docs/chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) | Chapter 21 editor, utilities & tooling migration plan with TODO checklist (~91 files, 7 phases A-G, PLANNING) |
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-21 remaining systems migration plan (~440 files, 14 chapters, Ch8-19 COMPLETE) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |

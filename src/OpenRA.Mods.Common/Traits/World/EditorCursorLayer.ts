@@ -14,6 +14,7 @@
  * Migration: TODO-21.A.4 — Chapter 21 Phase A
  */
 
+import { Constants } from '@babylonjs/core/Engines/constants'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
@@ -37,6 +38,16 @@ import type {
   IRenderable,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IEditorBrush } from '../../Editor/IEditorBrush.js'
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/**
+ * Small Z-axis offset for the cursor quad above terrain to prevent z-fighting.
+ * Applied as a Babylon.js world-unit offset (1 unit = 1024 OpenRA units).
+ */
+const CURSOR_Z_OFFSET = 0.02
 
 // ---------------------------------------------------------------------------
 // CursorColorPreset (光标颜色预设——按笔刷模式)
@@ -276,15 +287,6 @@ export class EditorCursorLayer implements ITickRender, IRenderAboveShroud, IRend
     return this.brush?.renderAnnotations(self, wr) ?? EditorCursorLayer.NoRenderables
   }
 
-  /**
-   * Whether annotations from this source are spatially partitionable.
-   *
-   * OpenRA 对照: IRenderAnnotations.SpatiallyPartitionable => false
-   */
-  get annotationsSpatiallyPartitionable(): boolean {
-    return false
-  }
-
   // ---------------------------------------------------------------------------
   // Cursor position management (TS 专属 3D 光标可视化)
   // ---------------------------------------------------------------------------
@@ -395,7 +397,7 @@ export class EditorCursorLayer implements ITickRender, IRenderAboveShroud, IRend
       this._grid,
     )
     // Small offset above terrain to avoid z-fighting
-    this._cursorMesh.position = new Vector3(pos.x, pos.y + 0.02, pos.z)
+    this._cursorMesh.position = new Vector3(pos.x, pos.y + CURSOR_Z_OFFSET, pos.z)
   }
 
   // ---------------------------------------------------------------------------
@@ -431,7 +433,7 @@ export class EditorCursorLayer implements ITickRender, IRenderAboveShroud, IRend
     material.alpha = 0.5
     material.backFaceCulling = false
     // Ensure cursor renders above terrain
-    material.alphaMode = 2 // ALPHA_COMBINE
+    material.alphaMode = Constants.ALPHA_COMBINE
 
     mesh.material = material
     mesh.isVisible = this._cursorVisible

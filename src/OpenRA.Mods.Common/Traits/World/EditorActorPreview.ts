@@ -15,7 +15,7 @@
  * 编辑器世界中的 actor 是轻量级预览代理，而非完整 GameActor 实例。
  * 它们渲染为精灵/billboard，但没有游戏逻辑、AI 或网络状态。
  *
- * Migration: TODO-21.A.3 — Chapter 21 Phase A
+ * Migration: TODO-21.A.5 — Chapter 21 Phase A
  */
 
 import { WPos } from '../../../OpenRA.Game/WPos.js'
@@ -194,8 +194,19 @@ export class EditorActorPreview {
    * The owning player reference for faction-specific rendering.
    *
    * OpenRA 对照: EditorActorPreview.Owner
+   *
+   * Setting this invalidates the cached tooltip.
    */
-  owner: PlayerReference
+  private _owner!: PlayerReference
+
+  get owner(): PlayerReference {
+    return this._owner
+  }
+
+  set owner(value: PlayerReference) {
+    this._owner = value
+    this._tooltipCache = null
+  }
 
   /**
    * The world-space center position of this preview.
@@ -252,6 +263,12 @@ export class EditorActorPreview {
    * Optional owner init lookup for IOccupySpaceInfo.
    */
   private _occupySpaceInfo: IOccupySpaceInfo | null = null
+
+  /**
+   * Cached tooltip string. Cleared when owner changes.
+   * null = dirty, needs recomputation.
+   */
+  private _tooltipCache: string | null = null
 
   // ---------------------------------------------------------------------------
   // Constructor (OpenRA 对照: EditorActorPreview constructor)
@@ -337,9 +354,13 @@ export class EditorActorPreview {
    *   DescriptiveName directly. TODO-21.A.5-DEFER-5.
    */
   get tooltip(): string {
+    if (this._tooltipCache !== null) {
+      return this._tooltipCache
+    }
     const nameLine = ` < ${this.info.name} >`
     const ownerLine = `${this.owner.name} (${this.owner.faction})`
-    return `${nameLine}\n${ownerLine}\nID: ${this.id}\nType: ${this.info.name}`
+    this._tooltipCache = `${nameLine}\n${ownerLine}\nID: ${this.id}\nType: ${this.info.name}`
+    return this._tooltipCache
   }
 
   // ---------------------------------------------------------------------------
@@ -539,6 +560,11 @@ export class EditorActorPreview {
    */
   replaceInit(initType: string, init: unknown): void {
     this._reference.set(initType, init)
+    // NOTE: C# ReplaceInit also calls UpdateRadarColor() when the init
+    //   implements ISingleInstanceInit (e.g., FactionInit changes faction
+    //   which may change radar color via RadarColorFromTerrainInfo).
+    //   TODO-21.A.5-DEFER-4: Call UpdateRadarColor() after faction/owner
+    //   init changes when RadarColorFromTerrainInfo is migrated.
     // TODO-21.A.5-DEFER-2: Regenerate previews
   }
 
@@ -685,10 +711,11 @@ export class EditorActorPreview {
    *
    * OpenRA 对照: EditorActorPreview.Export() → ActorReference
    *
-   * Returns a deep clone of the init map so the paste operation can modify
-   * it independently of the source actor.
+   * Returns a shallow copy of the init map. The init values themselves are
+   * shared with the source — callers that need to mutate individual inits
+   * should clone them first. The map structure is independent.
    *
-   * @returns a deep-cloned init map
+   * @returns a shallow-copied init map
    */
   export(): ActorReferenceMap {
     return new Map(this._reference)
@@ -841,6 +868,12 @@ export class EditorActorPreview {
       if (subCell !== SubCell.Any && subCell !== SubCell.FullCell) {
         // Map sub-cell index to a small offset
         // Sub-cell 0: center (0,0), 1: top-left, 2: top-right, 3: center, 4: bottom-left, 5: bottom-right
+        // NOTE: These sub-cell offsets are for Rectangular grids.
+        //   Isometric grids use a different staggered-diamond offset
+        //   scheme. The offsets below are ported from OpenRA's
+        //   MapGrid.SubCellOffsets. See MapGrid.ts lines 113-126.
+        //   TODO-21.A.5-DEFER-7: Grid-type-dependent sub-cell offsets
+        //   for isometric maps.
         const subCellShifts: Record<number, [number, number]> = {
           0: [0, 0],
           1: [-tileScale / 4, -tileScale / 4],
