@@ -1,8 +1,9 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 22 -- Game Entry & Application Shell
 
 > **Source Reference**: `OpenRA/OpenRA.Game/Game.cs` (~1000 lines, `static class Game`), `index.html` (Vite scaffold), `src/main.ts` (Vite scaffold)
-> **Chapter Status**: PLANNING (0/7 migrated, 0%)
+> **Chapter Status**: IN PROGRESS (2/7 migrated, 29%, Phase A COMPLETE)
 > **Planning Date**: 2026-06-18
+> **Phase A Completion**: 2026-06-18 (Router: 146 lines + 271 test lines, ModSelector: 249 lines + 438 test lines, 51 tests, 0 BLOCKERs)
 > **Original Design Doc**: `docs/game_entry_design.md` (1090 lines, ~2026-06-18)
 > **Prerequisite**: Chapters 2-20 COMPLETE (665/665, 100%). No hard dependency on Chapter 21 (Editor & Utilities). Chapter 22 can begin in parallel with Chapter 21.
 > **Note**: Chapter 22 is the **final integration chapter** -- it stitches all migrated subsystems together into a functional web application accessible from a browser URL.
@@ -144,7 +145,8 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 ### 3.1 Phase A: Foundation -- Router + ModSelector
 
-**Status**: 📋 PLANNING (0/4 files migrated + 2 files modified)
+**Status**: ✅ COMPLETE (4/4 files migrated + 2 files modified + 2 static resources, 51 tests, 0 BLOCKERs)
+**Completed**: 2026-06-18 | **Commit**: `686b312`
 **Complexity**: Low-Medium
 **Blocked by**: Nothing (Phase A uses zero game engine dependencies)
 **Blocks**: Phase B (Bootstrap needs Router + ModSelector for URL routing and mod launch flow)
@@ -159,7 +161,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.1.1 Router Implementation
 
-- [ ] **TODO-22.A.1** `src/OpenRA.Game/Router.ts` -- Client-side path router:
+- [x] **TODO-22.A.1** `src/OpenRA.Game/Router.ts` -- Client-side path router:
   - `RouteHandler` type: `(params: Record<string, string>) => void`
   - `on(pattern: string, handler: RouteHandler): this` -- register path pattern (e.g., `"/play/:modId"`)
   - `dispatch(): boolean` -- match current `window.location.pathname` against registered patterns, extract params via regex (`:param` → `([^/]+)`), call handler, return `true` if matched
@@ -167,7 +169,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
   - `popstate` event listener for browser back/forward
   - Zero dependencies, zero imports from game engine
 
-- [ ] **TODO-22.A.2** `src/OpenRA.Game/Router.test.ts` -- Router unit tests:
+- [x] **TODO-22.A.2** `src/OpenRA.Game/Router.test.ts` -- Router unit tests:
   - Pattern matching: exact (`"/"`), parameterized (`"/play/:modId"`), multi-param (`"/edit/:modId/:mapId"`)
   - Param extraction: verify `params.modId` matches URL segment
   - Dispatch: verify correct handler is called based on pathname
@@ -177,7 +179,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.1.2 ModSelector Implementation
 
-- [ ] **TODO-22.A.3** `src/OpenRA.Game/ModSelector.ts` -- Mod selection homepage:
+- [x] **TODO-22.A.3** `src/OpenRA.Game/ModSelector.ts` -- Mod selection homepage:
   - `ModEntry` interface: `id`, `title`, `version`, `description`, `factions`, `thumbnail`, `background`, `available`
   - `ModSelector.show(container: HTMLElement): Promise<void>` -- fetch `_index.json`, render mod cards into container DOM, attach click handlers
   - `ModSelector.launchMod(modId: string, worldType?: WorldType): Promise<void>` -- hide mod cards, show loading overlay, create `<canvas>`, dynamically `import()` Game module, call `Game.create()`
@@ -186,7 +188,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
   - Handle `available: false` mods (show "Coming Soon" ribbon)
   - CSS styling: mod cards in responsive grid, hover effects, C&C-themed dark background
 
-- [ ] **TODO-22.A.4** `src/OpenRA.Game/ModSelector.test.ts` -- ModSelector unit tests:
+- [x] **TODO-22.A.4** `src/OpenRA.Game/ModSelector.test.ts` -- ModSelector unit tests:
   - DOM rendering: verify mod cards are created from `_index.json` data
   - Click handler: verify `launchMod()` is called with correct modId
   - Loading state: verify overlay appears, progress text updates
@@ -196,7 +198,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.1.3 Vite Configuration Change
 
-- [ ] **TODO-22.A.5** `vite.config.ts` -- Switch to SPA mode:
+- [x] **TODO-22.A.5** `vite.config.ts` -- Switch to SPA mode:
   - Remove `appType: 'mpa'` from Vite config (revert to default SPA behavior)
   - Keep `testRoutesPlugin` -- it intercepts `/test/...` URLs before the SPA fallback
   - Verify: `npm run dev` serves all `/test/...` pages correctly
@@ -205,7 +207,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.1.4 HTML Shell Rewrite
 
-- [ ] **TODO-22.A.6** `index.html` -- Game application shell:
+- [x] **TODO-22.A.6** `index.html` -- Game application shell:
   - Replace Vite scaffold content with game shell layout
   - Add `<div id="mod-selector">` -- container for ModSelector (visible at `/`, hidden after mod launch)
   - Add `<canvas id="game-canvas" style="display:none">` -- Babylon.js render target (invisible until mod is launched)
@@ -216,11 +218,11 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.1.5 Mod Index & Test Mod
 
-- [ ] **TODO-22.A.7** `public/mods/_index.json` -- Available mods manifest:
+- [x] **TODO-22.A.7** `public/mods/_index.json` -- Available mods manifest:
   - Array of `ModEntry` objects with `id`, `title`, `version`, `description`, `factions`, `thumbnail`, `background`, `available` fields
   - 4 mods: ra (available), td (available), d2k (available), ts (available: false)
 
-- [ ] **TODO-22.A.8** `public/mods/_test/mod.json` -- Minimal test mod manifest:
+- [x] **TODO-22.A.8** `public/mods/_test/mod.json` -- Minimal test mod manifest:
   - `Metadata.Title: "Test Mod"`, `Metadata.Hidden: true`, `Metadata.Version: "0.1.0"`
   - Empty `RequiresMods`, `FileSystem`, `Rules`, `Sequences`, `Weapons`, `TileSets`
   - Empty `ChromeLayout`, `PackageFormats`, `MapFolders`
