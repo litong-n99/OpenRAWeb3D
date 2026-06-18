@@ -210,6 +210,17 @@ describe('EditorResourceLayer', () => {
       const added = layer.addResource('ore', cell, 0)
       expect(added).toBe(0)
       expect(layer.isCellEmpty(cell)).toBe(true)
+      // Regression test for BLOCKER-3: zero amount must not inflate _resCells
+      expect(layer.getCellCount()).toBe(0)
+      expect(layer.isEmpty).toBe(true)
+    })
+
+    it('should treat negative amount as no-op', () => {
+      const cell = new CPos(1, 2)
+      const added = layer.addResource('ore', cell, -5)
+      expect(added).toBe(0)
+      expect(layer.isCellEmpty(cell)).toBe(true)
+      expect(layer.getCellCount()).toBe(0)
     })
   })
 
@@ -311,10 +322,15 @@ describe('EditorResourceLayer', () => {
     it('should remove more than available and clear cell', () => {
       const cell = new CPos(4, 4)
       layer.addResource('ore', cell, 3)
+      expect(layer.netWorth).toBe(60) // 3 * 20
+
       const removed = layer.removeResource('ore', cell, 10)
 
       expect(removed).toBe(3)
       expect(layer.isCellEmpty(cell)).toBe(true)
+      // Regression test for BLOCKER-2: netWorth must use actual removed (3),
+      // not requested amount (10). 10 * 20 = 200 would be wrong.
+      expect(layer.netWorth).toBe(0)
     })
   })
 
@@ -503,17 +519,45 @@ describe('EditorResourceLayer', () => {
       layer.addResource('ore', new CPos(0, 0), 5)
 
       const snapshot = layer.clone()
-      // Modify snapshot
+      // Modify snapshot: add new cell, remove old cell
+      snapshot.clearResources(new CPos(0, 0))
       snapshot.addResource('gems', new CPos(1, 1), 3)
 
       onCellChanged.mockClear()
       layer.applySnapshot(snapshot)
 
-      // Cell (1,1) was modified — should fire CellChanged
+      // Cell (0,0) was cleared — should fire CellChanged(cell, null)
+      const cell00Call = onCellChanged.mock.calls.find(
+        (call: any[]) => call[0].X === 0 && call[0].Y === 0
+      )
+      expect(cell00Call).toBeDefined()
+      expect(cell00Call![1]).toBeNull()
+
+      // Cell (1,1) was added — should fire CellChanged(cell, 'gems')
       const cell11Call = onCellChanged.mock.calls.find(
         (call: any[]) => call[0].X === 1 && call[0].Y === 1
       )
       expect(cell11Call).toBeDefined()
+      expect(cell11Call![1]).toBe('gems')
+    })
+
+    it('should detect density changes via applySnapshot', () => {
+      layer.addResource('ore', new CPos(0, 0), 3)
+      const snapshot = layer.clone()
+      // Change density in snapshot
+      snapshot.addResource('ore', new CPos(0, 0), 2) // 3 + 2 = 5
+
+      onCellChanged.mockClear()
+      layer.applySnapshot(snapshot)
+
+      // Density changed: 3 -> 5, should fire CellChanged with type unchanged
+      const cellCall = onCellChanged.mock.calls.find(
+        (call: any[]) => call[0].X === 0 && call[0].Y === 0
+      )
+      expect(cellCall).toBeDefined()
+      expect(cellCall![1]).toBe('ore')
+      // Verify the actual density is now 5
+      expect(layer.getResource(new CPos(0, 0)).density).toBe(5)
     })
   })
 

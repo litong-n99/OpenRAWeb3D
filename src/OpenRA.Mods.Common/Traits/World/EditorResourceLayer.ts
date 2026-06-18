@@ -73,6 +73,12 @@ export class EditorResourceLayerInfo implements ITraitInfo, IResourceLayerInfo {
    * the number of neighbouring resource cells.
    *
    * OpenRA 对照: EditorResourceLayerInfo.RecalculateResourceDensity (default false)
+   *
+   * NOTE: This flag is defined but not yet consumed by the editor. In OpenRA
+   * it drives neighbor-based density recalculation in UpdateCell. When the
+   * editor brush interacts with full terrain data, this flag should control
+   * whether getDensity() uses raw or neighbor-averaged values.
+   * TODO-21.A.5: Wire RecalculateResourceDensity to density computation.
    */
   recalculateResourceDensity: boolean
 
@@ -177,6 +183,15 @@ interface ResourceCellData {
  *
  * NOTE: BuildingInfluence checks are stubbed — all terrain types are treated
  * as valid for resource placement. Full integration via TODO-11.B.X.
+ *
+ * TODO-21.A.5: CalculateRegionValue(region) — sum resource value over a
+ * CellCoordsRegion. Needed when editor brushes show region statistics.
+ * TODO-21.A.5: CalculateCellDensity() + neighbor-based recalculation —
+ * matching OpenRA's ResourceLayer density averaging. gated by
+ * RecalculateResourceDensity flag.
+ * TODO-21.A.5: AllowResourceAt terrain/ramp checks — editor currently allows
+ * resource placement anywhere. Terrain validation should be added when
+ * editor terrain data integration is complete.
  */
 export class EditorResourceLayer implements IResourceLayer, IWorldLoaded {
   /** Configuration for this resource layer.
@@ -519,6 +534,10 @@ export class EditorResourceLayer implements IResourceLayer, IWorldLoaded {
    * @returns the amount actually added
    */
   addResource(resourceType: string, cell: CPos, amount: number = 1): number {
+    // Guard: zero or negative amount on an empty cell must not create a
+    // zombie {type, density:0} entry that inflates _resCells.
+    if (amount <= 0) return 0
+
     if (!resourceType) return 0
 
     const resInfo = this.info.resourceTypes.get(resourceType)
@@ -533,13 +552,11 @@ export class EditorResourceLayer implements IResourceLayer, IWorldLoaded {
 
     const wasEmpty = !existing || !existing.type || existing.density === 0
 
-    // Update netWorth: subtract old value, add new value
+    // Update netWorth: subtract old value, add new value.
+    // For type replacement (ore→gems): old type value is subtracted above,
+    // new type value is added below.
     if (existing && existing.type && existing.density > 0) {
       this._updateNetWorthDelta(existing.type, -existing.density)
-    }
-    if (existing && existing.type !== resourceType) {
-      // Different type being replaced — no net worth removal is already done above
-      // The new type's value will be added below
     }
     this._updateNetWorthDelta(resourceType, density)
 
@@ -586,8 +603,10 @@ export class EditorResourceLayer implements IResourceLayer, IWorldLoaded {
     const oldDensity = existing.density
     const density = Math.max(0, oldDensity - amount)
 
-    // Update netWorth
-    this._updateNetWorthDelta(resourceType, -amount)
+    // Update netWorth: use actual removed amount (oldDensity - density),
+    // not the requested amount. If removing 10 from cell with density 3,
+    // only 3 units should be subtracted from netWorth.
+    this._updateNetWorthDelta(resourceType, -(oldDensity - density))
 
     if (density === 0) {
       this._cells.delete(key)
@@ -695,8 +714,13 @@ export class EditorResourceLayer implements IResourceLayer, IWorldLoaded {
    * @param snapshot — a cloned EditorResourceLayer containing the target state
    */
   applySnapshot(snapshot: EditorResourceLayer): void {
-    // Collect old cell keys for change detection
-    const oldKeys = new Set(this._cells.keys())
+    // Save old cell data BEFORE overwriting so the diff can compare
+    // old vs new correctly. BLOCKER: must copy before this._cells is replaced.
+    const oldCells = new Map<string, ResourceCellData>()
+    for (const [key, data] of this._cells) {
+      oldCells.set(key, { type: data.type, density: data.density })
+    }
+    const oldKeys = new Set(oldCells.keys())
     const newKeys = new Set(snapshot._cells.keys())
 
     // Apply new state
@@ -707,11 +731,11 @@ export class EditorResourceLayer implements IResourceLayer, IWorldLoaded {
     this._netWorth = snapshot._netWorth
     this._resCells = snapshot._resCells
 
-    // Fire CellChanged for differences
+    // Fire CellChanged for differences — diff oldCells vs snapshot data
     const allKeys = new Set([...oldKeys, ...newKeys])
     for (const key of allKeys) {
-      const oldData = oldKeys.has(key) ? this._cells.get(key) : undefined
-      const newData = newKeys.has(key) ? snapshot._cells.get(key) : undefined
+      const oldData = oldCells.get(key) // use saved oldCells, not overwritten this._cells
+      const newData = snapshot._cells.get(key)
 
       const oldType = oldData?.type || null
       const newType = newData?.type || null
