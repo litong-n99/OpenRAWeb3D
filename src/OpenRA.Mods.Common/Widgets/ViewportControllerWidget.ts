@@ -769,7 +769,7 @@ export class ViewportControllerWidget extends Widget {
    *
    * OpenRA 对照: KeyboardEvent.ctrlKey/shiftKey/altKey/metaKey → Modifiers flags
    */
-  private static extractModifiers(
+  protected static extractModifiers(
     event: import('../../OpenRA.Game/Widgets/Widget').WidgetEvent,
   ): number {
     let mods = Modifiers.None
@@ -784,7 +784,7 @@ export class ViewportControllerWidget extends Widget {
   // 事件转换
   // ---------------------------------------------------------------------------
 
-  private eventToMouseInput(
+  protected eventToMouseInput(
     event: import('../../OpenRA.Game/Widgets/Widget').WidgetEvent,
   ): MouseInput | null {
     const { type, clientX, clientY, button, deltaX, deltaY } = event
@@ -837,7 +837,7 @@ export class ViewportControllerWidget extends Widget {
     }
   }
 
-  private eventToKeyInput(
+  protected eventToKeyInput(
     event: import('../../OpenRA.Game/Widgets/Widget').WidgetEvent,
   ): KeyInput | null {
     if (event.type !== 'keydown' && event.type !== 'keyup') return null

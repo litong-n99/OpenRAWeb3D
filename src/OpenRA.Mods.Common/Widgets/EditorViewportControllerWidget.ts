@@ -5,10 +5,12 @@
  * 核心范式转换:
  * - C# extends Widget + 独立视口控制 → TS extends ViewportControllerWidget (复用基础功能)
  * - C# HandleMouseInput(MouseInput) 直接接收 → TS override handleEvent(WidgetEvent) 路由
- * - C# Lazy<TooltipContainerWidget> → TS nullable tooltip (TODO: TooltipContainer 迁移)
- * - C# EditorDefaultBrush 内联构造 → TS 可选默认笔刷 + stub (TODO: EditorDefaultBrush 迁移)
+ * - C# Lazy<TooltipContainerWidget> → TS nullable tooltip (TODO-21.A.8-DEFER-2)
+ * - C# EditorDefaultBrush 内联构造 → TS 可选默认笔刷 + stub (TODO-21.A.8-DEFER-1)
  * - C# event Action BrushChanged → TS brushChangedCallback 回调
  * - C# HandleMouseInput 中直接 zoom → 基类 ViewportControllerWidget 已处理 zoom
+ *
+ * Ref: TODO-21.A.8 — docs/chapter21_phase_a_design.md
  */
 
 import { type WidgetArgs, type WidgetEvent } from '../../OpenRA.Game/Widgets/Widget'
@@ -16,15 +18,19 @@ import {
   ViewportControllerWidget,
   type IViewportSettings,
 } from './ViewportControllerWidget'
-import { Viewport } from '../../OpenRA.Game/Graphics/Viewport'
+import type { Viewport } from '../../OpenRA.Game/Graphics/Viewport'
 import type { Color } from '../../OpenRA.Game/Graphics/PlatformInterfaces'
 import { CPos } from '../../OpenRA.Game/CPos'
-import { Modifiers, MouseInputEvent, type MouseInput } from '../../OpenRA.Game/Input/IInputHandler'
+import { Modifiers, MouseInputEvent } from '../../OpenRA.Game/Input/IInputHandler'
 import { MapGridType } from '../../OpenRA.Game/Map/MapGridType'
 import type { HotkeyReference } from '../../OpenRA.Game/Input/HotkeyReference'
 import type { IEditorBrush } from '../Editor/IEditorBrush'
 import type { EditorCursorLayer } from '../Traits/World/EditorCursorLayer'
-import type { WorldRendererStub } from '../../OpenRA.Game/Traits/TraitsInterfaces'
+import type {
+  IGameActor,
+  IRenderable,
+  WorldRendererStub,
+} from '../../OpenRA.Game/Traits/TraitsInterfaces'
 
 // ---------------------------------------------------------------------------
 // 编辑器默认视口设置 (对应 OpenRA 编辑器中的视口配置)
@@ -60,7 +66,7 @@ const DEFAULT_PASTE_COLOR: Color = { r: 76, g: 255, b: 0, a: 255 }
 /**
  * EditorDefaultBrush 的临时桩实现。
  *
- * TODO-21.A.6-DEFER-1: EditorDefaultBrush 迁移后替换此桩
+ * TODO-21.A.8-DEFER-1: EditorDefaultBrush 迁移后替换此桩
  *
  * OpenRA 对照: EditorDefaultBrush : IEditorBrush
  *
@@ -74,21 +80,15 @@ class EditorDefaultBrushStub implements IEditorBrush {
 
   tick(): void { /* no-op */ }
 
-  tickRender(_wr: WorldRendererStub, _self: { isInWorld: boolean; disposed: boolean }): void {
+  tickRender(_wr: WorldRendererStub, _self: IGameActor): void {
     /* no-op */
   }
 
-  renderAboveShroud(
-    _self: { isInWorld: boolean; disposed: boolean },
-    _wr: WorldRendererStub,
-  ): readonly any[] {
+  renderAboveShroud(_self: IGameActor, _wr: WorldRendererStub): readonly IRenderable[] {
     return []
   }
 
-  renderAnnotations(
-    _self: { isInWorld: boolean; disposed: boolean },
-    _wr: WorldRendererStub,
-  ): readonly any[] {
+  renderAnnotations(_self: IGameActor, _wr: WorldRendererStub): readonly IRenderable[] {
     return []
   }
 
@@ -113,6 +113,8 @@ class EditorDefaultBrushStub implements IEditorBrush {
  * 6. Shift 键网格对齐切换
  *
  * 输入路由: 鼠标事件 → 笔刷 (优先) → 基类 ViewportControllerWidget (平移/缩放)
+ *
+ * Ref: TODO-21.A.8
  */
 export class EditorViewportControllerWidget extends ViewportControllerWidget {
   // ---------------------------------------------------------------------------
@@ -134,11 +136,11 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
 
   /** 默认笔刷（选择/操作工具）。OpenRA 对照: DefaultBrush (EditorDefaultBrush)
    *
-   * TODO-21.A.6-DEFER-1: EditorDefaultBrush 迁移后用真实实现替换 */
+   * TODO-21.A.8-DEFER-1: EditorDefaultBrush 迁移后用真实实现替换 */
   readonly defaultBrush: IEditorBrush
 
   // ---------------------------------------------------------------------------
-  // 活跃笔刷 (getter/setter)
+  // 活跃笔刷 (getter)
   // ---------------------------------------------------------------------------
 
   /** 当前活跃的编辑器笔刷。
@@ -212,8 +214,13 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
 
   /** 缓存的视口中心，用于检测视口移动以清除工具提示。
    *
-   * OpenRA 对照: cachedViewportPosition */
-  private cachedViewportPosition: { x: number; y: number; z: number } | null = null
+   * OpenRA 对照: cachedViewportPosition
+   *
+   * NOTE: 对象在构造时预分配，tick() 中仅修改 x/y/z 属性以避免每帧分配。 */
+  private cachedViewportPosition: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 }
+
+  /** 视口位置是否已首次缓存。避免首次 tick 时误判为移动。 */
+  private viewportPositionCached: boolean = false
 
   /** 工具提示是否启用 (鼠标在 Widget 内时为 true)。
    *
@@ -286,7 +293,7 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
     this.selectionAltColor = DEFAULT_SELECTION_ALT_COLOR
     this.pasteColor = DEFAULT_PASTE_COLOR
 
-    // 默认笔刷 (桩实现，待 TODO-21.A.6-DEFER-1)
+    // 默认笔刷 (桩实现，待 TODO-21.A.8-DEFER-1)
     this.defaultBrush = new EditorDefaultBrushStub()
     this._currentBrush = this.defaultBrush
 
@@ -315,6 +322,9 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
    * 初始化 Widget。
    *
    * OpenRA 对照: (无显式 initialize，C# 使用 ObjectCreator 构造函数注入)
+   *
+   * NOTE: 基类 ViewportControllerWidget.initialize() 在此创建书签热键数组。
+   * 此覆盖提供编辑器特定的初始化钩子 (当前为空)，保留用于 Phase B 笔刷初始化。
    */
   override initialize(args: WidgetArgs): void {
     super.initialize(args)
@@ -368,7 +378,6 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
 
     // 释放旧笔刷资源（默认笔刷和 null 不释放）
     if (oldBrush !== null && oldBrush !== this.defaultBrush) {
-      // NOTE: defaultBrush is the stub — don't try to dispose it
       try {
         oldBrush.dispose()
       } catch (_e) {
@@ -421,17 +430,17 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
    *
    * @param tooltip — 工具提示文本，null 表示清除
    *
-   * TODO-21.A.6-DEFER-2: TooltipContainerWidget 迁移后集成真实工具提示显示
+   * TODO-21.A.8-DEFER-2: TooltipContainerWidget 迁移后集成真实工具提示显示
    */
   setTooltip(tooltip: string | null): void {
     if (!this.enableTooltips) return
 
     if (tooltip !== null) {
-      // TODO-21.A.6-DEFER-2: 集成 TooltipContainerWidget
+      // TODO-21.A.8-DEFER-2: 集成 TooltipContainerWidget
       //   tooltipContainer.Value.SetTooltip(TooltipTemplate,
       //     new WidgetArgs() { { "getText", () => tooltip } })
     } else {
-      // TODO-21.A.6-DEFER-2: 集成 TooltipContainerWidget
+      // TODO-21.A.8-DEFER-2: 集成 TooltipContainerWidget
       //   tooltipContainer.Value.RemoveTooltip()
     }
   }
@@ -475,8 +484,8 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
    * @returns 如果事件已被处理则返回 true
    */
   override handleEvent(event: WidgetEvent): boolean {
-    // 尝试转换为鼠标事件并路由到笔刷
-    const mi = this.widgetEventToMouseInput(event)
+    // 使用基类的 protected 方法将 WidgetEvent 转换为 MouseInput
+    const mi = this.eventToMouseInput(event)
     if (mi !== null) {
       // 跟踪 Shift 键状态用于网格对齐切换
       if (mi.event === MouseInputEvent.Move || mi.event === MouseInputEvent.Down) {
@@ -496,80 +505,6 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
     return super.handleEvent(event)
   }
 
-  /**
-   * 将 WidgetEvent 转换为 MouseInput。
-   *
-   * 从 ViewportControllerWidget 的私有实现复制而来
-   * (基类方法为 private，子类无法直接使用)。
-   *
-   * @param event — Widget DOM 事件
-   * @returns MouseInput 或 null (如果事件不是鼠标事件)
-   */
-  private widgetEventToMouseInput(event: WidgetEvent): MouseInput | null {
-    const { type, clientX, clientY, button, deltaX, deltaY } = event
-    if (clientX === undefined || clientY === undefined) return null
-
-    let mouseEvent: typeof MouseInputEvent[keyof typeof MouseInputEvent]
-    switch (type) {
-      case 'mousedown':
-        mouseEvent = MouseInputEvent.Down
-        break
-      case 'mouseup':
-        mouseEvent = MouseInputEvent.Up
-        break
-      case 'mousemove':
-        mouseEvent = MouseInputEvent.Move
-        break
-      case 'wheel':
-        mouseEvent = MouseInputEvent.Scroll
-        break
-      default:
-        return null
-    }
-
-    let mouseButton: number = 0
-    switch (button as number) {
-      case 0:
-        mouseButton = 1 // MouseButton.Left
-        break
-      case 1:
-        mouseButton = 2 // MouseButton.Middle
-        break
-      case 2:
-        mouseButton = 4 // MouseButton.Right
-        break
-      case 3:
-        mouseButton = 8 // MouseButton.X1
-        break
-      case 4:
-        mouseButton = 16 // MouseButton.X2
-        break
-    }
-
-    return {
-      event: mouseEvent,
-      button: mouseButton,
-      location: { x: clientX as number, y: clientY as number },
-      delta: { x: (deltaX as number) ?? 0, y: (deltaY as number) ?? 0 },
-      modifiers: EditorViewportControllerWidget.modsFromEvent(event),
-      multiTapCount: 0,
-    }
-  }
-
-  /**
-   * 从浏览器事件提取修饰键位标志。
-   *
-   * OpenRA 对照: KeyboardEvent.ctrlKey/shiftKey/altKey/metaKey → Modifiers flags
-   */
-  private static modsFromEvent(event: WidgetEvent): number {
-    let mods = Modifiers.None
-    if (event.ctrlKey) mods |= Modifiers.Ctrl
-    if (event.shiftKey) mods |= Modifiers.Shift
-    if (event.altKey) mods |= Modifiers.Alt
-    if (event.metaKey) mods |= Modifiers.Meta
-    return mods
-  }
-
   // ---------------------------------------------------------------------------
   // 每帧 Tick
   // ---------------------------------------------------------------------------
@@ -582,7 +517,7 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
   override tick(): void {
     // 检测视口是否移动 (使用键盘滚屏等)
     const currentCenter = this.viewport.centerPosition
-    if (this.cachedViewportPosition) {
+    if (this.viewportPositionCached) {
       if (
         this.cachedViewportPosition.x !== currentCenter.x ||
         this.cachedViewportPosition.y !== currentCenter.y ||
@@ -590,12 +525,13 @@ export class EditorViewportControllerWidget extends ViewportControllerWidget {
       ) {
         this.setTooltip(null)
       }
+    } else {
+      this.viewportPositionCached = true
     }
-    this.cachedViewportPosition = {
-      x: currentCenter.x,
-      y: currentCenter.y,
-      z: currentCenter.z,
-    }
+    // 原地修改预分配对象，避免每帧分配
+    this.cachedViewportPosition.x = currentCenter.x
+    this.cachedViewportPosition.y = currentCenter.y
+    this.cachedViewportPosition.z = currentCenter.z
 
     // Tick 笔刷
     this._currentBrush.tick()
