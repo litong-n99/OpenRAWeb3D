@@ -233,6 +233,7 @@ describe('ClassicProductionQueue', () => {
   it('getBuildTime returns 0 when fastBuild is enabled', () => {
     const info = new ClassicProductionQueueInfo({ type: 'Vehicle', speedUp: true })
     const dmFast = new DeveloperMode(new DeveloperModeInfo({ fastBuild: true }))
+    dmFast.enabled = true
     const queue = createQueue(info, { developerMode: dmFast })
     const bi = new BuildableInfo({ queue: new Set(['Vehicle']), buildDuration: 100, buildDurationModifier: 100 })
     const ai = createActorInfo('tank', bi, 500)
