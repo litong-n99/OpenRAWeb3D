@@ -17,7 +17,7 @@
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'
-import type { IEditorAction, EditorActionManager } from '../../../Traits/World/EditorActionManager.js'
+import type { EditorActionManager } from '../../../Traits/World/EditorActionManager.js'
 
 // ---------------------------------------------------------------------------
 // Minimal widget types
@@ -123,39 +123,9 @@ export interface IGeneratedMapResult {
   readonly actorDefinitions: Record<string, { value: string; nodes?: unknown[] }>
 }
 
-// ---------------------------------------------------------------------------
-// RandomMapEditorAction (对应 OpenRA RandomMapEditorAction : IEditorAction)
-// ---------------------------------------------------------------------------
-
-/**
- * Editor action wrapper for a map generation operation.
- *
- * OpenRA 对照: RandomMapEditorAction : IEditorAction
- */
-class RandomMapEditorAction implements IEditorAction {
-  text: string
-
-  private readonly onCommit: () => void
-  private readonly onRevert: () => void
-
-  constructor(description: string, onCommit: () => void, onRevert: () => void) {
-    this.text = description
-    this.onCommit = onCommit
-    this.onRevert = onRevert
-  }
-
-  execute(): void {
-    this.onCommit()
-  }
-
-  redo(): void {
-    this.onCommit()
-  }
-
-  undo(): void {
-    this.onRevert()
-  }
-}
+// NOTE: RandomMapEditorAction class removed — its only usage (generateMapMayThrow)
+// was replaced with a console.warn stub pending TODO-21.C.5-DEFER-1. The class
+// will be reinstated when the full map generator pipeline is integrated.
 
 // ---------------------------------------------------------------------------
 // MapGeneratorToolLogic (对应 OpenRA MapGeneratorToolLogic : ChromeLogic)
@@ -169,7 +139,9 @@ class RandomMapEditorAction implements IEditorAction {
  */
 export class MapGeneratorToolLogic extends ChromeLogic {
   // ---- Traits ----
-  private readonly editorActionManager: EditorActionManager
+  // NOTE: editorActionManager is stored for future generator pipeline integration
+  // (TODO-21.C.5-DEFER-1). Prefixed with _ to avoid unused warning.
+  private readonly _editorActionManager: EditorActionManager
   private readonly generator: IEditorMapGeneratorInfo | null
   private readonly settings: IMapGeneratorSettings | null
 
@@ -206,7 +178,8 @@ export class MapGeneratorToolLogic extends ChromeLogic {
   ) {
     super()
 
-    this.editorActionManager = editorActionManager
+    this._editorActionManager = editorActionManager
+    void this._editorActionManager // reserved for TODO-21.C.5-DEFER-1
     this.generator = generator
     this.settings = generator?.getSettings() ?? null
     void _world; void _worldRenderer; void _modData // reserved
@@ -375,14 +348,12 @@ export class MapGeneratorToolLogic extends ChromeLogic {
     // generatedMap = generator.Generate(modData, args) →
     // EditorBlit.Commit() → RandomMapEditorAction → actionManager.Add()
 
-    // Stub: create a minimal editor action with description
-    const description = `Generated map with ${this.generator.label}`
-    const action = new RandomMapEditorAction(
-      description,
-      () => { /* commit: no-op stub */ },
-      () => { /* revert: no-op stub */ },
-    )
-    this.editorActionManager.Add(action)
+    // MAJOR-FIX: don't add no-op actions to the undo stack.
+    // The full generation pipeline is deferred (TODO-21.C.5-DEFER-1).
+    // For now, we log a message instead of polluting the action history.
+    // When the generator pipeline is integrated, this will produce real
+    // EditorBlitSource data and commit via EditorBlit.
+    console.warn(`[MapGeneratorToolLogic] GenerateMap called but full generation pipeline is deferred (TODO-21.C.5-DEFER-1). No action added to undo stack.`)
   }
 
   // -------------------------------------------------------------------------

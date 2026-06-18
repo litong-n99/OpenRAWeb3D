@@ -168,7 +168,10 @@ export class MapOverlaysLogic extends ChromeLogic {
 
     // ---- Key handler registration ----
     const keyHandler = (widget as any).get('OVERLAY_KEYHANDLER') as ILogicKeyListenerWidget | null
-    if (keyHandler && keyHandler.addHandler) {
+    if (!keyHandler || !keyHandler.addHandler) {
+      // MAJOR-FIX: warn instead of silently ignoring missing key handler
+      console.warn('[MapOverlaysLogic] "OVERLAY_KEYHANDLER" LogicKeyListenerWidget not found — overlay hotkeys will be non-functional')
+    } else {
       keyHandler.addHandler((keyInput) => {
         if (keyInput.event !== KEY_INPUT_EVENT_DOWN) return false
 

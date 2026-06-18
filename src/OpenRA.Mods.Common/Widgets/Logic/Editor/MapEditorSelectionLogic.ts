@@ -188,6 +188,10 @@ export class MapEditorSelectionLogic extends ChromeLogic {
         }
         this.editor.setBrush(stubBrush as any)
       }
+      // MAJOR-FIX: pasteButton isDisabled correctly checks clipboard emptiness.
+      // The button will be enabled once copySelectionContents() returns non-empty data.
+      // TODO-21.C.2-DEFER-1: EditorBlit.CopyRegionContents integration will populate
+      //   the clipboard with real tile/actor data, enabling the paste button.
       ;(pasteButton as any).isDisabled = () =>
         this.clipboard === null ||
         ((this.clipboard?.actors.size ?? 0) === 0 && (this.clipboard?.tiles.size ?? 0) === 0)

@@ -549,7 +549,11 @@ export class ActorEditLogic extends ChromeLogic {
       ;(deleteButton as any).onClick = () => this.delete()
     }
 
+    // BLOCKER-FIX: restored currentBrush === defaultBrush guard.
+    // Use duck-typing since IEditorBrush and IActorEditDefaultBrush are
+    // different TS types but the same object at runtime when defaultBrush is active.
     ;(actorEditPanel as any).isVisible = () =>
+      this.editor.currentBrush === (this.editor.defaultBrush as unknown as IEditorBrush) &&
       this.selectedActor !== null
 
     // Wire actor ID field
@@ -563,12 +567,14 @@ export class ActorEditLogic extends ChromeLogic {
           return
         }
 
-        // Check for duplicate actor ID (case-insensitive)
+        // Check for duplicate actor ID (case-insensitive equality).
+        // BLOCKER-FIX: replaced broken startsWith logic with case-insensitive equality.
+        // Original C#: !SelectedActor.ID.Equals(actorId, StringComparison.OrdinalIgnoreCase)
+        //   && editorActorLayer[actorId] != null
         if (
           this.selectedActor &&
-          !this.selectedActor.id.toLowerCase().startsWith(actorId.toLowerCase()) === false &&
-          this.editorActorLayer.getById(actorId) !== undefined &&
-          this.selectedActor.id.toLowerCase() !== actorId.toLowerCase()
+          this.selectedActor.id.toLowerCase() !== actorId.toLowerCase() &&
+          this.editorActorLayer.getById(actorId) !== undefined
         ) {
           this.nextActorIdStatus = ActorIDStatus.Duplicate
           return

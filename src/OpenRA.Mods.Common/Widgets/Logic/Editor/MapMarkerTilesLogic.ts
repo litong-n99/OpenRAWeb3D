@@ -138,7 +138,9 @@ export class MapMarkerTilesLogic extends ChromeLogic {
   // ---- EditorMarkerLayerBrush constructor (injectable for testing) ----
   private readonly createMarkerBrush: (editor: IMarkerEditor, template: number | null, _worldRenderer: unknown) => IEditorBrush
 
-  // ---- Bound event handler (used via editor.brushChangedCallback) ----
+  // ---- Saved brush callback for cleanup (BLOCKER-FIX) ----
+  // Stored via (this as any) to avoid TS property inference issues.
+  // Read/written in constructor and dispose() exclusively.
 
   // -------------------------------------------------------------------------
   // Constructor (对应 OpenRA MapMarkerTilesLogic constructor)
@@ -180,12 +182,13 @@ export class MapMarkerTilesLogic extends ChromeLogic {
       } as unknown as IEditorBrush & { template: number | null }
     })
 
-    // Wire brush changed listener
-    // NOTE: EditorViewportControllerWidget.brushChangedCallback is a single
-    // callback, so we save the previous one and chain them.
-    const prevCallback = editor.brushChangedCallback
+    // Wire brush changed listener.
+    // BLOCKER-FIX: store the previous callback so we can restore it in dispose().
+    // EditorViewportControllerWidget.brushChangedCallback is a single-callback
+    // property (not an array), so we must chain it manually.
+    ;(this as any)._savedBrushChangedCallback = editor.brushChangedCallback
     ;(editor as any).brushChangedCallback = () => {
-      prevCallback?.()
+      (this as any)._savedBrushChangedCallback?.()
       this.handleBrushChanged()
     }
 
@@ -229,10 +232,10 @@ export class MapMarkerTilesLogic extends ChromeLogic {
       ;(this.alphaSlider as any).minimumValue = 1
       ;(this.alphaSlider as any).maximumValue = 255
       ;(this.alphaSlider as any).ticks = 12
-      const changeHandlers: Array<(val: number) => void> = (this.alphaSlider as any)._changeHandlers ?? (this.alphaSlider as any).onChange
-      if (Array.isArray(changeHandlers)) {
-        changeHandlers.push((val: number) => { this.markerLayerTrait.tileAlpha = val | 0 })
-      }
+      // MAJOR-FIX: use wireSliderOnChange for robust handler wiring
+      this.wireSliderOnChange(this.alphaSlider, (val: number) => {
+        this.markerLayerTrait.tileAlpha = val | 0
+      })
       ;(this.alphaSlider as any).getValue = () => this.markerLayerTrait.tileAlpha
     }
 
@@ -271,6 +274,10 @@ export class MapMarkerTilesLogic extends ChromeLogic {
       ;(this.rotateNumSidesSlider as any).maximumValue = 8
       ;(this.rotateNumSidesSlider as any).ticks = 7
       ;(this.rotateNumSidesSlider as any).isVisible = isRotateMode
+      // BLOCKER-FIX: wire OnChange handler (C#: slider.OnChange += (val) => markerLayerTrait.NumSides = (int)val)
+      this.wireSliderOnChange(this.rotateNumSidesSlider, (val: number) => {
+        this.markerLayerTrait.numSides = val | 0
+      })
       ;(this.rotateNumSidesSlider as any).getValue = () => this.markerLayerTrait.numSides
     }
 
@@ -299,6 +306,10 @@ export class MapMarkerTilesLogic extends ChromeLogic {
       ;(this.axisAngleSlider as any).maximumValue = 11
       ;(this.axisAngleSlider as any).ticks = 12
       ;(this.axisAngleSlider as any).isVisible = isFlipMode
+      // BLOCKER-FIX: wire OnChange handler (C#: slider.OnChange += (val) => markerLayerTrait.AxisAngle = (int)val * 15)
+      this.wireSliderOnChange(this.axisAngleSlider, (val: number) => {
+        this.markerLayerTrait.axisAngle = (val | 0) * 15
+      })
       ;(this.axisAngleSlider as any).getValue = () => this.markerLayerTrait.axisAngle / 15
     }
 
@@ -314,6 +325,10 @@ export class MapMarkerTilesLogic extends ChromeLogic {
   // -------------------------------------------------------------------------
 
   override dispose(): void {
+    // BLOCKER-FIX: restore the previous brushChangedCallback to unlink our handler
+    if ((this as any)._savedBrushChangedCallback !== undefined) {
+      ;(this.editor as any).brushChangedCallback = (this as any)._savedBrushChangedCallback
+    }
     super.dispose()
   }
 
@@ -376,6 +391,36 @@ export class MapMarkerTilesLogic extends ChromeLogic {
     }
 
     return item
+  }
+
+  // -------------------------------------------------------------------------
+  // wireSliderOnChange — robustly wire a SliderWidget's OnChange handler
+  // -------------------------------------------------------------------------
+
+  /**
+   * Wire an OnChange handler to a slider widget, handling both the
+   * array-based (Ch16 SliderWidget) and function-based fallback patterns.
+   *
+   * MAJOR-FIX: replaces fragile array-vs-function check with a unified approach.
+   *
+   * @param slider — the slider widget
+   * @param handler — the value change handler
+   */
+  private wireSliderOnChange(slider: AnyWidget, handler: (val: number) => void): void {
+    const s = slider as any
+    // SliderWidget stores handlers in _changeHandlers array (Ch16 pattern)
+    if (s._changeHandlers) {
+      s._changeHandlers.push(handler)
+    } else if (Array.isArray(s.onChange)) {
+      s.onChange.push(handler)
+    } else if (typeof s.onChange === 'function') {
+      // Single-function fallback: wrap to call both
+      const prev = s.onChange as ((v: number) => void) | undefined
+      s.onChange = (v: number) => { prev?.(v); handler(v) }
+    } else {
+      // No handler infrastructure yet — set as the sole handler
+      s.onChange = handler
+    }
   }
 
   // -------------------------------------------------------------------------

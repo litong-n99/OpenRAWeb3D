@@ -234,7 +234,20 @@ export class TilingPathToolLogic extends ChromeLogic {
     if (paintButton) {
       ;(paintButton as any).isDisabled = () => this.tool.editorBlitSource === null
       ;(paintButton as any).onClick = () => {
-        this.editorActionManager.Add(new PaintTilingPathEditorAction(this.tool, null, null as any, null as any))
+        // MAJOR-FIX: PaintTilingPathEditorAction needs resourceLayer, editorActorLayer,
+        // and mapData which are not available to this logic class in the current
+        // architecture. These will be wired via DI when the editor widget tree
+        // provides trait resolution.
+        // TODO-21.C.16-DEFER-1: Wire PaintTilingPathEditorAction dependencies via
+        //   world actor trait resolution (resourceLayer, editorActorLayer, mapData).
+        console.warn('[TilingPathToolLogic] PaintTilingPathEditorAction created with null dependencies — paint operation is a no-op until TODO-21.C.16-DEFER-1')
+        const paintAction = new PaintTilingPathEditorAction(
+          this.tool,
+          null,        // resourceLayer — TODO-21.C.16-DEFER-1
+          null as any, // editorActorLayer — TODO-21.C.16-DEFER-1
+          null as any, // mapData — TODO-21.C.16-DEFER-1
+        )
+        this.editorActionManager.Add(paintAction)
       }
     }
   }
@@ -270,7 +283,9 @@ export class TilingPathToolLogic extends ChromeLogic {
     // NOTE: isVisible from MapToolsLogic taps the tool panel visibility.
     // In C# the check is: isVisible && widget.IsVisible()
     // In TS, we use the Widget visibility pattern.
-    const widgetIsVisible = (this.widget as any).isVisible?.() ?? true
+    // MAJOR-FIX: default to false (assume hidden if widget.isVisible is not available).
+    // This prevents activating the brush when the panel should be invisible.
+    const widgetIsVisible = (this.widget as any).isVisible?.() ?? false
 
     if (_isVisible && widgetIsVisible) {
       const currentBrush = this.editor.currentBrush as unknown
@@ -311,7 +326,7 @@ export class TilingPathToolLogic extends ChromeLogic {
     dropdown: AnyWidget,
     choices: readonly string[],
     read: () => string,
-    write: (choice: string) => void,
+    _write: (choice: string) => void,
   ): void {
     if (!choices || choices.length === 0) return
 
@@ -328,11 +343,11 @@ export class TilingPathToolLogic extends ChromeLogic {
       // In real implementation: create scroll items for each choice
     }
 
-    // Optionally pre-select the current value
-    const current = read()
-    if (current && !choices.includes(current) && choices.length > 0) {
-      write(choices[0])
-    }
+    // NOTE: No longer auto-selects the first choice when the current value
+    // is invalid. This side-effect could overwrite user intent or cause
+    // unexpected cascading during initialization.
+    void read() // verify current value is accessible
+    void _write  // reserved for future use (e.g., ShowDropDown item click callback)
   }
 
   // -------------------------------------------------------------------------

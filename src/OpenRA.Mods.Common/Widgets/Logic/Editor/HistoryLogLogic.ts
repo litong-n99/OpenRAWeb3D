@@ -96,8 +96,16 @@ export class HistoryLogLogic extends ChromeLogic {
     this.editorActionManager = editorActionManager
 
     const panelWidget = (widget as any)?.get?.(panelWidgetId) as MinimalScrollPanelWidget | undefined
+    if (!panelWidget) {
+      // MAJOR-FIX: warn instead of silently substituting a no-op panel
+      console.warn(`[HistoryLogLogic] Widget "${panelWidgetId}" not found — history list will be non-functional`)
+    }
     this.panel = (panelWidget ?? { addChild: () => {}, removeChild: () => {} }) as MinimalScrollPanelWidget
-    this.template = ((panelWidget as any)?.get?.(templateWidgetId) ?? { clone: () => ({ get: () => null }) }) as MinimalScrollItemWidget
+    const templateWidget = (panelWidget as any)?.get?.(templateWidgetId) as MinimalScrollItemWidget | undefined
+    if (!templateWidget) {
+      console.warn(`[HistoryLogLogic] Widget "${templateWidgetId}" not found in panel — history items will not render`)
+    }
+    this.template = (templateWidget ?? { clone: () => ({ get: () => null }) }) as MinimalScrollItemWidget
 
     // Bind event handlers
     this._onItemAdded = (editorAction: EditorActionContainer) => this.itemAdded(editorAction)
