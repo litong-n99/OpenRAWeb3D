@@ -2,7 +2,7 @@
  * CheckMissingSprites.test.ts — CheckMissingSprites 单元测试
  *
  * 测试焦点: 参数验证、序列文件发现、精灵引用提取、
- * 缺失精灵检测、exists() 文件查找。
+ * 缺失精灵检测、exists() 文件查找、addFileContent API。
  *
  * 由于 @babylonjs/core 不在此命令中使用，无需 mock。
  */
@@ -25,11 +25,10 @@ import type { IUtilityCommand, Utility } from '../../OpenRA.Game/IUtilityCommand
 /**
  * 创建一个带有 mock 文件系统的最小 Utility。
  * availableFiles 是存在于文件系统中的文件（小写）的集合。
- * sequenceContent 是序列文件内容的映射。
+ * 使用标准 IReadOnlyFileSystem API（exists, openAsync, isMounted）。
  */
 function createMockUtility(
   availableFiles: Set<string> = new Set(),
-  sequenceContent: Map<string, string> = new Map(),
 ): Utility {
   const fs = {
     exists: vi.fn((filename: string) => {
@@ -38,10 +37,6 @@ function createMockUtility(
     openAsync: vi.fn().mockResolvedValue(null),
     isMounted: vi.fn().mockReturnValue(true),
     dispose: vi.fn(),
-    // 同步读取用于测试（非标准，仅用于 mock）
-    tryReadFileAsString: vi.fn((filePath: string) => {
-      return sequenceContent.get(filePath) ?? null
-    }),
   }
 
   return {
@@ -127,14 +122,17 @@ describe('CheckMissingSprites', () => {
     it('should detect missing sprites from sequence files', () => {
       // 文件系统中有序列文件，但引用的精灵缺失
       const availableFiles = new Set<string>(['sequences/infantry.yaml'])
-      const seqContent = new Map<string, string>()
-      seqContent.set('sequences/infantry.yaml', makeSequenceJson(['e1', 'e2']))
+      const utility = createMockUtility(availableFiles)
 
-      const utility = createMockUtility(availableFiles, seqContent)
+      // 通过标准 API 注入文件内容
+      command.addFileContent(
+        'sequences/infantry.yaml',
+        makeSequenceJson(['e1', 'e2']),
+      )
+
       command.run(utility, [])
 
       // 'e1' 和 'e2' 不在文件系统中 —— 应报告为缺失
-      // console.log 应包含 "not found" 消息
       const logCalls = vi.mocked(console.log).mock.calls.flat()
       const notFoundMessages = logCalls.filter(
         (c) => typeof c === 'string' && c.includes('not found'),
@@ -145,12 +143,15 @@ describe('CheckMissingSprites', () => {
     it('should not report sprites that exist in file system', () => {
       const availableFiles = new Set<string>([
         'sequences/infantry.yaml',
-        'sprites/e1.png',  // 精灵文件存在
+        'sprites/e1.png', // 精灵文件存在
       ])
-      const seqContent = new Map<string, string>()
-      seqContent.set('sequences/infantry.yaml', makeSequenceJson(['e1', 'e2']))
+      const utility = createMockUtility(availableFiles)
 
-      const utility = createMockUtility(availableFiles, seqContent)
+      command.addFileContent(
+        'sequences/infantry.yaml',
+        makeSequenceJson(['e1', 'e2']),
+      )
+
       command.run(utility, [])
 
       // e1 存在，e2 缺失 —— 应仅报告 e2
@@ -158,14 +159,14 @@ describe('CheckMissingSprites', () => {
       const notFoundMessages = logCalls.filter(
         (c) => typeof c === 'string' && c.includes('not found'),
       )
-      expect(notFoundMessages.length).toBe(2) // 每个地形集 1 条
+      // 每个地形集 1 条（仅 e2 缺失）
+      expect(notFoundMessages.length).toBe(2)
     })
 
     it('should handle missing tileset info gracefully', () => {
-      // 创建一个 tileSets 为空的 utility
-      const utility = createMockUtility(new Set<string>(), new Map<string, string>())
-      // 为了测试空 tileSets 场景，修改 manifest
-      const manifestObj = utility.modData.manifest as unknown as Record<string, unknown>
+      const utility = createMockUtility(new Set<string>())
+      const manifestObj =
+        utility.modData.manifest as unknown as Record<string, unknown>
       manifestObj.tileSets = []
       command.run(utility, [])
       // 应回退到 'default' 地形集
@@ -174,25 +175,27 @@ describe('CheckMissingSprites', () => {
 
     it('should handle JSON parse errors gracefully', () => {
       const availableFiles = new Set<string>(['sequences/infantry.yaml'])
-      const seqContent = new Map<string, string>()
-      seqContent.set('sequences/infantry.yaml', 'not valid json {{{') // 损坏的 JSON
+      const utility = createMockUtility(availableFiles)
 
-      const utility = createMockUtility(availableFiles, seqContent)
+      // 注入损坏的 JSON，但通过 addFileContent
+      command.addFileContent('sequences/infantry.yaml', 'not valid json {{{')
+
       command.run(utility, [])
       // 不应崩溃 —— JSON 错误被静默吞掉（CheckYaml 负责报告它们）
-      // 测试通过表示未抛出异常
     })
 
     it('should try multiple file extensions when checking sprites', () => {
-      // 精灵以 .shp 格式存在（而非 .png）
       const availableFiles = new Set<string>([
         'sequences/infantry.yaml',
-        'bits/e1.shp',  // .shp extension
+        'bits/e1.shp', // .shp extension
       ])
-      const seqContent = new Map<string, string>()
-      seqContent.set('sequences/infantry.yaml', makeSequenceJson(['e1']))
+      const utility = createMockUtility(availableFiles)
 
-      const utility = createMockUtility(availableFiles, seqContent)
+      command.addFileContent(
+        'sequences/infantry.yaml',
+        makeSequenceJson(['e1']),
+      )
+
       command.run(utility, [])
       // e1 存在为 .shp —— 不应报告为缺失
       const logCalls = vi.mocked(console.log).mock.calls.flat()
@@ -200,6 +203,34 @@ describe('CheckMissingSprites', () => {
         (c) => typeof c === 'string' && c.includes('not found'),
       )
       expect(notFoundMessages).toHaveLength(0)
+    })
+
+    it('should not check files that do not exist in file system', () => {
+      // 无序列文件在文件系统中
+      const utility = createMockUtility(new Set<string>())
+
+      // 即使通过 addFileContent 注入了内容，如果 exists() 返回 false，
+      // 命令也不会处理该文件
+      command.addFileContent(
+        'sequences/missing.yaml',
+        makeSequenceJson(['ghost']),
+      )
+
+      command.run(utility, [])
+      // 不应报告缺失 —— 因为序列文件路径本身在文件系统中不存在
+      const logCalls = vi.mocked(console.log).mock.calls.flat()
+      const notFoundMessages = logCalls.filter(
+        (c) => typeof c === 'string' && c.includes('not found'),
+      )
+      expect(notFoundMessages).toHaveLength(0)
+    })
+  })
+
+  describe('addFileContent', () => {
+    it('should accept file content via addFileContent API', () => {
+      command.addFileContent('test.yaml', '{"key": "value"}')
+      command.addFileContent('other.yaml', '{}')
+      // 不应抛出异常 —— API 接受有效输入
     })
   })
 

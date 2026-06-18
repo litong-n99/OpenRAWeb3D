@@ -1,22 +1,25 @@
 /**
- * CheckConditionalTraitInterfaceOverrides.ts — 验证条件 trait 正确重写接口方法
+ * CheckConditionalTraitInterfaceOverrides.ts — 验证 ConditionalTrait 子类重写正确的方法
  * OpenRA 对照: OpenRA.Mods.Common/UtilityCommands/CheckConditionalTraitInterfaceOverrides.cs
  *
  * 核心范式转换:
- * - C# ConditionalTrait<T> 泛型基类
- *   → TypeScript ConditionalTrait 抽象基类
- * - C# interfaceType.FullName + "." + methodName 显式接口方法查找 (反射)
- *   → TypeScript 原型链方法可见性检查
- * - C# Type.GetMethod(name, BindingFlags) 反射
- *   → TypeScript Object.getOwnPropertyNames + Object.getPrototypeOf 原型遍历
+ * - C# ConditionalTrait<T> 泛型基类 → TypeScript ConditionalTrait 抽象基类
+ * - C# Type.GetMethod(interfaceType.FullName + "." + methodName) 反射
+ *   → TypeScript 的原型属性描述符检查 + 方法签名验证
  * - C# IsGenericType && GetGenericTypeDefinition() == typeof(ConditionalTrait<>)
- *   → TypeScript instanceof 检查或 isConditionalTraitSubclass() 辅助函数
+ *   → TypeScript 的原型链遍历 + 特征方法检测
  *
- * 设计原理:
- * ConditionalTrait 提供像 Created() 和 GetVariableObservers() 这样的虚方法
- * 供子类重写。子类必须重写这些 ConditionalTrait 处理程序，而非
- * 在基类已提供默认值时直接实现 INotifyCreated 或 IObservesVariables。
- * 此检查验证条件 trait 遵循正确的模式。
+ * 关键边界说明:
+ * 与 OpenRA（名义类型 + 显式接口实现）不同，TypeScript 使用结构类型。
+ * "直接实现接口方法" 与 "重写基类虚方法" 在运行时无法区分 —
+ * TypeScript interface 完全擦除，且方法调度始终通过原型链。
+ * `tsc --noEmit` 已在编译时强制执行方法签名兼容性。
+ *
+ * 因此，此命令:
+ * 1. 检测 ConditionalTrait 子类是否在自身原型上重写了 `created()`
+ *    和/或 `getVariableObservers()`（记录信息性日志）
+ * 2. 检测方法是否被错误地定义为 getter/setter 而非函数（违规）
+ * 3. 对于未重写任一方法的子类，记录一条提示性消息
  */
 
 import type { IUtilityCommand, Utility } from '../../OpenRA.Game/IUtilityCommand.js'
@@ -26,22 +29,19 @@ import type { IUtilityCommand, Utility } from '../../OpenRA.Game/IUtilityCommand
 // ---------------------------------------------------------------------------
 
 /**
- * 已知的 ConditionalTrait 基类名称集合。
+ * ConditionalTrait 基类在原型上暴露的特征方法集合。
  *
- * OpenRA 对照: ConditionalTrait<> 泛型类
- *
- * 在 TypeScript 中，ConditionalTrait 是一个非泛型抽象基类。
- * 子类通过 extends ConditionalTrait 继承条件行为模式。
- *
- * 此集合包含了在 C# 中会使用 ConditionalTrait<T> 的各种变体名称。
+ * 任何原型上同时具有这三个方法的类都被视为 ConditionalTrait 子类。
+ * 这取代了 C# 的运行时泛型类型检查。
  */
-const CONDITIONAL_TRAIT_BASE_NAMES = new Set([
-  'ConditionalTrait',
-  'UpgradableTrait',
-])
+const CONDITIONAL_TRAIT_SIGNATURE_METHODS = [
+  'isTraitDisabled',
+  'created',
+  'getVariableObservers',
+] as const
 
 /**
- * 通过检查构造函数名称和原型链，确定一个类是否为 ConditionalTrait 子类。
+ * 通过检查构造函数原型链，确定一个类是否为 ConditionalTrait 子类。
  *
  * OpenRA 对照: IsConditionalTrait(Type) — 遍历继承链检查 ConditionalTrait<>
  *
@@ -51,33 +51,21 @@ const CONDITIONAL_TRAIT_BASE_NAMES = new Set([
 function isConditionalTraitSubclass(
   ctor: new (...args: unknown[]) => unknown,
 ): boolean {
-  // 遍历原型链查找 ConditionalTrait 基类标记
-  let proto: object | null = ctor.prototype
+  const proto = ctor.prototype as Record<string, unknown>
 
-  while (proto && proto !== Object.prototype) {
-    const constructorName =
-      proto.constructor !== Object &&
-      typeof proto.constructor === 'function' &&
-      'name' in proto.constructor
-        ? (proto.constructor as { name: string }).name
-        : ''
+  // 直接检查原型上的特征方法
+  const hasSignature = CONDITIONAL_TRAIT_SIGNATURE_METHODS.every(
+    (m) => typeof proto[m] === 'function',
+  )
+  if (hasSignature) return true
 
-    if (CONDITIONAL_TRAIT_BASE_NAMES.has(constructorName)) {
-      return true
-    }
-
-    // 也检查 prototype 上是否有特定的 ConditionalTrait 属性
-    // ConditionalTrait 基类在功能上等同于 OpenRA 中的 ConditionalTrait<TInfo>
-    const record = proto as Record<string, unknown>
-    if (
-      typeof record.isTraitDisabled === 'function' &&
-      typeof record.created === 'function' &&
-      typeof record.getVariableObservers === 'function'
-    ) {
-      return true
-    }
-
-    proto = Object.getPrototypeOf(proto)
+  // 检查父类原型链
+  const parentProto = Object.getPrototypeOf(ctor.prototype)
+  if (parentProto && parentProto !== Object.prototype) {
+    const parentRecord = parentProto as Record<string, unknown>
+    return CONDITIONAL_TRAIT_SIGNATURE_METHODS.every(
+      (m) => typeof parentRecord[m] === 'function',
+    )
   }
 
   return false
@@ -87,19 +75,8 @@ function isConditionalTraitSubclass(
 // 需要重写的接口方法（对应 OpenRA CheckInterfaceViolation）
 // ---------------------------------------------------------------------------
 
-/**
- * 接口到其方法名映射 — 条件 trait 子类必须重写这些方法。
- *
- * OpenRA 对照: CheckInterfaceViolation 中硬编码的 typeof(INotifyCreated)."Created" 等
- *
- * ConditionalTrait 基类为 INotifyCreated.Created() 和
- * IObservesVariables.GetVariableObservers() 提供了默认实现。
- * 子类必须重写 ConditionalTrait 版本，不能直接实现接口方法。
- */
 interface InterfaceMethodEntry {
-  /** 接口名称。 */
   interfaceName: string
-  /** 方法名。子类必须在原型上拥有此方法（作为重写，而非新实现）。 */
   methodName: string
 }
 
@@ -113,57 +90,39 @@ const INTERFACE_METHODS_TO_CHECK: InterfaceMethodEntry[] = [
 // ---------------------------------------------------------------------------
 
 /**
- * 验证条件 trait 子类正确重写了 ConditionalTrait 的处理方法，
- * 而不是直接实现 INotifyCreated 或 IObservesVariables。
+ * 验证 ConditionalTrait 子类正确处理了接口方法重写。
  *
  * OpenRA 对照: public class CheckConditionalTraitInterfaceOverrides : IUtilityCommand
  */
-export class CheckConditionalTraitInterfaceOverrides implements IUtilityCommand {
-  /** 命令调用名称。
-   *
-   * OpenRA 对照: IUtilityCommand.Name => "--check-conditional-trait-interface-overrides"
-   */
+export class CheckConditionalTraitInterfaceOverrides
+  implements IUtilityCommand
+{
   readonly name = '--check-conditional-trait-interface-overrides'
 
-  /** 违规计数。 */
   private _violationCount = 0
 
   // ---------------------------------------------------------------------------
-  // validateArguments（对应 OpenRA ValidateArguments）
+  // validateArguments
   // ---------------------------------------------------------------------------
 
-  /**
-   * 验证参数 — 不接受额外参数。
-   *
-   * OpenRA 对照: ValidateArguments(args) => args.Length == 1
-   *
-   * @param args — 命令参数
-   * @returns 当未提供额外参数时返回 true
-   */
   validateArguments(args: string[]): boolean {
     return args.length === 0
   }
 
   // ---------------------------------------------------------------------------
-  // run（对应 OpenRA Run）
+  // run
   // ---------------------------------------------------------------------------
 
-  /**
-   * 对对象注册表中所有已注册类型执行条件 trait 接口重写检查。
-   *
-   * OpenRA 对照: IUtilityCommand.Run(Utility, string[])
-   *
-   * 对于每个 ConditionalTrait 子类:
-   * 1. 检查类是否直接实现了 INotifyCreated.Created()
-   *    而不是重写 ConditionalTrait 的版本
-   * 2. 检查类是否直接实现了 IObservesVariables.GetVariableObservers()
-   *    而不是重写 ConditionalTrait 的版本
-   * 3. 报告违规情况并退出并返回错误码
-   *
-   * @param utility — 命令上下文
-   * @param _args — 命令行参数（未使用）
-   */
   run(utility: Utility, _args: string[]): void {
+    this._violationCount = 0
+
+    console.log(
+      'NOTE: In TypeScript, interfaces are structurally typed and erased at ' +
+        'compile time. "Explicit interface implementation" vs. "virtual method ' +
+        'override" are indistinguishable at runtime. This command performs ' +
+        'heuristic checks on ConditionalTrait subclasses.',
+    )
+
     console.log(
       'Checking conditional trait interface overrides in mod: ' +
         utility.modData.manifest.id,
@@ -174,12 +133,12 @@ export class CheckConditionalTraitInterfaceOverrides implements IUtilityCommand 
     for (const className of classNames) {
       const ctor = utility.modData.objectCreator.getType(className)
       if (!ctor) continue
-
-      // 跳过非类（函数原型没有有意义的方法）
       if (typeof ctor !== 'function' || !ctor.prototype) continue
-
-      // 跳过不是 ConditionalTrait 子类的类
-      if (!isConditionalTraitSubclass(ctor as new (...args: unknown[]) => unknown))
+      if (
+        !isConditionalTraitSubclass(
+          ctor as new (...args: unknown[]) => unknown,
+        )
+      )
         continue
 
       this._checkConditionalTraitClass(className, ctor)
@@ -187,11 +146,17 @@ export class CheckConditionalTraitInterfaceOverrides implements IUtilityCommand 
 
     if (this._violationCount > 0) {
       console.log(
-        `Interface override violations: ${this._violationCount}`,
+        `Conditional trait interface override violations: ${this._violationCount}`,
+      )
+      console.log(
+        'Hint: ConditionalTrait subclasses should override `created()` and/or ' +
+          '`getVariableObservers()` as prototype methods, not instance properties.',
       )
       this._exitWithError()
     } else {
-      console.log('No conditional trait interface override violations found.')
+      console.log(
+        'No conditional trait interface override violations found.',
+      )
     }
   }
 
@@ -200,11 +165,15 @@ export class CheckConditionalTraitInterfaceOverrides implements IUtilityCommand 
   // ---------------------------------------------------------------------------
 
   /**
-   * 检查单个类是否重写了正确的条件 trait 处理方法。
+   * 检查单个 ConditionalTrait 子类。
    *
-   * OpenRA 对照: CheckInterfaceViolation(Utility, Type, string)
+   * 检查项:
+   * 1. 如果子类在自身原型上重写了 created() — 记录信息性日志（正确行为）
+   * 2. 如果子类在自身原型上重写了 getVariableObservers() — 记录信息性日志
+   * 3. 如果方法被定义为 getter/setter 而非函数 — **违规**（会破坏原型链调度）
+   * 4. 如果子类完全未重写任一方法 — 记录提示（默认实现已足够）
    *
-   * @param className — 类名（来自注册表）
+   * @param className — 类名
    * @param ctor — 类构造函数
    */
   private _checkConditionalTraitClass(
@@ -212,29 +181,43 @@ export class CheckConditionalTraitInterfaceOverrides implements IUtilityCommand 
     ctor: new (...args: unknown[]) => unknown,
   ): void {
     const proto = ctor.prototype as Record<string, unknown>
+    const ownKeys = new Set(Object.getOwnPropertyNames(proto))
 
     for (const entry of INTERFACE_METHODS_TO_CHECK) {
-      const methodName = entry.methodName
-      const interfaceName = entry.interfaceName
+      const { methodName, interfaceName } = entry
 
-      // 检查方法是否直接在原型上定义（而非从 ConditionalTrait 基类继承）
-      // 这表示子类重写了 ConditionalTrait 的处理程序
-      const ownDescriptor = Object.getOwnPropertyDescriptor(proto, methodName)
+      if (!ownKeys.has(methodName)) continue
 
-      if (ownDescriptor && typeof ownDescriptor.value === 'function') {
-        // 方法直接在子类原型上定义 —— 这可能是重写，也可能是新实现
-        // 检查更具体的签名以确保它是重写
-        // 如果方法返回 void 且接受预期参数，则认为它是有效的重写
-        console.log(
-          `\t${className}.${methodName}() — ` +
-            `overrides ConditionalTrait's ${interfaceName} handler`,
+      const desc = Object.getOwnPropertyDescriptor(proto, methodName)
+      if (!desc) continue
+
+      // 违规: 方法被定义为 accessor property（getter/setter）而非函数
+      if (typeof desc.get === 'function' || typeof desc.set === 'function') {
+        console.error(
+          `${className}: '${methodName}' is defined as a getter/setter, ` +
+            `not a method. ConditionalTrait subclasses must override ` +
+            `${methodName}() as a prototype method to properly handle ` +
+            `${interfaceName}.`,
         )
-        // 这是好的 —— 无违规
+        this._violationCount++
+        continue
       }
 
-      // 我们也要检查类是否意外地通过其他方式实现了接口
-      // （例如，在实例属性上设置方法而不是在原型上）
-      // 但由于 TypeScript 会捕获此类错误，这主要是文档检查
+      // 正确: 方法定义为函数（正在重写 ConditionalTrait 的处理程序）
+      if (typeof desc.value === 'function') {
+        console.log(
+          `\t${className}.${methodName}() — correctly overrides ` +
+            `ConditionalTrait's ${interfaceName} handler`,
+        )
+      }
+    }
+
+    // 提示: 子类未重写任一关键方法
+    if (!ownKeys.has('created') && !ownKeys.has('getVariableObservers')) {
+      console.log(
+        `\t${className} — no overrides for created() or ` +
+          `getVariableObservers() (using ConditionalTrait defaults)`,
+      )
     }
   }
 

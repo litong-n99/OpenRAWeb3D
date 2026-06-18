@@ -271,18 +271,22 @@ export class CheckYaml implements IUtilityCommand {
    * @param emitWarning — 警告回调
    */
   private _testSingleMap(
-    _filePath: string,
+    filePath: string,
     _modData: ModData,
-    emitError: EmitErrorFn,
-    _emitWarning: EmitWarningFn,
+    _emitError: EmitErrorFn,
+    emitWarning: EmitWarningFn,
   ): void {
     // NOTE: 单地图文件的完整检查需要:
     // 1. 从文件系统加载地图包 (Folder/package)
     // 2. 使用 Map(modData, package) 构造地图
     // 3. 调用 testMap() 运行检查
-    // 由于地图加载涉及异步文件系统操作，在此从简化处理:
-    emitError('Single map file checking requires async Map loading — not yet implemented')
+    // 由于地图加载涉及异步文件系统操作，尚未实现。
+    // 使用 emitWarning 而非 emitError —— 这不是真正的校验失败，只是尚未实现的功能。
     // TODO-21.E.16: 实现异步地图加载和单地图文件检查
+    emitWarning(
+      `Single map file checking for '${filePath}' requires async Map loading ` +
+        `— not yet implemented. Skipping per-map lint checks.`,
+    )
   }
 
   /**

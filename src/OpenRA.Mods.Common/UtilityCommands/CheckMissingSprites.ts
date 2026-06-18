@@ -184,17 +184,11 @@ export class CheckMissingSprites implements IUtilityCommand {
       if (!fs.exists(seqPath)) continue
 
       try {
-        // 使用 openAsync 读取序列文件
-        // NOTE: 由于 IUtilityCommand.run() 是同步的，而 openAsync 是异步的，
-        // 在真实的 CLI 环境中，调用方必须 await 由 run() 返回的 promise。
-        // 单元测试中 mock FileSystem 会同步返回数据。
-        // TODO-21.E.17: 使 run() 返回 Promise<void> 以支持异步文件 I/O
-
-        // 对于同步兼容性，我们在此使用 exists() + 内联内容解析:
-        // 完整实现需要异步文件读取。当前回退到检查
-        // 序列文件路径是否存在，并在可能时解析内容。
-        const seqFileContent = this._tryReadFileSync(fs, seqPath)
-        if (seqFileContent === null) continue
+        // 对于同步兼容性，使用预加载的文件内容。
+        // 在单元测试中，通过 addFileContent() 注入序列文件内容。
+        // 在生产环境中，调用方应在调用 run() 之前通过 openAsync() 加载文件。
+        const seqFileContent = this._fileContents.get(seqPath)
+        if (seqFileContent === undefined) continue
 
         const spriteRefs = this._extractSpriteReferences(
           JSON.parse(seqFileContent),
@@ -245,25 +239,27 @@ export class CheckMissingSprites implements IUtilityCommand {
   }
 
   /**
-   * 尝试从文件系统同步获取文件内容。
+   * 预加载的序列文件内容缓存（路径 → 内容字符串）。
    *
-   * 这仅用于单元测试 mock（同步返回内容）。
-   * 生产代码应使用 openAsync()。
-   *
-   * @param fs — 文件系统
-   * @param filePath — 文件路径
-   * @returns 文件内容字符串，如果不可用则返回 null
+   * 调用方在调用 run() 之前通过 addFileContent() 填充此映射。
+   * 这避免了依赖非标准的 tryReadFileAsString mock API ——
+   * 而是使用 IReadOnlyFileSystem.exists()（标准 API）检查文件存在性，
+   * 以及预加载的字符串内容进行解析。
    */
-  private _tryReadFileSync(
-    fs: unknown,
-    filePath: string,
-  ): string | null {
-    // 检查 mock 文件系统是否有同步 read 方法
-    const mockFs = fs as Record<string, unknown>
-    if (typeof mockFs.tryReadFileAsString === 'function') {
-      return (mockFs.tryReadFileAsString as (path: string) => string | null)(filePath)
-    }
-    return null
+  private _fileContents = new Map<string, string>()
+
+  /**
+   * 注册要从文件系统解析的序列文件内容。
+   *
+   * 在测试中，调用此方法注入序列文件内容。
+   * 在生产中，调用方应先通过 FileSystem.openAsync() 加载文件，
+   * 将内容反序列化为字符串，然后通过此方法注册。
+   *
+   * @param filePath — 序列文件路径（与 exists() 参数匹配）
+   * @param content — 序列文件内容（JSON 字符串）
+   */
+  addFileContent(filePath: string, content: string): void {
+    this._fileContents.set(filePath, content)
   }
 
   /**

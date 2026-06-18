@@ -2,7 +2,7 @@
  * CheckConditionalTraitInterfaceOverrides.test.ts — 条件 trait 接口覆盖检查器单元测试
  *
  * 测试焦点: 参数验证、ConditionalTrait 子类检测、
- * 接口方法覆盖确认、类注册表扫描。
+ * 方法重写确认、getter/setter 违规检测、violationCount 递增。
  *
  * 由于 @babylonjs/core 不在此命令中使用，无需 mock。
  */
@@ -23,11 +23,6 @@ import type { Constructor } from '../../OpenRA.Game/ModData.js'
 // 辅助
 // ---------------------------------------------------------------------------
 
-/**
- * 创建一个 mocking ConditionalTrait 行为的原型对象。
- * ConditionalTrait 子类在原型上应有 `isTraitDisabled`, `created`,
- * 和 `getVariableObservers` 方法。
- */
 class MockConditionalTraitBase {
   isTraitDisabled(): boolean {
     return false
@@ -40,23 +35,35 @@ class MockConditionalTraitBase {
   }
 }
 
-/**
- * 用于测试的 ConditionalTrait 子类 —— 正确重写 created()。
- */
+/** 正确重写了 created() 和 getVariableObservers() 的子类。 */
 class ProperOverrideTrait extends MockConditionalTraitBase {
   override created(): void {
     super.created()
-    // 正确覆盖 ConditionalTrait 的处理程序
   }
-
   override getVariableObservers(): never[] {
     return super.getVariableObservers()
   }
 }
 
-/**
- * 创建一个带有模拟 ObjectCreator 的 mock Utility。
- */
+/** 未重写任一方法的子类（使用默认实现）。 */
+class NoOverrideTrait extends MockConditionalTraitBase {
+  customMethod(): boolean {
+    return true
+  }
+}
+
+/** 使用定义在实例而不是原型上的方式的类（非标准模式，但值得测试）。 */
+class PrototypeOnlyTrait {
+  isTraitDisabled(): boolean {
+    return false
+  }
+  created(): void {}
+  getVariableObservers(): never[] {
+    return []
+  }
+}
+// 所有三个方法都在原始类的原型上定义
+
 function createMockUtility(
   registry: Map<string, Constructor> = new Map(),
 ): Utility {
@@ -99,6 +106,7 @@ describe('CheckConditionalTraitInterfaceOverrides', () => {
 
   beforeEach(() => {
     command = new CheckConditionalTraitInterfaceOverrides()
+    vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -162,32 +170,87 @@ describe('CheckConditionalTraitInterfaceOverrides', () => {
       )
     })
 
-    it('should detect and process ConditionalTrait subclasses', () => {
+    it('should log correct overrides for ConditionalTrait subclasses', () => {
       const registry = new Map<string, Constructor>()
       registry.set('ProperOverride', ProperOverrideTrait)
 
       const utility = createMockUtility(registry)
       command.run(utility, [])
 
-      // 应记录 created() 覆盖
+      // 应记录 created() 重写包含 "correctly overrides"
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('ProperOverride.created()'),
+        expect.stringContaining('correctly overrides'),
       )
+    })
 
+    it('should log info for subclasses with no overrides', () => {
+      const registry = new Map<string, Constructor>()
+      registry.set('NoOverride', NoOverrideTrait)
+
+      const utility = createMockUtility(registry)
+      command.run(utility, [])
+
+      // 应记录 "no overrides" 消息
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('ProperOverride.getVariableObservers()'),
+        expect.stringContaining('no overrides'),
+      )
+    })
+
+    it('should detect ConditionalTrait via prototype chain methods', () => {
+      const registry = new Map<string, Constructor>()
+      registry.set('PrototypeOnlyTrait', PrototypeOnlyTrait)
+
+      const utility = createMockUtility(registry)
+      command.run(utility, [])
+
+      // PrototypeOnlyTrait 在原型上拥有所有 ConditionalTrait 特征方法
+      // 应被检测为 ConditionalTrait 子类并记录其重写
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('correctly overrides'),
       )
     })
 
     it('should skip non-function entries in registry', () => {
       const registry = new Map<string, Constructor>()
-      // 注册表中没有类，仅注册名称
       const utility = createMockUtility(registry)
       command.run(utility, [])
-      // 不应崩溃
       expect(console.log).toHaveBeenCalledWith(
         'No conditional trait interface override violations found.',
       )
+    })
+  })
+
+  describe('violation detection', () => {
+    it('should flag method defined as getter instead of function', () => {
+      // 不能在 TypeScript 类上直接定义 getter 作为原型方法名称，
+      // 但我们可以直接操作 prototype 来模拟。
+      class BrokenTrait extends MockConditionalTraitBase {
+        // 正常重写 getVariableObservers
+        override getVariableObservers(): never[] {
+          return super.getVariableObservers()
+        }
+      }
+
+      // 将 created 定义为 getter（替换方法）
+      Object.defineProperty(BrokenTrait.prototype, 'created', {
+        get() {
+          return () => {
+            /* noop */
+          }
+        },
+      })
+
+      const registry = new Map<string, Constructor>()
+      registry.set('BrokenTrait', BrokenTrait)
+
+      const utility = createMockUtility(registry)
+      command.run(utility, [])
+
+      // 应报告违规：created 被定义为 getter 而非方法
+      const errorCalls = vi.mocked(console.error).mock.calls.flat()
+      expect(errorCalls.length).toBeGreaterThan(0)
+      expect(errorCalls[0]).toContain('getter')
+      expect(errorCalls[0]).toContain('BrokenTrait')
     })
   })
 })
