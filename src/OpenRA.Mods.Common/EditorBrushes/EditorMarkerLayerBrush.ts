@@ -27,9 +27,9 @@ import {
 import type { MouseInput } from '../../OpenRA.Game/Input/IInputHandler.js'
 import type { IRenderable } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IEditorBrush } from '../Editor/IEditorBrush.js'
-import type { IEditorAction } from '../Traits/World/EditorActionManager.js'
 import type { EditorActionManager } from '../Traits/World/EditorActionManager.js'
 import type { IMarkerLayer } from './MarkerStubs.js'
+import { PaintMarkerTileEditorAction } from './actions/PaintMarkerTileEditorAction.js'
 
 // ---------------------------------------------------------------------------
 // PaintMarkerTile data (defined in types.ts)
@@ -123,6 +123,7 @@ export class EditorMarkerLayerBrush implements IEditorBrush {
   // -------------------------------------------------------------------------
 
   handleMouseInput(mi: unknown): boolean {
+    // RUNTIME GUARD: Ensure mi is a MouseInput before casting (IEditorBrush contract uses unknown)
     const m = mi as MouseInput
 
     // Exclusively uses left and right mouse buttons
@@ -197,7 +198,10 @@ export class EditorMarkerLayerBrush implements IEditorBrush {
         this.markerLayerOverlay.setTile(paintTile.cell, paintTile.previous)
       }
       this.paintTiles.length = 0
-      return
+      // NOTE: No return here — the C# falls through to the accumulation loop
+      // even when !painting, allowing cursor-following preview of what would
+      // be painted at the current position. Since paintTiles is cleared, the
+      // loop below can add new preview entries (reverted on next cursor move).
     }
 
     // Accumulate mirror positions
@@ -250,140 +254,3 @@ export class EditorMarkerLayerBrush implements IEditorBrush {
   }
 }
 
-// ---------------------------------------------------------------------------
-// PaintMarkerTileEditorAction
-// OpenRA 对照: sealed class PaintMarkerTileEditorAction : IEditorAction (lines 143-189)
-// ---------------------------------------------------------------------------
-
-/**
- * Undoable action for painting marker tiles on the marker overlay.
- *
- * OpenRA 对照: PaintMarkerTileEditorAction
- */
-export class PaintMarkerTileEditorAction implements IEditorAction {
-  text: string
-
-  private readonly type: number | null
-  private readonly paintTiles: readonly PaintMarkerTile[]
-  private readonly markerLayerOverlay: IMarkerLayer
-
-  constructor(
-    type: number | null,
-    paintTiles: readonly PaintMarkerTile[],
-    markerLayerOverlay: IMarkerLayer,
-  ) {
-    this.type = type
-    this.paintTiles = paintTiles
-    this.markerLayerOverlay = markerLayerOverlay
-
-    // TODO-21.B.2-DEFER-7: FluentProvider for localized + type-labeled strings
-    if (type !== null) {
-      this.text = `Added ${paintTiles.length} marker tile(s), type ${type}`
-    } else {
-      this.text = `Removed ${paintTiles.length} marker tile(s)`
-    }
-  }
-
-  execute(): void {
-    // No-op: the preview already applied the changes
-  }
-
-  redo(): void {
-    for (const paintTile of this.paintTiles) {
-      this.markerLayerOverlay.setTile(paintTile.cell, this.type)
-    }
-  }
-
-  undo(): void {
-    for (const paintTile of this.paintTiles) {
-      this.markerLayerOverlay.setTile(paintTile.cell, paintTile.previous)
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// ClearSelectedMarkerTilesEditorAction
-// OpenRA 对照: sealed class ClearSelectedMarkerTilesEditorAction : IEditorAction (lines 191-228)
-// ---------------------------------------------------------------------------
-
-/**
- * Undoable action for clearing all markers of a specific type.
- *
- * OpenRA 对照: ClearSelectedMarkerTilesEditorAction
- */
-export class ClearSelectedMarkerTilesEditorAction implements IEditorAction {
-  text: string
-
-  private readonly markerLayerOverlay: IMarkerLayer
-  private readonly tile: number
-  private readonly tiles: readonly CPos[]
-
-  constructor(tile: number, markerLayerOverlay: IMarkerLayer) {
-    this.tile = tile
-    this.markerLayerOverlay = markerLayerOverlay
-    this.tiles = [...(markerLayerOverlay.tiles.get(tile) ?? [])]
-
-    // TODO-21.B.2-DEFER-7: FluentProvider for localized strings
-    this.text = `Cleared ${this.tiles.length} marker tile(s), type ${tile}`
-  }
-
-  execute(): void {
-    this.redo()
-  }
-
-  redo(): void {
-    this.markerLayerOverlay.clearSelected(this.tile)
-  }
-
-  undo(): void {
-    this.markerLayerOverlay.setSelected(this.tile, this.tiles)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// ClearAllMarkerTilesEditorAction
-// OpenRA 对照: sealed class ClearAllMarkerTilesEditorAction : IEditorAction (lines 230-264)
-// ---------------------------------------------------------------------------
-
-/**
- * Undoable action for clearing all markers of all types.
- *
- * OpenRA 对照: ClearAllMarkerTilesEditorAction
- */
-export class ClearAllMarkerTilesEditorAction implements IEditorAction {
-  text: string
-
-  private readonly markerLayerOverlay: IMarkerLayer
-  private readonly tiles: ReadonlyMap<number, readonly CPos[]>
-
-  constructor(markerLayerOverlay: IMarkerLayer) {
-    this.markerLayerOverlay = markerLayerOverlay
-
-    // Deep-copy the tiles dictionary for undo
-    const snapshot = new Map<number, readonly CPos[]>()
-    for (const [tile, cells] of markerLayerOverlay.tiles) {
-      snapshot.set(tile, [...cells])
-    }
-    this.tiles = snapshot
-
-    let allTilesCount = 0
-    for (const cells of snapshot.values()) {
-      allTilesCount += cells.length
-    }
-
-    // TODO-21.B.2-DEFER-7: FluentProvider for localized strings
-    this.text = `Cleared all marker tile(s) (${allTilesCount} total)`
-  }
-
-  execute(): void {
-    this.redo()
-  }
-
-  redo(): void {
-    this.markerLayerOverlay.clearAll()
-  }
-
-  undo(): void {
-    this.markerLayerOverlay.setAll(this.tiles)
-  }
-}

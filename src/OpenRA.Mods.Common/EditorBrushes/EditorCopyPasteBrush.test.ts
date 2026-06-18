@@ -19,11 +19,11 @@ import type { MapBlitData, EditorActorLayerBlitInterface } from './EditorBlit.js
 import { MapBlitFilters, type EditorBlitSource, type BlitTile, cposKey } from './types.js'
 import {
   EditorCopyPasteBrush,
-  CopyPasteEditorAction,
   type ICopyPasteBrushWidget,
   type ICopyPasteBrushViewport,
   type ICopyPasteBrushWorldRenderer,
 } from './EditorCopyPasteBrush.js'
+import { CopyPasteEditorAction } from './actions/CopyPasteEditorAction.js'
 
 // ---------------------------------------------------------------------------
 // Helpers

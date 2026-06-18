@@ -26,13 +26,13 @@ import {
 import type { MouseInput } from '../../OpenRA.Game/Input/IInputHandler.js'
 import type { IRenderable } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IEditorBrush } from '../Editor/IEditorBrush.js'
-import type { IEditorAction } from '../Traits/World/EditorActionManager.js'
 import type { EditorActionManager } from '../Traits/World/EditorActionManager.js'
 import type { EditorActorLayer } from '../Traits/World/EditorActorLayer.js'
 import type { IResourceLayer } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { EditorBlit, type MapBlitData, type EditorActorLayerBlitInterface } from './EditorBlit.js'
 import type { EditorBlitSource } from './types.js'
 import { MapBlitFilters } from './types.js'
+import { CopyPasteEditorAction } from './actions/CopyPasteEditorAction.js'
 
 // ---------------------------------------------------------------------------
 // Minimal editor widget interface needed by brush
@@ -144,6 +144,7 @@ export class EditorCopyPasteBrush implements IEditorBrush {
   // -------------------------------------------------------------------------
 
   handleMouseInput(mi: unknown): boolean {
+    // RUNTIME GUARD: Ensure mi is a MouseInput before casting (IEditorBrush contract uses unknown)
     const m = mi as MouseInput
 
     if (m.button !== MouseButton.Left && m.button !== MouseButton.Right) {
@@ -213,6 +214,8 @@ export class EditorCopyPasteBrush implements IEditorBrush {
 
     // NOTE: EditorSelectionAnnotationRenderable is not yet migrated.
     // Return stubbed annotation objects with the cursor-offset region.
+    // WARNING: `as unknown as IRenderable` casts are temporary stubs pending
+    // the full annotation rendering pipeline migration.
     // TODO-21.A.5-DEFER-3: Full annotation rendering pipeline
     return [
       {
@@ -238,54 +241,5 @@ export class EditorCopyPasteBrush implements IEditorBrush {
 
   dispose(): void {
     // No GPU resources to dispose
-  }
-}
-
-// ---------------------------------------------------------------------------
-// CopyPasteEditorAction
-// OpenRA 对照: sealed class CopyPasteEditorAction : IEditorAction (lines 129-173)
-// ---------------------------------------------------------------------------
-
-/**
- * Editor action wrapping an EditorBlit commit/revert as an undoable paste.
- *
- * OpenRA 对照: CopyPasteEditorAction
- */
-export class CopyPasteEditorAction implements IEditorAction {
-  text: string
-
-  private readonly editorBlit: EditorBlit
-
-  /**
-   * Create a CopyPasteEditorAction.
-   *
-   * @param editorBlit — the configured EditorBlit for this paste
-   */
-  constructor(editorBlit: EditorBlit) {
-    this.editorBlit = editorBlit
-
-    const actors = editorBlit.actorCount()
-    const tiles = editorBlit.tileCount()
-
-    // TODO-21.B.2-DEFER-7: FluentProvider for localized strings
-    if (tiles > 0 && actors === 0) {
-      this.text = `Copied ${tiles} tile(s)`
-    } else if (tiles === 0 && actors > 0) {
-      this.text = `Copied ${actors} actor(s)`
-    } else {
-      this.text = `Copied ${tiles} tile(s), ${actors} actor(s)`
-    }
-  }
-
-  execute(): void {
-    this.redo()
-  }
-
-  redo(): void {
-    this.editorBlit.commit()
-  }
-
-  undo(): void {
-    this.editorBlit.revert()
   }
 }

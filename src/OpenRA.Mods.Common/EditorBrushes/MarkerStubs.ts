@@ -107,7 +107,13 @@ export class InMemoryMarkerLayer implements IMarkerLayer {
       const arr = this._tiles.get(old)
       if (arr) {
         const idx = arr.findIndex((c) => cposKey(c) === key)
-        if (idx >= 0) arr.splice(idx, 1)
+        if (idx >= 0) {
+          arr.splice(idx, 1)
+          // Clean up empty arrays to prevent stale entries in _tiles
+          if (arr.length === 0) {
+            this._tiles.delete(old)
+          }
+        }
       }
     }
 

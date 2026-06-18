@@ -30,13 +30,11 @@ import {
 import type { MouseInput } from '../../OpenRA.Game/Input/IInputHandler.js'
 import type { IRenderable } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IEditorBrush } from '../Editor/IEditorBrush.js'
-import type { IEditorAction } from '../Traits/World/EditorActionManager.js'
 import type { EditorActionManager } from '../Traits/World/EditorActionManager.js'
+import { UpdateTilingPathPlanEditorAction } from './actions/UpdateTilingPathPlanEditorAction.js'
 import { Direction, directionToCVec, closestDirectionFromCVec } from './Direction.js'
-import { EditorBlit, type MapBlitData, type EditorActorLayerBlitInterface } from './EditorBlit.js'
+import { EditorBlit } from './EditorBlit.js'
 import { MapBlitFilters } from './types.js'
-import type { EditorActorLayer } from '../Traits/World/EditorActorLayer.js'
-import type { IResourceLayer } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { PathPlan, type TilingPathTool } from '../Traits/World/TilingPathTool.js'
 
 // ---------------------------------------------------------------------------
@@ -186,6 +184,7 @@ export class EditorTilingPathBrush implements IEditorBrush {
   // -------------------------------------------------------------------------
 
   handleMouseInput(mi: unknown): boolean {
+    // RUNTIME GUARD: Ensure mi is a MouseInput before casting (IEditorBrush contract uses unknown)
     const mouseInput = mi as MouseInput
 
     if (mouseInput.button !== MouseButton.Left) {
@@ -333,6 +332,11 @@ export class EditorTilingPathBrush implements IEditorBrush {
    * OpenRA 对照: RenderAnnotations — draws circles and lines for the path plan
    */
   renderAnnotations(): readonly IRenderable[] {
+    // WARNING: All renderable objects use `as unknown as IRenderable` casts.
+    // CircleAnnotationRenderable and LineAnnotationRenderable are not yet
+    // migrated. These stubs ensure the brush compiles while the full rendering
+    // pipeline is deferred.
+    // TODO-21.A.5-DEFER-3: Full annotation rendering pipeline
     const plan = this.previewPlan ?? this.tool.plan
     if (plan === null) return []
 
@@ -343,7 +347,11 @@ export class EditorTilingPathBrush implements IEditorBrush {
 
     const renderables: IRenderable[] = []
 
-    // Helper for corner-of-cell position (stubbed — returns CPos as-is)
+    // Helper for corner-of-cell position.
+    // TODO-21.B.2-DEFER-5: CellLayerUtils.CornerToWPos is not yet migrated.
+    // This stub returns CPos as-is; the full implementation will convert cell
+    // coordinates to world-space WPos using the map grid type for annotation
+    // circle/line center positions.
     const cornerOfCell = (cpos: CPos): CPos => cpos
 
     // Draw waypoint circles and connecting lines
@@ -445,126 +453,3 @@ export class EditorTilingPathBrush implements IEditorBrush {
   }
 }
 
-// ---------------------------------------------------------------------------
-// UpdateTilingPathPlanEditorAction
-// OpenRA 对照: sealed class UpdateTilingPathPlanEditorAction : IEditorAction (lines 283-329)
-// ---------------------------------------------------------------------------
-
-/**
- * Undoable action for updating (or creating/removing) a tiling path plan.
- *
- * OpenRA 对照: UpdateTilingPathPlanEditorAction
- */
-export class UpdateTilingPathPlanEditorAction implements IEditorAction {
-  text: string
-
-  private readonly tool: TilingPathTool
-  private readonly oldPlan: PathPlan | null
-  private readonly newPlan: PathPlan | null
-
-  /**
-   * Create an action to swap the tool's plan.
-   *
-   * @throws if both oldPlan and newPlan are null
-   */
-  constructor(tool: TilingPathTool, newPlan: PathPlan | null) {
-    this.tool = tool
-    this.oldPlan = tool.plan
-    this.newPlan = newPlan
-
-    if (this.oldPlan === null && this.newPlan === null) {
-      throw new Error('oldPlan and newPlan cannot both be null')
-    } else if (this.oldPlan === null) {
-      // TODO-21.B.2-DEFER-7: FluentProvider
-      this.text = 'Started tiling path'
-    } else if (this.newPlan === null) {
-      this.text = 'Reset tiling path'
-    } else {
-      this.text = 'Updated tiling path'
-    }
-  }
-
-  execute(): void {
-    this.redo()
-  }
-
-  redo(): void {
-    this.tool.setPlan(this.newPlan)
-  }
-
-  undo(): void {
-    this.tool.setPlan(this.oldPlan)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// PaintTilingPathEditorAction
-// OpenRA 对照: sealed class PaintTilingPathEditorAction : IEditorAction (lines 331-379)
-// ---------------------------------------------------------------------------
-
-/**
- * Undoable action for painting the tiling path onto the map.
- *
- * OpenRA 对照: PaintTilingPathEditorAction
- */
-export class PaintTilingPathEditorAction implements IEditorAction {
-  text: string
-
-  private readonly tool: TilingPathTool
-  private readonly plan: PathPlan | null
-  private readonly editorBlit: EditorBlit | null
-
-  /**
-   * Create a paint action for the current tiling path.
-   *
-   * @param tool — the TilingPathTool
-   * @param resourceLayer — resource layer (null for terrain-only)
-   * @param editorActorLayer — editor actor layer
-   * @param mapData — map data for terrain/height/resource access
-   */
-  constructor(
-    tool: TilingPathTool,
-    resourceLayer: IResourceLayer | null,
-    editorActorLayer: EditorActorLayer & EditorActorLayerBlitInterface,
-    mapData: MapBlitData,
-  ) {
-    this.tool = tool
-    this.plan = tool.plan
-
-    // TODO-21.B.2-DEFER-7: FluentProvider
-    this.text = 'Painted tiling path'
-
-    const blitSource = tool.editorBlitSource
-    if (blitSource) {
-      this.editorBlit = new EditorBlit(
-        MapBlitFilters.Terrain | MapBlitFilters.Actors,
-        resourceLayer!,
-        blitSource.cellCoords.TopLeft,
-        mapData,
-        blitSource,
-        editorActorLayer,
-        false, // respectBounds = false for tiling path paint
-      )
-    } else {
-      this.editorBlit = null
-    }
-  }
-
-  execute(): void {
-    this.redo()
-  }
-
-  redo(): void {
-    this.tool.setPlan(null)
-    if (this.editorBlit) {
-      this.editorBlit.commit()
-    }
-  }
-
-  undo(): void {
-    if (this.editorBlit) {
-      this.editorBlit.revert()
-    }
-    this.tool.setPlan(this.plan)
-  }
-}

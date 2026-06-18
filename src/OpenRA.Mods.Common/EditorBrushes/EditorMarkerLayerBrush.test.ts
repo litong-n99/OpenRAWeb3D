@@ -18,13 +18,13 @@ import type { MouseInput } from '../../OpenRA.Game/Input/IInputHandler.js'
 import { InMemoryMarkerLayer, type IMarkerLayer } from './MarkerStubs.js'
 import {
   EditorMarkerLayerBrush,
-  PaintMarkerTileEditorAction,
-  ClearSelectedMarkerTilesEditorAction,
-  ClearAllMarkerTilesEditorAction,
   type IMarkerBrushViewport,
   type IMarkerBrushWorldRenderer,
   type IMarkerBrushWidget,
 } from './EditorMarkerLayerBrush.js'
+import { PaintMarkerTileEditorAction } from './actions/PaintMarkerTileEditorAction.js'
+import { ClearSelectedMarkerTilesEditorAction } from './actions/ClearSelectedMarkerTilesEditorAction.js'
+import { ClearAllMarkerTilesEditorAction } from './actions/ClearAllMarkerTilesEditorAction.js'
 
 // ---------------------------------------------------------------------------
 // Helpers

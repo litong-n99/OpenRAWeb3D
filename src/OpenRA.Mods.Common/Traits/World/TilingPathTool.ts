@@ -509,6 +509,25 @@ export interface MultiBrushStub {
 }
 
 // ---------------------------------------------------------------------------
+// ITilingPathToolWorldRenderer — minimal world renderer interface for TilePlan
+// OpenRA 对照: WorldRenderer.ProjectedPosition / World.Map.Grid.Type
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal world renderer interface for TilePlan cell-to-world conversions.
+ *
+ * TODO-21.B.2-DEFER-3: Currently unused (TilePlan is stubbed). When the
+ * full TilingPath algorithm is integrated, this interface will provide the
+ * ProjectedPosition() method needed for CellLayerUtils.WPosToCorner and
+ * the map grid type.
+ */
+export interface ITilingPathToolWorldRenderer {
+  projectedPosition(wpos: { readonly x: number; readonly y: number; readonly z: number }): {
+    readonly x: number; readonly y: number; readonly z: number
+  }
+}
+
+// ---------------------------------------------------------------------------
 // TilingPathTool — editor tool trait
 // OpenRA 对照: TilingPathTool : IEditorTool, IRenderAnnotations, INotifyActorDisposing, IWorldLoaded
 // ---------------------------------------------------------------------------
@@ -559,7 +578,15 @@ export class TilingPathTool {
   editorBlitSource: EditorBlitSource | null = null
 
   // ---- Minimal world references ----
-  readonly worldRenderer: unknown = null
+  /**
+   * World renderer — used by TilePlan() to compute WPos from cell positions.
+   *
+   * TODO-21.B.2-DEFER-3: When TilePlan is fully implemented, this will need
+   * the WorldRenderer's ProjectedPosition() and the world's Map.Grid.Type
+   * for CellLayerUtils.WPosToCorner / CornerToWPos conversions.
+   * Currently null because TilePlan() is stubbed.
+   */
+  readonly worldRenderer: ITilingPathToolWorldRenderer | null = null
 
   private disposed = false
 

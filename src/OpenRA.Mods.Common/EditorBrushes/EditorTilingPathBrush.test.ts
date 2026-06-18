@@ -17,11 +17,11 @@ import type { MouseInput } from '../../OpenRA.Game/Input/IInputHandler.js'
 import { PathPlan, TilingPathTool } from '../Traits/World/TilingPathTool.js'
 import {
   EditorTilingPathBrush,
-  UpdateTilingPathPlanEditorAction,
-  PaintTilingPathEditorAction,
   type ITilingPathBrushViewport,
   type ITilingPathBrushWorldRenderer,
 } from './EditorTilingPathBrush.js'
+import { UpdateTilingPathPlanEditorAction } from './actions/UpdateTilingPathPlanEditorAction.js'
+import { PaintTilingPathEditorAction } from './actions/PaintTilingPathEditorAction.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
