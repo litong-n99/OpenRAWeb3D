@@ -1,0 +1,515 @@
+{
+  "^AACannon": {
+    "ReloadDelay": "10",
+    "Range": "8c0",
+    "Report": "aacanon3.aud",
+    "ValidTargets": "AirborneActor",
+    "Projectile": "InstantHit",
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Spread": "213",
+        "Damage": "900",
+        "ValidTargets": "AirborneActor",
+        "DamageTypes": "Prone50Percent, TriggerProne, DefaultDeath"
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "small_explosion_air",
+        "ValidTargets": "Air, Ground, Water, Trees"
+      }
+    ]
+  },
+  "ZSU-23": {
+    "Inherits": "^AACannon",
+    "Burst": "2",
+    "BurstDelays": "0",
+    "ReloadDelay": "6",
+    "Range": "10c0"
+  },
+  "FLAK-23-AA": {
+    "Inherits": "^AACannon",
+    "Warhead": {
+      "id": "1Dam",
+      "value": "SpreadDamage",
+      "Damage": "1200"
+    }
+  },
+  "FLAK-23-AG": {
+    "Inherits": "^AACannon",
+    "Range": "6c0",
+    "ValidTargets": "Ground, Water, GroundActor, WaterActor",
+    "Projectile": {
+      "Blockable": "true",
+      "__value": "InstantHit"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "2000",
+        "ValidTargets": "AirborneActor, GroundActor, WaterActor",
+        "Versus": {
+          "None": "40",
+          "Wood": "10",
+          "Light": "60",
+          "Heavy": "10",
+          "Concrete": "20"
+        }
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "flak_explosion_ground",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees"
+      },
+      {
+        "id": "3EffWater",
+        "value": "CreateEffect",
+        "Explosions": "small_splash",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge"
+      }
+    ]
+  },
+  "^HeavyMG": {
+    "ReloadDelay": "35",
+    "Range": "6c0",
+    "Report": "gun13.aud",
+    "ValidTargets": "Ground, Water, GroundActor, WaterActor",
+    "Projectile": {
+      "Blockable": "true",
+      "__value": "InstantHit"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Spread": "128",
+        "Damage": "2500",
+        "ValidTargets": "GroundActor, WaterActor",
+        "Versus": {
+          "None": "120",
+          "Wood": "60",
+          "Light": "72",
+          "Heavy": "28",
+          "Concrete": "28"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, BulletDeath"
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "piffs",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees"
+      },
+      {
+        "id": "3EffWater",
+        "value": "CreateEffect",
+        "Explosions": "water_piffs",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge"
+      }
+    ]
+  },
+  "^LightMG": {
+    "Inherits": "^HeavyMG",
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "1000",
+        "Versus": {
+          "None": "150",
+          "Wood": "10",
+          "Light": "40",
+          "Heavy": "10",
+          "Concrete": "10"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, DefaultDeath"
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "piff",
+        "Inaccuracy": "171"
+      },
+      {
+        "id": "3EffWater",
+        "value": "CreateEffect",
+        "Explosions": "water_piff",
+        "Inaccuracy": "171"
+      }
+    ]
+  },
+  "Vulcan": {
+    "Inherits": "^HeavyMG",
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "1000",
+        "Versus": {
+          "None": "200",
+          "Wood": "50",
+          "Light": "50",
+          "Heavy": "20",
+          "Concrete": "20"
+        }
+      },
+      {
+        "id": "4Dam_2",
+        "value": "SpreadDamage",
+        "Spread": "128",
+        "Damage": "1000",
+        "Delay": "2",
+        "ValidTargets": "GroundActor, WaterActor",
+        "Versus": {
+          "None": "200",
+          "Wood": "50",
+          "Light": "50",
+          "Heavy": "20",
+          "Concrete": "20"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, BulletDeath"
+      },
+      {
+        "id": "4Eff_2",
+        "value": "CreateEffect",
+        "Explosions": "piffs",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees",
+        "Delay": "2"
+      },
+      {
+        "id": "4Eff_2Water",
+        "value": "CreateEffect",
+        "Explosions": "water_piffs",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge",
+        "Delay": "2"
+      },
+      {
+        "id": "5Dam_3",
+        "value": "SpreadDamage",
+        "Spread": "128",
+        "Damage": "1000",
+        "Delay": "4",
+        "ValidTargets": "GroundActor, WaterActor",
+        "Versus": {
+          "None": "200",
+          "Wood": "50",
+          "Light": "50",
+          "Heavy": "20",
+          "Concrete": "20"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, BulletDeath"
+      },
+      {
+        "id": "6Eff_3",
+        "value": "CreateEffect",
+        "Explosions": "piffs",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees",
+        "Delay": "4"
+      },
+      {
+        "id": "6Eff_3Water",
+        "value": "CreateEffect",
+        "Explosions": "water_piffs",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge",
+        "Delay": "4"
+      },
+      {
+        "id": "7Dam_4",
+        "value": "SpreadDamage",
+        "Spread": "128",
+        "Damage": "1000",
+        "Delay": "6",
+        "ValidTargets": "GroundActor, WaterActor",
+        "Versus": {
+          "None": "200",
+          "Wood": "50",
+          "Light": "50",
+          "Heavy": "20",
+          "Concrete": "20"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, BulletDeath"
+      },
+      {
+        "id": "8Eff_4",
+        "value": "CreateEffect",
+        "Explosions": "piffs",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees",
+        "Delay": "6"
+      },
+      {
+        "id": "8Eff_4Water",
+        "value": "CreateEffect",
+        "Explosions": "water_piffs",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge",
+        "Delay": "6"
+      },
+      {
+        "id": "9Dam_5",
+        "value": "SpreadDamage",
+        "Spread": "128",
+        "Damage": "1000",
+        "Delay": "8",
+        "ValidTargets": "GroundActor, WaterActor",
+        "Versus": {
+          "None": "200",
+          "Wood": "50",
+          "Light": "50",
+          "Heavy": "20",
+          "Concrete": "20"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, BulletDeath"
+      },
+      {
+        "id": "10Eff_5",
+        "value": "CreateEffect",
+        "Explosions": "piffs",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees",
+        "Delay": "8"
+      },
+      {
+        "id": "10Eff_5Water",
+        "value": "CreateEffect",
+        "Explosions": "water_piffs",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge",
+        "Delay": "8"
+      },
+      {
+        "id": "11Dam_6",
+        "value": "SpreadDamage",
+        "Spread": "128",
+        "Damage": "1000",
+        "Delay": "10",
+        "ValidTargets": "GroundActor, WaterActor",
+        "Versus": {
+          "None": "200",
+          "Wood": "50",
+          "Light": "50",
+          "Heavy": "20",
+          "Concrete": "20"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, BulletDeath"
+      },
+      {
+        "id": "12Eff_6",
+        "value": "CreateEffect",
+        "Explosions": "piffs",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees",
+        "Delay": "10"
+      },
+      {
+        "id": "12Eff_6Water",
+        "value": "CreateEffect",
+        "Explosions": "water_piffs",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge",
+        "Delay": "10"
+      }
+    ]
+  },
+  "ChainGun": {
+    "Inherits": "^HeavyMG",
+    "Burst": "2",
+    "BurstDelays": "0",
+    "ReloadDelay": "10",
+    "Range": "5c0",
+    "MinRange": "0c768",
+    "Projectile": {
+      "Blockable": "false",
+      "__value": "InstantHit"
+    },
+    "Warhead": {
+      "id": "1Dam",
+      "value": "SpreadDamage",
+      "Versus": {
+        "None": "144"
+      }
+    }
+  },
+  "ChainGun.Yak": {
+    "Inherits": "^HeavyMG",
+    "Burst": "2",
+    "BurstDelays": "0",
+    "ReloadDelay": "3",
+    "Range": "5c0",
+    "MinRange": "2c512",
+    "Projectile": {
+      "Blockable": "false",
+      "__value": "InstantHit"
+    },
+    "Warhead": {
+      "id": "1Dam",
+      "value": "SpreadDamage",
+      "Damage": "4000",
+      "Versus": {
+        "None": "100",
+        "Wood": "50",
+        "Light": "60",
+        "Heavy": "25",
+        "Concrete": "25"
+      }
+    }
+  },
+  "Pistol": {
+    "Inherits": "^LightMG",
+    "ReloadDelay": "7",
+    "Range": "3c0",
+    "Report": "gun27.aud",
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "100",
+        "Versus": {
+          "None": "100"
+        }
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Inaccuracy": "128"
+      },
+      {
+        "id": "3EffWater",
+        "value": "CreateEffect",
+        "Inaccuracy": "128"
+      }
+    ]
+  },
+  "M1Carbine": {
+    "Inherits": "^LightMG",
+    "ReloadDelay": "20",
+    "Range": "5c0",
+    "Report": "gun11.aud",
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Versus": {
+          "Wood": "30"
+        }
+      },
+      {
+        "id": "2Eff2",
+        "value": "CreateEffect",
+        "Delay": "2",
+        "Explosions": "piff",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees",
+        "Inaccuracy": "171"
+      },
+      {
+        "id": "3EffWater2",
+        "value": "CreateEffect",
+        "Delay": "2",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge",
+        "Explosions": "water_piff",
+        "Inaccuracy": "171"
+      },
+      {
+        "id": "2Eff3",
+        "value": "CreateEffect",
+        "Delay": "4",
+        "Explosions": "piff",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees",
+        "Inaccuracy": "171"
+      },
+      {
+        "id": "3EffWater3",
+        "value": "CreateEffect",
+        "Delay": "4",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Bridge",
+        "Explosions": "water_piff",
+        "Inaccuracy": "171"
+      }
+    ]
+  },
+  "M60mg": {
+    "Inherits": "^LightMG",
+    "ReloadDelay": "30",
+    "Range": "4c0",
+    "Report": "pillbox1.aud",
+    "Burst": "5",
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Versus": {
+          "Light": "30"
+        }
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Inaccuracy": "213"
+      },
+      {
+        "id": "3EffWater",
+        "value": "CreateEffect",
+        "Inaccuracy": "213"
+      }
+    ]
+  },
+  "^SnipeWeapon": {
+    "ReloadDelay": "80",
+    "Range": "2c512",
+    "Report": "gun5.aud",
+    "ValidTargets": "Ground, Infantry, Barrel",
+    "Projectile": {
+      "Blockable": "true",
+      "__value": "InstantHit"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Spread": "42",
+        "Damage": "15000",
+        "ValidTargets": "Barrel, Infantry",
+        "DamageTypes": "Prone50Percent, TriggerProne, DefaultDeath"
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "piff",
+        "ValidTargets": "Ground, GroundActor, Air, AirborneActor, WaterActor, Trees"
+      },
+      {
+        "id": "3EffWater",
+        "value": "CreateEffect",
+        "Explosions": "water_piff",
+        "ValidTargets": "Water, Underwater",
+        "InvalidTargets": "Ship, Structure, Bridge"
+      }
+    ]
+  },
+  "SilencedPPK": {
+    "Inherits": "^SnipeWeapon",
+    "Report": "silppk.aud",
+    "Warhead": {
+      "id": "1Dam",
+      "value": "SpreadDamage",
+      "Spread": "128"
+    }
+  },
+  "Colt45": {
+    "Inherits": "^SnipeWeapon",
+    "ReloadDelay": "7",
+    "Range": "7c0",
+    "Warhead": {
+      "id": "1Dam",
+      "value": "SpreadDamage",
+      "Damage": "10000"
+    }
+  }
+}

@@ -1,0 +1,1352 @@
+{
+  "^ExistsInWorld": {
+    "AppearsOnRadar": null,
+    "UpdatesPlayerStatistics": null,
+    "CombatDebugOverlay": null,
+    "GivesExperience": {
+      "PlayerExperienceModifier": "1"
+    },
+    "ScriptTriggers": null,
+    "RenderDebugState": null
+  },
+  "^SpriteActor": {
+    "BodyOrientation": null,
+    "QuantizeFacingsFromSequence": null,
+    "RenderSprites": null
+  },
+  "^GainsExperience": {
+    "GainsExperience": {
+      "LevelUpNotification": "LevelUp",
+      "LevelUpTextNotification": "notification-unit-promoted",
+      "Conditions": {
+        "200": "rank-veteran",
+        "400": "rank-veteran",
+        "800": "rank-veteran",
+        "1600": "rank-veteran"
+      },
+      "LevelUpImage": "crate-effects"
+    },
+    "GrantCondition": {
+      "id": "RANK-ELITE",
+      "RequiresCondition": "rank-veteran >= 4",
+      "Condition": "rank-elite"
+    },
+    "DamageMultiplier": [
+      {
+        "id": "RANK-1",
+        "RequiresCondition": "rank-veteran == 1",
+        "Modifier": "96"
+      },
+      {
+        "id": "RANK-2",
+        "RequiresCondition": "rank-veteran == 2",
+        "Modifier": "92"
+      },
+      {
+        "id": "RANK-3",
+        "RequiresCondition": "rank-veteran == 3",
+        "Modifier": "88"
+      },
+      {
+        "id": "RANK-ELITE",
+        "RequiresCondition": "rank-elite",
+        "Modifier": "80"
+      }
+    ],
+    "FirepowerMultiplier": [
+      {
+        "id": "RANK-1",
+        "RequiresCondition": "rank-veteran == 1",
+        "Modifier": "105"
+      },
+      {
+        "id": "RANK-2",
+        "RequiresCondition": "rank-veteran == 2",
+        "Modifier": "110"
+      },
+      {
+        "id": "RANK-3",
+        "RequiresCondition": "rank-veteran == 3",
+        "Modifier": "115"
+      },
+      {
+        "id": "RANK-ELITE",
+        "RequiresCondition": "rank-elite",
+        "Modifier": "125"
+      }
+    ],
+    "SpeedMultiplier": [
+      {
+        "id": "RANK-1",
+        "RequiresCondition": "rank-veteran == 1",
+        "Modifier": "105"
+      },
+      {
+        "id": "RANK-2",
+        "RequiresCondition": "rank-veteran == 2",
+        "Modifier": "110"
+      },
+      {
+        "id": "RANK-3",
+        "RequiresCondition": "rank-veteran == 3",
+        "Modifier": "115"
+      },
+      {
+        "id": "RANK-ELITE",
+        "RequiresCondition": "rank-elite",
+        "Modifier": "125"
+      }
+    ],
+    "ReloadDelayMultiplier": [
+      {
+        "id": "RANK-1",
+        "RequiresCondition": "rank-veteran == 1",
+        "Modifier": "96"
+      },
+      {
+        "id": "RANK-2",
+        "RequiresCondition": "rank-veteran == 2",
+        "Modifier": "92"
+      },
+      {
+        "id": "RANK-3",
+        "RequiresCondition": "rank-veteran == 3",
+        "Modifier": "88"
+      },
+      {
+        "id": "RANK-ELITE",
+        "RequiresCondition": "rank-elite",
+        "Modifier": "80"
+      }
+    ],
+    "InaccuracyMultiplier": [
+      {
+        "id": "RANK-1",
+        "RequiresCondition": "rank-veteran == 1",
+        "Modifier": "90"
+      },
+      {
+        "id": "RANK-2",
+        "RequiresCondition": "rank-veteran == 2",
+        "Modifier": "80"
+      },
+      {
+        "id": "RANK-3",
+        "RequiresCondition": "rank-veteran == 3",
+        "Modifier": "70"
+      },
+      {
+        "id": "RANK-ELITE",
+        "RequiresCondition": "rank-elite",
+        "Modifier": "50"
+      }
+    ],
+    "ChangesHealth": {
+      "id": "ELITE",
+      "Step": "0",
+      "PercentageStep": "4",
+      "Delay": "125",
+      "StartIfBelow": "100",
+      "DamageCooldown": "125",
+      "RequiresCondition": "rank-elite"
+    },
+    "WithDecoration": [
+      {
+        "id": "RANK-1",
+        "Image": "rank",
+        "Sequence": "rank-veteran-1",
+        "Palette": "effect",
+        "Position": "BottomRight",
+        "Margin": "5, 6",
+        "RequiresCondition": "rank-veteran == 1"
+      },
+      {
+        "id": "RANK-2",
+        "Image": "rank",
+        "Sequence": "rank-veteran-2",
+        "Palette": "effect",
+        "Position": "BottomRight",
+        "Margin": "5, 6",
+        "RequiresCondition": "rank-veteran == 2"
+      },
+      {
+        "id": "RANK-3",
+        "Image": "rank",
+        "Sequence": "rank-veteran-3",
+        "Palette": "effect",
+        "Position": "BottomRight",
+        "Margin": "5, 6",
+        "RequiresCondition": "rank-veteran == 3"
+      },
+      {
+        "id": "RANK-ELITE",
+        "Image": "rank",
+        "Sequence": "rank-elite",
+        "Palette": "effect",
+        "Position": "BottomRight",
+        "Margin": "5, 6",
+        "RequiresCondition": "rank-elite"
+      }
+    ]
+  },
+  "^AutoTargetGround": {
+    "AutoTarget": {
+      "AttackAnythingCondition": "stance-attackanything"
+    },
+    "AutoTargetPriority": [
+      {
+        "id": "DEFAULT",
+        "RequiresCondition": "!stance-attackanything",
+        "ValidTargets": "Infantry, Vehicle, Defense",
+        "InvalidTargets": "NoAutoTarget"
+      },
+      {
+        "id": "ATTACKANYTHING",
+        "RequiresCondition": "stance-attackanything",
+        "ValidTargets": "Infantry, Vehicle, Structure, Defense",
+        "InvalidTargets": "NoAutoTarget"
+      },
+      {
+        "id": "CREEPS",
+        "ValidTargets": "Creep"
+      }
+    ]
+  },
+  "^AutoTargetGroundAssaultMove": {
+    "Inherits": "^AutoTargetGround",
+    "AutoTargetPriority": [
+      {
+        "id": "DEFAULT",
+        "RequiresCondition": "!stance-attackanything && !assault-move"
+      },
+      {
+        "id": "ATTACKANYTHING",
+        "RequiresCondition": "stance-attackanything || assault-move"
+      },
+      {
+        "id": "CREEPS",
+        "RequiresCondition": "!ignore-creeps"
+      }
+    ],
+    "GrantConditionOnBotOwner": {
+      "id": "BOTOWNER",
+      "Condition": "bot-owned",
+      "Bots": "omnius, vidious, gladius"
+    },
+    "GrantCondition": {
+      "id": "IGNORECREEPS",
+      "Condition": "ignore-creeps",
+      "RequiresCondition": "bot-owned && (attack-move || assault-move)"
+    },
+    "AttackMove": {
+      "AttackMoveCondition": "attack-move",
+      "AssaultMoveCondition": "assault-move"
+    }
+  },
+  "^AutoTargetVehicleAssaultMove": {
+    "Inherits": "^AutoTargetGroundAssaultMove",
+    "AutoTargetPriority": {
+      "id": "VEHICLES",
+      "ValidTargets": "Vehicle",
+      "InvalidTargets": "Infantry, Structure, Defense",
+      "RequiresCondition": "bot-owned",
+      "Priority": "10"
+    }
+  },
+  "^AutoTargetAll": {
+    "AutoTarget": {
+      "AttackAnythingCondition": "stance-attackanything"
+    },
+    "AutoTargetPriority": [
+      {
+        "id": "DEFAULT",
+        "RequiresCondition": "!stance-attackanything",
+        "ValidTargets": "Infantry, Vehicle, Air, Defense",
+        "InvalidTargets": "NoAutoTarget"
+      },
+      {
+        "id": "ATTACKANYTHING",
+        "RequiresCondition": "stance-attackanything",
+        "ValidTargets": "Infantry, Vehicle, Air, Structure, Defense",
+        "InvalidTargets": "NoAutoTarget"
+      },
+      {
+        "id": "CREEPS",
+        "ValidTargets": "Creep"
+      }
+    ]
+  },
+  "^AutoTargetAllAssaultMove": {
+    "Inherits": "^AutoTargetAll",
+    "AutoTargetPriority": [
+      {
+        "id": "DEFAULT",
+        "RequiresCondition": "!stance-attackanything && !assault-move"
+      },
+      {
+        "id": "ATTACKANYTHING",
+        "RequiresCondition": "stance-attackanything || assault-move"
+      },
+      {
+        "id": "CREEPS",
+        "RequiresCondition": "!ignore-creeps"
+      }
+    ],
+    "GrantConditionOnBotOwner": {
+      "id": "BOTOWNER",
+      "Condition": "bot-owned",
+      "Bots": "omnius, vidious, gladius"
+    },
+    "GrantCondition": {
+      "id": "IGNORECREEPS",
+      "Condition": "ignore-creeps",
+      "RequiresCondition": "bot-owned && (attack-move || assault-move)"
+    },
+    "AttackMove": {
+      "AttackMoveCondition": "attack-move",
+      "AssaultMoveCondition": "assault-move"
+    }
+  },
+  "^PlayerHandicaps": {
+    "HandicapFirepowerMultiplier": null,
+    "HandicapDamageMultiplier": null,
+    "HandicapProductionTimeMultiplier": null
+  },
+  "^CliffAvalanche": {
+    "ExternalCondition": {
+      "id": "rockAvalanche",
+      "Condition": "rock_avalanche"
+    },
+    "KillsSelf": {
+      "id": "rockAvalanche",
+      "RequiresCondition": "rock_avalanche",
+      "DamageTypes": "SmallExplosionDeath"
+    }
+  },
+  "^Vehicle": {
+    "Inherits": [
+      {
+        "id": "1",
+        "value": "^ExistsInWorld"
+      },
+      {
+        "id": "2",
+        "value": "^SpriteActor"
+      },
+      {
+        "id": "selection",
+        "value": "^SelectableCombatUnit"
+      },
+      {
+        "id": "handicaps",
+        "value": "^PlayerHandicaps"
+      },
+      {
+        "id": "avalancheKill",
+        "value": "^CliffAvalanche"
+      }
+    ],
+    "Tooltip": {
+      "GenericName": "meta-vehicle-generic-name"
+    },
+    "Huntable": null,
+    "OwnerLostAction": {
+      "Action": "Kill"
+    },
+    "Mobile": {
+      "TurnSpeed": "20",
+      "Locomotor": "vehicle",
+      "PauseOnCondition": "notmobile"
+    },
+    "Selectable": {
+      "Bounds": "1024, 1024"
+    },
+    "ExternalCondition": {
+      "id": "deviatorInfluence",
+      "Condition": "unit-captured"
+    },
+    "Targetable": [
+      {
+        "TargetTypes": "Ground, Vehicle, C4",
+        "RequiresCondition": "!unit-captured"
+      },
+      {
+        "id": "CAPTURED",
+        "TargetTypes": "Ground, CapturedUnit",
+        "RequiresCondition": "unit-captured"
+      }
+    ],
+    "Passenger": {
+      "CargoType": "Vehicle"
+    },
+    "AttackMove": null,
+    "HiddenUnderFog": null,
+    "ActorLostNotification": {
+      "TextNotification": "notification-unit-lost"
+    },
+    "Repairable": {
+      "RepairActors": "repair_pad"
+    },
+    "Guard": {
+      "Voice": "Guard"
+    },
+    "Guardable": null,
+    "WithFacingSpriteBody": null,
+    "Demolishable": {
+      "Condition": "being-demolished"
+    },
+    "AmbientSound": {
+      "id": "onBeingDemolished",
+      "SoundFiles": "O_SCONF2.AUD",
+      "RequiresCondition": "being-demolished"
+    },
+    "FireWarheadsOnDeath": {
+      "id": "sabotuerDemolition",
+      "RequiresCondition": "being-demolished",
+      "Type": "CenterPosition",
+      "Weapon": "PlasmaSaboteur",
+      "EmptyWeapon": "PlasmaSaboteur"
+    },
+    "FireProjectilesOnDeath": {
+      "id": "OnsabotuerDemolition",
+      "Weapons": "Debris2, Debris3, Debris4, ExplosiveDebris",
+      "Pieces": "3, 7",
+      "Range": "3c512, 6c0",
+      "RequiresCondition": "being-demolished"
+    },
+    "TemporaryOwnerManager": null,
+    "MustBeDestroyed": null,
+    "Voiced": {
+      "VoiceSet": "VehicleVoice"
+    },
+    "AutoCarryable": {
+      "CarriedCondition": "notmobile",
+      "ReservedCondition": "carryall-reserved",
+      "LockedCondition": "notmobile"
+    },
+    "WithDecoration": {
+      "id": "CARRYALL",
+      "Image": "pips",
+      "Margin": "7, 9",
+      "Sequence": "pickup-indicator",
+      "RequiresCondition": "carryall-reserved"
+    },
+    "RevealOnDeath": {
+      "Duration": "100",
+      "Radius": "2c512"
+    },
+    "HitShape": {
+      "Type": {
+        "Radius": "16",
+        "__value": "Circle"
+      }
+    },
+    "MapEditorData": {
+      "Categories": "Vehicle"
+    },
+    "GrantConditionOnDamageState": {
+      "id": "HEAVY",
+      "Condition": "heavy-damage"
+    },
+    "SpeedMultiplier": {
+      "id": "HEAVYDAMAGE",
+      "RequiresCondition": "heavy-damage",
+      "Modifier": "75"
+    },
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "RequiresCondition": "heavy-damage",
+      "Image": "smoke3",
+      "Lifetime": "15, 20",
+      "Speed": "3",
+      "Gravity": "50",
+      "SpawnFrequency": "5, 10",
+      "RandomFacing": "true",
+      "RandomRate": "4",
+      "Offset": "0, 0, 200",
+      "TurnRate": "3",
+      "Duration": "500"
+    }
+  },
+  "^Tank": {
+    "Inherits": "^Vehicle",
+    "Mobile": {
+      "Locomotor": "tank"
+    },
+    "GrantConditionOnDamageState": {
+      "id": "HEAVY",
+      "ValidDamageStates": "Critical"
+    },
+    "SpawnActorOnDeath": {
+      "RequiresCondition": "!being-demolished"
+    }
+  },
+  "^Husk": {
+    "Inherits": {
+      "id": "1",
+      "value": "^SpriteActor"
+    },
+    "Interactable": null,
+    "Health": {
+      "HP": "8000"
+    },
+    "Armor": {
+      "Type": "light"
+    },
+    "HiddenUnderFog": {
+      "Type": "CenterPosition",
+      "AlwaysVisibleRelationships": "None"
+    },
+    "Tooltip": {
+      "GenericName": "meta-husk-generic-name"
+    },
+    "ScriptTriggers": null,
+    "WithFacingSpriteBody": null,
+    "HitShape": {
+      "Type": {
+        "Radius": "16",
+        "__value": "Circle"
+      }
+    },
+    "MapEditorData": {
+      "Categories": "Husk"
+    }
+  },
+  "^VehicleHusk": {
+    "Inherits": "^Husk",
+    "Husk": {
+      "AllowedTerrain": "Sand, Rock, Transition, Concrete, Spice, SpiceSand, SpiceBlobs, Dune",
+      "Locomotor": "tank"
+    },
+    "Targetable": {
+      "TargetTypes": "Ground, Vehicle, Husk",
+      "RequiresForceFire": "true"
+    },
+    "WithColoredOverlay": {
+      "id": "husk",
+      "Color": "00000060"
+    },
+    "FireWarheadsOnDeath": {
+      "Weapon": "UnitExplodeMed",
+      "EmptyWeapon": "UnitExplodeMed"
+    },
+    "CaptureManager": null,
+    "Capturable": {
+      "Types": "husk"
+    },
+    "WithIdleOverlay": {
+      "id": "Burns",
+      "Image": "fire",
+      "Sequence": "1",
+      "IsDecoration": "True",
+      "RequiresCondition": "decoration1 || decoration3"
+    },
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "Image": "smoke3",
+      "Lifetime": "10, 20",
+      "Speed": "7",
+      "Gravity": "50",
+      "SpawnFrequency": "2, 10",
+      "RandomFacing": "true",
+      "RandomRate": "4",
+      "Offset": "0, 0, 200",
+      "TurnRate": "3",
+      "Duration": "1500",
+      "RequiresCondition": "decoration2 || decoration3"
+    },
+    "ChangesHealth": {
+      "Step": "-27",
+      "StartIfBelow": "101",
+      "Delay": "4"
+    },
+    "GrantRandomCondition": {
+      "Conditions": "decoration1, decoration2, decoration3"
+    },
+    "TransformOnCapture": {
+      "ForceHealthPercentage": "5"
+    },
+    "InfiltrateForTransform": {
+      "Types": "Husk",
+      "ForceHealthPercentage": "5"
+    }
+  },
+  "^AircraftHusk": {
+    "Inherits": "^Husk",
+    "Tooltip": {
+      "GenericName": "meta-aircrafthusk-generic-name"
+    },
+    "WithShadow": null,
+    "FallsToEarth": {
+      "MaximumSpinSpeed": "0",
+      "Moves": "True",
+      "Explosion": "ExplosionAircraft"
+    },
+    "MapEditorData": {
+      "__remove": true
+    }
+  },
+  "^Infantry": {
+    "Inherits": [
+      {
+        "id": "1",
+        "value": "^ExistsInWorld"
+      },
+      {
+        "id": "2",
+        "value": "^GainsExperience"
+      },
+      {
+        "id": "3",
+        "value": "^SpriteActor"
+      },
+      {
+        "id": "selection",
+        "value": "^SelectableCombatUnit"
+      },
+      {
+        "id": "handicaps",
+        "value": "^PlayerHandicaps"
+      },
+      {
+        "id": "avalancheKill",
+        "value": "^CliffAvalanche"
+      }
+    ],
+    "Tooltip": {
+      "GenericName": "meta-infantry-generic-name"
+    },
+    "Huntable": null,
+    "OwnerLostAction": {
+      "Action": "Kill",
+      "DeathTypes": "ExplosionDeath"
+    },
+    "Health": null,
+    "Armor": {
+      "Type": "none"
+    },
+    "RevealsShroud": {
+      "Range": "3c768"
+    },
+    "Mobile": {
+      "AlwaysTurnInPlace": "true",
+      "Locomotor": "foot",
+      "TerrainCursors": {
+        "Rough": "move-rough"
+      }
+    },
+    "Selectable": {
+      "Bounds": "768, 768, 0, -128",
+      "DecorationBounds": "384, 640, 0, -128"
+    },
+    "Targetable": {
+      "TargetTypes": "Ground, Infantry"
+    },
+    "QuantizeFacingsFromSequence": {
+      "Sequence": "stand"
+    },
+    "WithInfantryBody": {
+      "IdleSequences": "idle1, idle2"
+    },
+    "TakeCover": {
+      "DamageModifiers": {
+        "Prone80Percent": "80"
+      },
+      "DamageTriggers": "TriggerProne",
+      "ProneOffset": "300,0,0"
+    },
+    "WithDeathAnimation": {
+      "DeathTypes": {
+        "ExplosionDeath": "1",
+        "SoundDeath": "2",
+        "SmallExplosionDeath": "3",
+        "BulletDeath": "4"
+      },
+      "CrushedSequence": "die-crushed"
+    },
+    "AttackMove": null,
+    "Passenger": {
+      "CargoType": "Infantry"
+    },
+    "HiddenUnderFog": null,
+    "ActorLostNotification": {
+      "TextNotification": "notification-unit-lost"
+    },
+    "Crushable": {
+      "CrushSound": "CRUSH1.WAV"
+    },
+    "Guard": {
+      "Voice": "Guard"
+    },
+    "Guardable": null,
+    "DetectCloaked": {
+      "Range": "1c768"
+    },
+    "DeathSounds": {
+      "DeathTypes": "ExplosionDeath, SoundDeath, SmallExplosionDeath, BulletDeath"
+    },
+    "MustBeDestroyed": null,
+    "TerrainModifiesDamage": {
+      "TerrainModifier": {
+        "Rough": "80"
+      }
+    },
+    "Voiced": {
+      "VoiceSet": "InfantryVoice"
+    },
+    "RevealOnDeath": {
+      "Duration": "100"
+    },
+    "HitShape": {
+      "Type": {
+        "Radius": "16",
+        "__value": "Circle"
+      }
+    },
+    "MapEditorData": {
+      "Categories": "Infantry"
+    },
+    "AttackFrontal": {
+      "FacingTolerance": "0"
+    }
+  },
+  "^Plane": {
+    "Inherits": [
+      {
+        "id": "1",
+        "value": "^ExistsInWorld"
+      },
+      {
+        "id": "2",
+        "value": "^SpriteActor"
+      },
+      {
+        "id": "handicaps",
+        "value": "^PlayerHandicaps"
+      }
+    ],
+    "Interactable": null,
+    "Tooltip": {
+      "GenericName": "meta-plane-generic-name"
+    },
+    "OwnerLostAction": {
+      "Action": "Kill"
+    },
+    "AppearsOnRadar": {
+      "UseLocation": "true"
+    },
+    "HiddenUnderFog": {
+      "Type": "GroundPosition"
+    },
+    "ActorLostNotification": {
+      "TextNotification": "notification-unit-lost"
+    },
+    "AttackMove": null,
+    "WithFacingSpriteBody": null,
+    "WithShadow": null,
+    "HitShape": {
+      "Type": {
+        "Radius": "16",
+        "__value": "Circle"
+      }
+    },
+    "MapEditorData": {
+      "Categories": "Aircraft"
+    }
+  },
+  "^Building": {
+    "Inherits": [
+      {
+        "id": "1",
+        "value": "^ExistsInWorld"
+      },
+      {
+        "id": "2",
+        "value": "^SpriteActor"
+      },
+      {
+        "id": "selection",
+        "value": "^SelectableBuilding"
+      },
+      {
+        "id": "handicaps",
+        "value": "^PlayerHandicaps"
+      }
+    ],
+    "Tooltip": {
+      "GenericName": "meta-building-generic-name"
+    },
+    "Huntable": null,
+    "OwnerLostAction": {
+      "Action": "Kill"
+    },
+    "RevealsShroud": null,
+    "Targetable": {
+      "TargetTypes": "Ground, C4, Structure"
+    },
+    "HitShape": {
+      "UseTargetableCellsOffsets": "true",
+      "Type": {
+        "TopLeft": "-512, -512",
+        "BottomRight": "512, 512",
+        "__value": "Rectangle"
+      }
+    },
+    "D2kBuilding": {
+      "Dimensions": "1,1",
+      "Footprint": "x",
+      "TerrainTypes": "Rock, Concrete",
+      "BuildSounds": "BUILD1.WAV",
+      "ConcretePrerequisites": "global-auto-concrete"
+    },
+    "D2kActorPreviewPlaceBuildingPreview": {
+      "RequiresPrerequisites": "!global-auto-concrete",
+      "PreviewAlpha": "0.65"
+    },
+    "RequiresBuildableArea": {
+      "AreaTypes": "building",
+      "Adjacent": "3"
+    },
+    "GivesBuildableArea": {
+      "AreaTypes": "building"
+    },
+    "CaptureManager": null,
+    "Capturable": {
+      "RequiresCondition": "!build-incomplete",
+      "Types": "building"
+    },
+    "SoundOnDamageTransition": {
+      "DamagedSounds": "EXPLSML1.WAV",
+      "DestroyedSounds": "EXPLHG1.WAV"
+    },
+    "FireWarheadsOnDeath": [
+      {
+        "Type": "Footprint",
+        "Weapon": "BuildingExplode",
+        "EmptyWeapon": "BuildingExplode"
+      },
+      {
+        "id": "sabotuerDemolition",
+        "RequiresCondition": "being-demolished",
+        "Type": "CenterPosition",
+        "Weapon": "PlasmaSaboteur",
+        "EmptyWeapon": "PlasmaSaboteur"
+      }
+    ],
+    "RepairableBuilding": {
+      "RepairStep": "500",
+      "PlayerExperience": "5",
+      "RepairingNotification": "Repairing"
+    },
+    "SpawnActorsOnSell": {
+      "ActorTypes": "light_inf",
+      "GuaranteedActorTypes": "light_inf"
+    },
+    "MustBeDestroyed": {
+      "RequiredForShortGame": "true"
+    },
+    "FrozenUnderFog": null,
+    "CaptureNotification": {
+      "TextNotification": "notification-enemy-building-captured",
+      "LoseTextNotification": "notification-one-of-our-buildings-has-been-captured"
+    },
+    "ActorLostNotification": {
+      "Notification": "BuildingLost",
+      "TextNotification": "notification-building-lost"
+    },
+    "ShakeOnDeath": null,
+    "Demolishable": {
+      "Condition": "being-demolished"
+    },
+    "AmbientSound": {
+      "id": "onBeingDemolished",
+      "SoundFiles": "O_SCONF2.AUD",
+      "RequiresCondition": "being-demolished"
+    },
+    "Sellable": {
+      "RequiresCondition": "!build-incomplete && !being-demolished",
+      "SellSounds": "BUILD1.WAV",
+      "Notification": "StructureSold"
+    },
+    "Guardable": {
+      "Range": "3c0"
+    },
+    "FireProjectilesOnDeath": {
+      "Weapons": "Debris, Debris2, Debris3, Debris4",
+      "Pieces": "2, 5",
+      "Range": "1c512, 4c0"
+    },
+    "WithSpriteBody": null,
+    "WithMakeAnimation": {
+      "Condition": "build-incomplete"
+    },
+    "WithCrumbleOverlay": {
+      "RequiresCondition": "!build-incomplete"
+    },
+    "RevealOnDeath": {
+      "Duration": "100",
+      "Radius": "4c768"
+    },
+    "MapEditorData": {
+      "Categories": "Building"
+    },
+    "CommandBarBlacklist": null,
+    "WithBuildingRepairDecoration": {
+      "Image": "allyrepair",
+      "Sequence": "repair",
+      "Position": "Center",
+      "Palette": "player",
+      "IsPlayerPalette": "True"
+    }
+  },
+  "^Defense": {
+    "Inherits": {
+      "id": "selection",
+      "value": "^SelectableCombatBuilding"
+    },
+    "WithSpriteTurret": {
+      "RequiresCondition": "!build-incomplete"
+    },
+    "AttackTurreted": {
+      "PauseOnCondition": "build-incomplete"
+    },
+    "RenderRangeCircle": null,
+    "DetectCloaked": {
+      "Range": "4c768"
+    },
+    "GivesBuildableArea": {
+      "__remove": true
+    },
+    "WithMakeAnimation": {
+      "BodyNames": "make"
+    },
+    "Capturable": {
+      "__remove": true
+    },
+    "WithSpriteBody": {
+      "Name": "make",
+      "Sequence": "invisible"
+    },
+    "WithWallSpriteBody": {
+      "RequiresCondition": "!build-incomplete"
+    },
+    "LineBuildNode": {
+      "Types": "turret"
+    },
+    "FireProjectilesOnDeath": {
+      "Weapons": "Debris, Debris3",
+      "Pieces": "2, 2",
+      "Range": "2c0, 4c0"
+    },
+    "MustBeDestroyed": {
+      "RequiredForShortGame": "false"
+    },
+    "Targetable": {
+      "TargetTypes": "Ground, C4, Structure, Defense"
+    },
+    "MapEditorData": {
+      "Categories": "Defense"
+    },
+    "CommandBarBlacklist": {
+      "__remove": true
+    }
+  },
+  "^DisableOnLowPower": {
+    "WithColoredOverlay": {
+      "id": "IDISABLE",
+      "RequiresCondition": "disabled",
+      "Color": "000000B4"
+    },
+    "GrantConditionOnPowerState": {
+      "id": "LOWPOWER",
+      "Condition": "lowpower",
+      "ValidPowerStates": "Low, Critical"
+    },
+    "GrantCondition": {
+      "id": "IDISABLE",
+      "RequiresCondition": "lowpower",
+      "Condition": "disabled"
+    }
+  },
+  "^DisableOnLowPowerOrPowerDown": {
+    "Inherits": "^DisableOnLowPower",
+    "GrantCondition": {
+      "id": "IDISABLE",
+      "RequiresCondition": "lowpower || powerdown",
+      "Condition": "disabled"
+    },
+    "ToggleConditionOnOrder": {
+      "DisabledSound": "EnablePower",
+      "EnabledSound": "DisablePower",
+      "Condition": "powerdown",
+      "OrderName": "PowerDown"
+    },
+    "WithDecoration": {
+      "id": "POWERDOWN",
+      "Image": "poweroff",
+      "Sequence": "offline",
+      "Palette": "chrome",
+      "RequiresCondition": "powerdown",
+      "Position": "Center",
+      "Offsets": {
+        "repairing": "10, 0"
+      }
+    },
+    "PowerMultiplier": {
+      "id": "POWERDOWN",
+      "RequiresCondition": "powerdown",
+      "Modifier": "0"
+    },
+    "RepairableBuilding": {
+      "RepairCondition": "repairing",
+      "RepairStep": "500"
+    },
+    "WithBuildingRepairDecoration": {
+      "Offsets": {
+        "powerdown": "-10, 0"
+      }
+    }
+  },
+  "^Selectable": {
+    "Selectable": null,
+    "SelectionDecorations": null,
+    "WithSpriteControlGroupDecoration": {
+      "Margin": "-1, -1"
+    },
+    "DrawLineToTarget": null
+  },
+  "^SelectableCombatUnit": {
+    "Inherits": {
+      "id": "selectiondecorations",
+      "value": "^Selectable"
+    },
+    "Selectable": {
+      "Priority": "10",
+      "PriorityModifiers": "Ctrl"
+    }
+  },
+  "^SelectableSupportUnit": {
+    "Inherits": {
+      "id": "selectiondecorations",
+      "value": "^Selectable"
+    },
+    "Selectable": {
+      "Priority": "8",
+      "PriorityModifiers": "Ctrl, Alt"
+    }
+  },
+  "^SelectableEconomicUnit": {
+    "Inherits": {
+      "id": "selectiondecorations",
+      "value": "^Selectable"
+    },
+    "Selectable": {
+      "Priority": "6",
+      "PriorityModifiers": "Ctrl, Alt"
+    }
+  },
+  "^SelectableCombatBuilding": {
+    "Inherits": {
+      "id": "selectiondecorations",
+      "value": "^Selectable"
+    },
+    "Selectable": {
+      "Priority": "4"
+    }
+  },
+  "^SelectableBuilding": {
+    "Inherits": {
+      "id": "selectiondecorations",
+      "value": "^Selectable"
+    },
+    "Selectable": {
+      "Priority": "2"
+    }
+  },
+  "^PrimaryBuilding": {
+    "PrimaryBuilding": {
+      "PrimaryCondition": "primary",
+      "ProductionQueues": "Building",
+      "SelectionNotification": "PrimaryBuildingSelected",
+      "SelectionTextNotification": "notification-primary-building-selected"
+    },
+    "WithTextDecoration": {
+      "id": "primary",
+      "RequiresCondition": "primary",
+      "Position": "Top",
+      "Margin": "0, 5",
+      "RequiresSelection": "true",
+      "Text": "PRIMARY"
+    }
+  },
+  "^Upgradeable": {
+    "GrantConditionOnPrerequisite": {
+      "id": "UPGRADEABLE",
+      "Condition": "stardecoration"
+    },
+    "WithDecoration": {
+      "id": "upgraded",
+      "RequiresCondition": "stardecoration",
+      "Position": "TopRight",
+      "Margin": "6, 8",
+      "RequiresSelection": "true",
+      "Image": "pips",
+      "Sequence": "tag-upgraded"
+    }
+  },
+  "^UndestroyableTile": {
+    "Inherits": [
+      {
+        "id": "1",
+        "value": "^ExistsInWorld"
+      },
+      {
+        "id": "2",
+        "value": "^SpriteActor"
+      }
+    ],
+    "FrozenUnderFog": null,
+    "WithSpriteBody": null,
+    "Building": {
+      "TerrainTypes": "Rock, Concrete, Cliff, Sand, Rock, Transition, Spice, SpiceSand, Dune,"
+    },
+    "Health": {
+      "HP": "30000"
+    },
+    "Armor": {
+      "Type": "invulnerable"
+    },
+    "HitShape": {
+      "UseTargetableCellsOffsets": "false",
+      "Type": {
+        "TopLeft": "-512, -512",
+        "BottomRight": "512, 512",
+        "__value": "Rectangle"
+      }
+    },
+    "MapEditorData": {
+      "Categories": "Tile actors"
+    },
+    "Interactable": null
+  },
+  "^DestroyableTile": {
+    "Inherits": "^UndestroyableTile",
+    "Targetable": {
+      "TargetTypes": "Ground, Cliff",
+      "RequiresForceFire": "true"
+    },
+    "Armor": {
+      "Type": "wall"
+    },
+    "Health": {
+      "HP": "30000"
+    },
+    "OwnerLostAction": {
+      "Action": "ChangeOwner",
+      "Owner": "Neutral"
+    },
+    "HitShape": {
+      "UseTargetableCellsOffsets": "true"
+    },
+    "FireWarheadsOnDeath": {
+      "Type": "CenterPosition",
+      "Weapon": "cliffExplode",
+      "EmptyWeapon": "cliffExplode"
+    },
+    "MapEditorData": {
+      "Categories": "Destroable Tiles"
+    },
+    "Tooltip": {
+      "GenericName": "meta-destroyabletile.generic-name",
+      "Name": "meta-destroyabletile.name"
+    }
+  },
+  "^DestroyedTile": {
+    "Inherits": "^UndestroyableTile",
+    "CaptureManager": null,
+    "Building": null,
+    "OwnerLostAction": {
+      "Action": "ChangeOwner",
+      "Owner": "Neutral"
+    },
+    "Tooltip": {
+      "GenericName": "meta-destroyedtile.generic-name",
+      "Name": "meta-destroyedtile.name"
+    },
+    "CapturableProgressBar": null,
+    "CapturableProgressBlink": {
+      "Interval": "30"
+    },
+    "Capturable": {
+      "Types": "cliff"
+    },
+    "HitShape": {
+      "UseTargetableCellsOffsets": "true",
+      "Type": {
+        "TopLeft": "-1048, -1048",
+        "BottomRight": "1024, 1054",
+        "__value": "Rectangle"
+      }
+    },
+    "Targetable": {
+      "TargetTypes": "Ground, Cliff",
+      "RequiresForceFire": "true"
+    },
+    "MapEditorData": {
+      "Categories": "Destroyed Tiles"
+    }
+  },
+  "^DamagedBuildingEffects": {
+    "GrantConditionOnFaction": [
+      {
+        "id": "atreidesVFX",
+        "Condition": "atreidesVFX",
+        "Factions": "atreides, fremen"
+      },
+      {
+        "id": "harkonnenVFX",
+        "Condition": "harkonnenVFX",
+        "Factions": "harkonnen, corrino"
+      },
+      {
+        "id": "ordosVFX",
+        "Condition": "ordosVFX",
+        "Factions": "ordos, mercenary, smuggler"
+      }
+    ],
+    "GrantConditionOnDamageState": {
+      "id": "heavyDamage",
+      "Condition": "heavy-damage"
+    },
+    "FloatingSpriteEmitter": [
+      {
+        "id": "SmokeHugeAtreides",
+        "RequiresCondition": "heavy-damage && atreidesVFX",
+        "Image": "smoke3",
+        "Lifetime": "15, 20",
+        "Speed": "5",
+        "Gravity": "60",
+        "SpawnFrequency": "2, 5",
+        "RandomFacing": "true",
+        "RandomRate": "4",
+        "TurnRate": "3",
+        "Duration": "1300"
+      },
+      {
+        "id": "SmokeSmallAtreides",
+        "RequiresCondition": "heavy-damage && atreidesVFX",
+        "Image": "smoke3",
+        "Lifetime": "15, 20",
+        "Speed": "3",
+        "Gravity": "50",
+        "SpawnFrequency": "4, 15",
+        "RandomFacing": "true",
+        "RandomRate": "4",
+        "TurnRate": "3",
+        "Duration": "900"
+      },
+      {
+        "id": "SmokeHugeHarkonnen",
+        "RequiresCondition": "heavy-damage && harkonnenVFX",
+        "Image": "smoke3",
+        "Lifetime": "20,25",
+        "Speed": "5",
+        "Gravity": "60",
+        "SpawnFrequency": "3, 7",
+        "RandomFacing": "true",
+        "RandomRate": "4",
+        "TurnRate": "3",
+        "Duration": "1300"
+      },
+      {
+        "id": "SmokeSmallHarkonnen",
+        "RequiresCondition": "heavy-damage && harkonnenVFX",
+        "Image": "smoke3",
+        "Lifetime": "15, 20",
+        "Speed": "3",
+        "Gravity": "50",
+        "SpawnFrequency": "4, 15",
+        "RandomFacing": "true",
+        "RandomRate": "4",
+        "TurnRate": "3",
+        "Duration": "900"
+      },
+      {
+        "id": "SmokeHugeOrdos",
+        "RequiresCondition": "heavy-damage && ordosVFX",
+        "Image": "smoke3",
+        "Lifetime": "20,25",
+        "Speed": "7",
+        "Gravity": "60",
+        "SpawnFrequency": "3, 8",
+        "RandomFacing": "true",
+        "RandomRate": "4",
+        "TurnRate": "3",
+        "Duration": "1300"
+      },
+      {
+        "id": "SmokeSmallOrdos",
+        "RequiresCondition": "heavy-damage && ordosVFX",
+        "Image": "smoke3",
+        "Lifetime": "15, 20",
+        "Speed": "3",
+        "Gravity": "50",
+        "SpawnFrequency": "4, 15",
+        "RandomFacing": "true",
+        "RandomRate": "4",
+        "TurnRate": "3",
+        "Duration": "900"
+      }
+    ],
+    "WithDamageOverlay": [
+      {
+        "id": "Fire1_Atreides",
+        "RequiresCondition": "atreidesVFX",
+        "Image": "fire",
+        "LoopSequence": "1",
+        "LoopCount": "20, 30",
+        "InitialDelay": "0, 25"
+      },
+      {
+        "id": "Fire2_atreides",
+        "RequiresCondition": "atreidesVFX",
+        "Image": "fire",
+        "LoopSequence": "2",
+        "LoopCount": "20, 30",
+        "InitialDelay": "0, 25"
+      },
+      {
+        "id": "Fire1Harkonnen",
+        "RequiresCondition": "harkonnenVFX",
+        "Image": "fire",
+        "LoopSequence": "1",
+        "LoopCount": "10",
+        "InitialDelay": "0, 25"
+      },
+      {
+        "id": "Fire2Harkonnen",
+        "RequiresCondition": "harkonnenVFX",
+        "Image": "fire",
+        "LoopSequence": "2",
+        "LoopCount": "20, 30",
+        "InitialDelay": "0, 25"
+      },
+      {
+        "id": "Fire1Ordos",
+        "RequiresCondition": "ordosVFX",
+        "Image": "fire",
+        "LoopSequence": "1",
+        "LoopCount": "20, 30",
+        "InitialDelay": "0, 25"
+      },
+      {
+        "id": "Fire2Ordos",
+        "RequiresCondition": "ordosVFX",
+        "Image": "fire",
+        "LoopSequence": "2",
+        "LoopCount": "20, 30",
+        "InitialDelay": "0, 25"
+      }
+    ]
+  }
+}

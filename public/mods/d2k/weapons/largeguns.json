@@ -1,0 +1,178 @@
+{
+  "^Cannon": {
+    "ReloadDelay": "50",
+    "Range": "4c624",
+    "Report": "MEDTANK1.WAV",
+    "Projectile": {
+      "Speed": "562",
+      "Inaccuracy": "135",
+      "InaccuracyType": "PerCellIncrement",
+      "Image": "120mm",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "2800",
+        "Spread": "1c0",
+        "Falloff": "100, 0",
+        "Versus": {
+          "none": "30",
+          "wall": "50",
+          "building": "50",
+          "wood": "60",
+          "heavy": "75",
+          "invulnerable": "0",
+          "cy": "20",
+          "harvester": "50"
+        },
+        "DamageTypes": "Prone80Percent, TriggerProne, SmallExplosionDeath",
+        "DamageCalculationType": "ClosestTargetablePosition"
+      },
+      {
+        "id": "2Smu",
+        "value": "LeaveSmudge",
+        "SmudgeType": "SandCrater, RockCrater",
+        "InvalidTargets": "Vehicle, Structure"
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "small_napalm",
+        "ImpactActors": "false"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "540"
+      }
+    ]
+  },
+  "110mm_Gun": {
+    "Inherits": "^Cannon",
+    "ReloadDelay": "35",
+    "Range": "6c0",
+    "Report": "TURRET1.WAV",
+    "Projectile": {
+      "Speed": "800",
+      "Blockable": "false",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "2900",
+        "Versus": {
+          "none": "65",
+          "wood": "80",
+          "heavy": "30",
+          "harvester": "50"
+        }
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "2900"
+      }
+    ]
+  },
+  "80mm_A": {
+    "Inherits": "^Cannon",
+    "Range": "5c112"
+  },
+  "80mm_H": {
+    "Inherits": "^Cannon",
+    "ReloadDelay": "55"
+  },
+  "80mm_O": {
+    "Inherits": "^Cannon",
+    "ReloadDelay": "44"
+  },
+  "DevBullet": {
+    "Inherits": "^Cannon",
+    "ReloadDelay": "75",
+    "Report": "TANKHVY1.WAV",
+    "Projectile": {
+      "Speed": "281",
+      "Image": "doubleblastbullet",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "6500",
+        "Spread": "1c225",
+        "Versus": {
+          "none": "65",
+          "wall": "100",
+          "building": "75",
+          "wood": "60",
+          "heavy": "100",
+          "invulnerable": "0",
+          "cy": "40",
+          "harvester": "100"
+        }
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "3250"
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "shockwave",
+        "ImpactSounds": "EXPLMD4.WAV"
+      }
+    ]
+  },
+  "155mm": {
+    "Inherits": "^Cannon",
+    "ReloadDelay": "105",
+    "Range": "6c900",
+    "Report": "MORTAR1.WAV",
+    "Projectile": {
+      "Speed": "192",
+      "Blockable": "false",
+      "Shadow": "true",
+      "LaunchAngle": "62",
+      "ContrailLength": "20",
+      "Image": "155mm",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "4500",
+        "Spread": "1c800",
+        "Versus": {
+          "none": "100",
+          "wall": "70",
+          "building": "100",
+          "wood": "70",
+          "light": "30",
+          "heavy": "20",
+          "invulnerable": "0",
+          "cy": "20",
+          "harvester": "25"
+        },
+        "DamageTypes": "Prone80Percent, TriggerProne, ExplosionDeath"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "5625"
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "med_explosion",
+        "ImpactSounds": "EXPLMD2.WAV"
+      }
+    ]
+  }
+}

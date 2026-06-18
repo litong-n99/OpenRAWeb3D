@@ -1,0 +1,190 @@
+{
+  "Atomic": {
+    "ValidTargets": "Ground, Water, Air, Trees",
+    "Report": "nukemisl.aud",
+    "Warhead": [
+      {
+        "id": "1Dam_impact",
+        "value": "SpreadDamage",
+        "Spread": "1c0",
+        "Damage": "15000",
+        "Falloff": "1000, 368, 135, 50, 18, 7, 0",
+        "ValidTargets": "Ground, Air, Trees",
+        "AffectsParent": "True",
+        "Versus": {
+          "None": "100",
+          "Wood": "100",
+          "Light": "60",
+          "Heavy": "50",
+          "Concrete": "50"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, FireDeath, Incendiary"
+      },
+      {
+        "id": "2Eff_impact",
+        "value": "CreateEffect",
+        "Explosions": "nuke_explosion",
+        "ImpactSounds": "nukexplo.aud",
+        "ImpactActors": "false"
+      },
+      {
+        "id": "3Dam_areanukea",
+        "value": "SpreadDamage",
+        "Spread": "2c512",
+        "Damage": "11000",
+        "Falloff": "1000, 700, 500, 300, 150, 50, 0",
+        "Delay": "3",
+        "ValidTargets": "Ground, Air",
+        "AffectsParent": "True",
+        "Versus": {
+          "None": "100",
+          "Wood": "100",
+          "Light": "60",
+          "Heavy": "50",
+          "Concrete": "50"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, FireDeath, Incendiary"
+      },
+      {
+        "id": "4Res_areanukea",
+        "value": "DestroyResource",
+        "Size": "3",
+        "Delay": "3"
+      },
+      {
+        "id": "5Smu_areanukea",
+        "value": "LeaveSmudge",
+        "SmudgeType": "Scorch",
+        "InvalidTargets": "Vehicle, Structure, Wall",
+        "Size": "3",
+        "Delay": "3"
+      },
+      {
+        "id": "6Eff_areanukea",
+        "value": "CreateEffect",
+        "ImpactSounds": "xplobig4.aud",
+        "Delay": "3",
+        "ImpactActors": "false"
+      },
+      {
+        "id": "7Dam_areanukeb",
+        "value": "SpreadDamage",
+        "Spread": "3c768",
+        "Damage": "5000",
+        "Falloff": "1000, 368, 135, 50, 18, 7, 0",
+        "Delay": "6",
+        "ValidTargets": "Ground, Air, Trees",
+        "AffectsParent": "True",
+        "Versus": {
+          "None": "100",
+          "Wood": "100",
+          "Light": "60",
+          "Heavy": "50",
+          "Concrete": "50"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, FireDeath, Incendiary"
+      },
+      {
+        "id": "8Res_areanukeb",
+        "value": "DestroyResource",
+        "Size": "4",
+        "Delay": "6"
+      },
+      {
+        "id": "9Smu_areanukeb",
+        "value": "LeaveSmudge",
+        "SmudgeType": "Scorch",
+        "InvalidTargets": "Vehicle, Structure, Wall",
+        "Size": "4",
+        "Delay": "6"
+      },
+      {
+        "id": "10Dam_areanukec",
+        "value": "SpreadDamage",
+        "Spread": "5c0",
+        "Damage": "2000",
+        "Falloff": "1000, 368, 135, 50, 18, 7, 0",
+        "Delay": "9",
+        "ValidTargets": "Ground, Air, Trees",
+        "AffectsParent": "True",
+        "Versus": {
+          "None": "100",
+          "Wood": "100",
+          "Light": "60",
+          "Heavy": "50",
+          "Concrete": "50"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, FireDeath, Incendiary"
+      },
+      {
+        "id": "11Res_areanukec",
+        "value": "DestroyResource",
+        "Size": "5",
+        "Delay": "9"
+      },
+      {
+        "id": "12Smu_areanukec",
+        "value": "LeaveSmudge",
+        "SmudgeType": "Scorch",
+        "InvalidTargets": "Vehicle, Structure, Wall",
+        "Size": "5",
+        "Delay": "9"
+      },
+      {
+        "id": "13Shake",
+        "value": "ShakeScreen",
+        "Duration": "20",
+        "Intensity": "5",
+        "Multiplier": "1,1"
+      },
+      {
+        "id": "14FlashEffect",
+        "value": "FlashEffect",
+        "Duration": "20"
+      }
+    ]
+  },
+  "IonCannon": {
+    "ValidTargets": "Ground, Water, Air, Trees",
+    "Warhead": [
+      {
+        "id": "1Dam_impact",
+        "value": "SpreadDamage",
+        "Range": "0, 1c1, 2c1, 2c512",
+        "Damage": "10000",
+        "Falloff": "1000, 1000, 250, 100",
+        "ValidTargets": "Ground, Air, Trees",
+        "AffectsParent": "True",
+        "DamageTypes": "Prone50Percent, TriggerProne, FireDeath, Incendiary"
+      },
+      {
+        "id": "2Smu_impact",
+        "value": "LeaveSmudge",
+        "SmudgeType": "Scorch",
+        "InvalidTargets": "Vehicle, Structure, Wall, Husk, Trees, Creep"
+      },
+      {
+        "id": "3Smu_area",
+        "value": "LeaveSmudge",
+        "SmudgeType": "Scorch",
+        "InvalidTargets": "Vehicle, Structure, Wall, Husk, Trees, Creep",
+        "Size": "1",
+        "Delay": "3"
+      },
+      {
+        "id": "4Res_area2",
+        "value": "DestroyResource",
+        "Size": "2",
+        "Delay": "6"
+      },
+      {
+        "id": "5Smu_area2",
+        "value": "LeaveSmudge",
+        "SmudgeType": "Scorch",
+        "InvalidTargets": "Vehicle, Structure, Wall, Husk, Trees, Creep",
+        "Size": "2,1",
+        "Delay": "6"
+      }
+    ]
+  }
+}

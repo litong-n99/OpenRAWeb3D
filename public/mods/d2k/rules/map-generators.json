@@ -1,0 +1,483 @@
+{
+  "^MapGenerators": {
+    "D2kMapGenerator": {
+      "id": "d2k",
+      "Type": "d2k",
+      "Name": "map-generator-d2k",
+      "Tilesets": "ARRAKIS",
+      "Settings": {
+        "MultiChoiceOption": [
+          {
+            "id": "hidden_defaults",
+            "Choice": {
+              "id": "hidden_defaults",
+              "Settings": {
+                "Rotations": "1",
+                "Mirror": "None",
+                "TerrainFeatureSize": "10240",
+                "SandDetailFeatureSize": "10240",
+                "DuneFeatureSize": "10240",
+                "ResourceFeatureSize": "20480",
+                "TerrainSmoothing": "4",
+                "DuneSmoothing": "2",
+                "SmoothingThreshold": "833",
+                "RockRoughness": "350",
+                "SandRoughness": "500",
+                "RoughnessRadius": "5",
+                "Rock": "350",
+                "SandCliffs": "500",
+                "Dunes": "200",
+                "MinimumRockStraight": "3",
+                "MinimumSandCliffStraight": "1",
+                "MinimumRockSandThickness": "6",
+                "MinimumSandCliffThickness": "5",
+                "MinimumDuneThickness": "2",
+                "MinimumRockSmoothLength": "6",
+                "MinimumSandRockCliffLength": "6",
+                "MinimumSandSandCliffLength": "6",
+                "MinimumSandLength": "2",
+                "SandContourSpacing": "5",
+                "DuneContourSpacing": "2",
+                "SandDetail": "200",
+                "SandDetailClumpiness": "1",
+                "SandDetailCutout": "2",
+                "MaximumSandDetailCutoutSpacing": "12",
+                "CreateEntities": "True",
+                "AreaEntityBonus": "0",
+                "PlayerCountEntityBonus": "1000000",
+                "MinimumSpawnRockArea": "150",
+                "CentralSpawnReservationFraction": "250",
+                "SpawnRegionSize": "12",
+                "MinimumSpawnRadius": "3",
+                "SpawnReservation": "16",
+                "BiasedResourceSpawns": "2",
+                "ResourceSpawnSpacing": "2",
+                "UnbiasedResourceSpawns": "5",
+                "ResourceSpawnReservation": "8",
+                "ResourcesPerPlayer": "125000",
+                "ResourceUniformity": "250",
+                "ResourceClumpiness": "2",
+                "ResourceSpawn": "spicebloom.spawnpoint",
+                "Resource": "Spice",
+                "WormSpawn": "wormspawner",
+                "WormSpawns": "1",
+                "WormSpawnReservation": "12",
+                "SandTile": "0",
+                "RockTile": "266",
+                "PlayableTerrain": "Clear,Concrete,Dune,Rock,Rough,Sand,Spice,SpiceSand,Transition",
+                "RockZoneableTerrain": "Rock",
+                "SandZoneableTerrain": "SpiceSand",
+                "RockSmoothSegmentType": "RockSmooth",
+                "SandRockCliffSegmentType": "SandRockCliff",
+                "SandSandCliffSegmentType": "SandSandCliff",
+                "SandSegmentType": "Sand",
+                "DuneSegmentType": "Dune",
+                "SandDetailBrushes": "Rough-Sand-Detail",
+                "DuneBrushes": "Dune"
+              }
+            }
+          },
+          {
+            "id": "TerrainType",
+            "Label": "label-d2k-map-generator-option-terrain-type",
+            "Priority": "2",
+            "Default": "Rocky",
+            "Choice": [
+              {
+                "id": "Rocky",
+                "Label": "label-d2k-map-generator-choice-terrain-type-rocky",
+                "Settings": {
+                  "TerrainFeatureSize": "10240",
+                  "SandDetailFeatureSize": "10240",
+                  "DuneFeatureSize": "10240",
+                  "RockRoughness": "350",
+                  "SandRoughness": "500",
+                  "Rock": "350",
+                  "SandCliffs": "500",
+                  "Dunes": "200",
+                  "SandDetail": "200"
+                }
+              },
+              {
+                "id": "Rough",
+                "Label": "label-d2k-map-generator-choice-terrain-type-rough",
+                "Settings": {
+                  "TerrainFeatureSize": "10240",
+                  "SandDetailFeatureSize": "10240",
+                  "DuneFeatureSize": "10240",
+                  "RockRoughness": "300",
+                  "SandRoughness": "300",
+                  "Rock": "300",
+                  "SandCliffs": "500",
+                  "Dunes": "200",
+                  "SandDetail": "200"
+                }
+              },
+              {
+                "id": "Flat",
+                "Label": "label-d2k-map-generator-choice-terrain-type-flat",
+                "Settings": {
+                  "TerrainFeatureSize": "10240",
+                  "SandDetailFeatureSize": "10240",
+                  "DuneFeatureSize": "10240",
+                  "RockRoughness": "0",
+                  "SandRoughness": "0",
+                  "Rock": "250",
+                  "SandCliffs": "0",
+                  "Dunes": "200",
+                  "SandDetail": "50"
+                }
+              },
+              {
+                "id": "Pockets",
+                "Label": "label-d2k-map-generator-choice-terrain-type-pockets",
+                "Settings": {
+                  "TerrainFeatureSize": "10240",
+                  "SandDetailFeatureSize": "10240",
+                  "DuneFeatureSize": "10240",
+                  "RockRoughness": "300",
+                  "SandRoughness": "250",
+                  "Rock": "650",
+                  "SandCliffs": "500",
+                  "Dunes": "0",
+                  "SandDetail": "50"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Symmetry",
+            "Label": "label-d2k-map-generator-option-symmetry",
+            "Default": "2Rotations",
+            "Priority": "1",
+            "Choice": [
+              {
+                "id": "None",
+                "Label": "label-d2k-map-generator-choice-mirror-none",
+                "Settings": {
+                  "Mirror": "None"
+                }
+              },
+              {
+                "id": "LeftMatchesRight",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-horizontal",
+                "Players": "2, 4, 6, 8, 10, 12, 14, 16",
+                "Settings": {
+                  "Mirror": "LeftMatchesRight"
+                }
+              },
+              {
+                "id": "TopLeftMatchesBottomRight",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-diagonal-tl",
+                "Players": "2, 4, 6, 8, 10, 12, 14, 16",
+                "Settings": {
+                  "Mirror": "TopLeftMatchesBottomRight"
+                }
+              },
+              {
+                "id": "TopMatchesBottom",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-vertical",
+                "Players": "2, 4, 6, 8, 10, 12, 14, 16",
+                "Settings": {
+                  "Mirror": "TopMatchesBottom"
+                }
+              },
+              {
+                "id": "TopRightMatchesBottomLeft",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-diagonal-tr",
+                "Players": "2, 4, 6, 8, 10, 12, 14, 16",
+                "Settings": {
+                  "Mirror": "TopRightMatchesBottomLeft"
+                }
+              },
+              {
+                "id": "2Rotations",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-2-rotations",
+                "Players": "2, 4, 6, 8, 10, 12, 14, 16",
+                "Settings": {
+                  "Rotations": "2"
+                }
+              },
+              {
+                "id": "3Rotations",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-3-rotations",
+                "Players": "3, 6, 9, 12, 15",
+                "Settings": {
+                  "Rotations": "3"
+                }
+              },
+              {
+                "id": "4Rotations",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-4-rotations",
+                "Players": "4, 8, 12, 16",
+                "Settings": {
+                  "Rotations": "4"
+                }
+              },
+              {
+                "id": "5Rotations",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-5-rotations",
+                "Players": "5, 10, 15",
+                "Settings": {
+                  "Rotations": "5"
+                }
+              },
+              {
+                "id": "6Rotations",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-6-rotations",
+                "Players": "6, 12",
+                "Settings": {
+                  "Rotations": "6"
+                }
+              },
+              {
+                "id": "7Rotations",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-7-rotations",
+                "Players": "7, 14",
+                "Settings": {
+                  "Rotations": "7"
+                }
+              },
+              {
+                "id": "8Rotations",
+                "Label": "label-d2k-map-generator-choice-symmetry-mirror-8-rotations",
+                "Players": "8, 16",
+                "Settings": {
+                  "Rotations": "8"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Resources",
+            "Label": "label-d2k-map-generator-option-resources",
+            "Default": "Medium",
+            "Choice": [
+              {
+                "id": "None",
+                "Label": "label-d2k-map-generator-choice-resources-none",
+                "Settings": {
+                  "BiasedResourceSpawns": "0",
+                  "UnbiasedResourceSpawns": "0",
+                  "ResourcesPerPlayer": "0"
+                }
+              },
+              {
+                "id": "Low",
+                "Label": "label-d2k-map-generator-choice-resources-low",
+                "Settings": {
+                  "BiasedResourceSpawns": "1",
+                  "UnbiasedResourceSpawns": "2",
+                  "ResourcesPerPlayer": "75000"
+                }
+              },
+              {
+                "id": "Medium",
+                "Label": "label-d2k-map-generator-choice-resources-medium",
+                "Settings": {
+                  "BiasedResourceSpawns": "2",
+                  "UnbiasedResourceSpawns": "4",
+                  "ResourcesPerPlayer": "125000"
+                }
+              },
+              {
+                "id": "High",
+                "Label": "label-d2k-map-generator-choice-resources-high",
+                "Settings": {
+                  "BiasedResourceSpawns": "3",
+                  "UnbiasedResourceSpawns": "6",
+                  "ResourcesPerPlayer": "150000"
+                }
+              },
+              {
+                "id": "VeryHigh",
+                "Label": "label-d2k-map-generator-choice-resources-very-high",
+                "Settings": {
+                  "BiasedResourceSpawns": "4",
+                  "UnbiasedResourceSpawns": "8",
+                  "ResourcesPerPlayer": "200000"
+                }
+              },
+              {
+                "id": "Full",
+                "Label": "label-d2k-map-generator-choice-resources-full",
+                "Settings": {
+                  "BiasedResourceSpawns": "1",
+                  "UnbiasedResourceSpawns": "1000000",
+                  "ResourcesPerPlayer": "1000000000"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Worms",
+            "Label": "label-d2k-map-generator-option-worms",
+            "Default": "Low",
+            "Choice": [
+              {
+                "id": "None",
+                "Label": "label-d2k-map-generator-choice-worms-none",
+                "Settings": {
+                  "WormSpawns": "0"
+                }
+              },
+              {
+                "id": "Low",
+                "Label": "label-d2k-map-generator-choice-worms-low",
+                "Settings": {
+                  "WormSpawns": "1"
+                }
+              },
+              {
+                "id": "Medium",
+                "Label": "label-d2k-map-generator-choice-worms-medium",
+                "Settings": {
+                  "WormSpawns": "2"
+                }
+              },
+              {
+                "id": "High",
+                "Label": "label-d2k-map-generator-choice-worms-high",
+                "Settings": {
+                  "WormSpawns": "4"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Density",
+            "Label": "label-d2k-map-generator-option-density",
+            "Default": "Players",
+            "Priority": "1",
+            "Choice": [
+              {
+                "id": "Players",
+                "Label": "label-d2k-map-generator-choice-density-players",
+                "Settings": {
+                  "AreaEntityBonus": "0",
+                  "PlayerCountEntityBonus": "1000000"
+                }
+              },
+              {
+                "id": "AreaAndPlayers",
+                "Label": "label-d2k-map-generator-choice-density-area-and-players",
+                "Settings": {
+                  "AreaEntityBonus": "200",
+                  "PlayerCountEntityBonus": "500000"
+                }
+              },
+              {
+                "id": "AreaVeryLow",
+                "Label": "label-d2k-map-generator-choice-density-area-very-low",
+                "Settings": {
+                  "AreaEntityBonus": "100",
+                  "PlayerCountEntityBonus": "0"
+                }
+              },
+              {
+                "id": "AreaLow",
+                "Label": "label-d2k-map-generator-choice-density-area-low",
+                "Settings": {
+                  "AreaEntityBonus": "200",
+                  "PlayerCountEntityBonus": "0"
+                }
+              },
+              {
+                "id": "AreaMedium",
+                "Label": "label-d2k-map-generator-choice-density-area-medium",
+                "Settings": {
+                  "AreaEntityBonus": "400",
+                  "PlayerCountEntityBonus": "0"
+                }
+              },
+              {
+                "id": "AreaHigh",
+                "Label": "label-d2k-map-generator-choice-density-area-high",
+                "Settings": {
+                  "AreaEntityBonus": "600",
+                  "PlayerCountEntityBonus": "0"
+                }
+              },
+              {
+                "id": "AreaVeryHigh",
+                "Label": "label-d2k-map-generator-choice-density-area-very-high",
+                "Settings": {
+                  "AreaEntityBonus": "800",
+                  "PlayerCountEntityBonus": "0"
+                }
+              }
+            ]
+          }
+        ],
+        "IntegerOption": {
+          "id": "Seed",
+          "Label": "label-d2k-map-generator-option-seed",
+          "Parameter": "Seed",
+          "Default": "0"
+        },
+        "MultiIntegerChoiceOption": {
+          "id": "Players",
+          "Label": "label-d2k-map-generator-option-players",
+          "Parameter": "Players",
+          "Choices": "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16",
+          "Default": "2",
+          "Priority": "1"
+        }
+      }
+    },
+    "ClearMapGenerator": {
+      "id": "clear",
+      "Type": "clear",
+      "Name": "map-generator-clear",
+      "Tilesets": "ARRAKIS",
+      "Settings": {
+        "MultiChoiceOption": {
+          "id": "Tile",
+          "Label": "label-clear-map-generator-option-tile",
+          "Choice": [
+            {
+              "id": "Sand",
+              "Label": "label-clear-map-generator-choice-tile-sand",
+              "Tileset": "ARRAKIS",
+              "Settings": {
+                "Tile": "0"
+              }
+            },
+            {
+              "id": "Concrete",
+              "Label": "label-clear-map-generator-choice-tile-concrete",
+              "Tileset": "ARRAKIS",
+              "Settings": {
+                "Tile": "88"
+              }
+            },
+            {
+              "id": "Dune",
+              "Label": "label-clear-map-generator-choice-tile-dune",
+              "Tileset": "ARRAKIS",
+              "Settings": {
+                "Tile": "241"
+              }
+            },
+            {
+              "id": "Rock",
+              "Label": "label-clear-map-generator-choice-tile-rock",
+              "Tileset": "ARRAKIS",
+              "Settings": {
+                "Tile": "266"
+              }
+            },
+            {
+              "id": "Platform",
+              "Label": "label-clear-map-generator-choice-tile-platform",
+              "Tileset": "ARRAKIS",
+              "Settings": {
+                "Tile": "1017"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

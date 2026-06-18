@@ -1,0 +1,263 @@
+{
+  "^Rocket": {
+    "ReloadDelay": "40",
+    "Range": "3c870",
+    "Report": "ROCKET1.WAV",
+    "Projectile": {
+      "Blockable": "false",
+      "Speed": "281",
+      "Inaccuracy": "130",
+      "InaccuracyType": "PerCellIncrement",
+      "Image": "RPG",
+      "TrailImage": "bazooka_trail2",
+      "TrailInterval": "1",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "3000",
+        "Spread": "870",
+        "Falloff": "100, 0",
+        "Versus": {
+          "none": "10",
+          "wall": "75",
+          "building": "40",
+          "wood": "55",
+          "light": "70",
+          "heavy": "100",
+          "invulnerable": "0",
+          "cy": "20",
+          "harvester": "60"
+        },
+        "DamageTypes": "Prone80Percent, TriggerProne, SmallExplosionDeath",
+        "DamageCalculationType": "ClosestTargetablePosition"
+      },
+      {
+        "id": "2Smu",
+        "value": "LeaveSmudge",
+        "SmudgeType": "SandCrater, RockCrater",
+        "InvalidTargets": "Vehicle, Structure"
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "tiny_explosion",
+        "ImpactActors": "false",
+        "ValidTargets": "Ground, Air"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "240"
+      }
+    ]
+  },
+  "^Missile": {
+    "Inherits": "^Rocket",
+    "ReloadDelay": "60",
+    "Range": "7c0",
+    "MinRange": "0c512",
+    "Projectile": {
+      "Shadow": "true",
+      "InaccuracyType": "Maximum",
+      "Inaccuracy": "250",
+      "HorizontalRateOfTurn": "22",
+      "RangeLimit": "10c0",
+      "CruiseAltitude": "1c0",
+      "MinimumLaunchAngle": "64",
+      "VerticalRateOfTurn": "40",
+      "Image": "MISSILE2",
+      "TrailImage": "large_trail",
+      "Speed": "288",
+      "__value": "Missile"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "4800",
+        "Spread": "1c0",
+        "Versus": {
+          "none": "10",
+          "wall": "75",
+          "building": "60",
+          "wood": "60",
+          "light": "80",
+          "heavy": "100",
+          "invulnerable": "0",
+          "cy": "30",
+          "harvester": "50"
+        },
+        "DamageTypes": "Prone80Percent, SmallExplosionDeath"
+      },
+      {
+        "id": "proneeffect",
+        "value": "TargetDamage",
+        "Damage": "1",
+        "Spread": "600",
+        "DamageTypes": "TriggerProne"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "720"
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "small_explosion",
+        "ImpactSounds": "EXPLSML1.WAV"
+      }
+    ]
+  },
+  "Bazooka": {
+    "Inherits": "^Rocket"
+  },
+  "Rocket": {
+    "Inherits": "^Rocket",
+    "ReloadDelay": "50",
+    "Burst": "2",
+    "BurstDelays": "10",
+    "Range": "4c112",
+    "Projectile": {
+      "Speed": "352",
+      "Inaccuracy": "140",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "2500",
+        "Versus": {
+          "none": "25",
+          "wall": "70",
+          "building": "50",
+          "wood": "65",
+          "light": "100",
+          "heavy": "50",
+          "invulnerable": "0",
+          "cy": "20",
+          "harvester": "55"
+        }
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "625"
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "rocket_explosion"
+      }
+    ]
+  },
+  "TowerMissile": {
+    "Inherits": "^Missile",
+    "ReloadDelay": "60",
+    "Burst": "2",
+    "BurstDelays": "60",
+    "ValidTargets": "Ground, Air",
+    "Warhead": {
+      "id": "1Dam",
+      "value": "SpreadDamage",
+      "ValidTargets": "Ground, Air",
+      "DamageTypes": "Prone80Percent, TriggerProne, ExplosionDeath"
+    }
+  },
+  "mtank_pri": {
+    "Inherits": "^Missile",
+    "ReloadDelay": "115",
+    "Burst": "2",
+    "BurstDelays": "115",
+    "Range": "7c900",
+    "MinRange": "1c0",
+    "ValidTargets": "Ground, Air",
+    "Projectile": {
+      "RangeLimit": "11c0",
+      "__value": "Missile"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "6000",
+        "ValidTargets": "Ground, Air"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "900"
+      }
+    ]
+  },
+  "DeviatorMissile": {
+    "Inherits": "^Missile",
+    "ReloadDelay": "160",
+    "Range": "6c0",
+    "Report": "MISSLE1.WAV",
+    "Projectile": {
+      "RangeLimit": "6c0",
+      "Inaccuracy": "96",
+      "Image": "MISSILE",
+      "TrailImage": "deviator_trail",
+      "TrailPalette": "player",
+      "TrailUsePlayerPalette": "true",
+      "__value": "Missile"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "2000",
+        "Spread": "480",
+        "Versus": {
+          "none": "100",
+          "wall": "100",
+          "building": "100",
+          "wood": "100",
+          "light": "100",
+          "heavy": "100",
+          "invulnerable": "0",
+          "cy": "50",
+          "harvester": "100"
+        }
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "deviator",
+        "ExplosionPalette": "player",
+        "UsePlayerPalette": "true",
+        "ImpactSounds": {
+          "__remove": true
+        }
+      },
+      {
+        "id": "5OwnerChange",
+        "value": "ChangeOwner",
+        "Range": "512",
+        "Duration": "405",
+        "InvalidTargets": "Infantry, Structure",
+        "ValidRelationships": "Enemy, Neutral"
+      },
+      {
+        "id": "Trigger",
+        "value": "GrantExternalCondition",
+        "Condition": "unit-captured",
+        "Duration": "405"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "1000"
+      }
+    ],
+    "Warhead@2Smu": {
+      "__remove": true
+    }
+  }
+}

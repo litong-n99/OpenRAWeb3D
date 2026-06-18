@@ -1,0 +1,196 @@
+{
+  "^BasePlayer": {
+    "Shroud": null,
+    "PlayerResources": {
+      "ResourceValues": {
+        "Tiberium": "25",
+        "BlueTiberium": "40",
+        "Veins": "0"
+      }
+    }
+  },
+  "EditorPlayer": {
+    "Inherits": "^BasePlayer"
+  },
+  "Player": {
+    "Inherits": "^BasePlayer",
+    "TechTree": null,
+    "GrantConditionOnPrerequisiteManager": null,
+    "ClassicProductionQueue": [
+      {
+        "id": "Building",
+        "Type": "Building",
+        "DisplayOrder": "0",
+        "BuildDurationModifier": "120",
+        "LowPowerModifier": "300",
+        "ReadyAudio": "ConstructionComplete",
+        "ReadyTextNotification": "notification-construction-complete",
+        "LimitedAudio": "BuildingInProgress",
+        "LimitedTextNotification": "notification-unable-to-comply-building-in-progress",
+        "QueuedAudio": "Building",
+        "OnHoldAudio": "OnHold",
+        "CancelledAudio": "Cancelled",
+        "SpeedUp": "True"
+      },
+      {
+        "id": "Support",
+        "Type": "Support",
+        "DisplayOrder": "1",
+        "BuildDurationModifier": "120",
+        "LowPowerModifier": "300",
+        "ReadyAudio": "ConstructionComplete",
+        "ReadyTextNotification": "notification-construction-complete",
+        "LimitedAudio": "BuildingInProgress",
+        "LimitedTextNotification": "notification-unable-to-comply-building-in-progress",
+        "QueuedAudio": "Building",
+        "OnHoldAudio": "OnHold",
+        "CancelledAudio": "Cancelled",
+        "SpeedUp": "True"
+      },
+      {
+        "id": "Vehicle",
+        "Type": "Vehicle",
+        "DisplayOrder": "3",
+        "BuildDurationModifier": "120",
+        "LowPowerModifier": "300",
+        "ReadyAudio": "UnitReady",
+        "ReadyTextNotification": "notification-unit-ready",
+        "LimitedAudio": "BuildingInProgress",
+        "LimitedTextNotification": "notification-unable-to-comply-building-in-progress",
+        "QueuedAudio": "Training",
+        "OnHoldAudio": "OnHold",
+        "CancelledAudio": "Cancelled",
+        "SpeedUp": "True"
+      },
+      {
+        "id": "Infantry",
+        "Type": "Infantry",
+        "DisplayOrder": "2",
+        "BuildDurationModifier": "120",
+        "LowPowerModifier": "300",
+        "ReadyAudio": "UnitReady",
+        "ReadyTextNotification": "notification-unit-ready",
+        "LimitedAudio": "BuildingInProgress",
+        "LimitedTextNotification": "notification-unable-to-comply-building-in-progress",
+        "QueuedAudio": "Training",
+        "OnHoldAudio": "OnHold",
+        "CancelledAudio": "Cancelled",
+        "SpeedUp": "True"
+      },
+      {
+        "id": "Air",
+        "Type": "Air",
+        "DisplayOrder": "4",
+        "BuildDurationModifier": "120",
+        "LowPowerModifier": "300",
+        "ReadyAudio": "UnitReady",
+        "ReadyTextNotification": "notification-unit-ready",
+        "LimitedAudio": "BuildingInProgress",
+        "LimitedTextNotification": "notification-unable-to-comply-building-in-progress",
+        "QueuedAudio": "Training",
+        "OnHoldAudio": "OnHold",
+        "CancelledAudio": "Cancelled",
+        "SpeedUp": "True"
+      }
+    ],
+    "PlaceBuilding": {
+      "NewOptionsNotification": "NewOptions",
+      "CannotPlaceNotification": "BuildingCannotPlaceAudio",
+      "NewOptionsTextNotification": "notification-new-construction-options",
+      "CannotPlaceTextNotification": "notification-cannot-deploy-here"
+    },
+    "SupportPowerManager": null,
+    "ScriptTriggers": null,
+    "MissionObjectives": {
+      "WinNotification": "Win",
+      "LoseNotification": "Lose",
+      "LeaveNotification": "Leave"
+    },
+    "ConquestVictoryConditions": null,
+    "PowerManager": {
+      "SpeechNotification": "LowPower",
+      "TextNotification": "notification-low-power"
+    },
+    "AllyRepair": null,
+    "PlayerResources": {
+      "InsufficientFundsNotification": "InsufficientFunds",
+      "InsufficientFundsTextNotification": "notification-insufficient-funds",
+      "CashTickUpNotification": "CashTickUp",
+      "CashTickDownNotification": "CashTickDown"
+    },
+    "DeveloperMode": {
+      "CheckboxEnabled": "true",
+      "CheckboxDisplayOrder": "8"
+    },
+    "Shroud": {
+      "FogCheckboxDisplayOrder": "3"
+    },
+    "LobbyPrerequisiteCheckbox": {
+      "id": "GLOBALFACTUNDEPLOY",
+      "ID": "factundeploy",
+      "Label": "checkbox-redeployable-mcvs.label",
+      "Description": "checkbox-redeployable-mcvs.description",
+      "Enabled": "True",
+      "DisplayOrder": "7",
+      "Prerequisites": "global-factundeploy"
+    },
+    "FrozenActorLayer": null,
+    "DamageNotifier": [
+      {
+        "ValidTargets": "Building",
+        "Notification": "BaseAttack",
+        "TextNotification": "notification-base-under-attack",
+        "AllyTextNotification": "notification-ally-under-attack",
+        "AllyNotification": "OurAllyIsUnderAttack"
+      },
+      {
+        "id": "Unit",
+        "InvalidTargets": "Building",
+        "NotifyInterval": "10000"
+      }
+    ],
+    "HarvesterAttackNotifier": {
+      "TextNotification": "notification-harvester-under-attack"
+    },
+    "PlayerStatistics": null,
+    "PlaceBeacon": {
+      "Palette": "effect",
+      "IsPlayerPalette": "false",
+      "BeaconSequence": "idle",
+      "ArrowSequence": null,
+      "CircleSequence": null
+    },
+    "ProvidesTechPrerequisite": [
+      {
+        "id": "low",
+        "Name": "options-tech-level.low",
+        "Prerequisites": "techlevel.low",
+        "Id": "low"
+      },
+      {
+        "id": "medium",
+        "Name": "options-tech-level.medium",
+        "Prerequisites": "techlevel.low, techlevel.medium",
+        "Id": "medium"
+      },
+      {
+        "id": "nosuper",
+        "Name": "options-tech-level.no-powers",
+        "Prerequisites": "techlevel.low, techlevel.medium, techlevel.high",
+        "Id": "nopowers"
+      },
+      {
+        "id": "all",
+        "Name": "options-tech-level.unrestricted",
+        "Prerequisites": "techlevel.low, techlevel.medium, techlevel.high, techlevel.superweapons",
+        "Id": "unrestricted"
+      }
+    ],
+    "ResourceStorageWarning": {
+      "TextNotification": "notification-silos-needed"
+    },
+    "PlayerExperience": null,
+    "GameSaveViewportManager": null,
+    "PlayerRadarTerrain": null
+  }
+}

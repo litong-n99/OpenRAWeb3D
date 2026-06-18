@@ -1,0 +1,47 @@
+{
+  "^HealWeapon": {
+    "ReloadDelay": "80",
+    "Range": "2c849",
+    "Report": "healer1.aud",
+    "ValidTargets": "Heal",
+    "TargetActorCenter": "true",
+    "Projectile": "InstantHit",
+    "Warhead": [
+      {
+        "id": "1Eff",
+        "value": "FlashTargetsInRadius",
+        "ValidTargets": "Heal",
+        "ValidRelationships": "Ally"
+      },
+      {
+        "id": "2Dam",
+        "value": "TargetDamage",
+        "DebugOverlayColor": "00FF00",
+        "Damage": "-5000",
+        "ValidTargets": "Heal",
+        "ValidRelationships": "Ally"
+      }
+    ]
+  },
+  "Heal": {
+    "Inherits": "^HealWeapon"
+  },
+  "Repair": {
+    "Inherits": "^HealWeapon",
+    "Range": "1c819",
+    "Report": "repair11.aud",
+    "ValidTargets": "Repair",
+    "Warhead": [
+      {
+        "id": "1Eff",
+        "value": "FlashTargetsInRadius",
+        "ValidTargets": "Repair"
+      },
+      {
+        "id": "2Dam",
+        "value": "TargetDamage",
+        "ValidTargets": "Repair"
+      }
+    ]
+  }
+}

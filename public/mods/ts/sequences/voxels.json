@@ -1,0 +1,133 @@
+{
+  "mcv": {
+    "idle": null
+  },
+  "harv": {
+    "idle": null,
+    "unload": "horv"
+  },
+  "apc": {
+    "idle": null,
+    "water": "apcw"
+  },
+  "art2": {
+    "idle": null,
+    "turret": "art2tur",
+    "barrel": "art2barl"
+  },
+  "jugg": {
+    "barrel": "djuggbar"
+  },
+  "subtank": {
+    "idle": null
+  },
+  "bggy": {
+    "idle": null
+  },
+  "nalasr": {
+    "turret": "laser"
+  },
+  "sapc": {
+    "idle": null
+  },
+  "bike": {
+    "idle": null
+  },
+  "ttnk": {
+    "idle": null,
+    "turret": "ttnktur",
+    "barrel": "ttnkbarl"
+  },
+  "mmch": {
+    "barrel": "mmchbarl"
+  },
+  "hmec": {
+    "idle": null
+  },
+  "hvr": {
+    "idle": null,
+    "turret": "hvrtur"
+  },
+  "stnk": {
+    "idle": null
+  },
+  "orca": {
+    "idle": null
+  },
+  "orcab": {
+    "idle": null
+  },
+  "orcatran": {
+    "idle": null
+  },
+  "trnsport": {
+    "idle": null
+  },
+  "scrin": {
+    "idle": null
+  },
+  "apache": {
+    "idle": null
+  },
+  "dshp": {
+    "idle": null
+  },
+  "4tnk": {
+    "idle": null,
+    "turret": "4tnktur",
+    "barrel": "4tnkbarl"
+  },
+  "trucka": {
+    "idle": null
+  },
+  "truckb": {
+    "idle": null
+  },
+  "lpst": {
+    "idle": null
+  },
+  "icbm": {
+    "idle": null
+  },
+  "repair": {
+    "idle": null
+  },
+  "weed": {
+    "idle": null,
+    "unload": null
+  },
+  "bus": {
+    "idle": null
+  },
+  "pick": {
+    "idle": null
+  },
+  "car": {
+    "idle": null
+  },
+  "wini": {
+    "idle": null
+  },
+  "locomotive": {
+    "idle": "monoeng"
+  },
+  "traincar": {
+    "idle": "monocar"
+  },
+  "cargocar": {
+    "idle": null
+  },
+  "sonic": {
+    "idle": null,
+    "turret": "sonictur"
+  },
+  "mobilemp": {
+    "idle": "m_emp"
+  },
+  "dpod": {
+    "idle": null
+  },
+  "sgen": {
+    "idle": null
+  }
+}

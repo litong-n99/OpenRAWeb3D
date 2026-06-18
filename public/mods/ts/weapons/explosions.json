@@ -1,0 +1,128 @@
+{
+  "^DamagingExplosion": {
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Spread": "256",
+        "Falloff": "100, 50, 25, 12, 6, 3, 0",
+        "Damage": "50000",
+        "Versus": {
+          "None": "90",
+          "Wood": "75",
+          "Light": "60",
+          "Heavy": "25"
+        },
+        "DamageTypes": "Prone50Percent, TriggerProne, SmallExplosionDeath"
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "large_brnl, large_bang, medium_twlt",
+        "ImpactSounds": "expnew09.aud, expnew10.aud, expnew12.aud"
+      },
+      {
+        "id": "4Smu",
+        "value": "LeaveSmudge",
+        "SmudgeType": "MediumCrater",
+        "InvalidTargets": "Building, Wall"
+      }
+    ]
+  },
+  "UnitExplode": {
+    "Inherits": "^DamagingExplosion"
+  },
+  "UnitExplodeSmall": {
+    "Inherits": "^DamagingExplosion",
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Spread": "192",
+        "Damage": "4000"
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "medium_brnl",
+        "ImpactSounds": "expnew13.aud"
+      },
+      {
+        "id": "4Smu",
+        "value": "LeaveSmudge",
+        "SmudgeType": "SmallCrater",
+        "InvalidTargets": "Building, Wall"
+      }
+    ]
+  },
+  "BuildingExplosions": {
+    "Warhead": [
+      {
+        "id": "1Eff",
+        "value": "CreateEffect",
+        "Explosions": "building, large_bang, large_brnl, verylarge_clsn, large_tumu"
+      },
+      {
+        "id": "2Smu",
+        "value": "LeaveSmudge",
+        "SmudgeType": "MediumCrater"
+      }
+    ]
+  },
+  "CyborgExplode": {
+    "Warhead": {
+      "id": "1Eff",
+      "value": "CreateEffect",
+      "Explosions": "medium_bang",
+      "ImpactSounds": "expnew10.aud"
+    }
+  },
+  "TiberiumExplosion": {
+    "Inherits": "^DamagingExplosion",
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Spread": "9",
+        "Damage": "1000",
+        "DamageTypes": "Prone50Percent, TriggerProne, ExplosionDeath"
+      },
+      {
+        "id": "Res",
+        "value": "CreateResource",
+        "AddsResourceType": "Tiberium",
+        "Size": "1,1"
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "large_explosion"
+      }
+    ],
+    "Warhead@4Smu": {
+      "__remove": true
+    }
+  },
+  "Demolish": {
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "DamageTypes": "DefaultDeath"
+      },
+      {
+        "id": "2Eff",
+        "value": "CreateEffect",
+        "Explosions": "large_twlt",
+        "ImpactSounds": "expnew09.aud"
+      }
+    ]
+  },
+  "DropPodExplode": {
+    "Warhead": {
+      "id": "1Eff",
+      "value": "CreateEffect",
+      "Explosions": "droppod_explosion, droppod2_explosion, droppody_explosion, droppody2_explosion"
+    }
+  }
+}

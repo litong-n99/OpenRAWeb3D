@@ -1,0 +1,802 @@
+{
+  "Player": {
+    "ConquestVictoryConditions": {
+      "__remove": true
+    },
+    "MissionObjectives": {
+      "EarlyGameOver": "true",
+      "GameOverDelay": "3000"
+    },
+    "Shroud": {
+      "FogCheckboxVisible": "False",
+      "FogCheckboxLocked": "True",
+      "FogCheckboxEnabled": "True",
+      "ExploredMapCheckboxVisible": "False",
+      "ExploredMapCheckboxLocked": "True",
+      "ExploredMapCheckboxEnabled": "False"
+    },
+    "PlayerResources": {
+      "DefaultCashDropdownVisible": "False",
+      "DefaultCashDropdownLocked": "True"
+    },
+    "LobbyPrerequisiteCheckbox": {
+      "id": "AUTOCONCRETE",
+      "Enabled": "False",
+      "Locked": "True",
+      "Visible": "False"
+    },
+    "DeveloperMode": {
+      "CheckboxVisible": "False",
+      "CheckboxEnabled": "true"
+    },
+    "ModularBot": {
+      "id": "CampaignAI",
+      "Name": "bot-campaign-ai.name",
+      "Type": "campaign"
+    },
+    "GrantConditionOnBotOwner": {
+      "id": "campaign",
+      "Condition": "campaign-ai",
+      "Bots": "campaign"
+    },
+    "ProvidesPrerequisite": {
+      "id": "autoConcreteForBots",
+      "Prerequisite": "global-auto-concrete",
+      "RequiresCondition": "campaign-ai"
+    }
+  },
+  "World": {
+    "CrateSpawner": {
+      "__remove": true
+    },
+    "SpawnStartingUnits": {
+      "__remove": true
+    },
+    "MapStartingLocations": {
+      "__remove": true
+    },
+    "ObjectivesPanel": {
+      "PanelName": "MISSION_OBJECTIVES"
+    },
+    "ActorSpawnManager": {
+      "Minimum": "0",
+      "Maximum": "1",
+      "InitialDelay": "5000"
+    },
+    "MapCreeps": {
+      "CheckboxVisible": "False",
+      "CheckboxLocked": "True",
+      "CheckboxEnabled": "True"
+    },
+    "MapBuildRadius": {
+      "AllyBuildRadiusCheckboxVisible": "False",
+      "AllyBuildRadiusCheckboxLocked": "True",
+      "AllyBuildRadiusCheckboxEnabled": "False",
+      "BuildRadiusCheckboxVisible": "False",
+      "BuildRadiusCheckboxLocked": "True",
+      "BuildRadiusCheckboxEnabled": "True"
+    },
+    "MapOptions": {
+      "ShortGameCheckboxVisible": "False",
+      "ShortGameCheckboxLocked": "True",
+      "ShortGameCheckboxEnabled": "False",
+      "TechLevelDropdownVisible": "False",
+      "TechLevelDropdownLocked": "True"
+    },
+    "TimeLimitManager": {
+      "TimeLimitDropdownVisible": "False"
+    }
+  },
+  "^AutoTargetGroundAssaultMove": {
+    "GrantConditionOnBotOwner": {
+      "id": "BOTOWNER",
+      "Bots": "campaign"
+    }
+  },
+  "^AutoTargetAllAssaultMove": {
+    "GrantConditionOnBotOwner": {
+      "id": "BOTOWNER",
+      "Bots": "campaign"
+    }
+  },
+  "sandworm": {
+    "Sandworm": {
+      "ChanceToDisappear": "40"
+    }
+  },
+  "sandworm.script": {
+    "Inherits": "sandworm",
+    "Sandworm": {
+      "ChanceToDisappear": "50"
+    },
+    "RenderSprites": {
+      "Image": "sandworm"
+    },
+    "ScriptTags": null,
+    "WithMakeAnimation": {
+      "Sequence": "mouth",
+      "Condition": "eating"
+    },
+    "Mobile": {
+      "PauseOnCondition": "eating"
+    },
+    "AmbientSound": [
+      {
+        "RequiresCondition": "!attacking && !eating"
+      },
+      {
+        "id": "make",
+        "RequiresCondition": "eating",
+        "SoundFiles": "WORM.WAV"
+      }
+    ]
+  },
+  "harvester": [
+    "MustBeDestroyed"
+  ],
+  "silo": [
+    "MustBeDestroyed"
+  ],
+  "saboteur": {
+    "ExternalCondition": {
+      "id": "script",
+      "Condition": "triggered"
+    }
+  },
+  "crate": {
+    "Crate": {
+      "Duration": "0"
+    },
+    "ScriptTriggers": null,
+    "HideMapCrateAction": {
+      "__remove": true
+    },
+    "RevealMapCrateAction": {
+      "__remove": true
+    }
+  },
+  "crate_explosion": {
+    "Crate": null,
+    "ScriptTriggers": null,
+    "QuantizeFacingsFromSequence": null,
+    "RenderSprites": {
+      "Palette": "effect"
+    },
+    "WithCrateBody": null,
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "Interactable": {
+      "Bounds": "640, 640"
+    },
+    "ExplodeCrateAction": {
+      "Weapon": "CrateExplosion",
+      "SelectionShares": "100"
+    }
+  },
+  "crate_reveal": {
+    "Crate": null,
+    "ScriptTriggers": null,
+    "QuantizeFacingsFromSequence": null,
+    "RenderSprites": {
+      "Palette": "effect"
+    },
+    "WithCrateBody": null,
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "Interactable": {
+      "Bounds": "640, 640"
+    },
+    "RevealMapCrateAction": {
+      "SelectionShares": "100",
+      "Sequence": "reveal-map",
+      "Sound": "SONIC3.WAV"
+    }
+  },
+  "crate_script": {
+    "ScriptTriggers": null,
+    "Crate": null,
+    "QuantizeFacingsFromSequence": null,
+    "RenderSprites": {
+      "Palette": "effect"
+    },
+    "WithCrateBody": null,
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "Interactable": {
+      "Bounds": "640, 640"
+    },
+    "GrantExternalConditionCrateAction": {
+      "SelectionShares": "100",
+      "Sequence": "reveal-map",
+      "Sound": "MULTI1.WAV",
+      "Condition": "activator",
+      "Duration": "500"
+    }
+  },
+  "vision_provider": {
+    "Interactable": null,
+    "Immobile": {
+      "OccupiesSpace": "false"
+    },
+    "RenderSpritesEditorOnly": null,
+    "WithSpriteBody": null,
+    "BodyOrientation": {
+      "QuantizedFacings": "1"
+    },
+    "MapEditorData": {
+      "Categories": "System"
+    },
+    "ExternalCondition": {
+      "Condition": "activate"
+    },
+    "RevealsShroud": {
+      "Range": "10c0",
+      "Type": "CenterPosition",
+      "RequiresCondition": "activate"
+    }
+  },
+  "debris.small": {
+    "Inherits": "^SpriteActor",
+    "Immobile": {
+      "OccupiesSpace": "false"
+    },
+    "WithSpriteBody": null,
+    "BodyOrientation": {
+      "QuantizedFacings": "1"
+    },
+    "ThrowsParticle": [
+      {
+        "id": "debris01",
+        "Anim": "tankdebris01"
+      },
+      {
+        "id": "debris02",
+        "Anim": "tankdebris02",
+        "Offset": "256,128,0"
+      },
+      {
+        "id": "debris03",
+        "Anim": "tankdebris03"
+      },
+      {
+        "id": "debris04",
+        "Anim": "tankdebris04"
+      }
+    ]
+  },
+  "debris.large": {
+    "Inherits": "debris.small",
+    "RenderSprites": {
+      "Image": "debris.small"
+    },
+    "ThrowsParticle": [
+      {
+        "id": "debris01",
+        "MaxThrowRange": "1c0"
+      },
+      {
+        "id": "debris02",
+        "Offset": "256,128,0",
+        "MaxThrowRange": "1c0"
+      },
+      {
+        "id": "debris03",
+        "MaxThrowRange": "1c0"
+      },
+      {
+        "id": "debris04",
+        "MaxThrowRange": "1c0"
+      },
+      {
+        "id": "debris05",
+        "Anim": "tankdebris01",
+        "Offset": "-512,480,0",
+        "MaxThrowRange": "1c0"
+      },
+      {
+        "id": "debris06",
+        "Anim": "tankdebris02",
+        "Offset": "236,128,250"
+      },
+      {
+        "id": "debris07",
+        "Anim": "tankdebris03",
+        "Offset": "756,312,512"
+      },
+      {
+        "id": "debris08",
+        "Anim": "tankdebris04",
+        "Offset": "0,512,326"
+      }
+    ],
+    "MapEditorData": {
+      "Categories": "Debris"
+    }
+  },
+  "^Debris": {
+    "Inherits": {
+      "id": "1",
+      "value": "^SpriteActor"
+    },
+    "Interactable": null,
+    "Health": {
+      "HP": "10000"
+    },
+    "Armor": {
+      "Type": "light"
+    },
+    "FireWarheadsOnDeath": {
+      "Weapon": "UnitExplodeSmall",
+      "EmptyWeapon": "UnitExplodeSmall"
+    },
+    "ScriptTriggers": null,
+    "WithFacingSpriteBody": null,
+    "HitShape": {
+      "Type": {
+        "Radius": "1024",
+        "__value": "Circle"
+      }
+    },
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "Husk": null,
+    "Targetable": {
+      "TargetTypes": "Ground, Vehicle, Husk",
+      "RequiresForceFire": "true"
+    }
+  },
+  "carryall.debris": {
+    "Inherits": {
+      "id": "1",
+      "value": "^Debris"
+    },
+    "Interactable": {
+      "Bounds": "1024, 1024, 0, 0"
+    },
+    "WithIdleOverlay": [
+      {
+        "id": "1",
+        "Sequence": "1"
+      },
+      {
+        "id": "2",
+        "Sequence": "2"
+      },
+      {
+        "id": "3",
+        "Sequence": "3"
+      }
+    ],
+    "Husk": {
+      "Locomotor": "tank"
+    },
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "Image": "smoke3",
+      "Lifetime": "10, 20",
+      "Speed": "7",
+      "Gravity": "50",
+      "SpawnFrequency": "2, 10",
+      "RandomFacing": "true",
+      "RandomRate": "4",
+      "Offset": "0, 0, 200",
+      "TurnRate": "3",
+      "Duration": "-1"
+    },
+    "SpawnActorOnDeath": [
+      {
+        "Actor": "crate",
+        "OwnerType": "InternalName"
+      },
+      {
+        "id": "debris1",
+        "Actor": "debris.large",
+        "OwnerType": "InternalName"
+      }
+    ]
+  },
+  "frigate.debris": {
+    "Inherits": [
+      {
+        "id": "1",
+        "value": "^Debris"
+      },
+      {
+        "id": "2",
+        "value": "^ExistsInWorld"
+      }
+    ],
+    "WithIdleOverlay": [
+      {
+        "id": "1",
+        "Sequence": "1"
+      },
+      {
+        "id": "2",
+        "Sequence": "2"
+      },
+      {
+        "id": "3",
+        "Sequence": "3"
+      }
+    ],
+    "Interactable": {
+      "Bounds": "2048, 2048"
+    },
+    "WithFacingSpriteBody": {
+      "__remove": true
+    },
+    "Husk": {
+      "__remove": true
+    },
+    "WithSpriteBody": null,
+    "CombatDebugOverlay": null,
+    "Targetable": {
+      "TargetTypes": "Ground, C4, Structure",
+      "RequiresForceFire": "false"
+    },
+    "Building": {
+      "Footprint": "_X XX",
+      "Dimensions": "2,2",
+      "LocalCenterOffset": "0,0,0"
+    },
+    "HitShape": {
+      "UseTargetableCellsOffsets": "true",
+      "Type": {
+        "TopLeft": "-1024, -1024",
+        "BottomRight": "1024, 1024",
+        "__value": "Rectangle"
+      }
+    },
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "Image": "smoke3",
+      "Lifetime": "10, 20",
+      "Speed": "7",
+      "Gravity": "50",
+      "Offset": "-128,512,200",
+      "SpawnFrequency": "2, 10",
+      "RandomFacing": "true",
+      "RandomRate": "4",
+      "TurnRate": "3",
+      "Duration": "-1"
+    },
+    "SpawnActorOnDeath": [
+      {
+        "Actor": "crate",
+        "OwnerType": "InternalName",
+        "Offset": "0,1"
+      },
+      {
+        "id": "1",
+        "Actor": "crate",
+        "OwnerType": "InternalName",
+        "Offset": "1,1"
+      },
+      {
+        "id": "debris",
+        "Actor": "debris.small",
+        "OwnerType": "InternalName",
+        "Offset": "0,1"
+      },
+      {
+        "id": "debris1",
+        "Actor": "debris.large",
+        "OwnerType": "InternalName",
+        "Offset": "1,1"
+      }
+    ]
+  },
+  "harvester.debris": {
+    "Inherits": {
+      "id": "1",
+      "value": "^Debris"
+    },
+    "Interactable": null,
+    "Transforms": {
+      "IntoActor": "sandworm.script"
+    },
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "Image": "smoke3",
+      "Lifetime": "10, 20",
+      "Speed": "7",
+      "Gravity": "50",
+      "SpawnFrequency": "2, 10",
+      "RandomFacing": "true",
+      "RandomRate": "4",
+      "Offset": "0, 0, 200",
+      "TurnRate": "3",
+      "Duration": "-1"
+    },
+    "SpawnActorOnDeath": [
+      {
+        "Actor": "crate",
+        "OwnerType": "InternalName"
+      },
+      {
+        "id": "1",
+        "Actor": "debris.small",
+        "OwnerType": "InternalName"
+      }
+    ]
+  },
+  "combat_tank_a.debris": {
+    "Inherits": "combat_tank_a.husk",
+    "RenderSprites": {
+      "Image": "combat_tank_a.husk"
+    },
+    "ThrowsParticle": {
+      "id": "turret",
+      "Anim": "turret",
+      "TurnSpeed": "150",
+      "MaxThrowRange": "512"
+    },
+    "WithColoredOverlay": {
+      "id": "husk",
+      "Color": "00000040"
+    },
+    "FloatingSpriteEmitter@SMOKE": {
+      "__remove": true
+    },
+    "WithIdleOverlay@Burns": {
+      "__remove": true
+    },
+    "GrantRandomCondition": {
+      "__remove": true
+    },
+    "ChangesHealth": {
+      "__remove": true
+    },
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "Transforms": {
+      "IntoActor": "sandworm.script"
+    },
+    "SpawnActorOnDeath": [
+      {
+        "Actor": "crate",
+        "OwnerType": "InternalName"
+      },
+      {
+        "id": "1",
+        "Actor": "debris.small",
+        "OwnerType": "InternalName"
+      }
+    ]
+  },
+  "combat_tank_h.debris": {
+    "Inherits": "combat_tank_h.husk",
+    "RenderSprites": {
+      "Image": "combat_tank_h.husk"
+    },
+    "ThrowsParticle": {
+      "id": "turret",
+      "Anim": "turret",
+      "TurnSpeed": "150",
+      "MaxThrowRange": "512"
+    },
+    "WithColoredOverlay": {
+      "id": "husk",
+      "Color": "00000040"
+    },
+    "Transforms": {
+      "IntoActor": "sandworm.script"
+    },
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "FloatingSpriteEmitter@SMOKE": {
+      "__remove": true
+    },
+    "WithIdleOverlay@Burns": {
+      "__remove": true
+    },
+    "GrantRandomCondition": {
+      "__remove": true
+    },
+    "ChangesHealth": {
+      "__remove": true
+    },
+    "HiddenUnderFog": {
+      "__remove": true
+    },
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "Image": "smoke3",
+      "Lifetime": "10, 20",
+      "Speed": "7",
+      "Gravity": "50",
+      "SpawnFrequency": "20, 50",
+      "RandomFacing": "true",
+      "RandomRate": "7",
+      "Offset": "0, 0, 200",
+      "TurnRate": "3",
+      "Duration": "-1"
+    },
+    "SpawnActorOnDeath": [
+      {
+        "Actor": "crate",
+        "OwnerType": "InternalName"
+      },
+      {
+        "id": "1",
+        "Actor": "debris.small",
+        "OwnerType": "InternalName"
+      }
+    ]
+  },
+  "combat_tank_o.debris": {
+    "Inherits": "combat_tank_o.husk",
+    "RenderSprites": {
+      "Image": "combat_tank_o.husk"
+    },
+    "ThrowsParticle": {
+      "id": "turret",
+      "Anim": "turret",
+      "TurnSpeed": "150",
+      "MaxThrowRange": "512"
+    },
+    "WithColoredOverlay@husk": {
+      "__remove": true
+    },
+    "Transforms": {
+      "IntoActor": "sandworm.script"
+    },
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "FloatingSpriteEmitter@SMOKE": {
+      "__remove": true
+    },
+    "WithIdleOverlay@Burns": {
+      "__remove": true
+    },
+    "GrantRandomCondition": {
+      "__remove": true
+    },
+    "ChangesHealth": {
+      "__remove": true
+    },
+    "HiddenUnderFog": {
+      "__remove": true
+    },
+    "SpawnActorOnDeath": [
+      {
+        "Actor": "crate",
+        "OwnerType": "InternalName"
+      },
+      {
+        "id": "1",
+        "Actor": "debris.small",
+        "OwnerType": "InternalName"
+      }
+    ],
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "Image": "smoke3",
+      "Lifetime": "10, 20",
+      "Speed": "7",
+      "Gravity": "50",
+      "SpawnFrequency": "20, 50",
+      "RandomFacing": "true",
+      "RandomRate": "7",
+      "Offset": "0, 0, 200",
+      "TurnRate": "3",
+      "Duration": "-1"
+    }
+  },
+  "siege_tank.debris": {
+    "Inherits": "siege_tank.husk",
+    "RenderSprites": {
+      "Image": "siege_tank.husk"
+    },
+    "FloatingSpriteEmitter@SMOKE": {
+      "__remove": true
+    },
+    "WithIdleOverlay@Burns": {
+      "__remove": true
+    },
+    "GrantRandomCondition": {
+      "__remove": true
+    },
+    "ChangesHealth": {
+      "__remove": true
+    },
+    "HiddenUnderFog": {
+      "__remove": true
+    },
+    "WithColoredOverlay@husk": {
+      "__remove": true
+    },
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "Transforms": {
+      "IntoActor": "sandworm.script"
+    },
+    "SpawnActorOnDeath": [
+      {
+        "Actor": "crate",
+        "OwnerType": "InternalName"
+      },
+      {
+        "id": "1",
+        "Actor": "debris.small",
+        "OwnerType": "InternalName"
+      }
+    ],
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "Image": "smoke3",
+      "Lifetime": "10, 20",
+      "Speed": "7",
+      "Gravity": "50",
+      "SpawnFrequency": "20, 50",
+      "RandomFacing": "true",
+      "RandomRate": "7",
+      "Offset": "0, 0, 200",
+      "TurnRate": "3",
+      "Duration": "-1"
+    }
+  },
+  "missile_tank.debris": {
+    "Inherits": "missile_tank.husk",
+    "RenderSprites": {
+      "Image": "missile_tank.husk"
+    },
+    "FloatingSpriteEmitter@SMOKE": {
+      "__remove": true
+    },
+    "WithIdleOverlay@Burns": {
+      "__remove": true
+    },
+    "GrantRandomCondition": {
+      "__remove": true
+    },
+    "ChangesHealth": {
+      "__remove": true
+    },
+    "HiddenUnderFog": {
+      "__remove": true
+    },
+    "WithColoredOverlay@husk": {
+      "__remove": true
+    },
+    "MapEditorData": {
+      "Categories": "Debris"
+    },
+    "Transforms": {
+      "IntoActor": "sandworm.script"
+    },
+    "SpawnActorOnDeath": [
+      {
+        "Actor": "crate",
+        "OwnerType": "InternalName"
+      },
+      {
+        "id": "1",
+        "Actor": "debris.small",
+        "OwnerType": "InternalName"
+      }
+    ],
+    "FloatingSpriteEmitter": {
+      "id": "SMOKE",
+      "Image": "smoke3",
+      "Lifetime": "10, 20",
+      "Speed": "7",
+      "Gravity": "50",
+      "SpawnFrequency": "20, 50",
+      "RandomFacing": "true",
+      "RandomRate": "7",
+      "Offset": "0, 0, 200",
+      "TurnRate": "3",
+      "Duration": "-1"
+    }
+  }
+}

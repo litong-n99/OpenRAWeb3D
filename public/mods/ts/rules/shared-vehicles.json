@@ -1,0 +1,297 @@
+{
+  "MCV": {
+    "Inherits": [
+      {
+        "id": "VOXELS",
+        "value": "^VoxelActor"
+      },
+      {
+        "id": "selection",
+        "value": "^SelectableSupportUnit"
+      }
+    ],
+    "Buildable": {
+      "Queue": "Vehicle",
+      "BuildPaletteOrder": "160",
+      "Prerequisites": "~factory, tech, ~techlevel.medium",
+      "Description": "actor-mcv.description"
+    },
+    "Valued": {
+      "Cost": "2500"
+    },
+    "Tooltip": {
+      "Name": "actor-mcv.name"
+    },
+    "Selectable": {
+      "DecorationBounds": "1267, 2534"
+    },
+    "Health": {
+      "HP": "100000"
+    },
+    "Armor": {
+      "Type": "Heavy"
+    },
+    "Mobile": {
+      "Speed": "42"
+    },
+    "RevealsShroud": {
+      "RequiresCondition": "!inside-tunnel",
+      "Range": "6c0",
+      "MaxHeightDelta": "3"
+    },
+    "MustBeDestroyed": {
+      "RequiredForShortGame": "true"
+    },
+    "BaseBuilding": null,
+    "Transforms": {
+      "PauseOnCondition": "empdisable || being-captured",
+      "IntoActor": "gacnst",
+      "Offset": "-1,-1",
+      "Facing": "384",
+      "TransformSounds": "place2.aud",
+      "NoTransformSounds": null,
+      "Voice": "Move",
+      "NoTransformNotification": "BuildingCannotPlaceAudio",
+      "NoTransformTextNotification": "notification-cannot-deploy-here"
+    },
+    "RenderSprites": {
+      "Image": "mcv.gdi",
+      "FactionImages": {
+        "gdi": "mcv.gdi",
+        "nod": "mcv.nod"
+      }
+    }
+  },
+  "HARV": {
+    "Inherits": [
+      {
+        "id": "VOXELS",
+        "value": "^VoxelActor"
+      },
+      {
+        "id": "selection",
+        "value": "^SelectableEconomicUnit"
+      }
+    ],
+    "Valued": {
+      "Cost": "1400"
+    },
+    "Tooltip": {
+      "Name": "actor-harv.name"
+    },
+    "Buildable": {
+      "Queue": "Vehicle",
+      "BuildPaletteOrder": "10",
+      "Prerequisites": "~factory, proc, ~techlevel.low",
+      "Description": "actor-harv.description"
+    },
+    "Selectable": {
+      "Bounds": "1086, 2172",
+      "DecorationBounds": "1086, 2172"
+    },
+    "Harvester": {
+      "Resources": "Tiberium, BlueTiberium",
+      "BaleLoadDelay": "15",
+      "BaleUnloadDelay": "15",
+      "FullyLoadedSpeed": "100",
+      "SearchFromProcRadius": "36",
+      "SearchFromHarvesterRadius": "18",
+      "HarvestVoice": "Attack",
+      "EmptyCondition": "no-tiberium"
+    },
+    "StoresResources": {
+      "Capacity": "28",
+      "Resources": "Tiberium, BlueTiberium"
+    },
+    "DockClientManager": {
+      "Voice": "Move"
+    },
+    "Mobile": {
+      "Speed": "71"
+    },
+    "Health": {
+      "HP": "100000"
+    },
+    "ChangesHealth": {
+      "Step": "500",
+      "Delay": "10",
+      "StartIfBelow": "50",
+      "DamageCooldown": "200"
+    },
+    "Armor": {
+      "Type": "Heavy"
+    },
+    "RevealsShroud": {
+      "RequiresCondition": "!inside-tunnel",
+      "Range": "4c0",
+      "MaxHeightDelta": "3"
+    },
+    "WithVoxelBody": {
+      "__remove": true
+    },
+    "WithVoxelUnloadBody": null,
+    "FireWarheadsOnDeath": {
+      "RequiresCondition": "!no-tiberium",
+      "Weapon": "TiberiumExplosion"
+    },
+    "WithHarvestOverlay": {
+      "LocalOffset": "543,0,0",
+      "Palette": "effect"
+    },
+    "RenderSprites": {
+      "Image": "harv.gdi",
+      "FactionImages": {
+        "gdi": "harv.gdi",
+        "nod": "harv.nod"
+      }
+    },
+    "DamagedByTerrain@VEINS": {
+      "__remove": true
+    },
+    "LeavesTrails@VEINS": {
+      "__remove": true
+    },
+    "WithStoresResourcesPipsDecoration": {
+      "Position": "BottomLeft",
+      "RequiresSelection": "true",
+      "Margin": "5, 2",
+      "PipCount": "7",
+      "Palette": "pips",
+      "ResourceSequences": {
+        "Tiberium": "pip-green",
+        "BlueTiberium": "pip-blue"
+      }
+    },
+    "WithDecoration": {
+      "id": "UNDERGROUND",
+      "Sequence": "harvester"
+    }
+  },
+  "LPST": {
+    "Inherits": [
+      {
+        "id": "VOXELS",
+        "value": "^VoxelActor"
+      },
+      {
+        "id": "selection",
+        "value": "^SelectableSupportUnit"
+      }
+    ],
+    "AppearsOnRadar": {
+      "__remove": true
+    },
+    "Buildable": {
+      "Queue": "Vehicle",
+      "BuildPaletteOrder": "90",
+      "Prerequisites": "~factory, radar, ~techlevel.medium",
+      "Description": "actor-lpst.description"
+    },
+    "Valued": {
+      "Cost": "950"
+    },
+    "Tooltip": [
+      {
+        "Name": "actor-lpst.name",
+        "RequiresCondition": "!deployed"
+      },
+      {
+        "id": "DEPLOYED",
+        "Name": "actor-lpst.deployed-name",
+        "RequiresCondition": "deployed"
+      }
+    ],
+    "Health": {
+      "HP": "60000"
+    },
+    "Armor": {
+      "Type": "Wood"
+    },
+    "Mobile": {
+      "Speed": "85",
+      "TurnSpeed": "20",
+      "ImmovableCondition": "!undeployed",
+      "RequireForceMoveCondition": "!undeployed"
+    },
+    "RevealsShroud": [
+      {
+        "RequiresCondition": "!inside-tunnel && undeployed",
+        "Range": "10c0",
+        "MaxHeightDelta": "3"
+      },
+      {
+        "id": "DEPLOYED",
+        "RequiresCondition": "!undeployed",
+        "Range": "8c0",
+        "MaxHeightDelta": "3"
+      }
+    ],
+    "WithMakeAnimation": null,
+    "GrantCondition": {
+      "id": "PREVIEWWORKAROUND",
+      "Condition": "real-actor"
+    },
+    "RenderSprites": {
+      "Image": "lpst.gdi",
+      "PlayerPalette": "playertem",
+      "FactionImages": {
+        "gdi": "lpst.gdi",
+        "nod": "lpst.nod"
+      }
+    },
+    "GrantConditionOnDeploy": {
+      "PauseOnCondition": "empdisable || being-captured",
+      "DeployedCondition": "deployed",
+      "UndeployedCondition": "undeployed",
+      "UndeployOnMove": "true",
+      "UndeployOnPickup": "true",
+      "Facing": "640",
+      "AllowedTerrainTypes": "Clear, Road, DirtRoad, Rough",
+      "DeploySounds": "place2.aud",
+      "UndeploySounds": "clicky1.aud",
+      "Voice": "Move",
+      "SmartDeploy": "true"
+    },
+    "EntersTunnels": {
+      "RequireForceMoveCondition": "!undeployed"
+    },
+    "Repairable": {
+      "RequireForceMoveCondition": "!undeployed"
+    },
+    "Passenger": {
+      "RequireForceMoveCondition": "!undeployed"
+    },
+    "WithVoxelBody": {
+      "RequiresCondition": "undeployed"
+    },
+    "WithSpriteBody": {
+      "id": "deployed",
+      "RequiresCondition": "!undeployed && real-actor"
+    },
+    "WithIdleOverlay": [
+      {
+        "id": "LIGHTS",
+        "RequiresCondition": "deployed && real-actor && !empdisable",
+        "Sequence": "idle-lights",
+        "Palette": "player-nobright",
+        "IsPlayerPalette": "True"
+      },
+      {
+        "id": "LIGHTS-BRIGHT",
+        "RequiresCondition": "deployed && real-actor && !empdisable",
+        "Sequence": "idle-lights-bright",
+        "Palette": "bright"
+      }
+    ],
+    "DetectCloaked": {
+      "RequiresCondition": "!empdisable && deployed",
+      "Range": "18c0"
+    },
+    "RenderDetectionCircle": {
+      "TrailCount": "3"
+    },
+    "RenderVoxels": {
+      "Scale": "11.5"
+    }
+  }
+}

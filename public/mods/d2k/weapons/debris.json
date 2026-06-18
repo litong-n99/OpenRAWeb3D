@@ -1,0 +1,153 @@
+{
+  "Debris": {
+    "ReloadDelay": "60",
+    "Range": "2c768",
+    "Projectile": {
+      "Speed": "32, 64",
+      "Blockable": "false",
+      "LaunchAngle": "128, 192",
+      "Inaccuracy": "1c256",
+      "Image": "shrapnel",
+      "Shadow": "true",
+      "BounceCount": "3",
+      "BounceRangeModifier": "20",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "1500",
+        "Spread": "0c756",
+        "Falloff": "100, 0",
+        "Versus": {
+          "none": "20",
+          "wall": "50",
+          "building": "50",
+          "wood": "60",
+          "light": "100",
+          "heavy": "75",
+          "concrete": "100",
+          "invulnerable": "0",
+          "cy": "20",
+          "harvester": "50"
+        },
+        "DamageTypes": "TriggerProne, SmallExplosionDeath",
+        "DamageCalculationType": "ClosestTargetablePosition"
+      },
+      {
+        "id": "2Smu",
+        "value": "LeaveSmudge",
+        "SmudgeType": "SandCrater",
+        "InvalidTargets": "Vehicle, Structure"
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "tiny_explosion",
+        "ImpactActors": "false"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "300"
+      }
+    ]
+  },
+  "Debris2": {
+    "Inherits": "Debris",
+    "Projectile": {
+      "Image": "shrapnel2",
+      "TrailImage": "small_trail",
+      "TrailInterval": "1",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "2500",
+        "Spread": "1c0",
+        "Versus": {
+          "none": "90",
+          "wall": "5",
+          "building": "65",
+          "wood": "50",
+          "light": "40",
+          "heavy": "30",
+          "concrete": "100",
+          "invulnerable": "0",
+          "cy": "20",
+          "harvester": "25"
+        },
+        "DamageTypes": "TriggerProne, ExplosionDeath"
+      },
+      {
+        "id": "3Eff",
+        "value": "CreateEffect",
+        "Explosions": "small_napalm"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "2250"
+      }
+    ]
+  },
+  "Debris3": {
+    "Inherits": "Debris2",
+    "Projectile": {
+      "Image": "shrapnel3",
+      "TrailImage": "small_trail2",
+      "__value": "Bullet"
+    },
+    "Warhead": [
+      {
+        "id": "1Dam",
+        "value": "SpreadDamage",
+        "Damage": "1500",
+        "Spread": "1c512"
+      },
+      {
+        "id": "4Concrete",
+        "value": "DamagesConcrete",
+        "Damage": "1350"
+      }
+    ]
+  },
+  "Debris4": {
+    "Inherits": "Debris2",
+    "Projectile": {
+      "Image": "shrapnel4",
+      "TrailImage": "large_trail",
+      "__value": "Bullet"
+    },
+    "Warhead": {
+      "id": "1Dam",
+      "value": "SpreadDamage",
+      "Spread": "2c0"
+    }
+  },
+  "DebrisMissile": {
+    "Inherits": "^Missile",
+    "Report": {
+      "__remove": true
+    },
+    "Projectile": {
+      "HorizontalRateOfTurn": "20",
+      "MinimumLaunchAngle": "120",
+      "MaximumLaunchAngle": "250",
+      "VerticalRateOfTurn": "20",
+      "CruiseAltitude": "0",
+      "ExplodeWhenEmpty": "false",
+      "Speed": "250",
+      "__value": "Missile"
+    },
+    "Warhead": {
+      "id": "1Dam",
+      "value": "SpreadDamage",
+      "Spread": "1c0",
+      "Damage": "2000"
+    }
+  }
+}

@@ -1,0 +1,374 @@
+{
+  "^BaseWorld": {
+    "Inherits": "^Palettes",
+    "ScreenMap": null,
+    "ActorMap": null,
+    "Selection": null,
+    "ControlGroups": null,
+    "MusicPlaylist": {
+      "VictoryMusic": "score",
+      "DefeatMusic": "score"
+    },
+    "TerrainGeometryOverlay": null,
+    "DebugVisualizations": null,
+    "TerrainRenderer": null,
+    "SonicBlastRenderer": null,
+    "ShroudRenderer": {
+      "ShroudVariants": "shrouda, shroudb, shroudc, shroudd",
+      "FogVariants": "foga, fogb, fogc, fogd",
+      "ShroudPalette": "d2k",
+      "FogPalette": "d2k",
+      "Index": "11, 3, 7, 9, 6, 13, 12, 14, 4, 8, 2, 1, 5, 10",
+      "OverrideFullShroud": "shroudfull",
+      "OverrideFullFog": "fogfull"
+    },
+    "Locomotor": [
+      {
+        "id": "FOOT",
+        "Name": "foot",
+        "Crushes": "crate, spicebloom",
+        "SharesCell": "true",
+        "TerrainSpeeds": {
+          "Sand": "100",
+          "Rock": "100",
+          "Transition": "100",
+          "Concrete": "100",
+          "SpiceSand": "100",
+          "Spice": "100",
+          "SpiceBlobs": "100",
+          "Dune": "80",
+          "Rough": "70"
+        }
+      },
+      {
+        "id": "VEHICLE",
+        "Name": "vehicle",
+        "Crushes": "crate, spicebloom",
+        "TerrainSpeeds": {
+          "Sand": "90",
+          "Rock": "100",
+          "Transition": "100",
+          "Concrete": "100",
+          "SpiceSand": "90",
+          "Spice": "90",
+          "SpiceBlobs": "90",
+          "Dune": "50"
+        }
+      },
+      {
+        "id": "TANK",
+        "Name": "tank",
+        "Crushes": "crate, infantry, spicebloom",
+        "TerrainSpeeds": {
+          "Sand": "100",
+          "Rock": "100",
+          "Transition": "100",
+          "Concrete": "100",
+          "SpiceSand": "100",
+          "Spice": "100",
+          "SpiceBlobs": "100",
+          "Dune": "70"
+        }
+      },
+      {
+        "id": "DEVASTATOR",
+        "Name": "devastator",
+        "Crushes": "crate, infantry, spicebloom, wall",
+        "TerrainSpeeds": {
+          "Sand": "100",
+          "Rock": "100",
+          "Transition": "100",
+          "Concrete": "100",
+          "SpiceSand": "100",
+          "Spice": "100",
+          "SpiceBlobs": "100",
+          "Dune": "70"
+        }
+      },
+      {
+        "id": "WORM",
+        "Name": "worm",
+        "TerrainSpeeds": {
+          "Sand": "100",
+          "Dune": "100",
+          "SpiceSand": "100",
+          "Spice": "100"
+        }
+      }
+    ],
+    "Faction": [
+      {
+        "id": "Random",
+        "Name": "faction-random.name",
+        "InternalName": "Random",
+        "RandomFactionMembers": "atreides, harkonnen, ordos",
+        "Description": "faction-random.description"
+      },
+      {
+        "id": "Atreides",
+        "Name": "faction-atreides.name",
+        "InternalName": "atreides",
+        "Description": "faction-atreides.description"
+      },
+      {
+        "id": "Harkonnen",
+        "Name": "faction-harkonnen.name",
+        "InternalName": "harkonnen",
+        "Description": "faction-harkonnen.description"
+      },
+      {
+        "id": "Ordos",
+        "Name": "faction-ordos.name",
+        "InternalName": "ordos",
+        "Description": "faction-ordos.description"
+      },
+      {
+        "id": "Corrino",
+        "Name": "faction-corrino.name",
+        "InternalName": "corrino",
+        "Selectable": "false"
+      },
+      {
+        "id": "Mercenaries",
+        "Name": "faction-mercenaries.name",
+        "InternalName": "mercenary",
+        "Selectable": "false"
+      },
+      {
+        "id": "Smugglers",
+        "Name": "faction-smugglers.name",
+        "InternalName": "smuggler",
+        "Selectable": "false"
+      },
+      {
+        "id": "Fremen",
+        "Name": "faction-fremen.name",
+        "InternalName": "fremen",
+        "Selectable": "false"
+      }
+    ],
+    "D2kResourceRenderer": {
+      "ResourceTypes": {
+        "Spice": {
+          "Sequences": "spicea, spiceb, spicec, spiced",
+          "Palette": "d2k",
+          "Name": "resource-spice"
+        }
+      }
+    }
+  },
+  "World": {
+    "Inherits": "^BaseWorld",
+    "ChatCommands": null,
+    "DevCommands": null,
+    "DebugVisualizationCommands": null,
+    "PathFinderOverlay": null,
+    "HierarchicalPathFinderOverlay": null,
+    "ActorMapOverlay": null,
+    "PlayerCommands": null,
+    "HelpCommand": null,
+    "AutoSave": null,
+    "ScreenShaker": null,
+    "BuildingInfluence": null,
+    "ProductionQueueFromSelection": {
+      "ProductionPaletteWidget": "PRODUCTION_PALETTE"
+    },
+    "ActorSpawnManager": {
+      "Actors": "sandworm",
+      "InitialDelay": "9000"
+    },
+    "CrateSpawner": {
+      "Minimum": "0",
+      "Maximum": "2",
+      "SpawnInterval": "1500",
+      "WaterChance": "0",
+      "ValidGround": "Sand, Rock, Transition, Spice, SpiceSand, Dune, Concrete",
+      "InitialSpawnDelay": "1500",
+      "CheckboxDisplayOrder": "1"
+    },
+    "WarheadDebugOverlay": null,
+    "BuildableTerrainLayer": null,
+    "ResourceLayer": {
+      "RecalculateResourceDensity": "true",
+      "ResourceTypes": {
+        "Spice": {
+          "ResourceIndex": "1",
+          "TerrainType": "Spice",
+          "AllowedTerrainTypes": "SpiceSand",
+          "MaxDensity": "20"
+        }
+      }
+    },
+    "ResourceClaimLayer": null,
+    "CustomTerrainDebugOverlay": null,
+    "SmudgeLayer": [
+      {
+        "id": "Rock",
+        "Type": "RockCrater",
+        "Sequence": "rockcraters"
+      },
+      {
+        "id": "Sand",
+        "Type": "SandCrater",
+        "Sequence": "sandcraters"
+      }
+    ],
+    "MapCreeps": {
+      "CheckboxLabel": "dropdown-map-worms.label",
+      "CheckboxDescription": "dropdown-map-worms.description",
+      "CheckboxDisplayOrder": "5"
+    },
+    "SpawnMapActors": null,
+    "MapBuildRadius": {
+      "AllyBuildRadiusCheckboxDisplayOrder": "4",
+      "BuildRadiusCheckboxVisible": "False"
+    },
+    "MapOptions": {
+      "ShortGameCheckboxDisplayOrder": "2",
+      "TechLevelDropdownDisplayOrder": "2",
+      "GameSpeedDropdownDisplayOrder": "1"
+    },
+    "CreateMapPlayers": null,
+    "MapStartingLocations": {
+      "SeparateTeamSpawnsCheckboxDisplayOrder": "6"
+    },
+    "StartingUnits": [
+      {
+        "id": "mcv",
+        "Class": "none",
+        "ClassName": "options-starting-units.mcv-only",
+        "BaseActor": "mcv",
+        "Factions": "atreides, ordos, harkonnen"
+      },
+      {
+        "id": "Carryall",
+        "Class": "carryall",
+        "ClassName": "options-starting-units.carryall",
+        "BaseActor": "mcv",
+        "SupportActors": "carryall",
+        "Factions": "atreides, ordos, harkonnen"
+      },
+      {
+        "id": "lightatreides",
+        "Class": "light",
+        "ClassName": "options-starting-units.light-support",
+        "Factions": "atreides",
+        "BaseActor": "mcv",
+        "SupportActors": "light_inf, light_inf, light_inf, trooper, grenadier, trike, quad, carryall",
+        "InnerSupportRadius": "3",
+        "OuterSupportRadius": "5"
+      },
+      {
+        "id": "lightharkonnen",
+        "Class": "light",
+        "ClassName": "options-starting-units.light-support",
+        "Factions": "harkonnen",
+        "BaseActor": "mcv",
+        "SupportActors": "light_inf, light_inf, light_inf, trooper, trooper, trike, quad, carryall",
+        "InnerSupportRadius": "3",
+        "OuterSupportRadius": "5"
+      },
+      {
+        "id": "lightordos",
+        "Class": "light",
+        "ClassName": "options-starting-units.light-support",
+        "Factions": "ordos",
+        "BaseActor": "mcv",
+        "SupportActors": "light_inf, light_inf, light_inf, trooper, engineer, raider, quad, carryall",
+        "InnerSupportRadius": "3",
+        "OuterSupportRadius": "5"
+      },
+      {
+        "id": "heavyatreides",
+        "Class": "heavy",
+        "ClassName": "options-starting-units.heavy-support",
+        "Factions": "atreides",
+        "BaseActor": "mcv",
+        "SupportActors": "light_inf, light_inf, light_inf, trooper, grenadier, trike, combat_tank_a, missile_tank, carryall",
+        "InnerSupportRadius": "3",
+        "OuterSupportRadius": "5"
+      },
+      {
+        "id": "heavyharkonnen",
+        "Class": "heavy",
+        "ClassName": "options-starting-units.heavy-support",
+        "Factions": "harkonnen",
+        "BaseActor": "mcv",
+        "SupportActors": "light_inf, light_inf, light_inf, trooper, engineer, quad, combat_tank_h, siege_tank, carryall",
+        "InnerSupportRadius": "3",
+        "OuterSupportRadius": "5"
+      },
+      {
+        "id": "heavyordos",
+        "Class": "heavy",
+        "ClassName": "options-starting-units.heavy-support",
+        "Factions": "ordos",
+        "BaseActor": "mcv",
+        "SupportActors": "light_inf, light_inf, light_inf, trooper, engineer, raider, combat_tank_o, missile_tank, carryall",
+        "InnerSupportRadius": "3",
+        "OuterSupportRadius": "5"
+      }
+    ],
+    "SpawnStartingUnits": null,
+    "PathFinder": null,
+    "ValidateOrder": null,
+    "DebugPauseState": null,
+    "RadarPings": null,
+    "ObjectivesPanel": {
+      "ExitDelay": "0",
+      "PanelName": "SKIRMISH_STATS"
+    },
+    "LoadWidgetAtGameStart": null,
+    "ScriptTriggers": null,
+    "CellTriggerOverlay": null,
+    "StartGameNotification": {
+      "SavedTextNotification": "notification-game-saved"
+    },
+    "FlashPostProcessEffect": {
+      "Type": "flash",
+      "Color": "E2DD8F4D"
+    },
+    "TimeLimitManager": {
+      "TimeLimitDisplayOrder": "2"
+    },
+    "ColorPickerManager": {
+      "PreviewActor": "carryall.colorpicker",
+      "PresetColors": "F21818, FFAE00, FFF830, 44F218, 39C46F, 498221, F2798F, E118F2, 9023CD, 392929, 200738, F218A8, DDB8FF, 184FF2, 2F86F2, 76D2F8"
+    },
+    "OrderEffects": {
+      "TerrainFlashImage": "moveflsh",
+      "TerrainFlashSequence": "idle",
+      "TerrainFlashPalette": "effect"
+    }
+  },
+  "EditorWorld": {
+    "Inherits": {
+      "id": "MapGenerators",
+      "value": "^MapGenerators"
+    },
+    "EditorActorLayer": null,
+    "EditorCursorLayer": null,
+    "EditorResourceLayer": {
+      "RecalculateResourceDensity": "true",
+      "ResourceTypes": {
+        "Spice": {
+          "ResourceIndex": "1",
+          "TerrainType": "Spice",
+          "AllowedTerrainTypes": "SpiceSand",
+          "MaxDensity": "20"
+        }
+      }
+    },
+    "LoadWidgetAtGameStart": null,
+    "EditorActionManager": null,
+    "BuildableTerrainOverlay": {
+      "AllowedTerrainTypes": "Rock, Concrete"
+    },
+    "MarkerLayerOverlay": null,
+    "TilingPathTool": {
+      "DefaultStart": "RockSmooth",
+      "DefaultInner": "RockSmooth",
+      "DefaultEnd": "RockSmooth"
+    }
+  }
+}

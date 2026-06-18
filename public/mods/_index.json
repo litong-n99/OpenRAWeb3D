@@ -4,8 +4,11 @@
       "id": "ra",
       "title": "Red Alert",
       "version": "release-20250308",
-      "description": "Command Soviets or Allies in an alternate-history clash.",
-      "factions": ["Soviet", "Allies"],
+      "description": "",
+      "factions": [
+        "Soviet",
+        "Allies"
+      ],
       "thumbnail": "",
       "background": "",
       "available": true
@@ -14,8 +17,11 @@
       "id": "td",
       "title": "Tiberian Dawn",
       "version": "release-20250308",
-      "description": "GDI vs Brotherhood of Nod in the first Tiberium War.",
-      "factions": ["GDI", "Nod"],
+      "description": "",
+      "factions": [
+        "GDI",
+        "Nod"
+      ],
       "thumbnail": "",
       "background": "",
       "available": true
@@ -24,8 +30,12 @@
       "id": "d2k",
       "title": "Dune 2000",
       "version": "release-20250308",
-      "description": "Fight for control of Arrakis and the spice melange.",
-      "factions": ["Atreides", "Harkonnen", "Ordos"],
+      "description": "",
+      "factions": [
+        "Atreides",
+        "Harkonnen",
+        "Ordos"
+      ],
       "thumbnail": "",
       "background": "",
       "available": true
@@ -34,8 +44,11 @@
       "id": "ts",
       "title": "Tiberian Sun",
       "version": "release-20250308",
-      "description": "The Second Tiberium War rages on a shattered Earth.",
-      "factions": ["GDI", "Nod"],
+      "description": "",
+      "factions": [
+        "GDI",
+        "Nod"
+      ],
       "thumbnail": "",
       "background": "",
       "available": false

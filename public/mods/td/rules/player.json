@@ -1,0 +1,118 @@
+{
+  "^BasePlayer": {
+    "Shroud": null,
+    "PlayerResources": {
+      "ResourceValues": {
+        "Tiberium": "35",
+        "BlueTiberium": "60"
+      }
+    }
+  },
+  "EditorPlayer": {
+    "Inherits": "^BasePlayer"
+  },
+  "Player": {
+    "Inherits": "^BasePlayer",
+    "PlaceBuilding": {
+      "NewOptionsNotification": "NewOptions",
+      "CannotPlaceNotification": "BuildingCannotPlaceAudio",
+      "NewOptionsTextNotification": "notification-new-construction-options",
+      "CannotPlaceTextNotification": "notification-cannot-deploy-here"
+    },
+    "TechTree": null,
+    "SupportPowerManager": null,
+    "ScriptTriggers": null,
+    "MissionObjectives": {
+      "WinNotification": "Win",
+      "LoseNotification": "Lose",
+      "LeaveNotification": "Leave"
+    },
+    "ConquestVictoryConditions": null,
+    "PowerManager": {
+      "SpeechNotification": "LowPower",
+      "TextNotification": "notification-low-power"
+    },
+    "AllyRepair": null,
+    "PlayerResources": {
+      "CashTickUpNotification": "CashTickUp",
+      "CashTickDownNotification": "CashTickDown",
+      "SelectableCash": "2500, 5000, 7500, 10000, 20000",
+      "DefaultCash": "7500"
+    },
+    "DeveloperMode": {
+      "CheckboxDisplayOrder": "9"
+    },
+    "DamageNotifier": [
+      {
+        "ValidTargets": "Structure",
+        "Notification": "BaseAttack",
+        "TextNotification": "notification-base-under-attack",
+        "AllyTextNotification": "notification-ally-under-attack"
+      },
+      {
+        "id": "Unit",
+        "InvalidTargets": "Structure",
+        "NotifyInterval": "10000"
+      }
+    ],
+    "Shroud": {
+      "FogCheckboxDisplayOrder": "3"
+    },
+    "LobbyPrerequisiteCheckbox": [
+      {
+        "id": "GLOBALFACTUNDEPLOY",
+        "ID": "factundeploy",
+        "Label": "checkbox-redeployable-mcvs.label",
+        "Description": "checkbox-redeployable-mcvs.description",
+        "Enabled": "True",
+        "DisplayOrder": "7",
+        "Prerequisites": "global-factundeploy"
+      },
+      {
+        "id": "GLOBALC17STEALTH",
+        "ID": "C17-Stealth",
+        "Label": "checkbox-stealth-deliveries.label",
+        "Description": "checkbox-stealth-deliveries.description",
+        "Enabled": "False",
+        "DisplayOrder": "8",
+        "Prerequisites": "global-C17-stealth"
+      }
+    ],
+    "PlayerStatistics": null,
+    "FrozenActorLayer": null,
+    "PlaceBeacon": null,
+    "ProvidesTechPrerequisite": [
+      {
+        "id": "low",
+        "Name": "options-tech-level.low",
+        "Prerequisites": "techlevel.low",
+        "Id": "low"
+      },
+      {
+        "id": "medium",
+        "Name": "options-tech-level.medium",
+        "Prerequisites": "techlevel.low, techlevel.medium",
+        "Id": "medium"
+      },
+      {
+        "id": "nosuper",
+        "Name": "options-tech-level.no-powers",
+        "Prerequisites": "techlevel.low, techlevel.medium, techlevel.high",
+        "Id": "nopowers"
+      },
+      {
+        "id": "all",
+        "Name": "options-tech-level.unrestricted",
+        "Prerequisites": "techlevel.low, techlevel.medium, techlevel.high, techlevel.superweapons",
+        "Id": "unrestricted"
+      }
+    ],
+    "GrantConditionOnPrerequisiteManager": null,
+    "ResourceStorageWarning": {
+      "TextNotification": "notification-silos-needed"
+    },
+    "PlayerExperience": null,
+    "GameSaveViewportManager": null,
+    "PlayerRadarTerrain": null
+  }
+}

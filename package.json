@@ -8,11 +8,13 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "build:mods": "tsx scripts/build-mods.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "happy-dom": "^20.9.0",
+    "tsx": "^4.22.4",
     "typescript": "~6.0.2",
     "vite": "^8.0.12",
     "vitest": "^3.1.1"
