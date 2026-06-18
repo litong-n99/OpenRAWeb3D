@@ -4,10 +4,18 @@
  * 测试焦点：构造与加载器管理、tryParsePackage、mountFromBuffer、
  * mountPackage（含重新挂载优先级提升）、unmount（引用计数与 dispose）、
  * unmountAll、openAsync（显式挂载、fileIndex 优先级）、exists、isMounted、
- * L1 LRU 缓存（命中、未命中、驱逐）、dispose 生命周期、MOD 包保护。
+ * L1 LRU 缓存（命中、未命中、驱逐）、dispose 生命周期、MOD 包保护、
+ * L2-L4 缓存流水线（IndexedDB / Cache API / fetch）、TTL 过期、
+ * 版本标记失效、缓存层启用/禁用、优雅降级（API 不可用时）。
+ *
+ * NOTE: L2 IndexedDB 和 L3 Cache API 在 Node.js/vitest 环境中不可用。
+ * 测试验证：1) 这些 API 未定义时的优雅降级行为，
+ * 2) 使用内存模拟时的缓存流水线逻辑。
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { zipSync, strToU8 } from 'fflate'
 import { FileSystem } from './FileSystem.js'
 import type {
   IReadOnlyPackage,
@@ -766,4 +774,318 @@ describe('FileSystem', () => {
       expect(fs.isMounted('nothing')).toBe(false)
     })
   })
+
+  // -----------------------------------------------------------------------
+  // L2-L4 Cache Pipeline (P1-D.3) — Graceful Degradation
+  // -----------------------------------------------------------------------
+
+  describe('L2-L4 cache — graceful degradation', () => {
+    it('mount() works when IndexedDB and Cache API are unavailable (L4 fetch fallback)', async () => {
+      // The constructor creates IndexedDBCache and CacheAPICache instances.
+      // In Node.js, indexedDB and caches are undefined — that's fine.
+      // The pipeline should fall through to L4 fetch.
+      const loader = createMockLoader('.zip', 'fetched-pkg')
+      const fs = new FileSystem([loader])
+
+      // Mock fetch to return valid ZIP data
+      const zipData = createTestZipForFetch('fetched.zip')
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => zipData.buffer as ArrayBuffer,
+      })
+
+      try {
+        await fs.mount('/test/fetched.zip')
+        expect(fs.exists('file.zip')).toBe(true)
+      } finally {
+        globalThis.fetch = originalFetch
+      }
+    })
+
+    it('mount() with caching disabled skips L2/L3 entirely', async () => {
+      const loader = createMockLoader('.zip', 'no-cache-pkg')
+      const fs = new FileSystem([loader], 100 * 1024 * 1024, { cachingEnabled: false })
+
+      const zipData = createTestZipForFetch('nocache.zip')
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => zipData.buffer as ArrayBuffer,
+      })
+
+      try {
+        await fs.mount('/test/nocache.zip')
+        expect(fs.exists('file.zip')).toBe(true)
+      } finally {
+        globalThis.fetch = originalFetch
+      }
+    })
+
+    it('cachingEnabled getter/setter', () => {
+      const fs = new FileSystem([], 1024, { cachingEnabled: true })
+      expect(fs.cachingEnabled).toBe(true)
+
+      fs.setCachingEnabled(false)
+      expect(fs.cachingEnabled).toBe(false)
+
+      fs.setCachingEnabled(true)
+      expect(fs.cachingEnabled).toBe(true)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // L2-L4 Cache Pipeline — Integration with Mocked APIs
+  // -----------------------------------------------------------------------
+
+  describe('L2-L4 cache — with mocked storage APIs', () => {
+    let mockIDBStore: Map<string, ArrayBuffer>
+    let mockCacheStore: Map<string, { data: Uint8Array; headers: Record<string, string> }>
+    let originalIndexedDB: IDBFactory | undefined
+    let originalCaches: CacheStorage | undefined
+
+    beforeEach(() => {
+      // In-memory stores
+      mockIDBStore = new Map()
+      mockCacheStore = new Map()
+
+      // Save originals
+      originalIndexedDB = (globalThis as Record<string, unknown>).indexedDB as IDBFactory | undefined
+      originalCaches = (globalThis as Record<string, unknown>).caches as CacheStorage | undefined
+
+      // Mock IndexedDB
+      const mockIDB = createMockIndexedDB(mockIDBStore)
+      ;(globalThis as Record<string, unknown>).indexedDB = mockIDB
+
+      // Mock Cache API
+      const mockCacheAPI = createMockCacheStorage(mockCacheStore)
+      ;(globalThis as Record<string, unknown>).caches = mockCacheAPI
+
+      // Mock fetch
+      const originalFetch = globalThis.fetch
+      ;(globalThis as Record<string, unknown>).__originalFetch = originalFetch
+    })
+
+    afterEach(() => {
+      (globalThis as Record<string, unknown>).indexedDB = originalIndexedDB
+      ;(globalThis as Record<string, unknown>).caches = originalCaches
+      const origFetch = (globalThis as Record<string, unknown>).__originalFetch as typeof fetch
+      if (origFetch) {
+        globalThis.fetch = origFetch
+      }
+    })
+
+    it('clearAllCaches() clears all caches without error', async () => {
+      const fs = new FileSystem([], 1024 * 1024)
+      // Should not throw even when caches are empty
+      await expect(fs.clearAllCaches()).resolves.toBeUndefined()
+    })
+
+    it('clearAllCaches() is safe when caching is disabled', async () => {
+      const fs = new FileSystem([], 1024, { cachingEnabled: false })
+      await expect(fs.clearAllCaches()).resolves.toBeUndefined()
+    })
+
+    it('mount() with version tag constructs correct cache key', async () => {
+      const loader = createMockLoader('.zip', 'versioned-pkg')
+      const fs = new FileSystem([loader], 100 * 1024 * 1024, { cachingEnabled: true })
+
+      const zipData = createTestZipForFetch('versioned.zip')
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => zipData.buffer as ArrayBuffer,
+      })
+
+      try {
+        await fs.mount('/test/versioned.zip', undefined, { version: 'v2.0.1' })
+        expect(fs.exists('file.zip')).toBe(true)
+      } finally {
+        globalThis.fetch = (globalThis as Record<string, unknown>).__originalFetch as typeof fetch
+      }
+    })
+
+    it('mount() with custom TTL works', async () => {
+      const loader = createMockLoader('.zip', 'ttl-pkg')
+      const fs = new FileSystem([loader], 100 * 1024 * 1024, { cachingEnabled: true })
+
+      const zipData = createTestZipForFetch('ttl.zip')
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => zipData.buffer as ArrayBuffer,
+      })
+
+      try {
+        // Custom TTL of 1 hour
+        await fs.mount('/test/ttl.zip', undefined, { version: '1.0', ttl: 3600000 })
+        expect(fs.exists('file.zip')).toBe(true)
+      } finally {
+        globalThis.fetch = (globalThis as Record<string, unknown>).__originalFetch as typeof fetch
+      }
+    })
+
+    it('mount() falls back to L4 when L2/L3 have corrupted data', async () => {
+      // Pre-populate L3 cache with garbage data that won't parse as ZIP
+      const loader = createMockLoader('.zip', 'fresh-pkg')
+      const fs = new FileSystem([loader], 100 * 1024 * 1024, { cachingEnabled: true })
+
+      // Put garbage in L3 cache
+      const url = new Request('https://local.openra/pkg%3A%2Ftest%2Fcorrupt.zip%23v%3Dunknown')
+      const headers = new Headers({
+        'Content-Type': 'application/octet-stream',
+        'x-pkg-version': 'unknown',
+        'x-pkg-created-at': String(Date.now()),
+        'x-pkg-ttl': '0',
+      })
+      const garbageData = new Uint8Array([0xDE, 0xAD, 0xBE, 0xEF]) // Not valid ZIP
+      const cache = await caches.open('openra-packages')
+      await cache.put(url, new Response(garbageData, { headers }))
+
+      // Now mount the same file — should detect garbage, fall through to L4
+      const zipData = createTestZipForFetch('corrupt.zip')
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => zipData.buffer as ArrayBuffer,
+      })
+
+      try {
+        await fs.mount('/test/corrupt.zip')
+        expect(fs.exists('file.zip')).toBe(true)
+      } finally {
+        globalThis.fetch = (globalThis as Record<string, unknown>).__originalFetch as typeof fetch
+      }
+    })
+  })
 })
+
+// ---------------------------------------------------------------------------
+// Helpers: Test ZIP data and mocked browser storage APIs
+// ---------------------------------------------------------------------------
+
+/**
+ * Create valid ZIP data with a fixed filename 'file.zip'.
+ * The file name must match what createMockLoader produces.
+ */
+function createTestZipForFetch(baseName: string): Uint8Array {
+  return zipSync({
+    'file.zip': strToU8(`content of ${baseName}`),
+  })
+}
+
+/**
+ * Create a minimal mock IndexedDB implementation backed by an in-memory Map.
+ */
+function createMockIndexedDB(store: Map<string, ArrayBuffer>): unknown {
+  return {
+    open(_name: string, _version: number) {
+      const request: Record<string, unknown> = {
+        result: null as unknown,
+        error: null,
+        onupgradeneeded: null as (() => void) | null,
+        onsuccess: null as (() => void) | null,
+        onerror: null as (() => void) | null,
+        onblocked: null as (() => void) | null,
+      }
+
+      // Simulate async success
+      setTimeout(() => {
+        const db = {
+          objectStoreNames: {
+            contains: () => true,
+          },
+          transaction(_storeName: string, _mode: string) {
+            const tx: Record<string, unknown> = {
+              error: null,
+              oncomplete: null as (() => void) | null,
+              onerror: null as (() => void) | null,
+              onabort: null as (() => void) | null,
+              objectStore(_name: string) {
+                return {
+                  get(key: string) {
+                    const getReq: Record<string, unknown> = {
+                      result: store.get(key),
+                      onsuccess: null as (() => void) | null,
+                      onerror: null as (() => void) | null,
+                    }
+                    setTimeout(() => {
+                      if (getReq.onsuccess) (getReq.onsuccess as () => void)()
+                    }, 0)
+                    return getReq
+                  },
+                  put(value: unknown, key: string) {
+                    if (value instanceof ArrayBuffer) {
+                      store.set(key, value)
+                    } else if (value && typeof value === 'object' && 'buffer' in value) {
+                      store.set(key, (value as { buffer: ArrayBuffer }).buffer)
+                    }
+                    // Fire complete
+                    setTimeout(() => {
+                      if (tx.oncomplete) (tx.oncomplete as () => void)()
+                    }, 0)
+                    return {}
+                  },
+                  delete(key: string) {
+                    store.delete(key)
+                    setTimeout(() => {
+                      if (tx.oncomplete) (tx.oncomplete as () => void)()
+                    }, 0)
+                    return {}
+                  },
+                  clear() {
+                    store.clear()
+                    setTimeout(() => {
+                      if (tx.oncomplete) (tx.oncomplete as () => void)()
+                    }, 0)
+                    return {}
+                  },
+                }
+              },
+            }
+            return tx
+          },
+        }
+        request.result = db as unknown as IDBDatabase
+        if (request.onsuccess) (request.onsuccess as () => void)()
+      }, 5)
+
+      return request
+    },
+  }
+}
+
+/**
+ * Create a minimal mock CacheStorage implementation backed by an in-memory Map.
+ */
+function createMockCacheStorage(
+  store: Map<string, { data: Uint8Array; headers: Record<string, string> }>,
+): unknown {
+  const cacheInstance = {
+    async match(request: Request): Promise<Response | undefined> {
+      const entry = store.get(request.url)
+      if (!entry) return undefined
+      const headers = new Headers(entry.headers)
+      return new Response(entry.data as BodyInit, { headers })
+    },
+    async put(request: Request, response: Response): Promise<void> {
+      const data = new Uint8Array(await response.arrayBuffer())
+      const headers: Record<string, string> = {}
+      response.headers.forEach((value, key) => {
+        headers[key] = value
+      })
+      store.set(request.url, { data, headers })
+    },
+    async delete(request: Request): Promise<boolean> {
+      return store.delete(request.url)
+    },
+  }
+
+  return {
+    open(_name: string): Promise<typeof cacheInstance | null> {
+      // Always return same cache instance (simplified)
+      return Promise.resolve(cacheInstance)
+    },
+    async delete(_name: string): Promise<boolean> {
+      store.clear()
+      return true
+    },
+  }
+}

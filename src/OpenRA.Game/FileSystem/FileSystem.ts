@@ -9,12 +9,13 @@
  * - C# Mount(name: string) 本地路径 → mountFromBuffer(name, data) / mountPackage
  * - C# Open(string) 抛出 FileNotFoundException → openAsync 返回 null
  * - C# GetFromCache (单层) → 四级缓存: L1 LRU → L2 IndexedDB → L3 Cache API → L4 fetch
- *   (NOTE: L2-L4 为 TODO-5.A.4，本实现仅完成 L1 LRU)
+ *   (RESOLVED P1-D.3: L2 IndexedDB + L3 Cache API 已实现，带版本标记和 TTL)
  * - C# explicitMounts "modid|path" → 相同的字符串命名空间
  */
 
 import type { IReadOnlyPackage, IReadOnlyFileSystem, IPackageLoader } from './IPackage.js'
 import { ZipFileLoader } from './ZipFile.js'
+import { Log, LogLevel } from '../Utils/Log.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -33,6 +34,421 @@ interface LruNode {
   size: number
   prev: LruNode | null
   next: LruNode | null
+}
+
+// ---------------------------------------------------------------------------
+// Cache Layer Abstraction
+// ---------------------------------------------------------------------------
+
+/**
+ * 缓存层元数据（用于版本和 TTL 管理）。
+ * OpenRA 对照: 无（浏览器端新增缓存管理）
+ */
+interface CacheEntryMeta {
+  /** 包版本标记（用于失效）。 */
+  version: string
+  /** 缓存创建时间（Unix timestamp，毫秒）。 */
+  createdAt: number
+  /** TTL（毫秒），超过后缓存过期。0 表示永不过期。 */
+  ttl: number
+}
+
+/**
+ * 缓存层条目。
+ */
+interface CacheEntry {
+  /** 原始包二进制数据。 */
+  data: ArrayBuffer
+  /** 关联的元数据。 */
+  meta: CacheEntryMeta
+}
+
+/**
+ * 持久化缓存层抽象接口。
+ *
+ * 每个缓存层可以有不同的存储后端（IndexedDB, Cache API 等），
+ * 但共享相同的 get/set/delete/clear 契约。
+ */
+interface CacheLayer {
+  /** 缓存层名称（用于调试和日志）。 */
+  readonly name: string
+
+  /**
+   * 通过键检索缓存条目。
+   * @param key — 缓存键
+   * @returns 缓存条目，如果未找到或出错则返回 null
+   */
+  get(key: string): Promise<CacheEntry | null>
+
+  /**
+   * 存储缓存条目。
+   * @param key — 缓存键
+   * @param entry — 要存储的条目
+   */
+  set(key: string, entry: CacheEntry): Promise<void>
+
+  /**
+   * 删除整个缓存条目。
+   * @param key — 缓存键
+   */
+  delete(key: string): Promise<void>
+
+  /** 清除此缓存层中的所有条目。 */
+  clear(): Promise<void>
+}
+
+// ---------------------------------------------------------------------------
+// Cache Entry Serde
+// ---------------------------------------------------------------------------
+
+/**
+ * 将 CacheEntry 序列化为 ArrayBuffer（用于 IndexedDB 存储）。
+ *
+ * 格式：[versionLen:u32][version:utf8][createdAt:f64][ttl:f64][data:...]
+ */
+function serializeCacheEntry(entry: CacheEntry): ArrayBuffer {
+  const versionBytes = new TextEncoder().encode(entry.meta.version)
+  // layout: 4 (versionLen) + versionBytes + 8 (createdAt) + 8 (ttl) + data
+  const headerSize = 4 + versionBytes.byteLength + 8 + 8
+  const totalSize = headerSize + entry.data.byteLength
+  const buffer = new ArrayBuffer(totalSize)
+  const view = new DataView(buffer)
+  const u8 = new Uint8Array(buffer)
+
+  let offset = 0
+  view.setUint32(offset, versionBytes.byteLength, true)
+  offset += 4
+  u8.set(versionBytes, offset)
+  offset += versionBytes.byteLength
+  view.setFloat64(offset, entry.meta.createdAt, true)
+  offset += 8
+  view.setFloat64(offset, entry.meta.ttl, true)
+  offset += 8
+  u8.set(new Uint8Array(entry.data), offset)
+
+  return buffer
+}
+
+/**
+ * 从 ArrayBuffer 反序列化 CacheEntry。
+ * @returns CacheEntry 或 null（如果数据损坏）
+ */
+function deserializeCacheEntry(buffer: ArrayBuffer): CacheEntry | null {
+  try {
+    const view = new DataView(buffer)
+
+    let offset = 0
+    const versionLen = view.getUint32(offset, true)
+    offset += 4
+    if (offset + versionLen > buffer.byteLength) return null
+    const version = new TextDecoder().decode(buffer.slice(offset, offset + versionLen))
+    offset += versionLen
+    if (offset + 8 > buffer.byteLength) return null
+    const createdAt = view.getFloat64(offset, true)
+    offset += 8
+    if (offset + 8 > buffer.byteLength) return null
+    const ttl = view.getFloat64(offset, true)
+    offset += 8
+    const data = buffer.slice(offset) as ArrayBuffer
+
+    return {
+      data,
+      meta: { version, createdAt, ttl },
+    }
+  } catch {
+    return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// L2: IndexedDB Cache
+// ---------------------------------------------------------------------------
+
+/**
+ * L2 缓存层 — 使用 IndexedDB 存储已解析的包数据。
+ *
+ * 浏览器端 IndexedDB 提供持久化、大容量（通常 > 50 MB）的键值存储。
+ * 对已解析的包（如 MOD 包、通用存档）使用此层，以避免重新下载/解析。
+ *
+ * 优雅降级：如果 IndexedDB 不可用或超过配额，get() 返回 null，
+ * set() 静默失败（不阻断主流程）。
+ */
+class IndexedDBCache implements CacheLayer {
+  readonly name = 'L2-IndexedDB'
+
+  private readonly _dbName: string
+  private _db: IDBDatabase | null = null
+  private _dbPromise: Promise<IDBDatabase | null> | null = null
+  private readonly _storeName = 'packages'
+
+  constructor(dbName = 'openra-packages') {
+    this._dbName = dbName
+  }
+
+  /**
+   * 打开（或创建）IndexedDB 数据库。懒加载 — 首次访问时打开。
+   */
+  private async _openDB(): Promise<IDBDatabase | null> {
+    if (this._db) return this._db
+
+    if (!this._dbPromise) {
+      this._dbPromise = new Promise((resolve) => {
+        try {
+          const request = indexedDB.open(this._dbName, 1)
+          request.onupgradeneeded = () => {
+            const db = request.result
+            if (!db.objectStoreNames.contains(this._storeName)) {
+              db.createObjectStore(this._storeName)
+            }
+          }
+          request.onsuccess = () => {
+            this._db = request.result
+            resolve(this._db)
+          }
+          request.onerror = () => {
+            Log.write('filesystem', LogLevel.WARN,
+              `L2 IndexedDB: failed to open "${this._dbName}": ${request.error?.message}`)
+            resolve(null)
+          }
+          request.onblocked = () => {
+            Log.write('filesystem', LogLevel.WARN,
+              `L2 IndexedDB: blocked opening "${this._dbName}"`)
+            resolve(null)
+          }
+        } catch (e) {
+          Log.write('filesystem', LogLevel.WARN,
+            `L2 IndexedDB: not available: ${String(e)}`)
+          resolve(null)
+        }
+      })
+    }
+
+    return this._dbPromise
+  }
+
+  async get(key: string): Promise<CacheEntry | null> {
+    try {
+      const db = await this._openDB()
+      if (!db) return null
+
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(this._storeName, 'readonly')
+          const store = tx.objectStore(this._storeName)
+          const request = store.get(key)
+          request.onsuccess = () => {
+            const raw = request.result as ArrayBuffer | undefined
+            if (raw && raw.byteLength > 0) {
+              resolve(deserializeCacheEntry(raw))
+            } else {
+              resolve(null)
+            }
+          }
+          request.onerror = () => {
+            resolve(null)
+          }
+        } catch {
+          resolve(null)
+        }
+      })
+    } catch {
+      return null
+    }
+  }
+
+  async set(key: string, entry: CacheEntry): Promise<void> {
+    try {
+      const db = await this._openDB()
+      if (!db) return
+
+      const buffer = serializeCacheEntry(entry)
+
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(this._storeName, 'readwrite')
+          const store = tx.objectStore(this._storeName)
+          // NOTE: 超过配额时 put 会失败；我们捕获并静默退出
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => {
+            Log.write('filesystem', LogLevel.WARN,
+              `L2 IndexedDB: store failed for "${key}": ${tx.error?.message}`)
+            resolve()
+          }
+          tx.onabort = () => {
+            Log.write('filesystem', LogLevel.WARN,
+              `L2 IndexedDB: transaction aborted for "${key}"`)
+            resolve()
+          }
+          try {
+            store.put(buffer, key)
+          } catch (err) {
+            // 配额超出或序列化失败
+            Log.write('filesystem', LogLevel.WARN,
+              `L2 IndexedDB: put() failed for "${key}": ${String(err)}`)
+            resolve()
+          }
+        } catch {
+          resolve()
+        }
+      })
+    } catch {
+      // 静默失败
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    try {
+      const db = await this._openDB()
+      if (!db) return
+
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(this._storeName, 'readwrite')
+          const store = tx.objectStore(this._storeName)
+          store.delete(key)
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => resolve()
+          tx.onabort = () => resolve()
+        } catch {
+          resolve()
+        }
+      })
+    } catch {
+      // 静默失败
+    }
+  }
+
+  async clear(): Promise<void> {
+    try {
+      const db = await this._openDB()
+      if (!db) return
+
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(this._storeName, 'readwrite')
+          const store = tx.objectStore(this._storeName)
+          store.clear()
+          tx.oncomplete = () => resolve()
+          tx.onerror = () => resolve()
+          tx.onabort = () => resolve()
+        } catch {
+          resolve()
+        }
+      })
+    } catch {
+      // 静默失败
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// L3: Cache API Cache
+// ---------------------------------------------------------------------------
+
+/**
+ * L3 缓存层 — 使用浏览器 Cache API 存储原始包二进制数据。
+ *
+ * Cache API 专为 HTTP 响应缓存设计，但对二进制存储同样有效。
+ * 与 IndexedDB 相比，缓存条目大小限制更宽松（通常 >= 100 MB）。
+ *
+ * 优雅降级：如果 Cache API 不可用，get() 返回 null，set() 静默失败。
+ */
+class CacheAPICache implements CacheLayer {
+  readonly name = 'L3-CacheAPI'
+
+  private readonly _cacheName: string
+  private _cachePromise: Promise<Cache | null> | null = null
+
+  constructor(cacheName = 'openra-packages') {
+    this._cacheName = cacheName
+  }
+
+  private async _open(): Promise<Cache | null> {
+    if (typeof caches === 'undefined' || !caches) return null
+
+    if (!this._cachePromise) {
+      this._cachePromise = caches.open(this._cacheName).catch((e) => {
+        Log.write('filesystem', LogLevel.WARN,
+          `L3 CacheAPI: failed to open "${this._cacheName}": ${String(e)}`)
+        return null
+      })
+    }
+    return this._cachePromise
+  }
+
+  /** 将缓存键转换为有效的请求 URL 路径。 */
+  private _toRequest(key: string): Request {
+    return new Request(`https://local.openra/${encodeURIComponent(key)}`)
+  }
+
+  async get(key: string): Promise<CacheEntry | null> {
+    try {
+      const cache = await this._open()
+      if (!cache) return null
+
+      const response = await cache.match(this._toRequest(key))
+      if (!response) return null
+
+      // 从响应头提取元数据
+      const version = response.headers.get('x-pkg-version') ?? 'unknown'
+      const createdAtStr = response.headers.get('x-pkg-created-at')
+      const createdAt = createdAtStr ? Number(createdAtStr) : Date.now()
+      const ttlStr = response.headers.get('x-pkg-ttl')
+      const ttl = ttlStr ? Number(ttlStr) : 0
+
+      const data = await response.arrayBuffer()
+
+      return {
+        data,
+        meta: { version, createdAt, ttl },
+      }
+    } catch {
+      return null
+    }
+  }
+
+  async set(key: string, entry: CacheEntry): Promise<void> {
+    try {
+      const cache = await this._open()
+      if (!cache) return
+
+      // 将元数据嵌入响应头
+      const headers = new Headers({
+        'Content-Type': 'application/octet-stream',
+        'x-pkg-version': entry.meta.version,
+        'x-pkg-created-at': String(entry.meta.createdAt),
+        'x-pkg-ttl': String(entry.meta.ttl),
+      })
+      const response = new Response(entry.data, { headers })
+      await cache.put(this._toRequest(key), response)
+    } catch {
+      // 静默失败 — 不阻断主流程
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    try {
+      const cache = await this._open()
+      if (!cache) return
+      await cache.delete(this._toRequest(key))
+    } catch {
+      // 静默失败
+    }
+  }
+
+  async clear(): Promise<void> {
+    try {
+      const cache = await this._open()
+      if (!cache) return
+      // Cache API 没有 clear()；删除并重新创建
+      if (typeof caches !== 'undefined' && caches) {
+        await caches.delete(this._cacheName)
+        this._cachePromise = null
+      }
+    } catch {
+      // 静默失败
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +509,22 @@ export class FileSystem implements IReadOnlyFileSystem {
   private _l1CacheMaxSize: number
 
   // -----------------------------------------------------------------------
+  // L2 / L3 Cache Layers (RESOLVED P1-D.3)
+  // -----------------------------------------------------------------------
+
+  /** L2 缓存：IndexedDB（已解析的包）。 */
+  private readonly _l2Cache: IndexedDBCache
+
+  /** L3 缓存：Cache API（原始二进制数据）。 */
+  private readonly _l3Cache: CacheAPICache
+
+  /** 缓存是否启用（通过 dispose/测试关闭时设为 false）。 */
+  private _cachingEnabled = true
+
+  /** 默认包缓存 TTL（毫秒）。默认 7 天。 */
+  private readonly _defaultTTL: number
+
+  // -----------------------------------------------------------------------
   // Construction
   // -----------------------------------------------------------------------
 
@@ -103,12 +535,30 @@ export class FileSystem implements IReadOnlyFileSystem {
    *
    * @param packageLoaders — 注册的包加载器（可选，默认包含 ZipFileLoader）
    * @param l1CacheMaxSize — L1 内存缓存最大容量（字节），默认 100 MB
+   * @param options — 可选的缓存配置
+   * @param options.l2DbName — L2 IndexedDB 数据库名，默认 'openra-packages'
+   * @param options.l3CacheName — L3 Cache API 缓存名，默认 'openra-packages'
+   * @param options.defaultTTL — 默认包缓存 TTL（毫秒），默认 7 天（604800000）
+   * @param options.cachingEnabled — 是否启用 L2/L3 缓存，默认 true
    */
-  constructor(packageLoaders?: IPackageLoader[], l1CacheMaxSize: number = DEFAULT_L1_CACHE_SIZE) {
+  constructor(
+    packageLoaders?: IPackageLoader[],
+    l1CacheMaxSize: number = DEFAULT_L1_CACHE_SIZE,
+    options?: {
+      l2DbName?: string
+      l3CacheName?: string
+      defaultTTL?: number
+      cachingEnabled?: boolean
+    },
+  ) {
     this._packageLoaders = packageLoaders
       ? [...packageLoaders]
       : [new ZipFileLoader()]
     this._l1CacheMaxSize = l1CacheMaxSize
+    this._l2Cache = new IndexedDBCache(options?.l2DbName ?? 'openra-packages')
+    this._l3Cache = new CacheAPICache(options?.l3CacheName ?? 'openra-packages')
+    this._defaultTTL = options?.defaultTTL ?? 7 * 24 * 60 * 60 * 1000 // 7 days
+    this._cachingEnabled = options?.cachingEnabled ?? true
   }
 
   // -----------------------------------------------------------------------
@@ -239,27 +689,93 @@ export class FileSystem implements IReadOnlyFileSystem {
   // -----------------------------------------------------------------------
 
   /**
-   * 从 URL 获取并挂载一个包。自动检测包格式。
+   * 从 URL 获取并挂载一个包。使用四级缓存流水线。
    *
    * OpenRA 对照: FileSystem.Mount(string name, string explicitName = null)
-   *   原方法从本地文件系统加载；此版本通过 HTTP fetch 获取。
+   *   原方法从本地文件系统加载；此版本使用缓存感知的 fetch 流水线。
+   *
+   * 缓存流水线（L1 → L2 → L3 → L4）：
+   * 1. L1: 内存 LRU 缓存（通过 _isInL1Cache 检查）
+   * 2. L2: IndexedDB（已解析的包数据 — 跳过解析）
+   * 3. L3: Cache API（原始二进制数据 — 跳过下载）
+   * 4. L4: HTTP fetch（网络回退）
+   *
+   * 缓存命中时，数据向上层提升（write-back 策略）。
+   * 版本标记用于缓存失效；TTL 用于过期检查。
    *
    * 以 '~' 开头的名称被视为可选挂载 — 如果无法获取或解析，
    * 不会抛出异常（静默返回）。
    *
    * @param name — 包的 URL 路径（可选 '~' 前缀表示可选挂载）
    * @param explicitName — 可选的显式挂载名称（"modid|path" 引用用）
+   * @param options — 可选的缓存元数据
+   * @param options.version — 包版本标记（用于缓存失效）
+   * @param options.ttl — 覆盖默认 TTL（毫秒）
    *
    * @throws 如果获取或解析失败且 name 不以 '~' 开头
-   *
-   * TODO-5.A.4: 扩展 L2-L4 缓存（IndexedDB → Cache API → fetch 回退）
    */
-  async mount(name: string, explicitName?: string): Promise<void> {
+  async mount(name: string, explicitName?: string, options?: {
+    version?: string
+    ttl?: number
+  }): Promise<void> {
     // 可选的 '~' 前缀 — 挂载失败时不抛出异常
     const optional = name.startsWith('~')
     if (optional) name = name.slice(1)
 
+    const cacheKey = this._buildCacheKey(name, options?.version ?? 'unknown')
+
     try {
+      // 1. L1 检查 — 如果包已经挂载在内存中，跳过
+      const l1Data = this._checkL1Cache(cacheKey)
+      if (l1Data) {
+        const pkg = this.tryParsePackage(l1Data, name)
+        if (pkg) {
+          this.mountPackage(pkg, explicitName)
+          this._addToCache(cacheKey, l1Data)
+          return
+        }
+      }
+
+      // 2. L2 检查 — IndexedDB（已解析的包）
+      if (this._cachingEnabled) {
+        const l2Data = await this._resolveCacheLayer(this._l2Cache, cacheKey, options?.ttl)
+        if (l2Data) {
+          // 缓存命中 — 提升到 L1
+          Log.write('filesystem', LogLevel.DEBUG,
+            `L2 cache hit for "${name}"`)
+          const pkg = this.tryParsePackage(l2Data, name)
+          if (pkg) {
+            this._addToCache(cacheKey, l2Data)
+            this.mountPackage(pkg, explicitName)
+            return
+          }
+          // 无效的缓存数据 — 清除
+          await this._l2Cache.delete(cacheKey)
+        }
+      }
+
+      // 3. L3 检查 — Cache API（原始二进制）
+      if (this._cachingEnabled) {
+        const l3Data = await this._resolveCacheLayer(this._l3Cache, cacheKey, options?.ttl)
+        if (l3Data) {
+          Log.write('filesystem', LogLevel.DEBUG,
+            `L3 cache hit for "${name}"`)
+          // 提升到 L2 和 L1
+          const pkg = this.tryParsePackage(l3Data, name)
+          if (pkg) {
+            const ttl = options?.ttl ?? this._defaultTTL
+            this._addToCache(cacheKey, l3Data)
+            this._promoteToCacheLayer(this._l2Cache, cacheKey, l3Data, options?.version ?? 'unknown', ttl)
+            this.mountPackage(pkg, explicitName)
+            return
+          }
+          await this._l3Cache.delete(cacheKey)
+        }
+      }
+
+      // 4. L4 — 网络获取
+      Log.write('filesystem', LogLevel.DEBUG,
+        `L4 fetch for "${name}"`)
       const response = await fetch(name)
       if (!response.ok) {
         if (optional) return
@@ -273,6 +789,16 @@ export class FileSystem implements IReadOnlyFileSystem {
           `Could not open package '${name}', format not recognized.`,
         )
       }
+
+      // 提升到所有缓存层
+      this._addToCache(cacheKey, data)
+      if (this._cachingEnabled) {
+        const ttl = options?.ttl ?? this._defaultTTL
+        const version = options?.version ?? 'unknown'
+        this._promoteToCacheLayer(this._l3Cache, cacheKey, data, version, ttl)
+        this._promoteToCacheLayer(this._l2Cache, cacheKey, data, version, ttl)
+      }
+
       this.mountPackage(pkg, explicitName)
     } catch (e) {
       if (optional) return
@@ -610,6 +1136,143 @@ export class FileSystem implements IReadOnlyFileSystem {
     this._lruHead = null
     this._lruTail = null
     this._l1CacheSize = 0
+  }
+
+  // -----------------------------------------------------------------------
+  // Multi-Tier Cache Pipeline Helpers (RESOLVED P1-D.3)
+  // -----------------------------------------------------------------------
+
+  /**
+   * 构建缓存键（URL + 版本标记）。
+   *
+   * 版本标记用于缓存失效：版本更改会导致不同的键，
+   * 因此旧的缓存条目永远不会被访问。
+   *
+   * @param name — 包 URL
+   * @param version — 版本标记
+   * @returns 规范化的缓存键
+   */
+  private _buildCacheKey(name: string, version: string): string {
+    return `pkg:${name}#v=${version}`
+  }
+
+  /**
+   * 检查 L1 LRU 缓存中是否存在指定键的数据。
+   *
+   * @param key — 缓存键
+   * @returns 缓存的数据，如果不存在则返回 null
+   */
+  private _checkL1Cache(key: string): ArrayBuffer | null {
+    const node = this._l1Cache.get(key)
+    if (node) {
+      this._touchLru(node)
+      return node.data.slice(0) as ArrayBuffer
+    }
+    return null
+  }
+
+  /**
+   * 解析缓存层条目并检查 TTL 过期。
+   *
+   * @param layer — 要查询的缓存层
+   * @param key — 缓存键
+   * @param customTTL — 覆盖默认 TTL 检查（null 表示使用条目的 TTL）
+   * @returns 有效的缓存数据，如果未命中或过期则返回 null
+   */
+  private async _resolveCacheLayer(
+    layer: CacheLayer,
+    key: string,
+    customTTL?: number,
+  ): Promise<ArrayBuffer | null> {
+    try {
+      const entry = await layer.get(key)
+      if (!entry) return null
+
+      // TTL 检查
+      if (this._isEntryExpired(entry, customTTL)) {
+        Log.write('filesystem', LogLevel.DEBUG,
+          `Cache entry expired: "${key}" in ${layer.name}`)
+        await layer.delete(key).catch(() => {})
+        return null
+      }
+
+      return entry.data
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * 检查缓存条目是否已过期。
+   *
+   * @param entry — 缓存条目
+   * @param customTTL — 覆盖使用的 TTL（如果提供）
+   * @returns 如果条目已过期则返回 true
+   */
+  private _isEntryExpired(entry: CacheEntry, customTTL?: number): boolean {
+    const ttl = customTTL ?? entry.meta.ttl
+    if (ttl <= 0) return false // 永不过期
+    const age = Date.now() - entry.meta.createdAt
+    return age > ttl
+  }
+
+  /**
+   * 将数据提升到缓存层（异步，fire-and-forget 错误处理）。
+   *
+   * @param layer — 目标缓存层
+   * @param key — 缓存键
+   * @param data — 要缓存的数据
+   * @param version — 包版本标记
+   * @param ttl — TTL（毫秒）
+   */
+  private _promoteToCacheLayer(
+    layer: CacheLayer,
+    key: string,
+    data: ArrayBuffer,
+    version: string,
+    ttl: number,
+  ): void {
+    // Fire-and-forget — 缓存写入不应阻塞挂载流程
+    layer.set(key, {
+      data: data.slice(0) as ArrayBuffer,
+      meta: {
+        version,
+        createdAt: Date.now(),
+        ttl,
+      },
+    }).catch(() => {
+      // 静默失败 — 已在 set() 内部记录
+    })
+  }
+
+  /**
+   * 清除所有缓存层（L1 + L2 + L3）。
+   *
+   * 公共 API — 可用于强制刷新所有缓存的内容。
+   */
+  async clearAllCaches(): Promise<void> {
+    this._clearCache()
+    if (this._cachingEnabled) {
+      await Promise.all([
+        this._l2Cache.clear(),
+        this._l3Cache.clear(),
+      ]).catch(() => {})
+    }
+  }
+
+  /**
+   * 禁用或启用 L2/L3 持久化缓存。对测试和调试有用。
+   * 不影响 L1 内存缓存。
+   */
+  setCachingEnabled(enabled: boolean): void {
+    this._cachingEnabled = enabled
+  }
+
+  /**
+   * 返回 L2/L3 缓存是否启用。
+   */
+  get cachingEnabled(): boolean {
+    return this._cachingEnabled
   }
 
   /**

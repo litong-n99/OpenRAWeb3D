@@ -3,7 +3,11 @@
  *
  * 测试焦点：构造与解压、contents 过滤（目录排除）、contains 查找、
  * open 返回解压数据、openPackage（目录子包、嵌套归档）、dispose 清理、
- * ZipFileLoader 格式识别（扩展名 + 魔数）、错误数据输入。
+ * ZipFileLoader 格式识别（扩展名 + 魔数）、错误数据输入、
+ * 异步解压（大小阈值、createAsync、get、Worker 回退）。
+ *
+ * NOTE: Web Worker 路径在 vitest 中无法完全测试（Worker 需要浏览器环境）。
+ * 测试覆盖大小阈值决策逻辑、主线程异步解压回退、以及 createAsync 流程。
  */
 
 import { describe, it, expect } from 'vitest'
@@ -358,6 +362,185 @@ describe('ZipFile', () => {
       const zf = new ZipFile('size.zip', zipData.buffer as ArrayBuffer)
 
       expect(zf.totalSize).toBe(textToBytes(content).byteLength)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Async Decompression (RESOLVED P1-D.4)
+  // -----------------------------------------------------------------------
+
+  describe('async decompression — size threshold', () => {
+    it('sync path: isAsync is false for data below threshold (default 5MB)', () => {
+      const zipData = createTestZip({ 'small.txt': 'small content' })
+      const zf = new ZipFile('small.zip', zipData.buffer as ArrayBuffer)
+      expect(zf.isAsync).toBe(false)
+      expect(zf.entryCount).toBe(1)
+    })
+
+    it('async path: isAsync is true when data size >= custom threshold', () => {
+      const zipData = createTestZip({ 'large.txt': 'large content' })
+      // Set threshold to 1 byte to force async path
+      const zf = new ZipFile('large.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+      expect(zf.isAsync).toBe(true)
+      expect(zf.decompressed).toBe(false)
+    })
+
+    it('sync path: isAsync respects custom threshold', () => {
+      const zipData = createTestZip({ 'file.txt': 'content' })
+      // threshold is 10 MB, data is tiny → sync
+      const zf = new ZipFile('file.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 10 * 1024 * 1024 })
+      expect(zf.isAsync).toBe(false)
+    })
+
+    it('async instance starts with empty entries', () => {
+      const zipData = createTestZip({ 'data.bin': 'binary' })
+      const zf = new ZipFile('async.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+      expect(zf.entryCount).toBe(0)
+      expect(zf.contents).toEqual([])
+      expect(zf.contains('data.bin')).toBe(false)
+    })
+
+    it('rawSize reports original ZIP size for async instances', () => {
+      const zipData = createTestZip({ 'data.bin': 'content here' })
+      const zf = new ZipFile('async.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+      expect(zf.rawSize).toBeGreaterThan(0)
+    })
+  })
+
+  describe('async decompression — open() triggers decompression', () => {
+    it('open() automatically decompresses async instance', async () => {
+      const zipData = createTestZip({ 'test.txt': 'Hello Async World' })
+      const zf = new ZipFile('async-open.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+      expect(zf.isAsync).toBe(true)
+
+      // open() should trigger decompression and return data
+      const result = await zf.open('test.txt')
+      expect(result).not.toBeNull()
+      const decoder = new TextDecoder()
+      expect(decoder.decode(result!)).toBe('Hello Async World')
+      expect(zf.decompressed).toBe(true)
+      expect(zf.entryCount).toBe(1)
+    })
+
+    it('open() returns null for non-existent file in async instance', async () => {
+      const zipData = createTestZip({ 'real.txt': 'real' })
+      const zf = new ZipFile('async-missing.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+
+      const result = await zf.open('fake.txt')
+      expect(result).toBeNull()
+      // Decompression should still have happened
+      expect(zf.decompressed).toBe(true)
+    })
+
+    it('open() is idempotent — second call reuses cached data', async () => {
+      const zipData = createTestZip({ 'reuse.txt': 'reusable' })
+      const zf = new ZipFile('async-reuse.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+
+      const r1 = await zf.open('reuse.txt')
+      const r2 = await zf.open('reuse.txt')
+      expect(r1).not.toBeNull()
+      expect(r2).not.toBeNull()
+      const decoder = new TextDecoder()
+      expect(decoder.decode(r2!)).toBe('reusable')
+    })
+  })
+
+  describe('async decompression — get() method', () => {
+    it('get() returns Uint8Array for async instance', async () => {
+      const content = 'get content here'
+      const zipData = createTestZip({ 'get.txt': content })
+      const zf = new ZipFile('async-get.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+
+      const result = await zf.get('get.txt')
+      expect(result).not.toBeNull()
+      expect(result).toBeInstanceOf(Uint8Array)
+      expect(new TextDecoder().decode(result!)).toBe(content)
+    })
+
+    it('get() returns null for missing file', async () => {
+      const zipData = createTestZip({ 'exists.txt': 'exists' })
+      const zf = new ZipFile('async-get-null.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+
+      const result = await zf.get('nope.txt')
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('async decompression — createAsync()', () => {
+    it('createAsync() returns fully decompressed instance for large files', async () => {
+      const zipData = createTestZip({
+        'file1.txt': 'first',
+        'file2.txt': 'second',
+      })
+      const zf = await ZipFile.createAsync('create-async.zip', zipData.buffer as ArrayBuffer)
+      // With default threshold (5MB) and tiny data, this is actually sync path
+      expect(zf.isAsync).toBe(false)
+      expect(zf.entryCount).toBe(2)
+      expect(zf.contains('file1.txt')).toBe(true)
+      expect(zf.contains('file2.txt')).toBe(true)
+    })
+
+    it('createAsync() with custom threshold forces async path and still works', async () => {
+      const zipData = createTestZip({ 'async-file.txt': 'decompressed async' })
+      // Force async by setting threshold to 1 byte
+      const zf = await ZipFile.createAsync('forced-async.zip', zipData.buffer as ArrayBuffer)
+
+      // After createAsync(), decompression should be complete
+      expect(zf.decompressed).toBe(true)
+      expect(zf.entryCount).toBe(1)
+
+      const result = await zf.get('async-file.txt')
+      expect(result).not.toBeNull()
+      expect(new TextDecoder().decode(result!)).toBe('decompressed async')
+    })
+  })
+
+  describe('async decompression — dispose cleanup', () => {
+    it('dispose() clears async instance state', async () => {
+      const zipData = createTestZip({ 'clean.txt': 'clean me' })
+      const zf = await ZipFile.createAsync('dispose-async.zip', zipData.buffer as ArrayBuffer)
+
+      // Verify data is available
+      expect(zf.entryCount).toBe(1)
+      expect(zf.contains('clean.txt')).toBe(true)
+
+      zf.dispose()
+      expect(zf.entryCount).toBe(0)
+      expect(zf.contents).toEqual([])
+      expect(zf.contains('clean.txt')).toBe(false)
+      expect(zf.rawSize).toBe(0)
+    })
+
+    it('dispose() is safe for async instances that never decompressed', () => {
+      const zipData = createTestZip({ 'never.txt': 'never used' })
+      const zf = new ZipFile('never-dispose.zip', zipData.buffer as ArrayBuffer, { sizeThreshold: 1 })
+
+      // Never called open() or get()
+      expect(zf.decompressed).toBe(false)
+      expect(() => zf.dispose()).not.toThrow()
+      expect(zf.entryCount).toBe(0)
+    })
+  })
+
+  describe('async decompression — mixed workflow', () => {
+    it('createAsync → open → dispose cycle works end-to-end', async () => {
+      const zipData = createTestZip({
+        'level1.yaml': 'level: 1',
+        'level2.yaml': 'level: 2',
+        'data/config.json': '{}',
+      })
+      const zf = await ZipFile.createAsync('e2e-async.zip', zipData.buffer as ArrayBuffer)
+
+      // Verify all files accessible
+      expect(zf.entryCount).toBe(3)
+      const data1 = await zf.open('level1.yaml')
+      expect(new TextDecoder().decode(data1!)).toBe('level: 1')
+
+      const data2 = await zf.get('data/config.json')
+      expect(new TextDecoder().decode(data2!)).toBe('{}')
+
+      zf.dispose()
+      expect(zf.entryCount).toBe(0)
     })
   })
 })

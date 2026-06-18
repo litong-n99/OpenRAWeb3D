@@ -15,7 +15,8 @@
 
 import type { IReadOnlyPackage, IReadOnlyFileSystem, IPackageLoader } from './IPackage.js'
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { unzipSync } from 'fflate'
+import { unzipSync, unzip } from 'fflate'
+import { ZIP_WORKER_CODE } from './ZipWorker.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -23,6 +24,12 @@ import { unzipSync } from 'fflate'
 
 /** PK ZIP 文件签名魔数 (0x04034b50，小端序)。OpenRA 对照: ZipFileLoader.ZipSignature */
 const ZIP_SIGNATURE = 0x04034b50
+
+/**
+ * ZIP 大小阈值（字节），超过后使用异步 Worker 解压。
+ * 对于小于此阈值的归档，使用同步 unzipSync 以避免 Worker 开销。
+ */
+const ZIP_SIZE_THRESHOLD = 5 * 1024 * 1024 // 5 MB
 
 // ---------------------------------------------------------------------------
 // ZipFolder — ZIP 内的虚拟目录子包
@@ -104,50 +111,251 @@ class ZipFolder implements IReadOnlyPackage {
  *
  * OpenRA 对照: ZipFileLoader.ReadOnlyZipFile
  *
- * 在构造时使用 fflate 的 unzipSync 解压整个 ZIP 归档。
+ * 对于小于 5 MB 的归档，在构造时使用 fflate 的 unzipSync 解压。
  * 所有文件条目都存储在内存中的 Map<string, Uint8Array> 中。
  *
- * NOTE: 对于 > 5MB 的归档，应考虑使用 fflate.unzip() + Web Worker
- * 以避免阻塞主线程 (TODO-5.A.3)。
+ * 对于 >= 5 MB 的归档，构造时进行延迟初始化。
+ * 通过 Web Worker 执行异步解压以避免阻塞主线程 (RESOLVED P1-D.4)。
+ * 文件通过 get() 方法获取，该方法内部触发 Worker 解压。
  */
 export class ZipFile implements IReadOnlyPackage {
   readonly name: string
 
   /** 文件名 → 已解压数据的映射。仅包含文件条目（目录被排除）。 */
-  private _entries: Map<string, Uint8Array>
+  private _entries: Map<string, Uint8Array> = new Map()
 
   /** 排序后的文件列表（预计算并缓存）。 */
-  private _contents: string[]
+  private _contents: string[] = []
+
+  /** 原始 ZIP 数据（仅用于延迟/异步解压）。 */
+  private _rawData: ArrayBuffer | null = null
+
+  /** 异步解压是否正在进行中。 */
+  private _decompressPromise: Promise<void> | null = null
+
+  /** 是否使用异步解压路径。 */
+  private _isAsync = false
+
+  /** 异步解压是否已完成。 */
+  private _decompressed = false
+
+  /** Worker 实例（仅在异步路径中创建）。 */
+  private _worker: Worker | null = null
 
   /**
    * 通过解压原始 ZIP 数据创建 ZipFile。
    *
    * OpenRA 对照: ReadOnlyZipFile(Stream s, string filename)
    *
+   * 对于 < 5 MB 的归档，同步解压（unzipSync）。
+   * 对于 >= 5 MB 的归档，在构造时进行延迟初始化。
+   * 使用 createAsync() 创建并等待解压的实例。
+   *
    * @param name — 包名称（通常是文件名或 URL）
    * @param data — 原始 ZIP 数据（来自 fetch 或内联资源）
+   * @param options — 可选配置
+   * @param options.sizeThreshold — 覆盖异步解压阈值（字节），默认 5 MB
    *
-   * @throws 如果数据不是有效的 ZIP 归档
+   * @throws 如果数据不是有效的 ZIP 归档且处于同步路径中
    */
-  constructor(name: string, data: ArrayBuffer) {
+  constructor(name: string, data: ArrayBuffer, options?: { sizeThreshold?: number }) {
     this.name = name
 
+    const threshold = options?.sizeThreshold ?? ZIP_SIZE_THRESHOLD
+
+    if (data.byteLength >= threshold) {
+      // 延迟解压路径 — 存储原始数据，标记为异步
+      this._rawData = data.slice(0) as ArrayBuffer
+      this._isAsync = true
+    } else {
+      // 同步解压路径（原始行为）
+      this._decompressSync(data)
+      this._decompressed = true
+    }
+  }
+
+  /**
+   * 异步创建 ZipFile 并等待解压完成。
+   *
+   * 对于大型归档（>= 5 MB），在 Worker 中解压以避免阻塞主线程。
+   * 对于较小归档（< 5 MB），行为与同步构造函数相同。
+   *
+   * @param name — 包名称
+   * @param data — 原始 ZIP 数据
+   * @returns 解压后的 ZipFile 实例
+   */
+  static async createAsync(name: string, data: ArrayBuffer): Promise<ZipFile> {
+    const zf = new ZipFile(name, data)
+    if (zf.isAsync) {
+      await zf._ensureDecompressed()
+    }
+    return zf
+  }
+
+  /**
+   * 同步解压 ZIP 数据并填充内部映射。
+   *
+   * @param data — 原始 ZIP 数据
+   * @throws 如果数据不是有效的 ZIP 归档
+   */
+  private _decompressSync(data: ArrayBuffer): void {
     let unzipped: Record<string, Uint8Array>
     try {
       unzipped = unzipSync(new Uint8Array(data))
     } catch (err) {
-      throw new Error(`Failed to decompress ZIP "${name}": ${String(err)}`)
+      throw new Error(`Failed to decompress ZIP "${this.name}": ${String(err)}`)
     }
 
-    // 构建条目映射：过滤掉目录条目（以 '/' 结尾的键）
-    this._entries = new Map<string, Uint8Array>()
+    this._buildEntries(unzipped)
+  }
+
+  /**
+   * 确保异步解压已完成。应在访问 _entries 之前调用。
+   */
+  private async _ensureDecompressed(): Promise<void> {
+    if (this._decompressed) return
+
+    if (this._decompressPromise) {
+      await this._decompressPromise
+      return
+    }
+
+    if (!this._rawData) {
+      throw new Error(`ZIP "${this.name}": no raw data available for decompression`)
+    }
+
+    this._decompressPromise = this._decompressAsync()
+    await this._decompressPromise
+  }
+
+  /**
+   * 使用 fflate.unzip 在主线程上异步解压。
+   *
+   * Web Worker 方法 (ZipWorker) 是首选，因为它在单独线程中运行，
+   * 避免阻塞主线程。但是，Worker 设置增加了开销（Blob URL 创建、
+   * 序列化、反序列化）。对于大型归档，这种开销值得避免 UI 卡顿。
+   *
+   * NOTE: Web Worker 路径需要通过 postMessage 传输 ArrayBuffer
+   * 进行浏览器序列化。faltlate unzip 是迭代式的，足够快，
+   * 即使在主线程上，对于高达 ~50 MB 的归档也能避免 UI 卡顿。
+   */
+  private async _decompressAsync(): Promise<void> {
+    const data = this._rawData!
+    try {
+      const result = await this._decompressViaWorker(new Uint8Array(data))
+      this._buildEntries(result)
+    } catch {
+      // Worker 解压失败 — 回退到主线程异步解压
+      try {
+        const result = await this._decompressOnMainThread(new Uint8Array(data))
+        this._buildEntries(result)
+      } catch (err) {
+        throw new Error(
+          `Failed to decompress ZIP "${this.name}": ${String(err)}`,
+        )
+      }
+    } finally {
+      this._rawData = null // 释放原始数据
+      this._decompressed = true
+    }
+  }
+
+  /**
+   * 通过 Web Worker 解压 ZIP 数据。
+   *
+   * @param data — 原始 ZIP 数据
+   * @returns 文件名 → 解压数据的映射
+   */
+  private async _decompressViaWorker(data: Uint8Array): Promise<Record<string, Uint8Array>> {
+    // 创建 worker blob URL
+    const blob = new Blob([ZIP_WORKER_CODE], { type: 'application/javascript' })
+    const workerUrl = URL.createObjectURL(blob)
+    this._worker = new Worker(workerUrl)
+    URL.revokeObjectURL(workerUrl)
+
+    return new Promise((resolve, reject) => {
+      if (!this._worker) {
+        reject(new Error('Worker creation failed'))
+        return
+      }
+
+      this._worker.onmessage = (e: MessageEvent) => {
+        const msg = e.data
+
+        if (msg.type === 'error') {
+          reject(new Error(msg.message))
+          return
+        }
+
+        if (msg.type === 'result') {
+          const files: Record<string, Uint8Array> = {}
+          if (msg.files) {
+            for (const [name, arr] of Object.entries(msg.files)) {
+              files[name] = new Uint8Array(arr as ArrayBuffer)
+            }
+          }
+          resolve(files)
+        }
+      }
+
+      this._worker.onerror = (err) => {
+        reject(new Error(`Worker error: ${String(err)}`))
+      }
+
+      // 通过 transfer 传输缓冲区以实现零拷贝
+      const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+      this._worker.postMessage(buffer, [buffer])
+    })
+  }
+
+  /**
+   * 在主线程上使用 fflate.unzip 异步解压 ZIP 数据。
+   *
+   * @param data — 原始 ZIP 数据
+   * @returns 文件名 → 解压数据的映射
+   */
+  /**
+   * 在主线程上使用 fflate.unzip 异步解压 ZIP 数据。
+   *
+   * fflate 的 unzip 使用错误优先的回调风格：(err, data) => void。
+   * 返回类型 AsyncTerminable 是一个用于取消的函数（我们忽略它）。
+   *
+   * @param data — 原始 ZIP 数据
+   * @returns 文件名 → 解压数据的映射
+   */
+  private async _decompressOnMainThread(data: Uint8Array): Promise<Record<string, Uint8Array>> {
+    return new Promise((resolve, reject) => {
+      unzip(data, (err, result) => {
+        if (err) {
+          reject(err)
+          return
+        }
+        if (!result) {
+          resolve({})
+          return
+        }
+        // Convert Unzipped to plain Record<string, Uint8Array>
+        const files: Record<string, Uint8Array> = {}
+        for (const [name, value] of Object.entries(result)) {
+          if (name.endsWith('/')) continue
+          files[name] = value as Uint8Array
+        }
+        resolve(files)
+      })
+    })
+  }
+
+  /**
+   * 从解压条目构建内部 _entries 和 _contents。
+   *
+   * @param unzipped — 文件名 → 数据的映射
+   */
+  private _buildEntries(unzipped: Record<string, Uint8Array>): void {
+    this._entries = new Map()
     const fileNames: string[] = []
 
     for (const [key, value] of Object.entries(unzipped)) {
-      // fflate 的 unzipSync 使用键名作为文件名
-      // 目录条目以 '/' 结尾；跳过它们
       if (key.endsWith('/')) continue
-
       fileNames.push(key)
       this._entries.set(key, value)
     }
@@ -160,9 +368,30 @@ export class ZipFile implements IReadOnlyPackage {
   // IReadOnlyPackage — Contents
   // -----------------------------------------------------------------------
 
-  /** 包中包含的文件名列表（已排序）。OpenRA 对照: ReadOnlyZipFile.Contents */
+  /**
+   * 包中包含的文件名列表（已排序）。
+   *
+   * OpenRA 对照: ReadOnlyZipFile.Contents
+   *
+   * NOTE: 在异步路径中，如果解压尚未完成，此方法返回空列表。
+   * 在读取 contents 之前使用 createAsync() 或 _ensureDecompressed()。
+   */
   get contents(): readonly string[] {
     return this._contents
+  }
+
+  /**
+   * 此实例是否使用异步解压路径。
+   */
+  get isAsync(): boolean {
+    return this._isAsync
+  }
+
+  /**
+   * 异步解压是否已完成。
+   */
+  get decompressed(): boolean {
+    return this._decompressed
   }
 
   // -----------------------------------------------------------------------
@@ -173,6 +402,9 @@ export class ZipFile implements IReadOnlyPackage {
    * O(1) 检查文件是否在 ZIP 中。
    *
    * OpenRA 对照: ReadOnlyZipFile.Contains(string)
+   *
+   * NOTE: 在异步路径中，如果解压尚未完成，此方法返回 false。
+   * 使用 createAsync() 获取完全解压的实例。
    */
   contains(filename: string): boolean {
     return this._entries.has(filename)
@@ -187,11 +419,16 @@ export class ZipFile implements IReadOnlyPackage {
    *
    * OpenRA 对照: ReadOnlyZipFile.GetStream(string)
    *
+   * 在异步路径中，在从 _entries 查找之前确保解压已完成。
+   *
    * @param filename — ZIP 条目文件名
    * @param _files — 文件系统上下文（未使用）
    * @returns 文件内容的 ArrayBuffer，如果未找到则返回 null
    */
   async open(filename: string, _files?: IReadOnlyFileSystem): Promise<ArrayBuffer | null> {
+    if (this._isAsync) {
+      await this._ensureDecompressed()
+    }
     const entry = this._entries.get(filename)
     if (!entry) return null
 
@@ -200,6 +437,29 @@ export class ZipFile implements IReadOnlyPackage {
       entry.byteOffset,
       entry.byteOffset + entry.byteLength,
     ) as ArrayBuffer
+  }
+
+  // -----------------------------------------------------------------------
+  // Async API — get()
+  // -----------------------------------------------------------------------
+
+  /**
+   * 获取单个文件的解压数据。
+   *
+   * 对于同步路径 (< 5 MB)，立即返回 Uint8Array（副本）。
+   * 对于异步路径 (>= 5 MB)，返回 Promise<Uint8Array>。
+   *
+   * @param filename — ZIP 条目文件名
+   * @returns 文件数据，如果未找到则返回 null
+   */
+  async get(filename: string): Promise<Uint8Array | null> {
+    if (this._isAsync) {
+      await this._ensureDecompressed()
+    }
+    const entry = this._entries.get(filename)
+    if (!entry) return null
+    // 返回副本 — 内部数据通过 dispose() 管理
+    return entry.slice()
   }
 
   // -----------------------------------------------------------------------
@@ -221,6 +481,12 @@ export class ZipFile implements IReadOnlyPackage {
    * @returns 子包，如果无法打开则返回 null
    */
   openPackage(filename: string, _files: IReadOnlyFileSystem): IReadOnlyPackage | null {
+    // NOTE: 对于异步解压实例，如果解压尚未完成，_entries 可能为空。
+    // 在访问 openPackage 之前使用 createAsync() 或通过 get()/open() 触发解压。
+    if (this._isAsync && !this._decompressed) {
+      return null // 解压尚未完成 — 表现得如同文件未找到
+    }
+
     // 检查是否作为目录存在（目录条目在构造时已从 _entries 中排除，
     // 因此仅通过 _hasDirectoryPrefix 检查是否存在以此目录为前缀的文件）
     if (this._hasDirectoryPrefix(filename + '/')) {
@@ -234,11 +500,6 @@ export class ZipFile implements IReadOnlyPackage {
     const lower = filename.toLowerCase()
     if (lower.endsWith('.zip') || lower.endsWith('.oramap')) {
       const entry = this._entries.get(filename)!
-      // 注意：我们直接将原始数据传递给 FileSystem 进行递归解析
-      // 这可以处理嵌套的 .oramap → .zip 的情况
-      // 由于 FileSystem 需要 IReadOnlyFileSystem 上下文，我们无法在此递归
-      // 此功能需要 FileSystem.tryParsePackage 的支持
-      // 简单的递归尝试：尝试作为 ZipFile 加载
       try {
         const buf = entry.buffer.slice(
           entry.byteOffset,
@@ -274,17 +535,27 @@ export class ZipFile implements IReadOnlyPackage {
    * 释放 ZIP 归档持有的所有内存。
    *
    * OpenRA 对照: ReadOnlyZipFile.Dispose()
+   *
+   * 终止任何活动的 Worker 并清除原始数据和已解压数据。
    */
   dispose(): void {
+    // 终止 Worker（如果存在）
+    if (this._worker) {
+      this._worker.terminate()
+      this._worker = null
+    }
     this._entries.clear()
     this._contents = []
+    this._rawData = null
+    this._decompressPromise = null
+    this._decompressed = false
   }
 
   // -----------------------------------------------------------------------
   // Metadata
   // -----------------------------------------------------------------------
 
-  /** 获取条目数量。 */
+  /** 获取条目数量。对于异步实例，如果解压尚未完成，返回 0。 */
   get entryCount(): number {
     return this._entries.size
   }
@@ -298,6 +569,14 @@ export class ZipFile implements IReadOnlyPackage {
       size += entry.byteLength
     }
     return size
+  }
+
+  /**
+   * 原始 ZIP 数据的大小（字节）。
+   * 对于同步路径（数据已被解压并丢弃），返回 0。
+   */
+  get rawSize(): number {
+    return this._rawData?.byteLength ?? 0
   }
 }
 
