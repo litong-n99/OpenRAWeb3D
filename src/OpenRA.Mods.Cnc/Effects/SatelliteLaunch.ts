@@ -83,6 +83,8 @@ export class SatelliteLaunch implements IEffect, ISpatiallyPartitionable {
       // })
       // The world will call removeEffect on the next frameEndTasks drain.
       // We set _removed so the world knows to clean this up.
+      // TODO-22.B.3: Call this._doors.dispose() to clean up AnimationStub GPU
+      // resources (Mesh planes).
       this._removed = true
 
       // Signal world to remove this effect

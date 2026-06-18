@@ -13,7 +13,14 @@
  * - C# World.RenderPlayerChanged event → addOnShroudChanged / removeOnShroudChanged
  */
 
-import type { Scene, RawTexture, ShaderMaterial, Mesh } from '@babylonjs/core'
+import {
+  RawTexture,
+  ShaderMaterial,
+  MeshBuilder,
+  Mesh,
+  Constants,
+} from '@babylonjs/core'
+import type { Scene } from '@babylonjs/core'
 import { PPos, MPos } from '../../../OpenRA.Game/MPos'
 import { CPos } from '../../../OpenRA.Game/CPos'
 import type {
@@ -118,6 +125,160 @@ const ALL_DIRECTIONS: readonly { readonly X: number; readonly Y: number }[] = [
   { X: 1, Y: 1 },    // BottomRight
   { X: -1, Y: 1 },   // BottomLeft
 ]
+
+// ---------------------------------------------------------------------------
+// GLSL shaders for shroud overlay
+// ---------------------------------------------------------------------------
+
+/** Vertex shader: pass-through position and UV to fragment shader.
+ *
+ * Uses WebGL 1.0 style (attribute/varying/gl_FragColor) to match the
+ * project's existing shader conventions (TerrainMaterial, RgbaColorRenderer).
+ * Babylon.js internally upgrades to GLSL ES 3.0 for WebGL 2.0 contexts.
+ */
+const SHROUD_VERTEX_SHADER = /* glsl */`
+attribute vec3 position;
+attribute vec2 uv;
+
+uniform mat4 worldViewProjection;
+uniform vec2 uMapSize;
+
+varying vec2 vUV;
+
+void main(void) {
+  gl_Position = worldViewProjection * vec4(position, 1.0);
+  vUV = uv;
+}
+`
+
+/** Fragment shader: sample visibility texture and render shroud overlay.
+ *
+ * Visibility texture stores per-cell state as unsigned bytes:
+ *   0 = Hidden  (opaque black)
+ *   1 = Explored (translucent dark fog)
+ *   2 = Visible  (fully transparent)
+ *
+ * The shader normalizes these to 0.0 / 0.5 / 1.0 by multiplying the
+ * sampled value (0/255 .. 2/255) by 127.5.
+ *
+ * Edge blending: when a cell's visibility differs from its neighbors,
+ * the fragment blends toward the neighbor's visibility based on the
+ * fragment's distance to that edge (smoothstep within a blend zone).
+ *
+ * OpenRA 对照: ShroudRenderer's 12-direction sprite-selection logic
+ * replaced by per-fragment neighbor sampling + smooth blending.
+ */
+const SHROUD_FRAGMENT_SHADER = /* glsl */`
+precision highp float;
+
+varying vec2 vUV;
+
+uniform sampler2D uVisibilityTexture;
+uniform vec2 uMapSize;
+uniform vec2 uTexelSize;
+
+void main(void) {
+  // Decode visibility value: raw byte 0→0.0/255, 1→1.0/255, 2→2.0/255
+  // Multiply by 127.5 (which is 255.0 * 0.5) to get 0.0 / 0.5 / 1.0
+  float rawCenter = texture2D(uVisibilityTexture, vUV).r;
+  float centerVis = rawCenter * 127.5;
+
+  // Sample 8 neighbors
+  float rawTop    = texture2D(uVisibilityTexture, vUV + vec2(0.0, uTexelSize.y)).r;
+  float rawBottom = texture2D(uVisibilityTexture, vUV + vec2(0.0, -uTexelSize.y)).r;
+  float rawLeft   = texture2D(uVisibilityTexture, vUV + vec2(-uTexelSize.x, 0.0)).r;
+  float rawRight  = texture2D(uVisibilityTexture, vUV + vec2(uTexelSize.x, 0.0)).r;
+  float rawTL     = texture2D(uVisibilityTexture, vUV + vec2(-uTexelSize.x, uTexelSize.y)).r;
+  float rawTR     = texture2D(uVisibilityTexture, vUV + vec2(uTexelSize.x, uTexelSize.y)).r;
+  float rawBL     = texture2D(uVisibilityTexture, vUV + vec2(-uTexelSize.x, -uTexelSize.y)).r;
+  float rawBR     = texture2D(uVisibilityTexture, vUV + vec2(uTexelSize.x, -uTexelSize.y)).r;
+
+  float topVis    = rawTop    * 127.5;
+  float bottomVis = rawBottom * 127.5;
+  float leftVis   = rawLeft   * 127.5;
+  float rightVis  = rawRight  * 127.5;
+  float tlVis     = rawTL     * 127.5;
+  float trVis     = rawTR     * 127.5;
+  float blVis     = rawBL     * 127.5;
+  float brVis     = rawBR     * 127.5;
+
+  // Edge blending: compute blend factors based on position within cell
+  vec2 cellCoord = vUV * uMapSize;
+  vec2 fracPos = fract(cellCoord); // 0..1 within current cell
+  float blendZone = 0.25;          // blend zone width (fraction of cell)
+
+  float blendedVis = centerVis;
+
+  // Cardinal direction blending
+  if (abs(topVis - centerVis) > 0.01) {
+    float t = smoothstep(1.0 - blendZone, 1.0, fracPos.y);
+    blendedVis = mix(blendedVis, topVis, t);
+  }
+  if (abs(bottomVis - centerVis) > 0.01) {
+    float t = smoothstep(1.0 - blendZone, 1.0, 1.0 - fracPos.y);
+    blendedVis = mix(blendedVis, bottomVis, t);
+  }
+  if (abs(rightVis - centerVis) > 0.01) {
+    float t = smoothstep(1.0 - blendZone, 1.0, fracPos.x);
+    blendedVis = mix(blendedVis, rightVis, t);
+  }
+  if (abs(leftVis - centerVis) > 0.01) {
+    float t = smoothstep(1.0 - blendZone, 1.0, 1.0 - fracPos.x);
+    blendedVis = mix(blendedVis, leftVis, t);
+  }
+
+  // Corner blending (diagonal neighbors): blend at cell corners
+  float cornerZone = blendZone * 0.7071; // diagonal distance factor
+  if (abs(tlVis - centerVis) > 0.01) {
+    float dx = 1.0 - fracPos.x;
+    float dy = fracPos.y;
+    float d = min(dx, dy);               // Chebyshev distance to corner
+    float t = smoothstep(1.0 - cornerZone, 1.0, d);
+    blendedVis = mix(blendedVis, tlVis, t);
+  }
+  if (abs(trVis - centerVis) > 0.01) {
+    float dx = fracPos.x;
+    float dy = fracPos.y;
+    float d = min(dx, dy);
+    float t = smoothstep(1.0 - cornerZone, 1.0, d);
+    blendedVis = mix(blendedVis, trVis, t);
+  }
+  if (abs(brVis - centerVis) > 0.01) {
+    float dx = fracPos.x;
+    float dy = 1.0 - fracPos.y;
+    float d = min(dx, dy);
+    float t = smoothstep(1.0 - cornerZone, 1.0, d);
+    blendedVis = mix(blendedVis, brVis, t);
+  }
+  if (abs(blVis - centerVis) > 0.01) {
+    float dx = 1.0 - fracPos.x;
+    float dy = 1.0 - fracPos.y;
+    float d = min(dx, dy);
+    float t = smoothstep(1.0 - cornerZone, 1.0, d);
+    blendedVis = mix(blendedVis, blVis, t);
+  }
+
+  // Map visibility to output color/alpha
+  float alpha;
+  vec3 color;
+
+  if (blendedVis < 0.25) {
+    // Hidden: opaque black
+    alpha = 1.0;
+    color = vec3(0.0, 0.0, 0.0);
+  } else if (blendedVis < 0.75) {
+    // Explored: semi-transparent dark fog tint
+    alpha = 0.55;
+    color = vec3(0.08, 0.08, 0.12);
+  } else {
+    // Visible: fully transparent (no overlay)
+    alpha = 0.0;
+    color = vec3(0.0, 0.0, 0.0);
+  }
+
+  gl_FragColor = vec4(color, alpha);
+}
+`
 
 // ---------------------------------------------------------------------------
 // ShroudRenderer
@@ -250,6 +411,9 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
     this._cellsDirty.fill(1)
     this._anyCellDirty = true
 
+    // _getCellEdges is called from tests via `as any` cast — suppress TS6133
+    void (this._getCellEdges as unknown)
+
     // Subscribe to render player changes by wrapping the world's callback.
     // Using != null handles both null and undefined — if the world has no
     // renderPlayerChanged mechanism, the worldLoaded path handles the initial
@@ -266,12 +430,6 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
       }
     }
 
-    // Suppress TS6133: fields/methods used by deferred features or test access
-    // _info (line ~140): stored for future deferred feature use
-    // _scene (line ~177): stored for deferred GPU resource creation
-    // _getCellEdges (line ~531): called from tests via `as any` cast
-    void this._info as unknown
-    void this._getCellEdges as unknown
   }
 
   // -------------------------------------------------------------------------
@@ -326,21 +484,137 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
   // -------------------------------------------------------------------------
 
   /**
-   * Create the Babylon.js visibility texture, shader material, and quad.
+   * Create Babylon.js GPU resources: visibility RawTexture, ShaderMaterial,
+   * and a ground plane Mesh that covers the entire map.
    *
    * OpenRA 对照: ShroudRenderer.WorldLoaded() — shroudLayer/fogLayer creation
+   *
+   * ## Architectural decision: Ground-plane Mesh vs RenderTargetTexture
+   *
+   * In the original OpenRA C# implementation, the shroud is rendered via
+   * TerrainSpriteLayer (12-direction sprite variants) as a post-process pass.
+   * In Babylon.js, we use a single ground-plane Mesh with a ShaderMaterial
+   * instead of a RenderTargetTexture (RTT) for the following reasons:
+   *
+   * 1. **Simpler depth ordering**: The plane Mesh uses renderingGroupId to
+   *    render after terrain (group 0) and actors (group 1) but before UI
+   *    overlays (group 3). This avoids the complexity of managing a separate
+   *    RTT scene + compositing pass.
+   *
+   * 2. **No extra render pass**: An RTT approach would require an additional
+   *    render pass (render to RTT, then composite onto main scene). The
+   *    ground-plane approach renders in a single pass via alpha blending.
+   *
+   * 3. **Easier shroud updates**: The visibility RawTexture can be updated
+   *    incrementally (only dirty cells), and the ShaderMaterial automatically
+   *    samples the latest texture data in the next frame.
+   *
+   * The visibility texture stores one byte per projected cell (0=Hidden,
+   * 1=Explored, 2=Visible). The ShaderMaterial samples this texture and
+   * its 8 neighbors to produce the shroud/fog overlay with edge blending.
+   * The plane mesh is positioned slightly above the terrain surface to
+   * avoid z-fighting, and assigned a high renderingGroupId so it renders
+   * after terrain and actors but before UI overlays.
    *
    * @param scene — the Babylon.js scene
    */
   private _createShroudResources(scene: Scene): void {
-    // NOTE: RawTexture and ShaderMaterial creation is deferred to actual
-    // Babylon.js usage. In unit tests these are mocked.
-    // The actual GPU resource creation happens lazily on first render.
-    // TODO-12.DEFERRED.11: Create RawTexture (LUMINANCE, mapSize) +
-    // ShaderMaterial (shroud.frag) + fullscreen quad Mesh here
+    // Dispose any existing resources (e.g., on map change)
+    this._disposeGPUResources()
+
     this._scene = scene
-    // Suppress TS6133: _scene stored for deferred GPU resource creation
-    void this._scene as unknown
+
+    const cellCount = this._mapWidth * this._mapHeight
+
+    // ---- 1. Visibility RawTexture ----
+    // Single-channel (R) unsigned byte texture, one texel per projected cell.
+    // Values: 0=Hidden, 1=Explored, 2=Visible.
+    const initialData = new Uint8Array(cellCount)
+    initialData.set(this._visibilityData)
+
+    this._visibilityTexture = new RawTexture(
+      initialData,
+      this._mapWidth,
+      this._mapHeight,
+      Constants.TEXTUREFORMAT_R,
+      scene,
+      false, // no mipmaps
+      false, // invertY = false
+      Constants.TEXTURE_NEAREST_SAMPLINGMODE,
+      Constants.TEXTURETYPE_UNSIGNED_BYTE,
+    )
+
+    // ---- 2. ShaderMaterial ----
+    this._shroudMaterial = new ShaderMaterial(
+      'shroudMat',
+      scene,
+      {
+        vertexSource: SHROUD_VERTEX_SHADER,
+        fragmentSource: SHROUD_FRAGMENT_SHADER,
+      },
+      {
+        attributes: ['position', 'uv'],
+        uniforms: [
+          'worldViewProjection',
+          'uMapSize',
+          'uTexelSize',
+        ],
+        samplers: [
+          'uVisibilityTexture',
+        ],
+        needAlphaBlending: true,
+      },
+    )
+    this._shroudMaterial.setTexture('uVisibilityTexture', this._visibilityTexture)
+    this._shroudMaterial.setVector2('uMapSize', { x: this._mapWidth, y: this._mapHeight })
+    this._shroudMaterial.setVector2('uTexelSize', { x: 1 / this._mapWidth, y: 1 / this._mapHeight })
+    this._shroudMaterial.backFaceCulling = false
+    this._shroudMaterial.disableDepthWrite = true
+
+    // ---- 3. Ground plane Mesh ----
+    // Covers the entire map in world space (1 cell = 1 world unit).
+    // Positioned at Y = 0.01 to sit just above the terrain surface, preventing
+    // z-fighting with terrain geometry.
+    this._quadMesh = MeshBuilder.CreateGround(
+      'shroudOverlay',
+      {
+        width: this._mapWidth,
+        height: this._mapHeight,
+      },
+      scene,
+    )
+    this._quadMesh.position.x = this._mapWidth / 2
+    this._quadMesh.position.z = this._mapHeight / 2
+    this._quadMesh.position.y = 0.01
+    this._quadMesh.material = this._shroudMaterial
+    this._quadMesh.isPickable = false
+    // Render after terrain (0) and actors (1), before UI overlays (3)
+    this._quadMesh.renderingGroupId = 2
+
+    // Mark all cells dirty to ensure first render uploads full visibility data
+    this._cellsDirty.fill(1)
+    this._anyCellDirty = true
+  }
+
+  /**
+   * Dispose GPU resources without clearing the scene reference.
+   *
+   * Used by _createShroudResources before recreating resources (e.g., on
+   * map change where dimensions differ), and by disposing() for final cleanup.
+   */
+  private _disposeGPUResources(): void {
+    if (this._quadMesh !== null) {
+      this._quadMesh.dispose()
+      this._quadMesh = null
+    }
+    if (this._shroudMaterial !== null) {
+      this._shroudMaterial.dispose()
+      this._shroudMaterial = null
+    }
+    if (this._visibilityTexture !== null) {
+      this._visibilityTexture.dispose()
+      this._visibilityTexture = null
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -681,18 +955,8 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
     }
 
     // Dispose GPU resources
-    if (this._quadMesh !== null) {
-      this._quadMesh.dispose()
-      this._quadMesh = null
-    }
-    if (this._shroudMaterial !== null) {
-      this._shroudMaterial.dispose()
-      this._shroudMaterial = null
-    }
-    if (this._visibilityTexture !== null) {
-      this._visibilityTexture.dispose()
-      this._visibilityTexture = null
-    }
+    this._disposeGPUResources()
+    this._scene = null
 
     this._disposed = true
   }
@@ -729,5 +993,25 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
   /** Get the cell visibility function (for testing). */
   get cellVisibility(): ((puv: PPos) => CellVisibility) | null {
     return this._cellVisibility
+  }
+
+  /** Get the visibility RawTexture (for testing). */
+  get visibilityTexture(): RawTexture | null {
+    return this._visibilityTexture
+  }
+
+  /** Get the ShaderMaterial (for testing). */
+  get shroudMaterial(): ShaderMaterial | null {
+    return this._shroudMaterial
+  }
+
+  /** Get the overlay quad Mesh (for testing). */
+  get quadMesh(): Mesh | null {
+    return this._quadMesh
+  }
+
+  /** Get the Babylon.js scene (for testing). */
+  get scene(): Scene | null {
+    return this._scene
   }
 }

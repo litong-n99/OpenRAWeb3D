@@ -142,6 +142,8 @@ export class DropPodImpact implements IProjectile {
 
   private _finish(world: GameWorldManager): void {
     this._removed = true
+    // TODO-22.B.3: Call this._entryAnimation.dispose() to clean up
+    // AnimationStub GPU resources (Mesh planes).
     // OpenRA: world.AddFrameEndTask(w => w.Remove(this))
     world.addFrameEndTask?.(() => {
       world.removeEffect?.(this)

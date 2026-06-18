@@ -139,6 +139,8 @@ export class IonCannon implements IProjectile {
    */
   private _finish(world: GameWorldManager): void {
     this._removed = true
+    // TODO-22.B.3: Call this._anim.dispose() to clean up AnimationStub GPU
+    // resources (Mesh planes). Currently the mesh is orphaned until GC.
     // OpenRA: world.AddFrameEndTask(w => w.Remove(this))
     world.addFrameEndTask?.(() => {
       world.removeEffect?.(this)

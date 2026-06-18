@@ -293,24 +293,32 @@ export class Texture implements ITexture, ITextureInternal {
   // ---------------------------------------------------------------------------
 
   /**
-   * 从当前帧缓冲读取像素数据到纹理。
+   * Copy pixel data from the current framebuffer to this texture.
    *
-   * 对应 OpenRA Texture.SetDataFromReadBuffer(Rectangle rect)。
-   * OpenRA 使用 glCopyTexImage2D 从当前绑定的帧缓冲复制像素。
+   * OpenRA 对照: Texture.SetDataFromReadBuffer(Rectangle rect)
+   * OpenRA uses glCopyTexImage2D to copy pixels from the currently bound
+   * framebuffer into the texture.
    *
-   * NOTE: WebGL 2.0 不支持 glCopyTexImage2D 到纹理的等效操作。
-   * 替代方案是 engine.readPixels() + 然后 setData() 上传。
-   * 此方法当前阶段为占位实现。
+   * ## GPU dependency limitation
    *
-   * TODO: 需要 engine.readPixels() 实现（从当前帧缓冲读取）。
+   * WebGL 2.0 has no direct equivalent of glCopyTexImage2D for textures.
+   * The alternative is engine.readPixels() + setData() re-upload.
+   * This method is a stub that logs a warning in the current implementation.
    *
-   * @param _rect — 源矩形（像素坐标）。暂未使用，占位等待 readPixels 实现。
+   * NOTE: GPU dependency limitation — requires engine.readPixels() which needs
+   * a WebGL context. Stub in the mock/test environment.
+   *
+   * TODO: Implement engine.readPixels() + setData() pipeline when a real
+   * WebGL engine is available at runtime.
+   *
+   * @param _rect — source rectangle (pixel coords). Unused, placeholder awaiting readPixels.
    */
   setDataFromReadBuffer(_rect: Rectangle): void {
     this.ensureNotDisposed()
     // 对应 OpenRA: glCopyTexImage2D(GL_TEXTURE_2D, 0, internalFormat, x, y, w, h, 0)
-    // NOTE: WebGL 2.0 无直接对应。需通过 readPixels + 重新上传实现。
-    // 参考: https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/readPixels
+    // NOTE: GPU dependency limitation — WebGL 2.0 has no glCopyTexImage2D.
+    // Requires engine.readPixels() + setData() re-upload, which needs a
+    // WebGL context. Stub for the test environment.
     console.warn(
       'Texture.setDataFromReadBuffer: not implemented in WebGL migration. ' +
       'Use setData() with data from engine.readPixels() instead.',
@@ -322,26 +330,41 @@ export class Texture implements ITexture, ITextureInternal {
   // ---------------------------------------------------------------------------
 
   /**
-   * 从 GPU 读回纹理数据。
+   * Read back texture data from the GPU.
    *
-   * 对应 OpenRA Texture.GetData()。
-   * OpenRA 桌面 GL 使用 glGetTexImage，GLES 通过 FBO + glReadPixels 回读。
+   * OpenRA 对照: Texture.GetData()
+   * OpenRA desktop GL uses glGetTexImage; GLES uses FBO + glReadPixels fallback.
    *
-   * NOTE: WebGL 2.0 不支持 glGetTexImage。
-   * 替代方案需要绑定纹理到 FBO 然后 readPixels。
-   * 此方法当前阶段返回空数据。
+   * ## GPU dependency limitation
    *
-   * TODO: 需要完整的 FBO 绑定 + readPixels 实现。
+   * WebGL 2.0 does not support glGetTexImage. Real GPU readback requires:
+   * 1. Bind this texture to a temporary FBO
+   * 2. Call `engine.readPixels(0, 0, width, height)` to read back RGBA data
+   * 3. Return the resulting Uint8Array
    *
-   * @returns 空 Uint8Array（占位）
+   * This implementation is a **stub** that returns a zero-filled Uint8Array.
+   * The mock/test environment has no WebGL context, so readback cannot work.
+   * When a real WebGL engine is available, this method should be updated to
+   * use the FBO + readPixels pipeline described above.
+   *
+   * NOTE: Real GPU readback requires engine.readPixels() which needs a WebGL
+   * context. This stub returns zero-filled data for the test environment.
+   *
+   * TODO: Implement FBO binding + engine.readPixels() pipeline when a real
+   * WebGL engine is available at runtime.
+   *
+   * @returns zero-filled Uint8Array (stub — requires WebGL context for real data)
    */
   getData(): Uint8Array {
     this.ensureNotDisposed()
     // 对应 OpenRA:
     //   桌面 GL: glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, data)
     //   GLES: 绑定 FBO → glReadPixels → 可能的 R/B 交换
-    // NOTE: WebGL 2.0 要求通过 FBO + readPixels 回读纹理数据。
-    //   此处返回空数组直到实现完整的回读管线。
+
+    // NOTE: Real GPU readback requires engine.readPixels() which needs a
+    // WebGL context. This stub returns zero-filled data for the test
+    // environment. Production code should bind this texture to a temp FBO
+    // and call engine.readPixels() to get actual pixel data.
     console.warn(
       'Texture.getData: not implemented in WebGL migration. ' +
       'Requires FBO binding + readPixels pipeline.',

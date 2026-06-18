@@ -97,32 +97,56 @@ class FrameBufferTexture implements ITexture {
   }
 
   /**
-   * 上传 RGBA 颜色数据到纹理。
+   * Upload RGBA color data to the texture.
    *
-   * ## 真实 GPU 实现路径 (TODO)
-   *   1. engine.updateTextureData(this._internalTexture, colors, width, height)
-   *   2. 如果尺寸变化，需要先重建纹理
+   * OpenRA 对照: ITexture.SetData(byte[], int, int)
    *
-   * ## 当前 mock 实现
-   *   在测试环境中，将数据缓存到 _dataCache 以便后续 getData() 验证。
-   *   此行为允许通过 setData → getData 循环验证数据传递。
+   * ## GPU dependency limitation
    *
-   * @param colors — RGBA 颜色数据 (Uint8Array)
-   * @param _width — 纹理宽度（忽略，RTT 尺寸固定）
-   * @param _height — 纹理高度（忽略，RTT 尺寸固定）
+   * Real GPU upload requires engine.updateTextureData() which needs a WebGL
+   * context. In the mock/test environment, data is cached in _dataCache for
+   * getData() verification (setData to getData round-trip).
+   *
+   * NOTE: Real GPU upload requires engine.updateTextureData(this._internalTexture,
+   * colors, width, height). The current mock implementation caches data for the
+   * test environment. When a real WebGL engine is available, this should be
+   * updated to use the Babylon.js texture update API.
+   *
+   * @param colors — RGBA color data (Uint8Array)
+   * @param _width — texture width (ignored, RTT size is fixed)
+   * @param _height — texture height (ignored, RTT size is fixed)
    */
   setData(colors: Uint8Array, _width: number, _height: number): void {
-    // TODO: 真实 GPU 实现 — engine.updateTextureData(this._internalTexture, colors, width, height)
-    // Mock 实现: 缓存数据用于 getData 验证
+    // NOTE: Real GPU upload requires engine.updateTextureData() with a WebGL
+    // context. Mock implementation caches data for getData() round-trip
+    // verification in the test environment.
     this._dataCache = new Uint8Array(colors)
   }
 
+  /**
+   * Upload floating-point data to the texture.
+   *
+   * OpenRA 对照: ITexture.SetFloatData(float[], int, int)
+   *
+   * NOTE: GPU dependency limitation — requires engine.updateTextureData() with
+   * FLOAT type and a WebGL context. Stub in the mock/test environment.
+   */
   setFloatData(_data: Float32Array, _width: number, _height: number): void {
-    // TODO: 浮点纹理数据上传 — engine.updateTextureData with FLOAT type
+    // NOTE: GPU dependency limitation — engine.updateTextureData() requires
+    // a WebGL context. Stub for the test environment.
   }
 
+  /**
+   * Copy pixel data from the current read buffer into the texture.
+   *
+   * OpenRA 对照: ITexture.SetDataFromReadBuffer(Rectangle)
+   *
+   * NOTE: GPU dependency limitation — requires a full readPixels + upload
+   * pipeline with a WebGL context. Stub in the mock/test environment.
+   */
   setDataFromReadBuffer(_rect: Rectangle): void {
-    // TODO: 从读取缓冲区复制数据 — 需要完整的 readPixels + upload 管线
+    // NOTE: GPU dependency limitation — requires complete readPixels + upload
+    // pipeline. Stub for the test environment.
   }
 
   /**

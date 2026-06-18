@@ -451,8 +451,9 @@ function generateCliffFaces(map: Map, state: MeshBuildState): void {
   const gridType = map.grid.type
 
   if (gridType === MapGridType.RectangularIsometric) {
-    // Cliff face generation for isometric grids deferred (TODO-4.F.9 extension)
+    // TODO-4.F.9-ISO: Isometric cliff face generation deferred to Phase D/E.
     // Isometric cell adjacency is more complex (diamond shape, staggered edges)
+    // and requires separate handling of diamond-shaped cell boundaries.
     return
   }
 
@@ -471,6 +472,11 @@ function generateCliffFaces(map: Map, state: MeshBuildState): void {
 function generateRectCliffFaces(map: Map, state: MeshBuildState): void {
   const w = map.mapSize.width
   const h = map.mapSize.height
+
+  // NOTE: Map height values are used instead of Riser data for simplicity;
+  // both encode the same terrain height information. map.height.get(cell)
+  // returns the integer height level which, when multiplied by 512, gives
+  // the Z-height in OpenRA world units (1 height unit = 512 WDist units).
 
   // ---- 垂直边界 (右边界): cell(x,y) <-> cell(x+1,y) ----
   for (let y = 0; y < h; y++) {
