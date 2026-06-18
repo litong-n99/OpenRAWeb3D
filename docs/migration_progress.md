@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-18
-> **Current phase**: Chapters 2-21 ALL PHASES COMPLETE (665/665 + 54+ active = ~719+ files, 100%). Chapter 22: 6/7 (86%, IN PROGRESS, Phases A-B COMPLETE, 3 phases C-E remaining).
-> **Overall status**: Chapters 2-21 COMPLETE: Ch2-20: 665/665 (100%) + Ch21: 54+ active files (100%, ALL PHASES A-G COMPLETE, 25 deferred + 12 legacy deferred). Chapter 22: 6/7 (86%, IN PROGRESS, Phases A-B COMPLETE). Total project: ~763 files estimated, ~725+ complete (~95%).
+> **Current phase**: Chapters 2-21 ALL PHASES COMPLETE (665/665 + 54+ active = ~719+ files, 100%). Chapter 22: Phases A-C COMPLETE (3/5, 60%, 2 phases D-E remaining).
+> **Overall status**: Chapters 2-21 COMPLETE: Ch2-20: 665/665 (100%) + Ch21: 54+ active files (100%, ALL PHASES A-G COMPLETE, 25 deferred + 12 legacy deferred). Chapter 22: 3/5 phases complete, 2 remaining (D/E). Total project: ~763 files estimated, ~96% complete.
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---

@@ -337,7 +337,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 ### 3.3 Phase C: Main Menu -- Shellmap + Widgets
 
-**Status**: 📋 PLANNING (0/0 files, extension of Game.ts from Phase B)
+**Status**: ✅ COMPLETE (2026-06-18, review round 1)
 **Complexity**: Medium
 **Blocked by**: Phase B (Game class must exist to extend with shellmap support)
 **Blocks**: Phase E (shellmap is a visual prerequisite for the full main menu experience)
@@ -350,7 +350,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.3.1 Shellmap Fallback
 
-- [ ] **TODO-22.C.1** Extend `Game.ts` -- `loadShellMap()` with Phase 1 static fallback:
+- [x] **TODO-22.C.1** Extend `Game.ts` -- `loadShellMap()` with Phase 1 static fallback:
   - If no maps available (empty map cache): set `renderer.worldScene.clearColor` to dark RTS-appropriate color
   - If maps available: attempt full shellmap (Phase 3), catch errors → fallback to static
   - `chooseShellmap()`: pick random shellmap-flagged map from map cache
@@ -358,7 +358,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.3.2 Main Menu Widgets
 
-- [ ] **TODO-22.C.2** Create minimal main menu ChromeProvider widget layout:
+- [x] **TODO-22.C.2** Create minimal main menu ChromeProvider widget layout:
   - Main menu buttons: "Skirmish" (stub), "Multiplayer" (Coming Soon), "Settings" (stub), "Exit to Desktop" (navigate to `/`)
   - Widget layout in `public/mods/_test/chrome/mainmenu.yaml` (or JSON)
   - Leverage existing Ch5 Widget system (Widget, ButtonWidget, LabelWidget from Ch16)
@@ -366,7 +366,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.3.3 Acceptance Test
 
-- [ ] **TODO-22.C.3** E2E acceptance test page at `src/__e2e__/manual/ch22-game-entry/main-menu/`:
+- [x] **TODO-22.C.3** E2E acceptance test page at `src/__e2e__/manual/ch22-game-entry/main-menu/`:
   - Verify: Full flow `/` → click RA card → loading bar → main menu over dark background
   - Verify: Browser back button returns to mod selector
   - Verify: Mod selector is cleanly disposed (no memory leak)
