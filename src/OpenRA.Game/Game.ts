@@ -21,6 +21,7 @@ import type { MapStub } from './World.js'
 import type { WorldRendererStub } from './Traits/TraitsInterfaces.js'
 import { WorldRenderer } from './Graphics/WorldRenderer.js'
 import type { IWorld } from './Graphics/WorldRenderer.js'
+import { CursorManager } from './Graphics/CursorManager.js'
 import { EchoConnection } from './Network/Connection.js'
 import { OrderManager } from './Network/OrderManager.js'
 import type { Sound } from './Sound/Sound.js'
@@ -136,6 +137,13 @@ export class Game {
   modData: ModData | null = null
 
   /**
+   * 光标管理器（CSS cursor + HTML overlay 回退）。
+   *
+   * OpenRA 对照: Game.Cursor (public static CursorManager)
+   */
+  cursorManager: CursorManager | null = null
+
+  /**
    * 命令管理器（网络/本地）。
    *
    * OpenRA 对照: Game.OrderManager
@@ -199,6 +207,25 @@ export class Game {
    */
   get worldRenderer(): WorldRenderer | null {
     return this._worldRenderer
+  }
+
+  // -----------------------------------------------------------------------
+  // setCursor — 切换光标
+  //
+  // OpenRA 对照: CursorManager.SetCursor (间接通过 Game.Cursor.SetCursor)
+  // -----------------------------------------------------------------------
+
+  /**
+   * 切换活动光标。
+   *
+   * OpenRA 对照: Game.Cursor.SetCursor(cursorName)
+   *
+   * 委托给 CursorManager 实例。若 CursorManager 尚未创建则静默忽略。
+   *
+   * @param cursorName — 光标名称（如 'default', 'attack', 'move'），null 隐藏光标
+   */
+  setCursor(cursorName: string | null): void {
+    this.cursorManager?.setCursor(cursorName)
   }
 
   // -----------------------------------------------------------------------
@@ -463,11 +490,13 @@ export class Game {
     const connection = new EchoConnection()
     this.orderManager = new OrderManager(connection)
 
-    // TODO-22.C: Create CursorManager
-    // OpenRA C# InitializeMod() creates a CursorManager here, which manages
-    // hardware cursor sprites and palette. The TS CursorManager consumes
-    // SheetBuilder + HardwarePalette resources. Implement in Phase C when
-    // the main menu widget shell is created.
+    // 7. Create CursorManager
+    // OpenRA 对照: Cursor = new CursorManager(ModData)
+    // Phase A: instantiate with empty configs — cursor sprite sequences
+    // are loaded from mod assets in Phase C (TODO-22.C.1).
+    // The CursorManager creates its own SheetBuilder internally.
+    this.cursorManager?.dispose()
+    this.cursorManager = new CursorManager()
 
     // NOTE: Sound 初始化推迟到 Phase C。
     // Sound 需要 ISoundEngine + SoundSettings + FileSystem 设置，
@@ -853,6 +882,9 @@ export class Game {
     this.orderManager?.dispose()
     this.orderManager = null
 
+    this.cursorManager?.dispose()
+    this.cursorManager = null
+
     this.modData?.dispose()
     this.modData = null
 
@@ -881,9 +913,10 @@ export class Game {
    * 1. World（游戏世界 — 停止 tick、dispose actor）
    * 2. WorldRenderer（由 Renderer 管理其 Scene，仅解引用）
    * 3. OrderManager（dispose connection + 清空队列）
-   * 4. Sound（如果已创建 — Phase C）
-   * 5. ModData（dispose 加载屏幕 + MapCache + FileSystem + ObjectCreator）
-   * 6. Renderer（stopRenderLoop + dispose Engine + Scenes + Cameras）
+   * 4. CursorManager（移除 CSS style 元素 + dispose SheetBuilder）
+   * 5. Sound（如果已创建 — Phase C）
+   * 6. ModData（dispose 加载屏幕 + MapCache + FileSystem + ObjectCreator）
+   * 7. Renderer（stopRenderLoop + dispose Engine + Scenes + Cameras）
    *
    * 调用后设置 state = Disposed，游戏循环守卫停止所有 tick 活动。
    */
@@ -906,14 +939,18 @@ export class Game {
     this.orderManager?.dispose()
     this.orderManager = null
 
-    // 4. Sound（stub，Phase C 实现）
+    // 4. CursorManager — dispose CSS style elements + SheetBuilder
+    this.cursorManager?.dispose()
+    this.cursorManager = null
+
+    // 5. Sound（stub，Phase C 实现）
     this.sound = null
 
-    // 5. ModData + FileSystem
+    // 6. ModData + FileSystem
     this.modData?.dispose()
     this.modData = null
 
-    // 6. Renderer（Engine + Scenes + Cameras + RTT）
+    // 7. Renderer（Engine + Scenes + Cameras + RTT）
     this.renderer?.dispose()
     this.renderer = null!  // Prevent double-dispose: null reference after GPU resource release
 

@@ -365,6 +365,27 @@ vi.mock('./Graphics/WorldRenderer.js', () => ({
 }))
 
 // ---------------------------------------------------------------------------
+// Mock CursorManager
+// ---------------------------------------------------------------------------
+
+vi.mock('./Graphics/CursorManager.js', () => ({
+  CursorManager: vi.fn(function (this: any, _configs?: any, _sheetSize?: number, _disableHardware?: boolean) {
+    this.setCursor = vi.fn()
+    this.tick = vi.fn()
+    this.lock = vi.fn()
+    this.unlock = vi.fn()
+    this.render = vi.fn()
+    this.dispose = vi.fn(() => disposeLog.push('CursorManager'))
+    this.cursorNames = []
+    this.currentCursorName = null
+    this.sheetBuilder = {
+      dispose: vi.fn(),
+      current: { releaseBuffer: vi.fn() },
+    }
+  }),
+}))
+
+// ---------------------------------------------------------------------------
 // Mock EchoConnection
 // ---------------------------------------------------------------------------
 
@@ -1652,5 +1673,168 @@ describe('switchMod() — main menu integration', () => {
     expect(game.currentModId).toBe('ra')
 
     game.dispose()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase A: CursorManager (P1-A.3)
+// ---------------------------------------------------------------------------
+
+describe('CursorManager (P1-A.3)', () => {
+  it('creates CursorManager instance during Game.create()', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    expect(game.cursorManager).not.toBeNull()
+    expect(game.cursorManager).toBeDefined()
+    // cursorManager should have setCursor and dispose methods
+    expect(typeof game.cursorManager!.setCursor).toBe('function')
+    expect(typeof game.cursorManager!.dispose).toBe('function')
+
+    game.dispose()
+  })
+
+  it('creates CursorManager during loadMod()', async () => {
+    mockModJson(200)
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+
+    // Before loadMod, cursorManager should be null
+    expect(game.cursorManager).toBeNull()
+
+    await game.loadMod('_test')
+
+    // After loadMod, cursorManager should be created
+    expect(game.cursorManager).not.toBeNull()
+    expect(typeof game.cursorManager!.setCursor).toBe('function')
+  })
+
+  it('setCursor delegates to CursorManager.setCursor', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const spy = game.cursorManager!.setCursor as ReturnType<typeof vi.fn>
+
+    game.setCursor('default')
+    expect(spy).toHaveBeenCalledWith('default')
+
+    game.setCursor('attack')
+    expect(spy).toHaveBeenCalledWith('attack')
+
+    game.setCursor(null)
+    expect(spy).toHaveBeenCalledWith(null)
+
+    game.dispose()
+  })
+
+  it('setCursor handles null cursorManager gracefully', async () => {
+    mockModJson(200)
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game.cursorManager = null
+
+    // Should not throw when cursorManager is null
+    expect(() => game.setCursor('default')).not.toThrow()
+    expect(() => game.setCursor(null)).not.toThrow()
+  })
+
+  it('disposes CursorManager in dispose()', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    expect(game.cursorManager).not.toBeNull()
+    const disposeSpy = game.cursorManager!.dispose as ReturnType<typeof vi.fn>
+
+    game.dispose()
+
+    expect(disposeSpy).toHaveBeenCalledTimes(1)
+    expect(game.cursorManager).toBeNull()
+  })
+
+  it('disposes CursorManager in switchMod() and creates new one', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const originalCm = game.cursorManager!
+    const disposeSpy = originalCm.dispose as ReturnType<typeof vi.fn>
+
+    mockModJson(200, {
+      Metadata: { Title: 'Red Alert', Version: '1.0' },
+      RequiresMods: [],
+      FileSystem: {},
+      Rules: [],
+      Sequences: [],
+      Weapons: [],
+      TileSets: [],
+      Chrome: [],
+      ChromeLayout: [],
+      ChromeMetrics: [],
+      PackageFormats: [],
+      MapFolders: {},
+    })
+
+    await game.switchMod('ra')
+
+    // Old CursorManager should be disposed
+    expect(disposeSpy).toHaveBeenCalledTimes(1)
+
+    // New CursorManager should be created
+    expect(game.cursorManager).not.toBeNull()
+    // Should be a different instance
+    expect(game.cursorManager).not.toBe(originalCm)
+
+    game.dispose()
+  })
+
+  it('handles cursorManager null during switchMod (no world)', async () => {
+    mockModJson(200)
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game._world = null
+    game._worldRenderer = null
+    game.modData = { dispose: vi.fn(), manifest: { id: '_test' } }
+    game.orderManager = {
+      dispose: vi.fn(),
+      connection: { dispose: vi.fn() },
+      tickImmediate: vi.fn(),
+    }
+    game.cursorManager = null
+
+    mockModJson(200, {
+      Metadata: { Title: 'Red Alert', Version: '1.0' },
+      RequiresMods: [],
+      FileSystem: {},
+      Rules: [],
+      Sequences: [],
+      Weapons: [],
+      TileSets: [],
+      Chrome: [],
+      ChromeLayout: [],
+      ChromeMetrics: [],
+      PackageFormats: [],
+      MapFolders: {},
+    })
+
+    // Should not throw — cursorManager null is handled with ?.
+    await expect(game.switchMod('ra')).resolves.toBeUndefined()
   })
 })
