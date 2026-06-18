@@ -20,7 +20,7 @@
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'
-import { CVec } from '../../OpenRA.Game/CVec.js'
+import type { CVec } from '../../OpenRA.Game/CVec.js'
 import { CellCoordsRegion } from '../../OpenRA.Game/Map/CellCoordsRegion.js'
 import type { TerrainTile, ResourceTile } from '../../OpenRA.Game/Map/TileReference.js'
 import { ResourceLayerContentsEmpty } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -212,8 +212,11 @@ export class EditorBlit {
 
     if ((blitFilters & MapBlitFilters.Actors) !== 0) {
       for (const preview of editorActorLayer.previewsInCellRegion(region)) {
-        if (mask === undefined || EditorBlit._actorFootprintOverlapsMask(preview, mask))
-          actors.set(preview.id, preview)
+        if (mask === undefined || EditorBlit._actorFootprintOverlapsMask(preview, mask)) {
+          // C# TryAdd: keep the first actor with a given ID; ignore duplicates
+          if (!actors.has(preview.id))
+            actors.set(preview.id, preview)
+        }
       }
     }
 
@@ -237,6 +240,13 @@ export class EditorBlit {
    *
    * The returned mask uses `cell.Bits` as the set element — the cells are offset
    * by the given CVec (for commit target position computation).
+   *
+   * NOTE: Mask operations assume all cells are on Layer=0 (the ground layer).
+   *   CPos.Bits encodes X, Y, and Layer in a 32-bit integer. Cells on different
+   *   layers (e.g., tunnel or bridge layers) would have different Bits values
+   *   even for the same (X, Y) pair. Editor blit operations currently only
+   *   operate on Layer=0 — multi-layer support would require Layer-aware mask
+   *   comparison (TODO-21.B.6-DEFER-4).
    *
    * @param blitSource — the blit source to compute a mask for
    * @param offset — offset to apply to cell positions (blitPosition - TopLeft)
@@ -340,6 +350,7 @@ export class EditorBlit {
       }
 
       const resourceLayerContents = tile.resourceLayerContents
+      const resType = resourceLayerContents?.type?.trim() ?? ''
 
       // Write terrain tile + height
       if ((this.blitFilters & MapBlitFilters.Terrain) !== 0) {
@@ -350,17 +361,13 @@ export class EditorBlit {
       // Write resources (if the resource type is valid)
       if (
         (this.blitFilters & MapBlitFilters.Resources) !== 0 &&
-        resourceLayerContents !== null &&
-        resourceLayerContents.type.trim() !== '' &&
-        this.resourceLayer.canAddResource(
-          resourceLayerContents.type,
-          position,
-        )
+        resType !== '' &&
+        this.resourceLayer.canAddResource(resType, position)
       ) {
         this.resourceLayer.addResource(
-          resourceLayerContents.type,
+          resType,
           position,
-          resourceLayerContents.density,
+          resourceLayerContents!.density,
         )
       }
     }
@@ -419,6 +426,53 @@ export class EditorBlit {
    */
   revert(): void {
     this.blit(true)
+  }
+
+  // -------------------------------------------------------------------------
+  // TileCount / ActorCount
+  // OpenRA 对照: EditorBlit.TileCount() / EditorBlit.ActorCount()
+  // -------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------
+  // PreviewBlitSource (static)
+  // OpenRA 对照: EditorBlit.PreviewBlitSource(EditorBlitSource, MapBlitFilters, CVec, WorldRenderer, bool)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Generate preview renderables showing what a blit source would look like
+   * at a target offset position.
+   *
+   * OpenRA 对照: EditorBlit.PreviewBlitSource()
+   *
+   * Returns an empty array in Phase B. Full implementation requires:
+   *
+   * TODO-21.B.6-DEFER-1: ITiledTerrainRenderer.RenderPreview() for terrain tile
+   *   preview meshes. The terrain renderer is not yet migrated — render preview
+   *   calls will need ColorRamp-based tinting at the cell center WPos.
+   *
+   * TODO-21.B.6-DEFER-2: IResourceRenderer.RenderPreview() for resource deposit
+   *   preview visuals (billboard sprites or colored quads at cell positions).
+   *
+   * TODO-21.B.6-DEFER-3: CellLayerUtils.CPosToWPos() and CVecToWVec() for
+   *   converting cell coordinates to 3D world-space positions for preview
+   *   placement. These live in the unmigrated MapGenerator namespace.
+   *
+   * @param _blitSource — the blit source to preview
+   * @param _filters — which categories to preview (terrain/resources/actors)
+   * @param _offset — cell offset to apply (target - source top-left)
+   * @param _wr — the world renderer (for terrain/resource/actor render trait access)
+   * @param _stickToGround — if true, use ground height; if false, preserve source heights
+   * @returns empty array (stub — full preview pending deferred renderer migrations)
+   */
+  static previewBlitSource(
+    _blitSource: EditorBlitSource,
+    _filters: MapBlitFilters,
+    _offset: CVec,
+    _wr: unknown,
+    _stickToGround: boolean,
+  ): readonly unknown[] {
+    // TODO-21.B.6-DEFER-1/2/3: Full preview pipeline
+    return []
   }
 
   // -------------------------------------------------------------------------

@@ -418,27 +418,6 @@ describe('EditorBlit', () => {
   // -------------------------------------------------------------------------
 
   describe('Commit', () => {
-    function makeSource(
-      topLeft: CPos,
-      bottomRight: CPos,
-      tileData: Array<{ pos: CPos; terrainType: number; height: number; resType?: string; resDensity?: number }>,
-      actors: MockEditorActorPreview[] = [],
-    ): EditorBlitSource {
-      const region = new CellCoordsRegion(topLeft, bottomRight)
-      const tiles = new Map<string, BlitTile>()
-      for (const d of tileData) {
-        tiles.set(cposKey(d.pos), {
-          terrainTile: tile(d.terrainType, 0),
-          resourceTile: rTile(d.resType ? 1 : 0, d.resDensity ?? 0),
-          resourceLayerContents: d.resType ? { type: d.resType, density: d.resDensity ?? 1 } : null,
-          height: d.height,
-        })
-      }
-      const actorsMap = new Map<string, MockEditorActorPreview>()
-      for (const a of actors) actorsMap.set(a.id, a)
-      return { cellCoords: region, actors: actorsMap as unknown as ReadonlyMap<string, unknown>, tiles } as unknown as EditorBlitSource
-    }
-
     it('copies terrain tiles and heights to target offset', () => {
       const source = makeSource(
         new CPos(0, 0), new CPos(1, 1),
@@ -778,25 +757,43 @@ describe('EditorBlit', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Helper for creating simple EditorBlitSource
+// Helper for creating EditorBlitSource (used by Commit + Revert tests)
 // ---------------------------------------------------------------------------
 
+/** Build an EditorBlitSource with optional resource data and actors. */
+function makeSource(
+  topLeft: CPos,
+  bottomRight: CPos,
+  tileData: Array<{ pos: CPos; terrainType: number; height: number; resType?: string; resDensity?: number }>,
+  actors: MockEditorActorPreview[] = [],
+): EditorBlitSource {
+  const region = new CellCoordsRegion(topLeft, bottomRight)
+  const tiles = new Map<string, BlitTile>()
+  for (const d of tileData) {
+    tiles.set(cposKey(d.pos), {
+      terrainTile: tile(d.terrainType, 0),
+      resourceTile: rTile(d.resType ? 1 : 0, d.resDensity ?? 0),
+      resourceLayerContents: d.resType ? { type: d.resType, density: d.resDensity ?? 1 } : null,
+      height: d.height,
+    })
+  }
+  const actorsMap = new Map<string, MockEditorActorPreview>()
+  for (const a of actors) actorsMap.set(a.id, a)
+  return { cellCoords: region, actors: actorsMap as unknown as ReadonlyMap<string, unknown>, tiles } as unknown as EditorBlitSource
+}
+
+/**
+ * Simplified variant of {@link makeSource} for terrain-only tile data
+ * (no resource layer contents or resource tile data).
+ */
 function makeSimpleSource(
   topLeft: CPos,
   bottomRight: CPos,
   tileData: Array<{ pos: CPos; terrainType: number; height: number }>,
   actors: MockEditorActorPreview[] = [],
 ): EditorBlitSource {
-  const tiles = new Map<string, BlitTile>()
-  for (const d of tileData) {
-    tiles.set(cposKey(d.pos), {
-      terrainTile: tile(d.terrainType, 0),
-      resourceTile: rTile(0, 0),
-      resourceLayerContents: null,
-      height: d.height,
-    })
-  }
-  const actorsMap = new Map<string, MockEditorActorPreview>()
-  for (const a of actors) actorsMap.set(a.id, a)
-  return { cellCoords: new CellCoordsRegion(topLeft, bottomRight), actors: actorsMap as unknown as ReadonlyMap<string, unknown>, tiles } as unknown as EditorBlitSource
+  return makeSource(topLeft, bottomRight,
+    tileData.map(d => ({ pos: d.pos, terrainType: d.terrainType, height: d.height })),
+    actors,
+  )
 }
