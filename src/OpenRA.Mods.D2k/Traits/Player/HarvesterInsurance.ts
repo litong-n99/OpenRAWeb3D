@@ -10,6 +10,8 @@
  */
 
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { FreeActorWithDelivery } from '../../../OpenRA.Mods.Common/Traits/Buildings/FreeActorWithDelivery.js'
+import { CPos } from '../../../OpenRA.Game/CPos.js'
 
 // ---------------------------------------------------------------------------
 // Forward interfaces for unmigrated dependencies
@@ -21,32 +23,6 @@ import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js
  */
 export interface IHarvesterLike {
   readonly info: { readonly name?: string }
-}
-
-/** Minimal interface for FreeActorWithDelivery trait.
- *
- * OpenRA 对照: FreeActorWithDelivery trait
- *
-* Replace with full FreeActorWithDelivery when migrated.
- */
-export interface IFreeActorWithDeliveryLike {
-  readonly info: IFreeActorWithDeliveryInfoLike | null
-  doDelivery(
-    location: { X: number; Y: number },
-    actorName: string,
-    deliveringActor: string,
-  ): void
-}
-
-/** Minimal interface for FreeActorWithDeliveryInfo.
- *
- * OpenRA 对照: FreeActorWithDeliveryInfo
- */
-export interface IFreeActorWithDeliveryInfoLike {
-  readonly hasTraitInfo?: (name: string) => boolean
-  readonly actor?: string
-  readonly deliveringActor?: string
-  readonly deliveryOffset?: { X: number; Y: number }
 }
 
 /** Minimal interface for Refinery trait (duck-typed).
@@ -144,22 +120,22 @@ export class HarvesterInsurance {
 
         const rAny = r as unknown as Record<string, unknown>
         const delivery = typeof rAny['trait'] === 'function'
-          ? (rAny['trait'] as (name: string) => unknown)('FreeActorWithDelivery') as IFreeActorWithDeliveryLike | undefined
+          ? (rAny['trait'] as (name: string) => unknown)('FreeActorWithDelivery') as FreeActorWithDelivery | undefined
           : undefined
         if (!delivery || !delivery.info) continue
 
         const deliveryInfo = delivery.info
         const loc = (rAny['location'] as { X: number; Y: number } | undefined) ?? { X: 0, Y: 0 }
-        const deliveryOffset = deliveryInfo.deliveryOffset ?? { X: 0, Y: 0 }
-        const deliveryPos = {
-          X: loc.X + deliveryOffset.X,
-          Y: loc.Y + deliveryOffset.Y,
-        }
+        const deliveryOffset = deliveryInfo.deliveryOffset
+        const deliveryPos = new CPos(
+          loc.X + deliveryOffset.X,
+          loc.Y + deliveryOffset.Y,
+        )
 
         delivery.doDelivery(
           deliveryPos,
-          deliveryInfo.actor ?? 'harvester',
-          deliveryInfo.deliveringActor ?? 'carryall',
+          deliveryInfo.actor,
+          deliveryInfo.deliveringActor,
         )
         return
       }

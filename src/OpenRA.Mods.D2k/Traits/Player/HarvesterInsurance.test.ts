@@ -7,6 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+import { CPos } from '../../../OpenRA.Game/CPos.js'
+
 import {
   HarvesterInsurance,
   HarvesterInsuranceInfo,
@@ -126,7 +128,7 @@ describe('HarvesterInsurance', () => {
       insurance.tryActivate()
 
       expect(doDelivery).toHaveBeenCalledWith(
-        { X: 6, Y: 12 }, // location + deliveryOffset
+        new CPos(6, 12), // location + deliveryOffset (CPos from trait)
         'harvester',
         'carryall',
       )
