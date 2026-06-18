@@ -1,60 +1,49 @@
+/**
+ * main.ts — OpenRAWeb3D 应用入口
+ * OpenRA 对照: OpenRA/OpenRA.Game/Program.cs（C# CLI 入口）
+ *
+ * 核心范式转换:
+ * - C# Program.Main(args) CLI 入口 → 浏览器 URL 路由 SPA 入口
+ * - C# Game.InitializeAndRun(args) 静态调用 → Router.dispatch() + ModSelector.show()
+ *
+ * Phase A: 建立路由基础设施，Mod 选择首页。
+ * 游戏引擎（Babylon.js、Renderer 等）在此阶段不被加载。
+ */
+
 import './style.css'
-import typescriptLogo from './assets/typescript.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import { setupCounter } from './counter.ts'
+import { Router } from './OpenRA.Game/Router.js'
+import { ModSelector } from './OpenRA.Game/ModSelector.js'
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${typescriptLogo}" class="framework" alt="TypeScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.ts</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+// ---------------------------------------------------------------------------
+// Application Entry
+// ---------------------------------------------------------------------------
 
-<div class="ticks"></div>
+const router = new Router()
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://www.typescriptlang.org" target="_blank">
-          <img class="button-icon" src="${typescriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+// 首页 → Mod 选择器
+router.on('/', () => {
+  const container = document.getElementById('mod-selector')
+  if (container) {
+    ModSelector.show(container)
+  }
+})
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+// 游戏启动 → Phase B 中实现
+// NOTE: Phase A 中 Game 类未实现，launchMod 显示加载状态后静默等待
+router.on('/play/:modId', (params) => {
+  ModSelector.launchMod(params['modId'])
+})
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+// Editor placeholder — Phase D 中扩展
+router.on('/editor/:modId', (params) => {
+  const container = document.getElementById('mod-selector')!
+  container.innerHTML = `
+    <div style="text-align:center;padding:4rem">
+      <h1 style="color:#eee;margin-bottom:1rem">Editor</h1>
+      <p style="color:#aaa">Coming soon — ${params['modId']} map editor</p>
+      <a href="/" style="color:#6688ee;margin-top:1rem;display:inline-block">Back to Mod Selector</a>
+    </div>`
+})
+
+// 初始分发
+router.dispatch()

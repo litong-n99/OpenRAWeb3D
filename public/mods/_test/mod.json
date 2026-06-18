@@ -1,0 +1,18 @@
+{
+  "Metadata": {
+    "Title": "Test Mod",
+    "Version": "0.1.0",
+    "Hidden": true
+  },
+  "RequiresMods": [],
+  "FileSystem": {},
+  "Rules": [],
+  "Sequences": [],
+  "Weapons": [],
+  "TileSets": [],
+  "Chrome": [],
+  "ChromeLayout": [],
+  "ChromeMetrics": [],
+  "PackageFormats": [],
+  "MapFolders": {}
+}

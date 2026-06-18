@@ -60,10 +60,10 @@ export default defineConfig(({ command }) => {
   const isDev = command === 'serve'
 
   return {
-    // Disable SPA HTML fallback — every HTML file is served at its
-    // filesystem path. / → index.html, /test/ → src/__e2e__/manual/index.html (via rewrite)
-    appType: 'mpa',
-
+    // SPA mode (Vite default) — serves index.html for all non-asset, non-test URLs.
+    // The testRoutesPlugin middleware intercepts /test/... requests before the
+    // SPA fallback, so /test/ pages continue to work in dev mode.
+    //
     // Exclude test pages from production builds. Only the main app
     // entry point (index.html) is included in the rollup input.
     build: {
