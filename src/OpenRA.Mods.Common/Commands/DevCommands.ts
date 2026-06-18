@@ -13,9 +13,33 @@
  * 命令通过 WorldLoaded 向聊天控制台注册，由聊天解析器调用。
  */
 
-import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { IGameActor, ITraitInfo } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import type { IActorRef } from '../../OpenRA.Game/Traits/IActorRef.js'
 import type { OrderStub } from '../../OpenRA.Game/World.js'
+import { Target } from '../../OpenRA.Game/Traits/Target.js'
 import type { CommandRegistry } from './DebugVisualizationCommands.js'
+
+// ---------------------------------------------------------------------------
+// DevCommandsInfo — trait 配置标记（对应 OpenRA TraitInfo<DevCommands>）
+// ---------------------------------------------------------------------------
+
+/**
+ * Trait 配置，用于将 DevCommands 附加到 WorldActor。
+ *
+ * OpenRA 对照: DevCommandsInfo : TraitInfo<DevCommands>
+ *
+ * 在 C# 中，此 TraitInfo 通过反射创建 trait 实例。
+ * 在 TS 中，它是一个标记类，指示 WorldActor 应接收此 trait。
+ *
+ * @todo 当完整的 TraitInfo 注册系统（TODO-3.C.1）可用时集成。
+ */
+export class DevCommandsInfo implements ITraitInfo {
+  readonly instanceName?: string
+
+  constructor(params: { instanceName?: string } = {}) {
+    this.instanceName = params.instanceName
+  }
+}
 
 // ---------------------------------------------------------------------------
 // DeveloperModeStub — 开发者模式的最小接口（对应 OpenRA DeveloperMode）
@@ -548,10 +572,10 @@ export class DevCommands {
     for (const actor of selection.actors) {
       if (actor.isDead) continue
 
-      // NOTE: 原始 OpenRA 检查 actor.Info.HasTraitInfo<GainsExperienceInfo>()。
-      // 在 TS 中，我们跳过此检查，因为运行时 trait 检查需要完整的
-      // TraitDictionary 集成。GainsExperience trait 的 resolveOrder 将忽略
-      // 没有该 trait 的角色的订单。
+      // 检查角色是否有 GainsExperienceInfo trait（对应 OpenRA HasTraitInfo<GainsExperienceInfo>()）
+      const gainsExp = actor.traitsImplementing?.('GainsExperienceInfo')
+      if (!gainsExp || gainsExp.length === 0) continue
+
       const levelupOrder: OrderStub = {
         orderName: LevelUpOrderName,
         targetString: '',
@@ -600,13 +624,6 @@ export class DevCommands {
    * 治疗选中的角色。
    *
    * OpenRA 对照: DevCommands.Heal(string, World)
-   *
-   * NOTE: 原始 OpenRA 使用 Target.FromActor(actor) 发出治疗订单。
-   * 由于 OrderStub 不支持 target 字段，我们为每个选中的角色
-   * 发出一个治疗订单，使用 subjectId 概念（通过 targetString 传递
-   * 角色 ID）。DeveloperMode.resolveOrder 将在收到时解析。
-   *
-   * TODO-21.D: 当 OrderStub 扩展为包含 target 后，更新为使用 Target.FromActor()。
    */
   static handleHeal(_arg: string, world: DevCommandsWorld): void {
     const selection = world.selection
@@ -615,11 +632,11 @@ export class DevCommands {
     for (const actor of selection.actors) {
       if (actor.isDead) continue
 
-      // NOTE: 使用 targetString 传递目标角色 ID，因为 OrderStub 不支持 target。
       const order: OrderStub = {
         orderName: DevOrders.Heal,
-        targetString: String(actor.actorId),
+        targetString: '',
         extraData: 0,
+        target: Target.fromActor(actor as unknown as IActorRef),
       }
       world.issueOrder(order)
     }
@@ -637,13 +654,11 @@ export class DevCommands {
     for (const actor of selection.actors) {
       if (actor.isDead) continue
 
-      // NOTE: 使用 targetString 传递目标角色 ID。
-      // 原始 OpenRA 通过 arg 参数设置 TargetString 为伤害类型；
-      // 由于 OrderStub 的限制，我们通过 targetString 传递角色 ID。
       const order: OrderStub = {
         orderName: DevOrders.Kill,
-        targetString: String(actor.actorId),
+        targetString: '',
         extraData: 0,
+        target: Target.fromActor(actor as unknown as IActorRef),
       }
       world.issueOrder(order)
     }
@@ -661,11 +676,11 @@ export class DevCommands {
     for (const actor of selection.actors) {
       if (actor.disposed) continue
 
-      // NOTE: 使用 targetString 传递目标角色 ID。
       const order: OrderStub = {
         orderName: DevOrders.Dispose,
-        targetString: String(actor.actorId),
+        targetString: '',
         extraData: 0,
+        target: Target.fromActor(actor as unknown as IActorRef),
       }
       world.issueOrder(order)
     }

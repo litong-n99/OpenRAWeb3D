@@ -14,7 +14,30 @@
 
 // NOTE: IGameActor 从 TraitsInterfaces 导入（非 Actor.js），
 // 以避免与 GameActor 类的循环依赖。
-// WorldRendererStub 未使用——仅保留用于 WorldLoaded 签名的文档目的。
+
+import type { ITraitInfo } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+
+// ---------------------------------------------------------------------------
+// DebugVisualizationCommandsInfo — trait 配置标记（对应 OpenRA TraitInfo<DebugVisualizationCommands>）
+// ---------------------------------------------------------------------------
+
+/**
+ * Trait 配置，用于将 DebugVisualizationCommands 附加到 WorldActor。
+ *
+ * OpenRA 对照: DebugVisualizationCommandsInfo : TraitInfo<DebugVisualizationCommands>
+ *
+ * 在 C# 中，此 TraitInfo 通过反射创建 trait 实例。
+ * 在 TS 中，它是一个标记类，指示 WorldActor 应接收此 trait。
+ *
+ * @todo 当完整的 TraitInfo 注册系统（TODO-3.C.1）可用时集成。
+ */
+export class DebugVisualizationCommandsInfo implements ITraitInfo {
+  readonly instanceName?: string
+
+  constructor(params: { instanceName?: string } = {}) {
+    this.instanceName = params.instanceName
+  }
+}
 
 // ---------------------------------------------------------------------------
 // DebugVisualizations — 调试可视化状态接口（对应 OpenRA DebugVisualizations trait）

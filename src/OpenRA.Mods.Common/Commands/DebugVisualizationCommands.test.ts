@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 
 import {
   DebugVisualizationCommands,
+  DebugVisualizationCommandsInfo,
   type DebugVisualizations,
   type CommandRegistry,
 } from './DebugVisualizationCommands'
@@ -467,6 +468,28 @@ describe('DebugVisualizationCommands', () => {
       expect(() => {
         cmd.invokeCommand('render-geometry', '')
       }).not.toThrow()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // DebugVisualizationCommandsInfo — TraitInfo marker
+  // -----------------------------------------------------------------------
+
+  describe('DebugVisualizationCommandsInfo', () => {
+    it('creates with default instanceName undefined', () => {
+      const info = new DebugVisualizationCommandsInfo()
+      expect(info.instanceName).toBeUndefined()
+    })
+
+    it('creates with explicit instanceName', () => {
+      const info = new DebugVisualizationCommandsInfo({ instanceName: 'my-debug-cmds' })
+      expect(info.instanceName).toBe('my-debug-cmds')
+    })
+
+    it('implements ITraitInfo marker', () => {
+      const info = new DebugVisualizationCommandsInfo()
+      // 如果没有 instanceName 方法，这至少验证 info 的类型安全性
+      expect('instanceName' in info).toBe(true)
     })
   })
 })

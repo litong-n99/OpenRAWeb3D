@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 
 import {
   DevCommands,
+  DevCommandsInfo,
   DevOrders,
   DevCommandNames,
   LevelUpCommandName,
@@ -44,7 +45,13 @@ function createMockActor(
     isDead: false,
     disposed: false,
     isInWorld: true,
+    generation: 1,
     destroy(): void {},
+    traitsImplementing(interfaceId: string): unknown[] {
+      // 默认返回 GainsExperienceInfo 以支持 LevelUp 命令
+      if (interfaceId === 'GainsExperienceInfo') return [{ level: 0 }]
+      return []
+    },
     ...overrides,
   } as unknown as IGameActor
 }
@@ -603,6 +610,20 @@ describe('DevCommands', () => {
       DevCommands.handleLevelUp('1', world)
       expect(world.issuedOrders.length).toBe(0)
     })
+
+    it('skips actors without GainsExperienceInfo trait', () => {
+      const hasTrait = createMockActor(1)
+      const noTrait = createMockActor(2, {
+        traitsImplementing: () => [],
+      } as Partial<IGameActor>)
+      const world = createMockWorld({
+        selection: createMockSelection([hasTrait, noTrait]),
+      })
+
+      DevCommands.handleLevelUp('5', world)
+
+      expect(world.issuedOrders.length).toBe(1)
+    })
   })
 
   // -----------------------------------------------------------------------
@@ -666,9 +687,10 @@ describe('DevCommands', () => {
 
       expect(world.issuedOrders.length).toBe(2)
       expect(world.issuedOrders[0].orderName).toBe(DevOrders.Heal)
-      expect(world.issuedOrders[0].targetString).toBe('10')
+      expect(world.issuedOrders[0].target).toBeDefined()
+      expect(world.issuedOrders[0].targetString).toBe('')
       expect(world.issuedOrders[1].orderName).toBe(DevOrders.Heal)
-      expect(world.issuedOrders[1].targetString).toBe('20')
+      expect(world.issuedOrders[1].target).toBeDefined()
     })
 
     it('skips dead actors', () => {
@@ -684,7 +706,7 @@ describe('DevCommands', () => {
       DevCommands.handleHeal('', world)
 
       expect(world.issuedOrders.length).toBe(1)
-      expect(world.issuedOrders[0].targetString).toBe('2')
+      expect(world.issuedOrders[0].target).toBeDefined()
     })
 
     it('does nothing when selection is null', () => {
@@ -718,9 +740,10 @@ describe('DevCommands', () => {
 
       expect(world.issuedOrders.length).toBe(2)
       expect(world.issuedOrders[0].orderName).toBe(DevOrders.Kill)
-      expect(world.issuedOrders[0].targetString).toBe('5')
+      expect(world.issuedOrders[0].target).toBeDefined()
+      expect(world.issuedOrders[0].targetString).toBe('')
       expect(world.issuedOrders[1].orderName).toBe(DevOrders.Kill)
-      expect(world.issuedOrders[1].targetString).toBe('6')
+      expect(world.issuedOrders[1].target).toBeDefined()
     })
 
     it('skips dead actors', () => {
@@ -768,9 +791,10 @@ describe('DevCommands', () => {
 
       expect(world.issuedOrders.length).toBe(2)
       expect(world.issuedOrders[0].orderName).toBe(DevOrders.Dispose)
-      expect(world.issuedOrders[0].targetString).toBe('7')
+      expect(world.issuedOrders[0].target).toBeDefined()
+      expect(world.issuedOrders[0].targetString).toBe('')
       expect(world.issuedOrders[1].orderName).toBe(DevOrders.Dispose)
-      expect(world.issuedOrders[1].targetString).toBe('8')
+      expect(world.issuedOrders[1].target).toBeDefined()
     })
 
     it('skips disposed actors', () => {
@@ -786,7 +810,7 @@ describe('DevCommands', () => {
       DevCommands.handleDispose('', world)
 
       expect(world.issuedOrders.length).toBe(1)
-      expect(world.issuedOrders[0].targetString).toBe('2')
+      expect(world.issuedOrders[0].target).toBeDefined()
     })
 
     it('does nothing when selection is null', () => {
@@ -887,6 +911,27 @@ describe('DevCommands', () => {
         expect(typeof value).toBe('string')
         expect(value.length).toBeGreaterThan(0)
       }
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // DevCommandsInfo — TraitInfo marker
+  // -----------------------------------------------------------------------
+
+  describe('DevCommandsInfo', () => {
+    it('creates with default instanceName undefined', () => {
+      const info = new DevCommandsInfo()
+      expect(info.instanceName).toBeUndefined()
+    })
+
+    it('creates with explicit instanceName', () => {
+      const info = new DevCommandsInfo({ instanceName: 'my-dev-cmds' })
+      expect(info.instanceName).toBe('my-dev-cmds')
+    })
+
+    it('has instanceName property (ITraitInfo marker)', () => {
+      const info = new DevCommandsInfo()
+      expect('instanceName' in info).toBe(true)
     })
   })
 })

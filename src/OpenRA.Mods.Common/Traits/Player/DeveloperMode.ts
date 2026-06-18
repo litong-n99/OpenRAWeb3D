@@ -396,7 +396,7 @@ export class DeveloperMode
 
     // Check if single player (only one non-bot player)
     const players = world.players
-    if (players) {
+    if (Array.isArray(players)) {
       let nonBotCount = 0
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const p of players as any[]) {
@@ -725,7 +725,7 @@ export class DeveloperMode
     const world = self.world as any
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const players = world?.players as any[]
-    if (!players) return
+    if (!Array.isArray(players)) return
 
     for (const player of players) {
       if (player.playable !== false) {

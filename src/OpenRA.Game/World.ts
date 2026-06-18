@@ -133,6 +133,14 @@ export interface OrderStub {
   readonly orderName: string
   readonly targetString: string
   readonly extraData: number
+  /** Optional target for actor-targeted orders (Heal, Kill, Dispose).
+   *
+   * OpenRA 对照: Order.Target
+   *
+   * Added for Phase D DevCommands integration (TODO-21.D.4).
+   * Uses inline import to avoid circular dependency with Target.ts.
+   */
+  readonly target?: import('./Traits/Target.js').Target
 }
 
 /**
