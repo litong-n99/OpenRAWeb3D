@@ -10,6 +10,7 @@ import { AttackSwallow, AttackSwallowInfo, SwallowTarget } from './AttackSwallow
 import { AttackFrontal } from '../../OpenRA.Mods.Common/Traits/Attack/AttackFrontal'
 import { AttackBaseInfo } from '../../OpenRA.Mods.Common/Traits/Attack/AttackBase'
 import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces'
+import type { GameActor } from '../../OpenRA.Game/Actor.js'
 import { Target } from '../../OpenRA.Game/Traits/Target'
 import { CPos } from '../../OpenRA.Game/CPos'
 import { WPos } from '../../OpenRA.Game/WPos'
@@ -25,6 +26,11 @@ function mockActor(): IGameActor {
     world: {},
     centerPosition: WPos.Zero,
   } as unknown as IGameActor
+}
+
+/** Cast IGameActor to GameActor for Activity constructors. */
+function asGameActor(a: IGameActor): GameActor {
+  return a as unknown as GameActor
 }
 
 // ---------------------------------------------------------------------------
@@ -79,44 +85,33 @@ describe('AttackSwallow', () => {
 })
 
 describe('SwallowTarget', () => {
-  it('creates a SwallowTarget activity stub', () => {
+  it('creates a SwallowTarget extending Attack', () => {
     const info = new AttackSwallowInfo()
     const self = mockActor()
     const swallow = new AttackSwallow(self, info)
     const target = Target.fromCell(new CPos(0, 0))
 
-    const st = new SwallowTarget(swallow, self, target, false, false)
+    const st = new SwallowTarget(swallow, asGameActor(self), target, false, false)
 
-    // Tick returns false (not complete)
-    const done = st.tick(self)
-    expect(done).toBe(false)
+    // Tick via Attack base class (expects GameActor)
+    const done = st.tick(asGameActor(self))
+    expect(done).toBe(true) // No armaments → complete
   })
 
-  it('SwallowTarget returns true when cancelled', () => {
+  it('SwallowTarget handles invalid target', () => {
     const info = new AttackSwallowInfo()
     const self = mockActor()
     const swallow = new AttackSwallow(self, info)
     const st = new SwallowTarget(
       swallow,
-      self,
+      asGameActor(self),
       Target.Invalid as Target,
       false,
       false,
     )
 
-    st.cancel()
-    const done = st.tick(self)
-    expect(done).toBe(true)
-  })
-
-  it('SwallowTarget returns true when target is Invalid', () => {
-    const info = new AttackSwallowInfo()
-    const self = mockActor()
-    const swallow = new AttackSwallow(self, info)
-    const st = new SwallowTarget(swallow, self, Target.Invalid as Target, false, false)
-
-    // Invalid target should cause immediate completion
-    const done = st.tick(self)
+    // Attack base class handles invalid target
+    const done = st.tick(asGameActor(self))
     expect(done).toBe(true)
   })
 })

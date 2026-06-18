@@ -13,14 +13,16 @@
 
 import { Target, TargetType } from '../../OpenRA.Game/Traits/Target'
 import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces'
+import type { GameActor } from '../../OpenRA.Game/Actor.js'
 import {
   AttackFrontal,
   AttackFrontalInfo,
 } from '../../OpenRA.Mods.Common/Traits/Attack/AttackFrontal'
-import { AttackSource } from '../../OpenRA.Mods.Common/Traits/Attack/AttackBase'
+import { AttackSource, type AttackBase } from '../../OpenRA.Mods.Common/Traits/Attack/AttackBase'
 import type { Armament } from '../../OpenRA.Mods.Common/Traits/Armament'
 import { SwallowActor } from '../Activities/SwallowActor'
 import type { Sandworm } from './Sandworm'
+import { Attack } from '../../OpenRA.Mods.Common/Activities/Attack.js'
 
 // ---------------------------------------------------------------------------
 // AttackSwallowInfo
@@ -195,7 +197,7 @@ export class AttackSwallow extends AttackFrontal {
   ): unknown {
     return new SwallowTarget(
       this,
-      self,
+      self as unknown as GameActor,
       target,
       allowMove,
       forceAttack,
@@ -264,28 +266,23 @@ export class AttackSwallow extends AttackFrontal {
  *
  * OpenRA 对照: AttackSwallow.SwallowTarget (inner sealed class, extends Attack)
  *
- * Simplified stub — full Attack activity (turning, movement toward target,
- * then calling DoAttack) is deferred (TODO-8.D.ATTACKFRONTAL-ACT).
- * This stub calls DoAttack directly when the actor is ready.
+ * Extends the full Attack activity which handles approach, movement,
+ * turning toward target, and attack orchestration. Overrides:
+ * - RecalculateTarget: worms ignore visibility
+ * - DoAttack: delegates to AttackSwallow.DoAttack for swallow-specific logic
  *
  * NOTE: Worms ignore visibility, so don't need to recalculate targets.
  */
-export class SwallowTarget {
+export class SwallowTarget extends Attack {
   /** The AttackSwallow trait that owns this activity. */
-  private readonly _attack: AttackFrontal
-
-  /** The actor performing the attack. */
-  private readonly _self: IGameActor
+  private readonly _attackSwallow: AttackFrontal
 
   /** The target to swallow. */
-  private readonly _target: Target
-
-  /** Cancel guard. */
-  private _isCanceling: boolean = false
+  private readonly _swallowTarget: Target
 
   // ---------------------------------------------------------------------------
   // Construction
-  // OpenRA 对照: SwallowTarget(Actor, Target, bool allowMovement, bool forceAttack)
+  // OpenRA 对照: SwallowTarget(Actor self, in Target target, bool allowMovement, bool forceAttack) : base(self, target, allowMovement, forceAttack)
   // ---------------------------------------------------------------------------
 
   /** Create a SwallowTarget activity.
@@ -300,51 +297,53 @@ export class SwallowTarget {
    */
   constructor(
     attack: AttackFrontal,
-    self: IGameActor,
+    self: GameActor,
     target: Target,
-    _allowMovement: boolean,
-    _forceAttack: boolean,
+    allowMovement: boolean,
+    forceAttack: boolean,
   ) {
-    this._attack = attack
-    this._self = self
-    this._target = target
+    super(self, target, allowMovement, forceAttack)
+    this._attackSwallow = attack
+    this._swallowTarget = target
   }
 
   // ---------------------------------------------------------------------------
-  // Tick
-  // OpenRA 对照: Attack.Tick(Actor)
+  // RecalculateTarget
+  // OpenRA 对照: SwallowTarget.RecalculateTarget → targetIsHiddenActor = false
   // ---------------------------------------------------------------------------
 
-  /** Execute one tick of the activity.
+  /** Worms ignore visibility, so no target recalculation needed.
    *
-   * OpenRA 对照: Attack.Tick(Actor)
+   * OpenRA 对照: SwallowTarget.RecalculateTarget(Actor, out bool) [override]
    *
-   * Worms ignore visibility, so target recalculation is not needed.
-   * Calls DoAttack directly when the actor is ready.
-   *
-   * @returns true if the activity is complete
+   * @returns [original target, false (target is never hidden)]
    */
-  tick(_self: IGameActor): boolean {
-    if (this._isCanceling || !this._target.isValidFor(this._self as unknown as never)) {
-      return true
-    }
-
-    this._attack.doAttack(this._self, this._target)
-    return false
+  protected override recalculateTarget(_self: GameActor): [Target, boolean] {
+    // NOTE: Worms ignore visibility, so don't need to recalculate targets
+    return [this._swallowTarget, false]
   }
 
   // ---------------------------------------------------------------------------
-  // Cancel
+  // DoAttack
+  // OpenRA 对照: SwallowTarget.DoAttack → attack.DoAttack(self, target)
   // ---------------------------------------------------------------------------
 
-  /** Cancel this activity. */
-  cancel(): void {
-    this._isCanceling = true
+  /** Delegate to AttackSwallow's DoAttack for swallow-specific logic.
+   *
+   * OpenRA 对照: SwallowTarget.DoAttack(Actor, AttackFrontal, IEnumerable<Armament>) [override]
+   *
+   * @param self — the actor
+   * @param _attack — the attack trait (unused; we use our specific swallow attack)
+   * @param _armaments — selected armaments (unused; AttackSwallow handles this)
+   */
+  protected override doAttack(
+    self: GameActor,
+    _attack: AttackBase,
+    _armaments: Armament[],
+  ): void {
+    this._attackSwallow.doAttack(
+      self as unknown as IGameActor,
+      this._swallowTarget,
+    )
   }
-
-  /** Queue a follow-up activity. */
-  queue(_activity: unknown): void { /* no-op */ }
-
-  /** Handle actor disposal. */
-  onActorDisposeOuter(_actor: IGameActor): void { /* no-op */ }
 }
