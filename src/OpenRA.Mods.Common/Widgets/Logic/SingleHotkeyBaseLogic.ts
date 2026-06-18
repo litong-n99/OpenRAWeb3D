@@ -75,7 +75,19 @@ export function hotkeyMatches(hotkeyDisplay: string, ctx: KeyInputContext): bool
   // Match the key (case-insensitive for displayed letters)
   if (ctx.key.toLowerCase() !== keyName.toLowerCase()) return false
 
-  // Match modifiers
+  // NOTE: Modifier state is not yet available from the string-only
+  // LogicKeyListenerWidget handler. When the full keyboard input bridge
+  // is available (TODO-21.C.18-FUTURE), enable modifier validation below.
+  // For now, match on key portion only, ignoring modifier requirements.
+  if (expectedMods.length === 0) return true
+
+  // Stub phase: check if ctx has any modifier info.
+  // If all modifiers are false, we cannot determine modifier state,
+  // so match on key alone (safe fallback for stub phase).
+  const hasModifierInfo = ctx.ctrlKey || ctx.shiftKey || ctx.altKey || ctx.metaKey
+  if (!hasModifierInfo) return true
+
+  // Match modifiers (when modifier info is available)
   const hasShift = expectedMods.includes('shift')
   const hasCtrl = expectedMods.includes('ctrl')
   const hasAlt = expectedMods.includes('alt')

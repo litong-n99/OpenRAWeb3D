@@ -551,12 +551,12 @@ export class SaveMapLogic extends ChromeLogic {
     this._map.author = this._authorField.text
 
     // Apply actor and player definitions (OpenRA 对照: line 190-194)
-    // NOTE: TypeScript Map does not have actorDefinitions/playerDefinitions setters.
-    // These would be applied to the serialized output via the save pipeline.
-    // The MiniYAML data is stored for the save implementation to consume.
-    // TODO-21.C.9-DEFER-4: Apply definitions when writable package is implemented
-    // if (this._actorDefinitions) map.actorDefinitions = this._actorDefinitions;
-    // if (this._playerDefinitions) map.playerDefinitions = this._playerDefinitions;
+    if (this._actorDefinitions) {
+      ;(this._map as unknown as Record<string, unknown>).actorDefinitions = this._actorDefinitions
+    }
+    if (this._playerDefinitions) {
+      ;(this._map as unknown as Record<string, unknown>).playerDefinitions = this._playerDefinitions
+    }
 
     Ui.closeWindow()
     this._onExit()
@@ -591,7 +591,7 @@ export class SaveMapLogic extends ChromeLogic {
     }
 
     // Pass the map's UID to the onSave callback (OpenRA 对照: onSave(map.Uid))
-    this._onSave(this._mapUid)
+    this._onSave(this._map.uid || this._mapUid)
   }
 
   // -------------------------------------------------------------------------

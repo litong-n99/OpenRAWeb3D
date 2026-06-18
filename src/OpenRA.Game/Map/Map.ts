@@ -183,6 +183,12 @@ export class Map {
   mapFormat: number
   readonly tileFormat: number = 2
 
+  /** Unique map identifier (computed from package or set explicitly).
+   *
+   * OpenRA 对照: Map.Uid { get; private set; }
+   */
+  uid = ''
+
   // -------------------------------------------------------------------------
   // Standard yaml metadata
   // -------------------------------------------------------------------------

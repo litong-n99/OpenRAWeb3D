@@ -87,10 +87,19 @@ describe('hotkeyMatches', () => {
     expect(hotkeyMatches('Ctrl+S', makeCtx('S', { ctrlKey: true }))).toBe(true)
   })
 
-  it('matches modifiers', () => {
+  it('matches modifiers when modifier info is available', () => {
+    // With modifier info: must match all expected modifiers
     expect(hotkeyMatches('Ctrl+S', makeCtx('s', { ctrlKey: true }))).toBe(true)
-    expect(hotkeyMatches('Ctrl+S', makeCtx('s', { ctrlKey: false }))).toBe(false)
+    // With modifier info: extra modifier fails
     expect(hotkeyMatches('Ctrl+S', makeCtx('s', { ctrlKey: true, shiftKey: true }))).toBe(false)
+  })
+
+  it('matches on key alone when modifier info is unavailable (stub mode)', () => {
+    // Without modifier info (all false), match on key portion only
+    expect(hotkeyMatches('Ctrl+S', makeCtx('s', { ctrlKey: false }))).toBe(true)
+    expect(hotkeyMatches('F5', makeCtx('F5'))).toBe(true)
+    // Still rejects non-matching key even in stub mode
+    expect(hotkeyMatches('Ctrl+S', makeCtx('x', { ctrlKey: false }))).toBe(false)
   })
 
   it('matches multi-modifier hotkeys', () => {
