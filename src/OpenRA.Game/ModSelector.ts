@@ -32,9 +32,9 @@ export interface ModEntry {
  * TODO-22.B.1: 移至 Game.ts 作为正式枚举定义
  */
 export const WorldType = {
-  Regular: 'regular',
-  Shellmap: 'shellmap',
-  Editor: 'editor',
+  Regular: 'Regular',
+  Shellmap: 'Shellmap',
+  Editor: 'Editor',
 } as const
 
 export type WorldType = (typeof WorldType)[keyof typeof WorldType]
@@ -215,27 +215,36 @@ export class ModSelector {
       if (loadingBar) loadingBar.style.width = `${pct}%`
     }
 
-    setProgress(`Loading engine for ${modId}...`, 10)
-
-    // NOTE: Phase A — Game 类未实现，此处显示 loading 后静默等待。
-    // Phase B 将替换为:
-    //   const { Game } = await import('../OpenRA.Game/Game.js')
-    //   await Game.create(canvas, modId, worldType)
-
+    // Phase B: 动态导入 Game 类并调用 Game.create()
+    // 使用动态 import() 确保游戏引擎（包括 Babylon.js）延迟加载
     try {
-      // Phase A stub: 显示渐进式加载进度，为 Phase B 准备好调用链
-      // TODO-22.B.1: worldType 传递给 Game.create()
-      await new Promise(resolve => setTimeout(resolve, 100))
-      setProgress(`Initializing ${worldType} mode...`, 40)
-      await new Promise(resolve => setTimeout(resolve, 100))
-      setProgress('Starting shellmap...', 70)
-      await new Promise(resolve => setTimeout(resolve, 100))
-      setProgress('Ready — engine stub (Phase B)', 100)
-      // Phase B 将在此处调用 Game.create(canvas, modId, worldType)
+      // 准备 canvas
+      const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null
+      if (!canvas) {
+        throw new Error('Canvas element #game-canvas not found in DOM')
+      }
+      canvas.style.display = 'block'
+
+      setProgress('Loading engine...', 15)
+
+      const { Game } = await import('./Game.js')
+
+      setProgress(`Loading mod '${modId}'...`, 30)
+
+      await Game.create(canvas, modId, worldType)
+
+      setProgress('Ready', 100)
+
+      // 短暂显示完成状态后隐藏加载遮罩
+      await new Promise(resolve => setTimeout(resolve, 300))
+      if (overlay) {
+        overlay.style.display = 'none'
+      }
     } catch (err) {
       setProgress(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`, 0)
-      // 显示错误 ~2 秒后返回 Mod 选择器，防止用户卡在加载遮罩
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      console.error(`[ModSelector] Failed to launch mod '${modId}':`, err)
+      // 显示错误 ~3 秒后返回 Mod 选择器，防止用户卡在加载遮罩
+      await new Promise(resolve => setTimeout(resolve, 3000))
       ModSelector.hide()
     }
   }

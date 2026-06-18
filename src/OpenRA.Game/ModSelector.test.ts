@@ -10,6 +10,30 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ModSelector, WorldType, type ModEntry } from './ModSelector'
 
 // ---------------------------------------------------------------------------
+// Mock Game.js — Phase B: Game.create() is dynamically imported in launchMod()
+// ---------------------------------------------------------------------------
+
+vi.mock('./Game.js', () => ({
+  Game: {
+    create: vi.fn().mockResolvedValue(undefined),
+  },
+  GameState: {
+    Uninitialized: 'Uninitialized',
+    LoadingMod: 'LoadingMod',
+    Shellmap: 'Shellmap',
+    Playing: 'Playing',
+    Editor: 'Editor',
+    Disposed: 'Disposed',
+  },
+  WorldType: {
+    Regular: 'Regular',
+    Shellmap: 'Shellmap',
+    Editor: 'Editor',
+  },
+  getCurrentGame: vi.fn(() => null),
+}))
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -19,9 +43,11 @@ function createTestDOM(): {
   overlay: HTMLElement
   loadingText: HTMLElement
   loadingBar: HTMLElement
+  canvas: HTMLElement
 } {
   document.body.innerHTML = `
     <div id="mod-selector"></div>
+    <canvas id="game-canvas" style="display:none"></canvas>
     <div id="loading-overlay" style="display:none">
       <div id="loading-bar" style="width:0%"></div>
       <span id="loading-text">Loading...</span>
@@ -32,6 +58,7 @@ function createTestDOM(): {
     overlay: document.getElementById('loading-overlay')!,
     loadingText: document.getElementById('loading-text')!,
     loadingBar: document.getElementById('loading-bar')!,
+    canvas: document.getElementById('game-canvas')!,
   }
 }
 
@@ -290,14 +317,12 @@ describe('ModSelector', () => {
   // -----------------------------------------------------------------------
 
   describe('launchMod()', () => {
-    it('hides the mod selector div', async () => {
+    it('hides the mod selector div', () => {
       const { container } = createTestDOM()
       container.style.display = 'block'
 
-      const promise = ModSelector.launchMod('ra')
-      // 等待基于 setTimeout 的 promise 完成
-      await vi.runAllTimersAsync()
-      await promise
+      // launchMod hides the mod-selector synchronously (before first await)
+      void ModSelector.launchMod('ra')
 
       expect(container.style.display).toBe('none')
     })
@@ -305,7 +330,7 @@ describe('ModSelector', () => {
     it('shows the loading overlay', () => {
       createTestDOM()
 
-      // 立即触发（在同步代码部分），不需要 await
+      // launchMod shows overlay synchronously
       void ModSelector.launchMod('ra')
 
       const overlay = document.getElementById('loading-overlay')!
@@ -318,8 +343,8 @@ describe('ModSelector', () => {
       void ModSelector.launchMod('ra')
 
       const loadingText = document.getElementById('loading-text')!
-      // 同步阶段设置第一个进度文本（在 await 之前）
-      expect(loadingText.textContent).toBe('Loading engine for ra...')
+      // Phase B: first progress text is "Loading engine..." (not mod-specific yet)
+      expect(loadingText.textContent).toBe('Loading engine...')
     })
 
     it('updates loading bar width with progress', () => {
@@ -328,25 +353,50 @@ describe('ModSelector', () => {
       void ModSelector.launchMod('ra')
 
       const loadingBar = document.getElementById('loading-bar')!
-      expect(loadingBar.style.width).toBe('10%')
+      // Phase B: first progress is 15%
+      expect(loadingBar.style.width).toBe('15%')
     })
 
-    it('progresses through loading stages', async () => {
+    it('shows canvas after launchMod is called', () => {
+      const { canvas } = createTestDOM()
+
+      void ModSelector.launchMod('ra')
+
+      // canvas should be made visible synchronously
+      expect(canvas.style.display).toBe('block')
+    })
+
+    it('completes launch sequence and hides overlay', async () => {
       createTestDOM()
 
       const promise = ModSelector.launchMod('ra')
-      // 推进所有基于 setTimeout 的定时器
+      // Dynamic import + Game.create() resolve (both are mocked)
+      // Then setTimeout(resolve, 300) needs fake timers
+      await vi.runAllTimersAsync()
+      await promise
+
+      const overlay = document.getElementById('loading-overlay')!
+      // After successful launch, overlay should be hidden
+      expect(overlay.style.display).toBe('none')
+    })
+
+    it('completes loading and shows Ready text', async () => {
+      createTestDOM()
+
+      const promise = ModSelector.launchMod('ra')
+      // Let dynamic import + Game.create settle
       await vi.runAllTimersAsync()
       await promise
 
       const loadingText = document.getElementById('loading-text')!
-      expect(loadingText.textContent).toBe('Ready — engine stub (Phase B)')
+      // Phase B: final progress text is "Ready"
+      expect(loadingText.textContent).toBe('Ready')
 
       const loadingBar = document.getElementById('loading-bar')!
       expect(loadingBar.style.width).toBe('100%')
     })
 
-    it('uses worldType in loading progress text', async () => {
+    it('uses WorldType.Editor when specified', async () => {
       createTestDOM()
 
       const promise = ModSelector.launchMod('ra', WorldType.Editor)
@@ -354,8 +404,8 @@ describe('ModSelector', () => {
       await promise
 
       const loadingText = document.getElementById('loading-text')!
-      // 最终阶段文本固定为 Ready（不受 worldType 影响，仅中间阶段显示）
-      expect(loadingText.textContent).toBe('Ready — engine stub (Phase B)')
+      // Final text is always "Ready" regardless of worldType
+      expect(loadingText.textContent).toBe('Ready')
     })
 
     it('uses WorldType.Regular as default worldType', () => {
@@ -364,10 +414,13 @@ describe('ModSelector', () => {
       void ModSelector.launchMod('ra')
 
       const loadingText = document.getElementById('loading-text')!
-      expect(loadingText.textContent).toBe('Loading engine for ra...')
+      // Phase B: first progress text is "Loading engine..."
+      expect(loadingText.textContent).toBe('Loading engine...')
     })
 
-    it('does not throw when mod-selector element is missing', async () => {
+    it('shows error when canvas element is missing', async () => {
+      // Phase B: canvas is required — launchMod catches the error internally
+      // and displays it in the loading text (does NOT reject)
       document.body.innerHTML = `
         <div id="loading-overlay" style="display:none">
           <div id="loading-bar" style="width:0%"></div>
@@ -375,10 +428,19 @@ describe('ModSelector', () => {
         </div>
       `
 
-      // Should not throw
       const promise = ModSelector.launchMod('ra')
+
+      // The error is thrown synchronously (before first await),
+      // caught by the try/catch, and setProgress updates loadingText.
+      // No timers needed for the error text to appear.
+      const loadingText = document.getElementById('loading-text')!
+      expect(loadingText.textContent).toBe(
+        'Error: Canvas element #game-canvas not found in DOM',
+      )
+
+      // After the full recovery cycle (3000ms timeout + hide), promise resolves
       await vi.runAllTimersAsync()
-      await expect(promise).resolves.toBeUndefined()
+      await promise
     })
   })
 
@@ -445,15 +507,49 @@ describe('ModSelector', () => {
   // -----------------------------------------------------------------------
 
   describe('launchMod() — error handling', () => {
-    it('completes without error in Phase A stub mode', async () => {
+    it('handles Game.create() rejection by showing error and recovering', async () => {
+      const { Game } = await import('./Game.js')
+      ;(Game.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Mod load failed'),
+      )
+
       createTestDOM()
 
       const promise = ModSelector.launchMod('ra')
+      // Game.create rejects → error handler sets error text → 3s timeout → hide()
+      // vi.runAllTimersAsync() flushes the 3000ms timer, after which hide() resets
       await vi.runAllTimersAsync()
       await promise
 
-      // Should complete without throwing
-      // Phase B will add real error handling with Game.create()
+      // After full error recovery cycle, ModSelector.hide() has been called
+      // mod-selector content is cleared and display is reset
+      const container = document.getElementById('mod-selector')!
+      expect(container.innerHTML).toBe('')
+      expect(container.style.display).toBe('')
+
+      const overlay = document.getElementById('loading-overlay')!
+      expect(overlay.style.display).toBe('none')
+    })
+
+    it('shows error message on launch failure', async () => {
+      const { Game } = await import('./Game.js')
+      ;(Game.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Mod load failed'),
+      )
+
+      const { loadingText } = createTestDOM()
+
+      void ModSelector.launchMod('ra')
+
+      // Advance just enough to let Game.create reject but NOT the 3s timeout
+      // The rejection happens via microtask, so resolving all pending microtasks
+      // should process the catch block (sets error text) without triggering hide()
+      await vi.advanceTimersByTimeAsync(0)
+      await Promise.resolve()
+
+      // At this point, the error catch has run and set the error text
+      // (The 3000ms timer hasn't fired yet, so hide() hasn't been called)
+      expect(loadingText.textContent).toBe('Error: Mod load failed')
     })
   })
 })
