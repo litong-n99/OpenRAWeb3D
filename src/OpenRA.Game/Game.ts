@@ -727,7 +727,7 @@ export class Game {
         id: 'btn-settings',
         text: 'Settings',
         disabled: true,
-        onClick: () => this._showComingSoon('Settings'),
+        onClick: () => {}, // Disabled button — callback never invoked
       },
       {
         id: 'btn-exit',
@@ -799,23 +799,29 @@ export class Game {
   /**
    * 显示 "Coming Soon" 提示 — 主菜单按钮的临时 stub。
    *
-   * 使用 runAfterTick 延迟执行以确保 DOM 更新不与渲染循环冲突。
+   * 当前使用浏览器原生 alert 弹窗实现。
+   * 未来 Widget 集成后，将替换为游戏内工具提示 Widget。
    */
   private _showComingSoon(feature: string): void {
     // NOTE: 使用 alert 而非 DOM 工具提示以保证跨浏览器兼容性。
-    // 完整 widgets 集成后（Ch5 Phase D），将用 Widget 工具提示替换。
+    // 完整 widgets 集成后（Ch16），将用 Widget 工具提示替换。
     alert(`${feature} is coming soon!\n\nThis feature will be available in a future update.`)
   }
 
   /**
-   * 退出到 Mod 选择器 — 导航回 `/`。
+   * 退出到 Mod 选择器 — 清理 Game 实例并导航回 `/`。
    *
-   * 使用 history.pushState 触发 Router 的 popstate 监听器。
+   * 先调用 dispose() 释放所有 GPU 资源和子系统，
+   * 再通过 history.pushState 触发 Router 的 popstate 监听器
+   * 导航回 Mod 选择器首页。
    */
   private _exitToModSelector(): void {
-    // 动态导入 Router 以避免循环依赖（Router 在 main.ts 中使用 ModSelector，
-    // 而 Game 不应直接依赖 Router）。
-    // 直接使用 history.pushState 并分发 popstate 事件。
+    // 1. 清理 Game 实例（释放 GPU 资源、停止游戏循环）
+    this.dispose()
+
+    // 2. 导航回 Mod 选择器首页
+    // 使用 history.pushState 触发 Router 的 popstate 监听器，
+    // 避免直接依赖 Router 模块（Router 在 main.ts 中，Game 不应反向依赖）。
     history.pushState(null, '', '/')
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
@@ -891,7 +897,9 @@ export class Game {
     this._world?.dispose()
     this._world = null
 
-    // 2. WorldRenderer — 其 Scene 由 Renderer 管理，仅清除引用
+    // 2. WorldRenderer — dispose GPU resources (pipeline, post-process, textures)
+    //    before clearing reference, matching switchMod() behavior
+    this._worldRenderer?.dispose()
     this._worldRenderer = null
 
     // 3. OrderManager
