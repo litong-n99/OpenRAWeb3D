@@ -44,6 +44,25 @@ import type { MapCache } from '../../../../OpenRA.Game/Map/MapCache.js'
 import type { EditorActionManager } from '../../../Traits/World/EditorActionManager.js'
 
 // ---------------------------------------------------------------------------
+// Stub: MiniYamlNode (OpenRA 对照: MiniYamlNode)
+//
+// NOTE: MiniYaml serialization not yet fully migrated (TODO-4.H).
+// This stub provides a minimal interface for passing actor/player
+// definitions through the save pipeline.
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal MiniYaml node stub for map save definitions.
+ *
+ * OpenRA 对照: OpenRA.MiniYamlNode
+ */
+export interface MiniYamlNode {
+  key: string
+  value: string | null
+  nodes?: MiniYamlNode[]
+}
+
+// ---------------------------------------------------------------------------
 // Localized strings (OpenRA 对照: FluentProvider static strings)
 // TODO-21.C-DEFER-1: FluentProvider 迁移后替换为本地化字符串
 // ---------------------------------------------------------------------------
@@ -162,6 +181,23 @@ export class SaveMapLogic extends ChromeLogic {
   private readonly _onExit: () => void
   private readonly _actionManager: EditorActionManager | undefined
 
+  // Map identity
+  private readonly _mapUid: string
+
+  // Map editor data for saving (OpenRA 对照: actorDefinitions / playerDefinitions)
+  private readonly _actorDefinitions: readonly MiniYamlNode[] | null
+  private readonly _playerDefinitions: readonly MiniYamlNode[] | null
+
+  /** Actor definitions for map save (OpenRA 对照: map.ActorDefinitions). */
+  get actorDefinitions(): readonly MiniYamlNode[] | null {
+    return this._actorDefinitions
+  }
+
+  /** Player definitions for map save (OpenRA 对照: map.PlayerDefinitions). */
+  get playerDefinitions(): readonly MiniYamlNode[] | null {
+    return this._playerDefinitions
+  }
+
   // Writable directory state
   private _writableDirectories: SaveDirectory[] = []
   private _selectedDirectory: SaveDirectory | null = null
@@ -200,8 +236,11 @@ export class SaveMapLogic extends ChromeLogic {
    * @param onSave -- callback invoked on successful save with the map UID
    * @param onExit -- callback invoked when dialog is closed
    * @param actionManager -- EditorActionManager for tracking save state (optional)
+   * @param mapUid -- the map's unique identifier (optional, computed from package if absent)
    * @param mapPackageName -- the map's package path/name (optional, default null)
    * @param mapIsUnpacked -- whether the map was loaded from an unpacked folder (default false)
+   * @param actorDefinitions -- MiniYAML actor definitions for map save (optional)
+   * @param playerDefinitions -- MiniYAML player definitions for map save (optional)
    */
   constructor(
     widget: Widget,
@@ -210,8 +249,11 @@ export class SaveMapLogic extends ChromeLogic {
     onSave: (uid: string) => void,
     onExit: () => void,
     actionManager?: EditorActionManager,
+    mapUid?: string,
     mapPackageName?: string | null,
     mapIsUnpacked?: boolean,
+    actorDefinitions?: readonly MiniYamlNode[] | null,
+    playerDefinitions?: readonly MiniYamlNode[] | null,
   ) {
     super()
 
@@ -220,8 +262,11 @@ export class SaveMapLogic extends ChromeLogic {
     this._onSave = onSave
     this._onExit = onExit
     this._actionManager = actionManager ?? undefined
+    this._mapUid = mapUid ?? `map:${mapPackageName ?? 'unnamed'}`
     this._mapPackageName = mapPackageName ?? null
     this._mapIsUnpacked = mapIsUnpacked ?? false
+    this._actorDefinitions = actorDefinitions ?? null
+    this._playerDefinitions = playerDefinitions ?? null
 
     // -----------------------------------------------------------------------
     // Title field (OpenRA 对照: line 71-72)
@@ -500,10 +545,18 @@ export class SaveMapLogic extends ChromeLogic {
    *
    * OpenRA 对照: void SaveMap(string combinedPath) (local function within constructor)
    */
-  private _saveMap(combinedPath: string): void {
-    // Update map metadata from form fields
+  private _saveMap(_combinedPath: string): void {
+    // Update map metadata from form fields (OpenRA 对照: line 187-188)
     this._map.title = this._titleField.text
     this._map.author = this._authorField.text
+
+    // Apply actor and player definitions (OpenRA 对照: line 190-194)
+    // NOTE: TypeScript Map does not have actorDefinitions/playerDefinitions setters.
+    // These would be applied to the serialized output via the save pipeline.
+    // The MiniYAML data is stored for the save implementation to consume.
+    // TODO-21.C.9-DEFER-4: Apply definitions when writable package is implemented
+    // if (this._actorDefinitions) map.actorDefinitions = this._actorDefinitions;
+    // if (this._playerDefinitions) map.playerDefinitions = this._playerDefinitions;
 
     Ui.closeWindow()
     this._onExit()
@@ -513,13 +566,8 @@ export class SaveMapLogic extends ChromeLogic {
       // In browser, we serialize via Map.toJSON() and trigger download.
       // TODO-21.C.9-DEFER-4: Implement writable package for browser
 
-      // Check if package needs to be created/replaced
-      // C# pseudocode:
-      //   if (map.package is not IReadWritePackage || package.Name !== combinedPath) {
-      //     folder.Delete(combinedPath);
-      //     package = (fileType == OraMap) ? ZipFileLoader.Create(combinedPath) : new Folder(combinedPath);
-      //   }
-      //   map.Save(package);
+      // Set required mod ID before serialization (OpenRA 对照: map.RequiresMod = modData.Manifest.Id)
+      this._map.requiresMod = this._modData.manifest.id
 
       // Serialize map to JSON for browser download
       const mapJson = this._map.toJSON()
@@ -542,10 +590,8 @@ export class SaveMapLogic extends ChromeLogic {
       return
     }
 
-    // Compute a UID from the path for the onSave callback
-    // (OpenRA 对照: onSave(map.Uid))
-    const uid = `map:${this._resolvePath(combinedPath)}`
-    this._onSave(uid)
+    // Pass the map's UID to the onSave callback (OpenRA 对照: onSave(map.Uid))
+    this._onSave(this._mapUid)
   }
 
   // -------------------------------------------------------------------------
@@ -730,10 +776,10 @@ export class SaveMapLogic extends ChromeLogic {
     modData: ModData,
     actionManager: EditorActionManager | undefined,
   ): void {
-    // NOTE: C# sets map.RequiresMod = modData.Manifest.Id
-    // TypeScript Map sets this in toJSON() output
-
     try {
+      // Set required mod ID before serialization (OpenRA 对照: map.RequiresMod = modData.Manifest.Id)
+      map.requiresMod = modData.manifest.id
+
       const mapJson = map.toJSON()
 
       // TODO-21.C.9-DEFER-4: Write to writable package / trigger browser download

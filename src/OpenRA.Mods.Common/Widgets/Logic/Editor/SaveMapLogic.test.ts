@@ -324,20 +324,20 @@ describe('SaveMapLogic constructor', () => {
   })
 
   it('clears filename when no package name provided', () => {
-    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, null, false)
+    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, undefined, null, false)
     expect(filenameField.text).toBe('')
     expect(filenameField.takeKeyboardFocus).toHaveBeenCalled()
     logic.dispose()
   })
 
   it('pre-populates filename from package name (ZIP format)', () => {
-    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, '/maps/test/mymap.oramap', false)
+    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, undefined, '/maps/test/mymap.oramap', false)
     expect(filenameField.text).toBe('mymap')
     logic.dispose()
   })
 
   it('pre-populates filename from package name (unpacked format)', () => {
-    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, '/maps/test/mymap', true)
+    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, undefined, '/maps/test/mymap', true)
     expect(filenameField.text).toBe('mymap')
     logic.dispose()
   })
@@ -350,14 +350,14 @@ describe('SaveMapLogic constructor', () => {
     titleField.text = ''
     authorField.text = ''
     filenameField.text = ''
-    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, null, false)
+    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, undefined, null, false)
     expect(saveButton.isDisabled()).toBe(true)
     logic.dispose()
   })
 
   it('enables save button when all fields are filled', () => {
     // Constructor sets title/author from map, so override after construction
-    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, null, false)
+    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, undefined, null, false)
     titleField.text = 'My Map'
     authorField.text = 'Me'
     filenameField.text = 'mymap'
@@ -390,13 +390,13 @@ describe('SaveMapLogic constructor', () => {
   // -----------------------------------------------------------------------
 
   it('defaults to OraMap file type when not unpacked', () => {
-    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, null, false)
+    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, undefined, null, false)
     expect((logic as any)._fileType).toBe(MapFileType.OraMap)
     logic.dispose()
   })
 
   it('defaults to Unpacked file type when map is unpacked', () => {
-    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, null, true)
+    const logic = new SaveMapLogic(rootWidget, modData, map, onSave, onExit, actionManager, undefined, null, true)
     expect((logic as any)._fileType).toBe(MapFileType.Unpacked)
     logic.dispose()
   })
