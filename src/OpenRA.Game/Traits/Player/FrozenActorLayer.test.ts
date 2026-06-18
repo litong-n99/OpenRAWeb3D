@@ -23,6 +23,8 @@ import { WPos } from '../../WPos'
 import { WDist } from '../../WDist'
 import { CellVisibility } from './Shroud'
 import { SpatiallyPartitioned } from '../../Primitives/SpatiallyPartitioned'
+import { Polygon } from '../../Primitives/Polygon'
+import { Rectangle } from '../../Primitives/Rectangle'
 import type { IGameActor, PlayerStub, IHealth, IVisibilityModifier } from '../TraitsInterfaces'
 
 // ---------------------------------------------------------------------------
@@ -638,33 +640,247 @@ describe('FrozenActor', () => {
   })
 
   // -------------------------------------------------------------------------
-  // Flash (deferred)
+  // Flash
   // -------------------------------------------------------------------------
 
-  describe('Flash (deferred)', () => {
-    it('does not throw when called', () => {
-      const actor = createMockActor()
-      const viewer = createMockPlayer(createMockShroud())
-      const frozenTrait = { onVisibilityChanged: vi.fn() }
-      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+  describe('Flash', () => {
+    let fa: FrozenActor
 
+    beforeEach(() => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud({ getVisibility: () => CellVisibility.Visible }))
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+    })
+
+    it('does not throw when called', () => {
       expect(() => fa.Flash({ r: 1, g: 0, b: 0 }, 0.5)).not.toThrow()
       expect(() => fa.Flash({ r: 1, g: 1, b: 0 })).not.toThrow()
+    })
+
+    it('sets flash ticks to 5', () => {
+      fa.Flash({ r: 1, g: 0, b: 0 })
+      // Tick 5 (odd) → isFlashing is false
+      expect(fa.isFlashing).toBe(false)
+      // After one tick: flashTicks = 4 (even) → isFlashing = true
+      fa.Tick()
+      expect(fa.isFlashing).toBe(true)
+    })
+
+    it('toggle flash on alternating ticks (blink effect)', () => {
+      fa.Flash({ r: 1, g: 0, b: 0 })
+      // ticks: 5,4,3,2,1,0
+      // 5: isFlashing=false (odd)
+      // 4: isFlashing=true  (even)
+      // 3: isFlashing=false (odd)
+      // 2: isFlashing=true  (even)
+      // 1: isFlashing=false (odd)
+      // 0: isFlashing=false (flashTicks <= 0)
+      expect(fa.isFlashing).toBe(false) // tick 5 (odd)
+      fa.Tick() // -> 4
+      expect(fa.isFlashing).toBe(true)  // tick 4 (even)
+      fa.Tick() // -> 3
+      expect(fa.isFlashing).toBe(false) // tick 3 (odd)
+      fa.Tick() // -> 2
+      expect(fa.isFlashing).toBe(true)  // tick 2 (even)
+      fa.Tick() // -> 1
+      expect(fa.isFlashing).toBe(false) // tick 1 (odd)
+      fa.Tick() // -> 0
+      expect(fa.isFlashing).toBe(false) // tick 0 (expired)
+    })
+
+    it('flash expires after 5 ticks', () => {
+      fa.Flash({ r: 1, g: 0, b: 0 })
+      // Advance 6 ticks
+      for (let i = 0; i < 6; i++) fa.Tick()
+      expect(fa.isFlashing).toBe(false)
+      expect(fa.flashTint).toBeNull()
+      expect(fa.flashAlpha).toBeNull()
+    })
+
+    it('Color overload divides RGB by 255', () => {
+      fa.Flash({ r: 255, g: 128, b: 0 }, 0.5)
+      fa.Tick() // -> 4 (even, active)
+      expect(fa.flashTint).toEqual({ r: 1.0, g: 128 / 255, b: 0 })
+      expect(fa.flashAlpha).toBe(0.5)
+    })
+
+    it('float3 overload uses tint values as-is', () => {
+      fa.Flash({ r: 0.5, g: 0.25, b: 0.75 })
+      fa.Tick() // -> 4 (even, active)
+      expect(fa.flashTint).toEqual({ r: 0.5, g: 0.25, b: 0.75 })
+      expect(fa.flashAlpha).toBeNull()
+    })
+
+    it('flashTint returns null when not flashing', () => {
+      expect(fa.flashTint).toBeNull()
+      expect(fa.flashAlpha).toBeNull()
+    })
+
+    it('multiple Flash calls reset timer', () => {
+      fa.Flash({ r: 1, g: 0, b: 0 })
+      fa.Tick() // -> 4
+      fa.Tick() // -> 3
+      expect(fa.isFlashing).toBe(false) // odd tick
+
+      // Re-flash resets to 5
+      fa.Flash({ r: 0, g: 1, b: 0 })
+      expect(fa.isFlashing).toBe(false) // tick 5 (odd)
+      fa.Tick() // -> 4
+      expect(fa.isFlashing).toBe(true)
+      expect(fa.flashTint).toEqual({ r: 0, g: 1, b: 0 })
+    })
+
+    it('Tick() still processes visibility updates during flash', () => {
+      fa.Flash({ r: 1, g: 0, b: 0 })
+      fa.UpdateVisibilityNextTick = true
+
+      // Spy on visibility update by checking UpdateVisibilityNextTick after tick
+      fa.Tick()
+      expect(fa.UpdateVisibilityNextTick).toBe(false) // processed
     })
   })
 
   // -------------------------------------------------------------------------
-  // Render (deferred)
+  // Render
   // -------------------------------------------------------------------------
 
-  describe('Render (deferred)', () => {
-    it('returns empty array', () => {
+  describe('Render', () => {
+    it('returns empty array when Shrouded', () => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud({ getVisibility: () => CellVisibility.Hidden }))
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+      // With Hidden visibility, Shrouded is true
+      expect(fa.Shrouded).toBe(true)
+      expect(fa.Render()).toEqual([])
+    })
+
+    it('returns captured renderables when not shrouded', () => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud({ getVisibility: () => CellVisibility.Visible }))
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+      // With Visible cell, Shrouded is false, Visible is false
+      // Set some renderables manually
+      const renderables = [{ type: 'test' }]
+      fa.Renderables = renderables
+      expect(fa.Render()).toBe(renderables)
+    })
+
+    it('returns renderables during flash', () => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud({ getVisibility: () => CellVisibility.Visible }))
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+      const renderables = [{ type: 'test' }]
+      fa.Renderables = renderables
+      fa.Flash({ r: 1, g: 0, b: 0 })
+      fa.Tick() // -> 4 (even, active)
+      expect(fa.isFlashing).toBe(true)
+      // Render should return renderables (flash state is available for consumers)
+      expect(fa.Render()).toBe(renderables)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Tooltip
+  // -------------------------------------------------------------------------
+
+  describe('Tooltip', () => {
+    it('tooltipName returns the live actor info name', () => {
+      const actor = createMockActor()
+      ;(actor as unknown as Record<string, unknown>)['info'] = { name: 'E1' }
+      const viewer = createMockPlayer(createMockShroud())
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+
+      expect(fa.tooltipName).toBe('E1')
+    })
+
+    it('tooltipName returns "Fogged Unit" when info has no name', () => {
+      const actor = createMockActor()
+      ;(actor as unknown as Record<string, unknown>)['info'] = {}
+      const viewer = createMockPlayer(createMockShroud())
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+
+      expect(fa.tooltipName).toBe('Fogged Unit')
+    })
+
+    it('getTooltipText delegates to captured TooltipInfo', () => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud())
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+      fa.TooltipInfo = {
+        tooltipForPlayerStance: (stance: unknown) => `Visible to ${stance}`,
+        isOwnerRowVisible: false,
+      }
+
+      expect(fa.getTooltipText('Ally')).toBe('Visible to Ally')
+    })
+
+    it('getTooltipText returns "Fogged Unit" when TooltipInfo is null', () => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud())
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+      fa.TooltipInfo = null
+
+      expect(fa.getTooltipText()).toBe('Fogged Unit')
+    })
+
+    it('tooltipOwnerRowVisible delegates to TooltipInfo', () => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud())
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+      fa.TooltipInfo = {
+        tooltipForPlayerStance: () => 'Tooltip',
+        isOwnerRowVisible: true,
+      }
+
+      expect(fa.tooltipOwnerRowVisible).toBe(true)
+    })
+
+    it('tooltipOwnerRowVisible returns false when TooltipInfo is null', () => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud())
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+      fa.TooltipInfo = null
+
+      expect(fa.tooltipOwnerRowVisible).toBe(false)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // MouseBounds (Polygon integration)
+  // -------------------------------------------------------------------------
+
+  describe('MouseBounds (Polygon)', () => {
+    it('returns Polygon.Empty by default', () => {
       const actor = createMockActor()
       const viewer = createMockPlayer(createMockShroud())
       const frozenTrait = { onVisibilityChanged: vi.fn() }
       const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
 
-      expect(fa.Render()).toEqual([])
+      expect(fa.mouseBounds.IsEmpty).toBe(true)
+    })
+
+    it('returns the assigned Polygon', () => {
+      const actor = createMockActor()
+      const viewer = createMockPlayer(createMockShroud())
+      const frozenTrait = { onVisibilityChanged: vi.fn() }
+      const fa = new FrozenActor(actor, frozenTrait, [new PPos(0, 0)], viewer as unknown as PlayerStub, false)
+
+      const bounds = new Polygon(Rectangle.fromLTRB(0, 0, 10, 10))
+      fa.MouseBounds = bounds
+
+      expect(fa.mouseBounds).toBe(bounds)
+      expect(fa.mouseBounds.contains(5, 5)).toBe(true)
+      expect(fa.mouseBounds.contains(50, 50)).toBe(false)
     })
   })
 

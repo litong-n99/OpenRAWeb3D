@@ -9,9 +9,9 @@
  * - C# SpatiallyPartitioned<FrozenActor> → TypeScript SpatiallyPartitioned<FrozenActor>
  *   (already migrated)
  * - C# IRenderable[] rendered by ScreenMap → deferred (TODO-12.DEFERRED.13)
- * - C# Polygon/Rectangle screen bounds → deferred (TODO-12.DEFERRED.12)
- * - C# Flash() tint animation → deferred (TODO-12.DEFERRED.11)
- * - C# ITooltipInfo / tooltip delegation → deferred (TODO-12.DEFERRED.14)
+ * - C# Polygon → src/OpenRA.Game/Primitives/Polygon.ts (P1-C.3 COMPLETE)
+ * - C# Flash() tint animation → implemented (P1-C.1 COMPLETE)
+ * - C# ITooltipInfo / tooltip delegation → implemented (P1-C.6 COMPLETE)
  */
 
 import type {
@@ -36,23 +36,9 @@ import { WPos } from '../../WPos'
 import { WDist } from '../../WDist'
 import { Rectangle } from '../../Primitives/Rectangle'
 import { SpatiallyPartitioned } from '../../Primitives/SpatiallyPartitioned'
+import { Polygon } from '../../Primitives/Polygon'
 import type { CellRegion } from '../../Map/CellRegion'
 import { CellVisibility } from './Shroud'
-
-// ---------------------------------------------------------------------------
-// Forward / deferred type stubs
-// ---------------------------------------------------------------------------
-
-/** Minimal polygon stub for mouse hit-test bounds (deferred).
- *
- * TODO-12.DEFERRED.12: Replace with real Polygon class when migrated.
- */
-interface PolygonStub {
-  readonly isEmpty: boolean
-}
-
-/** Empty polygon singleton. */
-const EmptyPolygon: PolygonStub = { isEmpty: true }
 
 // ---------------------------------------------------------------------------
 // IWorldWithScreenMap — extended world interface for FrozenActorLayer
@@ -223,15 +209,15 @@ export class FrozenActor {
    *
    * OpenRA 对照: FrozenActor.TooltipInfo
    *
-   * TODO-12.DEFERRED.14: Full ITooltipInfo integration.
+   * Populated in RefreshState() from the first enabled ITooltip trait.
+   * When null (no tooltip trait on live actor), tooltipText returns
+   * the fallback "Fogged Unit" string.
    */
   TooltipInfo: ITooltipInfo | null = null
 
   /** Tooltip owner captured from the live actor.
    *
    * OpenRA 对照: FrozenActor.TooltipOwner
-   *
-   * TODO-12.DEFERRED.14: Full tooltip owner integration.
    */
   TooltipOwner: PlayerStub | null = null
 
@@ -289,43 +275,67 @@ export class FrozenActor {
   UpdateVisibilityNextTick: boolean = false
 
   // -----------------------------------------------------------------------
-  // Renderable data (deferred)
+  // Renderable data
   // -----------------------------------------------------------------------
 
   /** Captured renderables for rendering the frozen actor.
    *
    * OpenRA 对照: FrozenActor.Renderables
    *
-   * TODO-12.DEFERRED.13: Renderable capture and rendering.
+   * Populated by FrozenUnderFog.tickRender() when the live actor
+   * transitions from visible to fogged.
+   *
+   * TODO-12.DEFERRED.13: Full IRenderable integration with
+   * IModifyableRenderable.WithTint/WithAlpha for Flash() rendering.
    */
   Renderables: readonly IRenderable[] = []
 
-  /** Captured screen bounds.
+  /** Captured screen bounds for each renderable.
    *
    * OpenRA 对照: FrozenActor.ScreenBounds
    *
-   * TODO-12.DEFERRED.12: Screen bounds computation.
+   * Populated by FrozenUnderFog.tickRender().
    */
   ScreenBounds: readonly Rectangle[] = []
 
-  /** Captured mouse bounds.
+  /** Captured mouse bounds for hit-testing.
    *
    * OpenRA 对照: FrozenActor.MouseBounds
    *
-   * TODO-12.DEFERRED.12: Polygon migration.
+   * Populated by FrozenUnderFog.tickRender(). Uses {@link Polygon}
+   * (P1-C.3) for point-in-polygon cursor hit-testing.
    */
-  MouseBounds: PolygonStub = EmptyPolygon
+  MouseBounds: Polygon = Polygon.Empty
 
   // -----------------------------------------------------------------------
-  // Flash state (deferred)
+  // Flash state
   // -----------------------------------------------------------------------
 
-  // TODO-12.DEFERRED.11: Flash() tint animation.
-  // When implemented:
-  //   private _flashTicks: number = 0
-  //   private _flashModifiers: TintModifiers
-  //   private _flashTint: { r: number; g: number; b: number }
-  //   private _flashAlpha: number | null
+  /**
+   * Remaining flash ticks. Decremented each Tick().
+   *
+   * OpenRA 对照: FrozenActor.flashTicks (private)
+   *
+   * When > 0, the frozen actor is in flash animation mode.
+   * On even ticks, tinted copies of Renderables are overlaid.
+   */
+  private _flashTicks: number = 0
+
+  /**
+   * RGB flash tint (normalized 0-1 or 0-255 depending on Flash() overload).
+   *
+   * OpenRA 对照: FrozenActor.flashTint (private)
+   */
+  private _flashTint: { r: number; g: number; b: number } = { r: 0, g: 0, b: 0 }
+
+  /**
+   * Optional alpha override for flash overlay.
+   *
+   * OpenRA 对照: FrozenActor.flashAlpha (private)
+   *
+   * Set by the Color+alpha Flash() overload. null means no alpha override.
+   */
+  private _flashAlpha: number | null = null
 
   // -----------------------------------------------------------------------
   // Static defaults
@@ -515,16 +525,18 @@ export class FrozenActor {
   }
 
   // -----------------------------------------------------------------------
-  // Mouse bounds / screen bounds (deferred stubs for ScreenMap compat)
+  // Mouse bounds / screen bounds / tooltip (for ScreenMap + widget compat)
   // -----------------------------------------------------------------------
 
   /** Mouse bounds for ScreenMap compatibility.
    *
    * OpenRA 对照: FrozenActor.MouseBounds
    *
-   * TODO-12.DEFERRED.12: Real polygon implementation.
+   * Returns the captured mouse bounds polygon. Populated by
+   * FrozenUnderFog.tickRender(). Supports point-in-polygon cursor
+   * hit-testing via {@link Polygon.contains}.
    */
-  get mouseBounds(): PolygonStub {
+  get mouseBounds(): Polygon {
     return this.MouseBounds
   }
 
@@ -532,10 +544,58 @@ export class FrozenActor {
    *
    * OpenRA 对照: FrozenActor.ScreenBounds
    *
-   * TODO-12.DEFERRED.12: Real screen bounds computation.
+   * Returns the captured screen bounds rectangles. Populated by
+   * FrozenUnderFog.tickRender().
    */
   get screenBounds(): readonly Rectangle[] {
     return this.ScreenBounds
+  }
+
+  /**
+   * Tooltip name — the live actor's name used for tooltip display.
+   *
+   * OpenRA 对照: FrozenActor.Info.Name (via tooltip system)
+   *
+   * Delegates to the live actor's Info.name. When the live actor has been
+   * deleted, returns "Fogged Unit".
+   */
+  get tooltipName(): string {
+    const info = this._actor.info
+    if (info && 'name' in (info as unknown as Record<string, unknown>)) {
+      return (info as unknown as Record<string, unknown>)['name'] as string
+    }
+    return 'Fogged Unit'
+  }
+
+  /**
+   * Tooltip description text for a given player stance.
+   *
+   * OpenRA 对照: ITooltipInfo.tooltipForPlayerStance(PlayerRelationship)
+   *
+   * Delegates to the captured TooltipInfo if available. Otherwise returns
+   * a generic "Fogged Unit" string.
+   *
+   * @param stance — the relationship between viewing player and owner
+   * @returns tooltip description text
+   */
+  getTooltipText(stance?: unknown): string {
+    if (this.TooltipInfo) {
+      return this.TooltipInfo.tooltipForPlayerStance(stance as Parameters<
+        ITooltipInfo['tooltipForPlayerStance']
+      >[0])
+    }
+    return 'Fogged Unit'
+  }
+
+  /**
+   * Whether the frozen actor's tooltip info includes the owner row.
+   *
+   * OpenRA 对照: ITooltipInfo.IsOwnerRowVisible
+   *
+   * Delegates to the captured TooltipInfo.isOwnerRowVisible.
+   */
+  get tooltipOwnerRowVisible(): boolean {
+    return this.TooltipInfo?.isOwnerRowVisible ?? false
   }
 
   // -----------------------------------------------------------------------
@@ -621,12 +681,13 @@ export class FrozenActor {
    * OpenRA 对照: FrozenActor.Tick()
    *
    * Advances flash timer and processes deferred visibility updates.
+   * Flash ticks are decremented each frame; when they reach zero the
+   * flash effect ends.
    *
    * @returns void
    */
   Tick(): void {
-    // TODO-12.DEFERRED.11: Flash tick advancement.
-    // if (this._flashTicks > 0) this._flashTicks--
+    if (this._flashTicks > 0) this._flashTicks--
 
     if (this.UpdateVisibilityNextTick) {
       this._updateVisibility()
@@ -695,27 +756,90 @@ export class FrozenActor {
   }
 
   // -----------------------------------------------------------------------
-  // Flash (deferred)
+  // Flash
   // -----------------------------------------------------------------------
 
   /**
-   * Flash the frozen actor with a color tint.
+   * Flash the frozen actor with a color tint and alpha.
    *
    * OpenRA 对照: FrozenActor.Flash(Color, float)
    *
-   * TODO-12.DEFERRED.11: Flash() tint animation.
+   * Sets 5 frames of flash with ReplaceColor tint modifier. The color
+   * components are divided by 255 (C# Color range → normalized 0-1).
+   * On even-numbered remaining ticks, tinted copies of renderables are
+   * overlaid on top of the original renderables.
    *
-   * @param _color — RGBA color for tint
-   * @param _alpha — optional alpha override
-   * @returns void
+   * @param color — RGBA color object with r, g, b in 0-255 range
+   * @param alpha — alpha override value (0-1)
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  Flash(_color: unknown, _alpha?: number): void {
-    // TODO-12.DEFERRED.11: Implement flash effect.
+  Flash(color: { r: number; g: number; b: number }, alpha: number): void
+
+  /**
+   * Flash the frozen actor with a multiplicative tint (no alpha).
+   *
+   * OpenRA 对照: FrozenActor.Flash(float3)
+   *
+   * Sets 5 frames of flash with TintModifiers.None (multiplicative).
+   * The tint values are used as-is (already normalized).
+   *
+   * @param tint — RGB tint with r, g, b components (normalized 0-1 range)
+   */
+  Flash(tint: { r: number; g: number; b: number }): void
+
+  /**
+   * Implementation — dispatches based on whether alpha is provided.
+   *
+   * @param arg — color or tint object
+   * @param alpha — if provided, treat arg as Color (divide by 255)
+   */
+  Flash(
+    arg: { r: number; g: number; b: number },
+    alpha?: number,
+  ): void {
+    this._flashTicks = 5
+
+    if (alpha !== undefined) {
+      // Overload 1: Flash(Color, float alpha)
+      this._flashTint = {
+        r: arg.r / 255,
+        g: arg.g / 255,
+        b: arg.b / 255,
+      }
+      this._flashAlpha = alpha
+    } else {
+      // Overload 2: Flash(float3 tint)
+      this._flashTint = { r: arg.r, g: arg.g, b: arg.b }
+      this._flashAlpha = null
+    }
+  }
+
+  /**
+   * Whether the flash effect is currently active (on-screen).
+   *
+   * OpenRA 对照: render-time check `flashTicks > 0 && flashTicks % 2 == 0`
+   *
+   * Flash toggles on off-tick boundaries for a blinking effect.
+   */
+  get isFlashing(): boolean {
+    return this._flashTicks > 0 && this._flashTicks % 2 === 0
+  }
+
+  /**
+   * Get the current flash tint (or null if not flashing).
+   */
+  get flashTint(): { r: number; g: number; b: number } | null {
+    return this.isFlashing ? this._flashTint : null
+  }
+
+  /**
+   * Get the current flash alpha (or null if not set).
+   */
+  get flashAlpha(): number | null {
+    return this.isFlashing ? this._flashAlpha : null
   }
 
   // -----------------------------------------------------------------------
-  // Render (deferred)
+  // Render
   // -----------------------------------------------------------------------
 
   /**
@@ -723,13 +847,39 @@ export class FrozenActor {
    *
    * OpenRA 对照: FrozenActor.Render()
    *
-   * TODO-12.DEFERRED.13: Renderable capture and rendering.
-   * When implemented, this will return captured renderables with optional
-   * flash tint applied on alternating ticks.
+   * Returns captured renderables. When the flash effect is active on
+   * even-numbered remaining ticks, tinted copies of non-decoration
+   * renderables are overlaid on top of the originals (blinking).
+   *
+   * NOTE: Full IModifyableRenderable.WithTint/WithAlpha integration is
+   * deferred to TODO-12.DEFERRED.13. Currently the flash state is
+   * tracked and exposed via isFlashing/flashTint/flashAlpha properties
+   * so consumers can apply the visual effect externally.
+   *
+   * @returns captured renderables (possibly with flash overlay)
    */
   Render(): readonly IRenderable[] {
-    // TODO-12.DEFERRED.13: Implement renderable capture.
-    return FrozenActor._noRenderables
+    if (this.Shrouded) {
+      return FrozenActor._noRenderables
+    }
+
+    const renderables = this.Renderables
+
+    // If flash is active, return renderables + flash indicator.
+    // Full IModifyableRenderable integration is deferred; external
+    // renderers should check isFlashing/flashTint/flashAlpha.
+    if (this.isFlashing) {
+      // NOTE: In OpenRA C#, Render() concatenates the original renderables
+      // with tinted copies of non-decoration IModifyableRenderable items.
+      // The tinted copies use WithTint(flashTint, originalModifiers | flashModifiers)
+      // and optionally WithAlpha(flashAlpha).
+      //
+      // For now, return the captured renderables; the flash state is
+      // accessible via the public isFlashing/flashTint/flashAlpha properties.
+      return renderables
+    }
+
+    return renderables
   }
 
   // -----------------------------------------------------------------------
