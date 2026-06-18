@@ -24,6 +24,8 @@ const stubContext: IScriptContext = {
   playerCommands: [],
   registerMapActor: () => {},
   fatalError: () => {},
+  logDebug: () => {},
+  get namedActors() { return new Map() },
 }
 
 function createActor(overrides: Partial<IGameActor> = {}): IGameActor {

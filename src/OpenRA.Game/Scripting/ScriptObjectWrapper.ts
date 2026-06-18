@@ -304,12 +304,13 @@ export abstract class ScriptGlobal extends ScriptObjectWrapper {
   /**
    * @param context — the owning ScriptContext
    * @param name — the global table name (e.g., "Actor", "Trigger")
-   * @param objects — the binding objects (typically just [this])
+   *
+   * Note: Subclasses MUST call this.bind([this]) after super() returns,
+   * because `this` is not available before super() in TS strict mode.
    */
-  constructor(context: IScriptContext, name: string, objects: object[]) {
+  constructor(context: IScriptContext, name: string) {
     super(context)
     this.name = name
-    this.bind(objects)
   }
 
   protected override duplicateKeyError(memberName: string): string {

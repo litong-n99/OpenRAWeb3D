@@ -1,5 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 20 -- Scripting System
 
+> **Status**: Phase A (COMPLETE), Phase B (COMPLETE), Phase C (COMPLETE — 16/16 files, 84 tests, 74 passing). Phases D-G: PENDING.
+
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md` Section 9 (Scripting/Mission System)
 > **Chapter Status**: PLANNING (0/66 migrated, 0%)
 > **Planning Date**: 2026-06-17
@@ -243,9 +245,9 @@ This table provides a COMPLETE inventory of every file in the OpenRA scripting s
 
 | TODO# | File | Source Lines | Description | Status |
 |-------|------|-------------|-------------|--------|
-| TODO-20.B.1 | `ScriptTriggers.ts` | 560 | Trait implementing 18 `INotify*` interfaces. Maintains per-Trigger callback lists. Bridges game events to script callbacks. Internal events (`OnKilledInternal`, `OnCapturedInternal`, etc.) for compound triggers. | [ ] |
-| TODO-20.B.2 | `ScriptComponent.ts` | 66 | World-level trait (`LuaScript` in OpenRA). Owns `ScriptContext`. Implements `IWorldLoaded` (loads scripts, calls `WorldLoaded()`), `ITick` (calls `Tick()`), and dispose. | [ ] |
-| TODO-20.B.3 | `CallScriptFunc.ts` | 60 | Activity that executes a script callback within the actor's activity queue. Used by `GeneralProperties.CallFunc()` and other queued script actions. | [ ] |
+| TODO-20.B.1 | `ScriptTriggers.ts` | 560 | Trait implementing 18 `INotify*` interfaces. Maintains per-Trigger callback lists. Bridges game events to script callbacks. Internal events (`OnKilledInternal`, `OnCapturedInternal`, etc.) for compound triggers. | [x] APPROVED — 21 triggers, 10 new interfaces in TriggerInterfaces.ts, 56 tests |
+| TODO-20.B.2 | `ScriptComponent.ts` | 66 | World-level trait (`LuaScript` in OpenRA). Owns `ScriptContext`. Implements `IWorldLoaded` (loads scripts, calls `WorldLoaded()`), `ITick` (calls `Tick()`), and dispose. | [x] APPROVED — 17 tests |
+| TODO-20.B.3 | `CallScriptFunc.ts` | 60 | Activity that executes a script callback within the actor's activity queue. Used by `GeneralProperties.CallFunc()` and other queued script actions. | [x] APPROVED — 15 tests |
 
 **Blocked by**: Phase A (ScriptContext, ScriptRegistry)
 **Blocks**: Phase C (TriggerGlobal uses ScriptTriggers)
@@ -286,22 +288,22 @@ This table provides a COMPLETE inventory of every file in the OpenRA scripting s
 
 | TODO# | File | Source Lines | Complexity | Description | Status |
 |-------|------|-------------|------------|-------------|--------|
-| TODO-20.C.1 | `TriggerGlobal.ts` | 588 | HIGH | 30+ trigger registration methods. `AfterDelay()`, `OnPassengerEntered/Exited()`, `OnIdle/Damaged/Killed()`, `OnAllKilled/OnAnyKilled()`, `OnProduction/OnAnyProduction()`, `OnPlayerWon/Lost()`, `OnObjectiveAdded/Completed/Failed()`, `OnBuildingPlaced()`, `OnAddedToWorld/RemovedFromWorld()`, `OnAllRemovedFromWorld()`, `OnCapture()`, `OnKilledOrCaptured/OnAllKilledOrCaptured()`, `OnEnteredFootprint/ExitedFootprint()`, `RemoveFootprintTrigger()`, `OnEnteredProximityTrigger/ExitedProximityTrigger()`, `RemoveProximityTrigger()`, `OnInfiltrated()`, `OnDiscovered/OnPlayerDiscovered()`, `OnSold()`, `OnTimerExpired()`, `ClearAll()`, `Clear()` | [ ] |
-| TODO-20.C.2 | `ActorGlobal.ts` | 192 | MEDIUM | Actor creation (`Create()`), query (`BuildTime()`, `CruiseAltitude()`, `Cost()`). Handles `ActorInit` construction from script-provided tables. | [ ] |
-| TODO-20.C.3 | `ReinforcementsGlobal.ts` | 204 | MEDIUM | Unit delivery system. `Reinforce(owner, types[], entryPath, interval, actionFunc)`, `ReinforceWithTransport(owner, transportType, cargoTypes[], entryPath, exitPath, actionFunc, exitFunc, dropRange)`. Handles air/ground/naval delivery with movement pathing. | [ ] |
-| TODO-20.C.4 | `MediaGlobal.ts` | 182 | MEDIUM | Audio/video playback. `PlaySpeechNotification()`, `PlaySoundNotification()`, `PlaySound()`, `PlayMusic()`, `SetBackgroundMusic()`, `StopMusic()`, `PlayMovieFullscreen()`, `PlayMovieInRadar()`, `DisplayMessage()`, `DisplayMessageToPlayer()`, `DisplaySystemMessage()`, `Debug()`, `FloatingText()`. | [ ] |
-| TODO-20.C.5 | `MapGlobal.ts` | 166 | MEDIUM | Map spatial queries. `ActorsInCircle()`, `ActorsInBox()`, `RandomCell()`, `RandomEdgeCell()`, `ClosestEdgeCell()`, `ClosestMatchingEdgeCell()`, `CenterOfCell()`, `TerrainType()`, `NamedActor()`, `NamedActors()`, `IsNamedActor()`, `ActorsWithTag()`, `ActorsInWorld()`, `LobbyOption()`, `IsSinglePlayer()`, `IsPausedShellmap()`. Also registers named map actors as script globals. | [ ] |
-| TODO-20.C.6 | `UtilsGlobal.ts` | 155 | MEDIUM | Collection utilities. `Do()`, `Any()`, `All()`, `Where()`, `Take()`, `Skip()`, `Concat()`, `Random()`, `Shuffle()`, `ExpandFootprint()`, `RandomInteger()`, `FormatTime()`. | [ ] |
-| TODO-20.C.7 | `PlayerGlobal.ts` | 36 | LOW | Player lookup. `GetPlayer(name)`, `GetPlayers(filter)`. | [ ] |
-| TODO-20.C.8 | `CameraGlobal.ts` | 29 | LOW | Viewport center position get/set via `WorldRenderer.Viewport`. | [ ] |
-| TODO-20.C.9 | `ColorGlobal.cs` | 127 | LOW | Color constructors. `FromRGB()`, `FromHSL()`, `FromHex()`, `FromName()`, color arithmetic, `Distance()`, `Clamp()`, `RandomHue()`. | [ ] |
-| TODO-20.C.10 | `CoordinateGlobals.ts` | 107 | LOW | Coordinate utilities. `WPos.FromXY()`, `CPos.FromXY()`, `CVec.FromXY()`, `WVec.FromXY()`, conversion between coordinate types. | [ ] |
-| TODO-20.C.11 | `DateTimeGlobal.ts` | 94 | LOW | Real-time clock access. `Now()`, `Seconds()`, `Minutes()`, `Hours()`, `Day()`, `Month()`, `Year()`, time formatting. | [ ] |
-| TODO-20.C.12 | `LightingGlobal.ts` | 67 | LOW | Post-process effects. `Flash(type, ticks)`, `Red`/`Green`/`Blue`/`Ambient` tint get/set. | [ ] |
-| TODO-20.C.13 | `UserInterfaceGlobal.ts` | 65 | LOW | UI text display. `SetMissionText(text, color)`, `GetFluentMessage(key, args)`. | [ ] |
-| TODO-20.C.14 | `BeaconGlobal.ts` | 54 | LOW | Beacon placement. `New(owner, position, type, duration, showTick)` for creating timed beacons. | [ ] |
-| TODO-20.C.15 | `AngleGlobal.ts` | 43 | LOW | Angle constructors. `New(degrees)`, `North`/`South`/`East`/`West` constants. | [ ] |
-| TODO-20.C.16 | `RadarGlobal.ts` | 35 | LOW | Radar widget control. Create/remove custom radar events. | [ ] |
+| TODO-20.C.1 | `TriggerGlobal.ts` | 588 | HIGH | 30+ trigger registration methods. `AfterDelay()`, `OnPassengerEntered/Exited()`, `OnIdle/Damaged/Killed()`, `OnAllKilled/OnAnyKilled()`, `OnProduction/OnAnyProduction()`, `OnPlayerWon/Lost()`, `OnObjectiveAdded/Completed/Failed()`, `OnBuildingPlaced()`, `OnAddedToWorld/RemovedFromWorld()`, `OnAllRemovedFromWorld()`, `OnCapture()`, `OnKilledOrCaptured/OnAllKilledOrCaptured()`, `OnEnteredFootprint/ExitedFootprint()`, `RemoveFootprintTrigger()`, `OnEnteredProximityTrigger/ExitedProximityTrigger()`, `RemoveProximityTrigger()`, `OnInfiltrated()`, `OnDiscovered/OnPlayerDiscovered()`, `OnSold()`, `OnTimerExpired()`, `ClearAll()`, `Clear()` | [x] |
+| TODO-20.C.2 | `ActorGlobal.ts` | 192 | MEDIUM | Actor creation (`Create()`), query (`BuildTime()`, `CruiseAltitude()`, `Cost()`). Handles `ActorInit` construction from script-provided tables. | [x] |
+| TODO-20.C.3 | `ReinforcementsGlobal.ts` | 204 | MEDIUM | Unit delivery system. `Reinforce(owner, types[], entryPath, interval, actionFunc)`, `ReinforceWithTransport(owner, transportType, cargoTypes[], entryPath, exitPath, actionFunc, exitFunc, dropRange)`. Handles air/ground/naval delivery with movement pathing. | [x] |
+| TODO-20.C.4 | `MediaGlobal.ts` | 182 | MEDIUM | Audio/video playback. `PlaySpeechNotification()`, `PlaySoundNotification()`, `PlaySound()`, `PlayMusic()`, `SetBackgroundMusic()`, `StopMusic()`, `PlayMovieFullscreen()`, `PlayMovieInRadar()`, `DisplayMessage()`, `DisplayMessageToPlayer()`, `DisplaySystemMessage()`, `Debug()`, `FloatingText()`. | [x] |
+| TODO-20.C.5 | `MapGlobal.ts` | 166 | MEDIUM | Map spatial queries. `ActorsInCircle()`, `ActorsInBox()`, `RandomCell()`, `RandomEdgeCell()`, `ClosestEdgeCell()`, `ClosestMatchingEdgeCell()`, `CenterOfCell()`, `TerrainType()`, `NamedActor()`, `NamedActors()`, `IsNamedActor()`, `ActorsWithTag()`, `ActorsInWorld()`, `LobbyOption()`, `IsSinglePlayer()`, `IsPausedShellmap()`. Also registers named map actors as script globals. | [x] |
+| TODO-20.C.6 | `UtilsGlobal.ts` | 155 | MEDIUM | Collection utilities. `Do()`, `Any()`, `All()`, `Where()`, `Take()`, `Skip()`, `Concat()`, `Random()`, `Shuffle()`, `ExpandFootprint()`, `RandomInteger()`, `FormatTime()`. | [x] |
+| TODO-20.C.7 | `PlayerGlobal.ts` | 36 | LOW | Player lookup. `GetPlayer(name)`, `GetPlayers(filter)`. | [x] |
+| TODO-20.C.8 | `CameraGlobal.ts` | 29 | LOW | Viewport center position get/set via `WorldRenderer.Viewport`. | [x] |
+| TODO-20.C.9 | `ColorGlobal.ts` | 127 | LOW | Color constructors. `FromRGB()`, `FromHSL()`, `FromHex()`, `FromName()`, color arithmetic, `Distance()`, `Clamp()`, `RandomHue()`. | [x] |
+| TODO-20.C.10 | `CoordinateGlobals.ts` | 107 | LOW | Coordinate utilities. `WPos.FromXY()`, `CPos.FromXY()`, `CVec.FromXY()`, `WVec.FromXY()`, conversion between coordinate types. | [x] |
+| TODO-20.C.11 | `DateTimeGlobal.ts` | 94 | LOW | Real-time clock access. `Now()`, `Seconds()`, `Minutes()`, `Hours()`, `Day()`, `Month()`, `Year()`, time formatting. | [x] |
+| TODO-20.C.12 | `LightingGlobal.ts` | 67 | LOW | Post-process effects. `Flash(type, ticks)`, `Red`/`Green`/`Blue`/`Ambient` tint get/set. | [x] |
+| TODO-20.C.13 | `UserInterfaceGlobal.ts` | 65 | LOW | UI text display. `SetMissionText(text, color)`, `GetFluentMessage(key, args)`. | [x] |
+| TODO-20.C.14 | `BeaconGlobal.ts` | 54 | LOW | Beacon placement. `New(owner, position, type, duration, showTick)` for creating timed beacons. | [x] |
+| TODO-20.C.15 | `AngleGlobal.ts` | 43 | LOW | Angle constructors. `New(degrees)`, `North`/`South`/`East`/`West` constants. | [x] |
+| TODO-20.C.16 | `RadarGlobal.ts` | 35 | LOW | Radar widget control. Create/remove custom radar events. | [x] |
 
 **Blocked by**: Phase A (ScriptObjectWrapper base class), Phase B (ScriptTriggers for TriggerGlobal)
 **Blocks**: Phase D (some Properties reference Global constructors)

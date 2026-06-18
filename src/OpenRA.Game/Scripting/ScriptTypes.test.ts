@@ -29,6 +29,8 @@ const stubContext: IScriptContext = {
   playerCommands: [],
   registerMapActor: () => {},
   fatalError: () => {},
+  logDebug: () => {},
+  get namedActors() { return new Map() },
 }
 
 // ---------------------------------------------------------------------------

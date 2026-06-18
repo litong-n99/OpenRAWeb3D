@@ -71,7 +71,7 @@ describe('ScriptContext', () => {
     it('instantiates registered globals', () => {
       class TestGlobal extends ScriptGlobal {
         constructor(ctx: IScriptContext) {
-          super(ctx, 'Test', [])
+          super(ctx, 'Test')
         }
         protected override getMemberDescriptors(_obj: object): MemberDescriptor[] {
           return []
@@ -95,7 +95,7 @@ describe('ScriptContext', () => {
     it('reserves global names for map actor registration', () => {
       ScriptRegistry.registerGlobal('Actor', class extends ScriptGlobal {
         name = 'Actor'
-        constructor(ctx: IScriptContext) { super(ctx, 'Actor', []) }
+        constructor(ctx: IScriptContext) { super(ctx, 'Actor') }
         protected override getMemberDescriptors(_obj: object): MemberDescriptor[] { return [] }
       }, 'Actor API')
 

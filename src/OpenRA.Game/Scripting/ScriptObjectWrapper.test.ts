@@ -23,6 +23,8 @@ const stubContext: IScriptContext = {
   playerCommands: [],
   registerMapActor: () => {},
   fatalError: () => {},
+  logDebug: () => {},
+  get namedActors() { return new Map() },
 }
 
 // ---------------------------------------------------------------------------
@@ -335,7 +337,7 @@ describe('ScriptGlobal', () => {
   it('sets the global table name', () => {
     class TestGlobal extends ScriptGlobal {
       constructor(context: IScriptContext) {
-        super(context, 'TestGlobal', [])
+        super(context, 'TestGlobal')
       }
       protected override getMemberDescriptors(_obj: object): MemberDescriptor[] {
         return []
@@ -349,7 +351,7 @@ describe('ScriptGlobal', () => {
   it('formats duplicateKeyError with table name', () => {
     class TestGlobal extends ScriptGlobal {
       constructor(context: IScriptContext) {
-        super(context, 'MyGlobal', [])
+        super(context, 'MyGlobal')
       }
       protected override getMemberDescriptors(_obj: object): MemberDescriptor[] {
         return []
@@ -369,7 +371,7 @@ describe('ScriptGlobal', () => {
   it('formats memberNotFoundError with table name', () => {
     class TestGlobal extends ScriptGlobal {
       constructor(context: IScriptContext) {
-        super(context, 'MyGlobal', [])
+        super(context, 'MyGlobal')
       }
       protected override getMemberDescriptors(_obj: object): MemberDescriptor[] {
         return []
@@ -389,7 +391,7 @@ describe('ScriptGlobal', () => {
   it('filterObjects passes through all objects when no filter', () => {
     class TestGlobal extends ScriptGlobal {
       constructor(context: IScriptContext) {
-        super(context, 'Test', [])
+        super(context, 'Test')
       }
       protected override getMemberDescriptors(_obj: object): MemberDescriptor[] {
         return []
@@ -408,7 +410,7 @@ describe('ScriptGlobal', () => {
   it('filterObjects applies filter function', () => {
     class TestGlobal extends ScriptGlobal {
       constructor(context: IScriptContext) {
-        super(context, 'Test', [])
+        super(context, 'Test')
       }
       protected override getMemberDescriptors(_obj: object): MemberDescriptor[] {
         return []

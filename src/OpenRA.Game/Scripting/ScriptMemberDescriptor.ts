@@ -146,6 +146,10 @@ export interface IScriptContext {
   registerMapActor(name: string, actor: IGameActor): void
   fatalError(error: Error): void
   fatalError(message: string): void
+  /** Log a debug message from user scripts (Phase C+). */
+  logDebug(message: string): void
+  /** Get registered named actors (Phase C+). */
+  readonly namedActors: ReadonlyMap<string, IGameActor>
 }
 
 // ---------------------------------------------------------------------------
