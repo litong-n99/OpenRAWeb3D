@@ -1251,3 +1251,406 @@ describe('Error handling', () => {
     expect(game.worldRenderer).not.toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Phase C: chooseShellmap()
+// ---------------------------------------------------------------------------
+
+describe('chooseShellmap()', () => {
+  it('returns null when modData is null', async () => {
+    mockModJson(200)
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game.modData = null
+
+    const result = game.chooseShellmap()
+    expect(result).toBeNull()
+  })
+
+  it('returns null when map cache is empty (Phase 1 behavior)', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // mapCache is mocked to return empty Map — chooseShellmap always returns null
+    const result = (game as any).chooseShellmap()
+    expect(result).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase C: setShellmapFallback()
+// ---------------------------------------------------------------------------
+
+describe('setShellmapFallback()', () => {
+  it('sets dark clearColor and Shellmap state', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Reset state to verify setShellmapFallback changes it
+    ;(game as any).state = GameState.LoadingMod
+    ;(game as any).renderer.worldScene.clearColor = { r: 0, g: 0, b: 0, a: 0 }
+
+    ;(game as any).setShellmapFallback()
+
+    expect(game.state).toBe(GameState.Shellmap)
+    // The mock Color4 constructor creates { r, g, b, a } from args
+    // Game passes (0.05, 0.05, 0.1, 1.0) — verify dark blue-tinted background
+    const cc = (game as any).renderer.worldScene.clearColor
+    expect(cc.r).toBeCloseTo(0.05)
+    expect(cc.g).toBeCloseTo(0.05)
+    expect(cc.b).toBeCloseTo(0.1)
+    expect(cc.a).toBeCloseTo(1.0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase C: loadShellMap() enhanced flow
+// ---------------------------------------------------------------------------
+
+describe('loadShellMap() — Phase C enhanced', () => {
+  it('falls back to static background when modData is null', async () => {
+    mockModJson(200)
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game.modData = null
+
+    await game.loadShellMap()
+
+    expect(game.state).toBe(GameState.Shellmap)
+    const cc = game.renderer.worldScene.clearColor
+    expect(cc.r).toBeCloseTo(0.05)
+  })
+
+  it('falls back to static background when chooseShellmap returns null', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Artificially set state back to verify loadShellMap transition
+    ;(game as any).state = GameState.LoadingMod
+    await game.loadShellMap()
+
+    expect(game.state).toBe(GameState.Shellmap)
+    // World should NOT be created (Phase 1 fallback)
+    expect(game.world).toBeNull()
+  })
+
+  it('handles errors in chooseShellmap gracefully and falls back', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Override chooseShellmap to throw
+    ;(game as any).chooseShellmap = vi.fn(() => { throw new Error('Shellmap error') })
+
+    // Should not throw — catches error and falls back
+    await expect(game.loadShellMap()).resolves.toBeUndefined()
+    expect(game.state).toBe(GameState.Shellmap)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase C: showMainMenu() / hideMainMenu()
+// ---------------------------------------------------------------------------
+
+describe('Main Menu DOM (Phase C)', () => {
+  beforeEach(() => {
+    // Clean up any leftover main-menu-overlay from previous tests
+    const existing = document.getElementById('main-menu-overlay')
+    if (existing) existing.remove()
+  })
+
+  afterEach(() => {
+    const existing = document.getElementById('main-menu-overlay')
+    if (existing) existing.remove()
+  })
+
+  it('showMainMenu creates DOM overlay with buttons', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+
+    const overlay = document.getElementById('main-menu-overlay')
+    expect(overlay).not.toBeNull()
+    expect(overlay!.style.position).toBe('fixed')
+
+    // Verify buttons exist
+    expect(document.getElementById('btn-skirmish')).not.toBeNull()
+    expect(document.getElementById('btn-multiplayer')).not.toBeNull()
+    expect(document.getElementById('btn-settings')).not.toBeNull()
+    expect(document.getElementById('btn-exit')).not.toBeNull()
+
+    // Multiplayer and Settings should be disabled
+    const mpBtn = document.getElementById('btn-multiplayer') as HTMLButtonElement
+    expect(mpBtn.disabled).toBe(true)
+
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    expect(settingsBtn.disabled).toBe(true)
+
+    // Skirmish and Exit should be enabled
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    expect(skirmishBtn.disabled).toBe(false)
+
+    const exitBtn = document.getElementById('btn-exit') as HTMLButtonElement
+    expect(exitBtn.disabled).toBe(false)
+
+    game.hideMainMenu()
+  })
+
+  it('showMainMenu removes previous overlay before creating new one', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const first = document.getElementById('main-menu-overlay')
+    expect(first).not.toBeNull()
+
+    game.showMainMenu()
+    const second = document.getElementById('main-menu-overlay')
+    expect(second).not.toBeNull()
+
+    // Should be a new element (not the same reference)
+    expect(second).not.toBe(first)
+
+    game.hideMainMenu()
+  })
+
+  it('hideMainMenu removes DOM overlay', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.hideMainMenu()
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+  })
+
+  it('hideMainMenu is safe when no overlay exists', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // No overlay exists — should not throw
+    expect(() => game.hideMainMenu()).not.toThrow()
+  })
+
+  it('Exit button navigates to / via history.pushState', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Spy on history.pushState
+    const pushStateSpy = vi.spyOn(history, 'pushState')
+
+    game.showMainMenu()
+
+    const exitBtn = document.getElementById('btn-exit') as HTMLButtonElement
+    exitBtn.click()
+
+    expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
+
+    pushStateSpy.mockRestore()
+    game.hideMainMenu()
+  })
+
+  it('Skirmish button triggers alert (stub)', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+
+    game.showMainMenu()
+
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    skirmishBtn.click()
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Skirmish is coming soon'),
+    )
+
+    alertSpy.mockRestore()
+    game.hideMainMenu()
+  })
+
+  it('title and subtitle are rendered', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+
+    const overlay = document.getElementById('main-menu-overlay')!
+    expect(overlay.textContent).toContain('OpenRAWeb3D')
+    expect(overlay.textContent).toContain('Web-based RTS Engine')
+
+    game.hideMainMenu()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase C: Game.create() calls showMainMenu for Shellmap type
+// ---------------------------------------------------------------------------
+
+describe('Game.create() — showMainMenu integration', () => {
+  afterEach(() => {
+    const existing = document.getElementById('main-menu-overlay')
+    if (existing) existing.remove()
+  })
+
+  it('calls showMainMenu after loadShellMap for Shellmap type', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Main menu DOM should exist
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.dispose()
+  })
+
+  it('does NOT show main menu for Regular type', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+
+    const game = await Game.create(canvas, '_test', WorldType.Regular)
+
+    // Regular world doesn't auto-start — no main menu either
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    game.dispose()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase C: startGame() hides main menu
+// ---------------------------------------------------------------------------
+
+describe('startGame() — hideMainMenu integration', () => {
+  afterEach(() => {
+    const existing = document.getElementById('main-menu-overlay')
+    if (existing) existing.remove()
+  })
+
+  it('hides main menu when transitioning to Playing', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Main menu should be visible
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    const mapStub = {
+      uid: 'test-uid',
+      title: 'Test',
+      dispose: vi.fn(),
+    }
+
+    await game.startGame(mapStub, WorldType.Regular)
+
+    // Main menu should be removed
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+    expect(game.state).toBe(GameState.Playing)
+
+    game.dispose()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase C: dispose() cleans up main menu
+// ---------------------------------------------------------------------------
+
+describe('dispose() — main menu cleanup', () => {
+  afterEach(() => {
+    const existing = document.getElementById('main-menu-overlay')
+    if (existing) existing.remove()
+  })
+
+  it('removes main menu DOM on dispose', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Main menu should exist
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.dispose()
+
+    // Main menu should be removed
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+  })
+
+  it('dispose without main menu does not throw', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Regular)
+
+    // No main menu for Regular type
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    // dispose should not throw
+    expect(() => game.dispose()).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase C: switchMod() shows main menu
+// ---------------------------------------------------------------------------
+
+describe('switchMod() — main menu integration', () => {
+  afterEach(() => {
+    const existing = document.getElementById('main-menu-overlay')
+    if (existing) existing.remove()
+  })
+
+  it('shows main menu after switching mod', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Remove initial main menu to test that switchMod creates it
+    game.hideMainMenu()
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    mockModJson(200, {
+      Metadata: { Title: 'Red Alert', Version: '1.0' },
+      RequiresMods: [],
+      FileSystem: {},
+      Rules: [],
+      Sequences: [],
+      Weapons: [],
+      TileSets: [],
+      Chrome: [],
+      ChromeLayout: [],
+      ChromeMetrics: [],
+      PackageFormats: [],
+      MapFolders: {},
+    })
+
+    await game.switchMod('ra')
+
+    // Main menu should be re-created after switchMod
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+    expect(game.currentModId).toBe('ra')
+
+    game.dispose()
+  })
+})

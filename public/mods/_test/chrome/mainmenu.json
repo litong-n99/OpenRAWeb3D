@@ -1,0 +1,41 @@
+{
+  "background": {
+    "type": "ContainerWidget",
+    "id": "mainmenu_bg",
+    "children": [
+      {
+        "type": "LabelWidget",
+        "id": "title",
+        "text": "OpenRAWeb3D",
+        "font": "BigBold",
+        "align": "center",
+        "bounds": { "x": 0, "y": 100, "width": "PARENT_RIGHT", "height": 80 }
+      },
+      {
+        "type": "ButtonWidget",
+        "id": "btn_skirmish",
+        "text": "Skirmish",
+        "bounds": { "x": "PARENT_RIGHT/2 - 150", "y": 250, "width": 300, "height": 50 }
+      },
+      {
+        "type": "ButtonWidget",
+        "id": "btn_multiplayer",
+        "text": "Multiplayer (Coming Soon)",
+        "bounds": { "x": "PARENT_RIGHT/2 - 150", "y": 320, "width": 300, "height": 50 },
+        "disabled": true
+      },
+      {
+        "type": "ButtonWidget",
+        "id": "btn_settings",
+        "text": "Settings",
+        "bounds": { "x": "PARENT_RIGHT/2 - 150", "y": 390, "width": 300, "height": 50 }
+      },
+      {
+        "type": "ButtonWidget",
+        "id": "btn_exit",
+        "text": "Exit to Desktop",
+        "bounds": { "x": "PARENT_RIGHT/2 - 150", "y": 460, "width": 300, "height": 50 }
+      }
+    ]
+  }
+}

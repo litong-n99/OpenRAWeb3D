@@ -12,7 +12,7 @@
 
 import './style.css'
 import { Router } from './OpenRA.Game/Router.js'
-import { ModSelector } from './OpenRA.Game/ModSelector.js'
+import { ModSelector, WorldType } from './OpenRA.Game/ModSelector.js'
 
 // ---------------------------------------------------------------------------
 // Application Entry
@@ -33,8 +33,13 @@ router.on('/', () => {
 // but does NOT auto-start a game world. In Phase C, the main menu widget
 // (rendered on uiScene) provides a "Skirmish" button that calls
 // Game.startGame(map, WorldType.Regular) to transition from Shellmap to Playing.
+//
+// Phase C update: 传入 WorldType.Shellmap 使 Game.create() 自动调用
+// loadShellMap() → showMainMenu()，显示深色背景 + 主菜单 DOM 覆盖层。
 router.on('/play/:modId', (params) => {
-  ModSelector.launchMod(params['modId'])
+  const canvas = document.getElementById('game-canvas') as HTMLCanvasElement
+  canvas.style.display = 'block'
+  ModSelector.launchMod(params['modId'], WorldType.Shellmap)
 })
 
 // Editor placeholder — Phase D 中扩展

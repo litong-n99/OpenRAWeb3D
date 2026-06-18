@@ -239,6 +239,8 @@ export class Game {
     // 3. Shellmap or start game
     if (worldType === WorldType.Shellmap) {
       await game.loadShellMap()
+      // 显示主菜单 DOM 覆盖层（Phase C）
+      game.showMainMenu()
     }
     // NOTE: WorldType.Regular / WorldType.Editor worlds are started
     // explicitly via startGame(), not automatically in create().
@@ -523,6 +525,9 @@ export class Game {
       )
     }
 
+    // 隐藏主菜单（从 Shellmap 过渡到游戏画面）
+    this.hideMainMenu()
+
     // 1. 创建 GameWorldManager
     // NOTE: 使用类型断言桥接 ModData → ModDataStub, OrderManager → OrderManagerStub
     // Phase B 中子系统接口尚未完成完整的类型统一，这些转换在运行时是安全的。
@@ -575,21 +580,244 @@ export class Game {
    *
    * OpenRA 对照: Game.LoadShellMap()
    *
-   * Phase 1 回退: 设置静态深色背景色。
-   * 不创建 World 或加载地图 — 仅设置 `worldScene.clearColor`。
-   * 主菜单 Widget（Phase C）将渲染在 uiScene 中，覆盖此背景。
-   *
    * ADR-22.5: Shellmap 分阶段部署。
+   * Phase 1: 静态深色背景色（当前实现）。
    * Phase 2: 预渲染地图图像（待实现）。
-   * Phase 3: 完整动态 AI skirmish shellmap（待实现）。
+   * Phase 3: 完整动态 AI skirmish shellmap（待实现，依赖地图缓存填充 TODO-22.E）。
+   *
+   * 策略:
+   * - 地图缓存为空 → setShellmapFallback()（Phase 1 静态背景）
+   * - 地图缓存有数据 → chooseShellmap() 尝试选择 shellmap 标记的地图
+   *   → 成功则 startGame(shellmapMap, Shellmap)
+   *   → 失败则回退到 setShellmapFallback()
    */
   async loadShellMap(): Promise<void> {
-    // Phase 1: 静态深色 RTS 风格背景
-    // NOTE: ADR-22.5 — 深色带有蓝色调的背景，符合经典 RTS 主菜单美学。
-    // clearColor 由 Babylon.js 每帧自动应用（场景 autoClear 默认启用）。
-    this.renderer.worldScene.clearColor = new Color4(0.05, 0.05, 0.1, 1.0)
+    // Phase 1: 静态背景（当地图缓存为空时总是有效）
+    if (!this.modData) {
+      this.setShellmapFallback()
+      return
+    }
 
+    // Phase 3 (future): 完整动态 shellmap
+    // TODO-22.E: 当地图加载到 MapCache 中时，筛选标记为 shellmap 的地图
+    // 并随机选择一个调用 startGame(map, Shellmap)。
+    // 如果 shellmap 加载失败（缺少资产、规则等），捕获错误并回退。
+    try {
+      const shellmapUid = this.chooseShellmap()
+      if (shellmapUid) {
+        // TODO-22.E: Load map from MapCache by UID, then:
+        //   await this.startGame(mapStub, WorldType.Shellmap)
+        //   return
+      }
+    } catch (err) {
+      console.warn('[Game] Shellmap load failed, using static fallback:', err)
+    }
+
+    // 回退到静态背景
+    this.setShellmapFallback()
+  }
+
+  /**
+   * 从地图缓存中选择一个 shellmap 标记的地图。
+   *
+   * OpenRA 对照: LoadShellMap 中的隐式选择逻辑
+   *
+   * Phase 1: 地图缓存始终为空 → 总是返回 null。
+   * Phase 3 (TODO-22.E): 筛选标记为 "shellmap" 的地图预览，
+   * 随机选择一个并返回其 UID。
+   *
+   * @returns shellmap 地图 UID，如果没有可用 shellmap 则返回 null
+   */
+  private chooseShellmap(): string | null {
+    if (!this.modData) return null
+
+    // TODO-22.E: Map cache populated → iterate MapCache, filter by shellmap flag
+    // Implementation sketch:
+    //   const shellmaps = [...this.modData.mapCache].filter(p => p.shellmap)
+    //   if (shellmaps.length === 0) return null
+    //   return shellmaps[Math.floor(Math.random() * shellmaps.length)].uid
+    return null
+  }
+
+  /**
+   * 设置静态 shellmap 回退背景。
+   *
+   * 将 worldScene.clearColor 设置为深色 RTS 风格背景色。
+   * Babylon.js 每帧自动清除为该颜色（场景 autoClear 默认启用），
+   * 为叠加的主菜单 Widget 提供深色背景。
+   */
+  private setShellmapFallback(): void {
+    // 深色带有蓝色调的背景，符合经典 RTS 主菜单美学
+    this.renderer.worldScene.clearColor = new Color4(0.05, 0.05, 0.1, 1.0)
     this.state = GameState.Shellmap
+  }
+
+  // -----------------------------------------------------------------------
+  // Main Menu — DOM overlay on top of canvas (Phase C)
+  // -----------------------------------------------------------------------
+
+  /**
+   * 在 canvas 上方显示主菜单 DOM 覆盖层。
+   *
+   * OpenRA 对照: OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs
+   *
+   * 使用纯 DOM 渲染（而非 Widget 系统），与 ModSelector 风格一致。
+   * 按钮功能为 stub — Skirmish/Settings 显示 "Coming Soon"，
+   * Exit 导航回 Mod 选择器 `/`。
+   *
+   * ADR-22.3: 主菜单使用 DOM overlay，不依赖 Widget 系统。
+   * 完整的 Widget 渲染（TODO-22.C.2 Widget）推迟到 ChromeProvider + WidgetLoader
+   * 集成完成之后，届时可替换此 DOM 实现。
+   */
+  showMainMenu(): void {
+    // 移除已有的主菜单（防止重复创建）
+    this.hideMainMenu()
+
+    const overlay = document.createElement('div')
+    overlay.id = 'main-menu-overlay'
+    // 固定定位覆盖整个视口，z-index 低于加载遮罩
+    overlay.style.cssText =
+      'position:fixed;inset:0;display:flex;flex-direction:column;' +
+      'align-items:center;justify-content:center;z-index:99;' +
+      'pointer-events:none;'
+
+    // 菜单卡片（pointer-events:auto 确保按钮可交互）
+    const menu = document.createElement('div')
+    menu.style.cssText =
+      'pointer-events:auto;text-align:center;' +
+      'background:rgba(10,10,30,0.75);border:1px solid rgba(100,100,180,0.3);' +
+      'border-radius:12px;padding:3rem 4rem;min-width:360px;'
+
+    // 标题
+    const title = document.createElement('h1')
+    title.textContent = 'OpenRAWeb3D'
+    title.style.cssText =
+      'color:#f0f0f0;font-size:2rem;font-weight:700;margin-bottom:0.5rem;' +
+      'letter-spacing:-0.5px;'
+    menu.appendChild(title)
+
+    // 副标题
+    const subtitle = document.createElement('p')
+    subtitle.textContent = 'Web-based RTS Engine'
+    subtitle.style.cssText = 'color:#8888aa;font-size:0.9rem;margin-bottom:2rem;'
+    menu.appendChild(subtitle)
+
+    // 按钮定义
+    interface MenuButton {
+      id: string
+      text: string
+      disabled: boolean
+      onClick: () => void
+    }
+
+    const buttons: MenuButton[] = [
+      {
+        id: 'btn-skirmish',
+        text: 'Skirmish',
+        disabled: false,
+        onClick: () => this._showComingSoon('Skirmish'),
+      },
+      {
+        id: 'btn-multiplayer',
+        text: 'Multiplayer (Coming Soon)',
+        disabled: true,
+        onClick: () => {},
+      },
+      {
+        id: 'btn-settings',
+        text: 'Settings',
+        disabled: true,
+        onClick: () => this._showComingSoon('Settings'),
+      },
+      {
+        id: 'btn-exit',
+        text: 'Exit to Desktop',
+        disabled: false,
+        onClick: () => this._exitToModSelector(),
+      },
+    ]
+
+    for (const btnDef of buttons) {
+      const btn = document.createElement('button')
+      btn.id = btnDef.id
+      btn.textContent = btnDef.text
+      btn.disabled = btnDef.disabled
+      btn.style.cssText =
+        'display:block;width:100%;padding:12px 20px;margin-bottom:12px;' +
+        'border:1px solid rgba(100,100,180,0.4);border-radius:6px;' +
+        'font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.15s ease;' +
+        (
+          btnDef.disabled
+            ? 'background:rgba(40,40,60,0.5);color:#555570;cursor:not-allowed;'
+            : 'background:linear-gradient(135deg,#334488,#4466cc);color:#e0e0f0;'
+        )
+
+      if (!btnDef.disabled) {
+        btn.addEventListener('mouseenter', () => {
+          btn.style.background = 'linear-gradient(135deg,#4466cc,#5577ee)'
+          btn.style.borderColor = 'rgba(120,140,220,0.6)'
+        })
+        btn.addEventListener('mouseleave', () => {
+          btn.style.background = 'linear-gradient(135deg,#334488,#4466cc)'
+          btn.style.borderColor = 'rgba(100,100,180,0.4)'
+        })
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          btnDef.onClick()
+        })
+      }
+      menu.appendChild(btn)
+    }
+
+    // 版本信息
+    const version = document.createElement('p')
+    version.textContent = 'Prototype — Phase C'
+    version.style.cssText =
+      'color:#555570;font-size:0.75rem;margin-top:1.5rem;'
+    menu.appendChild(version)
+
+    overlay.appendChild(menu)
+    document.body.appendChild(overlay)
+  }
+
+  /**
+   * 隐藏并移除主菜单 DOM 覆盖层。
+   *
+   * 调用时机:
+   * - startGame() 启动时（从主菜单过渡到游戏画面）
+   * - dispose() 清理时
+   * - switchMod() 切换时（重新创建菜单）
+   * - showMainMenu() 重新调用时（避免重复）
+   */
+  hideMainMenu(): void {
+    const existing = document.getElementById('main-menu-overlay')
+    if (existing) {
+      existing.remove()
+    }
+  }
+
+  /**
+   * 显示 "Coming Soon" 提示 — 主菜单按钮的临时 stub。
+   *
+   * 使用 runAfterTick 延迟执行以确保 DOM 更新不与渲染循环冲突。
+   */
+  private _showComingSoon(feature: string): void {
+    // NOTE: 使用 alert 而非 DOM 工具提示以保证跨浏览器兼容性。
+    // 完整 widgets 集成后（Ch5 Phase D），将用 Widget 工具提示替换。
+    alert(`${feature} is coming soon!\n\nThis feature will be available in a future update.`)
+  }
+
+  /**
+   * 退出到 Mod 选择器 — 导航回 `/`。
+   *
+   * 使用 history.pushState 触发 Router 的 popstate 监听器。
+   */
+  private _exitToModSelector(): void {
+    // 动态导入 Router 以避免循环依赖（Router 在 main.ts 中使用 ModSelector，
+    // 而 Game 不应直接依赖 Router）。
+    // 直接使用 history.pushState 并分发 popstate 事件。
+    history.pushState(null, '', '/')
+    window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
   // -----------------------------------------------------------------------
@@ -628,9 +856,10 @@ export class Game {
     this._accumulator = 0
     this.renderFrame = 0
 
-    // 2. 重新加载新 mod + shellmap
+    // 2. 重新加载新 mod + shellmap + main menu
     await this.loadMod(modId)
     await this.loadShellMap()
+    this.showMainMenu()
   }
 
   // -----------------------------------------------------------------------
@@ -654,6 +883,9 @@ export class Game {
    */
   dispose(): void {
     this.state = GameState.Disposed
+
+    // 0. 清理主菜单 DOM（防止残留在 DOM 中）
+    this.hideMainMenu()
 
     // 1. World
     this._world?.dispose()
