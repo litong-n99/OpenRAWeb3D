@@ -11,7 +11,9 @@ import { CPos } from '../../OpenRA.Game/CPos.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
 import { MouseInputEvent, MouseButton, Modifiers } from '../../OpenRA.Game/Input/IInputHandler.js'
 import type { MouseInput } from '../../OpenRA.Game/Input/IInputHandler.js'
-import { EditorTileBrush, PaintTileEditorAction, FloodFillEditorAction } from './EditorTileBrush.js'
+import { EditorTileBrush } from './EditorTileBrush.js'
+import { PaintTileEditorAction } from './actions/PaintTileEditorAction.js'
+import { FloodFillEditorAction } from './actions/FloodFillEditorAction.js'
 import type {
   TerrainTemplateInfoStub,
   ITemplatedTerrainInfoStub,

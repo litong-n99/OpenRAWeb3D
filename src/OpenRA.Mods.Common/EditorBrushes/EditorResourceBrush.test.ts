@@ -10,10 +10,8 @@ import { CPos } from '../../OpenRA.Game/CPos.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
 import { MouseInputEvent, MouseButton } from '../../OpenRA.Game/Input/IInputHandler.js'
 import type { MouseInput } from '../../OpenRA.Game/Input/IInputHandler.js'
-import {
-  EditorResourceBrush,
-  AddResourcesEditorAction,
-} from './EditorResourceBrush.js'
+import { EditorResourceBrush } from './EditorResourceBrush.js'
+import { AddResourcesEditorAction } from './actions/AddResourcesEditorAction.js'
 import type {
   IResourceLayer,
   ResourceLayerContents,

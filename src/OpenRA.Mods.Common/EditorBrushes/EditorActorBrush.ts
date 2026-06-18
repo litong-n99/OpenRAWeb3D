@@ -35,7 +35,7 @@ import type {
   WorldRendererStub,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IEditorBrush } from '../Editor/IEditorBrush.js'
-import type { EditorActionManager, IEditorAction } from '../Traits/World/EditorActionManager.js'
+import type { EditorActionManager } from '../Traits/World/EditorActionManager.js'
 import type { EditorActorLayer } from '../Traits/World/EditorActorLayer.js'
 import { EditorActorPreview } from '../Traits/World/EditorActorPreview.js'
 import type { ActorReferenceMap } from '../Traits/World/EditorActorPreview.js'
@@ -43,6 +43,7 @@ import type { EditorViewportControllerWidget } from '../Widgets/EditorViewportCo
 import { SubCell } from '../../OpenRA.Game/Traits/SubCell.js'
 import type { SubCell as SubCellEnum } from '../../OpenRA.Game/Traits/SubCell.js'
 import { PlayerReference } from '../../OpenRA.Game/Map/PlayerReference.js'
+import { AddActorAction } from './actions/AddActorAction.js'
 
 // ---------------------------------------------------------------------------
 // Stub types for actor info traits
@@ -135,6 +136,9 @@ export class EditorActorBrush implements IEditorBrush {
   /** Current cursor cell. */
   private cell: CPos
 
+  /** Building center offset in world units (0 if not a building). */
+  private readonly centerOffset: number
+
   /** Current subcell assignment (SubCell.Invalid if not sharing). */
   private subcell: SubCellEnum = SubCell.Invalid
 
@@ -179,7 +183,7 @@ export class EditorActorBrush implements IEditorBrush {
     // Check IOccupySpaceInfo for sharesCell and center offset
     const ios = actorInfo.traitInfoOrDefault<IOccupySpaceInfoStub>('IOccupySpaceInfo')
     const buildingInfo = actorInfo.traitInfoOrDefault<BuildingInfoStub>('BuildingInfo')
-    const centerOffset = buildingInfo?.centerOffset ?? 0
+    this.centerOffset = buildingInfo?.centerOffset ?? 0
     this.sharesCell = (ios?.sharesCell) ?? false
 
     // Enforce first entry of ValidOwnerNames as owner if the actor has RequiresSpecificOwners
@@ -213,14 +217,20 @@ export class EditorActorBrush implements IEditorBrush {
 
     // NOTE: In C#: worldPx = ViewToWorldPx(LastMousePos) - ScreenPxOffset(centerOffset)
     // This adjusts the cursor by the building's center offset in world pixels.
-    // Since centerOffset is a stub (number), we interpret it as a world-unit offset.
     const lastMouseWorldPx = viewport.viewToWorldPx(viewport.lastMousePos)
     let adjustedX = lastMouseWorldPx.x
     let adjustedY = lastMouseWorldPx.y
-    if (centerOffset !== 0 && screenPxOffset) {
-      const offsetPx = screenPxOffset({ x: centerOffset, y: 0, z: 0 })
-      adjustedX -= offsetPx.x
-      adjustedY -= offsetPx.y
+    if (this.centerOffset !== 0) {
+      if (screenPxOffset) {
+        const offsetPx = screenPxOffset({ x: this.centerOffset, y: 0, z: 0 })
+        adjustedX -= offsetPx.x
+        adjustedY -= offsetPx.y
+      } else {
+        // NOTE: screenPxOffset is unavailable — this is typically the case
+        // when the WorldRenderer is a stub in tests or early integration.
+        // The center offset is silently skipped; the actor preview position
+        // will not be adjusted.
+      }
     }
     const worldPx = { x: adjustedX, y: adjustedY }
     this.cell = viewport.viewToWorld(viewport.worldToViewPx(worldPx))
@@ -327,11 +337,16 @@ export class EditorActorBrush implements IEditorBrush {
     // Offset mouse position by center offset (in world pixels)
     const lastMouseWorldPx = viewport.viewToWorldPx(viewport.lastMousePos)
     // NOTE: C#: worldPx = ViewToWorldPx(LastMousePos) - ScreenPxOffset(centerOffset)
-    // centerOffset is stubbed to 0; this branch is skipped when 0.
     let adjustedX = lastMouseWorldPx.x
     let adjustedY = lastMouseWorldPx.y
-    if (screenPxOffset) {
-      // Use zero offset by default (centerOffset is stubbed); the real code passes centerOffset
+    if (this.centerOffset !== 0) {
+      if (screenPxOffset) {
+        const offsetPx = screenPxOffset({ x: this.centerOffset, y: 0, z: 0 })
+        adjustedX -= offsetPx.x
+        adjustedY -= offsetPx.y
+      }
+      // NOTE: when screenPxOffset is unavailable, center offset is silently
+      // skipped. This matches the constructor's behavior for test stubs.
     }
     const worldPx = { x: adjustedX, y: adjustedY }
     const currentCell = viewport.viewToWorld(viewport.worldToViewPx(worldPx))
@@ -410,94 +425,5 @@ export class EditorActorBrush implements IEditorBrush {
    */
   dispose(): void {
     // No explicit dispose needed — preview is cleaned up by EditorActorLayer
-  }
-}
-
-// ---------------------------------------------------------------------------
-// AddActorAction
-// OpenRA 对照: sealed class AddActorAction : IEditorAction
-// ---------------------------------------------------------------------------
-
-/**
- * Adds an actor to the editor layer at a specified position.
- *
- * OpenRA 对照: AddActorAction (inner class in EditorActorBrush.cs)
- *
- * Stores an immutable copy of the ActorReference. On execute/redo, adds the
- * actor to EditorActorLayer. On undo, removes it.
- */
-export class AddActorAction implements IEditorAction {
-  /** Human-readable action description.
-   *
-   * OpenRA 对照: AddActorAction.Text
-   */
-  text: string
-
-  /** The editor actor layer to add/remove from. */
-  private readonly editorLayer: EditorActorLayer
-
-  /** Immutable copy of the actor reference. */
-  private readonly actor: ActorReferenceMap
-
-  /** The created editor actor preview (set on first Do()). */
-  private editorActorPreview: EditorActorPreview | null = null
-
-  /**
-   * Create a new AddActorAction.
-   *
-   * OpenRA 对照: AddActorAction(EditorActorLayer, ActorReference)
-   *
-   * Takes an immutable copy of the reference to ensure undo can restore
-   * the original configuration even if the source changes.
-   *
-   * @param editorLayer — the editor actor layer
-   * @param actor — the actor reference (shallow-copied for immutability)
-   */
-  constructor(editorLayer: EditorActorLayer, actor: ActorReferenceMap) {
-    this.editorLayer = editorLayer
-    this.actor = new Map(actor) // Immutable copy
-
-    // NOTE: C# uses FluentProvider.GetMessage(AddedActor, "name", info.Name, "id", preview.ID)
-    // The text is set after Do() when the preview exists. Initial placeholder:
-    this.text = 'Adding actor...'
-  }
-
-  /**
-   * Execute the action (first-time add).
-   *
-   * OpenRA 对照: AddActorAction.Execute()
-   */
-  execute(): void {
-    this.redo()
-  }
-
-  /**
-   * Add the actor to the editor layer.
-   *
-   * OpenRA 对照: AddActorAction.Do()
-   *
-   * Creates a new EditorActorPreview in the layer and updates the action text.
-   */
-  redo(): void {
-    this.editorActorPreview = this.editorLayer.add(this.actor)
-
-    // NOTE: C# FluentProvider.GetMessage(AddedActor, "name", info.Name, "id", preview.ID)
-    const actorType =
-      typeof this.actor.get('type') === 'string'
-        ? (this.actor.get('type') as string)
-        : this.editorActorPreview.type
-    this.text = `Added actor: ${actorType} (${this.editorActorPreview.id})`
-  }
-
-  /**
-   * Remove the actor from the editor layer.
-   *
-   * OpenRA 对照: AddActorAction.Undo()
-   */
-  undo(): void {
-    if (this.editorActorPreview) {
-      this.editorLayer.remove(this.editorActorPreview)
-      this.editorActorPreview = null
-    }
   }
 }

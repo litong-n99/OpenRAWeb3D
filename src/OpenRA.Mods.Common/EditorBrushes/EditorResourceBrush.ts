@@ -35,9 +35,9 @@ import type {
   IResourceLayer,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IEditorBrush } from '../Editor/IEditorBrush.js'
-import type { EditorActionManager, IEditorAction } from '../Traits/World/EditorActionManager.js'
+import type { EditorActionManager } from '../Traits/World/EditorActionManager.js'
 import type { EditorViewportControllerWidget } from '../Widgets/EditorViewportControllerWidget.js'
-import type { CellResource } from './types.js'
+import { AddResourcesEditorAction } from './actions/AddResourcesEditorAction.js'
 
 // ---------------------------------------------------------------------------
 // IResourceRenderer stub (对应 OpenRA IResourceRenderer)
@@ -331,147 +331,5 @@ export class EditorResourceBrush implements IEditorBrush {
   dispose(): void {
     this.preview.length = 0
     this.action = null
-  }
-}
-
-// ---------------------------------------------------------------------------
-// AddResourcesEditorAction
-// OpenRA 对照: sealed class AddResourcesEditorAction : IEditorAction
-// ---------------------------------------------------------------------------
-
-/**
- * Accumulates resource placements during a brush stroke and applies them
- * all at once.
- *
- * OpenRA 对照: AddResourcesEditorAction (inner class in EditorResourceBrush.cs)
- *
- * Each Add() call immediately applies the resource to the map (for visual
- * feedback) and stores the previous state for undo. On Execute(), trims
- * excess capacity from the internal list (no-op in TS, matched to C# semantics).
- * On Undo(), restores each cell's previous resource state.
- */
-export class AddResourcesEditorAction implements IEditorAction {
-  /** Human-readable action description.
-   *
-   * OpenRA 对照: AddResourcesEditorAction.Text
-   */
-  text: string
-
-  /** The resource layer being modified. */
-  private readonly resourceLayer: IResourceLayer
-
-  /** The resource type being painted. */
-  private readonly resourceType: string
-
-  /** Accumulated cell undo data. */
-  private readonly cellResources: CellResource[] = []
-
-  /**
-   * Create a new AddResourcesEditorAction.
-   *
-   * OpenRA 对照: AddResourcesEditorAction(string, IResourceLayer)
-   *
-   * @param resourceType — the resource type being painted
-   * @param resourceLayer — the resource layer to modify
-   */
-  constructor(resourceType: string, resourceLayer: IResourceLayer) {
-    this.resourceType = resourceType
-    this.resourceLayer = resourceLayer
-
-    // NOTE: C# FluentProvider.GetMessage(AddedResource, "count", ..., "type", ...)
-    this.text = `Added 0 resource cells of type: ${resourceType}`
-  }
-
-  /**
-   * Execute the action (first-time application). Trims excess capacity
-   * in C# (TrimExcess()), which is a no-op in TypeScript.
-   *
-   * OpenRA 对照: AddResourcesEditorAction.Execute()
-   */
-  execute(): void {
-    // NOTE: C# calls cellResources.TrimExcess() here.
-    // In TypeScript, arrays don't have TrimExcess — this is a no-op.
-  }
-
-  /**
-   * Apply (or re-apply) all accumulated resource placements.
-   *
-   * OpenRA 对照: AddResourcesEditorAction.Do()
-   *
-   * Sets each cell's resource to the paint type at maximum density.
-   */
-  redo(): void {
-    for (const resourceCell of this.cellResources) {
-      this.resourceLayer.addResource(
-        this.resourceType,
-        resourceCell.cell,
-        this.resourceLayer.getMaxDensity(this.resourceType),
-      )
-    }
-  }
-
-  /**
-   * Undo all resource placements — restores each cell's previous resource state.
-   *
-   * OpenRA 对照: AddResourcesEditorAction.Undo()
-   *
-   * For each cell:
-   * - If the old tile's type matches the paint type OR the old tile is empty:
-   *   clear the cell (simulating a replace command)
-   * - If the old tile has a different type: restore the old type and density
-   *
-   * NOTE: C# has both conditions true for matching types:
-   *   if (resourceCell.OldResourceTile.Type == resourceType || resourceCell.OldResourceTile.Type == null)
-   *     resourceLayer.ClearResources(resourceCell.Cell);
-   *   if (resourceCell.OldResourceTile.Type == resourceType || resourceCell.OldResourceTile.Type != null)
-   *     resourceLayer.AddResource(resourceCell.OldResourceTile.Type, resourceCell.Cell, resourceCell.OldResourceTile.Density);
-   * The net effect: for matching/empty types, clear then re-add (which restores
-   * for matching types and does nothing for empty). For different types, only
-   * the second condition fires, restoring the old type.
-   */
-  undo(): void {
-    for (const resourceCell of this.cellResources) {
-      const oldType = resourceCell.oldResourceTile.type
-      const oldDensity = resourceCell.oldResourceTile.density
-
-      // In TS, empty type is '' (not null as in C#)
-      const isEmpty = oldType === '' || oldDensity === 0
-
-      // If old type matches current or cell was empty, clear it first
-      if (oldType === this.resourceType || isEmpty) {
-        this.resourceLayer.clearResources(resourceCell.cell)
-      }
-
-      // If old type matches current or was a different non-empty type, restore it
-      if (oldType === this.resourceType || !isEmpty) {
-        this.resourceLayer.addResource(oldType, resourceCell.cell, oldDensity)
-      }
-    }
-  }
-
-  /**
-   * Add a cell to the accumulated brush stroke.
-   *
-   * OpenRA 对照: AddResourcesEditorAction.Add(CellResource)
-   *
-   * Immediately applies the resource to the map (for visual feedback during drag)
-   * and stores the previous cell state for undo.
-   *
-   * @param resourceCell — the cell and its previous resource state
-   */
-  add(resourceCell: CellResource): void {
-    // Immediately place the resource for visual feedback
-    this.resourceLayer.addResource(
-      this.resourceType,
-      resourceCell.cell,
-      this.resourceLayer.getMaxDensity(this.resourceType),
-    )
-
-    // Store undo data
-    this.cellResources.push(resourceCell)
-
-    // Update action text
-    // NOTE: C# FluentProvider.GetMessage(AddedResource, "count", cellResources.Count, "type", resourceType)
-    this.text = `Added ${this.cellResources.length} resource cell(s) of type: ${this.resourceType}`
   }
 }
