@@ -102,9 +102,8 @@ export class TileSelectorLogic extends CommonSelectorLogic {
     }
 
     // 搜索文本编辑处理
-    const stf = this.searchTextField as unknown as { _text: string }
     this.searchTextField.onTextEdited = () => {
-      this.searchFilter = (stf._text ?? '').trim()
+      this.searchFilter = (this.searchTextField.text ?? '').trim()
       this.filteredCategories.length = 0
 
       if (this.searchFilter && this.searchFilter.length > 0) {
@@ -205,7 +204,7 @@ export class TileSelectorLogic extends CommonSelectorLogic {
 
       // NOTE: 预览缩放推迟到 TerrainTemplatePreviewWidget 迁移后
       // TODO-21.C.12-DEFER-2: 实现预览缩放
-      ;(item as unknown as Widget).isVisible = () => true
+      item.isVisible = () => true
       item.getTooltipText = () => td.tooltip
 
       this.panel.addChild(item)

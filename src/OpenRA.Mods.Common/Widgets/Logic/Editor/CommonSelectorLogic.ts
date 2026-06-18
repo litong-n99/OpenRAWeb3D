@@ -126,11 +126,10 @@ export abstract class CommonSelectorLogic extends ChromeLogic {
     // 搜索文本字段
     this.searchTextField = widget.get<TextFieldWidget>('SEARCH_TEXTFIELD')
     this.searchTextField.onEscapeKey = (_event: WidgetEvent) => {
-      const stf = this.searchTextField as unknown as { _text: string }
-      if (!stf._text || stf._text.length === 0) {
+      if (!this.searchTextField.text || this.searchTextField.text.length === 0) {
         this.searchTextField.yieldKeyboardFocus()
       } else {
-        stf._text = ''
+        this.searchTextField.text = ''
         if (this.searchTextField.onTextEdited) {
           this.searchTextField.onTextEdited()
         }
@@ -168,7 +167,7 @@ export abstract class CommonSelectorLogic extends ChromeLogic {
   // Dispose (对应 OpenRA Dispose(bool disposing))
   // ---------------------------------------------------------------------------
 
-  dispose(): void {
+  override dispose(): void {
     const brush = this.editor.defaultBrush as unknown as ISelectionEventSource
     if (brush.offSelectionChanged) {
       brush.offSelectionChanged(this._onSelectionChanged)
@@ -216,9 +215,7 @@ export abstract class CommonSelectorLogic extends ChromeLogic {
       const category = categoryTemplate.clone() as CheckboxWidget
       category.getText = () => cat
       category.isChecked = () => this.selectedCategories.has(cat)
-      // HACK: CheckboxWidget doesn't have a direct isVisible setter like C#
-      // Use the base Widget.isVisible delegate
-      ;(category as unknown as Widget).isVisible = () => true
+      category.isVisible = () => true
       category.onClick = () => {
         if (!this.selectedCategories.delete(cat)) {
           this.selectedCategories.add(cat)

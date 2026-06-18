@@ -130,7 +130,7 @@ export class LayerSelectorLogic extends ChromeLogic {
 
         // NOTE: 预览缩放推迟到 ResourcePreviewWidget 迁移后
         // TODO-21.C.13-DEFER-2: 实现预览缩放
-        ;(item as unknown as Widget).isVisible = () => true
+        item.isVisible = () => true
         item.getTooltipText = () => resourceType
 
         this.layerTemplateList.addChild(item)

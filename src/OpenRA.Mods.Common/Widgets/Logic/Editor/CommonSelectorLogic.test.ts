@@ -129,7 +129,6 @@ function createMockEditorWidget(): Record<string, unknown> {
 
 function createMockSearchTextField(): Record<string, unknown> {
   const stf: Record<string, unknown> = {
-    _text: '',
     yieldKeyboardFocus: vi.fn(),
     get onEscapeKey(): ((e: WidgetEvent) => boolean) | null {
       return tracker.onEscapeKeyHandler
@@ -145,15 +144,13 @@ function createMockSearchTextField(): Record<string, unknown> {
       tracker.onTextEditedHandler = val
       tracker.onTextEditedAssigned = true
     },
+    get text(): string {
+      return tracker.searchText
+    },
+    set text(val: string) {
+      tracker.searchText = val
+    },
   }
-
-  // Override _text access to use tracker
-  Object.defineProperty(stf, '_text', {
-    get() { return tracker.searchText },
-    set(val: string) { tracker.searchText = val },
-    configurable: true,
-    enumerable: true,
-  })
 
   return stf
 }

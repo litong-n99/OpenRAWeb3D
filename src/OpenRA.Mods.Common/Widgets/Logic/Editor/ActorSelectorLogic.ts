@@ -201,9 +201,8 @@ export class ActorSelectorLogic extends CommonSelectorLogic {
     }
 
     // Search text edit
-    const stf = this.searchTextField as unknown as { _text: string }
     this.searchTextField.onTextEdited = () => {
-      this.searchFilter = (stf._text ?? '').trim()
+      this.searchFilter = (this.searchTextField.text ?? '').trim()
       this.filteredCategories.length = 0
 
       if (this.searchFilter && this.searchFilter.length > 0) {
@@ -338,7 +337,7 @@ export class ActorSelectorLogic extends CommonSelectorLogic {
 
         // NOTE: 预览缩放推迟到 ActorPreviewWidget 迁移后
         // TODO-21.C.11-DEFER-1: 实现预览缩放
-        ;(item as unknown as Widget).isVisible = () => true
+        item.isVisible = () => true
         item.getTooltipText = () => a.tooltip
 
         this.panel.addChild(item)
