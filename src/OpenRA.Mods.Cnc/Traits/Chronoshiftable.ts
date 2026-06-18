@@ -12,7 +12,7 @@
  * - C# frameEndTask → TS deferral pattern (TODO for World integration)
  *
  * NOTE: The Teleport activity (OpenRA.Mods.Cnc.Activities.Teleport) is deferred
- * to TODO-19.C.5. This trait references it as a forward-declared stub.
+ * to . This trait references it as a forward-declared stub.
  */
 
 import { ConditionalTrait } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -129,7 +129,7 @@ export class ChronoshiftableInfo implements ITraitInfo, IConditionalTraitInfo {
 // Teleport activity forward stub
 //
 // OpenRA 对照: OpenRA.Mods.Cnc.Activities.Teleport
-// TODO-19.C.5: Full migration of Teleport activity.
+// Full migration of Teleport activity.
 // ---------------------------------------------------------------------------
 
 /** Queue a teleport activity on the actor.
@@ -137,7 +137,7 @@ export class ChronoshiftableInfo implements ITraitInfo, IConditionalTraitInfo {
  * In production, this delegates to self.QueueActivity() with a Teleport
  * activity instance. For testing, this is a no-op that logs the call.
  *
- * TODO-19.C.5: Replace with real Teleport activity integration.
+* Replace with real Teleport activity integration.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function queueTeleport(

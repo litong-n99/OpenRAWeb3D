@@ -7,7 +7,7 @@
  *   → TS ConditionalTrait<GivesBountyInfo> implements INotifyKilled
  *   (INotifyPassengerEntered/Exited deferred to TODO-10.B.6-PASSENGER)
  * - C# e.Attacker.Owner.PlayerActor.Trait<PlayerResources>().ChangeCash()
- *   → TS duck-typed playerActor.resources forward interface (PlayerResources TODO-10.B.3)
+ *   → TS duck-typed playerActor.resources forward interface (PlayerResources )
  * - C# BitSet<DamageType> DeathTypes → TS BitSet<string> with overlaps
  * - C# FloatingText effect → TS floating text stub (TODO-14/16)
  * - C# self.GetSellValue() extension method → TS getSellValue() from CustomSellValue.ts
@@ -30,7 +30,7 @@ import { getSellValue } from './CustomSellValue.js'
 
 // ---------------------------------------------------------------------------
 // IPlayerResources — Forward interface for PlayerResources (Phase B)
-// OpenRA 对照: PlayerResources trait (Phase B, TODO-10.B.3)
+// OpenRA 对照: PlayerResources trait (Phase B, )
 // ---------------------------------------------------------------------------
 
 /**
@@ -38,10 +38,10 @@ import { getSellValue } from './CustomSellValue.js'
  *
  * OpenRA 对照: OpenRA.Mods.Common/Traits/Player/PlayerResources.cs
  *
- * 由于 PlayerResources 在阶段 B 第 2 波才迁移（TODO-10.B.3），
+ * 由于 PlayerResources 在阶段 B 第 2 波才迁移（），
  * 此处使用最小接口 + duck-typing 解析。
  *
- * TODO-10.B.3: 当 PlayerResources 迁移后，替换为完整类型。
+* 当 PlayerResources 迁移后，替换为完整类型。
  */
 interface IPlayerResources {
   changeCash(amount: number): number
@@ -237,7 +237,7 @@ export class GivesBounty
    *  @param owner — 攻击者的拥有者
    *  @param amount — 要授予的现金金额
    *
-   *  TODO-10.B.3: 当 PlayerResources 迁移后，使用完整的类型系统。
+* 当 PlayerResources 迁移后，使用完整的类型系统。
    */
   private _grantCash(owner: PlayerStub, amount: number): void {
     // Try to access PlayerResources from the owner's player actor

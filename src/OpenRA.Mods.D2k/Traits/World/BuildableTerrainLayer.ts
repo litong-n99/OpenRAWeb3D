@@ -12,7 +12,7 @@
  *   → TS Map<number, number> + Map<number, {left,right}>
  *   (simplified: using mpos index instead of CellLayer)
  * - C# dirty Dictionary<CPos, TerrainTile?> → TS dirty Map<string, TerrainTile?>
- * - C# world.FogObscures(cell) → TS fog-of-war check stub (TODO-19.B.8)
+ * - C# world.FogObscures(cell) → TS fog-of-war check stub ()
  * - C# ITiledTerrainRenderer.TileSprite(tile) → TS duck-typed tile renderer
  *
  * BuildableTerrainLayer manages the concrete slab layer — terrain tiles

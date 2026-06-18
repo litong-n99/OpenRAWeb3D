@@ -479,7 +479,7 @@ export class Viewport implements IViewport {
 
     // Ramp-aware polygon containment check (OpenRA lines 268-281)
     //
-    // TODO-7.B.1.3: 完整 CellRamp 多边形包含测试
+    // 完整 CellRamp 多边形包含测试
     // 当前实现跳过 ramp 数据 (需要 Map.Grid.Ramps[] 和 Map.Ramp[])，直接退回到
     // 基于距离的最近 cell 查找。
     // 完成 ramp 系统迁移后，需要:
@@ -603,7 +603,7 @@ export class Viewport implements IViewport {
    *
    * IViewport 接口兼容方法。
    *
-   * TODO-7.B.1.3: 完整实现需要 Map.CenterOfCell, CellRamp.Corners
+* 完整实现需要 Map.CenterOfCell, CellRamp.Corners
    */
   getScissorBounds(_insideBounds: boolean): Rect {
     return {
@@ -759,7 +759,7 @@ export class Viewport implements IViewport {
   // ---------------------------------------------------------------------------
 
   tick(): void {
-    // TODO-7.B.1.1: GraphicSettings.ViewportDistance 迁移后检测变化并 updateViewportZooms()
+    // GraphicSettings.ViewportDistance 迁移后检测变化并 updateViewportZooms()
     if (this.viewportCenterProvider !== null) {
       this.centerFloat2(this.viewportCenterProvider())
     }
@@ -830,7 +830,7 @@ export class Viewport implements IViewport {
       brV += 1
     }
 
-    // TODO-7.B.1.2: insideBounds=true 时对 tl/br 进行地图边界裁剪
+    // insideBounds=true 时对 tl/br 进行地图边界裁剪
 
     const tlPPos = new PPos(tlU, tlV)
     const brPPos = new PPos(brU, brV)
@@ -869,7 +869,7 @@ export class Viewport implements IViewport {
   }
 
   updateViewportZooms(resetCurrentZoom: boolean = true): void {
-    // TODO-7.B.1.4: WorldViewportSizes / GraphicSettings 迁移后实现完整逻辑
+    // WorldViewportSizes / GraphicSettings 迁移后实现完整逻辑
     //   - overrideUserScale 和 WorldViewportSizes.AllowNativeZoom 检查
     //   - MinZoom = defaultScale (when overrideUserScale)
     //   - MaxZoom = min(MinZoom * MaxZoomScale, NativeHeight * defaultScale / MaxZoomWindowHeight)

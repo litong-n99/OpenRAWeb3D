@@ -72,7 +72,7 @@ export type WorldType = (typeof WorldType)[keyof typeof WorldType]
  * GameSettings stub — provides PauseShellmap flag.
  *
  * OpenRA 对照: OpenRA.Settings/GameSettings.cs
- * TODO-3.F: Replace with full GameSettings when settings module is migrated.
+* Replace with full GameSettings when settings module is migrated.
  */
 export interface GameSettingsStub {
   /** Whether to pause the shellmap when the settings menu is open. */
@@ -83,7 +83,7 @@ export interface GameSettingsStub {
  * ModData stub — provides settings access.
  *
  * OpenRA 对照: OpenRA.Game/ModData.cs
- * TODO-3.F: Replace with full ModData when mod system is migrated.
+* Replace with full ModData when mod system is migrated.
  */
 export interface ModDataStub {
   getSettings<T>(settingsType: new () => T): T
@@ -93,7 +93,7 @@ export interface ModDataStub {
  * OrderManager stub — provides lobby info and order issuing.
  *
  * OpenRA 对照: OpenRA.Network/OrderManager.cs
- * TODO-3.H: Replace with full OrderManager when networking is migrated.
+* Replace with full OrderManager when networking is migrated.
  */
 export interface OrderManagerStub {
   readonly lobbyInfo: SessionStub
@@ -137,7 +137,7 @@ export interface OrderStub {
    *
    * OpenRA 对照: Order.Target
    *
-   * Added for Phase D DevCommands integration (TODO-21.D.4).
+   * Added for Phase D DevCommands integration ().
    * Uses inline import to avoid circular dependency with Target.ts.
    */
   readonly target?: import('./Traits/Target.js').Target
@@ -147,7 +147,7 @@ export interface OrderStub {
  * Map stub — provides map metadata.
  *
  * OpenRA 对照: OpenRA.Game/Map/Map.cs
- * TODO-3.I: Replace with full Map when map module is migrated.
+* Replace with full Map when map module is migrated.
  */
 export interface MapStub {
   readonly uid: string
@@ -169,7 +169,7 @@ export interface MersenneTwisterStub {
  * ScreenMap stub — spatial index for screen-space queries.
  *
  * OpenRA 对照: OpenRA.Game/ScreenMap.cs
- * TODO-3.I: Replace with full ScreenMap when spatial index is migrated.
+* Replace with full ScreenMap when spatial index is migrated.
  */
 export interface ScreenMapStub {
   worldLoaded(world: GameWorldManager, wr: WorldRendererStub): void
@@ -180,7 +180,7 @@ export interface ScreenMapStub {
  * ActorMap stub — spatial index for actor positions.
  *
  * OpenRA 对照: OpenRA.Game/IActorMap.cs
- * TODO-3.I: Replace with full IActorMap when spatial index is migrated.
+* Replace with full IActorMap when spatial index is migrated.
  */
 export interface ActorMapStub {
   // Minimal stub — methods added incrementally as spatial queries are migrated
@@ -190,7 +190,7 @@ export interface ActorMapStub {
  * Selection stub — selected actor tracking.
  *
  * OpenRA 对照: OpenRA.Game/ISelection.cs
- * TODO-3.E: Replace with full ISelection implementation.
+* Replace with full ISelection implementation.
  */
 export interface SelectionStub {
   // Minimal stub — methods added incrementally
@@ -200,7 +200,7 @@ export interface SelectionStub {
  * ControlGroups stub — control group management.
  *
  * OpenRA 对照: OpenRA.Game/IControlGroups.cs
- * TODO-3.E: Replace with full IControlGroups implementation.
+* Replace with full IControlGroups implementation.
  */
 export interface ControlGroupsStub {
   // Minimal stub — methods added incrementally
@@ -210,7 +210,7 @@ export interface ControlGroupsStub {
  * OrderGenerator stub — generates orders from player input.
  *
  * OpenRA 对照: OpenRA.Orders/IOrderGenerator.cs
- * TODO-3.D: Replace with full IOrderGenerator when Orders module is migrated.
+* Replace with full IOrderGenerator when Orders module is migrated.
  */
 export interface OrderGeneratorStub {
   deactivate?(): void
@@ -332,12 +332,12 @@ class StubActor implements IGameActor {
 
   /** @inheritdoc */
   queueActivity(_nextActivity: ActivityStub): void {
-    // TODO-3.E: Full Activity chain implementation
+    // Full Activity chain implementation
   }
 
   /** @inheritdoc */
   cancelActivity(): void {
-    // TODO-3.E: Full Activity cancellation
+    // Full Activity cancellation
   }
 
   // -----------------------------------------------------------------------
@@ -353,7 +353,7 @@ class StubActor implements IGameActor {
    * replaced when the Activity system is migrated.
    */
   tick(): void {
-    // TODO-3.E: Call currentActivity.TickOuter(this) when Activity system
+    // Call currentActivity.TickOuter(this) when Activity system
     // is migrated.
   }
 }
@@ -369,11 +369,11 @@ class StubScreenMapComponent extends Component implements ScreenMapStub {
   static readonly interfaces = ['ScreenMap', 'IWorldLoaded', 'component']
 
   worldLoaded(_world: GameWorldManager, _wr: WorldRendererStub): void {
-    // TODO-3.I: Full ScreenMap.WorldLoaded implementation
+    // Full ScreenMap.WorldLoaded implementation
   }
 
   tickRender(): void {
-    // TODO-3.I: Full ScreenMap.TickRender implementation
+    // Full ScreenMap.TickRender implementation
   }
 }
 
@@ -1250,7 +1250,7 @@ export class GameWorldManager {
    *    to TraitDictionary and calls INotifyCreated.traits
    * 4. Optionally calling Add() to add to world
    *
-   * TODO-3.D: Integrate with GameActor when Phase D is complete.
+* Integrate with GameActor when Phase D is complete.
    *
    * @param name — actor type name (e.g., "world", "e1")
    * @param addToWorld — whether to add to world immediately (default true)
@@ -1448,7 +1448,7 @@ export class GameWorldManager {
 
     // In OpenRA, this sends an Order to toggle pause.
     // For now, we just update the predicted pause state.
-    // TODO-3.H: Send PauseGame order through OrderManager when networking
+    // Send PauseGame order through OrderManager when networking
     // is migrated.
     this.predictedPaused = paused
   }
@@ -1680,14 +1680,14 @@ export class GameWorldManager {
    * - Sync.Hash(ISync) — hash of sync-annotated fields
    * - Sync.HashPlayer(Player) — hash of player state
    *
-   * TODO-3.H: Implement full SyncHash when networking/sync module is migrated.
+* Implement full SyncHash when networking/sync module is migrated.
    * For now, returns a placeholder value.
    *
    * @returns the deterministic sync hash
    */
   syncHash(): number {
     // Placeholder implementation — returns 0 for now
-    // Full implementation in TODO-3.H
+    // Full implementation in
     return 0
   }
 
@@ -1753,7 +1753,7 @@ export class GameWorldManager {
    * @returns true if obscured by fog
    */
   fogObscuresActor(_a: IGameActor): boolean {
-    // TODO-3.G: Implement fog visibility check when shroud/fog is migrated
+    // Implement fog visibility check when shroud/fog is migrated
     return false
   }
 

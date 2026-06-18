@@ -74,7 +74,7 @@ import { GameInformation, GameInformationPlayer } from '../GameInformation.js'
 
 /**
  * Forward reference for Connection (Phase C).
- * TODO-18.C: Replace with `import type { Connection } from './Connection.js'`
+* Replace with `import type { Connection } from './Connection.js'`
  */
 export interface Connection {
   playerIndex: number
@@ -92,7 +92,7 @@ export interface Connection {
 
 /**
  * Forward reference for OrderBuffer (Phase C).
- * TODO-18.C: Replace with `import type { OrderBuffer } from './OrderBuffer.js'`
+* Replace with `import type { OrderBuffer } from './OrderBuffer.js'`
  */
 export interface OrderBuffer {
   start(gameSpeed: GameSpeed, players: Iterable<number>): void
@@ -103,7 +103,7 @@ export interface OrderBuffer {
 
 /**
  * Forward reference for VoteKickTracker (Phase D).
- * TODO-18.D: Replace with `import type { VoteKickTracker } from './VoteKickTracker.js'`
+* Replace with `import type { VoteKickTracker } from './VoteKickTracker.js'`
  */
 export interface VoteKickTrackerStub {
   tick(): void
@@ -111,7 +111,7 @@ export interface VoteKickTrackerStub {
 
 /**
  * Forward reference for MapStatusCache (Phase D).
- * TODO-18.D: Replace with `import type { MapStatusCache } from './MapStatusCache.js'`
+* Replace with `import type { MapStatusCache } from './MapStatusCache.js'`
  */
 export interface MapStatusCacheStub {
   getStatus(map: MapPreviewStub): MapStatus
@@ -119,7 +119,7 @@ export interface MapStatusCacheStub {
 
 /**
  * Forward reference for PlayerMessageTracker (Phase D).
- * TODO-18.D: Replace with `import type { PlayerMessageTracker } from './PlayerMessageTracker.js'`
+* Replace with `import type { PlayerMessageTracker } from './PlayerMessageTracker.js'`
  */
 export interface PlayerMessageTrackerStub {
   isPlayerAtFloodLimit(conn: Connection): boolean
@@ -381,7 +381,7 @@ export class Server {
   mapStatusCache: MapStatusCacheStub
 
   /** Game save (if enabled). */
-  gameSave: unknown | null = null // TODO-18.B: import GameSave from '../Network/GameSave.js' for proper typing
+  gameSave: unknown | null = null // : import GameSave from '../Network/GameSave.js' for proper typing
 
   /** Map pool restriction (frozen set of allowed map UIDs). */
   mapPool: ReadonlySet<string> | null = null
@@ -495,7 +495,7 @@ export class Server {
     this._initializeServerTraits()
 
     // Create MapStatusCache
-    // TODO-18.D: Replace with real MapStatusCache when Phase D is complete
+    // Replace with real MapStatusCache when Phase D is complete
     this.mapStatusCache = {
       getStatus: (_map: MapPreviewStub): MapStatus => {
         return MapStatus.Playable
@@ -579,7 +579,7 @@ export class Server {
 
   /**
    * Create a PlayerMessageTracker stub.
-   * TODO-18.D: Replace with real PlayerMessageTracker when Phase D is complete
+* Replace with real PlayerMessageTracker when Phase D is complete
    */
   private _createPlayerMessageTracker(): PlayerMessageTrackerStub {
     const messageTracker = new Map<number, number[]>()
@@ -631,7 +631,7 @@ export class Server {
 
   /**
    * Create a VoteKickTracker stub.
-   * TODO-18.D: Replace with real VoteKickTracker when Phase D is complete
+* Replace with real VoteKickTracker when Phase D is complete
    */
   private _createVoteKickTracker(): VoteKickTrackerStub {
     return {
@@ -650,7 +650,7 @@ export class Server {
    */
   private _createReplayRecorder(): void {
     // Dynamic import-style: check if ReplayRecorder is available via ModData
-    // TODO-18.B: Import ReplayRecorder statically from '../Network/ReplayRecorder.js'
+    // Import ReplayRecorder statically from '../Network/ReplayRecorder.js'
     // For now, use a stub that captures frames to memory
     const frames: Array<{ from: number; frame: number; data: Uint8Array }> = []
 
@@ -778,7 +778,7 @@ export class Server {
     const playerIndex = this.chooseFreePlayerIndex()
 
     // Create Connection object
-    // TODO-18.C: new Connection(this, transport, playerIndex, token)
+    // new Connection(this, transport, playerIndex, token)
     const newConn = this._createConnection(transport, playerIndex, token)
 
     try {
@@ -830,7 +830,7 @@ export class Server {
 
   /**
    * Create a Connection object (stub until Phase C).
-   * TODO-18.C: Replace with `new Connection(this, transport, playerIndex, token)`
+* Replace with `new Connection(this, transport, playerIndex, token)`
    */
   private _createConnection(
     transport: IClientTransport,
@@ -875,7 +875,7 @@ export class Server {
     // NOTE: (conn as any) accesses internal properties (_lastReceivedTime,
     // _transport) that are added to the object literal above but not exposed
     // on the public Connection interface. These casts are temporary until
-    // Phase C when Connection becomes a proper class (TODO-18.C).
+    // Phase C when Connection becomes a proper class ().
     transport.onMessage((data: Uint8Array) => {
       ;(conn as any)._lastReceivedTime = Date.now()
       self._onConnectionPacket(conn, 0, data)
@@ -1102,7 +1102,7 @@ export class Server {
         client.fingerprint = handshake.fingerprint
         this._completeConnection(newConn, client)
       } else {
-        // Multiplayer: skip auth for now (TODO-18.B: implement authenticator)
+        // Multiplayer: skip auth for now (: implement authenticator)
         // For now, complete connection directly
         this._completeConnection(newConn, client)
       }
@@ -1182,7 +1182,7 @@ export class Server {
     // MOTD for dedicated servers
     if (this.type === ServerType.Dedicated) {
       // NOTE: In browser mode, we skip MOTD file reading.
-      // TODO-18.B: In Node.js mode, read from path.join(platformSupportDir, 'motd.txt')
+      // In Node.js mode, read from path.join(platformSupportDir, 'motd.txt')
       this._sendOrderTo(newConn, 'Message', 'Welcome, have fun and good luck!')
     }
 
@@ -1455,7 +1455,7 @@ export class Server {
     }
 
     // Dispatch to game save if active
-    // TODO-18.B: if (this.gameSave) this.gameSave.dispatchOrders(conn, frame, data)
+    // if (this.gameSave) this.gameSave.dispatchOrders(conn, frame, data)
   }
 
   // ---------------------------------------------------------------------------
@@ -1523,17 +1523,17 @@ export class Server {
       }
 
       case 'GameSaveTraitData': {
-        // TODO-18.B: Integrate with GameSave
+        // Integrate with GameSave
         break
       }
 
       case 'CreateGameSave': {
-        // TODO-18.B: Integrate with GameSave
+        // Integrate with GameSave
         break
       }
 
       case 'LoadGameSave': {
-        // TODO-18.B: Integrate with GameSave
+        // Integrate with GameSave
         break
       }
 
@@ -1958,7 +1958,7 @@ export class Server {
     // Set replay metadata
     if (this._recorder) {
       // Import ReplayMetadata dynamically
-      // TODO-18.B: Use static import
+      // Use static import
       this._recorder.metadata = this._gameInfo
     }
 
@@ -1972,7 +1972,7 @@ export class Server {
     const gameSpeed: GameSpeed = this._getGameSpeed(gameSpeedName)
 
     // Create OrderBuffer
-    // TODO-18.C: Replace with real OrderBuffer
+    // Replace with real OrderBuffer
     const validatedPlayers = this.conns
       .filter((c) => c.validated)
       .map((c) => c.playerIndex)
@@ -2004,7 +2004,7 @@ export class Server {
     this.lobbyInfo.globalSettings.gameTimestep = gameSpeed.timestep
 
     // Create GameSave if enabled
-    // TODO-18.B: Integrate with GameSave module
+    // Integrate with GameSave module
     // if (!this.gameSave && this.lobbyInfo.globalSettings.enableGameSaves)
     //   this.gameSave = new GameSave()
 
@@ -2250,7 +2250,7 @@ export class Server {
     if (!uid) return true
 
     // Use MapCache if available
-    // TODO-18.B: Properly integrate MapCache lookup when MapCache API is finalized
+    // Properly integrate MapCache lookup when MapCache API is finalized
     const mapCache = this.modData.mapCache
     if (mapCache) {
       // MapCache is iterable; check if UID is known

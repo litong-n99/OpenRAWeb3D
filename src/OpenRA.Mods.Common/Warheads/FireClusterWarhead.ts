@@ -225,7 +225,7 @@ export class FireClusterWarhead extends Warhead {
 
     // Check weapon validity against cell target
     // NOTE: Full WeaponInfo.IsValidAgainst check deferred; stub assumes valid
-    // TODO-8.C.1: Wire weapon validation once WeaponInfo is migrated in Phase C
+    // Wire weapon validation once WeaponInfo is migrated in Phase C
 
     const facing = WPos.subtract(
       map.centerOfCell(targetCell),

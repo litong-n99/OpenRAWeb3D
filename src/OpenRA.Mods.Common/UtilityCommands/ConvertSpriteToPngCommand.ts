@@ -47,7 +47,7 @@ export class ConvertSpriteToPngCommand implements IUtilityCommand {
     if (noShadow) console.log('  No shadow')
     if (noPadding) console.log('  No padding')
 
-    // TODO-21.E.12: Implement full sprite-to-PNG conversion when sprite loaders
+    // Implement full sprite-to-PNG conversion when sprite loaders
     // (FrameLoader, SpriteLoader) from Ch19 are migrated.
     //
     // In OpenRA, the conversion pipeline is:
@@ -66,7 +66,7 @@ export class ConvertSpriteToPngCommand implements IUtilityCommand {
     // - ImmutablePalette (Ch2 HardwarePalette.ts)
     // - Png encoder (needs sharp or canvas dependency)
 
-    console.log('TODO-21.E.12: Full sprite→PNG conversion requires:')
+    console.log(': Full sprite→PNG conversion requires:')
     console.log('  - Sprite Loaders (FrameLoader) from Ch19')
     console.log('  - Palette infrastructure (ImmutablePalette) from Ch2')
     console.log('  - PNG encoding (sharp for Node.js, canvas for browser)')

@@ -14,7 +14,7 @@
  * NOTE: WDist.fromPDF is not yet implemented. Random offsets use a simplified
  * approach for the zap effect (uniform distribution scaled by distance).
  *
- * TODO-19.C.12: Full 3D zap rendering requires LinesMesh with dynamic vertex
+* Full 3D zap rendering requires LinesMesh with dynamic vertex
  * allocation and ShaderMaterial glow. Currently produces TeslaZapSegment
  * descriptors that record sprite/position data for use by a 3D renderer.
  */
@@ -71,7 +71,7 @@ function randomZapOffset(rng: SeededRandom, distLen: number): number {
  *
  * OpenRA 对照: SpriteRenderable(s.GetSprite(step[4]), pos, ...)
  *
- * TODO-19.C.12: These descriptors should feed a LinesMesh builder that
+* These descriptors should feed a LinesMesh builder that
  * dynamically allocates vertices and uses a ShaderMaterial for the glow effect.
  * Currently stores the sprite/position data; rendering is deferred to the
  * 3D pipeline (Babylon.js LinesMesh or BatchedSparkRenderer).
@@ -340,7 +340,7 @@ export class TeslaZapRenderable {
 
       // Create a descriptor segment with actual sprite/alpha data from the
       // sequence instead of creating recursive empty TeslaZapRenderable objects.
-      // TODO-19.C.12: Feed these TeslaZapSegment descriptors into a
+      // Feed these TeslaZapSegment descriptors into a
       // Babylon.js LinesMesh builder for 3D lightning rendering.
       const segment = new TeslaZapRenderable(
         new WPos(spritePos.x, spritePos.y, spritePos.z),

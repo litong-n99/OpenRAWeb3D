@@ -7,7 +7,7 @@
  * - C# FluentProvider.GetMessage → template literal strings (TODO-21.B.2-DEFER-7)
  * - C# ImmutableArray<PaintMarkerTile> → readonly PaintMarkerTile[]
  *
- * Migration: TODO-21.B.8 — Chapter 21 Phase B Wave 3
+ * Migration:  — Chapter 21 Phase B Wave 3
  */
 
 import type { IEditorAction } from '../../Traits/World/EditorActionManager.js'

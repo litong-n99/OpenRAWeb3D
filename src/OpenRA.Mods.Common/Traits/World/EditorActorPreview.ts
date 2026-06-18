@@ -15,7 +15,7 @@
  * 编辑器世界中的 actor 是轻量级预览代理，而非完整 GameActor 实例。
  * 它们渲染为精灵/billboard，但没有游戏逻辑、AI 或网络状态。
  *
- * Migration: TODO-21.A.5 — Chapter 21 Phase A
+ * Migration:  — Chapter 21 Phase A
  */
 
 import { WPos } from '../../../OpenRA.Game/WPos.js'

@@ -12,7 +12,7 @@
  * - C# WPos 位置模式 (静态/跟随/动态) →
  *   Vector3 位置模式 + TransformNode 跟随
  * - C# visibleThroughFog 雾穿透 →
- *   renderingGroupId 分层渲染（TODO-7.E.1: 雾/战争迷雾层）
+ *   renderingGroupId 分层渲染（: 雾/战争迷雾层）
  */
 
 // ---------------------------------------------------------------------------
@@ -379,7 +379,7 @@ export class SpriteEffect implements IEffect, ISpatiallyPartitionable {
         // use actor.centerPosition. For now, derive from TransformNode.
         const actor = this._followActor
         if (!actor || actor.disposed) return WPos.Zero
-        // TODO-7.E.1: 使用 actor.centerPosition (需要完整的 Actor.CenterPosition 实现)
+        // 使用 actor.centerPosition (需要完整的 Actor.CenterPosition 实现)
         return WPos.Zero
       }
     } else {
@@ -497,7 +497,7 @@ export class SpriteEffect implements IEffect, ISpatiallyPartitionable {
       //   this._anim = new Animation(world.map.sequences, this.image, this._facingFunc)
       //
       // For now, Animation is deferred — the _facingFunc will be passed to it.
-      // TODO-7.E.1: 完整 Animation 集成
+      // 完整 Animation 集成
       void this._facingFunc // referenced: will be passed to Animation constructor
     }
 
@@ -559,7 +559,7 @@ export class SpriteEffect implements IEffect, ISpatiallyPartitionable {
     const sprite = this._anim?.image
     if (!sprite) return []
 
-    // TODO-7.E.1: 创建完整的 SpriteRenderable 返回当前动画帧
+    // 创建完整的 SpriteRenderable 返回当前动画帧
     return []
   }
 

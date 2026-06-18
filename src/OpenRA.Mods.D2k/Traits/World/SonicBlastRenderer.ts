@@ -18,7 +18,7 @@
  * 2. 位置、缩放和波扩展由每帧 update() 驱动
  * 3. 无需后处理 — 直接在 3D 场景中渲染
  *
- * TODO-19.B.14: Full 3D sonic blast (wave ring Mesh + ShaderMaterial).
+* Full 3D sonic blast (wave ring Mesh + ShaderMaterial).
  * Current implementation provides the interface and position collection;
  * actual 3D rendering deferred to material system integration.
  */
@@ -164,7 +164,7 @@ export class SonicBlastRenderer {
   drawPass(_wr?: unknown): void {
     if (this._positions.length === 0) return
 
-    // TODO-19.B.14: For each position, update or create a wave ring Mesh
+    // For each position, update or create a wave ring Mesh
     // instance in the 3D scene with the sonic blast ShaderMaterial.
     //
     // In the 2D version:
@@ -199,7 +199,7 @@ export class SonicBlastRenderer {
     this._disposed = true
     this._positions.length = 0
 
-    // TODO-19.B.14: Dispose wave ring meshes and ShaderMaterials
+    // Dispose wave ring meshes and ShaderMaterials
   }
 
   /** Whether this renderer has been disposed. */

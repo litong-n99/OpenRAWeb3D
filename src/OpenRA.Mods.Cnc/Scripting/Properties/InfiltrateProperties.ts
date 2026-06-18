@@ -10,7 +10,7 @@
  * - C# Self.QueueActivity(new Infiltrate(...)) → self.queueActivity(createActivity(...))
  * - C# Target.FromActor → TargetStub with actor
  *
- * TODO-20.F.3
+ *
  */
 
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'

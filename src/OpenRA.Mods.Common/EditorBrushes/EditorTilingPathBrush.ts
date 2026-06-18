@@ -18,7 +18,7 @@
  * - Direction handle dragging for start/end direction control
  * - Preview of the tiled path result
  *
- * Migration: TODO-21.B.9 — Chapter 21 Phase B Wave 3
+ * Migration:  — Chapter 21 Phase B Wave 3
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'

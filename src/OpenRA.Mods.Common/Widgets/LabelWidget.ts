@@ -314,7 +314,7 @@ export class LabelWidget extends Widget {
 
     // OpenRA 对照: CachedTransform + FluentProvider.GetMessage 文本缓存
     // NOTE: Fluent 本地化暂未迁移，使用直通缓存。
-    // TODO-16.A.1: 当 Fluent 系统迁移完成后，替换为真正的 Fluent 文本查找。
+    // 当 Fluent 系统迁移完成后，替换为真正的 Fluent 文本查找。
     let textCache: string | null = null
     let textCacheInput: string | null | undefined = undefined
     this.getText = () => {

@@ -206,7 +206,7 @@ export class EnterTunnelOrderTargeter implements IOrderTargeter {
     // HACK: The engine does not support HiddenUnderFog combined with buildings
     // that use the "_" footprint. We therefore have to use AlwaysVisible and
     // then force-disable interacting with the entrance under shroud.
-    // TODO-12.A.1: Implement ShroudObscures check when fog-of-war is migrated.
+    // Implement ShroudObscures check when fog-of-war is migrated.
     // const buildingInfo = target.info?.TraitInfoOrDefault<BuildingInfo>();
     // if (buildingInfo != null) {
     //   const footprint = buildingInfo.PathableTiles(target.Location);
@@ -386,7 +386,7 @@ export class EntersTunnels implements IIssueOrder, IResolveOrder, IOrderVoice, I
       // EntersTunnelsInfo.TargetLineColor.
       if (self.queueActivity) {
         // Activity 1: Move to entrance staging point
-        // TODO-14.A: Replace stub with real MoveActivity
+        // Replace stub with real MoveActivity
         const moveInfo = this._resolveMoveInfo(self)
         const entranceColor = typeof moveInfo?.getTargetLineColor === 'function'
           ? (moveInfo.getTargetLineColor as () => ColorStub)()
@@ -537,7 +537,7 @@ export class EntersTunnels implements IIssueOrder, IResolveOrder, IOrderVoice, I
   /**
    * Create a stub move activity for tunnel movement.
    *
-   * TODO-14.A: Replace with real MoveActivity when Ch14 is implemented.
+* Replace with real MoveActivity when Ch14 is implemented.
    *
    * @param move -- the IMove trait
    * @param cell -- the destination cell

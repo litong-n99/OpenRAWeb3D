@@ -157,7 +157,7 @@ export class Production implements INotifyOwnerChanged {
     // Full implementation will be completed when Actor creation system is migrated.
 
     // NOTE: The full implementation requires:
-    // TODO-11.A.1: Complete DoProduction when Actor creation system is ready.
+    // Complete DoProduction when Actor creation system is ready.
   }
 
   /** Select the best exit for production.
@@ -183,7 +183,7 @@ export class Production implements INotifyOwnerChanged {
     //
     // For now, return null (caller will handle no-exit case)
 
-    // TODO-11.A.1: Complete SelectExit when Exit system is fully migrated.
+    // Complete SelectExit when Exit system is fully migrated.
     return null
   }
 
@@ -242,7 +242,7 @@ export class Production implements INotifyOwnerChanged {
     //
     // For now, return true (assume exit is usable)
 
-    // TODO-11.A.1: Complete CanUseExit when Mobile trait is fully available.
+    // Complete CanUseExit when Mobile trait is fully available.
     return true
   }
 }

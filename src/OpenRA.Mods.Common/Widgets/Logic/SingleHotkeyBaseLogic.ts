@@ -11,7 +11,7 @@
  * 抽象的 ChromeLogic 子类，为编辑器/游戏逻辑提供单热键绑定。
  * 子类重写 onHotkeyActivated() 以响应热键按下。
  *
- * Migration: TODO-21.C.18 dependency (needed by EditorQuickSaveHotkeyLogic)
+ * Migration:  dependency (needed by EditorQuickSaveHotkeyLogic)
  */
 
 import { ChromeLogic } from '../../../OpenRA.Game/Widgets/Widget.js'
@@ -32,7 +32,7 @@ import { LogicKeyListenerWidget } from '../../Widgets/LogicKeyListenerWidget.js'
  * input bridge is completed, this can be replaced with the full
  * KeyInput type from IInputHandler.
  *
- * TODO-21.C.18-FUTURE: bridge to full KeyInput with numeric keycodes
+* bridge to full KeyInput with numeric keycodes
  */
 export interface KeyInputContext {
   /** DOM key string (e.g., "s", "Escape", "F5") */
@@ -77,7 +77,7 @@ export function hotkeyMatches(hotkeyDisplay: string, ctx: KeyInputContext): bool
 
   // NOTE: Modifier state is not yet available from the string-only
   // LogicKeyListenerWidget handler. When the full keyboard input bridge
-  // is available (TODO-21.C.18-FUTURE), enable modifier validation below.
+  // is available (), enable modifier validation below.
   // For now, match on key portion only, ignoring modifier requirements.
   if (expectedMods.length === 0) return true
 

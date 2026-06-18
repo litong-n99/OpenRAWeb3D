@@ -14,7 +14,7 @@
  * 通过下拉面板和键盘快捷键切换编辑器视觉叠加层
  * （地形网格、可建造地形、标记图层）。
  *
- * Migration: TODO-21.C.7 — Chapter 21 Phase C Wave 3
+ * Migration:  — Chapter 21 Phase C Wave 3
  */
 
 import { ChromeLogic, type Widget, Ui } from '../../../../OpenRA.Game/Widgets/Widget.js'

@@ -713,7 +713,7 @@ export class WorldRenderer {
   /**
    * 刷新调色板（替代 OpenRA RefreshPalette）。
    *
-   * **关键优化 (TODO-2.2.7)**：仅在调色板实际变化时调用 RawTexture.update()，
+   * **关键优化 ()**：仅在调色板实际变化时调用 RawTexture.update()，
    * 避免每帧上传 GPU 纹理数据。
    */
   refreshPalette(): void {
@@ -1133,7 +1133,7 @@ export class WorldRenderer {
    * 需要在实际渲染环境中创建（依赖 Engine + Scene）。
    * 在 mock 测试环境中创建可能失败，调用方需处理。
    *
-   * Ref: TODO-2.2.6 (已完成), TODO-2.6.3 (FrameBuffer & 后处理)
+   * Ref:  (已完成),  (FrameBuffer & 后处理)
    */
   initializeDefaultPipeline(camera: Camera): DefaultRenderingPipeline | null {
     if (this.defaultPipeline) return this.defaultPipeline

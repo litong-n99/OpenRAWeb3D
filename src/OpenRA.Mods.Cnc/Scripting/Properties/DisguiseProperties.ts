@@ -9,7 +9,7 @@
  * - C# DisguiseAs(Actor target) → DisguiseAs(target: IGameActor)
  * - C# DisguiseAsType(string actorType, Player newOwner) → DisguiseAsType(actorType, newOwner)
  *
- * TODO-20.F.2
+ *
  */
 
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'

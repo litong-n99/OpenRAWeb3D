@@ -303,7 +303,7 @@ export class GpsWatcher implements ISync, IPreventsShroudReset {
       // NOTE: owner.Shroud.ExploreAll() requires Player.Shroud access.
       // The actual shroud exploration is triggered by GpsPower when
       // it detects the GPS state change.
-      // TODO-19.A.6: Coordinate shroud exploration with GpsPower.
+      // Coordinate shroud exploration with GpsPower.
     }
 
     // Notify listeners if state changed

@@ -175,7 +175,7 @@ export class TerrainSpriteLayer {
    * 每行索引步长 = 6 * mapSize.width
    *
    * NOTE: 当前阶段存储以供 WorldSpriteRenderer 绘制调用使用。
-   * 完整 Draw() 实现属于 TODO-2.7.3。
+   * 完整 Draw() 实现属于 。
    */
   // _indexRowStride: number — kept for future Draw() implementation
 
@@ -489,7 +489,7 @@ export class TerrainSpriteLayer {
     //     indexRowStride * (lastRow - firstRow),
     //     sheets, BlendMode)
     //
-    // TODO-2.7.3: 集成 WorldSpriteRenderer 绘制调用
+    // 集成 WorldSpriteRenderer 绘制调用
 
     return { firstRow, lastRow }
   }

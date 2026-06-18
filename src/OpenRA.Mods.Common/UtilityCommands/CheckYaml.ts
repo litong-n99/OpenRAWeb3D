@@ -244,7 +244,7 @@ export class CheckYaml implements IUtilityCommand {
     //
     // 目前，地图级 lint 通过 lintPassRegistry.mapPasses 运行。
     // 具体的规则检查可以通过 ILintRulesPass 由调用方完成。
-    // TODO-21.E.16: 在 Map.ts 上实现规则加载属性或使用专门的 MapRulesLoader。
+    // 在 Map.ts 上实现规则加载属性或使用专门的 MapRulesLoader。
 
     // 运行所有地图级 lint 通行证
     for (const pass of lintPassRegistry.mapPasses) {
@@ -282,7 +282,7 @@ export class CheckYaml implements IUtilityCommand {
     // 3. 调用 testMap() 运行检查
     // 由于地图加载涉及异步文件系统操作，尚未实现。
     // 使用 emitWarning 而非 emitError —— 这不是真正的校验失败，只是尚未实现的功能。
-    // TODO-21.E.16: 实现异步地图加载和单地图文件检查
+    // 实现异步地图加载和单地图文件检查
     emitWarning(
       `Single map file checking for '${filePath}' requires async Map loading ` +
         `— not yet implemented. Skipping per-map lint checks.`,

@@ -263,7 +263,7 @@ export class Rectangle {
 }
 
 // NOTE: int2 Location and Size Size properties from OpenRA Rectangle are
-// deferred pending migration of those primitives. See TODO-3.A.17 (int2)
-// and TODO-3.A.18 (Size) in docs/actor_system_migration_plan.md.
+// deferred pending migration of those primitives. See  (int2)
+// and  (Size) in docs/actor_system_migration_plan.md.
 // TopLeft/TopRight/BottomLeft/BottomRight corner properties are also
 // deferred since they depend on int2.

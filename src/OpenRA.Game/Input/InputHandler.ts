@@ -82,7 +82,7 @@ export class NullInputHandler implements IInputHandler {
  * 当前这些函数在 Widget 系统中以 Sync.RunUnsynced(world, ...) 模式调用，
  * 确保输入处理在对齐到渲染帧的同时不受同步锁影响。
  *
- * TODO-7.A.2: 当 Game/Ui 模块迁移完成后，替换为实际引用。
+* 当 Game/Ui 模块迁移完成后，替换为实际引用。
  */
 export interface InputRouteCallbacks {
   modifierKeys?: (mods: Modifiers) => void
@@ -185,7 +185,7 @@ export class DefaultInputHandler implements IInputHandler {
  * - 滚轮事件 preventDefault (防止页面滚动)
  */
 export class InputManager {
-  // @todo TODO-7.A.2: 集成 Babylon.js DeviceSourceManager 用于高级输入设备
+  // @todo : 集成 Babylon.js DeviceSourceManager 用于高级输入设备
   // （手柄、VR 控制器等）。当前阶段使用原生 DOM 事件（keydown/keyup/pointerdown/
   // pointermove/pointerup/wheel）提供键盘和鼠标支持。
   // DSM 集成将在 InputManager 上增加 registerDeviceObservers() 方法，

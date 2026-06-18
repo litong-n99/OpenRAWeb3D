@@ -8,7 +8,7 @@
  * - C# TraitsImplementing<IonCannonPower>().First() → traitsImplementing('IonCannonPower')[0]
  * - C# icp.Activate(Self, Target.FromCell(Self.World, target)) → trait.activate(self, target)
  *
- * TODO-20.F.4
+ *
  */
 
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'

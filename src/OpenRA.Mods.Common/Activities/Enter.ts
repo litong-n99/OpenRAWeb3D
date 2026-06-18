@@ -80,7 +80,7 @@ export type EnterState = (typeof EnterState)[keyof typeof EnterState]
  * - `onEnterComplete()`: called after successfully entering the target
  *
  * NOTE: Minimal Phase B version. Does NOT include Cargo/Passenger logic.
- * TODO-14.E.1: Full Enter with transport support in Phase E.
+* Full Enter with transport support in Phase E.
  */
 export abstract class Enter extends Activity {
   // ---------------------------------------------------------------------------

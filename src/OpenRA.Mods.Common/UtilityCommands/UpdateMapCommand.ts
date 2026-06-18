@@ -9,7 +9,7 @@
  *
  * NOTE: 更新规则系统 (OpenRA.Mods.Common.UpdateRules) 已在整个迁移计划中
  * 被标记为延迟项。此命令当前仅提供帮助文本和参数验证存根。
- * 完整的更新逻辑将在 TODO-21.E.8 的实施工作中添加。
+ * 完整的更新逻辑将在  的实施工作中添加。
  */
 
 import type { IUtilityCommand, Utility } from '../../OpenRA.Game/IUtilityCommand.js'
@@ -35,7 +35,7 @@ export class UpdateMapCommand implements IUtilityCommand {
   }
 
   run(_utility: Utility, args: string[]): void {
-    // TODO-21.E.8: Implement UpdateMapCommand fully when UpdateRules system is migrated.
+    // Implement UpdateMapCommand fully when UpdateRules system is migrated.
     // The UpdateRules module (OpenRA.Mods.Common.UpdateRules) is deferred in the
     // migration plan because it involves C#-specific YAML-to-YAML migration rules
     // for upgrading old mod files. In TypeScript, mod updates will use JSON schema
@@ -51,6 +51,6 @@ export class UpdateMapCommand implements IUtilityCommand {
 
     console.log('NOTE: Update rules system has not yet been migrated.')
     console.log('Map format updates are not currently supported.')
-    console.log('See TODO-21.E.8 in the Chapter 21 migration plan.')
+    console.log('See  in the Chapter 21 migration plan.')
   }
 }

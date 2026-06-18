@@ -392,7 +392,7 @@ export class DropDownButtonWidget extends ButtonWidget {
    * @param setupItem — 为每个选项创建 ScrollItemWidget 的工厂函数
    *
    * NOTE: 该方法需要 ScrollPanelWidget 和 Ui.LoadWidget 基础设施。
-   * TODO-16.A.12: 当 ScrollPanelWidget 完全迁移后，启用 ScrollPanelWidget 集成。
+* 当 ScrollPanelWidget 完全迁移后，启用 ScrollPanelWidget 集成。
    * 当前回退：创建简单的 DOM 列表面板。
    */
   showDropDown<T>(

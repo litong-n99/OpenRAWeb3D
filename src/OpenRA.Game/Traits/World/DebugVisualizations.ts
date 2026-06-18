@@ -146,7 +146,7 @@ export class DebugVisualizations {
    *   Game.Renderer.WorldSpriteRenderer.SetDepthPreview(
    *     DepthBuffer, DepthBufferContrast, DepthBufferOffset);
    *
-   * TODO-21.D.2: Babylon.js 深度预览等效项尚未实现。
+* Babylon.js 深度预览等效项尚未实现。
    * 可能的方法（非互斥）:
    *   a) 使用 Babylon.js DepthRenderer 附加到场景
    *   b) 自定义 PostProcess 着色器可视化深度纹理

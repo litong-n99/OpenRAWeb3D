@@ -67,7 +67,7 @@ export function mergeAndPrint(
     for (const f of files) {
       include = include || mapAccess.containsFile(f)
       if (include) {
-        // TODO-21.E.10: Parse file via MiniYAML.FromStream equivalent
+        // Parse file via MiniYAML.FromStream equivalent
         // nodes.push(...parseYamlFromBytes(mapAccess.openFile(f), f))
         nodes.push({ key: `# included: ${f}`, value: '(binary — TODO: parse YAML)' })
       } else {
@@ -204,7 +204,7 @@ export class ExtractMapRules implements IUtilityCommand {
 
     console.log(`ExtractMapRules: Extracting rules from ${mapPath}`)
 
-    // TODO-21.E.10: Implement full extraction when Map constructor with package
+    // Implement full extraction when Map constructor with package
     // support and MiniYAML parsing are available.
     //
     // In OpenRA, this creates a Map from the package, then calls MergeAndPrint
@@ -219,7 +219,7 @@ export class ExtractMapRules implements IUtilityCommand {
     //   MergeAndPrint(map, "Notifications", map.NotificationDefinitions)
     //   MergeAndPrintFluentMessages(map, "FluentMessages", map.FluentMessageDefinitions)
 
-    console.log('TODO-21.E.10: Complete map rules extraction requires:')
+    console.log(': Complete map rules extraction requires:')
     console.log('  - Map constructor with package support')
     console.log('  - MiniYAML parsing (Ch4 Phase H)')
     console.log('  - Map property definitions (RuleDefinitions, SequenceDefinitions, etc.)')

@@ -118,7 +118,7 @@ export class Target {
    */
   static fromCell(cell: CPos, subCell: SubCellEnum = SubCell.FullCell): Target {
     // NOTE: terrainCenterPosition/terrainPositions will be resolved later
-    // when Map.CenterOfSubCell is available (see TODO-3.C.5).
+    // when Map.CenterOfSubCell is available (see ).
     return new Target({
       discriminator: TargetType.Terrain,
       terrainCenterPosition: WPos.Zero,
@@ -217,7 +217,7 @@ export class Target {
    *
    * NOTE: Simplified — checks if actor target has any targetable trait
    * requiring force fire. Full implementation requires TraitDictionary.
-   * See TODO-3.B.2 in docs/actor_system_migration_plan.md.
+   * See  in docs/actor_system_migration_plan.md.
    */
   get requiresForceFire(): boolean {
     // NOTE: Full implementation requires Actor.Targetables iteration.

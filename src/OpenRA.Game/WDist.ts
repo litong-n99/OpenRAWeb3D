@@ -108,7 +108,7 @@ export class WDist {
   }
 
   // NOTE: fromPDF() is deferred pending MersenneTwister migration.
-  // See TODO-3.A.4-PDF in docs/actor_system_migration_plan.md
+  // See  in docs/actor_system_migration_plan.md
   // When implemented:
   //   static fromPDF(r: MersenneTwisterLike, samples: number): WDist {
   //     // Sum samples random integers in [-1024, 1024] then divide by samples

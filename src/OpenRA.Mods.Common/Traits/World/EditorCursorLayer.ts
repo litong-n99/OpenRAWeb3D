@@ -11,7 +11,7 @@
  *   + CoordinateTransformer.cellToVector3() 用于 3D 定位
  * - 光标颜色根据笔刷模式变化（绿=瓦片，蓝=actor，黄=资源）
  *
- * Migration: TODO-21.A.4 — Chapter 21 Phase A
+ * Migration:  — Chapter 21 Phase A
  */
 
 import { Constants } from '@babylonjs/core/Engines/constants'

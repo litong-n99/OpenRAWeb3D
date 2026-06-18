@@ -17,7 +17,7 @@
  * 用于高效的基于位置和基于屏幕的查询。多玩家数量同步跟踪 mpspawn
  * actor 以添加或删除 MultiX 玩家槽。
  *
- * Migration: TODO-21.A.2 — Chapter 21 Phase A
+ * Migration:  — Chapter 21 Phase A
  */
 
 import { CPos } from '../../../OpenRA.Game/CPos.js'
@@ -1181,7 +1181,7 @@ export class EditorActorLayer
    *
    * OpenRA 对照: EditorActorLayer.Save() → List<MiniYamlNode>
    *
-   * NOTE: 由于 MiniYaml 序列化器尚未完成（TODO-4.H），
+   * NOTE: 由于 MiniYaml 序列化器尚未完成（），
    * 返回属性 key-value 数组。每个 entry 是 { key: actorId, value: saveObject }。
    */
   save(): { key: string; value: Record<string, unknown> }[] {

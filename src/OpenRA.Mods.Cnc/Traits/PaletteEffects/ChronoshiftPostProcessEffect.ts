@@ -60,7 +60,7 @@ export class ChronoshiftPostProcessEffectInfo implements ITraitInfo {
  * factor decreases linearly from 1.0 to 0.0, producing a fading color-shift.
  *
  * NOTE: The Babylon.js PostProcess rendering pipeline integration is deferred
- * to TODO-19.C.2. This class stores state and exposes the blend factor for
+ * to . This class stores state and exposes the blend factor for
  * the future post-process renderer.
  */
 export class ChronoshiftPostProcessEffect implements ITick {

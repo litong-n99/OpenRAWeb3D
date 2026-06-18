@@ -549,7 +549,7 @@ export class Harvester
       // NOTE: In C#, this checks if CurrentActivity is not FindAndDeliverResources
       // and queues a new one. In TS, we always queue since the Activity system
       // is not yet fully implemented.
-      // TODO-14.D: Add proper Activity chain inspection when Activity system
+      // Add proper Activity chain inspection when Activity system
       //            is fully implemented.
       self.queueActivity?.(this.createHarvestActivity(self))
     }
@@ -563,7 +563,7 @@ export class Harvester
    *
    *  OpenRA 对照: new FindAndDeliverResources(self)
    *
-   *  TODO-14.D: Replace Activity stub with full FindAndDeliverResources
+* Replace Activity stub with full FindAndDeliverResources
    *             Activity implementation.
    *
    *  @param self — this actor
@@ -588,7 +588,7 @@ export class Harvester
    *
    *  OpenRA 对照: new FindAndDeliverResources(self, deliveryLocation)
    *
-   *  TODO-14.D: Replace Activity stub with full FindAndDeliverResources
+* Replace Activity stub with full FindAndDeliverResources
    *             Activity variant (with pre-located delivery target).
    *
    *  @param self — this actor
@@ -602,7 +602,7 @@ export class Harvester
    *
    *  OpenRA 对照: N/A (C# uses DockClientManager)
    *
-   *  TODO-14.D: Replace with full Dock Activity.
+* Replace with full Dock Activity.
    */
   override createDockActivity(
     _self: IGameActor,
@@ -615,7 +615,7 @@ export class Harvester
    *
    *  OpenRA 对照: N/A (C# uses DockClientManager)
    *
-   *  TODO-14.D: Replace with full MoveToDock Activity.
+* Replace with full MoveToDock Activity.
    */
   override createMoveToDockActivity(
     _self: IGameActor,
@@ -737,7 +737,7 @@ export class Harvester
    *  @param searchRadius — search radius in cells
    *  @returns the nearest harvestable cell, or null if none found
    *
-   *  TODO-14.D: Move full search logic into FindAndDeliverResources Activity.
+* Move full search logic into FindAndDeliverResources Activity.
    */
   findResourceField(
     self: IGameActor,
@@ -984,7 +984,7 @@ export class Harvester
    *  NOTE: Full Player.IsAlliedWith() uses the diplomacy system.
    *  This is a simplified stub.
    *
-   *  TODO-10.A.1: Replace with full Player.IsAlliedWith() when diplomacy
+* Replace with full Player.IsAlliedWith() when diplomacy
    *               system is available.
    */
   private _isAlliedWith(

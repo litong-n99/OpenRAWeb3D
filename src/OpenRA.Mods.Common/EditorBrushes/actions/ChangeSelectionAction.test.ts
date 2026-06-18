@@ -13,7 +13,7 @@
  * deep-copy protection against external mutation, and ISelectionController
  * integration.
  *
- * Migration: TODO-21.B.2 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import { describe, it, expect } from 'vitest'

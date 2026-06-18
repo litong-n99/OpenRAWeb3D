@@ -1478,7 +1478,7 @@ export class ProductionQueue
    * this queue's actor. It does NOT scan the world for all matching Production
    * traits. `ClassicProductionQueue` overrides this to scan world productions.
    *
-   * TODO-11.A.3: ClassicProductionQueue should override this to scan world
+* ClassicProductionQueue should override this to scan world
    * productions and apply the full priority ordering (not paused, primary,
    * highest ActorID).
    *
@@ -1504,7 +1504,7 @@ export class ProductionQueue
    *
    * OpenRA 对照: ProductionQueue.BuildUnit(ActorInfo)
    *
-   * TODO-11.A.2: This is a STUB. The current implementation returns true
+* This is a STUB. The current implementation returns true
    * when the producer trait is not paused, but does NOT actually call
    * `producer.produce()` to create the actor. Full implementation requires:
    *   - Actor creation system (Chapter 14)
@@ -1542,7 +1542,7 @@ export class ProductionQueue
     }
 
     // STUB: Does not actually call producer.produce() or create an actor.
-    // See TODO-11.A.2 comment on this method for full requirements.
+    // See  comment on this method for full requirements.
     if (!mostLikelyProducerTrait.isTraitPaused) {
       // Remove completed item from queue (stub behavior)
       this._endProduction(item)

@@ -189,7 +189,7 @@ export class MapPreviewWidget extends Widget {
    */
   override mouseEntered(): void {
     // NOTE: TooltipContainerWidget 迁移推迟。
-    // 工具提示集成留待 TODO-16.C.25-TOOLTIP。
+    // 工具提示集成留待 。
   }
 
   /** 鼠标离开 — 清除工具提示。

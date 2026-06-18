@@ -5,7 +5,7 @@
  * 核心范式转换:
  * - C# TraitInfo → TS ConditionalTraitInfo (for condition support, per migration plan)
  * - C# PlayerResources concrete type → TS IPlayerResourcesForStorage forward interface
- *   (PlayerResources is migrated in Phase B — TODO-10.B.3)
+ *   (PlayerResources is migrated in Phase B — )
  * - C# INotifyOwnerChanged, INotifyCapture, INotifyKilled, INotifyAddedToWorld,
  *     INotifyRemovedFromWorld → TS equivalent interfaces
  * - C# self.Owner.PlayerActor.Trait<PlayerResources>() → TS duck-typed resolution
@@ -31,7 +31,7 @@ import type {
 
 // ---------------------------------------------------------------------------
 // IPlayerResourcesForStorage — Forward interface for PlayerResources (Phase B)
-// OpenRA 对照: PlayerResources trait (Phase B, TODO-10.B.3)
+// OpenRA 对照: PlayerResources trait (Phase B, )
 // ---------------------------------------------------------------------------
 
 /**
@@ -40,11 +40,11 @@ import type {
  * OpenRA 对照: OpenRA.Mods.Common/Traits/Player/PlayerResources.cs
  *
  * PlayerResources is the central player economy manager. Since it is migrated
- * in Phase B (TODO-10.B.3), StoresPlayerResources uses this minimal interface
+ * in Phase B (), StoresPlayerResources uses this minimal interface
  * with duck-typed resolution. The full PlayerResources class replaces this stub
  * when migrated.
  *
- * TODO-10.B.3: Replace with full PlayerResources class when migrated.
+* Replace with full PlayerResources class when migrated.
  */
 interface IPlayerResourcesForStorage {
   readonly resourceCapacity: number
@@ -123,7 +123,7 @@ export class StoresPlayerResources
    * OpenRA 对照: PlayerResources player
    *
    * NOTE: Typed as unknown due to PlayerResources being migrated in
-   * Phase B (TODO-10.B.3). Cast to IPlayerResourcesForStorage when used.
+   * Phase B (). Cast to IPlayerResourcesForStorage when used.
    */
   private _playerResources: unknown = null
 
@@ -293,7 +293,7 @@ export class StoresPlayerResources
    * Falls back to a stub for testing when the full PlayerResources is not yet
    * available.
    *
-   * TODO-10.B.3: Replace duck-typing with full PlayerResources class
+* Replace duck-typing with full PlayerResources class
    *               when migrated in Phase B.
    */
   private _resolvePlayerResources(self: IGameActor): void {
@@ -318,7 +318,7 @@ export class StoresPlayerResources
   /** Create a stub PlayerResources for testing when the real trait is
    * not yet available.
    *
-   * TEMPORARY — TODO-10.B.3: Remove when PlayerResources is fully migrated.
+   * TEMPORARY — : Remove when PlayerResources is fully migrated.
    * The stub provides a 5000-capacity fallback for development/testing.
    */
   private _createStubPlayerResources(): IPlayerResourcesForStorage {

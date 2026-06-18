@@ -12,7 +12,7 @@
  * 监听 Ctrl+S 热键触发快速保存。检查地图是否被修改且上次保存未失败，
  * 收集 actor 和 player 定义，然后委托给 SaveMapLogic 执行保存。
  *
- * Migration: TODO-21.C.18 — Chapter 21 Phase C Wave 1
+ * Migration:  — Chapter 21 Phase C Wave 1
  */
 import type { Widget, WidgetArgs } from '../../../../../OpenRA.Game/Widgets/Widget.js'
 import {
@@ -208,12 +208,12 @@ export type EditorSaveFunction = (
  * save operation.
  *
  * NOTE: Full save functionality will be enabled when SaveMapLogic is migrated
- * (TODO-21.C.9).
+ * ().
  *
  * OpenRA 对照: inline SaveMap(string combinedPath) { ... SaveMapLogic.SaveMapInner(...) }
  */
 const defaultEditorSave: EditorSaveFunction = (_modData, _world, _map, _path) => {
-  // TODO-21.C.9: When SaveMapLogic is migrated, call:
+  // When SaveMapLogic is migrated, call
   //   const editorActorLayer = world.worldActor.trait<ISaveActorLayer>(...)
   //   const actorDefinitions = editorActorLayer.save()
   //   if (actorDefinitions) map.actorDefinitions = actorDefinitions

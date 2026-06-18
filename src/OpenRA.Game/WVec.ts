@@ -321,7 +321,7 @@ export class WVec {
   }
 
   // NOTE: fromPDF() is deferred pending MersenneTwister migration.
-  // See TODO-3.A.2-PDF in docs/actor_system_migration_plan.md
+  // See  in docs/actor_system_migration_plan.md
   // When implemented:
   //   static fromPDF(r: MersenneTwisterLike, samples: number): WVec {
   //     return new WVec(WDist.fromPDF(r, samples).length,

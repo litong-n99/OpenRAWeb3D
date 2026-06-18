@@ -11,7 +11,7 @@
  * NOTE: Audio, SpriteEffect, and TechTree integration are stubbed.
  *   Subclasses override Activate() for crate-specific effects.
  *
- * Added: Chapter 13 Phase A Batch 3 (TODO-13.A.14 dependency)
+ * Added: Chapter 13 Phase A Batch 3 ( dependency)
  */
 
 import {

@@ -654,7 +654,7 @@ export class SelectionUtils {
    * 1. `HasTraitInfo<ISelectableInfo>()` — actor must have a selectable trait
    *    info. Callers should exclude actors without ISelectableInfo.
    * 2. `Owner.IsAlliedWith(RenderPlayer) || !FogObscures(actor)` — enemy
-   *    actors hidden by fog are excluded. Since fog-of-war is TODO-3.G,
+   *    actors hidden by fog are excluded. Since fog-of-war is ,
    *    FogObscures currently always returns false (all actors visible).
    *
    * @param candidates — actors at the screen point (from scene.pick / raycast),
@@ -701,7 +701,7 @@ export class SelectionUtils {
    * 1. `HasTraitInfo<ISelectableInfo>()` — only actors with selectable info
    *    are eligible. Actors without this trait info should be excluded.
    * 2. `Owner.IsAlliedWith(RenderPlayer) || !FogObscures(actor)` — enemy
-   *    actors hidden by fog are excluded. FogObscures is TODO-3.G
+   *    actors hidden by fog are excluded. FogObscures is
    *    (fog-of-war not yet migrated; currently all actors are visible).
    *
    * In the 3D migration:

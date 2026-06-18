@@ -188,7 +188,7 @@ export class ModSelector {
    *
    * @param modId — 要启动的 Mod ID（如 "ra", "td"）
    * @param worldType — 世界类型（Regular/Shellmap/Editor），默认 Regular
-   *   TODO-22.B.1: Pass worldType to Game.create()
+* Pass worldType to Game.create()
    */
   static async launchMod(modId: string, worldType: WorldType = WorldType.Regular): Promise<void> {
     // 隐藏 Mod 选择器

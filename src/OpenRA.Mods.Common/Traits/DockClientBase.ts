@@ -29,8 +29,8 @@
  *   4. onDockTick — per-tick during dock (virtual, returns false = not complete)
  *   5. onDockCompleted — docking finished (virtual no-op)
  *
- * TODO-10.A.0: DockClientManager integration deferred to Chapter 14.
- * TODO-14.D: Actual Dock/MoveToDock Activity implementation.
+* DockClientManager integration deferred to Chapter 14.
+* Actual Dock/MoveToDock Activity implementation.
  */
 
 import {
@@ -116,7 +116,7 @@ export abstract class DockClientBaseInfo implements ConditionalTraitInfo {
  *  The actual docking Activity (MoveToDock, Dock) is deferred to Chapter 14.
  *
  *  Subclasses:
- *  - Harvester (docks at Refinery to unload resources) — TODO-10.A.1
+ *  - Harvester (docks at Refinery to unload resources) —
  *  - RepairClient (docks at RepairPad to repair) — deferred
  *  - RefuelClient (docks at RefuelPad) — deferred
  *
@@ -309,7 +309,7 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
    *  @param host — the host actor to dock at
    *  @returns an Activity stub for the docking operation
    *
-   *  TODO-14.D: Replace Activity stub with full Dock Activity implementation.
+* Replace Activity stub with full Dock Activity implementation.
    */
   abstract createDockActivity(
     self: IGameActor,
@@ -327,7 +327,7 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
    *  @param host — the host actor to move toward
    *  @returns an Activity stub for the move-to-dock operation
    *
-   *  TODO-14.D: Replace Activity stub with full MoveToDock Activity implementation.
+* Replace Activity stub with full MoveToDock Activity implementation.
    */
   abstract createMoveToDockActivity(
     self: IGameActor,
@@ -395,7 +395,7 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
    *  @param order — the dock order
    *  @returns the host IGameActor if found and valid, null otherwise
    *
-   *  TODO-10.A.0: Once World/actor lookup is fully available, enhance to
+* Once World/actor lookup is fully available, enhance to
    *  use TraitDictionary for IDockHost validation.
    */
   protected getDockHost(
@@ -432,7 +432,7 @@ export abstract class DockClientBase<T extends DockClientBaseInfo>
    *  @param host — the host actor to query
    *  @returns the IDockHost trait if found, null otherwise
    *
-   *  TODO-10.A.0: Replace with TraitDictionary lookup when available.
+* Replace with TraitDictionary lookup when available.
    */
   protected findDockHostTrait(host: IGameActor): IDockHost | null {
     // NOTE: In the full implementation, this would use:

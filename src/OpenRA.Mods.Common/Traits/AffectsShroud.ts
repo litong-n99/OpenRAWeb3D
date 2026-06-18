@@ -9,7 +9,7 @@
  * - C# MoveRecalculationThreshold.Length/LengthSquared → TS WDist.length/lengthSquared
  * - C# event-driven shroud updates → TS direct Shroud.addSource/removeSource calls via Player.shroud
  *
- * Known subclasses: RevealsShroud (TODO-12.A.6), CreatesShroud (TODO-12.A.7)
+ * Known subclasses: RevealsShroud (), CreatesShroud ()
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'

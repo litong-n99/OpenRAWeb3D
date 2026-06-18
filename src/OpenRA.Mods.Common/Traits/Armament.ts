@@ -6,7 +6,7 @@
  * - C# PausableConditionalTrait<ArmamentInfo>, ITick → TS ConditionalTrait, ITick
  * - C# explicit interface ITick.Tick → TS tick() method
  * - C# Turreted, Hovers, BodyOrientation duck-typed access → TS duck-typing
- * - C# Game.Sound.Play() → TODO-8.D.ARMAMENT-DEFER (sound deferred)
+ * - C# Game.Sound.Play() →  (sound deferred)
  * - C# projectile.Projectile.Create() → PROJECTILE_REGISTRY[type].create()
  * - C# in Target → TS Target (reference, not struct)
  */
@@ -584,7 +584,7 @@ export class Armament
             }
           }
 
-          // TODO-8.D.ARMAMENT-DEFER: Sound playback
+          // Sound playback
           // Game.Sound.Play(SoundType.World, args.Weapon.Report, ...)
           // Game.Sound.Play(SoundType.World, args.Weapon.StartBurstReport, ...)
         }
@@ -622,7 +622,7 @@ export class Armament
 
       this.burst = this.weapon?.burst ?? 1
 
-      // TODO-8.D.ARMAMENT-DEFER: AfterFireSound playback
+      // AfterFireSound playback
       // ScheduleDelayedAction(Weapon.AfterFireSoundDelay, Burst, burst => ...)
 
       for (const nbc of this.notifyBurstComplete) {

@@ -908,7 +908,7 @@ export abstract class InputWidget extends Widget {
     return this.isDisabled()
   }
 
-  // TODO-5.D.9: InputWidget.Clone() support requires factory/registry pattern.
+  // InputWidget.Clone() support requires factory/registry pattern.
   // Widget.Clone() throws by default; InputWidget subclasses must override.
 }
 

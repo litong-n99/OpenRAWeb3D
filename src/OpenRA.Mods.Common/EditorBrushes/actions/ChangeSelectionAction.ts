@@ -9,7 +9,7 @@
  * - C# direct EditorDefaultBrush dependency → ISelectionController interface
  *   (Dependency Inversion, enables unit testing)
  *
- * Migration: TODO-21.B.2 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import type { IEditorAction } from '../../Traits/World/EditorActionManager.js'

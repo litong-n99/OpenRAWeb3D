@@ -48,7 +48,7 @@ export class OutputResolvedWeaponsCommand implements IUtilityCommand {
     const key = args[1]
     const modData = utility.modData
 
-    // TODO-21.F.5: 集成武器数据加载以实现完整的 MiniYAML 输出。
+    // 集成武器数据加载以实现完整的 MiniYAML 输出。
     const cachedWeapons = (modData as unknown as Record<string, unknown>)._cachedWeapons as
       | Record<string, unknown>
       | undefined

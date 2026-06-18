@@ -7,7 +7,7 @@
  * - C# AttackBase.HasAnyValidWeapons → reuse Ch8 AttackBase trait
  * - C# IMove.MoveWithinRange → duck-typed IMove.moveWithinRange
  * - C# AttackMoveActivity → reuse existing AttackMoveActivity.ts
- * - C# Wait(25) → new Wait activity (TODO-14.F.1, stub inline for now)
+ * - C# Wait(25) → new Wait activity (, stub inline for now)
  */
 
 // ---------------------------------------------------------------------------
@@ -159,7 +159,7 @@ export class Hunt extends Activity {
    *
    * Simplified: uses straight-line distance (no pathfinding).
    * Full implementation with path-based distance is deferred to Phase E
-   * (TODO-14.E.2) when the full pathfinding integration is available.
+   * () when the full pathfinding integration is available.
    *
    * @param self — the actor performing the hunt
    * @returns the closest target, or null if none
@@ -207,7 +207,7 @@ export class Hunt extends Activity {
  *
  * OpenRA 对照: Wait(ticks)
  *
- * TODO-14.F.1: Replace with the full Wait activity when Phase F is migrated.
+* Replace with the full Wait activity when Phase F is migrated.
  */
 class Wait extends Activity {
   private remainingTicks: number

@@ -15,7 +15,7 @@
  * (sprite frame swap at 25fps via the Animation class from Ch2).
  * The CancelCustomAnimation callback restores the default animation loop.
  *
- * TODO-13.A.12: WithSupportPowerActivationAnimation migration
+* WithSupportPowerActivationAnimation migration
  */
 
 import {

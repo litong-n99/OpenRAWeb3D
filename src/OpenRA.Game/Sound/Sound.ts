@@ -174,7 +174,7 @@ export class SoundPool {
  *
  * OpenRA 对照: OpenRA.GameRules.SoundInfo
  *
- * @todo TODO-7.D.3: 将 GoRules/SoundInfo 完全迁移为独立文件，
+ * @todo : 将 GoRules/SoundInfo 完全迁移为独立文件，
  *   包括 MiniYAML 解析逻辑。当前 Sound 类内联定义以满足 Phase D 需求。
  */
 export interface SoundInfo {
@@ -287,7 +287,7 @@ export interface ISoundActor {
  *
  * 替代 C# Game.Settings.Sound 引用。
  *
- * @todo TODO-7.D.4: 集成到 Game.Settings.Sound 全局设置系统，
+ * @todo : 集成到 Game.Settings.Sound 全局设置系统，
  *   当前使用直接赋值以支持独立测试。
  */
 export interface SoundSettings {
@@ -771,7 +771,7 @@ export class Sound {
   // Play(ISoundFormat) / Play(ISoundFormat, float) — PCM 流式播放
   // OpenRA 对照: Sound.Play(ISoundFormat) / Sound.Play(ISoundFormat, float)
   //
-  // @todo TODO-7.D.6: 实现 ISoundFormat → Play2DStream 桥接。
+  // @todo : 实现 ISoundFormat → Play2DStream 桥接。
   //   在 OpenRA C# 中，Play(ISoundFormat) 调用 soundEngine.Play2DStream()
   //   直接播放 PCM 流（用于音乐和自定义音频）。Web 环境下，浏览器原生解码
   //   替代了 PCM 流式传输。需要：
@@ -1008,7 +1008,7 @@ export class Sound {
     const soundSource = this.getCachedSound(m.filename)
     if (!soundSource) {
       // 音乐尚未缓存 —— 记录并跳过
-      // TODO-7.D.5: 实现异步音乐预加载队列
+      // 实现异步音乐预加载队列
       console.warn(`[Sound] Music not preloaded: ${m.filename}`)
       return null
     }

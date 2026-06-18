@@ -458,7 +458,7 @@ describe('HashTarget', () => {
     expect(HashTarget(t)).toBe(0)
   })
 
-  it('returns 0 for FrozenActor target (deferred — TODO-6.B.3)', () => {
+  it('returns 0 for FrozenActor target (deferred — )', () => {
     const t = {
       type: TT_FrozenActor,
       actor: null,

@@ -5,7 +5,7 @@
  * 核心范式转换:
  * - C# ConnectionStateChanged event handler → TypeScript event listener pattern
  * - C# Ui.OpenWindow/CONNECTING_PANEL → Ui.openWindow with widgetArgs
- * - C# FluentProvider.GetMessage → inline string (Fluent deferred TODO-16.C.1)
+ * - C# FluentProvider.GetMessage → inline string (Fluent deferred )
  * - C# Game.ConnectionStateChanged += handler → observable subscription pattern
  * - C# Game.JoinServer static call → simplified connection API
  * - C# CurrentServerSettings.ServerExternalMod → external mod handling (stub)

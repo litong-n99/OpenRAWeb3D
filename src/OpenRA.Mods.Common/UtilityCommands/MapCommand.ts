@@ -53,7 +53,7 @@ export class MapCommand implements IUtilityCommand {
     // NOTE: In OpenRA, MapCache.LoadMaps must be called before iterating MapLocations.
     // Our MapCache's loadMaps() requires a ModDataStub (getOrCreate + mapFolders).
     // The caller should load maps before invoking this command.
-    // TODO-21.E.6: Either add mapFolders to ModData or create ModDataStub adapter.
+    // Either add mapFolders to ModData or create ModDataStub adapter.
 
     // mapLocations: ReadonlyMap<IReadOnlyPackage, MapClassification>
     // keys are packages, values are MapClassification enum values.
@@ -70,22 +70,22 @@ export class MapCommand implements IUtilityCommand {
         }
 
         try {
-          // TODO-21.E.6: Create Map from ModData and package.
+          // Create Map from ModData and package.
           // const map = new Map(modData, mapPackage)
 
           switch (subcommand) {
             case 'refresh':
-              // TODO-21.E.6: map.Save(mapPackage as IPackage)
+              // map.Save(mapPackage as IPackage)
               console.log(`MapCommand: refresh ${mapFilename} — TODO: Map.Save() not yet implemented`)
               break
 
             case 'unpack':
-              // TODO-21.E.6: If mapPackage is a ZipFile, save to Folder
+              // If mapPackage is a ZipFile, save to Folder
               console.log(`MapCommand: unpack ${mapFilename} — TODO: zip→folder conversion not yet implemented`)
               break
 
             case 'repack':
-              // TODO-21.E.6: If mapPackage is a Folder, repack to zip
+              // If mapPackage is a Folder, repack to zip
               console.log(`MapCommand: repack ${mapFilename} — TODO: folder→zip conversion not yet implemented`)
               break
           }

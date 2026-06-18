@@ -8,7 +8,7 @@
  * - C# LoadFootprint() YAML 静态解析器 → TS fromJSON() JSON 工厂方法
  * - C# INotifySold/INotifyTransform 显式接口实现 → TS 接口方法直接实现
  * - C# WorldUtils.GetSmudgeTiles() / SmudgeLayer.RemoveSmudge() → TS 桩
- *   （SmudgeLayer 尚未迁移，TODO-11.B.6 后续实现）
+ *   （SmudgeLayer 尚未迁移， 后续实现）
  * - C# BuildingInfluence / ActorMap 依赖注入 → TS 构造器可选参数
  * - BLOCKER-3 fix: 预解析 footprints 缓存避免热路径 string.split + new CVec()
  * - BLOCKER-4 fix: OccupiedCell[] 预计算避免 per-call .map() 分配
@@ -594,7 +594,7 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
    *
    * OpenRA 对照: BuildingInfo.FindBaseProvider(World world, Player p, CPos topLeft)
    *
-   * TODO-11.B.4: Full implementation depends on BaseProvider, MapBuildRadius,
+* Full implementation depends on BaseProvider, MapBuildRadius,
    * and PlayerRelationship. Currently returns null (no base provider found).
    *
    * @param _map — the game map (for centerOfCell)
@@ -607,7 +607,7 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
     _player: PlayerStub,
     _topLeft: CPos,
   ): unknown /* BaseProvider | null */ {
-    // TODO-11.B.4: Implement when BaseProvider and MapBuildRadius are migrated.
+    // Implement when BaseProvider and MapBuildRadius are migrated.
     // For now, return null — buildings with RequiresBaseProvider=true will
     // fail placement (which is the correct default behavior).
     return null
@@ -623,7 +623,7 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
    * OpenRA 对照: BuildingInfo.IsCloseEnoughToBase(World world, Player p,
    *   ActorInfo ai, CPos topLeft)
    *
-   * TODO-11.B.5: Full implementation depends on RequiresBuildableArea,
+* Full implementation depends on RequiresBuildableArea,
    * BuildingInfluence, ActorMap, MapBuildRadius, and DeveloperMode.
    * Currently always returns true (allows placement anywhere — debug mode).
    *
@@ -639,7 +639,7 @@ export class BuildingInfo implements ITraitInfo, IOccupySpaceInfo {
     _actorInfo: ActorInfoStub,
     _topLeft: CPos,
   ): boolean {
-    // TODO-11.B.5: Implement when RequiresBuildableArea, BuildingInfluence,
+    // Implement when RequiresBuildableArea, BuildingInfluence,
     // ActorMap, MapBuildRadius, and DeveloperMode are migrated.
     // Current stub: always returns true (debug-friendly).
     return true
@@ -1038,7 +1038,7 @@ export class Building
    * This method currently logs a warning and is a no-op.
    */
   removeSmudges(): void {
-    // TODO-11.B.6: Implement when SmudgeLayer is migrated
+    // Implement when SmudgeLayer is migrated
     //   const smudgeLayers = self.World.WorldActor.TraitsImplementing<SmudgeLayer>()
     //   for (const smudgeLayer of smudgeLayers)
     //     for (const footprintTile of this.info.tiles(this.topLeft))

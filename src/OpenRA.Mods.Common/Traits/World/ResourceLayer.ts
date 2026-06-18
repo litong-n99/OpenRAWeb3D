@@ -261,7 +261,7 @@ function clamp(value: number, min: number, max: number): number {
  *   Buildings always allow resource placement at cells they occupy.
  *   Full integration via TODO-11.B.X.
  * NOTE: Fog-of-war visibility (IsVisible) is stubbed — always returns true.
- *   Full integration via TODO-12.A.X.
+ *   Full integration via .
  */
 export class ResourceLayer implements IResourceLayer, IWorldLoaded {
   /** Configuration for this resource layer.
@@ -382,7 +382,7 @@ export class ResourceLayer implements IResourceLayer, IWorldLoaded {
    *
    * NOTE: Fog-of-war/shroud integration deferred to Chapter 12.
    * Initial implementation always returns true.
-   * TODO-12.A.X: Integrate with shroud system.
+* Integrate with shroud system.
    *
    * @param _cell — the map cell to query (unused until shroud integration)
    * @returns always true (until shroud is migrated)

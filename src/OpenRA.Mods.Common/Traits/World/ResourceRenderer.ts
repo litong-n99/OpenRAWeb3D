@@ -15,7 +15,7 @@
  * - C# int2.Lerp for frame selection → lerp utility
  * - C# IRadarTerrainLayer → deferred (TODO-12.X)
  * - C# IMapPreviewSignatureInfo → deferred (TODO-12.X)
- * - C# RenderUIPreview / RenderPreview → deferred (TODO-10.X)
+ * - C# RenderUIPreview / RenderPreview → deferred ()
  */
 
 import { CPos } from '../../../OpenRA.Game/CPos'
@@ -408,7 +408,7 @@ function cellVariantIndex(cell: CPos, numVariants: number): number {
  *
  * NOTE: IRadarTerrainLayer deferred — TODO-12.X (radar/minimap integration)
  * NOTE: IMapPreviewSignatureInfo deferred — TODO-12.X (map preview)
- * NOTE: RenderUIPreview / RenderPreview deferred — TODO-10.X
+ * NOTE: RenderUIPreview / RenderPreview deferred —
  */
 export class ResourceRenderer implements IResourceRenderer, IWorldLoaded, IRenderOverlay, ITickRender, INotifyActorDisposing {
   /** Configuration for this renderer.
@@ -724,7 +724,7 @@ export class ResourceRenderer implements IResourceRenderer, IWorldLoaded, IRende
    * NOTE: Full WorldRenderer palette integration requires the
    * WorldRenderer to be passed via the factory or a separate method.
    * For now, return a stub palette reference.
-   * TODO-10.X: Integrate WorldRenderer palette system
+* Integrate WorldRenderer palette system
    *
    * @param paletteName — the palette name
    * @returns a minimal palette reference
@@ -956,7 +956,7 @@ export class ResourceRenderer implements IResourceRenderer, IWorldLoaded, IRende
   private _getViewport(_wr: WorldRendererStub): IResourceRendererViewport {
     // NOTE: Full viewport integration requires WorldRenderer.Viewport.
     // For now, render the entire map (firstRow=0 to lastRow=mapHeight).
-    // TODO-10.X: Integrate with WorldRenderer viewport for proper culling.
+    // Integrate with WorldRenderer viewport for proper culling.
     const mapSize = this.world.map.mapSize
     return {
       visibleCells: {

@@ -14,7 +14,7 @@
  * 配置标记瓷砖笔刷，包含颜色色板、镜像模式控件、透明度滑块和清除按钮。
  * 监听笔刷变更以重置选中的标记索引。
  *
- * Migration: TODO-21.C.6 — Chapter 21 Phase C Wave 3
+ * Migration:  — Chapter 21 Phase C Wave 3
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

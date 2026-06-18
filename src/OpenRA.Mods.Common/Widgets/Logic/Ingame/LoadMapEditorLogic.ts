@@ -10,7 +10,7 @@
  * 1. EDITOR_WORLD_ROOT — 主编辑器面板层级
  * 2. TRANSIENTS_PANEL — 浮动对话框容器
  *
- * Migration: TODO-21.C.17 — Chapter 21 Phase C Wave 1
+ * Migration:  — Chapter 21 Phase C Wave 1
  */
 
 import { ChromeLogic, type Widget, type WidgetArgs } from '../../../../OpenRA.Game/Widgets/Widget.js'

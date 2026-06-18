@@ -7,7 +7,7 @@
  * - C# uint[] Palette → Uint32Array
  * - C# MemoryMarshal.Cast → Uint32Array/Uint16Array 视图
  * - C# unsafe fixed(byte*) → 直接索引访问
- * - C# PlayerColorRemap → TODO-19.D.16 (需要 PlayerColorRemap 类)
+ * - C# PlayerColorRemap →  (需要 PlayerColorRemap 类)
  *
  * R8 格式是 Dune 2000 专用的精灵格式，每帧包含:
  * - 类型标记 (0=nop, 1=含调色板, 2=使用上一个调色板)
@@ -420,12 +420,12 @@ class R8LoaderImpl implements ISpriteLoader {
    *
    * OpenRA 对照: PlayerColorRemap.GetRemappedColor
    *
-   * TODO-19.D.16: 实现完整的 PlayerColorRemap 逻辑。
+* 实现完整的 PlayerColorRemap 逻辑。
    * 当前为占位实现，直接返回原始颜色。
    * 完整实现需要创建 PlayerColorRemap 类 (对应 OpenRA.Graphics.PlayerColorRemap)。
    */
   static remapColor(originalArgb: number): number {
-    // TODO-19.D.16: Implement full PlayerColorRemap.
+    // Implement full PlayerColorRemap.
     // OpenRA uses: new PlayerColorRemap(indices, remap).GetRemappedColor(color, i).ToArgb()
     return originalArgb
   }

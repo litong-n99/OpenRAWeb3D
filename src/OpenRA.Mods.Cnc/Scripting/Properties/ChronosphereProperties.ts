@@ -9,7 +9,7 @@
  * - C# FirstEnabledConditionalTraitOrDefault<Chronoshiftable>() → find first non-disabled Chronoshiftable
  * - C# cs.Teleport(actor, cell, duration, killCargo, Self) → trait.teleport(actor, cell, duration, killCargo, self)
  *
- * TODO-20.F.1
+ *
  */
 
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'

@@ -11,7 +11,7 @@
  * - C# readonly struct PaintMarkerTile (EditorMarkerLayerBrush.cs) → TypeScript interface
  * - C# EditorDefaultBrush.setSelection/selection → TypeScript ISelectionController interface
  *
- * Migration: TODO-21.B.2 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import type { CPos } from '../../OpenRA.Game/CPos.js'

@@ -56,7 +56,7 @@ export interface IChronoVortexWorldRenderer {
  * The chrono-vortex renderable shows a swirling vortex effect at
  * chronoshift departure and arrival points. It plays through 48 frames.
  *
- * TODO-19.C.11: Full 3D implementation requires ChronoVortexShaderMaterial
+* Full 3D implementation requires ChronoVortexShaderMaterial
  * with spiral UV animation. Currently renders via the 2D-to-3D adapter
  * in ChronoVortexRenderer.
  */
@@ -192,7 +192,7 @@ export class ChronoVortexRenderable {
     const screenPos = wr.screen3DPxPosition(this.pos)
     // Debug: 64x64 pixel area
     void screenPos
-    // TODO-19.C.11: Implement 3D debug rectangle
+    // Implement 3D debug rectangle
   }
 
   // -------------------------------------------------------------------------

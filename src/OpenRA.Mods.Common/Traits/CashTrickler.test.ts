@@ -129,7 +129,7 @@ describe('CashTrickler', () => {
     // -------------------------------------------------------------------
     // validateOnLoad — IRulesetLoaded deferred validation
     // OpenRA 对照: IRulesetLoaded<ActorInfo>.RulesetLoaded()
-    // TODO-10.B.4-RULESET: integrate with build-time YAML validation
+    // integrate with build-time YAML validation
     // -------------------------------------------------------------------
 
     describe('validateOnLoad()', () => {

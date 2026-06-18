@@ -290,7 +290,7 @@ export class FloatingSpriteEmitter
     //   this._facing = (actor as GameActor).traitOrDefault<IFacing>() ?? null
     // For now, _facing remains null (random facing will be used).
     void actor // referenced for future trait lookup
-    this._facing = null // TODO-7.E.2: integrate with GameActor trait system
+    this._facing = null // : integrate with GameActor trait system
   }
 
   // -------------------------------------------------------------------------
@@ -403,7 +403,7 @@ export class FloatingSpriteEmitter
 
     if (!this._particleSystem) {
       // Create GPUParticleSystem on first emission
-      // TODO-7.E.2: Initialize GPUParticleSystem with actor's scene
+      // Initialize GPUParticleSystem with actor's scene
       // const scene = actor.world?.scene
       // if (!scene) return
       //

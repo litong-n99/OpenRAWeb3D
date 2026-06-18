@@ -42,7 +42,7 @@ import type { ModData } from '../../OpenRA.Game/ModData.js'
  * NOTE: 完整的 UpdateRule 抽象类有 ~100 行 C# 代码，
  * 包含 BeforeUpdate、AfterUpdate、UpdateActorNode、UpdateWeaponNode 等。
  * 此接口捕获 CLI 工具所需的核心契约，其完整实现推迟到
- * UpdateRules 迁移（TODO-21.E.X — 尚未规划）。
+ * UpdateRules 迁移（ — 尚未规划）。
  */
 export interface IUpdateRule {
   /** 规则的可读名称。OpenRA 对照: UpdateRule.Name */

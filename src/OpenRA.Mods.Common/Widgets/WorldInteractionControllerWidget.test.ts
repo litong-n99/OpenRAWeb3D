@@ -868,7 +868,7 @@ describe('WorldInteractionControllerWidget', () => {
   describe('drag-box entity filtering', () => {
     it('includes entities within the screen rect — no entities when projection unavailable', () => {
       // NOTE: Vector3.Project throws in mock env → _worldToScreen returns null.
-      // Entity detection via screen projection is tested in e2e tests (TODO-5.E.VISUAL).
+      // Entity detection via screen projection is tested in e2e tests ().
       // This test verifies the drag-box code path is exercised without throwing.
       const { callbacks, store } = createDefaultCallbacks({
         selectableEntities: [],

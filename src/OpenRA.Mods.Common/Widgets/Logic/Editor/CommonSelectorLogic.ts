@@ -18,7 +18,7 @@
  * - 带 GridLayout 的可滚动条目面板
  * - 选择变更时自动交出键盘焦点
  *
- * Migration: TODO-21.C.14 — Chapter 21 Phase C Wave 2
+ * Migration:  — Chapter 21 Phase C Wave 2
  */
 
 import {

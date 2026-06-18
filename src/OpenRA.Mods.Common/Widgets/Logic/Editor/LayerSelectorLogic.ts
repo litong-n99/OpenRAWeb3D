@@ -10,7 +10,7 @@
  * - C# FluentProvider.GetMessage → 硬编码英文字符串（TODO-21.C-DEFER-1）
  * - C# PascalCase widget delegates → TypeScript camelCase
  *
- * Migration: TODO-21.C.13 — Chapter 21 Phase C Wave 2
+ * Migration:  — Chapter 21 Phase C Wave 2
  */
 
 import {

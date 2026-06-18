@@ -68,7 +68,7 @@ interface IDemolishableAccess {
  * cleanup. This stub exists to satisfy the activity queueing interface
  * until Chapter 14 provides the full implementation.
  *
- * TODO-14.D: Replace with full Demolish Activity implementation.
+* Replace with full Demolish Activity implementation.
  */
 class DemolishActivityStub implements ActivityStub {
   readonly _self: IGameActor
@@ -371,13 +371,13 @@ class DemolitionOrderTargeter extends UnitOrderTargeter {
       // Without ForceAttack, require ownership info (defer to false).
       // With ForceAttack, allow any visible frozen actor (ForceAttack is
       // explicitly permissive: Ally | Enemy | Neutral by default).
-      // TODO-12.A: Remove this branch once FrozenActorStub includes owner.
+      // Remove this branch once FrozenActorStub includes owner.
       if (!isForceAttack) return false
     }
 
     // Check if frozen actor info has IDemolishableInfo
     // NOTE: FrozenActorStub doesn't have trait info access yet.
-    // TODO-12.A: Add target.Info.TraitInfos<IDemolishableInfo>() to FrozenActorStub.
+    // Add target.Info.TraitInfos<IDemolishableInfo>() to FrozenActorStub.
     return target.visible && target.isValid
   }
 

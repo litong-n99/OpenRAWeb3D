@@ -8,9 +8,9 @@
  * - 手动 GL 顶点上传 → Mesh.updateVerticesData()
  * - 逐线段 DrawRGBAQuad 调用 → 内部 quad 累积 + 一次性 flush
  *
- * ## 架构分歧说明（对照迁移计划 TODO-2.4.1）
+ * ## 架构分歧说明（对照迁移计划 ）
  *
- * 迁移计划（TODO-2.4.1）建议对 UI 元素使用 BABYLON.GUI，对调试图形使用
+ * 迁移计划（）建议对 UI 元素使用 BABYLON.GUI，对调试图形使用
  * CreateLines/LinesMesh。本实现改为使用动态 Mesh + ShaderMaterial + 逐顶点颜色，
  * 原因如下：
  *
@@ -21,7 +21,7 @@
  * 3. 动态 Mesh 提供了渲染带颜色的粗线段（四边形展开）、渐变填充矩形
  *    和多边形填充所需的灵活性。
  *
- * 未来优化（TODO-2.5.4）：通过 SpriteRenderer 的 ThinInstances 批量管线
+ * 未来优化（）：通过 SpriteRenderer 的 ThinInstances 批量管线
  * 路由以降低 draw call 数量。
  */
 
@@ -228,7 +228,7 @@ export class RgbaColorRenderer {
    *
    * NOTE: ShaderMaterial 始终使用 ALPHA_PREMULTIPLIED。单个材质无法支持
    * 逐四边形混合模式切换。在混合模式变化时自动 flush（为每组创建独立
-   * 的 Mesh+Material）的工作已推迟到 TODO-2.5.4。
+   * 的 Mesh+Material）的工作已推迟到 。
    */
   private currentBlend: BlendMode = BlendMode.Alpha
 
@@ -263,7 +263,7 @@ export class RgbaColorRenderer {
     this.currentBlend = blendMode
     // NOTE: spread 运算符为每次调用分配 4 个新 RgbaVertex 对象。
     // 对于高频渲染场景，考虑直接写入预分配的 Float32Array 缓冲区。
-    // 优化工作已推迟到 TODO-2.5.4。
+    // 优化工作已推迟到 。
     this.quads.push({ ...this.vertices[0] })
     this.quads.push({ ...this.vertices[1] })
     this.quads.push({ ...this.vertices[2] })
@@ -864,7 +864,7 @@ export class RgbaColorRenderer {
    * 首次调用时创建 Mesh + ShaderMaterial；后续调用更新 VertexData。
    * 若没有累积的四边形，则不执行任何操作。
    *
-   * TODO-2.4.3: ShaderMaterial 自动使用预乘 Alpha（片段着色器中 vColor 已是预乘值，
+* ShaderMaterial 自动使用预乘 Alpha（片段着色器中 vColor 已是预乘值，
    * 混合设置为 ALPHA_PREMULTIPLIED）。
    *
    * @param clearAfterFlush — 是否在刷新后清空累积缓冲区（默认 true）
@@ -929,13 +929,13 @@ export class RgbaColorRenderer {
           needAlphaBlending: true,
         },
       )
-      // 预乘 Alpha 混合（对应 TODO-2.4.3）
+      // 预乘 Alpha 混合（对应 ）
       // NOTE: ALPHA_PREMULTIPLIED 始终使用，因为所有顶点颜色均在 CPU 端
       // 完成预乘。高级混合模式（Additive、Subtractive、Multiply）需要
-      // 额外的 ShaderMaterial 实例配合预乘感知的混合状态。参见 TODO-2.5.4。
+      // 额外的 ShaderMaterial 实例配合预乘感知的混合状态。参见 。
       this.material.alphaMode = Engine.ALPHA_PREMULTIPLIED
       this.material.setFloat('alpha', 1)
-      // 调试图形：禁用深度写入 + 最高渲染组，避免 Z-fighting（对应 TODO-2.4.4）
+      // 调试图形：禁用深度写入 + 最高渲染组，避免 Z-fighting（对应 ）
       this.material.disableDepthWrite = true
       // 禁用背面剔除：该渲染器绘制任意朝向的 quad（线段、矩形），
       // 如果相机恰好在 quad 的"背面"，几何体将完全消失。

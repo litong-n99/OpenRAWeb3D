@@ -189,7 +189,7 @@ export class Demolish extends Enter {
       // Verify demolition is still valid
       if (!this.enterDemolishables.some(d => d.isValidTarget(targetActor, self))) return
 
-      // TODO-14.B.4-VISUAL: Add FlashTarget visual effect
+      // Add FlashTarget visual effect
       // C#: w.Add(new FlashTarget(enterActor, Color.White, count: flashes, interval: flashInterval, delay: flashesDelay))
 
       // Notify demolition listeners

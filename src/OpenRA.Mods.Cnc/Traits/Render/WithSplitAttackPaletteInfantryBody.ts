@@ -188,7 +188,7 @@ export class WithSplitAttackPaletteInfantryBody {
       playThen(_seq: string, onComplete: () => void): void {
         // Duck-typed: track playback
         void _seq
-        // TODO-19.C.7: Real animation timing should use the sequence's
+        // Real animation timing should use the sequence's
         // Tick * Length to determine duration. setTimeout(100) is a
         // placeholder that does not match OpenRA's tick-synced (40ms/tick)
         // animation system. Full implementation requires the Animation

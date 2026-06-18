@@ -16,7 +16,7 @@
  * - C# ScrollItemWidget.Setup() 模板克隆 -> 适配到 DropDownButtonWidget DOM 元素
  * - C# Func<bool>/Action 委托 -> TypeScript 闭包
  *
- * Migration: TODO-21.C.9 -- Chapter 21 Phase C Wave 1
+ * Migration:  -- Chapter 21 Phase C Wave 1
  */
 
 // ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ import type { EditorActionManager } from '../../../Traits/World/EditorActionMana
 // ---------------------------------------------------------------------------
 // Stub: MiniYamlNode (OpenRA 对照: MiniYamlNode)
 //
-// NOTE: MiniYaml serialization not yet fully migrated (TODO-4.H).
+// NOTE: MiniYaml serialization not yet fully migrated ().
 // This stub provides a minimal interface for passing actor/player
 // definitions through the save pipeline.
 // ---------------------------------------------------------------------------

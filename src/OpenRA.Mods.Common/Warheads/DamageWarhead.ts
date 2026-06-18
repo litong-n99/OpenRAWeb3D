@@ -31,7 +31,7 @@ import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
  * Stub interface for Armor trait info.
  *
  * OpenRA 对照: ArmorInfo / IArmorInfo
- * TODO-8.D.13: Replace with full Armor class from Phase D.
+* Replace with full Armor class from Phase D.
  */
 interface ArmorLike {
   type: string | null

@@ -56,7 +56,7 @@ interface RectLike { x: number; y: number; width: number; height: number }
  * OpenRA 对照: OpenRA.Game/Traits/FrozenActor.cs
  *
  * ScreenMap needs IsValid, MouseBounds, and ScreenBounds from FrozenActor.
- * Full FrozenActor migration is TODO-3.G (fog of war / frozen-under-fog).
+ * Full FrozenActor migration is  (fog of war / frozen-under-fog).
  */
 interface FrozenActorStub {
   readonly isValid: boolean
@@ -69,7 +69,7 @@ interface FrozenActorStub {
  *
  * OpenRA 对照: OpenRA.Primitives/Polygon.cs
  *
- * Polygon.full migration is deferred (TODO-3.A.17).
+ * Polygon.full migration is deferred ().
  * ScreenMap only needs: isEmpty check, bounding rectangle, and contains(point).
  */
 interface PolygonStub {

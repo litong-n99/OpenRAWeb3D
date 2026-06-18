@@ -61,7 +61,7 @@ export type DamageState = (typeof DamageState)[keyof typeof DamageState]
  *
  * OpenRA 对照: BuildingInfo.PathableTiles(CPos)
  *
- * TODO-9.C.5: Replace with full BuildingInfo when migrated.
+* Replace with full BuildingInfo when migrated.
  */
 export interface IBuildingInfoStub {
   pathableTiles(location: CPos): readonly CPos[]
@@ -72,7 +72,7 @@ export interface IBuildingInfoStub {
  *
  * OpenRA 对照: ActorInfo.TraitInfo<T>()
  *
- * TODO-9.C.5: Replace with full ActorInfo when trait system fully migrated.
+* Replace with full ActorInfo when trait system fully migrated.
  */
 export interface IBridgeActorInfoStub {
   traitInfo(): IBuildingInfoStub

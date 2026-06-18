@@ -510,7 +510,7 @@ function createEmptyLobbyInfo(): LobbyInfoStub {
  * OpenRA 对照: Session.Deserialize(targetString, "SyncInfo")
  *
  * 简化实现：从 JSON targetString 创建一个空的 LobbyInfo。
- * TODO-17.B.2: 集成完整的 Session.Deserialize 以支持从回放中
+* 集成完整的 Session.Deserialize 以支持从回放中
  * 正确恢复 LobbyInfo。
  *
  * @param targetString — SyncInfo JSON 字符串（可能为 null）
@@ -524,7 +524,7 @@ function parseLobbyInfo(targetString: string | null): LobbyInfoStub {
     // 验证是否为有效的 JSON（格式与 Session.serialize 对应）
     // 目前这是一个简化实现
     void JSON.parse(targetString)
-    // TODO-17.B.2: 当 Session.Deserialize 完成迁移后，从此处调用
+    // 当 Session.Deserialize 完成迁移后，从此处调用
     return empty
   } catch {
     return empty

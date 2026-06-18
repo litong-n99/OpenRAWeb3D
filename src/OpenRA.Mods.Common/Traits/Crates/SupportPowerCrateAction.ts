@@ -10,7 +10,7 @@
  * NOTE: Proxy actor creation delegates to world.addFrameEndAction() stub.
  *   The base class CrateAction handles audio/visual effects.
  *
- * TODO-13.A.14: SupportPowerCrateAction migration
+* SupportPowerCrateAction migration
  */
 
 import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'

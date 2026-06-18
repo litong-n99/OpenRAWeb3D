@@ -625,7 +625,7 @@ export class DeveloperMode
         const targetStr: string = o.targetString ?? ''
         const args = targetStr.split(' ')
 
-        // TODO-21.D.5: Integrate with BitSet<DamageType> when fully
+        // Integrate with BitSet<DamageType> when fully
         // available. For now, pass empty BitSetStub.
         const damageTypes = {
           contains: (_v: number) => false,
@@ -751,7 +751,7 @@ export class DeveloperMode
     const allActors = world?.allActors?.() as any[] | undefined
     if (!allActors) return
 
-    // TODO-21.D.5: When ISeedableResource trait is fully available on actors,
+    // When ISeedableResource trait is fully available on actors,
     // use traitsImplementing('ISeedableResource') to enumerate.
     for (const actor of allActors) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -814,7 +814,7 @@ export class DeveloperMode
    *
    * NOTE: TextNotificationsManager and FluentProvider are not yet migrated.
    * For now, uses console.debug as a placeholder.
-   * TODO-21.D.5: Integrate with TextNotificationsManager when available.
+* Integrate with TextNotificationsManager when available.
    */
   private _emitNotification(
     self: IGameActor,

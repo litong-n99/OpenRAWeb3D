@@ -188,7 +188,7 @@ export class WithCargo {
    *   p.Info.TraitInfos<IRenderActorPreviewInfo>()
    *     .SelectMany(rpi => rpi.RenderPreview(init))
    *
-   * TODO-19.C.2: Full implementation requires IRenderActorPreviewInfo and
+* Full implementation requires IRenderActorPreviewInfo and
    * ActorPreviewInitializer from Chapter 3+7. The C# version creates a
    * TypeDictionary with OwnerInit, DynamicFacingInit, and IActorPreviewInitModifier
    * hooks, then queries all IRenderActorPreviewInfo traits on the passenger
@@ -197,7 +197,7 @@ export class WithCargo {
    * can be exercised from C&C traits.
    */
   private generatePreview(_key: string, _wr: unknown): IActorPreview[] | null {
-    // TODO-19.C.2: Implement real passenger preview generation (see method doc)
+    // Implement real passenger preview generation (see method doc)
     return []
   }
 

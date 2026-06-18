@@ -27,7 +27,7 @@ export interface IHarvesterLike {
  *
  * OpenRA 对照: FreeActorWithDelivery trait
  *
- * TODO-19.D.1: Replace with full FreeActorWithDelivery when migrated.
+* Replace with full FreeActorWithDelivery when migrated.
  */
 export interface IFreeActorWithDeliveryLike {
   readonly info: IFreeActorWithDeliveryInfoLike | null

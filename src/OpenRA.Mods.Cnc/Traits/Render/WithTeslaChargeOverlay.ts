@@ -230,7 +230,7 @@ export class WithTeslaChargeOverlay implements INotifyTeslaCharging, INotifyDama
       },
       playThen(seq: string, onComplete: () => void): void {
         void seq
-        // TODO-19.C.10: Real animation timing from the sequence's Tick
+        // Real animation timing from the sequence's Tick
         // (ticks * length). setTimeout(100ms) is a placeholder that does
         // not match OpenRA's tick-synced animation system.
         setTimeout(onComplete, 100) // Simulate animation

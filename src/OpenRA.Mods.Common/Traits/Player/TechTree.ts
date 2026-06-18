@@ -204,7 +204,7 @@ export class TechTree {
    * @returns Map of prerequisite name -> count
    */
   gatherOwnedPrerequisites(): Map<string, number> {
-    // TODO-11.A.2: Full implementation when ITechTreePrerequisite is migrated.
+    // Full implementation when ITechTreePrerequisite is migrated.
     // For now, return empty map — stubs that need prerequisites will
     // use allTech cheat mode or explicit test setup.
     return new Map()
@@ -221,7 +221,7 @@ export class TechTree {
    * @param actor — the actor that changed
    */
   actorChanged(actor: IGameActor): void {
-    // TODO-11.A.2: Full implementation when ITechTreePrerequisite is migrated.
+    // Full implementation when ITechTreePrerequisite is migrated.
     // For now, always trigger update to keep watchers in sync.
     if (actor.owner === this.owner) {
       this.update()

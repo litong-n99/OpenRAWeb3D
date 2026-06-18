@@ -131,7 +131,7 @@ export interface ISound {
  *   MP3, OGG, WAV），无需手动 PCM 流式传输。流式播放通过 Howl 构造函数
  *   的 URL 参数或 `addSoundSourceFromMemory()` 的 Blob URL 自动处理。
  *
- * @todo TODO-7.D.5: WebAudioEngine 实现类 —— 基于 Howler.js 的 ISoundEngine
+ * @todo : WebAudioEngine 实现类 —— 基于 Howler.js 的 ISoundEngine
  *   具体实现。封装 Howler 全局实例、AudioContext 生命周期管理、
  *   WPos → Howler 坐标转换（Y-up → Z-forward）、距离衰减模型配置。
  *   当前阶段：ISoundEngine 作为接口单独存在，Sound 类的 mock 实现用于测试。

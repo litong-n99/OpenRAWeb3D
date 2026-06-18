@@ -13,7 +13,7 @@
  * For Phase B testing, this stub interface provides minimal in-memory storage
  * and mirror-like behavior.
  *
- * Migration: TODO-21.B.8 — Chapter 21 Phase B Wave 3
+ * Migration:  — Chapter 21 Phase B Wave 3
  */
 
 import type { CPos } from '../../OpenRA.Game/CPos.js'

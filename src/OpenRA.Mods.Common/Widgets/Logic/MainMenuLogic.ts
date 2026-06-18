@@ -165,7 +165,7 @@ export interface IMainMenuMapCache {
  *
  * OpenRA 对照: ConnectionLogic.Connect(endpoint, password, onConnect, onExit)
  *
- * NOTE: 完整 ConnectionLogic 迁移推迟至 TODO-16.C.12。
+ * NOTE: 完整 ConnectionLogic 迁移推迟至 。
  * 此存根提供 MainMenuLogic.StartSkirmishGame 所需的最小接口。
  */
 export let ConnectionLogicConnect: ((
@@ -186,7 +186,7 @@ export function setConnectionLogicConnect(fn: typeof ConnectionLogicConnect): vo
 
 /** LoadGameBrowserLogic.IsLoadPanelEnabled 存根。
  *
- * NOTE: 完整迁移推迟至 TODO-16.C.5。
+ * NOTE: 完整迁移推迟至 。
  */
 export let IsLoadPanelEnabled: ((manifest: unknown) => boolean) | null = null
 
@@ -263,13 +263,13 @@ export class MainMenuLogic extends ChromeLogic {
   // In C# OpenRA, news is fetched via WebServices.GetNews() and displayed as a
   // scrolling panel embedded in the main menu background. This TypeScript
   // implementation provides the state management and placeholder content.
-  // TODO-16.C.5: Add real HTTP fetch + DOM-based news panel widget rendering.
+  // Add real HTTP fetch + DOM-based news panel widget rendering.
   // ---------------------------------------------------------------------------
 
   /** 抓取并填充新闻条目。OpenRA 对照: GetNews()
    *
    * Current implementation populates placeholder news with engine version.
-   * Full HTTP-based news fetching is deferred to TODO-16.C.5.
+   * Full HTTP-based news fetching is deferred to .
    */
   fetchAndDisplayNews(): void {
     if (MainMenuLogic._fetchedNews) return
@@ -351,7 +351,7 @@ export class MainMenuLogic extends ChromeLogic {
 
     // Initiate news fetching in the background.
     // In C#, this is done via WebServices.GetNews() after shellmap loads.
-    // TODO-16.C.5: Move to onShellmapLoaded callback once real HTTP fetch is added.
+    // Move to onShellmapLoaded callback once real HTTP fetch is added.
     void this.fetchAndDisplayNews()
 
     // 启动流程

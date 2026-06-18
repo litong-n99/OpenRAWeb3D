@@ -4,12 +4,12 @@
  *
  * 核心范式转换:
  * - C# GpsDotEffect (IRenderable added to World) → TypeScript forward stub
- *   (GpsDotEffect migration is deferred to TODO-19.C.6)
+ *   (GpsDotEffect migration is deferred to )
  * - C# INotifyCreated/INotifyAddedToWorld/INotifyRemovedFromWorld
  *   → TypeScript same interfaces (already migrated in Ch3)
  * - C# frameEndTask to add/remove World effects → direct add/remove
  *
- * NOTE: The GpsDotEffect visual rendering is deferred to TODO-19.C.6 in Phase C.
+ * NOTE: The GpsDotEffect visual rendering is deferred to  in Phase C.
  * This trait manages the lifecycle (create/add/remove) but the actual effect
  * rendering is stubbed.
  */
@@ -77,7 +77,7 @@ export class GpsDotInfo implements ITraitInfo {
  *
  * OpenRA 对照: OpenRA.Mods.Cnc.Effects.GpsDotEffect
  *
- * TODO-19.C.6: Full migration of GpsDotEffect will provide the visual
+* Full migration of GpsDotEffect will provide the visual
  * rendering of the GPS dot on the minimap.
  *
  * NOTE: This stub is intentionally minimal. The real GpsDotEffect class
@@ -135,7 +135,7 @@ export class GpsDot
    */
   created(self: IGameActor): void {
     this._effect = createGpsDotEffectStub(self, this.info)
-    // TODO-19.C.6: Replace with real GpsDotEffect(self, info)
+    // Replace with real GpsDotEffect(self, info)
   }
 
   // -------------------------------------------------------------------------
@@ -154,7 +154,7 @@ export class GpsDot
       // OpenRA: self.World.AddFrameEndTask(w => w.Add(effect))
       // NOTE: frameEndTask deferred — effect is already created in created().
       // The actual visual attachment to the scene will be done by the full
-      // GpsDotEffect implementation in TODO-19.C.6.
+      // GpsDotEffect implementation in .
       void self
     }
   }

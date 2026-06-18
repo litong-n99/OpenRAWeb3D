@@ -12,7 +12,7 @@
  * 在 Select 标签中显示选区信息。根据选区类型（Actor / Area）切换
  * 编辑面板。管理复制/粘贴按钮和选区删除/取消按钮。
  *
- * Migration: TODO-21.C.2 — Chapter 21 Phase C Wave 2b
+ * Migration:  — Chapter 21 Phase C Wave 2b
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

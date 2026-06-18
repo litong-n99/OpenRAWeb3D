@@ -111,7 +111,7 @@ export class CheckMissingSprites implements IUtilityCommand {
 
           // NOTE: 地形精灵验证通过 ITiledTerrainRendererInfo.ValidateTileSprites()
           // 这是 Ch2 中尚未独立迁移的内部接口。等 TerrainRenderer 迁移后启用。
-          // TODO-21.E.17: 集成 TerrainRenderer 地形精灵验证
+          // 集成 TerrainRenderer 地形精灵验证
 
           // 检查已知序列文件中的精灵引用
           const missingSprites = this._checkKnownSequenceFiles(

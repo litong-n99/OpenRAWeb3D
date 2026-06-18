@@ -5,7 +5,7 @@
  * Chronoshift method with actor/cell pairs, Chronoshiftable trait lookup,
  * member descriptors.
  *
- * TODO-20.F.1
+ *
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'

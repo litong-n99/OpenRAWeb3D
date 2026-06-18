@@ -429,7 +429,7 @@ export class MobileInfo implements
     locomotor: ILocomotor | null,
   ): boolean {
     if (!locomotor) return false
-    // TODO-12.A.3: Tunnel check deferred to Ch12 (Shroud & Fog of War)
+    // Tunnel check deferred to Ch12 (Shroud & Fog of War)
     // if (cell.Layer === CustomMovementLayerType.Tunnel) return false
     return locomotor.movementCostForCell(cell) !== PathGraph.MovementCostForUnreachableCell
   }
@@ -508,7 +508,7 @@ export class Mobile
    *
    * OpenRA 对照: Mobile constructor resolves World.WorldActor.Trait<IPathFinder>()
    *
-   * TODO-9.A.7: Resolve PathFinder from world during initialization.
+* Resolve PathFinder from world during initialization.
    */
   private _pathFinder: unknown = null
 
@@ -828,7 +828,7 @@ export class Mobile
    *
    * OpenRA 对照: Mobile.Created() → PathFinder assignment
    *
-   * TODO-9.A.7: Use to resolve pathfinding in closestGroundCell.
+* Use to resolve pathfinding in closestGroundCell.
    */
   /** Get the PathFinder reference.
    *
@@ -1050,7 +1050,7 @@ export class Mobile
         position = (map as unknown as { centerOfCell: (c: CPos) => WPos }).centerOfCell(cell)
       } else {
         // Custom movement layer center — use layer-0 projection as fallback
-        // TODO-12.A.2: Proper custom movement layer center calculation
+        // Proper custom movement layer center calculation
         const layer0Cell = new CPos(cell.X, cell.Y)
         position = (map as unknown as { centerOfCell: (c: CPos) => WPos }).centerOfCell(layer0Cell)
       }
@@ -1211,7 +1211,7 @@ export class Mobile
         n.onNotifyFinishedMoving(self)
       }
     }
-    // TODO-9.A.9: CrushAction — crush detection deferred to Ch14
+    // CrushAction — crush detection deferred to Ch14
   }
 
   /** Add this actor's influence to the actor map.
@@ -1250,7 +1250,7 @@ export class Mobile
    * OpenRA 对照: Mobile.WrapMove()
    */
   wrapMove(inner: ActivityStub): ActivityStub {
-    // TODO-14.A: moveWrappers[0].WrapMove not yet implemented
+    // moveWrappers[0].WrapMove not yet implemented
     return inner
   }
 
@@ -1265,7 +1265,7 @@ export class Mobile
     _evaluateNearestMovableCell?: boolean,
     _targetLineColor?: ColorStub,
   ): ActivityStub {
-    // TODO-14.A: Move activity deferred to Ch14
+    // Move activity deferred to Ch14
     return new ReturnToCellActivity()
   }
 
@@ -1356,7 +1356,7 @@ export class Mobile
    * OpenRA 对照: IMove.NearestMoveableCell(WPos)
    *
    * STUB: Converts WPos to CPos and delegates to nearestMoveableCellImpl.
-   * TODO-9.A.9: Use PathFinder for proper WPos-based nearest cell search.
+* Use PathFinder for proper WPos-based nearest cell search.
    */
   nearestMoveableCell(
     _source: IGameActor,
@@ -1411,7 +1411,7 @@ export class Mobile
    *
    * OpenRA 对照: IMove.MoveTo(Target)
    *
-   * TODO-9.A.10: Full Move activity deferred to Ch14.
+* Full Move activity deferred to Ch14.
    */
   moveTo(_source: IGameActor, _target: Target): Activity {
     return new ReturnToCellActivity() as unknown as Activity
@@ -1421,7 +1421,7 @@ export class Mobile
    *
    * OpenRA 对照: IMove.MoveToTarget(Target, WPos?, Color?)
    *
-   * TODO-9.A.10: Full Move activity deferred to Ch14.
+* Full Move activity deferred to Ch14.
    */
   moveToTarget(_source: IGameActor, _target: Target, _initialTargetPosition?: WPos): Activity {
     return new ReturnToCellActivity() as unknown as Activity
@@ -1431,7 +1431,7 @@ export class Mobile
    *
    * OpenRA 对照: IMove.MoveIntoTarget(Target)
    *
-   * TODO-11.A: Transport/passenger system deferred to Ch11.
+* Transport/passenger system deferred to Ch11.
    */
   moveIntoTarget(_source: IGameActor, _target: Target): Activity {
     return new ReturnToCellActivity() as unknown as Activity
@@ -1441,7 +1441,7 @@ export class Mobile
    *
    * OpenRA 对照: IMove.CanEnterTargetNow(Target)
    *
-   * TODO-9.A.10: Full implementation deferred to Ch14.
+* Full implementation deferred to Ch14.
    */
   canEnterTargetNow(_source: IGameActor, _target: Target): boolean {
     // STUB: Conservative fallback — assume can't enter until Ch14 implements
@@ -1473,7 +1473,7 @@ export class Mobile
   private getSpeedModifiers(): number[] {
     if (this._speedModifiersMemo === null) {
       this._speedModifiersMemo = []
-      // TODO-9.A: Speed modifier traits — queries self.TraitsImplementing<ISpeedModifier>()
+      // Speed modifier traits — queries self.TraitsImplementing<ISpeedModifier>()
     }
     return this._speedModifiersMemo
   }
@@ -1556,7 +1556,7 @@ export class Mobile
    * OpenRA 对照: Mobile.EnteringCell()
    */
   enteringCell(_self: IGameActor): void {
-    // TODO-9.A.9: CrushAction — deferred to Ch14
+    // CrushAction — deferred to Ch14
   }
 
   /** Find the closest ground cell from the current position.
@@ -1567,7 +1567,7 @@ export class Mobile
     const above = new CPos(this._toCell.X, this._toCell.Y)
     if (this.canEnterCell(above)) return above
 
-    // TODO-9.A.7: Use resolved PathFinder to search for nearest ground cell
+    // Use resolved PathFinder to search for nearest ground cell
     // when the direct above-cell isn't enterable.
     // In C#: PathFinder.FindPathToTargetCellByPredicate(self, ...)
     // if (this._pathFinder) { ... }
@@ -1606,7 +1606,7 @@ export class Mobile
     if (this._toCell.Layer === 0) {
       // Make sure that units aren't left idling in a transit-only cell
       if (this._locomotor && !this.canStayInCell(this._toCell)) {
-        // TODO-14.A: QueueActivity MoveTo
+        // QueueActivity MoveTo
         return
       }
       return
@@ -1619,7 +1619,7 @@ export class Mobile
   // -----------------------------------------------------------------------
 
   onNotifyBlockingMove(self: IGameActor, _blocking: IGameActor): void {
-    // TODO-14.A: AppearsFriendlyTo and Nudge deferred to Ch14
+    // AppearsFriendlyTo and Nudge deferred to Ch14
     if (self.isIdle ?? false) {
       return
     }
@@ -1775,7 +1775,7 @@ export class Mobile
       const extra = order.extraData as Record<string, unknown> | undefined
       if (!extra?.['target']) return
 
-      // TODO-14.A: MoveIntoShroud check, cell clamping
+      // MoveIntoShroud check, cell clamping
       // Queue move activity
       if (self.queueActivity) {
         self.queueActivity(new ReturnToCellActivity() as unknown as ActivityStub)
@@ -1785,7 +1785,7 @@ export class Mobile
         self.cancelActivity()
       }
     } else if (order.orderName === 'Scatter') {
-      // TODO-14.A: Nudge deferred to Ch14
+      // Nudge deferred to Ch14
       if (self.queueActivity) {
         self.queueActivity(new ReturnToCellActivity() as unknown as ActivityStub)
       }
@@ -1861,7 +1861,7 @@ export class Mobile
    * OpenRA 对照: Created() → moveWrappers array
    */
   setMoveWrappers(_wrappers: IWrapMove[]): void {
-    // TODO-14.A: moveWrappers deferred — WrapMove always returns inner directly
+    // moveWrappers deferred — WrapMove always returns inner directly
   }
 
   /** Set the creation activity parameters.
@@ -1957,7 +1957,7 @@ export class ReturnToCellActivity {
   isCanceling: boolean = false
 
   tick(_self: IGameActor): boolean {
-    // TODO-14.A: STUB — immediately complete (full activity deferred to Ch14)
+    // STUB — immediately complete (full activity deferred to Ch14)
     return true
   }
 
@@ -1966,7 +1966,7 @@ export class ReturnToCellActivity {
   }
 
   queue(_activity: ActivityStub): void {
-    // TODO-14.A: STUB — no-op (full activity deferred to Ch14)
+    // STUB — no-op (full activity deferred to Ch14)
   }
 
   onActorDisposeOuter(_actor: IGameActor): void {

@@ -234,7 +234,7 @@ export class ModData {
     // 3. 加载 LoadScreen（如果配置了）
     // NOTE: LoadScreen 接口已定义，但具体实现推迟到 Phase D/E。
     // 当 WidgetLoader 就绪后可创建具体的 ILoadScreen 实例。
-    // TODO-5.D.1: 实例化 LoadScreen 实现
+    // 实例化 LoadScreen 实现
     if (this.manifest.loadScreen && this.objectCreator) {
       // NOTE: this.objectCreator always truthy here — it is created in the
       // constructor and never nulled before init(). The guard is defensive

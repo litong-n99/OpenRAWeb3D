@@ -8,7 +8,7 @@
  * - C# IEnumerable<IRenderable> yield return → TypeScript readonly IRenderable[]
  * - C# explicit interface implementation (ITickRender.TickRender) → 统一 camelCase
  *
- * Migration: TODO-21.A.4 — Chapter 21 Phase A, shared by EditorCursorLayer + Phase B brushes
+ * Migration:  — Chapter 21 Phase A, shared by EditorCursorLayer + Phase B brushes
  */
 
 import type { WorldRendererStub, IGameActor, IRenderable } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'

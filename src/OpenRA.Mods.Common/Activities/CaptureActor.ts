@@ -12,7 +12,7 @@
  * - C# World.AddFrameEndTask → deferred action queue
  *
  * NOTE: Minimal Phase B implementation. Full capture with condition grants
- * and sabotage logic is TODO-14.B.3-EXTENDED.
+ * and sabotage logic is .
  */
 
 // ---------------------------------------------------------------------------

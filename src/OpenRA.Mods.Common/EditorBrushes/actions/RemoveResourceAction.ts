@@ -8,7 +8,7 @@
  * - C# FluentProvider.GetMessage → template literal string
  * - C# readonly record struct snapshot → TypeScript value save/restore
  *
- * Migration: TODO-21.B.2 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import type { CPos } from '../../../OpenRA.Game/CPos.js'

@@ -233,7 +233,7 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
    *
    * OpenRA 对照: DefaultSpriteSequence.ParseFilenames base call
    *
-   * TODO-19.C.14: This is a minimal fallback. The full C# implementation
+* This is a minimal fallback. The full C# implementation
    * uses DefaultSpriteSequence's Filename and FilenamePattern fields to
    * resolve sprite sheet filenames with format-string expansion (e.g.,
    * "%d" → frame number). See OpenRA.Mods.Common/Graphics/DefaultSpriteSequence
@@ -255,7 +255,7 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
    *
    * OpenRA 对照: DefaultSpriteSequence.ParseCombineFilenames base call
    *
-   * TODO-19.C.14: Minimal fallback — see baseParseFilenames for full scope.
+* Minimal fallback — see baseParseFilenames for full scope.
    */
   private baseParseCombineFilenames(
     frames: readonly number[] | null,

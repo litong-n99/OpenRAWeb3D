@@ -8,8 +8,8 @@
  * - C# ConnectionLogic.Connect → ConnectionLogic.connect
  * - C# ConfirmationDialogs.ButtonPrompt → ConfirmationDialogs.buttonPrompt
  * - C# Nat.Status enum → simplified NAT detection
- * - C# MapPreview widget → MapPreviewWidget (TODO-16.C.3)
- * - C# FluentProvider.GetMessage → inline string (Fluent deferred TODO-16.C.1)
+ * - C# MapPreview widget → MapPreviewWidget ()
+ * - C# FluentProvider.GetMessage → inline string (Fluent deferred )
  */
 
 import { ChromeLogic, Ui } from '../../../OpenRA.Game/Widgets/Widget.js'

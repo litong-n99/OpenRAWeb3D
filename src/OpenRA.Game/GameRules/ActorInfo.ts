@@ -185,7 +185,7 @@ export type RulesetLoadedHandler = (
  * Raw JSON structure that fromJSON accepts.
  *
  * This is the runtime format produced by the build-time YAML→JSON compiler
- * (see rendering_migration_plan.md TODO-3.E.4).
+ * (see rendering_migration_plan.md ).
  */
 export interface ActorJSON {
   /** Actor type name (e.g., "E1", "^Infantry", "HARV").

@@ -69,7 +69,7 @@ export interface TextNotification {
  * OpenRA 对照: FluentProvider.GetMessage(string)
  *
  * NOTE: FluentProvider not yet migrated. Returns the message key directly.
- * TODO-16.B.1: Integrate with full FluentProvider when migrated.
+* Integrate with full FluentProvider when migrated.
  */
 function fluentGetMessage(key: string): string {
   return key

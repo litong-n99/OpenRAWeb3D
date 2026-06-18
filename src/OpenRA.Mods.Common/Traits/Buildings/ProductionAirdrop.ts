@@ -149,7 +149,7 @@ export class ProductionAirdrop extends Production {
     // 3. Queue activities: Fly → Land → Wait → Produce callback → Wait → FlyOffMap → RemoveSelf
     // 4. Play notification on delivery
     //
-    // TODO-11.A.5: Full airdrop implementation when Aircraft and Activities are migrated.
+    // Full airdrop implementation when Aircraft and Activities are migrated.
 
     return true
   }

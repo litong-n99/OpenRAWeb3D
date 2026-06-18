@@ -9,10 +9,10 @@
  * - C# INotifyKilled / INotifySold / INotifyOwnerChanged → TS same interfaces
  * - C# GpsWatcher.GpsAdd/GpsRemove → TS GpsWatcher methods
  * - C# SatelliteLaunch (World effect) → TS forward stub
- * - C# ProvidesRadar trait check → TS stub (TODO-19.A.6)
+ * - C# ProvidesRadar trait check → TS stub ()
  *
  * NOTE: SatelliteLaunch visual effect and GpsSatellite are deferred to
- * TODO-19.C.6 (Phase C). ProvidesRadar trait is not yet migrated.
+ * (Phase C). ProvidesRadar trait is not yet migrated.
  */
 
 import type {
@@ -230,7 +230,7 @@ export class GpsPower
     manager: ISupportPowerManager,
   ): void {
     super.activate(self, order, manager)
-    // TODO-19.C.6: SatelliteLaunch effect integration
+    // SatelliteLaunch effect integration
   }
 
   // -----------------------------------------------------------------------
@@ -308,7 +308,7 @@ export class GpsPower
   }
 
   private _hasActiveRadar(): boolean {
-    // TODO-19.A.6: ProvidesRadar trait integration
+    // ProvidesRadar trait integration
     return true
   }
 

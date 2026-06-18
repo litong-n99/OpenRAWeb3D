@@ -13,7 +13,7 @@
  * 加载所有 IEditorTool trait 面板，管理工具选择下拉框，
  * 在 TabChanged 事件时触发 OnSelected 回调以通知工具专属逻辑类。
  *
- * Migration: TODO-21.C.4 — Chapter 21 Phase C Wave 1
+ * Migration:  — Chapter 21 Phase C Wave 1
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

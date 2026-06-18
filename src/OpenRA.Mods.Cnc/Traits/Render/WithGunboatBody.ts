@@ -190,7 +190,7 @@ export class WithGunboatBody {
     // C#: wake = new Animation(init.World, name); wake.PlayRepeating(info.WakeLeftSequence);
     if (rs) {
       const image = rs.getImage(self)
-      // TODO-19.C.5: Wake animation replaceAnim is a no-op stub because
+      // Wake animation replaceAnim is a no-op stub because
       // the full Animation class (Chapter 2) with sequence lookup and frame
       // playback is not yet available in the C&C duck-typed trait layer.
       // Real implementation would delegate to Animation.ReplaceAnim which
@@ -202,7 +202,7 @@ export class WithGunboatBody {
         playRepeating(seq) { void seq },
         replaceAnim(seq) {
           void seq
-          // TODO-19.C.5: Delegate to real Animation.ReplaceAnim
+          // Delegate to real Animation.ReplaceAnim
         },
         hasSequence(_seq) { return true },
       }
@@ -284,13 +284,13 @@ export class WithGunboatBody {
    *
    * OpenRA 对照: WithSpriteBody.NormalizeSequence (calls RenderSprites.NormalizeSequence)
    *
-   * TODO-19.C.5: Real normalization requires the full sequence dictionary
+* Real normalization requires the full sequence dictionary
    * from the sprite cache to check damage-prefixed variants (e.g.,
    * "critical-left", "damaged-right"). Without the Chapter 2 Animation
    * infrastructure, the sequence name is returned as-is.
    */
   private normalizeSequence(sequence: string): string {
-    // TODO-19.C.5: Implement damage prefix lookup (critical, damaged, scratched, scuffed)
+    // Implement damage prefix lookup (critical, damaged, scratched, scuffed)
     return sequence
   }
 

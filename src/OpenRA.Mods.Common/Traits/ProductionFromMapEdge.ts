@@ -5,7 +5,7 @@
  * 核心范式转换:
  * - C# Production extends → TS Production extends
  * - C# CPos? spawnLocation → TS CPos | null
- * - C# IPathFinder → TS 桩 (TODO-4.G)
+ * - C# IPathFinder → TS 桩 ()
  * - C# AircraftInfo / MobileInfo trait checks → TS 桩
  * - C# ChooseClosestEdgeCell / ChooseClosestMatchingEdgeCell → TS 桩
  *
@@ -99,7 +99,7 @@ export class ProductionFromMapEdge extends Production {
     // 3. Set initial facing toward destinations[0]
     // 4. Queue move activities to rally point
     //
-    // TODO-11.A.6: Full implementation when Aircraft/Mobile and pathfinding are available.
+    // Full implementation when Aircraft/Mobile and pathfinding are available.
 
     return true
   }

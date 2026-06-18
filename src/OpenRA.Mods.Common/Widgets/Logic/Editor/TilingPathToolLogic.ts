@@ -15,7 +15,7 @@
  * 偏差滑块和选项复选框。基于工具面板可见性激活/停用
  * EditorTilingPathBrush。
  *
- * Migration: TODO-21.C.16 — Chapter 21 Phase C Wave 3
+ * Migration:  — Chapter 21 Phase C Wave 3
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

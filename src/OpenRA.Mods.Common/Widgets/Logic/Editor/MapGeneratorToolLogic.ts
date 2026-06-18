@@ -13,7 +13,7 @@
  * 读取生成器设置，构建动态表单（4 种选项类型），在点击 Generate
  * 按钮时运行生成器。
  *
- * Migration: TODO-21.C.5 — Chapter 21 Phase C Wave 3
+ * Migration:  — Chapter 21 Phase C Wave 3
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

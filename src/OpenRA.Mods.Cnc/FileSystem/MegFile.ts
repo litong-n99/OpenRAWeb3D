@@ -226,7 +226,7 @@ class MegFile implements IReadOnlyPackage {
    * @returns 子包，如果无法打开则返回 null
    */
   openPackage(filename: string, _files?: IReadOnlyFileSystem): IReadOnlyPackage | null {
-    // TODO-5.B.4: Delegate to FileSystem.tryParsePackage when Phase C context
+    // Delegate to FileSystem.tryParsePackage when Phase C context
     // is available. Currently returns null because browser-side MegFile does
     // not have access to the FileSystem's registered package loaders.
     void _files

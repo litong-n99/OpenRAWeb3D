@@ -39,7 +39,7 @@ function wc<T extends Widget = Widget>(parent: Widget, id: string): T | undefine
 }
 
 // ---------------------------------------------------------------------------
-// Fluent message stub (TODO-16.C.1)
+// Fluent message stub ()
 // ---------------------------------------------------------------------------
 
 function fluentMsg(key: string, ..._args: string[]): string {
@@ -369,7 +369,7 @@ export class ServerListLogic extends ChromeLogic {
     return false
   }
 
-  /** Generate sample servers for testing. TODO-16.C.5: Replace with real master server query. */
+  /** Generate sample servers for testing. : Replace with real master server query. */
   private _generateSampleServers(): GameServer[] {
     const servers: GameServer[] = []
     const names = [

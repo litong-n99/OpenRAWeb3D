@@ -14,7 +14,7 @@
  * （复选框、滑块、下拉框、文本字段）。管理编辑预览以跟踪脏状态，
  * 并通过 EditActorEditorAction 提供撤销/重做支持。
  *
- * Migration: TODO-21.C.10 — Chapter 21 Phase C Wave 2b
+ * Migration:  — Chapter 21 Phase C Wave 2b
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

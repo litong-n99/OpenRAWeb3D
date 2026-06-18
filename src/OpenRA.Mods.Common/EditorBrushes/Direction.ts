@@ -17,7 +17,7 @@
  * +X/+X+Y/+Y/-X+Y/-X/-X-Y/-Y/+X-Y offsets) to match OpenRA's CPos coordinate
  * system conventions. This is NOT compass-based (N/NE/E/SE/S/SW/W/NW).
  *
- * Migration: TODO-21.B.2 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import { CVec } from '../../OpenRA.Game/CVec.js'

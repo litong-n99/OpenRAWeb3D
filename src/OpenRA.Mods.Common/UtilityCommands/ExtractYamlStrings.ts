@@ -377,7 +377,7 @@ export class ExtractYamlStringsCommand implements IUtilityCommand {
       console.log('ExtractYamlStringsCommand: Extracting strings from mod rules...')
     }
 
-    // TODO-21.E.15: Implement full YAML string extraction when:
+    // Implement full YAML string extraction when
     // - TraitInfo type registry (ObjectCreator.GetTypes equivalent) is available
     // - FluentReferenceAttribute equivalent exists
     // - Rules YAML loading via MiniYAML is available
@@ -399,7 +399,7 @@ export class ExtractYamlStringsCommand implements IUtilityCommand {
     // 6. Call generateYamlFtlOutput() to produce .ftl content
     // 7. Write .ftl to fluent package, update rules YAML references
 
-    console.log('TODO-21.E.15: Full YAML string extraction requires:')
+    console.log(': Full YAML string extraction requires:')
     console.log('  - TraitInfo type scanning (ObjectCreator)')
     console.log('  - FluentReference marker on trait fields')
     console.log('  - Rules YAML loading & parsing')

@@ -27,7 +27,7 @@
 
 /**
  * Placeholder for Server type (will be replaced by import from Server.ts in Phase B).
- * @remarks TODO-18.B: Replace with `import type { Server } from './Server.js'`
+ * @remarks : Replace with `import type { Server } from './Server.js'`
  */
 export interface Server {
   // Minimal shape — server is passed as opaque reference by trait interfaces.
@@ -35,7 +35,7 @@ export interface Server {
 
 /**
  * Placeholder for Connection type (will be replaced by import from Connection.ts in Phase C).
- * @remarks TODO-18.C: Replace with `import type { Connection } from './Connection.js'`
+ * @remarks : Replace with `import type { Connection } from './Connection.js'`
  */
 export interface Connection {
   // Minimal shape — connection is passed as opaque reference by trait interfaces.
@@ -45,7 +45,7 @@ export interface Connection {
 
 /**
  * Placeholder for SessionClient type (will be replaced by import from SessionTypes.ts in Phase B).
- * @remarks TODO-18.B: Replace with `import type { SessionClient } from './SessionTypes.js'`
+ * @remarks : Replace with `import type { SessionClient } from './SessionTypes.js'`
  */
 export interface SessionClient {
   // Minimal shape — client is passed as opaque reference by trait interfaces.

@@ -232,7 +232,7 @@ export class SonicBlast implements IProjectile {
 
     this._pos = WPos.lerpQuadratic(this._args.source, this._target, WAngle.Zero, this._ticks, this._length)
 
-    // TODO-19.B.15: Blocking check (BlocksProjectiles.AnyBlockingActorsBetween)
+    // Blocking check (BlocksProjectiles.AnyBlockingActorsBetween)
 
     // Apply warhead impacts at each damage interval
     if (this._ticks % this._info.damageInterval === 0) {

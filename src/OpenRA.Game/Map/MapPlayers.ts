@@ -144,7 +144,7 @@ export class MapPlayers {
    *   .First(f => f.Selectable).InternalName
    *
    * NOTE: 这是 RulesetStub 的简化。完整的 FactionInfo 解析将在
-   * ActorInfo/YAML 系统迁移后实现（TODO-3.C.1）。
+   * ActorInfo/YAML 系统迁移后实现（）。
    *
    * @param rules — 规则集存根
    * @returns 第一个可选阵营的内部名称，如果没有则返回 "Random"

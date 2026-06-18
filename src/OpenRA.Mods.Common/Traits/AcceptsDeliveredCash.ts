@@ -8,7 +8,7 @@
  * - C# FrozenSet<string> ValidTypes → TS Set<string> (空 = 接受所有类型)
  * - C# ImmutableArray<string> Sounds → TS readonly string[] (声音播放延迟至音频系统集成)
  * - C# PlayerRelationship 枚举 → TS PlayerRelationship + PlayerRelationshipExts
- * - C# Game.Sound.Play() → TODO-10.B.9-SOUND (音频系统集成)
+ * - C# Game.Sound.Play() →  (音频系统集成)
  */
 
 import {
@@ -49,7 +49,7 @@ export class AcceptsDeliveredCashInfo implements ITraitInfo {
    *
    *  OpenRA 对照: AcceptsDeliveredCashInfo.Sounds (ImmutableArray<string>)
    *
-   *  TODO-10.B.9-SOUND: 集成音频系统播放音效
+* 集成音频系统播放音效
    */
   readonly sounds: readonly string[] = []
 
@@ -139,7 +139,7 @@ export class AcceptsDeliveredCash extends Component {
    * @param _self — 接收现金的 actor（此 trait 所在的 actor）
    * @param _donor — 交付现金的 actor
    *
-   * TODO-10.B.9-SOUND: 集成音频系统播放 info.Sounds 中的随机音效
+* 集成音频系统播放 info.Sounds 中的随机音效
    */
   onAcceptingCash(_self: IGameActor, _donor: IGameActor): void {
     // C#: if (info.Sounds.Length > 0)

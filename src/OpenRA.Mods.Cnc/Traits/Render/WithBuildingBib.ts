@@ -136,7 +136,7 @@ export class WithBuildingBibInfo implements ITraitInfo {
    * OpenRA 对照: IRenderActorPreviewSpritesInfo.RenderPreviewSprites(
    *   ActorPreviewInitializer, string image, int facings, PaletteReference p)
    *
-   * TODO-19.C.1: Full implementation requires ActorPreviewInitializer and
+* Full implementation requires ActorPreviewInitializer and
    * SpriteActorPreview from Chapter 3+7. The preview renders bib sprites
    * in a placement ghost overlay using WorldRenderer sprites.
    * Currently returns empty array for basic compatibility.
@@ -147,7 +147,7 @@ export class WithBuildingBibInfo implements ITraitInfo {
     _facings: number,
     _p: unknown,
   ): Iterable<unknown> {
-    // TODO-19.C.1: Implement bib preview sprites for building placement UI
+    // Implement bib preview sprites for building placement UI
     return []
   }
 
@@ -236,7 +236,7 @@ export class WithBuildingBib {
       const anim: IBibAnimation = {
         name: image,
         isDecoration: true,
-        // TODO-19.C.1: Real hasSequence requires the sequence set from
+        // Real hasSequence requires the sequence set from
         // the resolved sprite sequence data (DefaultSpriteSequence metadata).
         // In C# this delegates to Animation.HasSequence() which checks the
         // sequence dictionary populated during sprite loading. Without

@@ -134,7 +134,7 @@ export class HvaReader {
         // Under ADR-19.1, the full 4x4 matrix inverse is unnecessary. We
         // validate using the 3x3 rotation submatrix determinant: a valid
         // rigid-body transform must have |det| ≈ 1 (not 0).
-        // TODO-19.C.16: If full MatrixInverse parity is ever needed (e.g.,
+        // If full MatrixInverse parity is ever needed (e.g.,
         //   runtime .hva validation), implement column-major 4x4 inverse with
         //   submatrix cofactor expansion.
         // -------------------------------------------------------------------

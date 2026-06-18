@@ -135,7 +135,7 @@ class ConditionState {
  *
  * NOTE: Full SyncHash implementation requires the Sync module (Support file).
  * For now, this is a placeholder struct.
- * TODO-3.D.8: Integrate with Sync module for network sync validation.
+* Integrate with Sync module for network sync validation.
  */
 interface SyncHashEntry {
   /** The trait that provides sync data. */
@@ -439,7 +439,7 @@ export class GameActor extends TransformNode implements IGameActor {
   private _syncHashes: SyncHashEntry[] = []
 
   // -----------------------------------------------------------------------
-  // Component storage (TODO-3.D.2 — per-actor component Map)
+  // Component storage ( — per-actor component Map)
   // -----------------------------------------------------------------------
 
   /**
@@ -454,7 +454,7 @@ export class GameActor extends TransformNode implements IGameActor {
   private readonly _components = new Map<string, Component>()
 
   // -----------------------------------------------------------------------
-  // Condition system (TODO-3.D.3)
+  // Condition system ()
   // -----------------------------------------------------------------------
 
   /**
@@ -502,7 +502,7 @@ export class GameActor extends TransformNode implements IGameActor {
   private _created: boolean = false
 
   // -----------------------------------------------------------------------
-  // Activity system (TODO-3.D.4 — stubs for Phase E)
+  // Activity system ( — stubs for Phase E)
   // -----------------------------------------------------------------------
 
   /**
@@ -564,7 +564,7 @@ export class GameActor extends TransformNode implements IGameActor {
     // 2. Two-phase construction (create + initialize) is more flexible for
     //    testing and incremental setup
     //
-    // TODO-3.E: Move trait creation from ActorConfig/ActorInfo into initialize()
+    // Move trait creation from ActorConfig/ActorInfo into initialize()
     // when Phase E is complete.
 
     // Basic info setup
@@ -572,7 +572,7 @@ export class GameActor extends TransformNode implements IGameActor {
   }
 
   // -----------------------------------------------------------------------
-  // Initialization (TODO-3.D.6 — lifecycle state machine)
+  // Initialization ( — lifecycle state machine)
   // -----------------------------------------------------------------------
 
   /**
@@ -663,7 +663,7 @@ export class GameActor extends TransformNode implements IGameActor {
   }
 
   // -----------------------------------------------------------------------
-  // Component storage (TODO-3.D.2)
+  // Component storage ()
   // -----------------------------------------------------------------------
 
   /**
@@ -990,7 +990,7 @@ export class GameActor extends TransformNode implements IGameActor {
   }
 
   // -----------------------------------------------------------------------
-  // Activity queueing (TODO-3.D.4)
+  // Activity queueing ()
   // -----------------------------------------------------------------------
 
   /**
@@ -1244,7 +1244,7 @@ export class GameActor extends TransformNode implements IGameActor {
   }
 
   // -----------------------------------------------------------------------
-  // Order resolution (TODO-3.D.7)
+  // Order resolution ()
   // -----------------------------------------------------------------------
 
   /**
@@ -1261,7 +1261,7 @@ export class GameActor extends TransformNode implements IGameActor {
   }
 
   // -----------------------------------------------------------------------
-  // Condition system (TODO-3.D.3)
+  // Condition system ()
   // -----------------------------------------------------------------------
 
   /**
@@ -1456,17 +1456,17 @@ export class GameActor extends TransformNode implements IGameActor {
     this._crushables = this.traitsImplementing<ICrushable & Component>('ICrushable')
 
     // SyncHash entries from ISync traits
-    // NOTE: Full hash function requires the Sync module (pending TODO-3.D.8).
+    // NOTE: Full hash function requires the Sync module (pending ).
     // For now, each trait contributes 0 to the hash.
     const syncTraits = this.traitsImplementing<Component>('ISync')
     this._syncHashes = syncTraits.map(trait => ({
       trait,
-      hashFunction: () => 0, // TODO-3.D.8: Use Sync.getHashFunction(trait)
+      hashFunction: () => 0, // : Use Sync.getHashFunction(trait)
     }))
   }
 
   // -----------------------------------------------------------------------
-  // SyncHash (TODO-3.D.8 — placeholder)
+  // SyncHash ( — placeholder)
   // -----------------------------------------------------------------------
 
   /**
@@ -1475,7 +1475,7 @@ export class GameActor extends TransformNode implements IGameActor {
    * OpenRA 对照: Actor.SyncHash (internal struct) + Sync.GetHashFunction()
    *
    * NOTE: Full implementation requires the Sync module.
-   * TODO-3.D.8: Integrate with Sync module for network sync validation.
+* Integrate with Sync module for network sync validation.
    *
    * @returns a hash value for this actor's sync-relevant state
    */

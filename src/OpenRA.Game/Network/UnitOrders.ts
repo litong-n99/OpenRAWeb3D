@@ -4,9 +4,9 @@
  *
  * 核心范式转换:
  * - C# switch-case dispatch → TypeScript Map<string, OrderHandler> registry (extensible)
- * - C# TextNotificationsManager static calls → stub (TODO-6.A.2)
+ * - C# TextNotificationsManager static calls → stub ()
  * - C# MiniYaml parsing for lobby messages → simplified string parsing
- * - C# FluentMessage/FluentReference → simplified placeholder (TODO-6.A.2)
+ * - C# FluentMessage/FluentReference → simplified placeholder ()
  * - C# static KickVoteTarget → module-level mutable state
  */
 
@@ -247,14 +247,14 @@ const GamePaused = 'notification-game-paused'
 const GameUnpaused = 'notification-game-unpaused'
 
 // ---------------------------------------------------------------------------
-// Notification stubs (TODO-6.A.2: replace with real notification system)
+// Notification stubs (: replace with real notification system)
 // ---------------------------------------------------------------------------
 
 /**
  * Add a system line notification.
  *
  * OpenRA 对照: TextNotificationsManager.AddSystemLine(string, ...)
- * TODO-6.A.2: Replace with real text notification system.
+* Replace with real text notification system.
  */
 let addSystemLineFn: ((key: string, ...args: unknown[]) => void) | null = null
 let addChatLineFn:
@@ -437,13 +437,13 @@ function initDefaultHandlers(): void {
   registerHandler('StartGame', (_om, _world, _clientId, order) => {
     if (order.targetString && order.targetString.length > 0) {
       // Parse save frame data from target string
-      // NOTE: Simplified — full MiniYAML parsing deferred to TODO-6.A.2
+      // NOTE: Simplified — full MiniYAML parsing deferred to
       addSystemLine(GameStarted)
     } else {
       addSystemLine(GameStarted)
     }
     // Game.StartGame would be called here
-    // TODO-6.A.2: Call Game.StartGame(om.lobbyInfo.globalSettings.map, WorldType.Regular)
+    // Call Game.StartGame(om.lobbyInfo.globalSettings.map, WorldType.Regular)
     return true
   })
 
@@ -481,7 +481,7 @@ function initDefaultHandlers(): void {
     // profiles, and auth signatures. This simplified implementation issues a
     // placeholder HandshakeResponse to allow the connection handshake to
     // complete. The server may reject this for production games.
-    // TODO-6.A.2: Implement full HandshakeRequest/HandshakeResponse logic
+    // Implement full HandshakeRequest/HandshakeResponse logic
     //   including mod switching, player profile, and auth token signing.
     const response = {
       client: {
@@ -530,7 +530,7 @@ function initDefaultHandlers(): void {
   // OpenRA 对照: ProcessOrder case "SyncInfo"
   registerHandler('SyncInfo', (_om, _world, _clientId, _order) => {
     // NOTE: LobbyInfo deserialization from targetString
-    // TODO-6.A.2: Implement Session.Deserialize for full lobby sync
+    // Implement Session.Deserialize for full lobby sync
     return true
   })
 
@@ -552,7 +552,7 @@ function initDefaultHandlers(): void {
   // OpenRA 对照: ProcessOrder case "DisableChatEntry"
   registerHandler('DisableChatEntry', (_om, world, clientId, _order) => {
     if (orderNotFromServerOrWorldIsReplay(clientId, world)) return true
-    // NOTE: ChatDisabledUntil tracking — deferred to TODO-6.A.2
+    // NOTE: ChatDisabledUntil tracking — deferred to
     return true
   })
 

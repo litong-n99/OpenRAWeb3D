@@ -324,7 +324,7 @@ export class ReturnToBase extends Activity {
 
   /** Find the nearest exit on the destination building (stub). */
   private static _nearestExit(_dest: GameActor, _self: GameActor): unknown {
-    // TODO-14.C.B4: Full exit lookup deferred until Building/Exit trait migration
+    // Full exit lookup deferred until Building/Exit trait migration
     const destAny = _dest as unknown as {
       traits?: Map<string, unknown>
     }

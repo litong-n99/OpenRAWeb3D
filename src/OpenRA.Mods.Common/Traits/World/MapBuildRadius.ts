@@ -280,6 +280,6 @@ export class MapBuildRadius implements INotifyCreated {
     // are used. When the lobby system is implemented, this method will
     // read the actual lobby option values.
     //
-    // TODO-11.B.15: Integrate with full lobby info system (Ch16).
+    // Integrate with full lobby info system (Ch16).
   }
 }

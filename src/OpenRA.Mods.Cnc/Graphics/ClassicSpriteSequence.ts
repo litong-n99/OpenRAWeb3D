@@ -133,7 +133,7 @@ export class ClassicSpriteSequence {
    *
    * OpenRA 对照: DefaultSpriteSequence.GetSprite(int frame, WAngle facing)
    *
-   * TODO-19.C.13: Requires Sheet + SpriteCache infrastructure from Chapter 2
+* Requires Sheet + SpriteCache infrastructure from Chapter 2
    * to actually resolve frame indices to sheet UV coordinates. Currently
    * returns a stub sprite with null sheet and zero bounds because
    * ClassicSpriteSequence is a sequence format descriptor (mapping facing

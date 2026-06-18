@@ -5,7 +5,7 @@
  * 核心范式转换:
  * - C# SpriteFont.DrawText() bitmap 字形渲染 → CSS font-family + color (DOM 渲染)
  * - C# stateful sprite images (-disabled, -pressed, -hover) → CSS data-state 属性 + background-color
- * - C# WidgetUtils.DrawPanel 9-slice 面板 → CSS border-image (TODO-16.A.2) / background-color 模拟
+ * - C# WidgetUtils.DrawPanel 9-slice 面板 → CSS border-image () / background-color 模拟
  * - C# HandleMouseInput(MouseInput) + Depressed 状态机 → DOM pointerdown/pointerup/pointermove
  * - C# HandleKeyPress(KeyInput) + HotkeyReference → DOM keydown + Hotkey.IsActivatedBy
  * - C# MouseEntered/MouseExited 工具提示 → DOM mouseenter/mouseleave + ITooltipContainer
@@ -922,7 +922,7 @@ export class ButtonWidget extends InputWidget {
    *
    * 迁移方案：
    * 使用 CSS background-color 和 box-shadow 模拟状态感知面板。
-   * 完整 9 片面板（ChromeProvider → CSS border-image）在 TODO-16.A.2 中完成。
+   * 完整 9 片面板（ChromeProvider → CSS border-image）在  中完成。
    *
    * 变体后缀规则（OpenRA: WidgetUtils.GetStatefulImageName）：
    * - disabled + pressed → "{baseName}-disabled-pressed"

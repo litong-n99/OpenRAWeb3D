@@ -16,7 +16,7 @@
  * - Template-based colors (each marker index maps to a distinct color)
  * - Dispose cleanup (pending cells reverted on cancel)
  *
- * Migration: TODO-21.B.8 — Chapter 21 Phase B Wave 3
+ * Migration:  — Chapter 21 Phase B Wave 3
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'

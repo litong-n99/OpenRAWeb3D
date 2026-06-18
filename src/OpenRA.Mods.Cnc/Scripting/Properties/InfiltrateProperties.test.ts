@@ -4,7 +4,7 @@
  * Tests: registration, category, requiredTraits, exposedForDestroyedActors,
  * Infiltrate method, trait filter logic, member descriptors.
  *
- * TODO-20.F.3
+ *
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'

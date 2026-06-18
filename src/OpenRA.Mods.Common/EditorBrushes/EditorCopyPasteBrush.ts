@@ -15,7 +15,7 @@
  * Left-click commits a paste via EditorBlit; right-click cancels.
  * Preview shows clipboard contents at the target position.
  *
- * Migration: TODO-21.B.7 — Chapter 21 Phase B Wave 3
+ * Migration:  — Chapter 21 Phase B Wave 3
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'

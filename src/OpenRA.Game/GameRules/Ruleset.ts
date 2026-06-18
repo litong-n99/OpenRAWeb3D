@@ -218,14 +218,14 @@ export const SYSTEM_ACTOR_NAMES: readonly string[] = Object.values(SystemActors)
  *
  * ## Deferred Features
  *
- * @todo TODO-6.C.3: `Ruleset.Load()` with map override merging —
+ * @todo : `Ruleset.Load()` with map override merging —
  *   accepts per-map YAML/JSON overrides (mapRules, mapWeapons, mapVoices,
  *   etc.) that merge with defaults via mergeOrDefault(). OpenRA 对照:
  *   Ruleset.Load(ModData, fileSystem, tileSet, mapRules, mapWeapons,
  *   mapVoices, mapNotifications, mapMusic, mapModelSequences).
  *   Deferred: map YAML loading from .oramap not yet migrated.
  *
- * @todo TODO-6.C.4: `DefinesUnsafeCustomRules()` + `AnyFlaggedTraits()` —
+ * @todo : `DefinesUnsafeCustomRules()` + `AnyFlaggedTraits()` —
  *   server lobby validation checks that flag maps with unsafe custom
  *   rules (weapon/voice/notification overrides, or non-ILobbyCustomRulesIgnore
  *   trait overrides). OpenRA 对照: Ruleset.DefinesUnsafeCustomRules(ModData,
@@ -521,7 +521,7 @@ export class Ruleset {
    * @returns fully constructed Ruleset
    * @throws Error if any required JSON file cannot be parsed
    *
-   * @todo TODO-6.C.3: Implement map override merging (OpenRA's
+   * @todo : Implement map override merging (OpenRA's
    *   Ruleset.Load(ModData, fileSystem, tileSet, mapRules, mapWeapons,
    *   mapVoices, mapNotifications, mapMusic, mapModelSequences)).
    *   This variant accepts per-map YAML/JSON overrides that merge

@@ -402,7 +402,7 @@ export class ExtractChromeStringsCommand implements IUtilityCommand {
   run(_utility: Utility, _args: string[]): void {
     console.log('ExtractChromeStringsCommand: Extracting chrome strings...')
 
-    // TODO-21.E.14: Implement full chrome string extraction when:
+    // Implement full chrome string extraction when
     // - Widget type registry (ObjectCreator.GetTypes equivalent) is available
     // - FluentReferenceAttribute equivalent exists
     // - Chrome layout loading via MiniYAML is available
@@ -425,7 +425,7 @@ export class ExtractChromeStringsCommand implements IUtilityCommand {
     // 6. Call generateFtlOutput() to produce .ftl content
     // 7. Write .ftl to fluent package, update layout YAML references
 
-    console.log('TODO-21.E.14: Full chrome string extraction requires:')
+    console.log(': Full chrome string extraction requires:')
     console.log('  - Widget type scanning (ObjectCreator)')
     console.log('  - FluentReference marker on widget fields')
     console.log('  - Chrome layout YAML loading & parsing')

@@ -220,7 +220,7 @@ export function HashPlayer(p: ISyncPlayerRef | null): number {
  * OpenRA 对照: Sync.HashTarget(Target)
  *
  * - Actor: hashes by actor ID
- * - FrozenActor: DEFERRED (returns 0 — TODO-6.B.3)
+ * - FrozenActor: DEFERRED (returns 0 — )
  * - Terrain: hashes by center position (WPos)
  * - Invalid: returns 0
  */
@@ -242,7 +242,7 @@ export function HashTarget(target: {
       return Math.imul(((actor.actorId << 16) | 0), 0x567) | 0
     }
     case TT_FrozenActor:
-      // NOTE: FrozenActor hash deferred (TODO-6.B.3).
+      // NOTE: FrozenActor hash deferred ().
       // Full implementation requires accessing FrozenActor.Actor, which
       // needs the FrozenActor type and World for actor resolution.
       return 0

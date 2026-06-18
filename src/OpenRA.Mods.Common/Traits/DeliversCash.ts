@@ -324,7 +324,7 @@ export class DeliversCash
 
     // NOTE: DonateCash Activity implementation deferred to Chapter 14 Phase D.
     // For now, we directly execute the cash transfer.
-    // TODO-14.D: Replace with full DonateCash Activity
+    // Replace with full DonateCash Activity
 
     // Grant cash to target actor's owner
     const target = (order as unknown as { target?: TargetStub }).target

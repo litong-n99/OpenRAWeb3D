@@ -17,7 +17,7 @@
  *   TODO: Fluent 本地化迁移完成后支持 i18n。
  * - OpenRA 的 HotkeyReference 通过 internal 构造函数注入 Func<Hotkey>，
  *   HotkeyManager.GetHotkeyReference(name) 创建命名热键的动态查找引用。
- *   TODO-7.B.2.1: HotkeyManager 迁移后，ViewportControllerWidget 使用命名热键
+* HotkeyManager 迁移后，ViewportControllerWidget 使用命名热键
  *   引用代替硬编码键值。
  */
 
@@ -291,7 +291,7 @@ const HOTKEY_DISPLAY_NAMES: Readonly<Record<string, string>> = {
  *   2. 动态热键: 传入 getter 函数 () => Hotkey (用于 HotkeyManager 查找)
  * - HotkeyReference.Invalid 始终返回 Hotkey.Invalid
  *
- * TODO-7.B.2.1: HotkeyManager 迁移后，ViewportControllerWidget 通过
+* HotkeyManager 迁移后，ViewportControllerWidget 通过
  * HotkeyManager 获取命名热键引用 (如 "ViewportZoomIn", "ScrollUp" 等)。
  */
 export class HotkeyReference {

@@ -35,7 +35,7 @@ import type {
  *
  * OpenRA 对照: OpenRA.Traits.IChatCommand
  *
- * TODO-21.D.7: 完整的 IChatCommand 系统（ChatCommands 注册表、
+* 完整的 IChatCommand 系统（ChatCommands 注册表、
  * 命令解析、权限检查）在后续 Phase E 迁移。当前提供最小桩接口
  * 以满足 CustomTerrainDebugOverlay 的结构需求。
  *
@@ -123,7 +123,7 @@ export class CustomTerrainDebugOverlay
    *
    * OpenRA 对照: font
    *
-   * NOTE: 当前仅存储字体名称。当 SpriteFont 系统迁移完成后（TODO-21.D.7），
+   * NOTE: 当前仅存储字体名称。当 SpriteFont 系统迁移完成后（），
    * 此字段将解析为实际的字体渲染对象，用于 TextAnnotationRenderable。
    */
   readonly fontName: string
@@ -145,7 +145,7 @@ export class CustomTerrainDebugOverlay
    *
    * OpenRA: font = Game.Renderer.Fonts[info.Font];
    * TypeScript: 在 HTTP 环境中，字体通过 CSS font-family 处理。
-   * TODO-21.D.7: 当 SpriteFont / 字体系统迁移完毕后，将 _fontName
+* 当 SpriteFont / 字体系统迁移完毕后，将 _fontName
    * 解析为实际的字体渲染对象。
    *
    * @param info — 特质配置
@@ -164,7 +164,7 @@ export class CustomTerrainDebugOverlay
    *
    * OpenRA 对照: IWorldLoaded.WorldLoaded(World w, WorldRenderer wr)
    *
-   * TODO-21.D.7: 完整的 ChatCommands.RegisterCommand() 和
+* 完整的 ChatCommands.RegisterCommand() 和
    * HelpCommand.RegisterHelp() 注册需要聊天命令系统迁移（Phase E）。
    * 当前仅缓存 World 引用和 DeveloperMode。
    *
@@ -187,7 +187,7 @@ export class CustomTerrainDebugOverlay
       }
     }
 
-    // TODO-21.D.7: 注册聊天命令
+    // 注册聊天命令
     //   const console = w.worldActor?.trait?.('ChatCommands')
     //   const help = w.worldActor?.trait?.('HelpCommand')
     //   if (console && help && devMode) {
@@ -211,7 +211,7 @@ export class CustomTerrainDebugOverlay
    * 3. 切换 enabled 布尔值
    * 4. 显示切换通知（启用/禁用）
    *
-   * TODO-21.D.7: TextNotificationsManager 和 FluentProvider 消息
+* TextNotificationsManager 和 FluentProvider 消息
    * 系统尚未迁移。当前仅切换 enabled 标志。
    *
    * @param name — 命令名称
@@ -224,7 +224,7 @@ export class CustomTerrainDebugOverlay
 
     // 检查开发者模式
     if (!this._devMode || !this._devMode.enabled) {
-      // TODO-21.D.7: TextNotificationsManager.Debug(
+      // TextNotificationsManager.Debug(
       //   FluentProvider.GetMessage(CheatsDisabled))
       return
     }
@@ -232,7 +232,7 @@ export class CustomTerrainDebugOverlay
     // 切换覆盖层
     this.enabled = !this.enabled
 
-    // TODO-21.D.7: 显示通知
+    // 显示通知
     //   const notification = Enabled ? CheatEnabled : CheatDisabled
     //   const playerName = world.LocalPlayer?.ResolvedPlayerName ?? ""
     //   TextNotificationsManager.Debug(FluentProvider.GetMessage(
@@ -254,7 +254,7 @@ export class CustomTerrainDebugOverlay
    * 每个匹配的单元格渲染一个 TextAnnotationRenderable，显示地形类型
    * 文本，颜色使用 TerrainInfo.Color。
    *
-   * TODO-21.D.7: 完整的文本渲染需要：
+* 完整的文本渲染需要：
    *   a) SpriteFont 系统迁移（bitmap 字体 → CSS/Canvas）
    *   b) TextAnnotationRenderable 迁移（OpenRA 2D 文本 → Babylon.js GUI TextBlock）
    *   c) ShroudObscures(uv) 检查（需要 Ch12 Shroud 系统）
@@ -286,9 +286,9 @@ export class CustomTerrainDebugOverlay
     //     yield return new TextAnnotationRenderable(font, center, 0, info.Color, info.Type);
     //   }
 
-    // TODO-21.D.7: 实现完整的渲染逻辑。当前返回空数组。
+    // 实现完整的渲染逻辑。当前返回空数组。
     // 依赖项（均未迁移）:
-    //   - Viewport.VisibleCellsInsideBounds (TODO-7.B.1.3)
+    //   - Viewport.VisibleCellsInsideBounds ()
     //   - Map.ShroudObscures (Ch12 Shroud 系统)
     //   - Map.CenterOfCell (坐标转换)
     //   - Map.CustomTerrain cell indexer
@@ -315,7 +315,7 @@ export class CustomTerrainDebugOverlay
    *
    * OpenRA 对照: world 字段
    *
-   * 供将来完整的 RenderAnnotations 实现使用（TODO-21.D.7），
+   * 供将来完整的 RenderAnnotations 实现使用（），
    * 以访问 Map.CustomTerrain、Map.GetTerrainInfo、Map.CenterOfCell 等。
    *
    * @returns 缓存的 World 实例，若 worldLoaded 尚未调用则为 null

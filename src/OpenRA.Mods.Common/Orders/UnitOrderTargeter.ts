@@ -179,7 +179,7 @@ export abstract class UnitOrderTargeter implements IOrderTargeter {
           // NOTE: FrozenActorStub has no owner — skip relationship check
           // for frozen actors. Full implementation will add owner to
           // FrozenActorStub when fog-of-war is migrated (Chapter 12).
-          // TODO-12.A: Add owner to FrozenActorStub for relationship checks.
+          // Add owner to FrozenActorStub for relationship checks.
         } else {
           // Actor target — use IGameActor.owner
           const targetActor = target.actor
@@ -327,7 +327,7 @@ export class TargetTypeOrderTargeter extends UnitOrderTargeter {
     // NOTE: Full implementation needs Actor.GetEnabledTargetTypes()
     // which returns a BitSet<TargetableType>. For now, we use a simplified
     // check: if the target info has a name that matches one of the target types.
-    // TODO-11.B.1: Implement target type lookup via ActorInfo.TraitInfos<ITargetableInfo>
+    // Implement target type lookup via ActorInfo.TraitInfos<ITargetableInfo>
     const targetTypeStr = target.info?.name ?? ''
     if (this.targetTypes.has(targetTypeStr)) {
       return true

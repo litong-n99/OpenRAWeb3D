@@ -119,7 +119,7 @@ export class Follow extends Activity {
 
     // Out of range — queue move
     this.moveCooldownHelper.notifyMoveQueued()
-    // TODO-14.A: Queue real MoveWithinRange when available
+    // Queue real MoveWithinRange when available
     // For now, queue a stub
     this.queueChild(new FollowMoveStub())
     return false

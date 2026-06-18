@@ -333,7 +333,7 @@ describe('GameActor', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Component storage (TODO-3.D.2)
+  // Component storage ()
   // -----------------------------------------------------------------------
 
   describe('Component storage', () => {
@@ -449,7 +449,7 @@ describe('GameActor', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Condition system (TODO-3.D.3)
+  // Condition system ()
   // -----------------------------------------------------------------------
 
   describe('Condition system', () => {
@@ -697,7 +697,7 @@ describe('GameActor', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Lifecycle state machine (TODO-3.D.6)
+  // Lifecycle state machine ()
   // -----------------------------------------------------------------------
 
   describe('Lifecycle', () => {
@@ -934,7 +934,7 @@ describe('GameActor', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Owner changes (TODO-3.D.5)
+  // Owner changes ()
   // -----------------------------------------------------------------------
 
   describe('Owner changes', () => {
@@ -1030,7 +1030,7 @@ describe('GameActor', () => {
   })
 
   // -----------------------------------------------------------------------
-  // buildCachedTraitRefs (TODO-3.D.5)
+  // buildCachedTraitRefs ()
   // -----------------------------------------------------------------------
 
   describe('buildCachedTraitRefs', () => {
@@ -1145,12 +1145,12 @@ describe('GameActor', () => {
 
       // Sync hashes should be populated with zero-hash placeholders
       const hash = actor.computeSyncHash()
-      expect(hash).toBe(0) // Placeholder — will use real hash in TODO-3.D.8
+      expect(hash).toBe(0) // Placeholder — will use real hash in
     })
   })
 
   // -----------------------------------------------------------------------
-  // ResolveOrder (TODO-3.D.7)
+  // ResolveOrder ()
   // -----------------------------------------------------------------------
 
   describe('ResolveOrder', () => {

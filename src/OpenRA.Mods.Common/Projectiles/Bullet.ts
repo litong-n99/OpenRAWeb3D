@@ -212,7 +212,7 @@ export interface WarheadArgsStub {
  * @param width — projectile width
  * @returns the blocked position if blocked, or null if clear
  *
- * TODO-7.F.1: 当 BlocksProjectiles trait 完成迁移后，替换为实际空间查询
+* 当 BlocksProjectiles trait 完成迁移后，替换为实际空间查询
  */
 export type BlockingActorsChecker = (
   world: GameWorldManager,
@@ -235,7 +235,7 @@ export type BlockingActorsChecker = (
  * @param validRelationships — player relationships that count as valid targets
  * @returns true if any valid target is found within radius
  *
- * TODO-7.F.1: 当空间索引完成迁移后，替换为实际空间查询
+* 当空间索引完成迁移后，替换为实际空间查询
  */
 export type TargetInRadiusChecker = (
   world: GameWorldManager,
@@ -944,7 +944,7 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
       )
       if (maxInaccuracyOffset > 0) {
         // NOTE: WVec.FromPDF uses MersenneTwister to generate random offset.
-        // When that is fully migrated (TODO-3.A.2-PDF), replace with:
+        // When that is fully migrated (), replace with
         //   target += WVec.fromPDF(world.SharedRandom, 2) * maxInaccuracyOffset / 1024
         // This approximation distributes offset using two random values scaled
         // by maxInaccuracyOffset / 1024 to approximate a circular spread.
@@ -1048,7 +1048,7 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
     )
 
     if (this._shouldExplode(world)) {
-      // TODO-7.F.1: ContrailFader — when ContrailFader effect is migrated,
+      // ContrailFader — when ContrailFader effect is migrated,
       // schedule self-removal after fade-out:
       //   if (this.contrail && this.contrail.isVisible)
       //     world.addFrameEndTask(() => world.addEffect(new ContrailFader(this.pos, this.contrail!)))
@@ -1131,7 +1131,7 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
     const shouldBounce = this.remainingBounces > 0
 
     if (flightLengthReached && shouldBounce) {
-      // TODO-7.F.1: Map bounds + invalid bounce terrain check
+      // Map bounds + invalid bounce terrain check
       // OpenRA 对照: ShouldExplode() lines 287-292
       //   const cell = world.Map.CellContaining(pos)
       //   if (!world.Map.Contains(cell)) return true
@@ -1165,7 +1165,7 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
         this.target,
         WVec.divide(bounceVec, 100),
       )
-      // TODO-7.F.1: Adjust bounce target height to terrain
+      // Adjust bounce target height to terrain
       // OpenRA 对照: ShouldExplode() lines 298-299
       //   const dat = world.Map.DistanceAboveTerrain(target)
       //   target += new WVec(0, 0, -dat.Length)
@@ -1177,7 +1177,7 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
 
       this.ticks = 0
       this.source = this.pos
-      // TODO-7.F.1: Bounce sound playback — requires Sound module (Phase D)
+      // Bounce sound playback — requires Sound module (Phase D)
       // OpenRA 对照: ShouldExplode() line 304
       //   Game.Sound.Play(SoundType.World, info.BounceSound, source)
       this.remainingBounces--
@@ -1188,7 +1188,7 @@ export class Bullet implements IProjectile, ISpatiallyPartitionable {
       return true
     }
 
-    // TODO-7.F.1: Below terrain check (driving into cell with higher height level)
+    // Below terrain check (driving into cell with higher height level)
     // OpenRA 对照: ShouldExplode() line 313
     //   if (world.Map.DistanceAboveTerrain(pos).Length < 0) return true
 

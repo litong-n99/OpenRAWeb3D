@@ -465,7 +465,7 @@ export class D2kSpriteSequence implements ISpriteSequence {
   getSprite(_frame: number, _facing: number): Sprite {
     // Return a stub matching Sprite shape. Full implementation depends on
     // Sheet infrastructure from Ch2 (Sprite.ts, Sheet.ts).
-    // TODO-19.B.17: Use pre-resolved sprites from Sheet/SpriteCache when
+    // Use pre-resolved sprites from Sheet/SpriteCache when
     // the rendering pipeline is fully migrated.
     return {
       sheet: null as unknown as Sprite['sheet'],

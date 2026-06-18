@@ -30,14 +30,14 @@ import {
 
 // ---------------------------------------------------------------------------
 // IPlayerResourcesStub — PlayerResources 的最小前向接口
-// OpenRA 对照: PlayerResources（TODO-10.B.3）
+// OpenRA 对照: PlayerResources（）
 // ---------------------------------------------------------------------------
 
 /** PlayerResources 的最小前向接口（仅含 resourceCapacity 和 resources）。
  *
  *  OpenRA 对照: OpenRA.Mods.Common/Traits/Player/PlayerResources.cs
  *
- *  TODO-10.B.3: 替换为完整的 PlayerResources 类。
+* 替换为完整的 PlayerResources 类。
  */
 export interface IPlayerResourcesStub {
   readonly resourceCapacity: number

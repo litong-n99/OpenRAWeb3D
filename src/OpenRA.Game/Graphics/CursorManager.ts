@@ -437,7 +437,7 @@ export class CursorManager {
     // 这在 Web 中有性能开销。完整实现需要使用 Canvas 2D 或
     // OffscreenCanvas 将精灵帧渲染为 PNG data URI。
     //
-    // TODO-2.7.3: 实现精灵→PNG data URI 转换（通过 Sheet.getData() +
+    // 实现精灵→PNG data URI 转换（通过 Sheet.getData() +
     // PNG 编码器或 Canvas 2D compositing）
     //
     // 当前使用内置光标名称作为近似：

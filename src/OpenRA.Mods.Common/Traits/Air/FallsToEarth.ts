@@ -189,7 +189,7 @@ export class FallsToEarth
       this._effectiveOwner = actor.owner ?? null
     }
 
-    // TODO-9.B.2-ACTIVITY: Create actual FallToEarth activity class (Ch14 Phase C).
+    // Create actual FallToEarth activity class (Ch14 Phase C).
     //   In C#: self.QueueActivity(false, new FallToEarth(self, info))
     //   The activity handles: descending altitude to 0 at velocity rate,
     //   optional spin (capped by maximumSpinSpeed), horizontal momentum

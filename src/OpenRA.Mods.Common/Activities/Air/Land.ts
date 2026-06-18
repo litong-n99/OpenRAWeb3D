@@ -401,7 +401,7 @@ export class Land extends Activity {
       if (canLand && !canLand.call(this.aircraft, blockingCells, this.target.actor, true)) {
         // Maintain holding pattern
         // NOTE: Using Wait as a placeholder for FlyIdle (implemented in Batch 2)
-        // TODO-14.C.B2: Replace with FlyIdle when Batch 2 is implemented
+        // Replace with FlyIdle when Batch 2 is implemented
         this.queueChild(new Wait(25))
 
         // Notify blockers

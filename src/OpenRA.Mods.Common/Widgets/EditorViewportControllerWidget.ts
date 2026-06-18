@@ -10,7 +10,7 @@
  * - C# event Action BrushChanged → TS brushChangedCallback 回调
  * - C# HandleMouseInput 中直接 zoom → 基类 ViewportControllerWidget 已处理 zoom
  *
- * Ref: TODO-21.A.8 — docs/chapter21_phase_a_design.md
+ * Ref:  — docs/chapter21_phase_a_design.md
  */
 
 import { type WidgetArgs, type WidgetEvent } from '../../OpenRA.Game/Widgets/Widget'
@@ -114,7 +114,7 @@ class EditorDefaultBrushStub implements IEditorBrush {
  *
  * 输入路由: 鼠标事件 → 笔刷 (优先) → 基类 ViewportControllerWidget (平移/缩放)
  *
- * Ref: TODO-21.A.8
+ * Ref:
  */
 export class EditorViewportControllerWidget extends ViewportControllerWidget {
   // ---------------------------------------------------------------------------

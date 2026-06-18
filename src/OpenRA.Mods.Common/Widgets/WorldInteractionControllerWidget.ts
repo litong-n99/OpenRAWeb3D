@@ -23,7 +23,7 @@
  * 3. 选择状态存储在宿主应用中 — combineSelection / clearSelection /
  *    setRollover 均为回调，而非 Widget 状态。这解耦了交互层与 UI 树。
  * 4. 非 DOM 渲染 — Draw() 在 OpenRA 中用 RgbaColorRenderer 绘制 2D
- *    选择框; TS 中用 3D frustum / HighlightLayer (TODO-5.E.VISUAL)。
+ *    选择框; TS 中用 3D frustum / HighlightLayer ()。
  *    只有 render() 返回一个 pointer-events:none 的透明 DOM 占位符。
  * 此决策是有意为之的架构简化，待将来 Architect 审查后可能调整为
  * 同时实现 Widget 接口和 Babylon.js 交互的双通道模式。
@@ -304,11 +304,11 @@ export class WorldInteractionControllerWidget {
   /** Whether a drag box is currently valid (distance > deadzone). */
   private _isValidDragbox = false
 
-  // ---- Selection colors (stored for future visual feedback — TODO-5.E.VISUAL) ----
+  // ---- Selection colors (stored for future visual feedback — ) ----
 
   // NOTE: These colors are set via the public setter methods and will be
   // used when the visual highlight system (HighlightLayer / OutlineRenderer)
-  // is implemented per TODO-5.E.VISUAL.
+  // is implemented per .
 
   // ---- Babylon.js observables (for cleanup) ----
   // NOTE: The observer handle type is `unknown` because Babylon.js's
@@ -317,7 +317,7 @@ export class WorldInteractionControllerWidget {
 
   private _pointerObserver: unknown = null
 
-  // ---- Context menu suppression (TODO-5.E.CONTEXTMENU) ----
+  // ---- Context menu suppression () ----
   // NOTE: The contextmenu event listener reference is stored here for cleanup
   // in dispose(). This prevents the browser's native right-click menu from
   // appearing during gameplay.
@@ -373,7 +373,7 @@ export class WorldInteractionControllerWidget {
    * Also suppresses the browser's native context menu on the rendering
    * canvas (right-clicking is used for issuing orders in RTS games).
    *
-   * TODO-5.E.CONTEXTMENU: In a complete Widget tree integration, context
+* In a complete Widget tree integration, context
    * menu suppression should be configurable per-Widget (e.g., to allow
    * context menus on UI panels like chat/minimap). Currently, it is
    * globally suppressed on the canvas.
@@ -414,7 +414,7 @@ export class WorldInteractionControllerWidget {
     // Guard: skip if world is being disposed
     if (this.gameWorld.disposing) return
 
-    // TODO-5.E.CLICKTHROUGH: Check if pointer event target is a non-ClickThrough
+    // Check if pointer event target is a non-ClickThrough
     // UI Widget before processing world interaction. In the full Widget tree,
     // widgets with ClickThrough=false should intercept pointer events. Currently,
     // all events pass through to world interaction (the render() element has
@@ -698,7 +698,7 @@ export class WorldInteractionControllerWidget {
     // with a viewport-sized bounding box. Our implementation selects ALL
     // entities with matching selectionClass regardless of screen visibility.
     // This deviation is intentional for now — on-screen filtering requires
-    // frustum culling which is deferred to TODO-5.E.FRUSTUM.
+    // frustum culling which is deferred to .
     const sameClass = entities.filter(
       (e) =>
         e.selectionClass === hitEntity.selectionClass &&
@@ -769,7 +769,7 @@ export class WorldInteractionControllerWidget {
    * For non-zero-area rects, uses entity screen-space projection to test
    * containment within the screen rectangle. This is a simplified approach
    * compared to 3D frustum culling; full frustum-based selection is deferred
-   * to TODO-5.E.FRUSTUM.
+   * to .
    *
    * @param start — one corner of the screen rect
    * @param end — opposite corner of the screen rect

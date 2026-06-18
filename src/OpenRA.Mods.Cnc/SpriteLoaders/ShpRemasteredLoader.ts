@@ -300,7 +300,7 @@ function extractEntry(
   }
   if (entry.compression === 8) {
     // Deflate — use browser's DecompressionStream
-    // TODO-19.D.9: Implement deflate decompression.
+    // Implement deflate decompression.
     // Options: fflate library (sync), or browser DecompressionStream (async).
     // Remastered SHP ZIP files typically use stored mode, so this is
     // unlikely to be hit in practice.

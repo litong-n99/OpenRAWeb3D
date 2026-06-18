@@ -23,7 +23,7 @@
  * - Facing initialization: applies default facing from EditorActorLayer
  * - Footprint validation: prevents placement outside map bounds
  *
- * Migration: TODO-21.B.4 — Chapter 21 Phase B Wave 2
+ * Migration:  — Chapter 21 Phase B Wave 2
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'

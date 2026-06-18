@@ -265,7 +265,7 @@ export class Attack extends Activity {
       if (target.type === TargetType.Actor) {
         // NOTE: lastVisibleOwner and lastVisibleTargetTypes tracking
         // is deferred until full AutoTarget/stance system is migrated.
-        // TODO-14.B.1-EXTENDED: Store owner and target types for stance checks.
+        // Store owner and target types for stance checks.
       } else if (target.type === TargetType.FrozenActor) {
         // FrozenActor tracking deferred
       }
@@ -335,7 +335,7 @@ export class Attack extends Activity {
 
       // NOTE: lastVisibleOwner and lastVisibleTargetTypes tracking
       // is deferred until full AutoTarget/stance system is migrated.
-      // TODO-14.B.1-EXTENDED: Store owner and target types for stance checks.
+      // Store owner and target types for stance checks.
     }
 
     this.useLastVisibleTarget = targetIsHiddenActor || !this.target.isValidFor(self as unknown as never)

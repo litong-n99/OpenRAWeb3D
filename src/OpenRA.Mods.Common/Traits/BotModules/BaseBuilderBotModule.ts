@@ -181,7 +181,7 @@ export class BaseBuilderBotModule
   // Cached traits
   // -----------------------------------------------------------------------
 
-  // TODO-6.E: Integrate PowerManager and PlayerResources via PlayerActor.trait<T>()
+  // Integrate PowerManager and PlayerResources via PlayerActor.trait<T>()
   // private _playerPowerStub: { excessPower: number } | null = null
   // private _playerResourcesStub: { getCashAndResources(): number } | null = null
   private _resourceLayer: ResourceLayerLike | null = null

@@ -12,7 +12,7 @@
  * - C# OpenRA resource values → configurable resourceValues Map
  * - Editor allows replacing one resource type with another (unlike gameplay ResourceLayer)
  *
- * Migration: TODO-21.A.5 — Chapter 21 Phase A
+ * Migration:  — Chapter 21 Phase A
  */
 
 import { CPos } from '../../../OpenRA.Game/CPos.js'
@@ -78,7 +78,7 @@ export class EditorResourceLayerInfo implements ITraitInfo, IResourceLayerInfo {
    * it drives neighbor-based density recalculation in UpdateCell. When the
    * editor brush interacts with full terrain data, this flag should control
    * whether getDensity() uses raw or neighbor-averaged values.
-   * TODO-21.A.5: Wire RecalculateResourceDensity to density computation.
+* Wire RecalculateResourceDensity to density computation.
    */
   recalculateResourceDensity: boolean
 
@@ -184,12 +184,12 @@ interface ResourceCellData {
  * NOTE: BuildingInfluence checks are stubbed — all terrain types are treated
  * as valid for resource placement. Full integration via TODO-11.B.X.
  *
- * TODO-21.A.5: CalculateRegionValue(region) — sum resource value over a
+* CalculateRegionValue(region) — sum resource value over a
  * CellCoordsRegion. Needed when editor brushes show region statistics.
- * TODO-21.A.5: CalculateCellDensity() + neighbor-based recalculation —
+* CalculateCellDensity() + neighbor-based recalculation —
  * matching OpenRA's ResourceLayer density averaging. gated by
  * RecalculateResourceDensity flag.
- * TODO-21.A.5: AllowResourceAt terrain/ramp checks — editor currently allows
+* AllowResourceAt terrain/ramp checks — editor currently allows
  * resource placement anywhere. Terrain validation should be added when
  * editor terrain data integration is complete.
  */

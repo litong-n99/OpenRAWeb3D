@@ -4,7 +4,7 @@
  *
  * 核心范式转换:
  * - C# AttackMove : IResolveOrder, IOrderVoice → TS implements same interfaces
- * - C# AttackMoveOrderGenerator : UnitOrderGenerator → DEFERRED (TODO-9.D.DEFER-ORDERGEN)
+ * - C# AttackMoveOrderGenerator : UnitOrderGenerator → DEFERRED ()
  * - C# IFacing resolved from self → TS duck-typed access
  * - C# AttackMoveActivity → TS stub activity (full Ch14)
  * - C# Shroud.Explored / CTF → TS duck-typed (full Ch12)
@@ -118,7 +118,7 @@ export class AttackMoveInfo {
  *
  * OpenRA 对照: AttackMoveActivity
  *
- * TODO-14.A: Full AttackMoveActivity deferred to Ch14 (Activity Implementations).
+* Full AttackMoveActivity deferred to Ch14 (Activity Implementations).
  * This stub provides the minimal interface for queueActivity().
  */
 export class AttackMoveActivity {
@@ -169,7 +169,7 @@ export class AttackMoveActivity {
  * When an attack-move order is received, queues an AttackMoveActivity that
  * combines movement with automatic target scanning/engagement.
  *
- * TODO-9.D.DEFER-ORDERGEN: AttackMoveOrderGenerator (UI order generator)
+* AttackMoveOrderGenerator (UI order generator)
  * depends on UnitOrderGenerator, MouseInput, Modifiers (Ch15/Ch16).
  */
 export class AttackMove implements IResolveOrder, IOrderVoice {
@@ -288,7 +288,7 @@ export class AttackMove implements IResolveOrder, IOrderVoice {
 
     const assaultMoving = order.orderName === 'AssaultMove'
 
-    // TODO-14.A: this should scale with unit selection group size
+    // this should scale with unit selection group size
     // Queue attack-move activity
     if (self.queueActivity) {
       const moveFn = (): unknown => {
@@ -322,7 +322,7 @@ export class AttackMove implements IResolveOrder, IOrderVoice {
  *
  * OpenRA 对照: AttackMoveOrderGenerator (93 lines)
  *
- * TODO-9.D.DEFER-ORDERGEN: Depends on UnitOrderGenerator (Ch15), MouseInput (Ch16),
+* Depends on UnitOrderGenerator (Ch15), MouseInput (Ch16),
  * Modifiers (Ch15), and selection API (Ch7 Phase C currently complete).
  *
  * The generator:

@@ -10,7 +10,7 @@
  * - C# File.Delete() → IndexedDB objectStore.delete(key)
  * - C# DateTime.UtcNow → new Date().toISOString()
  * - C# World.RequestGameSave(filename, true) → self.world.requestGameSave()
- *   TODO-17.D.2a: requestGameSave() not yet implemented on World — uses
+* requestGameSave() not yet implemented on World — uses
  *   callback pattern as interim solution.
  * - C# Game.ModData.Manifest → TODO: use ModData reference for save path
  *
@@ -136,7 +136,7 @@ export interface AutoSaveWorld {
    *
    * OpenRA 对照: World.RequestGameSave(string filename, bool isAutosave)
    *
-   * TODO-17.D.2a: Implement requestGameSave on GameWorldManager.
+* Implement requestGameSave on GameWorldManager.
    */
   requestGameSave(filename: string, isAutosave: boolean): void
 

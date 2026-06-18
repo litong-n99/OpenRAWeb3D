@@ -19,7 +19,7 @@
  * 显示新建地图对话框，包含地形选择下拉框、宽高输入框和创建按钮。
  * 创建时构造新的 Map，设置边界和玩家定义，保存到内存包中。
  *
- * Migration: TODO-21.C.8 — Chapter 21 Phase C Wave 1
+ * Migration:  — Chapter 21 Phase C Wave 1
  */
 
 import { ChromeLogic, Ui, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

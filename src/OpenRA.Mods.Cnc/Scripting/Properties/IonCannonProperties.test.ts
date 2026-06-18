@@ -4,7 +4,7 @@
  * Tests: registration, category, requiredTraits, exposedForDestroyedActors,
  * method invocation, member descriptor completeness.
  *
- * TODO-20.F.4
+ *
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'

@@ -123,7 +123,7 @@ export class ExtractFilesCommand implements IUtilityCommand {
         throw new Error(errorMsg)
       }
 
-      // TODO-21.E.11: Implement async extraction with actual file I/O.
+      // Implement async extraction with actual file I/O.
       // In a Node.js CLI, use fs.writeFileSync. In the browser, trigger a download.
       console.log(`${filename} — TODO: extracted (file I/O deferred to CLI runner)`)
     }

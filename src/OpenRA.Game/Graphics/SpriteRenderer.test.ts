@@ -295,7 +295,7 @@ describe('SpriteRenderer', () => {
   })
 
   // ========================================================================
-  // TODO-2.3.1/2.3.2: DrawSprite 批量累积 + ThinInstances
+  // /2.3.2: DrawSprite 批量累积 + ThinInstances
   // ========================================================================
   describe('drawSprite', () => {
     it('accumulates instances without immediate flush', () => {
@@ -364,7 +364,7 @@ describe('SpriteRenderer', () => {
   })
 
   // ========================================================================
-  // TODO-2.3.5: BlendMode 变化自动 Flush
+  // BlendMode 变化自动 Flush
   // ========================================================================
   describe('auto-flush on blend mode change', () => {
     it('flushes when sprite blend mode differs', () => {
@@ -473,7 +473,7 @@ describe('SpriteRenderer', () => {
   })
 
   // ========================================================================
-  // TODO-2.3.3: 调色板设置
+  // 调色板设置
   // ========================================================================
   describe('setPalette', () => {
     it('flushes before setting palette', () => {
@@ -523,7 +523,7 @@ describe('SpriteRenderer', () => {
   })
 
   // ========================================================================
-  // TODO-2.3.4: 像素艺术缩放 (Billboard + NEAREST 采样)
+  // 像素艺术缩放 (Billboard + NEAREST 采样)
   // ========================================================================
   describe('pixel art scaling', () => {
     it('defaults to enabled', () => {

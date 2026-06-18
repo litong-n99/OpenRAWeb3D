@@ -211,7 +211,7 @@ export class ReloadAmmoPool
     if (--this.remainingTicks <= 0) {
       this.remainingTicks = this.getModifiedDelay()
 
-      // TODO-8.D.ARMAMENT-DEFER: Sound playback requires SoundDevice integration
+      // Sound playback requires SoundDevice integration
       // if (this.info.sound) { Game.Sound.PlayToPlayer(...) }
 
       this.ammoPool.giveAmmo(self, this.info.count)

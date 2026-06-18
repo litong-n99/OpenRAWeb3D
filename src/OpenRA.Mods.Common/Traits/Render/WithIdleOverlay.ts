@@ -42,7 +42,7 @@ import type { IRenderActor } from './RenderSprites.js'
  *
  * OpenRA 对照: OpenRA.Mods.Common/Traits/BodyOrientation.cs
  *
- * TODO-7.G.1: 替换为完整 BodyOrientation 特质（包含 QuantizedFacings 等）
+* 替换为完整 BodyOrientation 特质（包含 QuantizedFacings 等）
  */
 export interface IBodyOrientation {
   /** 将本地偏移转换为世界空间。

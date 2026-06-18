@@ -12,9 +12,9 @@
  *   (same reason: no closure allocation in hot path)
  *
  * 使用者:
- * - FrozenUnderFog.ts (TODO-12.A.10) — uses anyExplored(cells) to decide freeze
- * - HiddenUnderFog.ts (TODO-12.A.12) — uses anyExplored(cells) for visibility
- * - HiddenUnderShroud.ts (TODO-12.A.11) — uses anyVisible(cells) for visibility
+ * - FrozenUnderFog.ts () — uses anyExplored(cells) to decide freeze
+ * - HiddenUnderFog.ts () — uses anyExplored(cells) for visibility
+ * - HiddenUnderShroud.ts () — uses anyVisible(cells) for visibility
  */
 
 import { Shroud } from '../OpenRA.Game/Traits/Player/Shroud.js'

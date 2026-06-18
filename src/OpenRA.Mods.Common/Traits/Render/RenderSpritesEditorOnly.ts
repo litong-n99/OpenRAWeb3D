@@ -7,7 +7,7 @@
  * - C# override IEnumerable<IRenderable> Render() → TypeScript override render()
  * - C# yield return SpriteRenderable.None → TypeScript return []
  * - 此特质在游戏模式下丢弃所有精灵（返回空数组），仅在编辑器模式下渲染。
- *   编辑器模式判断由编辑器基础设施处理（TODO-21.A.2 EditorActorLayer）
+ *   编辑器模式判断由编辑器基础设施处理（ EditorActorLayer）
  *
  * RenderSpritesEditorOnly 是 RenderSprites 的微小变体：
  * 在游戏模式（非编辑器）中，重写的 render() 返回空数组，
@@ -95,7 +95,7 @@ export class RenderSpritesEditorOnly extends RenderSprites {
    *
    * NOTE: 在编辑器模式中，此方法应调用 super.render() 来使用基类的
    * 正常渲染行为。当前实现始终返回空数组，因为编辑器模式检测
-   * 由 TODO-21.A.2（EditorActorLayer）处理。当编辑器基础设施迁移完成后，
+   * 由 （EditorActorLayer）处理。当编辑器基础设施迁移完成后，
    * 应添加 isEditorMode 标志来条件性地调用 super.render()。
    *
    * @param _self — actor 实例

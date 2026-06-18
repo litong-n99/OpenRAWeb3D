@@ -88,7 +88,7 @@ export const NO_PATH: CPos[] = []
  *
  * NOTE: Mobile is being developed concurrently.
  * This interface defines the contract needed by PathFinder.
- * TODO-9.A.1: Replace with full Mobile interface when available.
+* Replace with full Mobile interface when available.
  */
 interface ILocomotorProvider {
   readonly locomotor: ILocomotor

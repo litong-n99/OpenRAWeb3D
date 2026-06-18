@@ -10,7 +10,7 @@
  * - C# FluentProvider.GetMessage → hardcoded string (FluentProvider not yet migrated)
  * - C# [TraitLocation(SystemActors.EditorWorld)] → JSDoc annotation
  *
- * Migration: TODO-21.A.1 — Chapter 21 Phase A
+ * Migration:  — Chapter 21 Phase A
  */
 
 import type {

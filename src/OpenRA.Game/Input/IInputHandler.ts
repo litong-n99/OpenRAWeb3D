@@ -67,7 +67,7 @@ export const Modifiers = {
 
 export type Modifiers = number
 
-// @todo TODO-7.A.2: 实现 ModifiersExts.DisplayString(Modifiers m)
+// @todo : 实现 ModifiersExts.DisplayString(Modifiers m)
 // OpenRA 对照: ModifiersExts.DisplayString() + ModifierFluentKeys
 // 当 FluentProvider/本地化系统迁移完成后，添加从修饰键位标志到
 // 人类可读字符串 (支持 i18n) 的转换。

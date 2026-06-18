@@ -104,7 +104,7 @@ interface TransformOrder extends Order {
  * This stub exists to satisfy IOrderVoice and activity queueing until
  * Chapter 14 provides the full implementation.
  *
- * TODO-14.D: Replace with full Transform Activity implementation.
+* Replace with full Transform Activity implementation.
  */
 class TransformActivityStub implements ActivityStub {
   private readonly _intoActor: string

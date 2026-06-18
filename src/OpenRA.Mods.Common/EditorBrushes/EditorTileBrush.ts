@@ -18,7 +18,7 @@
  * - Shift+click flood fill: replaces all connected tiles of the same type
  * - Duplicate avoidance: skips re-painting cells already using the template
  *
- * Migration: TODO-21.B.3 — Chapter 21 Phase B Wave 2
+ * Migration:  — Chapter 21 Phase B Wave 2
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'

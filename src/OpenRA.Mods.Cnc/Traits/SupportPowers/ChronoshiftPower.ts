@@ -13,7 +13,7 @@
  *
  * ADR-19.5: 传送延迟 — Teleport Activity 在帧结束时执行。
  *
- * NOTE: Chronoshiftable forward ref — Chronoshiftable (TODO-19.A.1) 尚未迁移，
+ * NOTE: Chronoshiftable forward ref — Chronoshiftable () 尚未迁移，
  * 使用接口桩代替。
  * NOTE: 使用 `any` 绕过不完整的 Stub 接口 (WorldStub/IGameActor/PlayerStub)。
  *   当完整实现可用时，这些 any 转换将被移除。
@@ -36,7 +36,7 @@ import type {
 import { TargetType } from '../../../OpenRA.Game/Traits/Target.js'
 
 // ---------------------------------------------------------------------------
-// Forward stub for not-yet-migrated Chronoshiftable (TODO-19.A.1)
+// Forward stub for not-yet-migrated Chronoshiftable ()
 // ---------------------------------------------------------------------------
 
 export interface IChronoshiftableStub {
@@ -307,10 +307,10 @@ export class SelectChronoshiftTarget {
    * 渲染选择装饰 (SelectChronoshiftTarget 阶段)。
    *
    * OpenRA 对照: SelectChronoshiftTarget.RenderAnnotations()
-   * TODO-19.A.3: ISelectionDecorations 接口尚未完全迁移。
+* ISelectionDecorations 接口尚未完全迁移。
    * 完全迁移后，此处应渲染范围指示器和目标选择 UI。
    */
-  *renderAnnotations(_wr: WorldRendererStub): Generator<IRenderableExt> { /* TODO-19.A.3: ISelectionDecorations not yet migrated */ }
+  *renderAnnotations(_wr: WorldRendererStub): Generator<IRenderableExt> { /* : ISelectionDecorations not yet migrated */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -474,8 +474,8 @@ export class SelectDestination {
    * 渲染选择装饰 (SelectDestination 阶段)。
    *
    * OpenRA 对照: SelectDestination.RenderAnnotations()
-   * TODO-19.A.3: ISelectionDecorations 接口尚未完全迁移。
+* ISelectionDecorations 接口尚未完全迁移。
    * 完全迁移后，此处应渲染传送预览和有效性指示器。
    */
-  *renderAnnotations(_wr: WorldRendererStub): Generator<IRenderableExt> { /* TODO-19.A.3: ISelectionDecorations not yet migrated */ }
+  *renderAnnotations(_wr: WorldRendererStub): Generator<IRenderableExt> { /* : ISelectionDecorations not yet migrated */ }
 }

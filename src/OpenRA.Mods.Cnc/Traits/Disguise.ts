@@ -10,7 +10,7 @@
  * - C# [Flags] enum RevealDisguiseType → TS const object
  * - C# FrozenDictionary<string,string> → TS Record<string,string>
  *
- * NOTE: 3D mesh swap for disguise visual is deferred to TODO-19.C.3.
+ * NOTE: 3D mesh swap for disguise visual is deferred to .
  * NOTE: INotifyDemolition interface is defined locally since not yet in TraitsInterfaces.
  */
 

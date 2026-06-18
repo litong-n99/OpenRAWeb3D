@@ -20,7 +20,7 @@
  * In Phase B, TilePlan() is stubbed to return null — full tiling integration
  * with TilingPath/MultiBrush is deferred.
  *
- * Migration: TODO-21.B.10 — Chapter 21 Phase B Wave 3
+ * Migration:  — Chapter 21 Phase B Wave 3
  */
 
 import { CPos } from '../../../OpenRA.Game/CPos.js'

@@ -339,7 +339,7 @@ export class ConyardChronoReturn
       // NOTE: self.GrantCondition() requires ConditionManager integration.
       // For TS, we set a non-zero token to indicate the condition is active.
       this._conditionToken = 1
-      // TODO-19.C.3: ConditionManager.grantCondition() integration
+      // ConditionManager.grantCondition() integration
     }
 
     this.triggered = true
@@ -353,7 +353,7 @@ export class ConyardChronoReturn
     // When the vortex effect completes, it calls the callback which:
     // 1. Sets triggered = false
     // 2. Revokes the granted condition if still valid and actor not disposed
-    // TODO-19.C.3: ConyardChronoVortex effect + ConditionManager.revokeCondition() integration
+    // ConyardChronoVortex effect + ConditionManager.revokeCondition() integration
   }
 
   /** Revoke the vortex condition (called when vortex effect completes).
@@ -365,7 +365,7 @@ export class ConyardChronoReturn
       this._conditionToken = 0
       this.triggered = false
       // NOTE: self.RevokeCondition(conditionToken)
-      // TODO-19.C.3: ConditionManager.revokeCondition() integration
+      // ConditionManager.revokeCondition() integration
     }
   }
 
@@ -395,7 +395,7 @@ export class ConyardChronoReturn
     // OpenRA: foreach (var nt in self.TraitsImplementing<INotifyTransform>())
     //   nt.OnTransform(self)
     // NOTE: INotifyTransform notification deferred
-    // TODO-19.C.3: INotifyTransform integration
+    // INotifyTransform integration
 
     // OpenRA: var init = new TypeDictionary {
     //   new LocationInit(destination.Value),
@@ -410,7 +410,7 @@ export class ConyardChronoReturn
 
     // NOTE: World.CreateActor() requires full World integration.
     // The actor creation is abstracted behind a world callback.
-    // TODO-19.C.3: World.CreateActor integration
+    // World.CreateActor integration
 
     // OpenRA: foreach (var nt in self.TraitsImplementing<INotifyTransform>())
     //   nt.AfterTransform(a)
@@ -419,7 +419,7 @@ export class ConyardChronoReturn
     // OpenRA: if (selected) self.World.Selection.Add(a)
     // if (controlgroup.HasValue) self.World.ControlGroups.AddToControlGroup(a, controlgroup.Value)
     // NOTE: Selection and control group transfer deferred
-    // TODO-19.C.3: Selection and ControlGroup transfer
+    // Selection and ControlGroup transfer
 
     // OpenRA: Game.Sound.Play(SoundType.World, info.ChronoshiftSound, self.World.Map.CenterOfCell(destination.Value))
     // NOTE: Sound playback deferred
@@ -427,7 +427,7 @@ export class ConyardChronoReturn
 
     // OpenRA: self.Dispose()
     // NOTE: self.Dispose() deferred — requires World actor management
-    // TODO-19.C.3: self.Dispose() integration
+    // self.Dispose() integration
   }
 
   // -----------------------------------------------------------------------
@@ -463,7 +463,7 @@ export class ConyardChronoReturn
     //
     // NOTE: The spiral search around destination requires Map.Grid, Shroud, and
     // FindTilesInCircle. These are deferred to full World integration.
-    // TODO-19.C.3: Spiral search for valid destination cell
+    // Spiral search for valid destination cell
 
     // If no mobileInfo available, return destination directly (best effort)
     if (!mobileInfo) return destination

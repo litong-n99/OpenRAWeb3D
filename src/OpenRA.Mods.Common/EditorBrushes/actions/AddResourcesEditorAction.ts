@@ -8,7 +8,7 @@
  * - C# FluentProvider.GetMessage → template literal
  * - C# null checks on resource type → TS '' (empty string) for no resource
  *
- * Migration: TODO-21.B.5 — Chapter 21 Phase B Wave 2
+ * Migration:  — Chapter 21 Phase B Wave 2
  */
 
 import type { IEditorAction } from '../../Traits/World/EditorActionManager.js'

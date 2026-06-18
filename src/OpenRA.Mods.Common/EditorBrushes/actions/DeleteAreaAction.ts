@@ -5,13 +5,13 @@
  *
  * 核心范式转换:
  * - C# EditorBlit.CopyRegionContents() → stub implementation inline
- *   (EditorBlit not yet migrated — TODO-21.B.3)
+ *   (EditorBlit not yet migrated — )
  * - C# FluentProvider.GetMessage → template literal string
  * - C# MapBlitFilters.HasFlag() → bitwise & check
  * - C# CollectionsMarshal.AsSpan() → standard array
  * - C# using (new PerfTimer(...)) → skipped (browser Performance API sufficient)
  *
- * Migration: TODO-21.B.2 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import type { CPos } from '../../../OpenRA.Game/CPos.js'
@@ -215,7 +215,7 @@ export class DeleteAreaAction implements IEditorAction {
  * OpenRA 对照: EditorBlit.CopyRegionContents(Map, EditorActorLayer,
  *   IResourceLayer, CellCoordsRegion, MapBlitFilters)
  *
- * TODO-21.B.3: Replace with EditorBlit.CopyRegionContents() when EditorBlit is
+* Replace with EditorBlit.CopyRegionContents() when EditorBlit is
  * migrated. This stub captures terrain tiles, heights, resources, and actors
  * in the region, respecting the MapBlitFilters.
  *

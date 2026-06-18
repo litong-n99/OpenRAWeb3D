@@ -21,7 +21,7 @@
  * - Preview suppression: while painting, preview is hidden (returns null)
  * - Undo semantics: restores old resource type or clears if matching
  *
- * Migration: TODO-21.B.5 — Chapter 21 Phase B Wave 2
+ * Migration:  — Chapter 21 Phase B Wave 2
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'

@@ -7,9 +7,9 @@
  * - C# Ui.LoadWidget with template names → TypeScript widget template cloning
  * - C# PanelType enum → const object type
  * - C# INotificationHandler<TextNotification> → method dispatch
- * - C# Game.Sound.PlayNotification → stub (TODO-16.C.6)
- * - C# TextNotificationsManager → stub (TODO-16.C.7)
- * - C# FluentProvider.GetMessage → stub (TODO-16.C.1)
+ * - C# Game.Sound.PlayNotification → stub ()
+ * - C# TextNotificationsManager → stub ()
+ * - C# FluentProvider.GetMessage → stub ()
  */
 
 import { ChromeLogic, Ui } from '../../../../OpenRA.Game/Widgets/Widget.js'
@@ -69,7 +69,7 @@ function fluentMsg(key: string, ..._args: string[]): string {
 
 // ---------------------------------------------------------------------------
 // SelectSpawnPoint stub
-// NOTE: Full LobbyUtils.SelectSpawnPoint migration deferred to TODO-16.C.8
+// NOTE: Full LobbyUtils.SelectSpawnPoint migration deferred to
 // ---------------------------------------------------------------------------
 
 let _lobbyUtilsSelectSpawnPoint:
@@ -179,7 +179,7 @@ export class LobbyLogic extends ChromeLogic {
 
   // ---- Sound notification callbacks (MAJOR 7 fix) ----
   // OpenRA 对照: ChromeMetrics keys — chat_line, player_joined, player_left, lobby_option_changed
-  // TODO-16.C.6: Wire to actual Sound.PlayNotification when audio system is fully migrated.
+  // Wire to actual Sound.PlayNotification when audio system is fully migrated.
 
   /** Callback for chat line sound. OpenRA 对照: ChromeMetrics "ChatLineSound" */
   private _chatLineSound: ((notification: string) => void) | null = null
@@ -721,7 +721,7 @@ export class LobbyLogic extends ChromeLogic {
   private _updateOptions(): void {
     this._gameStarting = false
     // NOTE: lobbyOptions stored in globalSettings; resetOptionsButtonEnabled
-    // would be computed from map trait options in full migration (TODO-16.C.4)
+    // would be computed from map trait options in full migration ()
     this._resetOptionsButtonEnabled = true
   }
 
@@ -744,7 +744,7 @@ export class LobbyLogic extends ChromeLogic {
       }
 
       // Open the connection failed panel with retry capabilities
-      // NOTE: Full ConnectionLogic / CONNECTIONFAILED_PANEL migration deferred to TODO-16.C.12
+      // NOTE: Full ConnectionLogic / CONNECTIONFAILED_PANEL migration deferred to
       Ui.openWindow('CONNECTIONFAILED_PANEL', {
         orderManager: _om,
         onAbort: () => this._onExit(),
@@ -769,7 +769,7 @@ export class LobbyLogic extends ChromeLogic {
 
     // Route to appropriate chat template
     // NOTE: Full template widget creation (CHAT_TEMPLATE, SYSTEM_TEMPLATE, etc.)
-    // deferred to TODO-16.C.7 (TextNotificationsManager migration).
+    // deferred to  (TextNotificationsManager migration).
     // Current implementation routes notifications by pool type.
     switch (notification.pool) {
       case TextNotificationPool.System:

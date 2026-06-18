@@ -22,7 +22,7 @@ import type {
 
 // ---------------------------------------------------------------------------
 // IPlayerResources — Forward interface for PlayerResources (Phase B)
-// OpenRA 对照: PlayerResources trait (Phase B, TODO-10.B.3)
+// OpenRA 对照: PlayerResources trait (Phase B, )
 // ---------------------------------------------------------------------------
 
 /**
@@ -30,10 +30,10 @@ import type {
  *
  * OpenRA 对照: OpenRA.Mods.Common/Traits/Player/PlayerResources.cs
  *
- * 由于 PlayerResources 在阶段 B 第 2 波才迁移（TODO-10.B.3），
+ * 由于 PlayerResources 在阶段 B 第 2 波才迁移（），
  * 此处使用最小接口 + duck-typing 解析。
  *
- * TODO-10.B.3: 当 PlayerResources 迁移后，替换为完整类型。
+* 当 PlayerResources 迁移后，替换为完整类型。
  */
 interface IPlayerResources {
   changeCash(amount: number): number
@@ -199,7 +199,7 @@ export class GivesCashOnCapture
    *  @param newOwner — 新的拥有者（Player 或 PlayerStub）
    *  @param amount — 要授予的现金金额
    *
-   *  TODO-10.B.3: 当 PlayerResources 迁移后，使用完整的类型系统。
+* 当 PlayerResources 迁移后，使用完整的类型系统。
    */
   private _grantCash(newOwner: Record<string, unknown>, amount: number): void {
     // Try to access PlayerResources from the new owner's player actor

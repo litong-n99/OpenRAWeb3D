@@ -31,7 +31,7 @@ import type { CommandRegistry } from './DebugVisualizationCommands.js'
  * 在 C# 中，此 TraitInfo 通过反射创建 trait 实例。
  * 在 TS 中，它是一个标记类，指示 WorldActor 应接收此 trait。
  *
- * @todo 当完整的 TraitInfo 注册系统（TODO-3.C.1）可用时集成。
+ * @todo 当完整的 TraitInfo 注册系统（）可用时集成。
  */
 export class DevCommandsInfo implements ITraitInfo {
   readonly instanceName?: string
@@ -52,9 +52,9 @@ export class DevCommandsInfo implements ITraitInfo {
  *
  * 现有 DeveloperMode stub（src/OpenRA.Mods.Common/Traits/Player/DeveloperMode.ts）
  * 缺少 Enabled 属性和 Orders 常量。当 DeveloperMode 完整实现时
- * （TODO-21.D.5），此接口将不再需要。
+ * （），此接口将不再需要。
  *
- * @todo 当 TODO-21.D.5 完整实现 DeveloperMode 后移除此接口。
+ * @todo 当  完整实现 DeveloperMode 后移除此接口。
  */
 export interface DeveloperModeStub {
   /** 是否为该玩家启用了开发者模式。OpenRA 对照: DeveloperMode.Enabled */

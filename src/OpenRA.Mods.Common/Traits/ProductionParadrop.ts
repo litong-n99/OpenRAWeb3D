@@ -116,7 +116,7 @@ export class ProductionParadrop extends Production {
     // 4. Fly off map and remove
     // 5. Play sounds and notifications
     //
-    // TODO-11.A.4: Full paradrop implementation when Aircraft and Parachutable are migrated.
+    // Full paradrop implementation when Aircraft and Parachutable are migrated.
 
     return true
   }
@@ -143,6 +143,6 @@ export class ProductionParadrop extends Production {
     // Set Parachutable.IgnoreActor = self
     // Queue move activities to rally point
     //
-    // TODO-11.A.4: Full DoProduction when Parachutable trait is migrated.
+    // Full DoProduction when Parachutable trait is migrated.
   }
 }

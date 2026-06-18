@@ -12,7 +12,7 @@
  * 显示撤销/重做历史为可滚动列表。每个条目显示操作文本，
  * 未来操作以暗色显示，点击可回退/前进到特定操作。
  *
- * Migration: TODO-21.C.15 — Chapter 21 Phase C Wave 2b
+ * Migration:  — Chapter 21 Phase C Wave 2b
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

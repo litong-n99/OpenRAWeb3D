@@ -13,7 +13,7 @@
  *
  * WithSpriteBody 替换说明:
  *   C# 中此 trait 继承自 WithSpriteBody，替换默认 body 精灵显示。
- *   TS 中 WithSpriteBody 尚未迁移（TODO-10.B-Opt.4-DEP），因此此 trait
+ *   TS 中 WithSpriteBody 尚未迁移（），因此此 trait
  *   直接实现帧选择逻辑，并将 body 精灵更新存根。
  *
  * 帧选择公式（对应 OpenRA ConfigureAnimation PlayFetchIndex lambda）:
@@ -43,7 +43,7 @@ import type { IPlayerResourcesStub } from './WithResourceLevelOverlay.js'
  *
  * 在 C# 中继承自 WithSpriteBodyInfo，提供 body 精灵显示的 Image、
  * Sequence、Palette 等属性。TS 存根阶段仅包含资源相关配置。
- * 完整 WithSpriteBodyInfo 属性通过 TODO-10.B-Opt.4-DEP 补充。
+ * 完整 WithSpriteBodyInfo 属性通过  补充。
  */
 export class WithResourceLevelSpriteBodyInfo implements ConditionalTraitInfo {
   readonly instanceName?: string

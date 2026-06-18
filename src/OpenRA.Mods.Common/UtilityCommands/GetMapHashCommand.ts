@@ -160,13 +160,13 @@ export class GetMapHashCommand implements IUtilityCommand {
   run(_utility: Utility, args: string[]): void {
     const mapPath = args[1]!
 
-    // TODO-21.E.9: Open map package and compute hash using Map.ComputeUID equivalent.
+    // Open map package and compute hash using Map.ComputeUID equivalent.
     // In OpenRA, this is:
     //   using (var package = new Folder(Platform.EngineDir).OpenPackage(args[1], utility.ModData.ModFiles))
     //     Console.WriteLine(Map.ComputeUID(package));
 
     console.log(`GetMapHashCommand: Computing hash for ${mapPath}`)
-    console.log('TODO-21.E.9: Full map hash computation requires package opening infrastructure.')
+    console.log(': Full map hash computation requires package opening infrastructure.')
     console.log('Use computeMapUID() or computeMapUIDSync() with package contents for hash calculation.')
   }
 }

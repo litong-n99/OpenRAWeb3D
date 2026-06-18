@@ -6,7 +6,7 @@
  * - C# static class with FluentReference constants → TypeScript standalone functions
  * - C# Widget Get<T>/GetOrNull pattern → direct widget property access
  * - C# CachedTransform deferred evaluation → CachedTransform from LobbyTypes
- * - C# FluentProvider.GetMessage → stub function (TODO-16.C.1 Fluent migration)
+ * - C# FluentProvider.GetMessage → stub function ( Fluent migration)
  * - C# Color (System.Drawing) → hex string color
  * - C# ShowDropDown<T> with delegate factories → TypeScript showDropDown
  * - C# SplitOnFirstToken (tuple return) → TypeScript with nullable strings
@@ -55,12 +55,12 @@ const _truncFactionCache = new WeakMap<Widget, CachedTransform<string, string>>(
 const _handicapLabelCache = new WeakMap<Widget, CachedTransform<number, string>>()
 
 // ---------------------------------------------------------------------------
-// Fluent message stub (TODO-16.C.1)
+// Fluent message stub ()
 // ---------------------------------------------------------------------------
 
 /** Stub for FluentProvider.GetMessage — returns key as-is.
  *
- * TODO-16.C.1: Replace with real FluentProvider when localization is migrated.
+* Replace with real FluentProvider when localization is migrated.
  */
 function fluentMsg(key: string, ..._args: string[]): string {
   return key
@@ -244,7 +244,7 @@ export function showFactionDropDown(
  * OpenRA 对照: IColorPickerManagerInfo.ShowColorDropDown
  *
  * NOTE: Simplified — uses basic color palette since IColorPickerManagerInfo
- * is not yet migrated. Full color picker deferred to TODO-16.C.2.
+ * is not yet migrated. Full color picker deferred to .
  *
  * @param dropdown — the dropdown button widget
  * @param _currentColor — current player color
@@ -840,7 +840,7 @@ export function setupFactionWidget(
  *
  * OpenRA 对照: LobbyUtils.SetupEditableColorWidget(...)
  *
- * NOTE: Uses simplified color picker; full IColorPickerManagerInfo deferred (TODO-16.C.2)
+ * NOTE: Uses simplified color picker; full IColorPickerManagerInfo deferred ()
  */
 export function setupEditableColorWidget(
   parent: Widget,

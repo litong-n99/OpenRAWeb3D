@@ -13,7 +13,7 @@
  * positioned relative to the actor's body transform. The overlay appears
  * at the configured offset once on activation, plays through once, then hides.
  *
- * TODO-13.A.13: WithSupportPowerActivationOverlay migration
+* WithSupportPowerActivationOverlay migration
  */
 
 import { Animation } from '../../../OpenRA.Game/Graphics/Animation.js'

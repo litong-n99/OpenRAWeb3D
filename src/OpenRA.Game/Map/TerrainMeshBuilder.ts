@@ -257,7 +257,7 @@ export class TerrainMeshBuilder {
   /**
    * 异步构建地形网格（对大地图，让出事件循环）。
    *
-   * TODO-4.F.8: 当前实现为同步包装，真正异步分块生成待实现。
+* 当前实现为同步包装，真正异步分块生成待实现。
    *
    * @param map — Map 实例
    * @param scene — Babylon.js Scene

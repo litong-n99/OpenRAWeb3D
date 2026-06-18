@@ -28,7 +28,7 @@ import type {
 // ---------------------------------------------------------------------------
 // IPlayerResources — Forward interface for PlayerResources (Phase B)
 // OpenRA 对照: OpenRA.Mods.Common/Traits/Player/PlayerResources.cs
-// TODO-10.B.3: Replace with full PlayerResources class when migrated.
+// Replace with full PlayerResources class when migrated.
 // ---------------------------------------------------------------------------
 
 /** 最小化的 PlayerResources 前向接口。
@@ -68,7 +68,7 @@ function applyPercentageModifiers(baseValue: number, modifiers: number[]): numbe
 // ---------------------------------------------------------------------------
 // ICashTricklerModifier — Duck-typed interface (not yet migrated)
 // OpenRA 对照: OpenRA.Mods.Common/TraitsInterfaces.cs ICashTricklerModifier
-// TODO-10.B.4-MODIFIER: Migrate ICashTricklerModifier traits
+// Migrate ICashTricklerModifier traits
 // ---------------------------------------------------------------------------
 
 /** ICashTricklerModifier 的 duck-typed 接口。
@@ -143,7 +143,7 @@ export class CashTricklerInfo implements ConditionalTraitInfo {
    *  (e.g., WithSpriteBody, BodyOrientation, etc.) so that floating text
    *  has a world position to anchor to.
    *
-   *  TODO-10.B.4-RULESET: Integrate with build-time YAML validation pipeline.
+* Integrate with build-time YAML validation pipeline.
    *  When the RulesetLoaded pipeline is implemented, this method should be
    *  called automatically during ruleset loading. Currently, this is a
    *  manual call-site for deferred validation.
@@ -385,7 +385,7 @@ export class CashTrickler
 
     // Cache ICashTricklerModifier traits
     // C#: self.TraitsImplementing<ICashTricklerModifier>()
-    // TODO-10.B.4-MODIFIER: Replace duck-typing with real trait resolution
+    // Replace duck-typing with real trait resolution
     const traits = (self as unknown as {
       traitsImplementing?: (name: string) => ICashTricklerModifier[]
     }).traitsImplementing

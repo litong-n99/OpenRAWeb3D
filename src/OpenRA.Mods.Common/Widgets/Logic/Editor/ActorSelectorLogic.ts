@@ -12,7 +12,7 @@
  * - C# Editor.CurrentBrush is EditorActorBrush eab && eab.Preview.Info == actor
  *   → TypeScript instanceof check + preview 名称比较
  *
- * Migration: TODO-21.C.11 — Chapter 21 Phase C Wave 2
+ * Migration:  — Chapter 21 Phase C Wave 2
  */
 
 import type { Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

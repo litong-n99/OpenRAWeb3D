@@ -10,7 +10,7 @@
  * - C# MapBuildRadius 查找 → TS 桩 (使用 info 默认值)
  * - C# RangeCircleAnnotationRenderable → TS 3D 范围圈桩 (返回空数组)
  * - C# yield return IRenderable → TS 数组返回
- * - 3D 范围圈渲染暂存 (TODO-11.B.4: 实现 LinesMesh 范围圈)
+ * - 3D 范围圈渲染暂存 (: 实现 LinesMesh 范围圈)
  */
 
 import {
@@ -356,7 +356,7 @@ export class BaseProvider
    * For now, returns an empty array. 3D circle rendering will be
    * implemented when the 3D annotation rendering pipeline is built out.
    *
-   * TODO-11.B.4: Implement 3D range circle using LinesMesh/TorusMesh
+* Implement 3D range circle using LinesMesh/TorusMesh
    *   at the provider's world position, colored by readiness state.
    *
    * @returns empty array (stub)
@@ -369,7 +369,7 @@ export class BaseProvider
     // NOTE: ValidRenderPlayer check requires renderPlayer which is not
     // available without the full WorldRenderer pipeline. For now,
     // always return empty (stub). Method kept for future 3D annotation use.
-    // TODO-11.B.4: Wire _validRenderPlayer into actual visual range circles.
+    // Wire _validRenderPlayer into actual visual range circles.
     void this._validRenderPlayer
     return []
   }

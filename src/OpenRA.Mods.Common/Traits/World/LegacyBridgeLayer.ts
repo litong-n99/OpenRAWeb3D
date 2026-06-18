@@ -46,7 +46,7 @@ export interface IBridgeTemplate {
  *
  * OpenRA 对照: BridgeInfo (TraitInfo)
  *
- * TODO-9.C.6: Replace with full BridgeInfo when Bridge trait is migrated.
+* Replace with full BridgeInfo when Bridge trait is migrated.
  */
 export interface IBridgeInfoStub {
   readonly templates: readonly IBridgeTemplate[]
@@ -91,7 +91,7 @@ export interface ITerrainTile {
  *
  * OpenRA 对照: Bridge class (INotifyDamageStateChanged, etc.)
  *
- * TODO-9.C.6: Replace with full Bridge trait when migrated.
+* Replace with full Bridge trait when migrated.
  */
 export interface IBridgeStub {
   linkNeighbouringBridges(layer: LegacyBridgeLayer): void

@@ -10,7 +10,7 @@
  * - C# Game.CosmeticRandom → Math.random()
  * - C# FluentProvider.GetMessage → template literal
  *
- * Migration: TODO-21.B.3 — Chapter 21 Phase B Wave 2
+ * Migration:  — Chapter 21 Phase B Wave 2
  */
 
 import { CPos } from '../../../OpenRA.Game/CPos.js'

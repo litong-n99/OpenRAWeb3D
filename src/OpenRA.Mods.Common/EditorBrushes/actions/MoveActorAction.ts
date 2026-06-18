@@ -8,7 +8,7 @@
  * - C# Execute() empty (movement during drag) → same in TS
  * - C# FluentProvider.GetMessage → template literal string
  *
- * Migration: TODO-21.B.2 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import type { CPos } from '../../../OpenRA.Game/CPos.js'

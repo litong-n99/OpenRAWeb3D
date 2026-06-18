@@ -48,7 +48,7 @@ export class OutputResolvedSequencesCommand implements IUtilityCommand {
     const key = args[1]
     const modData = utility.modData
 
-    // TODO-21.F.4: 集成序列数据加载以实现完整的迷你 YAML 输出。
+    // 集成序列数据加载以实现完整的迷你 YAML 输出。
     // 在 OpenRA 中，序列从单独的 MiniYaml 文件加载，
     // 由 manifest.Sequences 列出，与 Rules 类似。
     //

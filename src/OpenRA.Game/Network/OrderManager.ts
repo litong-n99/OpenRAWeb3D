@@ -9,7 +9,7 @@
  * - C# BlockingCollection receive thread → pull model via Connection.Receive()
  * - C# SuggestedTimestep / Ui.Timestep → World.timestep-based calculation
  * - C# IsNetFrame (LocalFrameNumber % NetFrameInterval) → identical modulo logic
- * - C# OutOfSync / SyncReport → TODO-6.A.4 placeholder (Phase B dependency)
+ * - C# OutOfSync / SyncReport →  placeholder (Phase B dependency)
  * - C# IDisposable → dispose() with explicit cleanup
  * - Configurable inputDelay (default 4, absorbs WebSocket latency)
  */
@@ -662,7 +662,7 @@ export class OrderManager {
       // Handle client disconnect marker
       if ((orders as unknown) === CLIENT_DISCONNECTED) {
         this._processClientsToRemove.push(clientId)
-        // TODO-6.A.4: Call world.onClientDisconnected(clientId) when World supports it
+        // Call world.onClientDisconnected(clientId) when World supports it
         continue
       }
 
@@ -694,7 +694,7 @@ export class OrderManager {
         }
       }
 
-      // TODO-6.A.4: Replace 0 with actual Sync.hash(world) when Sync module is migrated (Phase B)
+      // Replace 0 with actual Sync.hash(world) when Sync module is migrated (Phase B)
       const syncHash = 0
       this.connection.sendSync(this._netFrameNumber, syncHash, defeatState)
     } else {
@@ -702,7 +702,7 @@ export class OrderManager {
     }
 
     // NOTE: SyncReport is expensive; deferred to Phase B
-    // TODO-6.A.4: syncReport.updateSyncReport(processClientOrders)
+    // syncReport.updateSyncReport(processClientOrders)
 
     // Clear processed orders for next frame
     this._processClientOrders.length = 0
@@ -726,9 +726,9 @@ export class OrderManager {
   private outOfSync(frame: number): void {
     if (this.isOutOfSync) return
 
-    // TODO-6.A.4: syncReport.dumpSyncReport(frame) — Phase B dependency
+    // syncReport.dumpSyncReport(frame) — Phase B dependency
     if (this.world) {
-      // TODO-6.A.4: world.outOfSync() — invoke World's out-of-sync handler
+      // world.outOfSync() — invoke World's out-of-sync handler
     }
     this.isOutOfSync = true
 

@@ -6,7 +6,7 @@
  * - C# IChatCommand + IWorldLoaded trait → TS 显式命令注册 + WorldLoaded 适配
  * - C# ChatCommands.RegisterCommand / HelpCommand.RegisterHelp → TS CommandRegistry 接口
  * - C# TextNotificationsManager + FluentProvider → TODO: 集成通知系统
- * - C# DebugVisualizations trait → 本地接口桩（等待 TODO-21.D.2 完整实现）
+ * - C# DebugVisualizations trait → 本地接口桩（等待  完整实现）
  *
  * 每个命令切换 DebugVisualizations 上的一个布尔标志。
  * 命令在 WorldLoaded 期间注册，由聊天控制台解析器调用。
@@ -29,7 +29,7 @@ import type { ITraitInfo } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
  * 在 C# 中，此 TraitInfo 通过反射创建 trait 实例。
  * 在 TS 中，它是一个标记类，指示 WorldActor 应接收此 trait。
  *
- * @todo 当完整的 TraitInfo 注册系统（TODO-3.C.1）可用时集成。
+ * @todo 当完整的 TraitInfo 注册系统（）可用时集成。
  */
 export class DebugVisualizationCommandsInfo implements ITraitInfo {
   readonly instanceName?: string
@@ -48,8 +48,8 @@ export class DebugVisualizationCommandsInfo implements ITraitInfo {
  *
  * OpenRA 对照: OpenRA.Mods.Common/Traits/DebugVisualizations.cs
  *
- * TODO-21.D.2: 此接口是完整 DebugVisualizations 实现的桩。
- * 当 TODO-21.D.2 完成时，替换为完整的 trait 实现，该实现
+* 此接口是完整 DebugVisualizations 实现的桩。
+ * 当  完成时，替换为完整的 trait 实现，该实现
  * 还包含 render() 方法和 Babylon.js UtilityLayerRenderer 覆盖层。
  */
 export interface DebugVisualizations {
@@ -78,7 +78,7 @@ export interface DebugVisualizations {
  *
  * OpenRA 对照: ChatCommands + HelpCommand
  *
- * 当聊天控制台系统完全迁移后（TODO-21.D.1），此接口将被替换为
+ * 当聊天控制台系统完全迁移后（），此接口将被替换为
  * 完整的 CommandRegistry，具备参数验证、帮助文本和自动补全支持。
  *
  * @todo 集成聊天控制台系统后，连接完整的 ChatCommands trait。
@@ -427,7 +427,7 @@ export class DebugVisualizationCommands {
    *
    * OpenRA 对照: SendNotification(bool, string)
    *
-   * TODO-21.D: 当 FluentProvider / TextNotificationsManager 可用时集成。
+* 当 FluentProvider / TextNotificationsManager 可用时集成。
    * 目前使用 console.debug 作为后备。
    *
    * @param notificationKey — Fluent 消息键
@@ -439,7 +439,7 @@ export class DebugVisualizationCommands {
     enabled: boolean,
     cheatName: string,
   ): void {
-    // TODO-21.D: 集成 TextNotificationsManager.Debug() + FluentProvider.GetMessage()
+    // 集成 TextNotificationsManager.Debug() + FluentProvider.GetMessage()
     const stateLabel = enabled ? 'enabled' : 'disabled'
     const playerLabel = this.playerName ? ` (${this.playerName})` : ''
     console.debug(

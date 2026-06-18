@@ -82,7 +82,7 @@ export type WorldTooltipType = (typeof WorldTooltipType)[keyof typeof WorldToolt
  *
  * OpenRA 对照: GameSettings.Game 的子集
  *
- * TODO-7.B.2.2: Settings 系统迁移后替换为完整 GameSettings。
+* Settings 系统迁移后替换为完整 GameSettings。
  */
 export interface IViewportSettings {
   viewportEdgeScroll: boolean
@@ -335,11 +335,11 @@ export class ViewportControllerWidget extends Widget {
   }
 
   override mouseEntered(): void {
-    // TODO-7.B.2.3: TooltipContainerWidget 迁移后实现
+    // TooltipContainerWidget 迁移后实现
   }
 
   override mouseExited(): void {
-    // TODO-7.B.2.3: TooltipContainerWidget 迁移后实现
+    // TooltipContainerWidget 迁移后实现
   }
 
   override removed(): void {

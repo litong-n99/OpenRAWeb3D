@@ -7,7 +7,7 @@
  * - C# ScrollPanelWidget → existing ScrollPanelWidget (Ch16 Phase A)
  * - C# CLONE template pattern → TypeScript widget template cloning
  * - C# PredictedCachedTransform → PredictedCachedTransform from LobbyTypes
- * - C# FluentProvider.GetMessage → stub (TODO-16.C.1)
+ * - C# FluentProvider.GetMessage → stub ()
  * - C# LobbyUtils.SplitOnFirstToken → splitOnFirstToken from LobbyUtils
  */
 
@@ -217,7 +217,7 @@ export class LobbyOptionsLogic extends ChromeLogic {
     this._panel.scrollToTop()
   }
 
-  /** Extract lobby options from map. Simplified stub. TODO-16.C.4: Full ILobbyOptions migration. */
+  /** Extract lobby options from map. Simplified stub. : Full ILobbyOptions migration. */
   private _getLobbyOptions(_map: MapPreviewLobby): LobbyOption[] {
     return [
       {

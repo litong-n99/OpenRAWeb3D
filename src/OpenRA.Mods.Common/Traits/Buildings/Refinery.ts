@@ -8,7 +8,7 @@
  * - C# IDockHost (separate trait) → TS Refinery implements IDockHost directly
  *   (migration plan Section 3.1.6). See NOTE below.
  * - C# PlayerResources concrete type → TS IPlayerResources forward interface
- *   (PlayerResources.ts is migrated in Phase B — TODO-10.B.3)
+ *   (PlayerResources.ts is migrated in Phase B — )
  * - C# FloatingText effect → TS floating text stub (deferred to Chapter 14/16)
  * - C# Util.ApplyPercentageModifiers() → TS inline percentage application
  * - C# Requires<WithSpriteBodyInfo>, Requires<IDockHostInfo>
@@ -48,7 +48,7 @@ import { WPos } from '../../../OpenRA.Game/WPos.js'
 
 // ---------------------------------------------------------------------------
 // IPlayerResources — Forward interface for PlayerResources (Phase B)
-// OpenRA 对照: PlayerResources trait (Phase B, TODO-10.B.3)
+// OpenRA 对照: PlayerResources trait (Phase B, )
 // ---------------------------------------------------------------------------
 
 /**
@@ -58,10 +58,10 @@ import { WPos } from '../../../OpenRA.Game/WPos.js'
  *
  * PlayerResources is the central player economy manager, managing both
  * Cash and stored Resources. Since PlayerResources is migrated in Phase B
- * (TODO-10.B.3), Refinery uses this minimal interface with type assertion.
+ * (), Refinery uses this minimal interface with type assertion.
  * The full PlayerResources interface will replace this stub.
  *
- * TODO-10.B.3: Replace with full PlayerResources class when migrated.
+* Replace with full PlayerResources class when migrated.
  */
 interface IPlayerResources {
   readonly resourceCapacity: number
@@ -165,7 +165,7 @@ export class Refinery
    *  OpenRA 对照: PlayerResources playerResources
    *
    *  NOTE: Typed as unknown due to PlayerResources being migrated in
-   *  Phase B (TODO-10.B.3). Cast to IPlayerResourcesExtended when used.
+   *  Phase B (). Cast to IPlayerResourcesExtended when used.
    */
   private _playerResources: unknown = null
 
@@ -286,7 +286,7 @@ export class Refinery
    *  navigate toward. Falls back to WPos.Zero when the actor reference
    *  is not available (e.g., in unit tests with minimal actor stubs).
    *
-   *  TODO-11.A.X: Refine to return a cell adjacent to the refinery
+* Refine to return a cell adjacent to the refinery
    *               building footprint once Building trait is migrated.
    */
   get dockPosition(): WPos {
@@ -512,7 +512,7 @@ export class Refinery
    *
    *  OpenRA 对照: playerResources = self.Owner.PlayerActor.Trait<PlayerResources>()
    *
-   *  TODO-10.B.3: Replace duck-typing with full PlayerResources class
+* Replace duck-typing with full PlayerResources class
    *               when migrated in Phase B.
    */
   private _resolvePlayerResources(self: IGameActor): void {
@@ -621,7 +621,7 @@ export class Refinery
    *  @param count — the amount of resource accepted
    *  @param value — the cash value
    *
-   *  TODO-10.A.6-NOTIFY: Enhance to iterate all world actors when
+* Enhance to iterate all world actors when
    *    World.actors iteration is available (requires full World from Ch3).
    */
   private _notifyResourceAccepted(
@@ -664,7 +664,7 @@ export class Refinery
   /** Create a stub PlayerResources for testing when the real trait is
    *  not yet available.
    *
-   *  TODO-10.B.3: Remove this stub when PlayerResources is migrated.
+* Remove this stub when PlayerResources is migrated.
    */
   private _createStubPlayerResources(): IPlayerResourcesExtended {
     let cash = 5000

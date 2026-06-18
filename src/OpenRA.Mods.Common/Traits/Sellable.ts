@@ -33,7 +33,7 @@ import { getSellValue } from './CustomSellValue.js'
 // ---------------------------------------------------------------------------
 // IPlayerResources — Forward interface for PlayerResources (Phase B)
 // OpenRA 对照: OpenRA.Mods.Common/Traits/Player/PlayerResources.cs
-// TODO-10.B.3: Replace with full PlayerResources class when migrated.
+// Replace with full PlayerResources class when migrated.
 // ---------------------------------------------------------------------------
 
 /** 最小化的 PlayerResources 前向接口。
@@ -332,7 +332,7 @@ export class Sellable
    *     则逆转建造动画并委托后续流程
    *  6. 否则：计算退款、授予现金、从世界移除、通知 sold 回调
    *
-   *  TODO-14.D: 完整 Activity 系统迁移后，使用 Sell Activity
+* 完整 Activity 系统迁移后，使用 Sell Activity
    *  TODO-16: 集成 WithMakeAnimation.Reverse() 动画反转
    *
    *  @param self — 要被出售的 actor

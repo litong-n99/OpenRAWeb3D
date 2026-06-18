@@ -52,7 +52,7 @@ export class OutputResolvedRulesCommand implements IUtilityCommand {
 
     // NOTE: 在完整的 CLI 环境中，ModData.loadRuleSet() 会异步加载 Ruleset。
     // 由于 IUtilityCommand.run() 是同步的，我们延迟到外部调用方注入已解析的数据。
-    // TODO-21.F.3: 集成 FileSystem 读取 + Ruleset 加载以完成完整的命令行流程。
+    // 集成 FileSystem 读取 + Ruleset 加载以完成完整的命令行流程。
 
     // 尝试从已缓存的数据中获取（如果调用方已注入）
     const cachedRules = (

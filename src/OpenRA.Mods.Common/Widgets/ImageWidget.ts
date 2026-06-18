@@ -133,7 +133,7 @@ export class ImageWidget extends Widget {
     }
 
     // OpenRA 对照: CachedTransform + FluentProvider.GetMessage (工具提示)
-    // TODO-16.A.3: Fluent 集成尚未迁移，使用直通模式。
+    // Fluent 集成尚未迁移，使用直通模式。
     let tooltipCache: string | null = null
     let tooltipCacheInput: string | null = null
     this.getTooltipText = () => {

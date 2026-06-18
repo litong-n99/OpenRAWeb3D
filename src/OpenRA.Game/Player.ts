@@ -91,7 +91,7 @@ export const PLAYER_BITMASK_TYPENAME = 'PlayerBitMask'
  * lock flags. Map-defined players use default values; client/lobby players
  * have their overrides applied on top.
  *
- * TODO-3.E: Replace with full PlayerReference class when Map module is migrated.
+* Replace with full PlayerReference class when Map module is migrated.
  */
 export interface PlayerReferenceStub {
   /** Player name (display). */
@@ -153,7 +153,7 @@ export interface PlayerReferenceStub {
  * or null for human), faction (lobby selection), handicap (0-100%),
  * spawnPoint (map position index).
  *
- * TODO-3.C: Replace with full Session.Client when Network module is migrated.
+* Replace with full Session.Client when Network module is migrated.
  */
 export interface SessionClientStub {
   /** Client slot index (0-based). */
@@ -181,7 +181,7 @@ export interface SessionClientStub {
  * faction selection and random-faction resolution (resolving chains of
  * RandomFactionMembers). Attached to World actor as a trait info.
  *
- * TODO-3.E: Replace with full FactionInfo when Trait system is migrated.
+* Replace with full FactionInfo when Trait system is migrated.
  */
 export interface FactionInfoStub {
   /** Display name visible to players. */
@@ -207,7 +207,7 @@ export interface FactionInfoStub {
  * the cell has ever been explored by this player. Full implementation
  * uses a 2D bit array for explored/visible state per cell.
  *
- * TODO-3.G: Replace with full Shroud class when fog-of-war is migrated.
+* Replace with full Shroud class when fog-of-war is migrated.
  */
 export interface ShroudStub {
   /** Whether fog of war has been explored at the given cell. */
@@ -224,11 +224,11 @@ export interface ShroudStub {
  * when they move back into fog of war. Uses the Shroud to determine
  * which actors should be frozen.
  *
- * TODO-3.G: Replace with full FrozenActorLayer when fog-of-war is migrated.
+* Replace with full FrozenActorLayer when fog-of-war is migrated.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface FrozenActorLayerStub {
-  /** Pending fog-of-war migration (TODO-3.G). */
+  /** Pending fog-of-war migration (). */
   /* marker */
 }
 
@@ -293,7 +293,7 @@ export interface NotifyPlayerDisconnectedStub {
  * MersenneTwister are not yet fully migrated — the stub interfaces can
  * be passed directly without positional overloads.
  *
- * TODO-3.E: Replace stub types with real classes when dependencies are migrated.
+* Replace stub types with real classes when dependencies are migrated.
  */
 export interface PlayerOptions {
   /** The game world.
@@ -456,7 +456,7 @@ export class Player implements PlayerStub {
   ): number {
     // NOTE: Game.Settings.Game.UsePlayerStanceColors and ChromeMetrics
     // are not yet migrated. For now, we return the original player color.
-    // TODO-3.E: Integrate with Game settings and ChromeMetrics when UI
+    // Integrate with Game settings and ChromeMetrics when UI
     // system is migrated.
 
     if (!playerUseStanceColors || !viewer || viewer.isSpectating) {
@@ -725,7 +725,7 @@ export class Player implements PlayerStub {
    * `Player.setupRelationshipColors()`. External mutation will be caught
    * by linting/CI.
    *
-   * TODO-3.E: Switch to a `private _displayColor` + `static _setColor()`
+* Switch to a `private _displayColor` + `static _setColor()`
    * pattern when the UI system is migrated and needs direct access.
    */
   displayColor: number
@@ -979,9 +979,9 @@ export class Player implements PlayerStub {
     //
     // NOTE: Since the YAML trait system is not yet migrated, the world
     // factory creates a minimal GameActor shell. Full trait population
-    // will be added in TODO-3.E.
+    // will be added in .
     //
-    // TODO-3.E: Create with proper actor type (SystemActors.Player vs
+    // Create with proper actor type (SystemActors.Player vs
     // EditorPlayer) and trait initialization when ActorInfo/YAML system
     // is migrated.
     this.playerActor = world.createUninitializedPlayerActor(
@@ -1003,7 +1003,7 @@ export class Player implements PlayerStub {
     // NOTE: These are stubs — real trait retrieval will be available
     // when Shroud and FrozenActorLayer are migrated.
     // Use `as any` cast because ShroudStub/FrozenActorLayerStub do not
-    // extend Component yet (TODO-3.G: Remove cast when traits are migrated).
+    // extend Component yet (: Remove cast when traits are migrated).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.shroud =
       (this.playerActor as any).traitOrDefault?.('Shroud') ??
@@ -1016,7 +1016,7 @@ export class Player implements PlayerStub {
     // Activate bot logic on the host
     // NOTE: Full bot activation requires IBot lookup from world rules and
     // Game.IsHost check. Stubbed for now.
-    // TODO-3.E: Activate bot when IBot and rules system are migrated.
+    // Activate bot when IBot and rules system are migrated.
     if (this.isBot) {
       // Bot activation will be handled by external code when bot system is ready
     }
@@ -1079,7 +1079,7 @@ export class Player implements PlayerStub {
    *
    * NOTE: FluentProvider is not yet migrated. Bot names are returned
    * with a simple format for now.
-   * TODO-3.E: Integrate with FluentProvider when localization is migrated.
+* Integrate with FluentProvider when localization is migrated.
    */
   private resolvePlayerName(): string {
     if (this.isBot && this.botType) {
@@ -1256,7 +1256,7 @@ const FROZEN_ACTOR_LAYER_STUB_DEFAULT: FrozenActorLayerStub = {}
  *
  * OpenRA 对照: Game.Settings.Game.UsePlayerStanceColors
  *
- * TODO-3.E: Read from Game.Settings when game settings are migrated.
+* Read from Game.Settings when game settings are migrated.
  */
 let playerUseStanceColors = true
 

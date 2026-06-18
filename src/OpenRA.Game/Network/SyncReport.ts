@@ -185,7 +185,7 @@ export interface SyncReportOrderManager {
  * code generator (sync-hash-generator.ts) extends this registry alongside
  * the hash function registry in Sync.ts.
  *
- * TODO-17.D.1a: Replace with build-time code generation (ADR-17.4).
+* Replace with build-time code generation (ADR-17.4).
  */
 const syncDumpRegistry = new Map<string, SyncTypeInfo>()
 

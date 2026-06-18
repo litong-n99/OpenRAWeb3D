@@ -64,7 +64,7 @@ export class ResizeMapCommand implements IUtilityCommand {
   run(_utility: Utility, args: string[]): void {
     const mapPath = args[1]!
 
-    // TODO-21.E.7: Load map from path using Map constructor from package.
+    // Load map from path using Map constructor from package.
     // In OpenRA, this opens a Folder package at the given path and constructs Map.
     // const map = new Map(modData, new Folder(/* Platform.EngineDir */).openPackage(mapPath, modData.modFiles))
     console.log(`ResizeMapCommand: Loading map from ${mapPath}`)
@@ -75,10 +75,10 @@ export class ResizeMapCommand implements IUtilityCommand {
     const oldHeight = 64
     console.log(`Resizing map ${title} from ${oldWidth},${oldHeight} to ${this._width},${this._height}`)
 
-    // TODO-21.E.7: Call map.Resize(this._width, this._height)
+    // Call map.Resize(this._width, this._height)
     // map.Resize(this._width, this._height)
 
-    // TODO-21.E.7: Remove actors outside new boundaries
+    // Remove actors outside new boundaries
     // const forRemoval: ActorRef[] = []
     // for (const kv of map.actorDefinitions ?? []) {
     //   const actor = kv as ActorRef
@@ -89,7 +89,7 @@ export class ResizeMapCommand implements IUtilityCommand {
     // }
     // map.actorDefinitions = map.actorDefinitions.filter(a => !forRemoval.includes(a))
 
-    // TODO-21.E.7: Save map back to package
+    // Save map back to package
     // map.save(map.package as IPackage)
 
     console.log(`ResizeMapCommand: Map resized to ${this._width}x${this._height} (placeholder)`)

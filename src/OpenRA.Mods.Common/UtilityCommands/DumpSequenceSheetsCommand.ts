@@ -70,7 +70,7 @@ export class DumpSequenceSheetsCommand implements IUtilityCommand {
     if (paletteArg) console.log(`  Palette: ${paletteArg}`)
     if (targetArg) console.log(`  Target: ${targetArg}`)
 
-    // TODO-21.E.13: Implement full sequence sheet dumping when the sprite
+    // Implement full sequence sheet dumping when the sprite
     // infrastructure (Sheet, SheetBuilder, SequenceSet, CursorManager,
     // SpriteCache) from Ch2 and Ch19 is fully migrated.
     //
@@ -93,7 +93,7 @@ export class DumpSequenceSheetsCommand implements IUtilityCommand {
     // - IDumpSheetsTerrainInfo implementations (Ch19)
     // - PNG encoding (sharp or canvas)
 
-    console.log('TODO-21.E.13: Full sequence sheet dumping requires:')
+    console.log(': Full sequence sheet dumping requires:')
     console.log('  - Sheet / SheetBuilder / SequenceSet (Ch2)')
     console.log('  - CursorManager (Ch2)')
     console.log('  - Sprite loaders (Ch19)')
@@ -121,7 +121,7 @@ export class DumpSequenceSheetsCommand implements IUtilityCommand {
     palette: unknown | null,
     count: { value: number },
   ): void {
-    // TODO-21.E.13: Implement CommitSheet when Sheet/SheetBuilder/Palette are migrated.
+    // Implement CommitSheet when Sheet/SheetBuilder/Palette are migrated.
     //
     // In OpenRA:
     //   if (builder == null)

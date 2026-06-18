@@ -4,7 +4,7 @@
  * Tests: registration, category, requiredTraits, exposedForDestroyedActors,
  * DisguiseAs, DisguiseAsType, member descriptors.
  *
- * TODO-20.F.2
+ *
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'

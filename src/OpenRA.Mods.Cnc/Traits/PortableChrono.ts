@@ -18,7 +18,7 @@
  * RangeCircleAnnotationRenderable are deferred to Phase C / Ch15.
  * Their logic is documented but the visual rendering is stubbed.
  *
- * NOTE: The Teleport activity is deferred to TODO-19.C.5.
+ * NOTE: The Teleport activity is deferred to .
  * MoveTo / MoveWithinRange activities are deferred to Ch9/Ch14.
  */
 
@@ -367,7 +367,7 @@ export class PortableChrono
 
     if (!queued) {
       // self.CancelActivity()
-      // TODO-9.3.1: Activity cancellation
+      // Activity cancellation
     }
 
     // OpenRA: var cell = self.World.Map.CellContaining(order.Target.CenterPosition)
@@ -383,9 +383,9 @@ export class PortableChrono
     // NOTE: Activity queuing requires Move and Teleport activities (deferred to Ch9/Ch14/19.C.5)
     // The Teleport call parameters match OpenRA:
     //   new Teleport(self, cell, maxDistance, killCargo, flashScreen, chronoshiftSound)
-    // TODO-19.C.5: Queue Teleport activity
-    // TODO-9.3.1: Queue MoveWithinRange activity when maxDistance != null
-    // TODO-9.3.1: Queue MoveTo activity
+    // Queue Teleport activity
+    // Queue MoveWithinRange activity when maxDistance != null
+    // Queue MoveTo activity
     void self
     void cell
     void maxDistance

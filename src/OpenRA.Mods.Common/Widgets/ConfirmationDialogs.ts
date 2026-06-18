@@ -14,7 +14,7 @@
  *
  * NOTE: 由于 FluentProvider 和 YAML widget 模板尚未迁移，本实现使用
  * 编程式创建 DOM 模态对话框。当 WidgetLoader 支持从 JSON 加载 widget 树后
- * (TODO-16.B.1 WidgetUtils)，可重构为使用模板加载。
+ * ( WidgetUtils)，可重构为使用模板加载。
  */
 
 import type { ModData } from '../../OpenRA.Game/ModData.js'

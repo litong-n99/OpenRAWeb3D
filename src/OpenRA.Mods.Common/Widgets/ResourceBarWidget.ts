@@ -15,7 +15,7 @@
  *
  * NOTE: ChromeProvider.GetImage() 尚未完全迁移 sprite 查找。
  * 指示器渲染使用 CSS 定位的彩色块。当 ChromeProvider sprite 查找可用后
- * 可替换为 sprite 图像渲染 (TODO-16.A.tooltip)。
+ * 可替换为 sprite 图像渲染 ()。
  */
 
 import { Widget } from '../../OpenRA.Game/Widgets/Widget.js'

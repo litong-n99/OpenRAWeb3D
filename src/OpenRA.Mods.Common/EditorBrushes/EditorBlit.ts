@@ -16,7 +16,7 @@
  * - EditorCopyPasteBrush.CopyPasteEditorAction — 粘贴剪贴板
  * - TilingPathTool.PaintTilingPathEditorAction — 绘制铺设路径
  *
- * Migration: TODO-21.B.6 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'

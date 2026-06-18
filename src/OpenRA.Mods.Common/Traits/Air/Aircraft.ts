@@ -179,7 +179,7 @@ export interface ISpeedModifier {
  *
  * OpenRA 对照: Reservable
  *
- * TODO-9.B.1-RESERVABLE: Replace with real Reservable when migrated.
+* Replace with real Reservable when migrated.
  */
 export interface IReservable {
   reserve(
@@ -323,7 +323,7 @@ abstract class ActivityStubBase implements ActivityStub {
  *
  * OpenRA 对照: Fly (OpenRA.Mods.Common.Activities/Fly.cs)
  *
- * TODO-14.A.1: Full Fly activity implementation.
+* Full Fly activity implementation.
  */
 class FlyActivity extends ActivityStubBase {
   activityLabel = 'Fly'
@@ -333,7 +333,7 @@ class FlyActivity extends ActivityStubBase {
  *
  * OpenRA 对照: FlyFollow (OpenRA.Mods.Common.Activities/FlyFollow.cs)
  *
- * TODO-14.A.2: Full FlyFollow activity implementation.
+* Full FlyFollow activity implementation.
  */
 class FlyFollowActivity extends ActivityStubBase {
   activityLabel = 'FlyFollow'
@@ -343,7 +343,7 @@ class FlyFollowActivity extends ActivityStubBase {
  *
  * OpenRA 对照: Land (OpenRA.Mods.Common.Activities/Land.cs)
  *
- * TODO-14.A.3: Full Land activity implementation.
+* Full Land activity implementation.
  */
 class LandActivity extends ActivityStubBase {
   activityLabel = 'Land'
@@ -353,7 +353,7 @@ class LandActivity extends ActivityStubBase {
  *
  * OpenRA 对照: TakeOff (OpenRA.Mods.Common.Activities/TakeOff.cs)
  *
- * TODO-14.A.4: Full TakeOff activity implementation.
+* Full TakeOff activity implementation.
  */
 class TakeOffActivity extends ActivityStubBase {
   activityLabel = 'TakeOff'
@@ -363,7 +363,7 @@ class TakeOffActivity extends ActivityStubBase {
  *
  * OpenRA 对照: FlyIdle (OpenRA.Mods.Common.Activities/FlyIdle.cs)
  *
- * TODO-14.A.5: Full FlyIdle activity implementation.
+* Full FlyIdle activity implementation.
  */
 class FlyIdleActivity extends ActivityStubBase {
   activityLabel = 'FlyIdle'
@@ -373,7 +373,7 @@ class FlyIdleActivity extends ActivityStubBase {
  *
  * OpenRA 对照: FlyOffMap (OpenRA.Mods.Common.Activities/FlyOffMap.cs)
  *
- * TODO-14.A.6: Full FlyOffMap activity implementation.
+* Full FlyOffMap activity implementation.
  */
 class FlyOffMapActivity extends ActivityStubBase {
   activityLabel = 'FlyOffMap'
@@ -383,7 +383,7 @@ class FlyOffMapActivity extends ActivityStubBase {
  *
  * OpenRA 对照: ReturnToBase (OpenRA.Mods.Common.Activities/ReturnToBase.cs)
  *
- * TODO-14.A.7: Full ReturnToBase activity implementation.
+* Full ReturnToBase activity implementation.
  */
 class ReturnToBaseActivity extends ActivityStubBase {
   activityLabel = 'ReturnToBase'
@@ -393,7 +393,7 @@ class ReturnToBaseActivity extends ActivityStubBase {
  *
  * OpenRA 对照: Nudge (OpenRA.Mods.Common.Activities/Nudge.cs)
  *
- * TODO-14.A.9: Full Nudge activity implementation.
+* Full Nudge activity implementation.
  */
 class NudgeActivity extends ActivityStubBase {
   activityLabel = 'Nudge'
@@ -403,7 +403,7 @@ class NudgeActivity extends ActivityStubBase {
  *
  * OpenRA 对照: RemoveSelf (OpenRA.Mods.Common.Activities/RemoveSelf.cs)
  *
- * TODO-14.A.10: Full RemoveSelf activity implementation.
+* Full RemoveSelf activity implementation.
  */
 class RemoveSelfActivity extends ActivityStubBase {
   activityLabel = 'RemoveSelf'
@@ -1753,7 +1753,7 @@ export class Aircraft
    * OpenRA 对照: Aircraft.IsLeavingCell(CPos, SubCell) → false
    */
   isLeavingCell(_location: CPos, _subCell: SubCellEnum = SubCellEnum.Any): boolean {
-    return false // TODO-9.B.1-LEAVING: Handle landing cell transitions
+    return false // : Handle landing cell transitions
   }
 
   /** Aircraft can always enter any cell (fly over).
@@ -1991,7 +1991,7 @@ export class Aircraft
     _targetLineColor?: ColorStub,
   ): ActivityStub {
     return new FlyActivity()
-    // TODO-14.A.1: Pass target, nearEnough, targetLineColor
+    // Pass target, nearEnough, targetLineColor
   }
 
   /** Move to a target.
@@ -2130,7 +2130,7 @@ export class Aircraft
    * with a basic null-check on the reserved actor.
    */
   canEnterTargetNow(_source: IGameActor, _target: Target): boolean {
-    // TODO-9.B.1: Full enter target check when Target is fully migrated.
+    // Full enter target check when Target is fully migrated.
     //   In C#: extract target actor, verify ReservingOffset, call
     //   MakeReservation. Return false if no reservable actor is found.
     const reservedActor = this._reservedActor
@@ -2408,7 +2408,7 @@ export class Aircraft
       this._creationActivityDelay > 0 ||
       this._creationByMap
     ) {
-      // TODO-14.A.12: Implement AssociateWithAirfieldActivity
+      // Implement AssociateWithAirfieldActivity
       return new ReturnToBaseActivity()
     }
     return null
@@ -2510,7 +2510,7 @@ export class Aircraft
     _target: TargetStub,
     _queued: boolean,
   ): Order {
-    // TODO-15.A.1: Full order targeter integration
+    // Full order targeter integration
     // Currently returns a minimal order stub
     return {
       orderName: 'Move',
@@ -2589,7 +2589,7 @@ export class Aircraft
       orderString === 'Repair'
     ) {
       // These orders are only valid for own/allied actors
-      // TODO-9.B.1-ENTER: Full Enter/Repair order handling
+      // Full Enter/Repair order handling
       if (!(order.extraData as any)?.queued) {
         this.unReserve()
       }
@@ -2959,7 +2959,7 @@ export class Aircraft
    *
    * OpenRA 对照: Reservable.IsReservable(Actor)
    *
-   * TODO-9.B.1-RESERVABLE: Replace with proper Reservable trait check once
+* Replace with proper Reservable trait check once
    *   the Reservable/ReservableInfo migration is complete. Currently returns
    *   false for all actors — actual reservation logic deferred.
    */
@@ -2987,7 +2987,7 @@ export class Aircraft
    * For other actors, checks if their position is at or below the aircraft's
    * land altitude threshold. This prevents crushing actors that are airborne.
    *
-   * TODO-9.B.1-ALTITUDE: Full altitude comparison with other actor's vertical
+* Full altitude comparison with other actor's vertical
    *   position. Currently checks distance above terrain through map proxy.
    */
   private _isAtGroundLevelA(actor: IGameActor): boolean {
@@ -3041,7 +3041,7 @@ export class Aircraft
 
   private _getOrderCenterPosition(_order: Order): WPos {
     // Simplified: extract position from order target data
-    // TODO-9.B.1: Full order target position extraction
+    // Full order target position extraction
     return this._centerPosition
   }
 
@@ -3067,7 +3067,7 @@ export class Aircraft
  *
  * OpenRA 对照: AircraftMoveOrderTargeter (nested class in Aircraft)
  *
- * TODO-15.A.1: Full order targeter implementation with cursor management.
+* Full order targeter implementation with cursor management.
  */
 export class AircraftMoveOrderTargeter implements IOrderTargeter {
   orderID: string = 'Move'
@@ -3086,7 +3086,7 @@ export class AircraftMoveOrderTargeter implements IOrderTargeter {
     _modifiers: TargetModifiers,
     _cursor: string,
   ): boolean {
-    // TODO-15.A.1: Full canTarget logic
+    // Full canTarget logic
     return !this._aircraft.isTraitDisabled
   }
 

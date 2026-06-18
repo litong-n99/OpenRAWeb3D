@@ -6,7 +6,7 @@
  * - C# interface + reflection-based type dispatch → TypeScript interface + type guard functions
  * - C# [RequireExplicitImplementation] attribute → JSDoc convention (no TS equivalent)
  * - C# generic Requires<T>/NotBefore<T> compile-time constraints → runtime marker interfaces
- *   + build-time JSON Schema validation (see TODO-3.C.1 ActorInfo)
+ *   + build-time JSON Schema validation (see  ActorInfo)
  * - C# Actor concrete type as trait method parameter → IGameActor forward interface
  *   (avoids circular dependency with GameActor, Phase D)
  * - C# TraitInfo reflection-driven factory → Component abstract base with attach/detach
@@ -37,7 +37,7 @@ import type { Target } from './Target'
  * Full Order class will be defined in a later phase.
  *
  * OpenRA 对照: OpenRA.Game/Orders/Order.cs
- * TODO-3.D: Replace with full Order class when Orders module is migrated.
+* Replace with full Order class when Orders module is migrated.
  */
 export interface OrderStub {
   readonly orderName: string
@@ -63,7 +63,7 @@ export interface WorldRendererStub {
  * Player stub — forward reference to OpenRA.Game/Player.cs.
  *
  * OpenRA 对照: OpenRA.Game/Player.cs
- * TODO-3.E: Replace with full Player class when Player module is migrated.
+* Replace with full Player class when Player module is migrated.
  */
 export interface PlayerStub {
   readonly playerName: string
@@ -73,7 +73,7 @@ export interface PlayerStub {
  * FrozenActor stub — forward reference.
  *
  * OpenRA 对照: OpenRA.Game/Traits/FrozenActor.cs
- * TODO-3.G: Replace with full FrozenActor class when fog-of-war is migrated.
+* Replace with full FrozenActor class when fog-of-war is migrated.
  */
 export interface FrozenActorStub {
   readonly isValid: boolean
@@ -168,7 +168,7 @@ export interface RulesetStub {
  * ActorInfo stub — forward reference.
  *
  * OpenRA 对照: OpenRA.Game/ActorInfo.cs
- * TODO-3.C.1: Replace with full ActorConfig class.
+* Replace with full ActorConfig class.
  */
 export interface ActorInfoStub {
   readonly name: string
@@ -625,7 +625,7 @@ export interface ISync {
  * Create() factory method. In TypeScript, TraitInfo is a pure data
  * interface; construction logic moves to ActorConfig (Phase C).
  *
- * TODO-3.C.1: Integrate with ActorConfig for YAML/JSON deserialization.
+* Integrate with ActorConfig for YAML/JSON deserialization.
  */
 export interface ITraitInfo {
   /** Optional instance name for disambiguation when multiple traits of the
@@ -1148,7 +1148,7 @@ export interface IValidateOrder {
  * map this to a concrete mouse button (e.g., left-click, right-click)
  * based on the player's configured mouse control style.
  *
- * TODO-15.B / TODO-16: OpenRA defines a 5th value `SupportPower` (numeric 4)
+ * / TODO-16: OpenRA defines a 5th value `SupportPower` (numeric 4)
  * used by support power order generators (e.g., Chronoshift, GPS, Nuke).
  * It is excluded here because no migrated code currently references it.
  * Restore it when support power order generators are migrated into
@@ -2716,7 +2716,7 @@ export interface VariableObserver {
  * Validation is performed at build time by JSON Schema and/or
  * ActorConfig.validateDependencies().
  *
- * TODO-3.C.1: Integrate with ActorConfig dependency validation.
+* Integrate with ActorConfig dependency validation.
  */
 export interface Requires<_T extends ITraitInfoInterface> {
   // Intentionally empty — this is a conceptual marker interface.
@@ -2733,7 +2733,7 @@ export interface Requires<_T extends ITraitInfoInterface> {
  * NOTE: Same conceptual treatment as Requires<T> — runtime code can
  * inspect this via type metadata, but compilation does not enforce it.
  *
- * TODO-3.C.1: Integrate with ActorConfig dependency validation.
+* Integrate with ActorConfig dependency validation.
  */
 export interface NotBefore<_T extends ITraitInfoInterface> {
   // intentionally empty — conceptual marker
@@ -3876,7 +3876,7 @@ export interface IDetectCloakedModifier {
  * WithSupportPowerActivationOverlay) and gameplay traits (Cloak) to respond
  * to support power lifecycle events.
  *
- * Added: Chapter 13 Phase A (TODO-13.A.1).
+ * Added: Chapter 13 Phase A ().
  */
 export interface INotifySupportPower {
   /** Called when the support power finishes charging and becomes ready.

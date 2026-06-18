@@ -82,7 +82,7 @@ export class Nudge extends Activity {
       const nudgerLoc = (this.nudger as unknown as { location: CPos }).location
       const cell = m.getAdjacentCell(nudgerLoc)
       if (cell !== null) {
-        // TODO-14.A: Replace with real Move activity when available
+        // Replace with real Move activity when available
         // For now, create a stub child that completes immediately
         this.queueChild(new NudgeMoveStub())
       }

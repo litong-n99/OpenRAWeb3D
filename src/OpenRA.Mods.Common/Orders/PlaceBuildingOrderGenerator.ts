@@ -1153,7 +1153,7 @@ export class PlaceBuildingOrderGenerator implements IOrderGenerator {
    * NOTE: Full base provider range check requires iterating actors with
    * BaseProvider traits and checking distance. For Phase B, if the
    * building requires a base provider, we conservatively allow placement.
-   * TODO-11.B.17: Implement full BaseProvider range check.
+* Implement full BaseProvider range check.
    *
    * @param buildingInfo — the building info
    * @param _topLeft — the top-left cell of the footprint
@@ -1169,7 +1169,7 @@ export class PlaceBuildingOrderGenerator implements IOrderGenerator {
     // Check if local player exists (null = always allow)
     if (!this._world.localPlayer) return true
 
-    // NOTE: Full BaseProvider range check deferred (TODO-11.B.17)
+    // NOTE: Full BaseProvider range check deferred ()
     return true
   }
 

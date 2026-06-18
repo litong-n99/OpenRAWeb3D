@@ -263,7 +263,7 @@ export class DebugChromeRegions implements IUtilityCommand {
       }
     }
 
-    // TODO-21.F.6: 通过 FileSystem 读取 imageFn 的 PNG 字节。
+    // 通过 FileSystem 读取 imageFn 的 PNG 字节。
     // 在完整的 CLI 环境中:
     // ```
     // const data = modData.modFiles.open(imageFn)?.readAllBytes()

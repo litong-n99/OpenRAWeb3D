@@ -429,7 +429,7 @@ export class NukePower extends SupportPower {
     if (skipAscent) {
       launchPos = WPos.Zero
     } else {
-      // TODO-13.A.8: Proper silo launch position.
+      // Proper silo launch position.
       // In OpenRA: self.CenterPosition + body.LocalToWorld(info.SpawnOffset)
       // This requires:
       //   1. WPos addition operator (WPos + WVec = WPos)

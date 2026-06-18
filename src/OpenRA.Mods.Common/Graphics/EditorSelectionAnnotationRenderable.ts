@@ -14,7 +14,7 @@
  * NOTE: The C# version draws per-cell ramp polygon outlines (for terrain-aware
  * selection visualization). The TypeScript version draws a bounding rectangle
  * at the average terrain height of the selected region.
- * TODO-21.A.7-perf: Per-cell ramp rendering via GPU instanced-line technique
+* Per-cell ramp rendering via GPU instanced-line technique
  *   for faithful terrain-aware selection visualization.
  */
 

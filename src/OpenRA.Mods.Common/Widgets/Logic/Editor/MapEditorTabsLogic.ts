@@ -13,7 +13,7 @@
  * 管理 6 个编辑器 Tab 标签页，控制面板容器可见性，
  * 并在选区变化时自动切换到 Select Tab。
  *
- * Migration: TODO-21.C.3 — Chapter 21 Phase C Wave 1
+ * Migration:  — Chapter 21 Phase C Wave 1
  */
 
 import { ChromeLogic, Ui, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'

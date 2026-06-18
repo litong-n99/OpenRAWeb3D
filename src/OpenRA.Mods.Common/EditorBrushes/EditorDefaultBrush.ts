@@ -10,14 +10,14 @@
  * - C# MinByOrDefault(CalculateActorSelectionPriority) → manual find with reduce
  * - C# int2 / float2 structs → TypeScript {x, y} objects
  * - C# WPos struct → TypeScript {x, y, z} objects (lowercase for common 3D convention)
- * - C# EditorBlit.CopyRegionContents → stubbed in DeleteAreaAction (TODO-21.B.3)
+ * - C# EditorBlit.CopyRegionContents → stubbed in DeleteAreaAction ()
  * - C# world.WorldActor.Trait<T>() → constructor dependency injection
  *
  * EditorDefaultBrush is THE foundation brush. All other brushes follow its pattern.
  * It handles click-to-select, drag-to-select, drag-to-move actors, right-click
  * delete, and selection event management.
  *
- * Migration: TODO-21.B.2 — Chapter 21 Phase B
+ * Migration:  — Chapter 21 Phase B
  */
 
 import { CPos } from '../../OpenRA.Game/CPos.js'

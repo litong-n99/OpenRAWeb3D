@@ -15,7 +15,7 @@
  * 2. 现金标签：显示编辑器中放置的资源总价值
  * 3. 撤销/重做按钮：绑定到 EditorActionManager
  *
- * Migration: TODO-21.C.1 — Chapter 21 Phase C Wave 1
+ * Migration:  — Chapter 21 Phase C Wave 1
  */
 
 import { ChromeLogic, type Widget } from '../../../../OpenRA.Game/Widgets/Widget.js'
