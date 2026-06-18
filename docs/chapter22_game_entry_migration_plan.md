@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 22 -- Game Entry & Application Shell
 
 > **Source Reference**: `OpenRA/OpenRA.Game/Game.cs` (~1000 lines, `static class Game`), `index.html` (Vite scaffold), `src/main.ts` (Vite scaffold)
-> **Chapter Status**: IN PROGRESS (6/7 migrated, 86%, Phases A-B COMPLETE)
+> **Chapter Status**: ALL PHASES A-E COMPLETE (7/7 files, 100%)
 > **Planning Date**: 2026-06-18
 > **Phase A Completion**: 2026-06-18 (Router: 146 lines + 271 test lines, ModSelector: 249 lines + 438 test lines, 51 tests, 0 BLOCKERs)
 > **Phase B Completion**: 2026-06-18 (Game: 588 lines + 1056 test lines, 47 tests, 0 BLOCKERs)
@@ -395,7 +395,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 ### 3.5 Phase E: Real Assets
 
-**Status**: 📋 PLANNING (0/0 files, build pipeline work)
+**Status**: ✅ COMPLETE (2026-06-18)
 **Complexity**: HIGH (external dependency: OpenRA mod data, build pipeline)
 **Blocked by**: External factors (see Open Questions below)
 **Blocks**: Full game experience with real mod content
@@ -404,7 +404,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.5.1 Build Pipeline
 
-- [ ] **TODO-22.E.1** Create build script for OpenRA mod conversion:
+- [x] **TODO-22.E.1** Create build script for OpenRA mod conversion:
   - Input: `OpenRA/mods/{ra,td,d2k,ts}/mod.yaml`, `OpenRA/mods/{ra,td,d2k,ts}/rules/*.yaml`, etc.
   - Output: `public/mods/{ra,td,d2k,ts}/mod.json`, `public/mods/{ra,td,d2k,ts}/rules/*.json`, etc.
   - Uses existing MiniYAML pipeline (`src/utils/miniyaml-to-json.ts`) for YAML→JSON conversion
@@ -412,7 +412,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.5.2 Mod Manifest Conversion
 
-- [ ] **TODO-22.E.2** Convert each OpenRA mod's `mod.yaml` to `mod.json`:
+- [x] **TODO-22.E.2** Convert each OpenRA mod's `mod.yaml` to `mod.json`:
   - `OpenRA/mods/ra/mod.yaml` → `public/mods/ra/mod.json`
   - `OpenRA/mods/td/mod.yaml` → `public/mods/td/mod.json`
   - `OpenRA/mods/d2k/mod.yaml` → `public/mods/d2k/mod.json`
@@ -420,14 +420,14 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.5.3 Asset Conversion
 
-- [ ] **TODO-22.E.3** Convert rule/weapon/sequence YAML files to JSON:
+- [x] **TODO-22.E.3** Convert rule/weapon/sequence YAML files to JSON:
   - Rules files, weapon definitions, sprite sequences, UI chrome layouts
   - Audio configuration files
   - Map manifests and preview images
 
 #### 3.5.4 Mod Index Generation
 
-- [ ] **TODO-22.E.4** Auto-generate `public/mods/_index.json` from converted mod manifests:
+- [x] **TODO-22.E.4** Auto-generate `public/mods/_index.json` from converted mod manifests:
   - Extract metadata (title, version, description) from each mod's `mod.json`
   - Add thumbnail/background paths
   - Mark mods as available/unavailable based on build configuration
