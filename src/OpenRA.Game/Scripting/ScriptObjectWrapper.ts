@@ -274,6 +274,12 @@ export abstract class ScriptObjectWrapper {
       )
     }
 
+    // Pass through any extra args beyond declared params (Lua→TS calls may
+    // have dynamic arguments without statically declared parameter descriptors)
+    for (let i = params.length; i < args.length; i++) {
+      converted.push(args[i])
+    }
+
     return converted
   }
 }

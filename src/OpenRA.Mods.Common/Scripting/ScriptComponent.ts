@@ -18,6 +18,7 @@ import type { IWorldLoaded } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { ITick } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { INotifyActorDisposing } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import { ScriptContext } from '../../OpenRA.Game/Scripting/ScriptContext.js'
+import type { IReadOnlyPackage } from '../../OpenRA.Game/FileSystem/IReadOnlyPackage.js'
 
 // ---------------------------------------------------------------------------
 // ScriptComponentInfo
@@ -116,6 +117,9 @@ export class ScriptComponent implements IWorldLoaded, ITick, INotifyActorDisposi
    * OpenRA 对照: LuaScript.IWorldLoaded.WorldLoaded(World, WorldRenderer)
    *
    * Creates the ScriptContext and initializes the scripting runtime.
+   * If .lua scripts are present, initializes the fengari Lua VM asynchronously.
+   *
+   * Phase G: Detects .lua files in scripts and calls context.initLuaVM().
    *
    * @param world — the game world
    * @param worldRenderer — the world renderer
@@ -123,7 +127,36 @@ export class ScriptComponent implements IWorldLoaded, ITick, INotifyActorDisposi
   worldLoaded(world: WorldStub, worldRenderer: WorldRendererStub): void {
     const scripts = this.info.scripts ?? []
     this.context = new ScriptContext(world, worldRenderer, scripts)
-    this.context.worldLoaded()
+
+    // Phase G: If .lua files are present, initialize the Lua VM asynchronously.
+    // We fire-and-forget the init; when it completes, it calls WorldLoaded handlers.
+    // Note: context.worldLoaded() must still be called synchronously for JSON triggers
+    // (Phase B) even if Lua VM init is pending.
+    const hasLuaScripts = scripts.some(s => s.endsWith('.lua'))
+    if (hasLuaScripts) {
+      // Try to access the map's file system via the world
+      const worldAny = world as any
+      const fileSystem: IReadOnlyPackage | undefined = worldAny.map?.package
+        ?? worldAny.package
+        ?? worldAny.fileSystem
+      if (fileSystem) {
+        // Fire and forget — Lua scripts are optional, don't block world load
+        this.context.initLuaVM(fileSystem).catch((err: unknown) => {
+          console.error('Lua VM init failed:', err)
+        }).finally(() => {
+          // Once Lua VM is ready, trigger WorldLoaded callbacks if not already done
+          // The Lua WorldLoaded handler was set by initLuaVM
+          this.context?.worldLoaded()
+        })
+        // JSON-only worldLoaded runs immediately for non-Lua triggers
+      } else {
+        console.warn('ScriptComponent: .lua scripts present but no fileSystem available for Lua VM init')
+        this.context.worldLoaded()
+      }
+    } else {
+      // No Lua scripts — standard synchronous path
+      this.context.worldLoaded()
+    }
   }
 
   // ---------------------------------------------------------------------------

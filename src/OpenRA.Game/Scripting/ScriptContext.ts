@@ -18,6 +18,8 @@ import { ScriptRegistry } from './ScriptRegistry.js'
 import { ScriptActorInterface } from './ScriptActorInterface.js'
 import { ScriptPlayerInterface } from './ScriptPlayerInterface.js'
 import type { ScriptGlobal } from './ScriptObjectWrapper.js'
+import type { ILuaRuntime } from './LuaScriptAdapter.js'
+import type { IReadOnlyPackage } from '../FileSystem/IReadOnlyPackage.js'
 
 // ---------------------------------------------------------------------------
 // ScriptContext
@@ -78,6 +80,12 @@ export class ScriptContext implements IScriptContext {
 
   /** Lua script paths collected for Phase G fengari init. */
   private _luaScriptPaths: string[] = []
+
+  /** Phase G: Optional fengari Lua VM runtime (null if no .lua scripts). */
+  private _luaRuntime: ILuaRuntime | null = null
+
+  /** Phase G: Promise for Lua VM initialization (prevents double init). */
+  private _luaInitPromise: Promise<void> | null = null
 
   /** WorldLoaded callback (set after construction for lazy init). */
   private _worldLoadedHandler: (() => void) | null = null
@@ -171,6 +179,103 @@ export class ScriptContext implements IScriptContext {
       this._worldLoadedHandler?.()
     } catch (e) {
       this.fatalError(e instanceof Error ? e : new Error(String(e)))
+    }
+  }
+
+  /**
+   * Initialize the optional Lua VM for backward compatibility with
+   * OpenRA .lua mission scripts.
+   *
+   * OpenRA 对照: ScriptContext constructor (Lua runtime init portion, lines 144-210)
+   *
+   * Must be called during world setup, after the FileSystem is available
+   * but before WorldLoaded.
+   *
+   * This method:
+   * 1. Checks if any .lua scripts were queued in constructor
+   * 2. Dynamically imports fengari/fengari-interop via LuaScriptAdapter
+   * 3. Creates a sandboxed Lua state
+   * 4. Registers all ScriptGlobals as Lua tables
+   * 5. Loads and executes each .lua file
+   * 6. Wires WorldLoaded() and Tick() Lua callbacks
+   *
+   * Idempotent — calling twice is safe (returns the existing promise).
+   *
+   * @param fileSystem — the map's file system for reading .lua content
+   */
+  async initLuaVM(fileSystem: IReadOnlyPackage): Promise<void> {
+    // Already initialized or no Lua scripts
+    if (this._luaRuntime) return
+    if (this._luaScriptPaths.length === 0) return
+
+    // Prevent double init
+    if (this._luaInitPromise) return this._luaInitPromise
+
+    this._luaInitPromise = this._initLuaVMInternal(fileSystem)
+    return this._luaInitPromise
+  }
+
+  /**
+   * Internal Lua VM initialization.
+   *
+   * @param fileSystem — the map's file system for reading .lua content
+   */
+  private async _initLuaVMInternal(fileSystem: IReadOnlyPackage): Promise<void> {
+    try {
+      const { createLuaRuntime } = await import('./LuaScriptAdapter.js')
+      this._luaRuntime = await createLuaRuntime({
+        engineDir: '/assets',
+        maxMemory: 50 * 1024 * 1024,
+        maxInstructions: 1_000_000,
+        fatalErrorHandler: (msg: string) => this.fatalError(msg),
+      })
+
+      // Register all ScriptGlobals as Lua tables
+      for (const [_, global] of this._globals) {
+        this._luaRuntime.registerGlobal(global)
+      }
+
+      // Register named map actors
+      for (const [name, actor] of this._namedActors) {
+        const iface = this.createActorInterface(actor)
+        this._luaRuntime.registerMapActor(name, iface)
+      }
+
+      // Load and execute .lua scripts
+      for (const script of this._luaScriptPaths) {
+        const buffer = await fileSystem.open(script)
+        const content = buffer
+          ? new TextDecoder().decode(buffer)
+          : ''
+        if (content) {
+          this._luaRuntime.doBuffer(content, script)
+        } else {
+          console.warn(`ScriptContext: empty or missing Lua script '${script}'`)
+        }
+      }
+
+      // Wire WorldLoaded and Tick callbacks
+      if (this._luaRuntime.hasFunction('WorldLoaded')) {
+        this.setWorldLoadedHandler(() => {
+          try {
+            this._luaRuntime!.callFunction('WorldLoaded')
+          } catch (e) {
+            this.fatalError(e instanceof Error ? e : new Error(String(e)))
+          }
+        })
+      }
+      if (this._luaRuntime.hasFunction('Tick')) {
+        this.setTickHandler(() => {
+          try {
+            this._luaRuntime!.callFunction('Tick')
+          } catch (e) {
+            this.fatalError(e instanceof Error ? e : new Error(String(e)))
+          }
+        })
+      }
+    } catch (e) {
+      this.fatalError(e instanceof Error ? e : new Error(String(e)))
+      throw e
     }
   }
 
@@ -389,6 +494,11 @@ export class ScriptContext implements IScriptContext {
     if (this._disposed) return
 
     this._disposed = true
+
+    // Dispose Lua runtime first (Phase G)
+    this._luaRuntime?.dispose()
+    this._luaRuntime = null
+    this._luaInitPromise = null
 
     // Clear all caches
     this._globals.clear()

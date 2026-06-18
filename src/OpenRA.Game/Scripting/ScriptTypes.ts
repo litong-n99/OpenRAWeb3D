@@ -301,6 +301,202 @@ export class ScriptTypes {
   }
 
   // ---------------------------------------------------------------------------
+  // Lua-Specific Value Conversion (Phase G)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Convert a TypeScript game object to an OpenRA-compatible Lua value format.
+   *
+   * OpenRA 对照: object.ToLuaValue(ScriptContext)
+   *
+   * Differs from toScriptValue in key casing to match OpenRA's Lua API:
+   * - CPos → { X: number, Y: number, Layer: number }
+   * - WPos → { X: number, Y: number, Z: number }
+   * - CVec → { X: number, Y: number }
+   * - WVec → { X: number, Y: number, Z: number }
+   *
+   * This uses UPPERCASE keys for coordinate types, matching the convention
+   * used by OpenRA's original Lua API.
+   *
+   * Non-coordinate types (primitives, arrays, Color, Actor, Player, WAngle,
+   * WDist, WRot) use the same format as toScriptValue.
+   *
+   * @param obj — the game object to convert
+   * @param context — the script context (needed for creating wrappers)
+   * @returns the Lua-compatible value
+   * @throws Error if the object type cannot be converted
+   */
+  static toLuaValue(obj: unknown, context: IScriptContext): unknown {
+    // null/undefined → null
+    if (obj === null || obj === undefined) return null
+
+    // Primitives — passthrough
+    if (typeof obj === 'number' || typeof obj === 'boolean' || typeof obj === 'string') return obj
+
+    // Game primitives with UPPERCASE keys
+    if (obj instanceof CPos) return { X: obj.X, Y: obj.Y, Layer: obj.Layer }
+    if (obj instanceof WPos) return { X: obj.X, Y: obj.Y, Z: obj.Z }
+    if (obj instanceof CVec) return { X: obj.X, Y: obj.Y }
+    if (obj instanceof WVec) return { X: obj.X, Y: obj.Y, Z: obj.Z }
+    if (obj instanceof WAngle) return obj.angle
+    if (obj instanceof WDist) return obj.length
+    if (obj instanceof WRot) return { Yaw: obj.yaw?.angle ?? 0, Pitch: obj.pitch?.angle ?? 0, Roll: obj.roll?.angle ?? 0 }
+
+    // Array — recursively convert elements
+    if (Array.isArray(obj)) {
+      return (obj as unknown[]).map(item => ScriptTypes.toLuaValue(item, context))
+    }
+
+    // For Color, Actor, Player — reuse toScriptValue logic since those are
+    // unchanged between JSON and Lua formats
+    if (ScriptTypes._isColorStub(obj)) return { r: obj.r, g: obj.g, b: obj.b, a: obj.a }
+
+    // IScriptBindable — use existing toScriptValue path
+    if (typeof obj === 'object' && obj !== null) {
+      if (ScriptTypes._isActor(obj)) {
+        const actor = obj as IGameActor
+        return (context as any).createActorInterface?.(actor) ?? actor
+      }
+      if (ScriptTypes._isPlayer(obj)) {
+        const player = obj as PlayerStub
+        return (context as any).createPlayerInterface?.(player) ?? player
+      }
+      return obj
+    }
+
+    throw new Error(`Cannot convert type '${typeof obj}' to Lua value.`)
+  }
+
+  /**
+   * Convert a Lua value (obtained via interop.tojs()) to a TypeScript game object.
+   *
+   * OpenRA 对照: LuaValue.TryGetClrValue(Type, out object) — Lua path
+   *
+   * This extends fromScriptValue with Lua-specific conversions:
+   * - Accepts both { X: ..., Y: ... } (uppercase keys, Lua convention) and
+   *   { x: ..., y: ... } (lowercase keys, JSON convention) for coordinate types.
+   * - Lua tables → plain objects or arrays (depending on keys).
+   * - Lua nil → null.
+   * - Lua functions → passed through as callable.
+   *
+   * @param luaValue — a value obtained via interop.tojs(L, idx)
+   * @param targetType — the expected TypeScript type name
+   * @returns the converted game object
+   * @throws Error if conversion is not possible
+   */
+  static fromLuaValue(luaValue: unknown, targetType: ScriptTypeName): unknown {
+    // null/nil handling
+    if (luaValue === null || luaValue === undefined) {
+      if (targetType === 'nil') return null
+      return null
+    }
+
+    // Try fromScriptValue first (handles lowercase keys and primitive types)
+    try {
+      return ScriptTypes.fromScriptValue(luaValue, targetType)
+    } catch {
+      // fromScriptValue failed — try Lua-specific uppercase-key formats
+    }
+
+    // Handle coordinate types with UPPERCASE keys (OpenRA Lua convention)
+    switch (targetType) {
+      case 'CPos':
+        if (typeof luaValue === 'object' && luaValue !== null) {
+          const v = luaValue as Record<string, unknown>
+          return new CPos(
+            Number(v.X ?? v.x ?? 0),
+            Number(v.Y ?? v.y ?? 0),
+          )
+        }
+        throw new Error(`Cannot convert ${typeof luaValue} to CPos`)
+
+      case 'WPos':
+        if (typeof luaValue === 'object' && luaValue !== null) {
+          const v = luaValue as Record<string, unknown>
+          return new WPos(
+            Number(v.X ?? v.x ?? 0),
+            Number(v.Y ?? v.y ?? 0),
+            Number(v.Z ?? v.z ?? 0),
+          )
+        }
+        throw new Error(`Cannot convert ${typeof luaValue} to WPos`)
+
+      case 'CVec':
+        if (typeof luaValue === 'object' && luaValue !== null) {
+          const v = luaValue as Record<string, unknown>
+          return new CVec(
+            Number(v.X ?? v.x ?? 0),
+            Number(v.Y ?? v.y ?? 0),
+          )
+        }
+        throw new Error(`Cannot convert ${typeof luaValue} to CVec`)
+
+      case 'WVec':
+        if (typeof luaValue === 'object' && luaValue !== null) {
+          const v = luaValue as Record<string, unknown>
+          return new WVec(
+            Number(v.X ?? v.x ?? 0),
+            Number(v.Y ?? v.y ?? 0),
+            Number(v.Z ?? v.z ?? 0),
+          )
+        }
+        throw new Error(`Cannot convert ${typeof luaValue} to WVec`)
+
+      case 'WRot':
+        if (typeof luaValue === 'object' && luaValue !== null) {
+          const v = luaValue as Record<string, unknown>
+          const ra = Number(
+            v.Roll ?? v.roll ?? v.R ?? v.r ?? 0,
+          )
+          const pa = Number(
+            v.Pitch ?? v.pitch ?? v.P ?? v.p ?? 0,
+          )
+          const ya = Number(
+            v.Yaw ?? v.yaw ?? v.Y ?? v.y ?? 0,
+          )
+          return new WRot(
+            ra !== 0 ? new WAngle(ra) : ra as unknown as WAngle,
+            pa !== 0 ? new WAngle(pa) : pa as unknown as WAngle,
+            ya !== 0 ? new WAngle(ya) : ya as unknown as WAngle,
+          )
+        }
+        throw new Error(`Cannot convert ${typeof luaValue} to WRot`)
+
+      case 'number':
+        if (typeof luaValue === 'number') return luaValue
+        throw new Error(`Cannot convert ${typeof luaValue} to number`)
+
+      case 'string':
+        if (typeof luaValue === 'string') return luaValue
+        throw new Error(`Cannot convert ${typeof luaValue} to string`)
+
+      case 'boolean':
+        if (typeof luaValue === 'boolean') return luaValue
+        throw new Error(`Cannot convert ${typeof luaValue} to boolean`)
+
+      case 'WAngle':
+        if (typeof luaValue === 'number') return new WAngle(luaValue)
+        throw new Error(`Cannot convert ${typeof luaValue} to WAngle`)
+
+      case 'WDist':
+        if (typeof luaValue === 'number') return new WDist(luaValue)
+        throw new Error(`Cannot convert ${typeof luaValue} to WDist`)
+
+      case 'function':
+        if (typeof luaValue === 'function') return luaValue
+        throw new Error(`Cannot convert ${typeof luaValue} to function`)
+
+      case 'table':
+      case 'any':
+        return luaValue
+
+      default:
+        // Fall back to fromScriptValue
+        return ScriptTypes.fromScriptValue(luaValue, targetType)
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Type Checking
   // ---------------------------------------------------------------------------
 
