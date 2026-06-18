@@ -23,6 +23,7 @@ import { WorldRenderer } from './Graphics/WorldRenderer.js'
 import type { IWorld } from './Graphics/WorldRenderer.js'
 import { EchoConnection } from './Network/Connection.js'
 import { OrderManager } from './Network/OrderManager.js'
+import type { Sound } from './Sound/Sound.js'
 
 // ---------------------------------------------------------------------------
 // Re-export WorldType for convenience (used by main.ts and ModSelector)
@@ -125,7 +126,7 @@ export class Game {
    *
    * NOTE: Sound 需要 ISoundEngine + SoundSettings，Phase B 暂不实现。
    */
-  sound: unknown = null
+  sound: Sound | null = null
 
   /**
    * 运行时 mod 协调器。
@@ -151,6 +152,13 @@ export class Game {
    */
   currentModId: string | null = null
 
+  /**
+   * 渲染帧计数器。每帧递增一次，重启/switchMod 时归零。
+   *
+   * OpenRA 对照: Game.RenderFrame (C# public static long)
+   */
+  renderFrame = 0
+
   // -----------------------------------------------------------------------
   // 私有字段
   // -----------------------------------------------------------------------
@@ -160,6 +168,16 @@ export class Game {
 
   /** 游戏循环已启动标志（runRenderLoop 只能调用一次）。 */
   private _loopStarted = false
+
+  /** 固定时间步长累加器（毫秒）。switchMod 时重置以防止突发 tick。 */
+  private _accumulator = 0
+
+  /**
+   * 延迟动作队列 — 下一逻辑 tick 执行的一次性回调。
+   *
+   * OpenRA 对照: Game.RunAfterTick(Action) + Game.PerformDelayedActions()
+   */
+  private _delayedActions: Array<() => void> = []
 
   // -----------------------------------------------------------------------
   // Accessors
@@ -272,7 +290,7 @@ export class Game {
     if (this._loopStarted) return
     this._loopStarted = true
 
-    let accumulator = 0
+    this._accumulator = 0
 
     this.renderer.engine.runRenderLoop(() => {
       // 销毁守卫 — disposed 后停止所有 tick 活动
@@ -280,18 +298,18 @@ export class Game {
 
       // 增量时间（毫秒），clamped 防止标签页切换后过度追赶
       const deltaMs = Math.min(this.renderer.engine.getDeltaTime(), MAX_DELTA_MS)
-      accumulator += deltaMs
+      this._accumulator += deltaMs
 
       let ticksThisFrame = 0
-      while (accumulator >= LOGIC_TIMESTEP_MS && ticksThisFrame < MAX_CATCHUP_TICKS) {
+      while (this._accumulator >= LOGIC_TIMESTEP_MS && ticksThisFrame < MAX_CATCHUP_TICKS) {
         this.logicTick()
-        accumulator -= LOGIC_TIMESTEP_MS
+        this._accumulator -= LOGIC_TIMESTEP_MS
         ticksThisFrame++
       }
 
       // 防止死亡螺旋: 如果追赶上限已达，重置剩余累积时间
-      if (accumulator > LOGIC_TIMESTEP_MS * MAX_CATCHUP_TICKS) {
-        accumulator = 0
+      if (this._accumulator > LOGIC_TIMESTEP_MS * MAX_CATCHUP_TICKS) {
+        this._accumulator = 0
       }
 
       this.renderTick()
@@ -304,14 +322,18 @@ export class Game {
    * 仅在 world + orderManager 都存在时推进。
    * 调用顺序匹配 OpenRA Game.Run()：
    * 1. tickImmediate() — 发送即时命令 + 接收网络数据
-   * 2. tryTick() — 尝试推进一帧（lockstep 协议）
-   * 3. 如果 tryTick() 返回 true → world.tick() — 模拟推进
+   * 2. performDelayedActions() — 执行上一 tick 排队的延迟回调
+   * 3. tryTick() — 尝试推进一帧（lockstep 协议）
+   * 4. 如果 tryTick() 返回 true → world.tick() — 模拟推进
    */
   private logicTick(): void {
     if (!this.orderManager) return
 
     // 阶段 1: 即时命令处理 + 网络接收
     this.orderManager.tickImmediate()
+
+    // 阶段 1.5: 延迟操作（RunAfterTick 回调）
+    this.performDelayedActions()
 
     // 阶段 2-3: 尝试 lockstep 推进，成功则调用 world.tick()
     const advanced = this.orderManager.tryTick()
@@ -327,12 +349,51 @@ export class Game {
    * 否则依赖 Babylon.js 的自动清除（静态 shellmap 背景色已在 loadShellMap() 中设置）。
    */
   private renderTick(): void {
+    this.renderFrame++
+
     if (this._worldRenderer && this._world) {
       this._worldRenderer.draw()
     }
     // NOTE: 静态 shellmap（Phase 1）仅依赖 scene.clearColor 的自动清除。
     // 在无 world 时，Babylon.js 每帧自动将 canvas 清除为 clearColor
     // 并渲染 uiScene（此时为空，后续显示主菜单 Widget）。
+  }
+
+  // -----------------------------------------------------------------------
+  // Delayed Actions — RunAfterTick 回调队列
+  // -----------------------------------------------------------------------
+
+  /**
+   * 排入一个在下一个逻辑 tick 执行的回调。
+   *
+   * OpenRA 对照: Game.RunAfterTick(Action)
+   *
+   * 回调在每次逻辑 tick 的 tickImmediate() 之后、tryTick() 之前执行。
+   * 每个回调只执行一次，执行后自动清空。
+   * Phase C+ 的主菜单 Widget 和编辑器依赖此机制。
+   *
+   * @param action — 一次性回调（无参数）
+   */
+  runAfterTick(action: () => void): void {
+    this._delayedActions.push(action)
+  }
+
+  /**
+   * 执行所有排队的延迟回调，然后清空队列。
+   *
+   * OpenRA 对照: Game.PerformDelayedActions()
+   */
+  private performDelayedActions(): void {
+    if (this._delayedActions.length === 0) return
+    const actions = this._delayedActions
+    this._delayedActions = []
+    for (const action of actions) {
+      try {
+        action()
+      } catch (e) {
+        console.error('[Game] Delayed action error:', e)
+      }
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -400,6 +461,12 @@ export class Game {
     const connection = new EchoConnection()
     this.orderManager = new OrderManager(connection)
 
+    // TODO-22.C: Create CursorManager
+    // OpenRA C# InitializeMod() creates a CursorManager here, which manages
+    // hardware cursor sprites and palette. The TS CursorManager consumes
+    // SheetBuilder + HardwarePalette resources. Implement in Phase C when
+    // the main menu widget shell is created.
+
     // NOTE: Sound 初始化推迟到 Phase C。
     // Sound 需要 ISoundEngine + SoundSettings + FileSystem 设置，
     // 这些依赖在 Phase C 主菜单阶段才就绪。
@@ -433,6 +500,23 @@ export class Game {
     map: MapStub,
     worldType: WorldType = WorldType.Regular,
   ): Promise<void> {
+    // State guards — prevent undefined behavior when called in wrong state
+    if (this.state === GameState.Disposed) {
+      throw new Error(
+        'Cannot start game: Game has been disposed.',
+      )
+    }
+    if (this.state === GameState.Playing) {
+      throw new Error(
+        'Cannot start game: World already running. Call switchMod() to change mods.',
+      )
+    }
+    if (this.state === GameState.Uninitialized) {
+      throw new Error(
+        'Cannot start game: Game not initialized. Call Game.create() first.',
+      )
+    }
+
     if (!this.modData || !this.orderManager) {
       throw new Error(
         'Cannot start game: mod not loaded. Call loadMod() first.',
@@ -455,8 +539,14 @@ export class Game {
       this._world as unknown as import('./Network/UnitOrders.js').WorldStub
 
     // 3. 创建 WorldRenderer
-    // NOTE: 类型断言: GameWorldManager 在结构上兼容 IWorld 接口
-    // （拥有 tileSize, tileScale, worldActor 等属性）
+    // NOTE: 类型断言 — GameWorldManager 通过 `as unknown as IWorld` 桥接。
+    // IWorld 接口要求 14 个属性（tileSize, tileScale, type, disposed,
+    // renderPlayer, localPlayer, players, worldActor, screenMap,
+    // unpartitionedEffects, effects, orderGenerator, selection, 及方法）。
+    // GameWorldManager 已提供 tileSize / type / disposed / worldActor；
+    // renderPlayer / localPlayer / screenMap / effects / selection 在
+    // Phase C-E 中将逐步对齐。
+    // TODO-22.D: 使 GameWorldManager 直接实现 IWorld 接口，消除此类型断言。
     this._worldRenderer = new WorldRenderer(
       this.renderer,
       this._world as unknown as IWorld,
@@ -521,7 +611,9 @@ export class Game {
     this._world?.dispose()
     this._world = null
 
-    // WorldRenderer 的场景由 Renderer 管理，无需单独 dispose
+    // WorldRenderer 包含 GPU 资源（pipeline、post-process、textures），
+    // 必须显式 dispose 再清除引用，否则泄漏 GPU 内存。
+    this._worldRenderer?.dispose()
     this._worldRenderer = null
 
     this.orderManager?.dispose()
@@ -531,6 +623,10 @@ export class Game {
     this.modData = null
 
     this.sound = null
+
+    // 重置累加器 — 防止 switchMod 后突发追赶 tick
+    this._accumulator = 0
+    this.renderFrame = 0
 
     // 2. 重新加载新 mod + shellmap
     await this.loadMod(modId)
@@ -579,6 +675,7 @@ export class Game {
 
     // 6. Renderer（Engine + Scenes + Cameras + RTT）
     this.renderer?.dispose()
+    this.renderer = null!  // Prevent double-dispose: null reference after GPU resource release
 
     // 7. 清除单例引用
     if (_currentGame === this) {

@@ -10,6 +10,9 @@
  * 零依赖: 不导入 @babylonjs/core 或任何游戏引擎模块
  */
 
+import { WorldType as _WorldType } from './World.js'
+import type { WorldType as _WorldTypeType } from './World.js'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -26,18 +29,11 @@ export interface ModEntry {
   available: boolean
 }
 
-/** 游戏世界启动模式。
- *
- * OpenRA 对照: OpenRA.Game/Game.cs WorldType 枚举
- * TODO-22.B.1: 移至 Game.ts 作为正式枚举定义
- */
-export const WorldType = {
-  Regular: 'Regular',
-  Shellmap: 'Shellmap',
-  Editor: 'Editor',
-} as const
-
-export type WorldType = (typeof WorldType)[keyof typeof WorldType]
+// Re-export WorldType for downstream consumers (main.ts, ModSelector consumers)
+// NOTE: Previously defined locally; now imports from World.ts to maintain
+// a single canonical definition (MINOR-1 fix).
+export const WorldType = _WorldType
+export type WorldType = _WorldTypeType
 
 // ---------------------------------------------------------------------------
 // ModSelector

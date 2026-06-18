@@ -29,7 +29,10 @@ router.on('/', () => {
 })
 
 // 游戏启动 → Phase B 中实现
-// NOTE: Phase A 中 Game 类未实现，launchMod 显示加载状态后静默等待
+// NOTE: Phase B limitation — launchMod() loads the engine + mod shellmap
+// but does NOT auto-start a game world. In Phase C, the main menu widget
+// (rendered on uiScene) provides a "Skirmish" button that calls
+// Game.startGame(map, WorldType.Regular) to transition from Shellmap to Playing.
 router.on('/play/:modId', (params) => {
   ModSelector.launchMod(params['modId'])
 })

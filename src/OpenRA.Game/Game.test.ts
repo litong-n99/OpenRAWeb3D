@@ -670,6 +670,8 @@ describe('startGame()', () => {
       uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
     }
     game._loopStarted = true
+    // Set state to Shellmap so the Uninitialized guard doesn't fire first
+    game.state = GameState.Shellmap
     game.modData = null
     game.orderManager = null
 
@@ -681,6 +683,65 @@ describe('startGame()', () => {
 
     await expect(game.startGame(mapStub)).rejects.toThrow(
       'Cannot start game: mod not loaded',
+    )
+  })
+
+  it('throws when startGame called in Disposed state', async () => {
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game.state = GameState.Disposed
+
+    const mapStub = {
+      uid: 'map-id',
+      title: 'Map',
+      dispose: vi.fn(),
+    }
+
+    await expect(game.startGame(mapStub)).rejects.toThrow(
+      'Cannot start game: Game has been disposed.',
+    )
+  })
+
+  it('throws when startGame called in Playing state', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test')
+
+    const mapStub = {
+      uid: 'test-uid',
+      title: 'Test',
+      dispose: vi.fn(),
+    }
+    await game.startGame(mapStub)
+    // Now in Playing state — second startGame should be rejected
+    await expect(game.startGame(mapStub)).rejects.toThrow(
+      'Cannot start game: World already running.',
+    )
+  })
+
+  it('throws when startGame called in Uninitialized state', async () => {
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    // state defaults to Uninitialized
+
+    const mapStub = {
+      uid: 'map-id',
+      title: 'Map',
+      dispose: vi.fn(),
+    }
+
+    await expect(game.startGame(mapStub)).rejects.toThrow(
+      'Cannot start game: Game not initialized. Call Game.create() first.',
     )
   })
 
@@ -857,6 +918,22 @@ describe('dispose()', () => {
     expect(() => game.dispose()).not.toThrow()
     expect(game.state).toBe(GameState.Disposed)
   })
+
+  it('nulls out renderer reference after dispose to prevent double-free', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Verify renderer exists before dispose
+    expect(game.renderer).not.toBeNull()
+    expect(game.renderer).toBeDefined()
+
+    game.dispose()
+
+    // BLOCKER fix: renderer must be null after dispose
+    // This prevents a second dispose() call from double-freeing GPU resources
+    expect(game.renderer).toBeNull()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -913,6 +990,47 @@ describe('switchMod()', () => {
     expect(game.currentModId).toBe('ra')
     expect(game.state).toBe(GameState.Shellmap)
   })
+
+  it('disposes WorldRenderer GPU resources on switchMod', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test')
+
+    const mapStub = {
+      uid: 'test-uid',
+      title: 'Test',
+      dispose: vi.fn(),
+    }
+    await game.startGame(mapStub)
+
+    // Verify WorldRenderer exists before switch
+    const wr = game.worldRenderer!
+    expect(wr).not.toBeNull()
+    const disposeSpy = wr.dispose as ReturnType<typeof vi.fn>
+
+    mockModJson(200)
+    await game.switchMod('ra')
+
+    // WorldRenderer.dispose() must be called (MAJOR-5 fix)
+    expect(disposeSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('resets accumulator and renderFrame on switchMod', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Simulate a few render frames
+    ;(game as any).renderFrame = 42
+    ;(game as any)._accumulator = 150
+
+    mockModJson(200)
+    await game.switchMod('ra')
+
+    // Both should be reset to 0
+    expect((game as any).renderFrame).toBe(0)
+    expect((game as any)._accumulator).toBe(0)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -941,6 +1059,85 @@ describe('Game loop', () => {
 
     // runRenderLoop should only be called once
     expect(mockEngine.runRenderLoop).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// runAfterTick / Delayed Actions
+// ---------------------------------------------------------------------------
+
+describe('runAfterTick()', () => {
+  it('queues and executes delayed actions via performDelayedActions', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const action1 = vi.fn()
+    const action2 = vi.fn()
+
+    game.runAfterTick(action1)
+    game.runAfterTick(action2)
+
+    // Call performDelayedActions directly (it's private, test via logicTick)
+    // Access private method for unit testing
+    ;(game as any).performDelayedActions()
+
+    expect(action1).toHaveBeenCalledTimes(1)
+    expect(action2).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears delayed actions after execution', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const action = vi.fn()
+    game.runAfterTick(action)
+    ;(game as any).performDelayedActions()
+
+    // Second call should not re-execute the action
+    ;(game as any).performDelayedActions()
+    expect(action).toHaveBeenCalledTimes(1)
+  })
+
+  it('handles errors in delayed actions gracefully', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const badAction = vi.fn(() => { throw new Error('Delayed action error') })
+    const goodAction = vi.fn()
+
+    game.runAfterTick(badAction)
+    game.runAfterTick(goodAction)
+
+    // Should not throw — errors are caught and logged
+    expect(() => (game as any).performDelayedActions()).not.toThrow()
+    expect(badAction).toHaveBeenCalledTimes(1)
+    expect(goodAction).toHaveBeenCalledTimes(1) // Subsequent action still runs
+  })
+
+  it('performDelayedActions is a no-op when queue is empty', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Should not throw with empty queue
+    expect(() => (game as any).performDelayedActions()).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// renderFrame counter
+// ---------------------------------------------------------------------------
+
+describe('renderFrame', () => {
+  it('initializes to 0', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    expect(game.renderFrame).toBe(0)
   })
 })
 
