@@ -373,7 +373,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 ### 3.4 Phase D: Editor Stub
 
-**Status**: 📋 PLANNING (0/0 files, extension of main.ts from Phase B)
+**Status**: ✅ COMPLETE (2026-06-18, absorbed into Phases A-B)
 **Complexity**: Low
 **Blocked by**: Phase B (Game class `WorldType.Editor` type system support)
 **Blocks**: Chapter 21 Phase C (Editor UI uses `/editor/:modId` route)
@@ -382,14 +382,14 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.4.1 Editor Route Placeholder
 
-- [ ] **TODO-22.D.1** Extend `src/main.ts` -- Register `/editor/:modId` route:
+- [x] **TODO-22.D.1** Extend `src/main.ts` -- Register `/editor/:modId` route:
   - Route handler renders static placeholder: "Editor coming soon"
   - No game engine loaded for editor stub
   - Navigate back to mod selector via link
 
 #### 3.4.2 WorldType.Editor Type Support
 
-- [ ] **TODO-22.D.2** Extend `Game.ts` -- `WorldType.Editor` type support:
+- [x] **TODO-22.D.2** Extend `Game.ts` -- `WorldType.Editor` type support:
   - `loadMod()` handles `WorldType.Editor` (same pipeline as regular, different `startGame()` call)
   - Defer editor-specific loading to Chapter 21
 
