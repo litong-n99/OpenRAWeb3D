@@ -346,7 +346,8 @@ export class Texture implements ITexture, ITextureInternal {
       'Texture.getData: not implemented in WebGL migration. ' +
       'Requires FBO binding + readPixels pipeline.',
     )
-    return new Uint8Array(0)
+    const pixelCount = this._size.width * this._size.height * 4
+    return new Uint8Array(pixelCount)
   }
 
   // ---------------------------------------------------------------------------

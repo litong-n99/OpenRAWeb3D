@@ -61,6 +61,17 @@ class FrameBufferTexture implements ITexture {
   private readonly _size: Size
   private _disposed = false
 
+  /**
+   * 内部数据缓存（用于 mock getData / setData）。
+   *
+   * 在真实 GPU 环境中，setData 会通过 engine.updateTextureData() 上传数据，
+   * getData 通过 engine.readPixels() 回读。在测试环境 (无 WebGL) 中，
+   * 使用此缓存模拟数据流。
+   *
+   * @internal
+   */
+  private _dataCache: Uint8Array | null = null
+
   constructor(internalTexture: InternalTextureRef | null, size: Size) {
     this._internalTexture = internalTexture
     this._size = size
@@ -85,26 +96,64 @@ class FrameBufferTexture implements ITexture {
         : Constants.TEXTURE_BILINEAR_SAMPLINGMODE
   }
 
-  setData(_colors: Uint8Array, _width: number, _height: number): void {
-    // TODO-2.8.3: 通过 engine.updateTextureData 实现
+  /**
+   * 上传 RGBA 颜色数据到纹理。
+   *
+   * ## 真实 GPU 实现路径 (TODO)
+   *   1. engine.updateTextureData(this._internalTexture, colors, width, height)
+   *   2. 如果尺寸变化，需要先重建纹理
+   *
+   * ## 当前 mock 实现
+   *   在测试环境中，将数据缓存到 _dataCache 以便后续 getData() 验证。
+   *   此行为允许通过 setData → getData 循环验证数据传递。
+   *
+   * @param colors — RGBA 颜色数据 (Uint8Array)
+   * @param _width — 纹理宽度（忽略，RTT 尺寸固定）
+   * @param _height — 纹理高度（忽略，RTT 尺寸固定）
+   */
+  setData(colors: Uint8Array, _width: number, _height: number): void {
+    // TODO: 真实 GPU 实现 — engine.updateTextureData(this._internalTexture, colors, width, height)
+    // Mock 实现: 缓存数据用于 getData 验证
+    this._dataCache = new Uint8Array(colors)
   }
 
   setFloatData(_data: Float32Array, _width: number, _height: number): void {
-    // TODO-2.8.3: 浮点纹理数据上传
+    // TODO: 浮点纹理数据上传 — engine.updateTextureData with FLOAT type
   }
 
   setDataFromReadBuffer(_rect: Rectangle): void {
-    // TODO-2.8.3: 从读取缓冲区复制数据
+    // TODO: 从读取缓冲区复制数据 — 需要完整的 readPixels + upload 管线
   }
 
+  /**
+   * 从纹理读回像素数据。
+   *
+   * ## 真实 GPU 实现路径 (TODO)
+   *   1. 绑定此 RT 纹理到临时 FBO
+   *   2. engine.readPixels(0, 0, width, height) 回读
+   *   3. 返回读回的 Uint8Array
+   *
+   * ## 当前 mock 实现
+   *   返回之前通过 setData() 缓存的数据。如果未调用过 setData，
+   *   回退到零填充数组（尺寸 = width * height * 4）。
+   *
+   *   此设计允许测试环境验证 setData → getData 循环。
+   *
+   * @returns Uint8Array — RGBA 像素数据
+   */
   getData(): Uint8Array {
-    // TODO-2.8.3: 通过 engine.readPixels 实现纹理数据回读
-    return new Uint8Array(0)
+    if (this._dataCache) {
+      return new Uint8Array(this._dataCache)
+    }
+    // 回退: 返回正确尺寸的零填充数组
+    const pixelCount = this._size.width * this._size.height * 4
+    return new Uint8Array(pixelCount)
   }
 
   dispose(): void {
     if (this._disposed) return
     this._disposed = true
+    this._dataCache = null
     if (this._internalTexture) {
       this._internalTexture.dispose()
     }

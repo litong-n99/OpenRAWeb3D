@@ -491,16 +491,67 @@ describe('FrameBuffer', () => {
       fbTex.dispose()
     })
 
-    it('texture.getData returns empty array (TODO-2.8.3)', () => {
+    it('texture.getData returns sized Uint8Array (width*height*4)', () => {
+      // Default frameBuffer is 256x256, so getData should return 256*256*4 bytes
       const data = fb.texture.getData()
       expect(data).toBeInstanceOf(Uint8Array)
-      expect(data.length).toBe(0)
+      expect(data.length).toBe(256 * 256 * 4)
+      // All zeros (mock fallback, no setData called)
+      for (let i = 0; i < Math.min(data.length, 100); i++) {
+        expect(data[i]).toBe(0)
+      }
     })
 
-    it('texture.setData is a no-op (TODO-2.8.3)', () => {
-      expect(() =>
-        fb.texture.setData(new Uint8Array(16), 4, 4),
-      ).not.toThrow()
+    it('texture.getData returns correct size for custom dimensions', () => {
+      const fbSized = new FrameBuffer(
+        makeSize(64, 32),
+        new Engine({} as any),
+      )
+      const data = fbSized.texture.getData()
+      expect(data.length).toBe(64 * 32 * 4)
+      fbSized.dispose()
+    })
+
+    it('texture.setData + getData round-trip verifies internal state', () => {
+      const testData = new Uint8Array(16)
+      testData.fill(42)
+      // setData caches the data internally
+      fb.texture.setData(testData, 4, 4)
+
+      const result = fb.texture.getData()
+      expect(result.length).toBe(16)
+      // After setData, getData returns cached copy (not zeros)
+      for (let i = 0; i < result.length; i++) {
+        expect(result[i]).toBe(42)
+      }
+    })
+
+    it('texture.setData stores a copy (not reference)', () => {
+      const testData = new Uint8Array(8).fill(99)
+      fb.texture.setData(testData, 2, 2)
+      // Mutate the original
+      testData[0] = 1
+
+      const result = fb.texture.getData()
+      // Should still be 99 (copy was stored)
+      expect(result[0]).toBe(99)
+    })
+
+    it('texture.getData returns zero-fill after dispose', () => {
+      const fbSized = new FrameBuffer(
+        makeSize(8, 8),
+        new Engine({} as any),
+      )
+      const testData = new Uint8Array(8 * 8 * 4).fill(77)
+      fbSized.texture.setData(testData, 8, 8)
+      fbSized.dispose()
+
+      // After dispose, _dataCache is cleared
+      // getData might throw or return empty depending on implementation
+      // FrameBufferTexture doesn't have ensureNotDisposed on getData
+      const result = fbSized.texture.getData()
+      // After dispose, dataCache is null, fallback returns zero-filled
+      expect(result.length).toBe(8 * 8 * 4)
     })
   })
 

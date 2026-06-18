@@ -402,14 +402,19 @@ describe('Texture', () => {
   // -----------------------------------------------------------------------
 
   describe('getData', () => {
-    it('返回空 Uint8Array（当前未实现）', () => {
+    it('returns zero-filled Uint8Array with correct dimensions (4*4*4=64)', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const tex = new Texture(4, 4, TextureScaleFilter.Linear, engine)
 
       const result = tex.getData()
 
       expect(result).toBeInstanceOf(Uint8Array)
-      expect(result.length).toBe(0)
+      // Mock returns width*height*4 = 64 bytes
+      expect(result.length).toBe(64)
+      // All bytes should be zero (mock fill)
+      for (let i = 0; i < result.length; i++) {
+        expect(result[i]).toBe(0)
+      }
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('not implemented'),
       )
