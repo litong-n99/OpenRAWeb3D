@@ -152,4 +152,91 @@ describe('DisguiseProperties', () => {
     ;(desc as MethodDescriptor).invoke?.(p, [target])
     expect(disguise._disguiseAs).toHaveBeenCalledWith(target)
   })
+
+  // -------------------------------------------------------------------------
+  // Edge cases — P1-E.7
+  // -------------------------------------------------------------------------
+
+  it('DisguiseAs does nothing when _disguiseAs is not a function', () => {
+    const disguise = { _disguiseAs: 'not a function' }
+    const actor = stubActor({
+      trait: vi.fn((name: string) => name === 'Disguise' ? disguise : null),
+    })
+    const target = stubActor({ actorId: 2 })
+    const p = new DisguiseProperties(stubContext(), actor)
+    expect(() => p.DisguiseAs(target)).not.toThrow()
+  })
+
+  it('DisguiseAsType does nothing when world has no map', () => {
+    const disguise = { _disguiseFromFrozen: vi.fn() }
+    const actor = stubActor({
+      trait: vi.fn((name: string) => name === 'Disguise' ? disguise : null),
+      world: {}, // no map
+    })
+    const p = new DisguiseProperties(stubContext(), actor)
+    expect(() => p.DisguiseAsType('e1', { playerName: 'Enemy' })).not.toThrow()
+    expect(disguise._disguiseFromFrozen).not.toHaveBeenCalled()
+  })
+
+  it('DisguiseAsType does nothing when map has no rules', () => {
+    const disguise = { _disguiseFromFrozen: vi.fn() }
+    const actor = stubActor({
+      trait: vi.fn((name: string) => name === 'Disguise' ? disguise : null),
+      world: { map: {} }, // map without rules
+    })
+    const p = new DisguiseProperties(stubContext(), actor)
+    expect(() => p.DisguiseAsType('e1', { playerName: 'Enemy' })).not.toThrow()
+    expect(disguise._disguiseFromFrozen).not.toHaveBeenCalled()
+  })
+
+  it('DisguiseAsType uses rules from world.map.rules path', () => {
+    const disguise = { _disguiseFromFrozen: vi.fn() }
+    const actor = stubActor({
+      trait: vi.fn((name: string) => name === 'Disguise' ? disguise : null),
+      // Uses world.map.rules path (already set up by stubActor)
+    })
+    const newOwner = { playerName: 'Enemy2' }
+    const p = new DisguiseProperties(stubContext(), actor)
+    p.DisguiseAsType('e2', newOwner)
+    expect(disguise._disguiseFromFrozen).toHaveBeenCalledWith(
+      { name: 'e2', traits: [] },
+      newOwner,
+    )
+  })
+
+  it('DisguiseAs works with multiple calls to same actor', () => {
+    const disguise = { _disguiseAs: vi.fn() }
+    const actor = stubActor({
+      trait: vi.fn((name: string) => name === 'Disguise' ? disguise : null),
+    })
+    const target1 = stubActor({ actorId: 10 })
+    const target2 = stubActor({ actorId: 20 })
+    const p = new DisguiseProperties(stubContext(), actor)
+    p.DisguiseAs(target1)
+    p.DisguiseAs(target2)
+    expect(disguise._disguiseAs).toHaveBeenCalledTimes(2)
+    expect(disguise._disguiseAs).toHaveBeenNthCalledWith(1, target1)
+    expect(disguise._disguiseAs).toHaveBeenNthCalledWith(2, target2)
+  })
+
+  it('DisguiseAsDisguiseAsType member descriptors have correct parameters', () => {
+    const actor = stubActor()
+    const p = new DisguiseProperties(stubContext(), actor)
+
+    const asDesc = p.getOwnMemberDescriptors().find(d => d.name === 'DisguiseAs')
+    expect(asDesc).toBeDefined()
+    const asMd = asDesc as MethodDescriptor
+    expect(asMd.parameters).toHaveLength(1)
+    expect(asMd.parameters[0].name).toBe('target')
+    expect(asMd.parameters[0].type).toBe('Actor')
+
+    const typeDesc = p.getOwnMemberDescriptors().find(d => d.name === 'DisguiseAsType')
+    expect(typeDesc).toBeDefined()
+    const typeMd = typeDesc as MethodDescriptor
+    expect(typeMd.parameters).toHaveLength(2)
+    expect(typeMd.parameters[0].name).toBe('actorType')
+    expect(typeMd.parameters[0].type).toBe('string')
+    expect(typeMd.parameters[1].name).toBe('newOwner')
+    expect(typeMd.parameters[1].type).toBe('Player')
+  })
 })

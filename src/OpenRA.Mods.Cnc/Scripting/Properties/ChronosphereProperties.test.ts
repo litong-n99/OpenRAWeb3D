@@ -216,4 +216,77 @@ describe('ChronosphereProperties', () => {
     ;(desc as MethodDescriptor).invoke?.(p, [pairs])
     expect(chronoshiftable.teleport).toHaveBeenCalledWith(actor, { x: 5, y: 3 }, 0, false, p['self'])
   })
+
+  // -------------------------------------------------------------------------
+  // Edge cases — P1-E.6
+  // -------------------------------------------------------------------------
+
+  it('Chronoshift passes the chronosphere actor (self) as the last arg to teleport', () => {
+    const chronoshiftable = {
+      isTraitDisabled: false,
+      canChronoshiftTo: vi.fn().mockReturnValue(true),
+      teleport: vi.fn(),
+    }
+    const actor = stubActor({
+      traitsImplementing: vi.fn().mockReturnValue([chronoshiftable]),
+    })
+    const chronosphere = stubActor({ actorId: 999 })
+    const p = new ChronosphereProperties(stubContext(), chronosphere)
+    p.Chronoshift([[actor, { x: 5, y: 3 }]])
+    // The fifth argument should be the chronosphere actor (self), not the target actor
+    expect(chronoshiftable.teleport).toHaveBeenCalledWith(actor, { x: 5, y: 3 }, 0, false, chronosphere)
+  })
+
+  it('Chronoshift handles traitsImplementing returning undefined', () => {
+    const actor = stubActor({
+      traitsImplementing: vi.fn().mockReturnValue(undefined),
+    })
+    const p = new ChronosphereProperties(stubContext(), stubActor())
+    // Should not throw — gracefully handles undefined return
+    expect(() => p.Chronoshift([[actor, { x: 5, y: 3 }]])).not.toThrow()
+  })
+
+  it('Chronoshift handles chronoshiftable with no teleport method', () => {
+    const chronoshiftable = {
+      isTraitDisabled: false,
+      canChronoshiftTo: vi.fn().mockReturnValue(true),
+      // teleport is missing
+    }
+    const actor = stubActor({
+      traitsImplementing: vi.fn().mockReturnValue([chronoshiftable]),
+    })
+    const p = new ChronosphereProperties(stubContext(), stubActor())
+    // Should not throw — optional chaining handles missing teleport
+    expect(() => p.Chronoshift([[actor, { x: 5, y: 3 }]])).not.toThrow()
+  })
+
+  it('Chronoshift handles chronoshiftable with no canChronoshiftTo method', () => {
+    const chronoshiftable = {
+      isTraitDisabled: false,
+      teleport: vi.fn(),
+      // canChronoshiftTo is missing
+    }
+    const actor = stubActor({
+      traitsImplementing: vi.fn().mockReturnValue([chronoshiftable]),
+    })
+    const p = new ChronosphereProperties(stubContext(), stubActor())
+    // canChronoshiftTo returns undefined which is falsy, so teleport should not be called
+    expect(() => p.Chronoshift([[actor, { x: 5, y: 3 }]])).not.toThrow()
+    expect(chronoshiftable.teleport).not.toHaveBeenCalled()
+  })
+
+  it('Chronoshift handles empty unitLocationPairs array', () => {
+    const p = new ChronosphereProperties(stubContext(), stubActor())
+    expect(() => p.Chronoshift([])).not.toThrow()
+  })
+
+  it('Chronoshift handles actor with no traitsImplementing method', () => {
+    const actor = stubActor({
+      // traitsImplementing is deliberately omitted
+    })
+    delete (actor as any).traitsImplementing
+    const p = new ChronosphereProperties(stubContext(), stubActor())
+    // Should not throw — ?? [] default handles missing method
+    expect(() => p.Chronoshift([[actor, { x: 5, y: 3 }]])).not.toThrow()
+  })
 })

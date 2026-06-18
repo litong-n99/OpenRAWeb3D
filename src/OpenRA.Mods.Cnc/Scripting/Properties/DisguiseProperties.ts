@@ -37,7 +37,8 @@ export class DisguiseProperties extends ScriptActorProperties {
    */
   DisguiseAs(target: IGameActor): void {
     if (!this._disguise) return
-    this._disguise._disguiseAs?.(target)
+    if (typeof this._disguise._disguiseAs !== 'function') return
+    this._disguise._disguiseAs(target)
   }
 
   /**
@@ -49,12 +50,13 @@ export class DisguiseProperties extends ScriptActorProperties {
    */
   DisguiseAsType(actorType: string, newOwner: unknown): void {
     if (!this._disguise) return
+    if (typeof this._disguise._disguiseFromFrozen !== 'function') return
     // OpenRA: var actorInfo = Self.World.Map.Rules.Actors[actorType];
     const world = (this.self as any).world
     const rules = world?.map?.rules ?? world?.rules
     const actorInfo = rules?.actors?.[actorType]
     if (!actorInfo) return
-    this._disguise._disguiseFromFrozen?.(actorInfo, newOwner)
+    this._disguise._disguiseFromFrozen(actorInfo, newOwner)
   }
 
   getOwnMemberDescriptors(): MemberDescriptor[] {

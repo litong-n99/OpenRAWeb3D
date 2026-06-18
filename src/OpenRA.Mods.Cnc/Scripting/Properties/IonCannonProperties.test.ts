@@ -28,13 +28,23 @@ function stubActor(overrides: Record<string, unknown> = {}): IGameActor {
     owner: { playerName: 'TestPlayer' } as PlayerStub,
     disposed: false,
     traitName: 'test',
-    world: {},
+    world: {
+      map: {
+        mapSize: { width: 128, height: 128 },
+      },
+    },
     info: { name: 'testActor', traits: [] },
     trait: vi.fn().mockReturnValue(null),
     traitsImplementing: vi.fn().mockReturnValue([]),
     queueActivity: vi.fn(),
     ...overrides,
   } as unknown as IGameActor
+}
+
+function stubActorWithoutMap(): IGameActor {
+  return stubActor({
+    world: {},
+  })
 }
 
 function stubContext() {
@@ -137,5 +147,143 @@ describe('IonCannonProperties', () => {
     const target = { x: 7, y: 8 }
     ;(desc as MethodDescriptor).invoke?.(p, [target])
     expect(icp.activate).toHaveBeenCalledWith(actor, target)
+  })
+
+  // -------------------------------------------------------------------------
+  // Map bounds validation — P1-E.9
+  // -------------------------------------------------------------------------
+
+  describe('Map bounds validation', () => {
+    it('rejects target with negative coordinates', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon({ x: -1, y: 5 })
+      expect(icp.activate).not.toHaveBeenCalled()
+    })
+
+    it('rejects target with x beyond map width', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon({ x: 200, y: 5 })
+      expect(icp.activate).not.toHaveBeenCalled()
+    })
+
+    it('rejects target with y beyond map height', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon({ x: 5, y: 200 })
+      expect(icp.activate).not.toHaveBeenCalled()
+    })
+
+    it('accepts target at map boundary (0, 0)', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon({ x: 0, y: 0 })
+      expect(icp.activate).toHaveBeenCalled()
+    })
+
+    it('accepts target at map boundary (max-1, max-1)', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon({ x: 127, y: 127 })
+      expect(icp.activate).toHaveBeenCalled()
+    })
+
+    it('rejects null target', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon(null)
+      expect(icp.activate).not.toHaveBeenCalled()
+    })
+
+    it('rejects undefined target', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon(undefined)
+      expect(icp.activate).not.toHaveBeenCalled()
+    })
+
+    it('rejects non-object target (number)', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon(42)
+      expect(icp.activate).not.toHaveBeenCalled()
+    })
+
+    it('rejects object without x/y properties', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActor({
+        traitsImplementing: vi.fn((name: string) => {
+          if (name === 'IonCannonPower') return [icp]
+          return []
+        }),
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      p.ActivateIonCannon({ foo: 'bar' })
+      expect(icp.activate).not.toHaveBeenCalled()
+    })
+
+    it('allows activation when map bounds info is unavailable', () => {
+      const icp = { activate: vi.fn() }
+      const actor = stubActorWithoutMap()
+      // Override traitsImplementing for this actor
+      ;(actor.traitsImplementing as any) = vi.fn((name: string) => {
+        if (name === 'IonCannonPower') return [icp]
+        return []
+      })
+      const p = new IonCannonProperties(stubContext(), actor)
+      // Even with seemingly out-of-bounds coordinates, when map is unavailable
+      // we allow it through (the trait handles its own validation)
+      p.ActivateIonCannon({ x: 500, y: 500 })
+      expect(icp.activate).toHaveBeenCalledWith(actor, { x: 500, y: 500 })
+    })
   })
 })

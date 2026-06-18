@@ -153,6 +153,18 @@ describe('InfiltrateProperties', () => {
     expect((desc as MethodDescriptor).parameters[0].name).toBe('target')
   })
 
+  it('getOwnMemberDescriptors returns all five infiltration methods', () => {
+    const actor = stubActor()
+    const p = new InfiltrateProperties(stubContext(), actor)
+    const names = p.getOwnMemberDescriptors().map(d => d.name)
+    expect(names).toContain('Infiltrate')
+    expect(names).toContain('InfiltrateForCash')
+    expect(names).toContain('InfiltrateForExploration')
+    expect(names).toContain('InfiltrateForPowerOutage')
+    expect(names).toContain('InfiltrateForSupportPower')
+    expect(names).toHaveLength(5)
+  })
+
   it('member descriptor invoke calls Infiltrate', () => {
     const infiltrates = {
       isTraitDisabled: false,
@@ -170,5 +182,207 @@ describe('InfiltrateProperties', () => {
     expect(desc).toBeDefined()
     ;(desc as MethodDescriptor).invoke?.(p, [target])
     expect(actor.queueActivity).toHaveBeenCalled()
+  })
+
+  // -------------------------------------------------------------------------
+  // Convenience infiltration methods — P1-E.8
+  // -------------------------------------------------------------------------
+
+  describe('InfiltrateForCash', () => {
+    it('queues activity when types match Cash', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['Cash'], targetLineColor: 'Gold' },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['Cash']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForCash(target)
+      expect(actor.queueActivity).toHaveBeenCalled()
+      const callArgs = (actor.queueActivity as any).mock.calls[0]
+      expect(callArgs[0]).toBe(false)
+      expect(callArgs[1].__type).toBe('Infiltrate')
+      expect(callArgs[1].infiltrates).toBe(infiltrates)
+    })
+
+    it('no-ops when no Cash type in infiltrates', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['Building'] },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['Cash']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForCash(target)
+      expect(actor.queueActivity).not.toHaveBeenCalled()
+    })
+
+    it('no-ops when target does not accept Cash type', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['Cash'] },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['Building', 'Structure']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForCash(target)
+      expect(actor.queueActivity).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('InfiltrateForExploration', () => {
+    it('queues activity when types match Exploration', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['Exploration'], targetLineColor: 'Blue' },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['Exploration']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForExploration(target)
+      expect(actor.queueActivity).toHaveBeenCalled()
+      const callArgs = (actor.queueActivity as any).mock.calls[0]
+      expect(callArgs[1].infiltrates).toBe(infiltrates)
+    })
+
+    it('no-ops when no Exploration type match', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['Cash'] },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['Exploration']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForExploration(target)
+      expect(actor.queueActivity).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('InfiltrateForPowerOutage', () => {
+    it('queues activity when types match PowerOutage', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['PowerOutage'], targetLineColor: 'DarkRed' },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['PowerOutage']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForPowerOutage(target)
+      expect(actor.queueActivity).toHaveBeenCalled()
+      const callArgs = (actor.queueActivity as any).mock.calls[0]
+      expect(callArgs[1].infiltrates).toBe(infiltrates)
+    })
+
+    it('no-ops when no PowerOutage type match', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['Exploration'] },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['PowerOutage']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForPowerOutage(target)
+      expect(actor.queueActivity).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('InfiltrateForSupportPower', () => {
+    it('queues activity when types match SupportPower', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['SupportPower'], targetLineColor: 'Purple' },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['SupportPower']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForSupportPower(target)
+      expect(actor.queueActivity).toHaveBeenCalled()
+      const callArgs = (actor.queueActivity as any).mock.calls[0]
+      expect(callArgs[1].infiltrates).toBe(infiltrates)
+    })
+
+    it('no-ops when no SupportPower type match', () => {
+      const infiltrates = {
+        isTraitDisabled: false,
+        info: { types: ['Cash'] },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([infiltrates]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['SupportPower']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      p.InfiltrateForSupportPower(target)
+      expect(actor.queueActivity).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Convenience methods with disabled traits', () => {
+    it('skips disabled traits for convenience methods', () => {
+      const disabledCash = {
+        isTraitDisabled: true,
+        info: { types: ['Cash'] },
+      }
+      const enabledExploration = {
+        isTraitDisabled: false,
+        info: { types: ['Exploration'] },
+      }
+      const actor = stubActor({
+        traitsImplementing: vi.fn().mockReturnValue([disabledCash, enabledExploration]),
+      })
+      const target = stubActor({
+        actorId: 2,
+        getEnabledTargetTypes: vi.fn().mockReturnValue(['Cash', 'Exploration']),
+      })
+      const p = new InfiltrateProperties(stubContext(), actor)
+      // InfiltrateForCash should no-op because the Cash trait is disabled
+      p.InfiltrateForCash(target)
+      expect(actor.queueActivity).not.toHaveBeenCalled()
+      // InfiltrateForExploration should succeed because its trait is enabled
+      p.InfiltrateForExploration(target)
+      expect(actor.queueActivity).toHaveBeenCalledTimes(1)
+    })
   })
 })

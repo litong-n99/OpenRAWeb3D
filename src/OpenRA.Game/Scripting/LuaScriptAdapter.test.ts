@@ -775,6 +775,81 @@ describe('LuaScriptAdapter', () => {
   })
 
   // -----------------------------------------------------------------------
+  // Instruction Counting — P1-E.5 (4 tests)
+  // -----------------------------------------------------------------------
+
+  describe('Instruction counting', () => {
+    it('prevents infinite loops by throwing when instruction limit is exceeded', async () => {
+      const opts: LuaScriptAdapterOptions = { maxInstructions: 50_000 }
+      runtime = createLuaRuntimeSync(opts, fengari, interop)
+      // An infinite loop should be terminated
+      expect(() => {
+        runtime!.doBuffer('while true do end', 'infinite.lua')
+      }).toThrow(/instruction limit exceeded/i)
+    })
+
+    it('allows reasonable scripts to run without hitting limit', async () => {
+      const opts: LuaScriptAdapterOptions = { maxInstructions: 1_000_000 }
+      runtime = createLuaRuntimeSync(opts, fengari, interop)
+      // A simple loop of 100 iterations should not hit any limit
+      expect(() => {
+        runtime!.doBuffer('local s = 0; for i=1,100 do s = s + i end', 'sum.lua')
+      }).not.toThrow()
+    })
+
+    it('resets instruction counter between doBuffer calls', async () => {
+      // Use a generous limit so each individual script runs fine
+      const opts: LuaScriptAdapterOptions = { maxInstructions: 200_000 }
+      runtime = createLuaRuntimeSync(opts, fengari, interop)
+      // First script: runs fine
+      runtime.doBuffer('local s = 0; for i=1,500 do s = s + i end', 'first.lua')
+      // Second script: should also run fine (counter was reset)
+      expect(() => {
+        runtime!.doBuffer('local s = 0; for i=1,500 do s = s + i end', 'second.lua')
+      }).not.toThrow()
+    })
+
+    it('resets instruction counter between callFunction calls', async () => {
+      const opts: LuaScriptAdapterOptions = { maxInstructions: 200_000 }
+      runtime = createLuaRuntimeSync(opts, fengari, interop)
+      runtime.doBuffer(
+        'function work(n)\n  local s = 0\n  for i=1,n do s = s + i end\n  return s\nend',
+        'define.lua',
+      )
+      // First call: fine
+      const r1 = runtime.callFunction('work', 500)
+      expect(r1).toBeDefined()
+      // Second call: should also be fine (counter was reset)
+      const r2 = runtime.callFunction('work', 500)
+      expect(r2).toBeDefined()
+    })
+
+    it('respects custom maxInstructions', async () => {
+      // Very low limit — should catch even modest loops
+      const opts: LuaScriptAdapterOptions = { maxInstructions: 5_000 }
+      runtime = createLuaRuntimeSync(opts, fengari, interop)
+      // A loop of 1000 iterations (~several thousand instructions per iteration
+      // for the loop body) should exceed the 5000 instruction limit
+      expect(() => {
+        runtime!.doBuffer('local s = 0; for i=1,5000 do s = s + i end', 'bigloop.lua')
+      }).toThrow(/instruction limit exceeded/i)
+    })
+
+    it('instruction limit error includes the limit value', async () => {
+      const opts: LuaScriptAdapterOptions = { maxInstructions: 10_000 }
+      runtime = createLuaRuntimeSync(opts, fengari, interop)
+      try {
+        runtime.doBuffer('while true do end', 'infinite.lua')
+        // Should not reach here
+        expect(true).toBe(false)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Error)
+        expect((e as Error).message).toContain('10000')
+      }
+    })
+  })
+
+  // -----------------------------------------------------------------------
   // FatalError handler edge cases (2 tests)
   // -----------------------------------------------------------------------
 

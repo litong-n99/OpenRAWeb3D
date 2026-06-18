@@ -88,7 +88,7 @@ export function createLuaRuntimeSync(
   // Register builtin globals
   _registerBuiltinGlobals(L, fengari, interop, engineDir, maxInstructions, options.fatalErrorHandler)
 
-  return _buildRuntime(L, fengari, interop, maxMemory, { value: false })
+  return _buildRuntime(L, fengari, interop, maxMemory, maxInstructions, { value: false })
 }
 
 // ---------------------------------------------------------------------------
@@ -112,12 +112,38 @@ export async function createLuaRuntime(
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function _buildRuntime(L: object, fengari: any, interop: any, maxMemory: number, _disposed: { value: boolean }): ILuaRuntime {
+function _buildRuntime(L: object, fengari: any, interop: any, maxMemory: number, maxInstructions: number, _disposed: { value: boolean }): ILuaRuntime {
+  // ---------------------------------------------------------------------------
+  // Instruction counting via lua_sethook (P1-E.5)
+  // ---------------------------------------------------------------------------
+  // OpenRA 对照: Eluant MemoryConstrainedLuaRuntime.MaxUserScriptInstructions
+  //
+  // fengari's lua_sethook(L, callback, LUA_MASKCOUNT, interval) fires the
+  // callback every `interval` Lua VM instructions. We track cumulative
+  // instruction count and raise a Lua-level error when the limit is exceeded.
+  // The counter is reset at the start of each doBuffer / callFunction.
+  const HOOK_INTERVAL = 10_000
+
+  const _instructionCount = { value: 0 }
+
+  fengari.lua.lua_sethook(L, (_hookL: object) => {
+    _instructionCount.value += HOOK_INTERVAL
+    if (_instructionCount.value > maxInstructions) {
+      const msg = `Lua instruction limit exceeded (${_instructionCount.value} > ${maxInstructions})`
+      fengari.lua.lua_pushstring(_hookL, msg)
+      fengari.lua.lua_error(_hookL)
+      // lua_error never returns (longjmp equivalent)
+    }
+    return 0
+  }, fengari.lua.LUA_MASKCOUNT, HOOK_INTERVAL)
+
   return {
     L,
 
     doBuffer(content: string, chunkName: string): void {
       if (_disposed.value) throw new Error('Lua runtime is disposed')
+
+      _instructionCount.value = 0
 
       const bytes = new TextEncoder().encode(content)
       const loadStatus = fengari.lauxlib.luaL_loadbuffer(L, bytes, bytes.length, chunkName || '=(lua)')
@@ -137,6 +163,8 @@ function _buildRuntime(L: object, fengari: any, interop: any, maxMemory: number,
 
     callFunction(name: string, ...args: unknown[]): unknown {
       if (_disposed.value) throw new Error('Lua runtime is disposed')
+
+      _instructionCount.value = 0
 
       // Handle dotted names like "Alpha.a" — navigate into nested tables
       const parts = name.split('.')
@@ -389,7 +417,8 @@ function _registerGlobalAsLuaTable(
 // ---------------------------------------------------------------------------
 
 function _checkMemory(L: object, fengari: any, maxMemory: number): void {
-  // TODO-20.G.INSTR: Add instruction counting via lua_sethook
+  // NOTE: Instruction counting (P1-E.5) is handled via lua_sethook hook
+  // registered in _buildRuntime, not here in _checkMemory.
   const used = fengari.lua.lua_gc(L, 0, 0) * 1024 + fengari.lua.lua_gc(L, 1, 0)
   if (used > maxMemory) {
     throw new Error(`Lua script memory limit exceeded (${used} > ${maxMemory} bytes)`)
