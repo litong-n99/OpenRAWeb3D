@@ -16,6 +16,42 @@ import { WAngle } from '../../../OpenRA.Game/WAngle.js'
 import type { IGameActor, ITraitInfo } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
+// Damage state constants (corresponds to OpenRA DamageState)
+// ---------------------------------------------------------------------------
+
+/** Damage state levels for sequence normalization.
+ *
+ * OpenRA 对照: DamageState enum (OpenRA.Game/Traits/TraitsInterfaces.cs)
+ *
+ * Ordered from highest to lowest severity for prefix priority.
+ * NormalizeSequence checks from Critical down to Light — the first
+ * matching damage-prefixed sequence wins.
+ */
+export const GunboatDamageState = {
+  Undamaged: 0,
+  Light: 1,
+  Medium: 2,
+  Heavy: 3,
+  Critical: 4,
+} as const
+export type GunboatDamageState = (typeof GunboatDamageState)[keyof typeof GunboatDamageState]
+
+/** Damage prefixes ordered from highest to lowest severity.
+ *
+ * OpenRA 对照: RenderSprites.DamagePrefixes (RenderSprites.cs:84-90)
+ *
+ * When normalizing a sequence name, these prefixes are tried in order.
+ * The first prefix whose damage threshold is met AND whose sequence exists
+ * on the animation is used.
+ */
+const DAMAGE_PREFIXES: readonly { readonly state: GunboatDamageState; readonly prefix: string }[] = [
+  { state: GunboatDamageState.Critical, prefix: 'critical-' },
+  { state: GunboatDamageState.Heavy, prefix: 'damaged-' },
+  { state: GunboatDamageState.Medium, prefix: 'scratched-' },
+  { state: GunboatDamageState.Light, prefix: 'scuffed-' },
+]
+
+// ---------------------------------------------------------------------------
 // Duck-typed interfaces
 // ---------------------------------------------------------------------------
 
@@ -188,25 +224,24 @@ export class WithGunboatBody {
 
     // Create the wake animation
     // C#: wake = new Animation(init.World, name); wake.PlayRepeating(info.WakeLeftSequence);
+    // The wake animation tracks its current sequence via a mutable state object,
+    // matching OpenRA's Animation.CurrentSequence.Name tracking for ReplaceAnim.
     if (rs) {
       const image = rs.getImage(self)
-      // Wake animation replaceAnim is a no-op stub because
-      // the full Animation class (Chapter 2) with sequence lookup and frame
-      // playback is not yet available in the C&C duck-typed trait layer.
-      // Real implementation would delegate to Animation.ReplaceAnim which
-      // switches the sequence and recalculates frame indices.
+      const wakeSeqState = { name: info.wakeLeftSequence, facings: 8 }
       const wakeAnim: IGunboatAnimation = {
         name: image,
-        currentSequence: { name: '', facings: 8 },
+        currentSequence: wakeSeqState,
         playFetchIndex(seq, fn) { void seq; void fn },
-        playRepeating(seq) { void seq },
+        playRepeating(seq) { wakeSeqState.name = seq },
         replaceAnim(seq) {
-          void seq
-          // Delegate to real Animation.ReplaceAnim
+          wakeSeqState.name = seq
+          // In production, would delegate to Animation.ReplaceAnim(seq)
+          // which looks up the sequence, resets timeUntilNextFrame,
+          // and adjusts frame position modulo the new sequence length.
         },
         hasSequence(_seq) { return true },
       }
-      wakeAnim.playRepeating(info.wakeLeftSequence)
       this._wakeAnimation = wakeAnim
 
       // Register wake with RenderSprites
@@ -246,13 +281,17 @@ export class WithGunboatBody {
    *
    * The cutoff is `facing.Angle <= 512` (half of 1024 WAngle units).
    * This maps to: angle 0-512 (right half) vs 513-1023 (left half).
+   *
+   * Sequence names are normalized through the damage-prefix lookup
+   * (critical, damaged, scratched, scuffed) to support damaged-state
+   * sprite variants for gunboats.
    */
-  tick(_self: IGameActor): void {
+  tick(self: IGameActor): void {
     const isRight = this._facing.facing.angle <= 512
     const bodyAnim = this._body.defaultAnimation
 
     if (isRight) {
-      const right = this.normalizeSequence(this.info.rightSequence)
+      const right = this.normalizeSequence(self, this.info.rightSequence)
       if (bodyAnim.currentSequence.name !== right) {
         bodyAnim.replaceAnim(right)
       }
@@ -263,7 +302,7 @@ export class WithGunboatBody {
         this._wakeAnimation.replaceAnim(this.info.wakeRightSequence)
       }
     } else {
-      const left = this.normalizeSequence(this.info.leftSequence)
+      const left = this.normalizeSequence(self, this.info.leftSequence)
       if (bodyAnim.currentSequence.name !== left) {
         bodyAnim.replaceAnim(left)
       }
@@ -284,14 +323,44 @@ export class WithGunboatBody {
    *
    * OpenRA 对照: WithSpriteBody.NormalizeSequence (calls RenderSprites.NormalizeSequence)
    *
-* Real normalization requires the full sequence dictionary
-   * from the sprite cache to check damage-prefixed variants (e.g.,
-   * "critical-left", "damaged-right"). Without the Chapter 2 Animation
-   * infrastructure, the sequence name is returned as-is.
+   * The normalization process:
+   * 1. Strip any existing damage prefix from the sequence name (unnormalize)
+   * 2. Get the actor's damage state via getDamageState()
+   * 3. For each damage prefix (from highest to lowest severity), check if
+   *    the damage state meets the threshold AND the defaultAnimation has
+   *    the damage-prefixed sequence
+   * 4. Return the first match, or the unnormalized sequence if no match
+   *
+   * Damage prefixes: critical- > damaged- > scratched- > scuffed-
+   *
+   * @param self — the actor (used to query damage state)
+   * @param sequence — the sequence name to normalize
+   * @returns the normalized sequence name with appropriate damage prefix
    */
-  private normalizeSequence(sequence: string): string {
-    // Implement damage prefix lookup (critical, damaged, scratched, scuffed)
-    return sequence
+  normalizeSequence(self: IGameActor, sequence: string): string {
+    // Step 1: Remove existing damage prefix (unnormalize)
+    let unnormalized = sequence
+    for (const { prefix } of DAMAGE_PREFIXES) {
+      if (unnormalized.startsWith(prefix)) {
+        unnormalized = unnormalized.slice(prefix.length)
+        break
+      }
+    }
+
+    // Step 2: Get the actor's damage state
+    const damageState: number =
+      (self as any).getDamageState?.() ?? GunboatDamageState.Undamaged
+    const anim = this._body.defaultAnimation
+
+    // Step 3: Try damage prefixes from highest to lowest severity
+    for (const { state, prefix } of DAMAGE_PREFIXES) {
+      if (damageState >= state && anim.hasSequence(prefix + unnormalized)) {
+        return prefix + unnormalized
+      }
+    }
+
+    // Step 4: No damage-prefixed sequence found, return unnormalized
+    return unnormalized
   }
 
   // -------------------------------------------------------------------------

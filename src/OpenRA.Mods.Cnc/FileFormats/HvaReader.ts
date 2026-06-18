@@ -12,6 +12,12 @@
  * - At runtime, animation transforms are baked into glTF animation clips.
  * - Runtime HvaReader serves as a thin validation wrapper.
  *
+ * P1-E.23: Added full 4x4 column-major matrix inverse validation utility
+ * (validateTransformInvertibility). The primary check remains the 3x3 rotation
+ * submatrix determinant (rigid-body check), which is correct under ADR-19.1.
+ * The full 4x4 inverse is available as a defensive tool if runtime .hva
+ * validation failures are observed with non-rigid-body transforms.
+ *
  * Binary format summary:
  *   - 16 bytes: skip (file header)
  *   - 4 bytes: frameCount (uint32)
@@ -134,11 +140,14 @@ export class HvaReader {
         // Under ADR-19.1, the full 4x4 matrix inverse is unnecessary. We
         // validate using the 3x3 rotation submatrix determinant: a valid
         // rigid-body transform must have |det| ≈ 1 (not 0).
-        // If full MatrixInverse parity is ever needed (e.g.,
-        //   runtime .hva validation), implement column-major 4x4 inverse with
-        //   submatrix cofactor expansion.
+        //
+        // If full MatrixInverse parity is ever needed (e.g., runtime .hva
+        // validation with non-rigid-body transforms), use the
+        // validateTransformInvertibility() static utility which performs
+        // a complete 4x4 column-major inverse with cofactor expansion
+        // (matching OpenRA's Util.MatrixInverse). See P1-E.23.
         // -------------------------------------------------------------------
-        if (HvaReader._isNearSingular(this.transforms, c)) {
+        if (HvaReader._isNearSingular3x3(this.transforms, c)) {
           throw new Error(
             `The transformation matrix for HVA file "${_fileName}" section ${i} frame ${j} is invalid because it is not invertible!`,
           )
@@ -148,23 +157,21 @@ export class HvaReader {
   }
 
   // -----------------------------------------------------------------------
-  // Utility — get transform for a specific limb/frame
-  // -----------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------
-  // Private — matrix invertibility validation
+  // Private — 3x3 rotation submatrix determinant check (primary validation)
   // -----------------------------------------------------------------------
 
   /** Check if a 4x4 column-major rigid-body matrix at offset `c` in `m` is
-   * near-singular (non-invertible).
+   * near-singular (non-invertible) via the 3x3 rotation submatrix determinant.
    *
    * OpenRA 对照: Util.MatrixInverse(testMatrix) == null
    *
    * For a rigid-body transform with bottom row [0,0,0,1], only the 3x3 upper-
    * left rotation submatrix determines invertibility. |det| < 1e-6 is
    * considered singular.
+   *
+   * This is the primary validation path under ADR-19.1.
    */
-  private static _isNearSingular(
+  private static _isNearSingular3x3(
     m: Float32Array,
     c: number,
   ): boolean {
@@ -182,6 +189,75 @@ export class HvaReader {
       a13 * (a21 * a32 - a22 * a31)
 
     return Math.abs(det) < 1e-6
+  }
+
+  // -----------------------------------------------------------------------
+  // Static — Full 4x4 matrix inverse validation (P1-E.23, defensive)
+  // -----------------------------------------------------------------------
+
+  /** Validate that a 4x4 column-major transform matrix is invertible
+   * using a full 4x4 determinant with submatrix cofactor expansion.
+   *
+   * OpenRA 对照: Util.MatrixInverse(float[] src) (full 4x4 inverse)
+   *
+   * This is a defensive validation utility. The primary check in the
+   * constructor uses the 3x3 rotation submatrix determinant
+   * (_isNearSingular3x3), which is correct for rigid-body transforms
+   * under ADR-19.1. This method provides full 4x4 parity with the C#
+   * MatrixInverse if non-rigid-body transforms are encountered.
+   *
+   * Column-major layout indices:
+   *   | 0  4  8  12 |
+   *   | 1  5  9  13 |
+   *   | 2  6  10 14 |
+   *   | 3  7  11 15 |
+   *
+   * @param m — Float32Array containing the 16-float column-major matrix
+   * @param c — offset into m where the matrix starts
+   * @param epsilon — singularity threshold (default 1e-9)
+   * @returns true if the matrix is invertible (|det| >= epsilon)
+   */
+  static validateTransformInvertibility(
+    m: Float32Array,
+    c: number,
+    epsilon: number = 1e-9,
+  ): boolean {
+    // Extract elements for readability
+    // Column 0
+    const m00 = m[c + 0], m01 = m[c + 1], m02 = m[c + 2], m03 = m[c + 3]
+    // Column 1
+    const m10 = m[c + 4], m11 = m[c + 5], m12 = m[c + 6], m13 = m[c + 7]
+    // Column 2
+    const m20 = m[c + 8], m21 = m[c + 9], m22 = m[c + 10], m23 = m[c + 11]
+    // Column 3
+    const m30 = m[c + 12], m31 = m[c + 13], m32 = m[c + 14], m33 = m[c + 15]
+
+    // Compute 4x4 determinant via cofactor expansion along first column
+    // det = m00*det(minor0) - m01*det(minor1) + m02*det(minor2) - m03*det(minor3)
+    const det0 = _det3x3(
+      m11, m12, m13,
+      m21, m22, m23,
+      m31, m32, m33,
+    )
+    const det1 = _det3x3(
+      m10, m12, m13,
+      m20, m22, m23,
+      m30, m32, m33,
+    )
+    const det2 = _det3x3(
+      m10, m11, m13,
+      m20, m21, m23,
+      m30, m31, m33,
+    )
+    const det3 = _det3x3(
+      m10, m11, m12,
+      m20, m21, m22,
+      m30, m31, m32,
+    )
+
+    const det4x4 = m00 * det0 - m01 * det1 + m02 * det2 - m03 * det3
+
+    return Math.abs(det4x4) >= epsilon
   }
 
   // -----------------------------------------------------------------------
@@ -205,4 +281,20 @@ export class HvaReader {
     const c = 16 * (this.limbCount * frame + limb)
     return this.transforms.slice(c, c + 16)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Internal — 3x3 determinant helper (for 4x4 cofactor expansion)
+// ---------------------------------------------------------------------------
+
+/** Compute the determinant of a 3x3 matrix given as row-major elements.
+ *
+ * @returns det = a(ei - fh) - b(di - fg) + c(dh - eg)
+ */
+function _det3x3(
+  a: number, b: number, c: number,
+  d: number, e: number, f: number,
+  g: number, h: number, i: number,
+): number {
+  return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
 }

@@ -1,10 +1,11 @@
 /**
  * WithSplitAttackPaletteInfantryBody.test.ts — Unit tests
  *
- * Tests focus on: Attacking state handling, visibility toggle, palette registration.
+ * Tests focus on: Attacking state handling, visibility toggle, palette registration,
+ * tick-synced animation timing.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   WithSplitAttackPaletteInfantryBody,
   WithSplitAttackPaletteInfantryBodyInfo,
@@ -33,6 +34,8 @@ function makeActors(): {
 
   const splitAnim: ISplitAttackAnimation & { playThenCalls: string[]; seqCalls: string[] } = {
     name: 'test',
+    tick: 40,
+    length: 5,
     currentSequence: { name: 'stand' },
     hasSequence: vi.fn().mockReturnValue(true),
     playThen(sequence: string, onComplete: () => void) {
@@ -95,6 +98,14 @@ describe('WithSplitAttackPaletteInfantryBodyInfo', () => {
 })
 
 describe('WithSplitAttackPaletteInfantryBody', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('should register split animation with RenderSprites on construction', () => {
     const { actor, renderSprites } = makeActors()
     const info = new WithSplitAttackPaletteInfantryBodyInfo({
@@ -126,6 +137,67 @@ describe('WithSplitAttackPaletteInfantryBody', () => {
     trait.attacking(actor, armament, barrel)
 
     expect(trait.visible).toBe(true) // visible was set to true by attacking()
+  })
+
+  it('should set visible false after tick-synced duration', () => {
+    const { actor, body } = makeActors()
+    ;(body as any).state = InfantryAnimationState.Attacking
+    const info = new WithSplitAttackPaletteInfantryBodyInfo({
+      splitAttackSuffix: 'muzzle',
+    })
+    const trait = new WithSplitAttackPaletteInfantryBody(actor, info)
+    ;(trait as any)._body = body
+
+    // Override the splitAnimation with one that uses real timing
+    const timedAnim = {
+      name: 'timed',
+      tick: 40,
+      length: 5,
+      currentSequence: { name: 'stand' },
+      hasSequence: vi.fn().mockReturnValue(true),
+      playThen(_sequence: string, onComplete: () => void) {
+        setTimeout(onComplete, this.tick * this.length) // tick * length = 200ms
+      },
+    }
+    ;(trait as any)._splitAnimation = timedAnim
+
+    const armament: IArmamentAccess = { info: { name: 'primary' } }
+    const barrel: IBarrelAccess = {}
+    trait.attacking(actor, armament, barrel)
+    expect(trait.visible).toBe(true)
+
+    // Advance by tick(40) * length(5) = 200ms
+    vi.advanceTimersByTime(200)
+    expect(trait.visible).toBe(false)
+  })
+
+  it('should not hide before tick * length elapses', () => {
+    const { actor, body } = makeActors()
+    ;(body as any).state = InfantryAnimationState.Attacking
+    const info = new WithSplitAttackPaletteInfantryBodyInfo({
+      splitAttackSuffix: 'muzzle',
+    })
+    const trait = new WithSplitAttackPaletteInfantryBody(actor, info)
+    ;(trait as any)._body = body
+
+    // Override the splitAnimation with one that uses real timing
+    const timedAnim = {
+      name: 'timed',
+      tick: 40,
+      length: 5,
+      currentSequence: { name: 'stand' },
+      hasSequence: vi.fn().mockReturnValue(true),
+      playThen(_sequence: string, onComplete: () => void) {
+        setTimeout(onComplete, this.tick * this.length)
+      },
+    }
+    ;(trait as any)._splitAnimation = timedAnim
+
+    const armament: IArmamentAccess = { info: { name: 'primary' } }
+    const barrel: IBarrelAccess = {}
+    trait.attacking(actor, armament, barrel)
+    vi.advanceTimersByTime(150) // Less than full 200ms
+    expect(trait.visible).toBe(true)
   })
 
   it('should not show when state is Idle', () => {

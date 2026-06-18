@@ -1,10 +1,11 @@
 /**
  * WithTeslaChargeOverlay.test.ts — Unit tests for WithTeslaChargeOverlay
  *
- * Tests focus on: charging state, damage state normalization, selling lifecycle.
+ * Tests focus on: charging state, damage state normalization, selling lifecycle,
+ * tick-synced animation timing.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   WithTeslaChargeOverlay,
   WithTeslaChargeOverlayInfo,
@@ -69,6 +70,14 @@ describe('WithTeslaChargeOverlayInfo', () => {
 })
 
 describe('WithTeslaChargeOverlay', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('should register with RenderSprites on construction', () => {
     const rs = makeRenderSprites()
     const actor = makeActor(rs)
@@ -84,8 +93,36 @@ describe('WithTeslaChargeOverlay', () => {
     const overlay = new WithTeslaChargeOverlay(actor, info)
 
     overlay.charging(actor, null)
-    // The duck-typed playThen uses setTimeout(100ms), so it's async.
+    // The duck-typed playThen uses tick * length (40ms * 5 = 200ms) timing.
     // The charging state should be set to true immediately.
+    expect(overlay.isCharging).toBe(true)
+  })
+
+  it('should complete charging after tick-synced duration (tick * length)', () => {
+    const rs = makeRenderSprites()
+    const actor = makeActor(rs)
+    const info = new WithTeslaChargeOverlayInfo()
+    const overlay = new WithTeslaChargeOverlay(actor, info)
+
+    overlay.charging(actor, null)
+    expect(overlay.isCharging).toBe(true)
+
+    // Advance timers by tick(40) * length(5) = 200ms
+    vi.advanceTimersByTime(200)
+    expect(overlay.isCharging).toBe(false)
+  })
+
+  it('should not clear charging before tick * length elapses', () => {
+    const rs = makeRenderSprites()
+    const actor = makeActor(rs)
+    const info = new WithTeslaChargeOverlayInfo()
+    const overlay = new WithTeslaChargeOverlay(actor, info)
+
+    overlay.charging(actor, null)
+    expect(overlay.isCharging).toBe(true)
+
+    // Advance less than full duration — still charging
+    vi.advanceTimersByTime(150)
     expect(overlay.isCharging).toBe(true)
   })
 

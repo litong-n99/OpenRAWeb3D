@@ -25,6 +25,16 @@ import type { IGameActor, ITraitInfo } from '../../../OpenRA.Game/Traits/TraitsI
 export interface ISplitAttackAnimation {
   readonly name: string
   readonly currentSequence: { readonly name: string }
+  /** Per-frame interval in milliseconds (default 40ms = 25fps).
+   *
+   * OpenRA 对照: ISpriteSequence.Tick
+   */
+  readonly tick: number
+  /** Number of frames in the current sequence.
+   *
+   * OpenRA 对照: ISpriteSequence.Length
+   */
+  readonly length: number
   hasSequence(sequence: string): boolean
   playThen(sequence: string, onComplete: () => void): void
 }
@@ -177,23 +187,26 @@ export class WithSplitAttackPaletteInfantryBody {
 
     // Create the split animation — following the C# pattern:
     // splitAnimation = new Animation(init.World, rs.GetImage(init.Self), RenderSprites.MakeFacingFunc(init.Self));
+    // Tick-synced timing: each frame lasts `tick` ms (default 40ms/25fps).
+    // Total animation duration = tick * length. In OpenRA, Animation.PlayThen
+    // calls the after callback when the frame counter exceeds the sequence
+    // length. The duck-typed animation here simulates this with setTimeout
+    // using the correct formula: tick * length ms.
     const image = this._renderSprites?.getImage?.(self) ?? ''
     this._splitAnimation = image ? {
       name: image,
+      tick: 40,
+      length: 5,
       currentSequence: { name: '' },
       hasSequence(_seq: string): boolean {
         // Duck-typed: assume sequence exists
         return true
       },
       playThen(_seq: string, onComplete: () => void): void {
-        // Duck-typed: track playback
-        void _seq
-        // Real animation timing should use the sequence's
-        // Tick * Length to determine duration. setTimeout(100) is a
-        // placeholder that does not match OpenRA's tick-synced (40ms/tick)
-        // animation system. Full implementation requires the Animation
-        // class with tick-based callback dispatch.
-        setTimeout(onComplete, 100) // Simulate animation completion
+        // Duck-typed: track playback with tick-synced completion timing.
+        // Real Animation.PlayThen calls after() when frame >= length.
+        const durationMs = this.tick * this.length
+        setTimeout(onComplete, durationMs)
       },
     } : null
 

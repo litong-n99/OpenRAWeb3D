@@ -110,6 +110,16 @@ function normalizeSequence(
 export interface ITeslaOverlayAnimation {
   readonly name: string
   readonly currentSequence: { readonly name: string }
+  /** Per-frame interval in milliseconds (default 40ms = 25fps).
+   *
+   * OpenRA 对照: ISpriteSequence.Tick
+   */
+  readonly tick: number
+  /** Number of frames in the current sequence.
+   *
+   * OpenRA 对照: ISpriteSequence.Length
+   */
+  readonly length: number
   hasSequence(sequence: string): boolean
   playThen(sequence: string, onComplete: () => void): void
   /** Replace the current animation with a new sequence.
@@ -220,20 +230,28 @@ export class WithTeslaChargeOverlay implements INotifyTeslaCharging, INotifyDama
 
     // Create the overlay animation
     // C#: overlay = new Animation(init.World, renderSprites.GetImage(init.Self));
+    // Tick-synced timing: each frame lasts `tick` ms (default 40ms/25fps).
+    // Total animation duration = tick * length. In OpenRA, Animation.PlayThen
+    // calls the after callback when the frame counter exceeds the sequence
+    // length. The duck-typed animation here simulates this with setTimeout
+    // using the correct formula: tick * length ms.
     const image = this._renderSprites?.getImage?.(self) ?? ''
     const mutableSeqState = { name: '' }
     this._overlay = {
       name: image,
+      tick: 40,
+      length: 5,
       currentSequence: mutableSeqState,
       hasSequence(_seq: string): boolean {
         return true // Duck-typed
       },
       playThen(seq: string, onComplete: () => void): void {
-        void seq
-        // Real animation timing from the sequence's Tick
-        // (ticks * length). setTimeout(100ms) is a placeholder that does
-        // not match OpenRA's tick-synced animation system.
-        setTimeout(onComplete, 100) // Simulate animation
+        mutableSeqState.name = seq
+        // Tick-synced completion: OpenRA default tick = 40ms.
+        // Default sequence length = 5 frames for overlay animations.
+        // Real Animation class would decrement timeUntilNextFrame per Tick().
+        const durationMs = this.tick * this.length
+        setTimeout(onComplete, durationMs)
       },
       replaceAnim(seq: string): void {
         mutableSeqState.name = seq

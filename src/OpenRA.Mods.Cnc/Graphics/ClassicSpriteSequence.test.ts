@@ -1,17 +1,42 @@
 /**
  * ClassicSpriteSequence.test.ts — Unit tests
  *
- * Tests focus on: UseClassicFacings validation, facing frame offset, config merging.
+ * Tests focus on: UseClassicFacings validation, facing frame offset, config merging,
+ * sprite provider integration (P1-E.21).
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   ClassicSpriteSequence,
   ClassicSpriteSequenceLoader,
   mergeConfig,
   type ClassicSpriteSequenceConfig,
+  type SpriteProvider,
 } from './ClassicSpriteSequence.js'
 import { WAngle } from '../../OpenRA.Game/WAngle.js'
+import type { Sprite } from '../../OpenRA.Game/Graphics/Sprite.js'
+
+// ---------------------------------------------------------------------------
+// Stub sprite for testing
+// ---------------------------------------------------------------------------
+
+function makeStubSprite(overrides: Partial<Sprite> = {}): Sprite {
+  return {
+    sheet: null as unknown as Sprite['sheet'],
+    bounds: { x: 0, y: 0, width: 32, height: 32 },
+    blendMode: 0 as unknown as Sprite['blendMode'],
+    channel: 4 as Sprite['channel'],
+    zRamp: 0,
+    size: { x: 32, y: 32, z: 0 },
+    offset: { x: 0, y: 0, z: 0 },
+    top: 0, left: 0, bottom: 1, right: 1,
+    ...overrides,
+  } as Sprite
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('mergeConfig', () => {
   it('should return data values when provided', () => {
@@ -71,11 +96,94 @@ describe('ClassicSpriteSequence', () => {
     }).not.toThrow()
   })
 
-  it('should return a stub sprite from getSprite', () => {
+  it('should return a stub sprite from getSprite (descriptor mode)', () => {
     const seq = new ClassicSpriteSequence('unit', 'idle', { facings: 8 })
     const sprite = seq.getSprite(0, WAngle.Zero)
     expect(sprite).toBeDefined()
     expect(sprite.sheet).toBeNull()
+  })
+
+  describe('sprite provider integration (P1-E.21)', () => {
+    it('should start without a sprite provider', () => {
+      const seq = new ClassicSpriteSequence('unit', 'idle', { facings: 8 })
+      expect(seq.hasSpriteProvider).toBe(false)
+    })
+
+    it('should set a sprite provider', () => {
+      const seq = new ClassicSpriteSequence('unit', 'idle', { facings: 8 })
+      const provider: SpriteProvider = vi.fn().mockReturnValue(makeStubSprite())
+      seq.setSpriteProvider(provider)
+      expect(seq.hasSpriteProvider).toBe(true)
+    })
+
+    it('should delegate getSprite to sprite provider when set', () => {
+      const seq = new ClassicSpriteSequence('unit', 'idle', {
+        useClassicFacings: false,
+        facings: 8,
+      })
+      const customSprite = makeStubSprite({ bounds: { x: 10, y: 20, width: 64, height: 64 } })
+      const provider: SpriteProvider = vi.fn().mockReturnValue(customSprite)
+      seq.setSpriteProvider(provider)
+
+      const result = seq.getSprite(0, WAngle.Zero)
+      expect(provider).toHaveBeenCalled()
+      expect(result).toBe(customSprite)
+      expect(result.bounds.width).toBe(64)
+      expect(result.bounds.height).toBe(64)
+    })
+
+    it('should pass correct frame and facing offset to provider', () => {
+      const seq = new ClassicSpriteSequence('unit', 'idle', {
+        useClassicFacings: false,
+        facings: 8,
+      })
+      const provider: SpriteProvider = vi.fn().mockReturnValue(makeStubSprite())
+      seq.setSpriteProvider(provider)
+
+      // For 8 facings, WAngle(896) -> facing offset 0
+      // The standard indexFacing formula: ((angle - 64 + 1024) % 1024) / 128
+      // WAngle(896): (896 - 64 + 1024) mod 1024 = 832 -> 832/128 = 6... actually 896/128 = 7
+      // WAngle(0): (0 - 64 + 1024) mod 1024 = 960 -> 960/128 = 7 (not 0)
+      // WAngle(64): (64 - 64 + 1024) mod 1024 = 0 -> 0/128 = 0
+      // So WAngle(64) gives facing offset 0 for 8 facings
+      seq.getSprite(3, new WAngle(64))
+      expect(provider).toHaveBeenCalledWith(3, 0)
+    })
+
+    it('should compute bounds from provider sprite', () => {
+      const seq = new ClassicSpriteSequence('unit', 'idle', { facings: 8 })
+      const customSprite = makeStubSprite({ bounds: { x: 5, y: 5, width: 48, height: 48 } })
+      seq.setSpriteProvider(() => customSprite)
+      expect(seq.bounds).toEqual({ x: 5, y: 5, width: 48, height: 48 })
+    })
+
+    it('should return stub when provider returns null', () => {
+      const seq = new ClassicSpriteSequence('unit', 'idle', { facings: 8 })
+      seq.setSpriteProvider(() => null)
+      const sprite = seq.getSprite(0, WAngle.Zero)
+      expect(sprite.sheet).toBeNull()
+      expect(sprite.bounds.width).toBe(0)
+    })
+
+    it('should get shadow via provider when shadowStart >= 0', () => {
+      const seq = new ClassicSpriteSequence('unit', 'idle', {
+        facings: 8,
+        shadowStart: 32,
+      })
+      const shadowSprite = makeStubSprite()
+      const provider: SpriteProvider = vi.fn().mockReturnValue(shadowSprite)
+      seq.setSpriteProvider(provider)
+
+      const shadow = seq.getShadow(0, WAngle.Zero)
+      expect(shadow).not.toBeNull()
+      expect(provider).toHaveBeenCalled()
+    })
+
+    it('should return null shadow when shadowStart < 0 even with provider', () => {
+      const seq = new ClassicSpriteSequence('unit', 'idle', { facings: 8 })
+      seq.setSpriteProvider(() => makeStubSprite())
+      expect(seq.getShadow(0, WAngle.Zero)).toBeNull()
+    })
   })
 
   it('should return alpha=1 for any frame', () => {
@@ -89,7 +197,6 @@ describe('ClassicSpriteSequence', () => {
       useClassicFacings: false,
       facings: 8,
     })
-    // For 8 facings with standard linear facing, angle 0 -> frame 0
     const offset0 = seq.getFacingFrameOffset(WAngle.Zero)
     expect(offset0).toBeGreaterThanOrEqual(0)
     expect(offset0).toBeLessThan(8)
@@ -100,7 +207,6 @@ describe('ClassicSpriteSequence', () => {
       useClassicFacings: true,
       facings: 32,
     })
-    // For 32 classic facings, angle 0 -> classicIndexFacing should return frame index
     const offset = seq.getFacingFrameOffset(WAngle.Zero)
     expect(offset).toBeGreaterThanOrEqual(0)
     expect(offset).toBeLessThan(32)
@@ -121,7 +227,7 @@ describe('ClassicSpriteSequence', () => {
     expect(seq.getShadow(0, WAngle.Zero)).toBeNull()
   })
 
-  it('should return default bounds', () => {
+  it('should return zero bounds in descriptor mode', () => {
     const seq = new ClassicSpriteSequence('unit', 'idle', {})
     expect(seq.bounds).toEqual({ x: 0, y: 0, width: 0, height: 0 })
   })

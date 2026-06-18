@@ -8,12 +8,18 @@
  * - C# ParseFilenames / ParseCombineFilenames virtual override → TS override methods
  * - C# Yield return ReservationInfo → TS array accumulation
  * - C# MiniYaml parse → TS JSON config with tileset-specific override objects
+ * - C# FilenamePattern format expansion (%d -> frame number) → TS pattern resolver
  *
  * 地形集特定的序列允许同一序列在不同地形上有不同的文件名。
  * 例如，"idle" 在沙漠地形集上可能使用 "unit-desert.shp" 而非 "unit.shp"。
  * 通过 tilesetFilenames 和 tilesetFilenamesPattern 字典来定义。
  *
  * 依赖: ClassicSpriteSequence.ts (基类)
+ *
+ * P1-E.22: Full baseParseFilenames with Filename/FilenamePattern resolution.
+ * The base fallback now supports pattern-based filename expansion (e.g.,
+ * "%d" -> frame number substitution) matching the C# DefaultSpriteSequence
+ * ParseFilenames logic.
  */
 
 import {
@@ -32,6 +38,30 @@ import {
  */
 export interface ClassicTilesetSpecificSpriteSequenceConfig
   extends ClassicSpriteSequenceConfig {
+  /** Specific filename to use (overrides image as the sprite source).
+   *
+   * OpenRA 对照: DefaultSpriteSequence.Filename
+   */
+  filename?: string
+
+  /** Filename pattern for format-string expansion (e.g., "unit-%d.shp").
+   *
+   * OpenRA 对照: DefaultSpriteSequence.FilenamePattern
+   */
+  filenamePattern?: string
+
+  /** Start index for filename pattern expansion.
+   *
+   * OpenRA 对照: FilenamePattern Start parameter
+   */
+  patternStart?: number
+
+  /** Count of file indices for filename pattern expansion.
+   *
+   * OpenRA 对照: FilenamePattern Count parameter
+   */
+  patternCount?: number
+
   /** Dictionary of <tileset name>: filename to override the base filename.
    *
    * OpenRA 对照: ClassicTilesetSpecificSpriteSequence.TilesetFilenames
@@ -82,6 +112,26 @@ export interface ReservationInfo {
 }
 
 // ---------------------------------------------------------------------------
+// Format-string expansion helper (P1-E.22)
+// ---------------------------------------------------------------------------
+
+/** Expand a filename pattern with format specifiers.
+ *
+ * OpenRA 对照: string.FormatInvariant(string, int) used in DefaultSpriteSequence.ParseFilenames
+ *
+ * Currently supports %d (decimal integer) format substitution.
+ * Example: "unit-%d.shp" with index 0 -> "unit-0.shp"
+ *
+ * @param pattern — format string (e.g., "unit-%d.shp")
+ * @param index — index to substitute
+ * @returns formatted filename
+ */
+function expandPattern(pattern: string, index: number): string {
+  // Support %d format (matching C# FormatInvariant behavior)
+  return pattern.replace(/%d/g, () => String(index))
+}
+
+// ---------------------------------------------------------------------------
 // ClassicTilesetSpecificSpriteSequence
 // ---------------------------------------------------------------------------
 
@@ -115,6 +165,24 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
     string, { value: string; start?: number; count?: number }
   > | null
 
+  /** Specific filename override (from config).
+   *
+   * OpenRA 对照: DefaultSpriteSequence.Filename
+   */
+  private readonly _filename: string | null
+
+  /** Filename pattern for format-string expansion.
+   *
+   * OpenRA 对照: DefaultSpriteSequence.FilenamePattern
+   */
+  private readonly _filenamePattern: string | null
+
+  /** Pattern start index. */
+  private readonly _patternStart: number
+
+  /** Pattern count. */
+  private readonly _patternCount: number
+
   constructor(
     image: string,
     sequence: string,
@@ -126,6 +194,10 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
     this.tilesetFilenames = data.tilesetFilenames ?? null
     this.tilesetFilenamesPattern = data.tilesetFilenamesPattern ?? null
     this.tilesetFilenamePatterns = data.tilesetFilenamePatterns ?? null
+    this._filename = data.filename ?? null
+    this._filenamePattern = data.filenamePattern ?? null
+    this._patternStart = data.patternStart ?? 0
+    this._patternCount = data.patternCount ?? 1
   }
 
   // -------------------------------------------------------------------------
@@ -135,6 +207,11 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
   /** Parse filenames, checking for tileset-specific overrides.
    *
    * OpenRA 对照: ClassicTilesetSpecificSpriteSequence.ParseFilenames(ModData, string, ImmutableArray<int>, MiniYaml, MiniYaml)
+   *
+   * Resolution order (matching C# priority):
+   * 1. TilesetFilenamesPattern per-tileset pattern overrides (highest priority)
+   * 2. TilesetFilenames per-tileset filename overrides
+   * 3. Base filename resolution (FilenamePattern > Filename > image)
    *
    * @param _modData — the mod data
    * @param tileset — the active tileset name
@@ -147,23 +224,24 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
     _frames: readonly number[],
   ): ReservationInfo[] {
     // Check TilesetFilenamesPattern first (higher priority in C# order)
+    // C# produces one ReservationInfo per expanded entry (i.e., count entries)
+    // using FormatInvariant(string, int) for expansion.
     if (this.tilesetFilenamePatterns && tileset) {
       const patternEntry = this.tilesetFilenamePatterns[tileset]
       if (patternEntry) {
         const start = patternEntry.start ?? 0
         const count = patternEntry.count ?? 1
-        const frames: number[] = []
+        const results: ReservationInfo[] = []
         for (let i = 0; i < count; i++) {
-          frames.push(start + i)
-        }
-        return [
-          {
-            filename: patternEntry.value,
-            loadFrames: this.length > 0 ? frames : [this.length],
-            frames,
+          const index = start + i
+          results.push({
+            filename: expandPattern(patternEntry.value, index),
+            loadFrames: [0], // FirstFrame
+            frames: [0],
             location: { x: 0, y: 0 },
-          },
-        ]
+          })
+        }
+        return results
       }
     }
 
@@ -221,25 +299,75 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
       }
     }
 
+    // Check TilesetFilenamesPattern for combine sections
+    if (this.tilesetFilenamesPattern && tileset) {
+      const pattern = this.tilesetFilenamesPattern[tileset]
+      if (pattern) {
+        const resolvedFrames = frames ?? this.calculateFrameIndices()
+        return [
+          {
+            filename: expandPattern(pattern, 0),
+            loadFrames: resolvedFrames,
+            frames: resolvedFrames,
+            location: { x: 0, y: 0 },
+          },
+        ]
+      }
+    }
+
     // Fall through to base
     return this.baseParseCombineFilenames(frames)
   }
 
   // -------------------------------------------------------------------------
-  // Base delegation (default implementation when no tileset override)
+  // Base delegation (P1-E.22: full filename/filenamePattern resolution)
   // -------------------------------------------------------------------------
 
   /** Base filename parsing (non-tileset-specific).
    *
    * OpenRA 对照: DefaultSpriteSequence.ParseFilenames base call
    *
-* This is a minimal fallback. The full C# implementation
-   * uses DefaultSpriteSequence's Filename and FilenamePattern fields to
-   * resolve sprite sheet filenames with format-string expansion (e.g.,
-   * "%d" → frame number). See OpenRA.Mods.Common/Graphics/DefaultSpriteSequence
-   * for the complete implementation (~500 lines of filename/pattern parsing).
+   * Resolution order:
+   * 1. If FilenamePattern is set, expand it with patternStart/patternCount
+   *    to generate multiple ReservationInfo entries.
+   * 2. If Filename is set, use it directly.
+   * 3. Otherwise, fall back to the image name.
+   *
+   * The FilenamePattern supports %d format specifier substitution
+   * (e.g., "unit-%d.shp" with start=0, count=4 produces
+   * "unit-0.shp", "unit-1.shp", "unit-2.shp", "unit-3.shp").
    */
   private baseParseFilenames(): ReservationInfo[] {
+    // Check FilenamePattern first (higher priority)
+    if (this._filenamePattern) {
+      const results: ReservationInfo[] = []
+      for (let i = 0; i < this._patternCount; i++) {
+        const index = this._patternStart + i
+        const filename = expandPattern(this._filenamePattern, index)
+        results.push({
+          filename,
+          loadFrames: [0], // First frame per file
+          frames: [0],
+          location: { x: 0, y: 0 },
+        })
+      }
+      return results
+    }
+
+    // Check explicit filename
+    if (this._filename) {
+      const frames = this.calculateFrameIndices()
+      return [
+        {
+          filename: this._filename,
+          loadFrames: frames,
+          frames,
+          location: { x: 0, y: 0 },
+        },
+      ]
+    }
+
+    // Default: use image name
     const frames = this.calculateFrameIndices()
     return [
       {
@@ -255,12 +383,27 @@ export class ClassicTilesetSpecificSpriteSequence extends ClassicSpriteSequence 
    *
    * OpenRA 对照: DefaultSpriteSequence.ParseCombineFilenames base call
    *
-* Minimal fallback — see baseParseFilenames for full scope.
+   * When frames is null (not specified explicitly), treat as "all frames"
+   * and pass null forward for the caller to decide.
    */
   private baseParseCombineFilenames(
     frames: readonly number[] | null,
   ): ReservationInfo[] {
     const resolvedFrames = frames ?? this.calculateFrameIndices()
+
+    // Check explicit filename
+    if (this._filename) {
+      return [
+        {
+          filename: this._filename,
+          loadFrames: resolvedFrames,
+          frames: resolvedFrames,
+          location: { x: 0, y: 0 },
+        },
+      ]
+    }
+
+    // Default: use 'combine' as marker filename
     return [
       {
         filename: 'combine',
