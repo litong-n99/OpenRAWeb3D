@@ -280,7 +280,11 @@ describe('MapEditorData', () => {
     expect(restored.cameraPosition!.X).toBe(7)
     expect(restored.cameraPosition!.Y).toBe(8)
     expect(restored.selectedTab).toBe('vehicles')
-    // Note: editorConfig restoration also picks up from top-level fields
+    // editorConfig.cameraPosition must also round-trip as CPos instance
+    expect(restored.editorConfig.cameraPosition).toBeDefined()
+    expect(restored.editorConfig.cameraPosition!.X).toBe(7)
+    expect(restored.editorConfig.cameraPosition!.Y).toBe(8)
+    expect(restored.editorConfig.cameraPosition instanceof CPos).toBe(true)
   })
 
   it('isEditorTrait returns true (marker for editor-mode-only traits)', () => {

@@ -233,6 +233,13 @@ export class MapEditorData {
     // Only include editorConfig if it has data
     if (Object.keys(this.editorConfig).length > 0) {
       result.editorConfig = { ...this.editorConfig }
+      // Convert CPos to {x,y} plain object (CPos serializes as {Bits:int})
+      if (this.editorConfig.cameraPosition) {
+        result.editorConfig.cameraPosition = {
+          x: this.editorConfig.cameraPosition.X,
+          y: this.editorConfig.cameraPosition.Y,
+        }
+      }
     }
 
     if (this.cameraPosition) {
