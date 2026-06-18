@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch22 Game Entry - 游戏加载管线 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; overflow-y: auto; display: flex; flex-direction: column; }
+
+    /* --- Loading Stage Indicator --- */
+    #stage-indicator { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 20px; background: #0f0f1a; border-bottom: 1px solid #1e1e3a; flex-shrink: 0; }
+    .stage-dot { width: 10px; height: 10px; border-radius: 50%; background: #333; flex-shrink: 0; transition: background 0.3s ease, box-shadow 0.3s ease; }
+    .stage-dot.active { background: #4466cc; box-shadow: 0 0 8px rgba(68, 102, 204, 0.6); }
+    .stage-dot.done { background: #4caf50; }
+    .stage-dot.error { background: #e94560; }
+    .stage-connector { width: 20px; height: 2px; background: #2a2a4e; flex-shrink: 0; transition: background 0.3s ease; }
+    .stage-connector.done { background: #4caf50; }
+
+    /* --- Shellmap Preview --- */
+    #shellmap-preview { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; transition: background-color 0.5s ease; background: #0d1117; }
+    #shellmap-preview.loaded { background: #0d0d1a; }
+    #shellmap-label { position: absolute; bottom: 16px; right: 16px; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 4px; font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; color: #888; }
+    #shellmap-label .val { color: #aad; }
+
+    /* --- Loading Overlay (within sandbox simulation) --- */
+    #loading-sim { position: absolute; inset: 0; background: rgba(13, 17, 23, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; transition: opacity 0.4s ease; }
+    #loading-sim.hidden { opacity: 0; pointer-events: none; }
+    #loading-sim .loading-content { text-align: center; max-width: 480px; width: 80%; }
+    #sim-loading-bar-container { width: 100%; height: 8px; background: #2a2a4e; border-radius: 4px; overflow: hidden; margin-bottom: 1rem; }
+    #sim-loading-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #4466cc, #6688ee); border-radius: 4px; transition: width 0.4s ease; }
+    #sim-loading-bar.error { background: #e94560; }
+    #sim-loading-text { color: #aaaaee; font-size: 0.95rem; margin-bottom: 0.5rem; }
+    #sim-loading-subtext { color: #666; font-size: 0.8rem; font-family: 'Consolas', 'Fira Code', monospace; }
+
+    /* --- Dispose Display --- */
+    #dispose-overlay { position: absolute; inset: 0; background: rgba(233, 69, 96, 0.08); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 10; border: 2px solid rgba(233, 69, 96, 0.3); transition: opacity 0.3s ease; }
+    #dispose-overlay.visible { display: flex; }
+    #dispose-overlay h2 { color: #e94560; font-size: 1.3rem; margin-bottom: 0.5rem; }
+    #dispose-list { font-family: 'Consolas', 'Fira Code', monospace; font-size: 12px; color: #aaa; line-height: 1.8; }
+    #dispose-list .item { transition: color 0.3s ease, text-decoration 0.3s ease; }
+    #dispose-list .item.done { color: #e94560; text-decoration: line-through; }
+
+    /* --- Detail Log --- */
+    #detail-log { max-height: 180px; overflow-y: auto; border-top: 1px solid #1e1e3a; background: #0a0a15; padding: 8px 16px; font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; line-height: 1.7; flex-shrink: 0; }
+    #detail-log .entry { display: flex; gap: 8px; padding: 1px 0; }
+    #detail-log .entry .ts { color: #444; flex-shrink: 0; }
+    #detail-log .entry .stage { color: #6688ee; flex-shrink: 0; }
+    #detail-log .entry .msg { color: #aaa; }
+    #detail-log .entry .msg.warn { color: #cc8800; }
+    #detail-log .entry .msg.error { color: #e94560; }
+    #detail-log .entry .msg.ok { color: #4caf50; }
+
+    /* --- Controls Panel --- */
+    #panel { width: 360px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #panel h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-section { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .panel-section ul, .panel-section ol { margin: 6px 0; padding-left: 18px; font-size: 12px; line-height: 1.7; }
+    .panel-section li { margin: 3px 0; }
+    .metric { color: #aad; font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; }
+
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s, border-color 0.15s; }
+    button:hover { background: #0f3460; }
+    button.primary { border-color: #4466cc; color: #88aaff; }
+    button.primary:hover { background: #4466cc; color: #fff; }
+    button.danger { border-color: #e94560; color: #e94560; }
+    button.danger:hover { background: #e94560; color: #fff; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    select { padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; width: 100%; margin-top: 4px; cursor: pointer; }
+    select:hover { background: #0f3460; }
+
+    .check-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }
+    .check-indicator { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; transition: background 0.2s; }
+    .check-indicator.pass { background: #4caf50; }
+    .check-indicator.fail { background: #e94560; }
+
+    .stage-info { font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; line-height: 1.8; }
+    .stage-info .key { color: #666; }
+    .stage-info .val { color: #aad; }
+
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Ch22 Game Entry - 游戏加载管线</h1>
+    <div class="subtitle">ID: ch22-game-entry/game-loading | 期望结果见 README.md | 模拟 Game.create() 全流程</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div id="stage-indicator">
+        <span class="stage-dot" data-stage="0"></span>
+        <span class="stage-connector"></span>
+        <span class="stage-dot" data-stage="1"></span>
+        <span class="stage-connector"></span>
+        <span class="stage-dot" data-stage="2"></span>
+        <span class="stage-connector"></span>
+        <span class="stage-dot" data-stage="3"></span>
+        <span class="stage-connector"></span>
+        <span class="stage-dot" data-stage="4"></span>
+        <span class="stage-connector"></span>
+        <span class="stage-dot" data-stage="5"></span>
+        <span class="stage-connector"></span>
+        <span class="stage-dot" data-stage="6"></span>
+        <span class="stage-connector"></span>
+        <span class="stage-dot" data-stage="7"></span>
+      </div>
+      <div id="shellmap-preview">
+        <div id="loading-sim">
+          <div class="loading-content">
+            <div id="sim-loading-bar-container"><div id="sim-loading-bar"></div></div>
+            <span id="sim-loading-text">等待启动...</span>
+            <div id="sim-loading-subtext"></div>
+          </div>
+        </div>
+        <div id="dispose-overlay">
+          <h2>DISPOSING</h2>
+          <div id="dispose-list"></div>
+        </div>
+        <div id="shellmap-label"><span class="key">clearColor:</span> <span class="val" id="shellmap-color-val">-</span></div>
+      </div>
+      <div id="detail-log">
+        <div class="entry"><span class="ts">--:--:--</span><span class="stage">[init]</span><span class="msg">等待用户操作...</span></div>
+      </div>
+    </div>
+    <div id="panel">
+      <div class="panel-section">
+        <h3>B. 期望结果 (Expected Results)</h3>
+        <ol style="padding-left:18px;font-size:12px;line-height:1.7;">
+          <li>进度条序列: <span class="metric">8</span> 个阶段点依次亮起（灰→蓝→绿），进度条 <span class="metric">15%→25%→35%→50%→65%→75%→90%→100%</span></li>
+          <li>文字伴随: 每个阶段 <span class="metric">100ms</span> 内更新加载文字（Loading engine → Loading mod manifest → ... → Ready）</li>
+          <li>Shellmap 背景: Ready 后预览区变为 <span class="metric">rgb(13,13,26) / #0d0d1a</span>（Color4: 0.05, 0.05, 0.1）</li>
+          <li>Dispose 序列: <span class="metric">6</span> 个子系统逆序消亡（World→WorldRenderer→OrderManager→Sound→ModData→Renderer），<span class="metric">500ms</span> 内完成</li>
+          <li>错误处理: 获取失败时进度条变红 <span class="metric">#e94560</span>，错误描述 <span class="metric">200ms</span> 内显示</li>
+        </ol>
+      </div>
+      <div class="panel-section">
+        <h3>C. 交互控件</h3>
+        <select id="mod-select">
+          <option value="ra">Red Alert (ra)</option>
+          <option value="td">Tiberian Dawn (td)</option>
+          <option value="_test">Test Mod (_test)</option>
+          <option value="NONEXISTENT">Nonexistent (error test)</option>
+        </select>
+        <button class="primary" id="btn-start">▶ 启动加载 (Auto-run)</button>
+        <button id="btn-step">→ 单步加载 (Step)</button>
+        <button class="danger" id="btn-dispose">⊗ Dispose (模拟销毁)</button>
+        <button id="btn-reset">↺ 重置</button>
+      </div>
+      <div class="panel-section">
+        <h3>自动检查</h3>
+        <div class="check-row"><span class="check-indicator" id="chk-stages"></span> 8 个阶段全部完成</div>
+        <div class="check-row"><span class="check-indicator" id="chk-shellmap-bg"></span> Shellmap 背景色正确</div>
+        <div class="check-row"><span class="check-indicator" id="chk-progress-final"></span> 进度条到达 100%</div>
+        <div class="check-row"><span class="check-indicator" id="chk-dispose"></span> 6 个子系统已销毁</div>
+        <div class="check-row"><span class="check-indicator" id="chk-error-mode"></span> 错误模式已触发 (Nonexistent)</div>
+      </div>
+      <div class="panel-section">
+        <h3>管线状态</h3>
+        <div class="stage-info">
+          <div><span class="key">当前阶段:</span> <span class="val" id="state-stage">-</span></div>
+          <div><span class="key">进度:</span> <span class="val" id="state-progress">0%</span></div>
+          <div><span class="key">状态:</span> <span class="val" id="state-status">IDLE</span></div>
+          <div><span class="key">Mod ID:</span> <span class="val" id="state-modid">ra</span></div>
+          <div><span class="key">耗时:</span> <span class="val" id="state-elapsed">0ms</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">纯 DOM (模拟)</span></span>
+    <span>渲染: <span id="info-render">Shellmap Preview</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
