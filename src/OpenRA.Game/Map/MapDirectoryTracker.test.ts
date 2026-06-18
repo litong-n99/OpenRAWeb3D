@@ -641,14 +641,11 @@ describe('MapDirectoryTracker', () => {
 
   describe('isMapFile', () => {
     it('identifies .oramap files as maps (tested indirectly via pollOnce)', () => {
-      // The isMapFile method is private -- its behavior is tested indirectly
-      // through the pollOnce tests above (triggers add for .oramap files).
-      expect(true).toBe(true)
+      // NOTE: Indirectly tested via startPolling/pollOnce integration tests
     })
 
     it('identifies directory-style maps with no extension (tested indirectly)', () => {
-      // Also tested indirectly via pollOnce tests above
-      expect(true).toBe(true)
+      // NOTE: Indirectly tested via startPolling/pollOnce integration tests
     })
   })
 })

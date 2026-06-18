@@ -345,6 +345,13 @@ export class MapPreview {
   // below). Re-add when TODO-4.E.2 (full IReadOnlyFileSystem integration) is
   // implemented.
 
+  // TODO-4.E.2-DEFERRED: The following C# MapPreview methods are deferred:
+  //   - Generate(): terrain rendering pipeline integration needed
+  //   - Install(): remote map repository integration needed
+  //   - ToMap(): full Map binary integration needed
+  //   - DefinesUnsafeCustomRules() / LoadRuleset(): Ruleset system needed
+  //   - GetMessage() / TryGetMessage(): FluentBundle l10n integration needed
+
   // -------------------------------------------------------------------------
   // UpdateFromMap / UpdateFromMapWithoutOwningPackage
   // -------------------------------------------------------------------------
@@ -382,6 +389,7 @@ export class MapPreview {
     }
 
     this.modifiedDate = new Date()
+    this.status = MapStatus.Available
   }
 
   /**

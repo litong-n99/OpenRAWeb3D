@@ -395,6 +395,8 @@ export class MapDirectoryTracker {
     // 基于目录的地图 -- 检查文件名是否像是地图标识符
     // .oramap 文件是压缩地图
     // 没有常见扩展名的目录可能是旧格式/未压缩的地图
+    // NOTE: Matches all files without dots (.oramap files and directories).
+    // Non-map extensionless files in map dirs would be incorrectly matched.
     return (
       filename.endsWith('.oramap') ||
       !filename.includes('.')

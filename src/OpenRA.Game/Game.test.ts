@@ -282,6 +282,7 @@ vi.mock('./ModData.js', () => ({
     this.mapCache = {
       dispose: vi.fn(() => disposeLog.push('MapCache')),
       get maps() { return new Map() },
+      [Symbol.iterator]: () => [][Symbol.iterator](), // P1-D.7: iterable for shellmap selection
     }
     this.init = vi.fn().mockResolvedValue(undefined)
     this.loadRuleSet = vi.fn().mockResolvedValue(null)
@@ -1836,5 +1837,421 @@ describe('CursorManager (P1-A.3)', () => {
 
     // Should not throw — cursorManager null is handled with ?.
     await expect(game.switchMod('ra')).resolves.toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// P1-D.7 Phase D.7: Shellmap Phase 3 — Dynamic AI Skirmish
+// ---------------------------------------------------------------------------
+
+describe('Shellmap Phase 3 (P1-D.7)', () => {
+  describe('chooseShellmap()', () => {
+    it('returns null when modData is null', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+      game.modData = null
+
+      const result = game.chooseShellmap()
+      expect(result).toBeNull()
+    })
+
+    it('returns null when mapCache is not iterable', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      // Default mock mapCache has Symbol.iterator returning empty iterator
+      const result = (game as any).chooseShellmap()
+      expect(result).toBeNull()
+    })
+
+    it('returns null when no shellmap-flagged maps exist', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+      game.modData = {
+        mapCache: {
+          [Symbol.iterator]: () => [
+            { uid: 'map1', visibility: 1 }, // MapVisibility.Lobby only, NOT Shellmap
+            { uid: 'map2', visibility: 4 }, // MapVisibility.MissionSelector only
+          ][Symbol.iterator](),
+        },
+      }
+
+      const result = game.chooseShellmap()
+      expect(result).toBeNull()
+    })
+
+    it('selects a random shellmap-flagged map when available', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+
+      // Shellmap flag = 2, Lobby = 1 → visibility = 3 means both flags
+      game.modData = {
+        mapCache: {
+          [Symbol.iterator]: () => [
+            { uid: 'map1', visibility: 1 }, // Lobby only
+            { uid: 'shellmap1', visibility: 2 }, // Shellmap only
+            { uid: 'both', visibility: 3 }, // Lobby + Shellmap
+          ][Symbol.iterator](),
+        },
+      }
+
+      // Run multiple times to verify it always returns a valid shellmap
+      for (let i = 0; i < 20; i++) {
+        const result = game.chooseShellmap()
+        expect(result).not.toBeNull()
+        expect(['shellmap1', 'both']).toContain(result)
+      }
+    })
+  })
+
+  describe('loadShellmapMap()', () => {
+    it('returns null when modData is null', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+      game.modData = null
+
+      const result = await game.loadShellmapMap('test-uid')
+      expect(result).toBeNull()
+    })
+
+    it('returns null when map not found in cache', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      const result = await (game as any).loadShellmapMap('nonexistent')
+      expect(result).toBeNull()
+    })
+
+    it('returns null when map status is not Available (0)', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+      game.modData = {
+        mapCache: {
+          [Symbol.iterator]: () => [
+            { uid: 'shellmap1', title: 'Shell Map', status: 1 }, // Searching, not Available
+          ][Symbol.iterator](),
+        },
+      }
+
+      const result = await game.loadShellmapMap('shellmap1')
+      expect(result).toBeNull()
+    })
+
+    it('returns MapStub when map is available', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+      game.modData = {
+        mapCache: {
+          [Symbol.iterator]: () => [
+            { uid: 'shellmap1', title: 'Shell Map', status: 0 }, // MapStatus.Available
+          ][Symbol.iterator](),
+        },
+      }
+
+      const result = await game.loadShellmapMap('shellmap1')
+      expect(result).not.toBeNull()
+      expect(result!.uid).toBe('shellmap1')
+      expect(result!.title).toBe('Shell Map')
+      expect(typeof result!.dispose).toBe('function')
+    })
+  })
+
+  describe('spawnShellmapBots()', () => {
+    it('does not throw when world is null', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      expect(() => (game as any).spawnShellmapBots()).not.toThrow()
+    })
+
+    it('adds AI players to world when world exists', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test')
+
+      const mapStub = {
+        uid: 'test-uid',
+        title: 'Test',
+        dispose: vi.fn(),
+      }
+      await game.startGame(mapStub, WorldType.Shellmap)
+
+      const playerCountBefore = game.world!.players.length
+      ;(game as any).spawnShellmapBots()
+      const playerCountAfter = game.world!.players.length
+
+      // 2 AI players should be added
+      expect(playerCountAfter).toBe(playerCountBefore + 2)
+    })
+  })
+
+  describe('setupShellmapCamera()', () => {
+    it('does not throw when worldRenderer is null', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      expect(() => (game as any).setupShellmapCamera()).not.toThrow()
+    })
+  })
+
+  describe('registerShellmapInputHandler()', () => {
+    it('registers click and keydown listeners', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+      ;(game as any).registerShellmapInputHandler()
+
+      expect(addEventListenerSpy).toHaveBeenCalledWith('click', expect.any(Function), expect.any(Object))
+      expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), expect.any(Object))
+
+      addEventListenerSpy.mockRestore()
+    })
+
+    it('shows main menu on click event', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      // Remove existing main menu
+      game.hideMainMenu()
+      expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+      ;(game as any).registerShellmapInputHandler()
+
+      // Simulate click
+      window.dispatchEvent(new MouseEvent('click'))
+
+      // Main menu should now be visible
+      expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+      game.hideMainMenu()
+    })
+
+    it('shows main menu on keydown event', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      game.hideMainMenu()
+      expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+      ;(game as any).registerShellmapInputHandler()
+
+      // Simulate keydown
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }))
+
+      expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+      game.hideMainMenu()
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// P1-D.8 Phase D.8: Widget-Based Main Menu
+// ---------------------------------------------------------------------------
+
+describe('Widget-Based Main Menu (P1-D.8)', () => {
+  afterEach(() => {
+    const existing = document.getElementById('main-menu-overlay')
+    if (existing) existing.remove()
+    const widgetRoot = document.getElementById('main-menu-widget-overlay')
+    if (widgetRoot) widgetRoot.remove()
+  })
+
+  describe('showMainMenuWidget()', () => {
+    it('creates widget-based menu in the DOM', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      game.showMainMenuWidget()
+
+      // Wait for the async import to resolve
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const widgetRoot = document.getElementById('main-menu-widget-overlay')
+      expect(widgetRoot).not.toBeNull()
+
+      game.hideMainMenuWidget()
+    })
+
+    it('removes DOM overlay when widget menu is shown', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      // Show DOM overlay first
+      game.showMainMenu()
+      expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+      // Show widget menu — should remove DOM overlay
+      game.showMainMenuWidget()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+      game.hideMainMenuWidget()
+    })
+
+    it('creates menu buttons in widget tree', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      game.showMainMenuWidget()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const widgetRoot = document.getElementById('main-menu-widget-overlay')
+      expect(widgetRoot).not.toBeNull()
+
+      // Verify buttons exist
+      expect(document.getElementById('widget-btn-skirmish')).not.toBeNull()
+      expect(document.getElementById('widget-btn-exit')).not.toBeNull()
+
+      // Verify title is present
+      expect(widgetRoot!.textContent).toContain('OpenRAWeb3D')
+
+      game.hideMainMenuWidget()
+    })
+  })
+
+  describe('hideMainMenuWidget()', () => {
+    it('removes widget DOM from document', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      game.showMainMenuWidget()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      expect(document.getElementById('main-menu-widget-overlay')).not.toBeNull()
+
+      game.hideMainMenuWidget()
+      expect(document.getElementById('main-menu-widget-overlay')).toBeNull()
+    })
+
+    it('is safe to call when no widget menu exists', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      expect(() => game.hideMainMenuWidget()).not.toThrow()
+    })
+
+    it('is safe to call twice', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      game.showMainMenuWidget()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      game.hideMainMenuWidget()
+      expect(() => game.hideMainMenuWidget()).not.toThrow()
+    })
+  })
+
+  describe('hideMainMenu() integration', () => {
+    it('hideMainMenu also calls hideMainMenuWidget', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      game.showMainMenuWidget()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      expect(document.getElementById('main-menu-widget-overlay')).not.toBeNull()
+
+      // Calling hideMainMenu should clean up both
+      game.hideMainMenu()
+      expect(document.getElementById('main-menu-widget-overlay')).toBeNull()
+      expect(document.getElementById('main-menu-overlay')).toBeNull()
+    })
+  })
+
+  describe('Escape key handler', () => {
+    it('Escape key triggers exit to mod selector', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      const pushStateSpy = vi.spyOn(history, 'pushState')
+
+      game.showMainMenuWidget()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Simulate Escape key
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+
+      expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
+
+      pushStateSpy.mockRestore()
+      game.hideMainMenuWidget()
+    })
+  })
+
+  describe('Exit button in widget menu', () => {
+    it('Exit button triggers navigation to /', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      const pushStateSpy = vi.spyOn(history, 'pushState')
+
+      game.showMainMenuWidget()
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const exitBtn = document.getElementById('widget-btn-exit') as HTMLButtonElement
+      expect(exitBtn).not.toBeNull()
+      exitBtn.click()
+
+      expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
+
+      pushStateSpy.mockRestore()
+      game.hideMainMenuWidget()
+    })
   })
 })

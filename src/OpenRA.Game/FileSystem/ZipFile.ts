@@ -311,12 +311,6 @@ export class ZipFile implements IReadOnlyPackage {
   /**
    * 在主线程上使用 fflate.unzip 异步解压 ZIP 数据。
    *
-   * @param data — 原始 ZIP 数据
-   * @returns 文件名 → 解压数据的映射
-   */
-  /**
-   * 在主线程上使用 fflate.unzip 异步解压 ZIP 数据。
-   *
    * fflate 的 unzip 使用错误优先的回调风格：(err, data) => void。
    * 返回类型 AsyncTerminable 是一个用于取消的函数（我们忽略它）。
    *
