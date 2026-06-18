@@ -13,13 +13,15 @@
  *
  * NOTE: The C# version draws per-cell ramp polygon outlines (for terrain-aware
  * selection visualization). The TypeScript version draws a bounding rectangle
- * at the average terrain height of the selected region. Per-cell ramp rendering
- * can be added later as a performance-optimized GPU instanced-line technique.
+ * at the average terrain height of the selected region.
+ * TODO-21.A.7-perf: Per-cell ramp rendering via GPU instanced-line technique
+ *   for faithful terrain-aware selection visualization.
  */
 
 import { CellCoordsRegion } from '../../OpenRA.Game/Map/CellCoordsRegion.js'
 import type { Color } from '../../OpenRA.Game/Graphics/PlatformInterfaces.js'
 import { CPos } from '../../OpenRA.Game/CPos.js'
+import { WPos } from '../../OpenRA.Game/WPos.js'
 
 // ---------------------------------------------------------------------------
 // Babylon.js types (imported for type annotations — mocked in tests)
@@ -36,6 +38,9 @@ import type { Scene } from '@babylonjs/core/scene'
  *
  * Used by computeWorldCorners() so the core logic is unit-testable
  * without mocking @babylonjs/core.
+ *
+ * @internal — not part of the public editor API; used internally
+ *   by computeWorldCorners() and test stubs.
  */
 export interface WorldPoint {
   readonly x: number
@@ -77,6 +82,10 @@ export class EditorSelectionAnnotationRenderable {
   /** Screen-space pixel offset (altitude compensation for isometric views).
    *
    * OpenRA 对照: EditorSelectionAnnotationRenderable.altPixelOffset (int2)
+   *
+   * NOTE: This field is vestigial in 3D — the depth buffer handles z-fighting
+   * between coplanar geometry. Retained for API compatibility with the OpenRA
+   * constructor signature and for potential 2D overlay rendering in the future.
    */
   private _altPixelOffset: { readonly x: number; readonly y: number }
 
@@ -120,6 +129,97 @@ export class EditorSelectionAnnotationRenderable {
     this._color = { ...color }
     this._altPixelOffset = altPixelOffset ?? { x: 0, y: 0 }
     this._offset = offset ?? { x: 0, y: 0 }
+  }
+
+  // -------------------------------------------------------------------------
+  // IRenderable interface methods
+  // OpenRA 对照: IRenderable members
+  // -------------------------------------------------------------------------
+
+  /** World position of this renderable (always WPos.Zero — annotation has
+   * no fixed world position; it follows the selection).
+   *
+   * OpenRA 对照: IRenderable.Pos
+   */
+  get Pos(): WPos {
+    return WPos.Zero
+  }
+
+  /** Z-offset for depth sorting (always 0 — annotations render in their
+   * own rendering group, so depth sorting is handled by renderingGroupId).
+   *
+   * OpenRA 对照: IRenderable.ZOffset
+   */
+  get ZOffset(): number {
+    return 0
+  }
+
+  /** Whether this renderable is a decoration (always true — selection box
+   * is a visual annotation, not gameplay-relevant geometry).
+   *
+   * OpenRA 对照: IRenderable.IsDecoration
+   */
+  get IsDecoration(): boolean {
+    return true
+  }
+
+  /** Return a copy with adjusted Z-offset (no-op — this renderable is
+   * a decoration and does not support Z-ordering).
+   *
+   * OpenRA 对照: IRenderable.WithZOffset(int)
+   */
+  WithZOffset(_newOffset: number): this {
+    return this
+  }
+
+  /** Return a copy offset by a world vector (no-op — annotations are
+   * not subject to world-space offset).
+   *
+   * OpenRA 对照: IRenderable.OffsetBy(in WVec)
+   */
+  OffsetBy(_vec: { readonly x: number; readonly y: number; readonly z: number }): this {
+    return this
+  }
+
+  /** Return a copy flagged as a decoration (no-op — already a decoration).
+   *
+   * OpenRA 对照: IRenderable.AsDecoration()
+   */
+  AsDecoration(): this {
+    return this
+  }
+
+  // -------------------------------------------------------------------------
+  // IFinalizedRenderable interface methods
+  // OpenRA 对照: IFinalizedRenderable members
+  // -------------------------------------------------------------------------
+
+  /** Prepare for rendering (no-op — this renderable is already finalized
+   * at construction time and requires no per-frame preparation).
+   *
+   * OpenRA 对照: IFinalizedRenderable.PrepareRender(WorldRenderer)
+   */
+  PrepareRender(_wr: unknown): this {
+    return this
+  }
+
+  /** Compute screen-space bounding rectangle (always empty — labels do not
+   * participate in mouse hit-testing in 2D screen space; 3D selection uses
+   * Babylon.js scene.pick() raycasting).
+   *
+   * OpenRA 对照: IFinalizedRenderable.ScreenBounds(WorldRenderer)
+   */
+  ScreenBounds(_wr: unknown): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
+    return { x: 0, y: 0, width: 0, height: 0 }
+  }
+
+  /** Render debug geometry overlay (no-op — debug visualization not needed
+   * for the selection box; it is already the debug visualization).
+   *
+   * OpenRA 对照: IFinalizedRenderable.RenderDebugGeometry(WorldRenderer)
+   */
+  RenderDebugGeometry(_wr: unknown): void {
+    // no-op
   }
 
   // -------------------------------------------------------------------------
@@ -192,6 +292,37 @@ export class EditorSelectionAnnotationRenderable {
   }
 
   // -------------------------------------------------------------------------
+  // Shared corner cell computation
+  // OpenRA 对照: (extracted from duplicated code in computeWorldCorners
+  //   and createOrUpdateMesh — MAJOR-3 review fix)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Compute the four corner cell positions of the selection bounding rectangle.
+   *
+   * The rectangle is the selection bounds extended outward by 1 cell for visual
+   * clarity, with the cell offset applied. Returns [topLeft, topRight,
+   * bottomRight, bottomLeft] in that order.
+   *
+   * @returns array of 4 CPos corner cells, or null if no selection
+   */
+  private _computeCornerCells(): CPos[] | null {
+    if (!this._selectionBounds) return null
+
+    const topLeft = this._selectionBounds.TopLeft
+    const bottomRight = this._selectionBounds.BottomRight
+    const ox = this._offset.x
+    const oy = this._offset.y
+
+    return [
+      new CPos(topLeft.X + ox - 1, topLeft.Y + oy - 1),       // top-left
+      new CPos(bottomRight.X + ox + 1, topLeft.Y + oy - 1),   // top-right
+      new CPos(bottomRight.X + ox + 1, bottomRight.Y + oy + 1), // bottom-right
+      new CPos(topLeft.X + ox - 1, bottomRight.Y + oy + 1),   // bottom-left
+    ]
+  }
+
+  // -------------------------------------------------------------------------
   // World-space vertex computation (pure function — no Babylon.js dependency)
   // -------------------------------------------------------------------------
 
@@ -205,7 +336,8 @@ export class EditorSelectionAnnotationRenderable {
    *
    * @param cellToWorld — function mapping CPos and height to a WorldPoint
    *   (typically CoordinateTransformer.cellToVector3 or a test stub)
-   * @param tileScale — the map tile scale in world units (default 1024)
+   * @param _tileScale — the map tile scale in world units (default 1024).
+   *   Reserved for future terrain-height-aware selection.
    * @returns array of 4 corner WorldPoint positions (top-left, top-right,
    *   bottom-right, bottom-left), plus a copy of top-left for closing the
    *   loop (5 points total). Returns null if there is no selection.
@@ -214,29 +346,19 @@ export class EditorSelectionAnnotationRenderable {
     cellToWorld: (cpos: CPos, height: number) => WorldPoint,
     _tileScale: number = 1024,
   ): WorldPoint[] | null {
-    if (!this._selectionBounds) return null
+    const cornerCells = this._computeCornerCells()
+    if (!cornerCells) return null
 
-    const topLeft = this._selectionBounds.TopLeft
-    const bottomRight = this._selectionBounds.BottomRight
-
-    // Apply cell offset
-    const ox = this._offset.x
-    const oy = this._offset.y
-
-    // Bounding rectangle corners (extended by 1 cell outward for visual clarity)
-    const tl = new CPos(topLeft.X + ox - 1, topLeft.Y + oy - 1)
-    const tr = new CPos(bottomRight.X + ox + 1, topLeft.Y + oy - 1)
-    const br = new CPos(bottomRight.X + ox + 1, bottomRight.Y + oy + 1)
-    const bl = new CPos(topLeft.X + ox - 1, bottomRight.Y + oy + 1)
-
-    const height = 0 // Default terrain height — set by caller for actual terrain
+    // All corners share the same terrain height (0 by default; caller
+    // can inject a height-aware conversion function).
+    const height = 0
 
     return [
-      cellToWorld(tl, height),
-      cellToWorld(tr, height),
-      cellToWorld(br, height),
-      cellToWorld(bl, height),
-      cellToWorld(tl, height), // Close the loop (5th point)
+      cellToWorld(cornerCells[0]!, height),
+      cellToWorld(cornerCells[1]!, height),
+      cellToWorld(cornerCells[2]!, height),
+      cellToWorld(cornerCells[3]!, height),
+      cellToWorld(cornerCells[0]!, height), // Close the loop (5th point)
     ]
   }
 
@@ -257,7 +379,7 @@ export class EditorSelectionAnnotationRenderable {
    *   (typically CoordinateTransformer.cellToVector3)
    * @param createLines — factory to create a LinesMesh
    *   (typically BABYLON.MeshBuilder.CreateLines)
-   * @param tileScale — map tile scale in world units
+   * @param _tileScale — map tile scale in world units (reserved)
    */
   createOrUpdateMesh(
     scene: Scene,
@@ -277,26 +399,17 @@ export class EditorSelectionAnnotationRenderable {
       this._linesMesh = null
     }
 
-    if (!this._selectionBounds) return
+    const cornerCells = this._computeCornerCells()
+    if (!cornerCells) return
 
-    // Compute world-space corners using the Vector3-producing conversion
-    const topLeft = this._selectionBounds.TopLeft
-    const bottomRight = this._selectionBounds.BottomRight
-    const ox = this._offset.x
-    const oy = this._offset.y
-
-    const tl = new CPos(topLeft.X + ox - 1, topLeft.Y + oy - 1)
-    const tr = new CPos(bottomRight.X + ox + 1, topLeft.Y + oy - 1)
-    const br = new CPos(bottomRight.X + ox + 1, bottomRight.Y + oy + 1)
-    const bl = new CPos(topLeft.X + ox - 1, bottomRight.Y + oy + 1)
-
+    // Convert corner cells to Vector3 positions
     const height = 0
     const points = [
-      cellToWorld(tl, height),
-      cellToWorld(tr, height),
-      cellToWorld(br, height),
-      cellToWorld(bl, height),
-      cellToWorld(tl, height), // Close the loop
+      cellToWorld(cornerCells[0]!, height),
+      cellToWorld(cornerCells[1]!, height),
+      cellToWorld(cornerCells[2]!, height),
+      cellToWorld(cornerCells[3]!, height),
+      cellToWorld(cornerCells[0]!, height), // Close the loop
     ]
 
     // Create rectangular lines mesh

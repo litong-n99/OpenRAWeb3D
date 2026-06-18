@@ -195,7 +195,9 @@ export class MapEditorData {
     if (json.editorConfig && typeof json.editorConfig === 'object') {
       const cfg = json.editorConfig
       data.editorConfig = {
-        cameraPosition: cfg.cameraPosition ?? undefined,
+        cameraPosition: cfg.cameraPosition && typeof cfg.cameraPosition === 'object'
+          ? new CPos(Number(cfg.cameraPosition.x ?? 0), Number(cfg.cameraPosition.y ?? 0))
+          : undefined,
         selectedTab: typeof cfg.selectedTab === 'string' ? cfg.selectedTab : undefined,
       }
     }

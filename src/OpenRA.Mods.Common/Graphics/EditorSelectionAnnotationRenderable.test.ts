@@ -424,4 +424,77 @@ describe('EditorSelectionAnnotationRenderable', () => {
       expect(() => renderable.render(null)).not.toThrow()
     })
   })
+
+  // -------------------------------------------------------------------------
+  // IRenderable interface methods (MAJOR-2 review fix)
+  // -------------------------------------------------------------------------
+
+  describe('IRenderable methods', () => {
+    it('Pos returns WPos.Zero (annotations have no fixed world position)', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      const pos = renderable.Pos
+      expect(pos.X).toBe(0)
+      expect(pos.Y).toBe(0)
+      expect(pos.Z).toBe(0)
+    })
+
+    it('ZOffset returns 0 (depth sorting is handled by renderingGroupId)', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      expect(renderable.ZOffset).toBe(0)
+    })
+
+    it('IsDecoration returns true (selection box is a visual annotation)', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      expect(renderable.IsDecoration).toBe(true)
+    })
+
+    it('WithZOffset returns this (no-op)', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      expect(renderable.WithZOffset(5)).toBe(renderable)
+    })
+
+    it('OffsetBy returns this (no-op)', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      expect(renderable.OffsetBy({ x: 1, y: 2, z: 3 })).toBe(renderable)
+    })
+
+    it('AsDecoration returns this (no-op)', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      expect(renderable.AsDecoration()).toBe(renderable)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // IFinalizedRenderable interface methods (MAJOR-2 review fix)
+  // -------------------------------------------------------------------------
+
+  describe('IFinalizedRenderable methods', () => {
+    it('PrepareRender returns this (no-op)', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      expect(renderable.PrepareRender(null)).toBe(renderable)
+    })
+
+    it('ScreenBounds returns empty rectangle', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      const bounds = renderable.ScreenBounds(null)
+      expect(bounds.x).toBe(0)
+      expect(bounds.y).toBe(0)
+      expect(bounds.width).toBe(0)
+      expect(bounds.height).toBe(0)
+    })
+
+    it('RenderDebugGeometry does not throw', () => {
+      const region = makeRegion(0, 0, 5, 5)
+      const renderable = new EditorSelectionAnnotationRenderable(region, TEST_COLOR)
+      expect(() => renderable.RenderDebugGeometry(null)).not.toThrow()
+    })
+  })
 })

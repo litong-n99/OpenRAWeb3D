@@ -203,6 +203,23 @@ describe('MapEditorData', () => {
     expect(data.editorConfig.selectedTab).toBe('actors')
   })
 
+  it('editorConfig.cameraPosition from JSON is a proper CPos instance', () => {
+    const json = {
+      editorConfig: {
+        cameraPosition: { x: 30, y: 40 },
+        selectedTab: 'tiles',
+      },
+    }
+    const data = MapEditorData.fromJSON(json)
+    const cp = data.editorConfig.cameraPosition
+    expect(cp).toBeDefined()
+    // Verify CPos identity: uppercase getters must return correct values
+    expect(cp!.X).toBe(30)
+    expect(cp!.Y).toBe(40)
+    // Verify it is actually a CPos instance (not a plain {x,y} object)
+    expect(cp instanceof CPos).toBe(true)
+  })
+
   it('parses from JSON with top-level cameraPosition (legacy format)', () => {
     const json = {
       cameraPosition: { x: 50, y: 60 },
