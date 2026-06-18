@@ -1,7 +1,7 @@
-# OpenRA to Babylon.js Migration Plan: Remaining Systems (Chapters 8-21)
+# OpenRA to Babylon.js Migration Plan: Remaining Systems (Chapters 8-22)
 
 > **Source Reference**: `docs/openra_migration.agent.final.converted.md`
-> **Chapter Status**: COMPLETE (Ch8-20 COMPLETE: 665/665, 100%. Ch8:57 + Ch9:30 + Ch10:25 + Ch11:37 + Ch12:16 + Ch13:14 + Ch14:49 + Ch15:11 + Ch16:65 + Ch17:8 + Ch18:10 + Ch19:119 + Ch20:62 = **665 files**. Chapter 21: 0/91, 0%, PLANNING — 7 phases A-G, 54 active + 25 deferred + 12 legacy import)
+> **Chapter Status**: COMPLETE (Ch8-20 COMPLETE: 665/665, 100%. Ch8:57 + Ch9:30 + Ch10:25 + Ch11:37 + Ch12:16 + Ch13:14 + Ch14:49 + Ch15:11 + Ch16:65 + Ch17:8 + Ch18:10 + Ch19:119 + Ch20:62 = **665 files**. Chapter 21: 0/91, 0%, PLANNING — 7 phases A-G, 54 active + 25 deferred + 12 legacy import. Chapter 22: 0/7, 0%, PLANNING — 5 phases A-E, 4 impl + 3 test files, ~1,200 TS lines estimated)
 > **Created**: 2026-06-12
 > **Prerequisite**: Chapters 2-7 COMPLETE (162/162 files, 100%)
 >
@@ -28,6 +28,7 @@
    - 3.12 [Chapter 19: Mod-Specific Content (C&C + D2K)](#312-chapter-19-mod-specific-content-cnc--d2k)
    - 3.13 [Chapter 20: Scripting System](#313-chapter-20-scripting-system)
    - 3.14 [Chapter 21: Editor, Utilities & Tooling](#314-chapter-21-editor-utilities--tooling)
+   - 3.15 [Chapter 22: Game Entry & Application Shell](#315-chapter-22-game-entry--application-shell)
 4. [Dependency Graph](#4-dependency-graph)
 5. [Verification and Test Strategy](#5-verification-and-test-strategy)
 6. [Risk and Considerations](#6-risk-and-considerations)
@@ -47,7 +48,7 @@ Chapters 2-7 are 100% complete (162 files migrated):
 - **Ch6**: Network & Game Logic (29/29) -- Order/Connection/OrderManager, Sync, Ruleset, AI BotModules
 - **Ch7**: Input, Camera, Audio & Effects (13/13) -- InputHandler, Viewport, Selection, Sound, Effects, Bullet, RenderSprites
 
-The remaining work consists of approximately **250+ files** spanning core gameplay traits, activities, order generators, UI widgets, weapon/warhead systems, mod-specific content, scripting, server infrastructure, and editor tooling. These systems build on the completed foundation layers.
+The remaining work consists of approximately **260+ files** spanning core gameplay traits, activities, order generators, UI widgets, weapon/warhead systems, mod-specific content, scripting, server infrastructure, editor tooling, and game entry integration. These systems build on the completed foundation layers.
 
 ### 1.2 Core Paradigm Shift (Remaining Systems)
 
@@ -119,9 +120,10 @@ The remaining ~250+ files are organized into 14 chapters (8-21), each representi
 | **18** | Server System | ~9 | LOW | Dedicated server infrastructure. Independent of most chapters. |
 | **19** | Mod-Specific Content | ~83 | LOW | C&C (70) + D2K (13) traits. Depends on all gameplay chapters. |
 | **20** | Scripting System | 66 | MEDIUM | Lua mission scripting bridge. Two-tier: JSON triggers (MVP) + optional fengari Lua VM. 62 files migrated + 4 deferred. 7 phases A-G. Depends on Ch8-15. Full plan: [chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md) |
-| **21** | Editor & Utilities | ~15 | LOW | Map editor, brushes, utility commands. Depends on Ch4+Ch5. |
+| **21** | Editor & Utilities | ~91 | LOW | Map editor, brushes, utility commands. Depends on Ch4+Ch5. 54 active + 25 deferred + 12 legacy. Full plan: [chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) |
+| **22** | Game Entry & Application Shell | 7 | HIGH | Mod selection, routing, Game class (root coordinator), mod loading pipeline, shellmap. Depends on Ch2-7. Full plan: [chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) |
 
-**Total estimated files**: ~389 (~288 remaining; 101 migrated = Ch8 57 + Ch9 30 + Ch13 14). Chapters 10-12 are tracked separately in their own detailed plans.
+**Total estimated files**: ~763 (Chapters 2-22). Ch2-20: 665/665 (100%). Ch21: 0/91 (0%). Ch22: 0/7 (0%).
 
 ---
 
@@ -740,6 +742,43 @@ Menu screen behavior classes (ChromeLogic subclasses) for main menu, lobby, sett
 
 ---
 
+### 3.15 Chapter 22: Game Entry & Application Shell
+
+**Objective**: Implement the game entry point, mod selection homepage, client-side routing, Game class (root coordinator), mod loading pipeline, and application shell HTML. This is the final integration chapter that stitches all migrated subsystems together into a functional web application.
+
+> **Detailed Plan**: [docs/chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) — 7 files (4 impl + 3 test), 5 phases A-E, ~1,200 TS lines estimated, 5 ADRs (ADR-22.1 through ADR-22.5). Original design doc: [docs/game_entry_design.md](docs/game_entry_design.md).
+
+**Prerequisites**: Chapters 2-7 (Foundation). Chapter 22 can begin in parallel with Chapter 21.
+
+**Scope**: 7 files across 5 phases:
+
+| Phase | Files | Description | Status |
+|:---|:---:|:---|:---:|
+| A: Foundation | 4 + 2 modified | Router, ModSelector (plain DOM), Vite SPA switch, index.html rewrite | PLANNING |
+| B: Bootstrap | 2 + 1 modified | Game class (root coordinator), loadMod pipeline, main.ts wiring | PLANNING |
+| C: Main Menu | 0 (extend Game.ts) | Shellmap static fallback, main menu widget layout | PLANNING |
+| D: Editor Stub | 0 (extend main.ts) | /editor/:modId placeholder | PLANNING |
+| E: Real Assets | 0 (build tools) | OpenRA mod data → public/mods/ build pipeline | PLANNING |
+
+**Key Paradigm Shifts**:
+- C# `static class Game` → TypeScript `class Game` instance (ADR-22.1)
+- Vite MPA (`appType: 'mpa'`) → Vite SPA with client-side Router (ADR-22.2)
+- In-game Widget mod browser → Plain DOM ModSelector (no engine loaded) (ADR-22.3)
+- `.mix` archive mod assets → Individual static files under `public/mods/` (ADR-22.4)
+- Full dynamic shellmap → Three-phase rollout: static → preview → dynamic (ADR-22.5)
+
+**New Files**:
+- `src/OpenRA.Game/Router.ts` + `Router.test.ts` -- Client-side path router (no deps)
+- `src/OpenRA.Game/ModSelector.ts` + `ModSelector.test.ts` -- DOM-based mod selection page
+- `src/OpenRA.Game/Game.ts` + `Game.test.ts` -- Root coordinator (instance class)
+- `src/main.ts` -- Rewrite: Router dispatch + ModSelector → Game bootstrap
+
+**Modified Files**: `index.html` (game shell), `vite.config.ts` (SPA mode switch)
+
+**New Static Resources**: `public/mods/_index.json`, `public/mods/_test/mod.json`, 4 mod stub manifests
+
+---
+
 ## 4. Dependency Graph
 
 ```
@@ -776,6 +815,8 @@ Chapters 2-7 (COMPLETE -- Foundation)
   +---> Ch20: Scripting (depends Ch8-13)
   |
   +---> Ch21: Editor & Utilities (depends Ch4+Ch5+Ch8-11)
+  |
+  +---> Ch22: Game Entry & Application Shell (depends Ch2-7 Foundation)
 ```
 
 ### Parallelization Opportunities
@@ -786,7 +827,7 @@ These chapters have NO dependency on each other and can run in parallel:
 - **Track 2** (movement): Ch9 -> Ch10 -> Ch11 -> Ch16
 - **Track 3** (systems): Ch12, Ch17, Ch18 (independent)
 
-Chapters 19-21 are leaf nodes that can begin once their gameplay prerequisites are satisfied.
+Chapters 19-22 are leaf nodes that can begin once their gameplay prerequisites are satisfied. Chapter 22 can run in parallel with Chapter 21 (no dependency between them).
 
 ---
 

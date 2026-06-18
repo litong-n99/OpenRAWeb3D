@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
 > **Last updated**: 2026-06-18
-> **Current phase**: Chapters 2-20 ALL PHASES COMPLETE (665/665, 100%). Chapter 21: 0/91 (0%, PLANNING, 54 active + 25 deferred + 12 legacy).
-> **Overall status**: Chapters 2-20 COMPLETE: 665/665 (100%). Chapter 21: 0/91 (0%, PLANNING). Total project: ~756 files estimated, ~665 complete (88.0%).
+> **Current phase**: Chapters 2-20 ALL PHASES COMPLETE (665/665, 100%). Chapter 21: 0/91 (0%, PLANNING, 54 active + 25 deferred + 12 legacy). Chapter 22: 0/7 (0%, PLANNING, 5 phases A-E).
+> **Overall status**: Chapters 2-20 COMPLETE: 665/665 (100%). Chapter 21: 0/91 (0%, PLANNING). Chapter 22: 0/7 (0%, PLANNING). Total project: ~763 files estimated, ~665 complete (87.2%).
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -33,7 +33,8 @@
 | **Chapter 19 planned files (Mod-Specific C&C/D2K)** | **119** (4 Phases A-D planned, 45 deferred). Plan: [chapter19_mod_content_migration_plan.md](docs/chapter19_mod_content_migration_plan.md). Phase A (C&C Core): 47/47 COMPLETE (R2 APPROVED, ~528 tests), Phase B (D2K): 17/17 COMPLETE (R2 APPROVED, ~234 tests), Phase C (Rendering/Voxel): 37/37 COMPLETE (R2 APPROVED, ~200 tests), Phase D (Infrastructure): 18/18 COMPLETE (ALL APPROVED, ~120 tests). 119/119 migrated (100%, ALL PHASES A-D COMPLETE). |
 | **Chapter 20 planned files (Scripting System)** | **62** total (62 migrated; 7 Phases A-G). ALL PHASES A-G COMPLETE (62/62, 100%). Phase A (Scripting Core): COMPLETE (7 files, ~128 tests). Phase B (Trigger System): COMPLETE (3+1 files, 88 tests). Phase C (Global API Tables): COMPLETE (16+1 files, 84 tests). Phase D (Actor Properties): COMPLETE (29 files). Phase E (Player Properties): COMPLETE (5 files). Phase F (C&C Mod Properties): COMPLETE (4 files). Phase G (Lua VM): COMPLETE (fengari integration). Plan: [docs/chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md) |
 | **Chapter 21 planned files (Editor & Utilities)** | ~91 (7 Phases A-G planned, 54 active + 25 deferred + 12 legacy import), 0/91 migrated. Plan: [chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) |
-| **Overall project completion** | Chapters 2-20 complete (665/665 = 100%). Chapter 21: 0/91 (0%, PLANNING). Total project: ~756 files estimated, ~665 complete (88.0%). |
+| **Chapter 22 planned files (Game Entry & App Shell)** | 7 (5 Phases A-E planned, 4 impl + 3 test files, ~1,200 TS lines estimated), 0/7 migrated. Plan: [chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) |
+| **Overall project completion** | Chapters 2-20 complete (665/665 = 100%). Chapter 21: 0/91 (0%, PLANNING). Chapter 22: 0/7 (0%, PLANNING). Total project: ~763 files estimated, ~665 complete (87.2%). |
 
 > **Note**: Chapters 2-19 are fully complete (603/603, 100%). Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests), Phase B-Optional (8 files, 203 tests). **Chapter 11 ALL PHASES COMPLETE (37 files: 14 Phase A + 23 Phase B, ~9,571 TS lines, ~771 tests, 2 review rounds per phase)**. Phase A (14 files, ~4,216 TS lines, ~296 tests): ProductionQueue.ts (~1,554 TS), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS), ProductionParadrop.ts (~148 TS), ProductionFromMapEdge.ts (~123 TS), ProductionAirdrop.ts (~156 TS), Exit.ts (~228 TS), RallyPoint.ts (~268 TS), PrimaryBuilding.ts (~185 TS), plus prereqs (Buildable, TechTree, PowerManager, DeveloperMode, ActorInitializer). Phase B (23 files, ~5,355 TS lines, ~475 tests): Building.ts (~550 TS), BuildingInfluence.ts (~180 TS), BuildingUtils.ts (~260 TS), PlaceBuilding.ts (~470 TS), PlaceBuildingOrderGenerator.ts (~600 TS), plus gap additions (ActorMap, GivesBuildableArea, LineBuildNode, Plug/Pluggable, etc.). **Chapter 12 ALL PHASES COMPLETE (16 files, Phase A APPROVED)**: Shroud.ts, ShroudRenderer.ts, FrozenActorLayer.ts, Cloak.ts, AffectsShroud.ts, FrozenUnderFog.ts, RevealsMap.ts, PlayerRadarTerrain.ts, CreatesShroud.ts, RevealsShroud.ts, HiddenUnderShroud.ts, HiddenUnderFog.ts, DetectCloaked.ts, ShroudExts.ts, ShroudPalette.ts, RevealsShroudMultiplier.ts. **Chapter 13 ALL PHASES COMPLETE (14 files + 1 interface, Phase A APPROVED, 285 tests)**: SupportPower.ts (745 TS), SupportPowerManager.ts (864 TS), AirstrikePower.ts (599 TS), NukePower.ts (731 TS), ParatroopersPower.ts (622 TS), ProduceActorPower.ts (316 TS), SpawnActorPower.ts (442 TS), GrantExternalConditionPower.ts (511 TS), DirectionalSupportPower.ts (154 TS), SelectDirectionalTarget.ts (485 TS), SupportPowerChargeBar.ts (271 TS), WithSupportPowerActivationAnimation.ts (255 TS), WithSupportPowerActivationOverlay.ts (310 TS), SupportPowerCrateAction.ts (118 TS). **Chapter 14 ALL PHASES COMPLETE (49/49 files, 100%, Phases A-F, 82+70+~180+161+~48+45 tests, 3 E2E pages)**: Phase A (11 files, 82 tests): Move.ts (~1,400 TS), MoveAdjacentTo.ts (~200 TS), MoveOnto.ts (~80 TS), MoveOntoAndTurn.ts (~70 TS), MoveWithinRange.ts (~120 TS), Drag.ts (~90 TS), Nudge.ts (~80 TS), Follow.ts (~130 TS), LocalMoveIntoTarget.ts (~110 TS), AttackMoveActivity.ts (~160 TS), MoveCooldownHelper.ts (~120 TS). Phase B (6 files, ~70 tests): Enter.ts (~350 TS), Attack.ts (~620 TS), Hunt.ts (~110 TS), CaptureActor.ts (~340 TS), Demolish.ts (~180 TS), Turn.ts (~90 TS). Phase C (12 files, ~180 tests): Fly.ts (~370 TS), TakeOff.ts (~120 TS), Land.ts (~360 TS), FlyForward.ts (~80 TS), FlyIdle.ts (~110 TS), FlyOffMap.ts (~110 TS), FlyAttack.ts (~400 TS), FlyFollow.ts (~130 TS), ReturnToBase.ts (~270 TS), FallToEarth.ts (~120 TS), DeliverBulkOrder.ts (~230 TS), Parachute.ts (~110 TS), plus shared `AircraftFlightUtils.ts`. Phase D (7 files, 161 tests): MoveToDock.ts, GenericDockSequence.ts, Resupply.ts, HarvestResource.ts, FindAndDeliverResources.ts, Sell.ts, LayMines.ts, plus shared `EconomicActivityInterfaces.ts`. Phase E (7 files, ~48 tests): EnterTransport.ts, ExitTransport.ts, UnloadCargo.ts, DeliverUnit.ts, PickupUnit.ts, RideTransport.ts, Transform.ts. Phase F (8+1 files, ~45 tests): MovePart.ts, RepairBuilding.ts, RepairBridge.ts, TeleportAttack.ts, ChronoResourceDelivery.ts, Infiltrate.ts, Disguise.ts, DonateSupplies.ts, plus shared `ActivityInterfaces.ts`. Commits: `4501c29` (Phase A), `d307624` (Phase A review), `68d9e14` (E2E), `b58a891` (Phase D), `487ba29` (Phase D fix), `1545492` (Phase E), `3b78f83` (Phase F), `bf09913` (merge ALL PHASES). **Chapter 15 ALL PHASES COMPLETE (11/11 files, 100%, Phases A-C, 59+104+43 = 206 tests)**: Phase A: OrderGenerator.ts (275 lines, 29 tests), EnterAlliedActorTargeter.ts (262 lines, 30 tests), TraitsInterfaces.ts (IOrderGenerator interface + MouseActionType + IMouseSettings). Phase B: UnitOrderGenerator.ts (~460 lines, 42 tests), RepairOrderGenerator.ts (~200 lines, 21 tests), BeaconOrderGenerator.ts (~120 lines, 13 tests), GlobalButtonOrderGenerator.ts (~300 lines, 28 tests). Phase C: GuardOrderGenerator.ts (~260 lines, 28 tests), ForceModifiersOrderGenerator.ts (~200 lines, 15 tests). All 3 Phases APPROVED (Phase A R1, Phase B R2, Phase C R2, 0 BLOCKERs across all). Commits: `d47edf3` (plan), `cb792bd` (Phase A), `5070c5b` (Phase B), `af57cb2` (Phase C), `cb6f6aa`/`5d1f760`/`ff3d917` (review fixes), `016798e`/`59e7933` (docs).
 
@@ -1950,5 +1951,96 @@ Phase D must begin early (sprite loaders + file formats unblock all other phases
 | Scripting properties (4 C&C) | 4 | ~170 | Depends on Chapter 20 |
 | Other (CncLoadScreen, Installer, Widgets, Editor, Xcc databases, PurchaseWidgetLogic) | 11 | ~990 | Low priority / editor-only / build tools |
 | **Subtotal Deferred** | **45** | **~7,300** | |
+
+---
+
+## Chapter 22: Game Entry & Application Shell (PLANNING, 0/7, 0%)
+
+> **Migration Plan**: [docs/chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md)
+> **Original Design Doc**: [docs/game_entry_design.md](docs/game_entry_design.md)
+> **Created**: 2026-06-18 | **Updated**: 2026-06-18
+> **Status**: PLANNING (0/7 migrated, 0%, 5 Phases A-E)
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed | 0 | 0% |
+| In Progress | 0 | 0% |
+| Pending | 7 | 100% |
+| **Total planned** | **7** | **100%** |
+
+### Phase Overview
+
+| Phase | Description | Files | Est. TS Lines | Est. Tests | Status |
+|:---|:---|:---:|:---:|:---:|:---|
+| A | Foundation (Router + ModSelector + HTML shell + Vite SPA switch) | 4 + 2 modified | ~200 | ~80 | 📋 PLANNING |
+| B | Bootstrap (Game class + loadMod pipeline + main.ts wiring) | 2 + 1 modified | ~700 | ~60 | 📋 PLANNING |
+| C | Main Menu (shellmap fallback + main menu widgets) | 0 (extend Game.ts) | ~200 | ~20 | 📋 PLANNING |
+| D | Editor Stub (/editor/:modId placeholder) | 0 (extend main.ts) | ~50 | ~0 | 📋 PLANNING |
+| E | Real Assets (build pipeline, OpenRA mod data conversion) | 0 (build tools) | ~50 | ~0 | 📋 PLANNING |
+| **Total** | **5 Phases** | **7** | **~1,200** | **~160** | **0%** |
+
+### File Inventory
+
+| # | File | Lines (C# ref) | Complexity | Phase |
+|:---:|:---|:---:|:---:|:---:|
+| 1 | `src/OpenRA.Game/Router.ts` (NEW) | — | LOW | A |
+| 2 | `src/OpenRA.Game/Router.test.ts` (NEW) | — | LOW | A |
+| 3 | `src/OpenRA.Game/ModSelector.ts` (NEW) | — | MEDIUM | A |
+| 4 | `src/OpenRA.Game/ModSelector.test.ts` (NEW) | — | MEDIUM | A |
+| 5 | `src/OpenRA.Game/Game.ts` (NEW, ~1000 C# ref) | ~1000 (Game.cs) | HIGH | B |
+| 6 | `src/OpenRA.Game/Game.test.ts` (NEW) | — | HIGH | B |
+| 7 | `src/main.ts` (REWRITE) | — | MEDIUM | B |
+
+### Modified Files
+
+| # | File | Change | Phase |
+|:---:|:---|:---|:---:|
+| M1 | `index.html` | Rewrite Vite scaffold → Game app shell (canvas + mod selector + loader) | A |
+| M2 | `vite.config.ts` | Remove `appType: 'mpa'` → SPA mode (test plugin preserved) | A |
+
+### New Static Resources
+
+| # | File | Description | Phase |
+|:---:|:---|:---|:---:|
+| SR1 | `public/mods/_index.json` | Available mods manifest | A |
+| SR2 | `public/mods/_test/mod.json` | Minimal test mod (pipeline verification) | A |
+| SR3-6 | `public/mods/{ra,td,d2k,ts}/mod.json` | Mod stub manifests | E |
+
+### Key Architecture Decisions (5 ADRs)
+
+| ADR | Title | Phase |
+|-----|-------|:---:|
+| ADR-22.1 | Game class is instance-based (not static) | B |
+| ADR-22.2 | SPA mode with client-side Router (not MPA) | A |
+| ADR-22.3 | Mod Selector uses plain DOM (no game engine) | A |
+| ADR-22.4 | Mod assets as static files (not a single bundle) | E |
+| ADR-22.5 | Shellmap phased rollout (static → preview → dynamic) | C |
+
+### Phase Dependencies
+
+```
+Phase A (Foundation: Router + ModSelector + HTML + Vite SPA)
+  |
+  +---> Phase B (Bootstrap: Game class + loadMod + main.ts wiring)
+          |
+          +---> Phase C (Main Menu: shellmap fallback)
+          |
+          +---> Phase D (Editor Stub: /editor/:modId placeholder)
+          
+Phase E (Real Assets: build pipeline, blocked on external dependencies)
+```
+
+### External Dependencies
+
+| Dependency | Source Chapter | Needed By |
+|------------|:---:|:---|
+| Renderer, WorldRenderer, Babylon.js Engine | Ch2 | Phase B (Game.initializeEngine) |
+| World, GameWorldManager | Ch3 | Phase B (Game.startGame) |
+| FileSystem, ModData, Manifest | Ch5 | Phase B (Game.loadMod) |
+| OrderManager, Order | Ch6 | Phase B (Game.loadMod local play) |
+| Sound, SoundDevice | Ch7 | Phase B (Game.loadMod audio init) |
+| MiniYAML pipeline | Ch4 Phase H | Phase E (build pipeline) |
+
+**Chapter 22 can begin in parallel with Chapter 21 (Editor & Utilities).** No hard dependency between the two.
 
 
