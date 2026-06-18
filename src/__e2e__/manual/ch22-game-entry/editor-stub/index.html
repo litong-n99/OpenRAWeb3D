@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch22 Game Entry - Editor 占位页 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; overflow-y: auto; }
+
+    /* Simulated browser chrome */
+    #browser-chrome { background: #1e1e3a; border-bottom: 1px solid #333355; padding: 8px 16px; display: flex; align-items: center; gap: 10px; font-family: 'Consolas', 'Fira Code', monospace; font-size: 12px; }
+    #browser-chrome .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-red { background: #e94560; }
+    .dot-yellow { background: #f39c12; }
+    .dot-green { background: #4caf50; }
+    #browser-chrome .url-box { flex: 1; background: #0d1117; border-radius: 4px; padding: 4px 10px; color: #aaa; display: flex; align-items: center; gap: 4px; }
+    #browser-chrome .url-box .scheme { color: #4caf50; }
+    #browser-chrome .url-box .sep { color: #555; }
+    #browser-chrome .url-box .path-seg { color: #f0f0f0; }
+    #browser-chrome .route-badge { padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    .badge-matched { background: #1b5e20; color: #4caf50; }
+    .badge-unmatched { background: #b71c1c; color: #ef9a9a; }
+
+    /* Editor Page Styles (mirrors main.ts editor route) */
+    .editor-placeholder { text-align: center; padding: 6rem 1rem; }
+    .editor-placeholder h1 { color: #eee; margin-bottom: 1rem; font-size: 2.2rem; font-weight: 700; }
+    .editor-placeholder p { color: #aaa; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .editor-placeholder a { color: #6688ee; margin-top: 1.5rem; display: inline-block; text-decoration: none; font-size: 1rem; transition: color 0.2s; }
+    .editor-placeholder a:hover { color: #88aaff; text-decoration: underline; }
+
+    /* Mod Selector (for Back navigation demo) */
+    #mod-selector { min-height: 100%; padding: 2rem; }
+    .mod-selector-header { text-align: center; margin-bottom: 2rem; }
+    .mod-selector-header h1 { font-size: 2rem; font-weight: 700; color: #f0f0f0; margin-bottom: 0.5rem; }
+    .mod-selector-header p { font-size: 1rem; color: #8888aa; }
+    .mod-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.2rem; max-width: 1100px; margin: 0 auto; }
+    .mod-card { background: linear-gradient(135deg, #1e1e3a 0%, #252545 100%); border: 1px solid #333355; border-radius: 12px; padding: 1.5rem; position: relative; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; gap: 0.5rem; }
+    .mod-card:hover { transform: translateY(-3px); border-color: #5555aa; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+    .mod-card.unavailable { opacity: 0.5; }
+    .mod-card.unavailable:hover { transform: none; border-color: #333355; box-shadow: none; }
+    .mod-card-ribbon { position: absolute; top: 12px; right: -30px; background: #cc8800; color: #1a1a2e; font-size: 0.7rem; font-weight: 700; padding: 4px 36px; transform: rotate(45deg); text-transform: uppercase; letter-spacing: 0.5px; }
+    .mod-card-title { font-size: 1.15rem; font-weight: 600; color: #f0f0f0; margin: 0; }
+    .mod-card-version { font-size: 0.75rem; color: #6666aa; }
+    .mod-card-description { font-size: 0.85rem; color: #aaaacc; line-height: 1.5; flex-grow: 1; }
+    .mod-card-factions { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .mod-card-faction-tag { background: rgba(120, 120, 200, 0.2); border: 1px solid rgba(120, 120, 200, 0.4); border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; color: #aaaadd; }
+    .mod-card-play-btn { background: #4466cc; color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease; margin-top: 0.5rem; width: auto; }
+    .mod-card-play-btn:hover { background: #5577dd; }
+
+    /* Right Panel */
+    #panel { width: 340px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #panel h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-section { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .panel-section ul, .panel-section ol { margin: 6px 0; padding-left: 18px; font-size: 12px; line-height: 1.7; }
+    .panel-section li { margin: 3px 0; }
+    .metric { color: #aad; font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; }
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s; }
+    button:hover { background: #0f3460; }
+    button.primary { border-color: #4466cc; color: #88aaff; }
+    button.primary:hover { background: #4466cc; color: #fff; }
+
+    .route-display { font-family: 'Consolas', 'Fira Code', monospace; font-size: 12px; line-height: 1.8; }
+    .route-display .key { color: #888; }
+    .route-display .val { color: #aad; }
+
+    .check-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }
+    .check-indicator { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; transition: background 0.2s; }
+    .check-indicator.pass { background: #4caf50; }
+    .check-indicator.fail { background: #e94560; }
+
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Ch22 Game Entry - Editor 占位页验证</h1>
+    <div class="subtitle">ID: ch22-game-entry/editor-stub | 期望结果见 README.md | Phase A 纯 DOM + Router</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div id="browser-chrome">
+        <span class="dot dot-red"></span>
+        <span class="dot dot-yellow"></span>
+        <span class="dot dot-green"></span>
+        <div class="url-box">
+          <span class="scheme">https://</span><span class="sep">openra.local</span><span class="path-seg" id="url-path-seg">/editor/ra</span>
+        </div>
+        <span class="route-badge badge-matched" id="route-badge">MATCHED</span>
+      </div>
+      <div id="app-viewport">
+        <!-- Content rendered by main.ts -->
+      </div>
+    </div>
+    <div id="panel">
+      <div class="panel-section">
+        <h3>B. 期望结果 (Expected Results)</h3>
+        <ol style="padding-left:18px;font-size:12px;line-height:1.7;">
+          <li>导航到 <span class="metric">/editor/ra</span> → 显示 "Editor" 标题（字号 <span class="metric">2.2rem</span>，颜色 <span class="metric">#eee</span>）</li>
+          <li>显示描述 "Coming soon — <span class="metric">ra</span> map editor"（颜色 <span class="metric">#aaa</span>）</li>
+          <li>"Back to Mod Selector" 链接可见，颜色 <span class="metric">#6688ee</span>，悬停变为 <span class="metric">#88aaff</span> 并出现下划线</li>
+          <li>点击返回链接 → 显示 Mod 选择器首页（<span class="metric">4</span> 张卡片）</li>
+        </ol>
+      </div>
+      <div class="panel-section">
+        <h3>C. 导航控件</h3>
+        <button class="primary" id="btn-editor-ra">Editor: /editor/ra</button>
+        <button class="primary" id="btn-editor-td">Editor: /editor/td</button>
+        <button class="primary" id="btn-editor-d2k">Editor: /editor/d2k</button>
+        <button id="btn-back-home">← Back to Mod Selector</button>
+      </div>
+      <div class="panel-section">
+        <h3>自动检查</h3>
+        <div class="check-row"><span class="check-indicator" id="chk-title"></span> 标题 "Editor"</div>
+        <div class="check-row"><span class="check-indicator" id="chk-desc"></span> 描述文本含 "ra map editor"</div>
+        <div class="check-row"><span class="check-indicator" id="chk-link"></span> 返回链接可见</div>
+        <div class="check-row"><span class="check-indicator" id="chk-link-color"></span> 链接颜色 #6688ee</div>
+      </div>
+      <div class="panel-section">
+        <h3>路由状态</h3>
+        <div class="route-display">
+          <div><span class="key">路径:</span> <span class="val" id="state-path">/editor/ra</span></div>
+          <div><span class="key">模式:</span> <span class="val" id="state-pattern">/editor/:modId</span></div>
+          <div><span class="key">参数:</span> <span class="val" id="state-params">{ "modId": "ra" }</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">纯 DOM</span></span>
+    <span>Router: <span id="info-router">active</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

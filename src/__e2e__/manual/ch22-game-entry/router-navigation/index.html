@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch22 Game Entry - 路由导航 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; overflow-y: auto; }
+
+    /* URL Bar */
+    #url-bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #0f0f1a; border-bottom: 1px solid #1e1e3a; font-family: 'Consolas', 'Fira Code', monospace; font-size: 13px; }
+    #url-bar .protocol { color: #4caf50; }
+    #url-bar .host { color: #888; }
+    #url-bar .path { color: #f0f0f0; }
+    #url-bar .badge { padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    .badge-matched { background: #1b5e20; color: #4caf50; }
+    .badge-unmatched { background: #b71c1c; color: #ef9a9a; }
+
+    /* App viewport */
+    #app-viewport { min-height: calc(100% - 45px); position: relative; }
+
+    /* --- Mod Selector Styles (mirrors index.html exactly — required by ModSelector.render) --- */
+    #mod-selector { min-height: 100%; padding: 2rem; }
+    .mod-selector-header { text-align: center; margin-bottom: 3rem; }
+    .mod-selector-header h1 { font-size: 2.5rem; font-weight: 700; color: #f0f0f0; margin-bottom: 0.5rem; letter-spacing: -0.5px; }
+    .mod-selector-header p { font-size: 1.1rem; color: #8888aa; }
+    .mod-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
+    .mod-card { background: linear-gradient(135deg, #1e1e3a 0%, #252545 100%); border: 1px solid #333355; border-radius: 12px; padding: 1.5rem; position: relative; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; gap: 0.6rem; }
+    .mod-card:hover { transform: translateY(-3px); border-color: #5555aa; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+    .mod-card.unavailable { opacity: 0.5; }
+    .mod-card.unavailable:hover { transform: none; border-color: #333355; box-shadow: none; }
+    .mod-card-ribbon { position: absolute; top: 12px; right: -30px; background: #cc8800; color: #1a1a2e; font-size: 0.75rem; font-weight: 700; padding: 4px 36px; transform: rotate(45deg); text-transform: uppercase; letter-spacing: 0.5px; }
+    .mod-card-title { font-size: 1.25rem; font-weight: 600; color: #f0f0f0; margin: 0; }
+    .mod-card-version { font-size: 0.8rem; color: #6666aa; }
+    .mod-card-description { font-size: 0.9rem; color: #aaaacc; line-height: 1.5; flex-grow: 1; }
+    .mod-card-factions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .mod-card-faction-tag { background: rgba(120, 120, 200, 0.2); border: 1px solid rgba(120, 120, 200, 0.4); border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; color: #aaaadd; }
+    .mod-card-play-btn { background: #4466cc; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease; margin-top: 0.5rem; width: auto; }
+    .mod-card-play-btn:hover { background: #5577dd; }
+    .mod-card-play-btn:focus-visible { outline: 2px solid #88aaff; outline-offset: 2px; }
+
+    /* Loading Overlay (ModSelector controls via inline style.display, not CSS class) */
+    #loading-overlay { position: absolute; inset: 0; background: #1a1a2e; display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 10; }
+    .loading-content { text-align: center; max-width: 400px; width: 80%; }
+    #loading-bar-container { width: 100%; height: 6px; background: #2a2a4e; border-radius: 3px; overflow: hidden; margin-bottom: 1rem; }
+    #loading-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #4466cc, #6688ee); border-radius: 3px; transition: width 0.3s ease; }
+    #loading-text { color: #aaaaee; font-size: 0.9rem; }
+
+    /* Editor Placeholder */
+    .editor-placeholder { text-align: center; padding: 4rem 1rem; }
+    .editor-placeholder h1 { color: #eee; margin-bottom: 1rem; font-size: 1.8rem; }
+    .editor-placeholder p { color: #aaa; font-size: 1rem; }
+    .editor-placeholder a { color: #6688ee; margin-top: 1rem; display: inline-block; text-decoration: none; cursor: pointer; }
+    .editor-placeholder a:hover { color: #88aaff; text-decoration: underline; }
+
+    /* Right Panel */
+    #panel { width: 340px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #panel h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-section { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .panel-section ul, .panel-section ol { margin: 6px 0; padding-left: 18px; font-size: 12px; line-height: 1.7; }
+    .panel-section li { margin: 3px 0; }
+    .metric { color: #aad; font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; }
+
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s; }
+    button:hover { background: #0f3460; }
+    button.primary { border-color: #4466cc; color: #88aaff; }
+    button.primary:hover { background: #4466cc; color: #fff; }
+
+    .route-display { font-family: 'Consolas', 'Fira Code', monospace; font-size: 12px; line-height: 1.8; }
+    .route-display .key { color: #888; }
+    .route-display .val { color: #aad; }
+
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Ch22 Game Entry - 路由导航验证</h1>
+    <div class="subtitle">ID: ch22-game-entry/router-navigation | 期望结果见 README.md | Router + ModSelector 真实集成</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div id="url-bar">
+        <span>&#128279;</span>
+        <span class="path" id="url-path">/test/ch22-game-entry/router-navigation/</span>
+        <span class="badge badge-matched" id="url-badge">MATCHED</span>
+        <span class="badge badge-unmatched" id="url-badge-unmatch" style="display:none;">NO ROUTE</span>
+      </div>
+      <div id="app-viewport">
+        <div id="mod-selector"></div>
+        <div id="loading-overlay">
+          <div class="loading-content">
+            <div id="loading-bar-container"><div id="loading-bar"></div></div>
+            <span id="loading-text">Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="panel">
+      <div class="panel-section">
+        <h3>B. 期望结果 (Expected Results)</h3>
+        <ol style="padding-left:18px;font-size:12px;line-height:1.7;">
+          <li>初始加载时 Router 匹配 <span class="metric">/</span> 路由 → 调用 ModSelector.show() → <span class="metric">4</span> 张卡片渲染</li>
+          <li>点击 "Navigate to /play/ra" → <span class="metric">router.navigate()</span> → pushState + dispatch → launchMod('ra') → 加载遮罩 + 进度条</li>
+          <li>进度条序列: <span class="metric">10%</span>→<span class="metric">40%</span>→<span class="metric">70%</span>→<span class="metric">100%</span>，每步 <span class="metric">~100ms</span></li>
+          <li>点击 "Navigate to /editor/ra" → Router 提取参数 <span class="metric">{ modId: "ra" }</span> → 渲染 Editor 占位页</li>
+          <li>点击 "Navigate to /unknown" → Router.dispatch() 返回 <span class="metric">false</span> → NO ROUTE 徽章</li>
+        </ol>
+      </div>
+      <div class="panel-section">
+        <h3>C. 导航控件 (via router.navigate)</h3>
+        <button class="primary" id="btn-home">🏠 Navigate to / (Mod Selector)</button>
+        <button class="primary" id="btn-play-ra">▶ Navigate to /play/ra</button>
+        <button class="primary" id="btn-play-td">▶ Navigate to /play/td</button>
+        <button class="primary" id="btn-editor" style="border-color:#f39c12;color:#f39c12;">⚙ Navigate to /editor/ra</button>
+        <button id="btn-unknown" style="border-color:#e94560;color:#e94560;">✕ Navigate to /unknown</button>
+      </div>
+      <div class="panel-section">
+        <h3>路由状态 (live)</h3>
+        <div class="route-display">
+          <div><span class="key">window.location:</span> <span class="val" id="state-path">-</span></div>
+          <div><span class="key">匹配路由模式:</span> <span class="val" id="state-route">-</span></div>
+          <div><span class="key">提取参数:</span> <span class="val" id="state-params">-</span></div>
+          <div><span class="key">匹配结果:</span> <span class="val" id="state-result">-</span></div>
+          <div><span class="key">加载进度:</span> <span class="val" id="state-progress">-</span></div>
+          <div><span class="key">加载文字:</span> <span class="val" id="state-loadtext">-</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">纯 DOM</span></span>
+    <span>Router: <span id="info-router">active</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

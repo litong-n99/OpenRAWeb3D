@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch22 Game Entry - Mod 选择器首页 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; overflow-y: auto; padding: 0; }
+    #sandbox-inner { min-height: 100%; }
+    #panel { width: 340px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; }
+    #panel h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-section { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; margin-bottom: 12px; }
+    .panel-section ul { margin: 6px 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+    .panel-section li { margin: 3px 0; }
+    .metric { color: #aad; font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; }
+    .panel-section .check-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }
+    .check-indicator { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; transition: background 0.2s; }
+    .check-indicator.pass { background: #4caf50; }
+    .check-indicator.fail { background: #e94560; }
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s; }
+    button:hover { background: #0f3460; }
+    button.primary { border-color: #4466cc; color: #88aaff; }
+    button.primary:hover { background: #4466cc; color: #fff; }
+    #interaction-log { font-family: 'Consolas', 'Fira Code', monospace; font-size: 11px; color: #888; max-height: 150px; overflow-y: auto; line-height: 1.6; }
+    #interaction-log .entry { border-bottom: 1px solid #0f0f1a; padding: 2px 0; }
+    #interaction-log .entry .ts { color: #555; margin-right: 6px; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+
+    /* --- Mod Selector Styles (mirrors index.html) --- */
+    #mod-selector { min-height: 100vh; padding: 2rem; }
+    .mod-selector-header { text-align: center; margin-bottom: 3rem; }
+    .mod-selector-header h1 { font-size: 2.5rem; font-weight: 700; color: #f0f0f0; margin-bottom: 0.5rem; letter-spacing: -0.5px; }
+    .mod-selector-header p { font-size: 1.1rem; color: #8888aa; }
+    .mod-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
+    .mod-card { background: linear-gradient(135deg, #1e1e3a 0%, #252545 100%); border: 1px solid #333355; border-radius: 12px; padding: 1.5rem; position: relative; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; gap: 0.6rem; }
+    .mod-card:hover { transform: translateY(-3px); border-color: #5555aa; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); }
+    .mod-card.unavailable { opacity: 0.5; }
+    .mod-card.unavailable:hover { transform: none; border-color: #333355; box-shadow: none; }
+    .mod-card-ribbon { position: absolute; top: 12px; right: -30px; background: #cc8800; color: #1a1a2e; font-size: 0.75rem; font-weight: 700; padding: 4px 36px; transform: rotate(45deg); text-transform: uppercase; letter-spacing: 0.5px; }
+    .mod-card-title { font-size: 1.25rem; font-weight: 600; color: #f0f0f0; margin: 0; }
+    .mod-card-version { font-size: 0.8rem; color: #6666aa; }
+    .mod-card-description { font-size: 0.9rem; color: #aaaacc; line-height: 1.5; flex-grow: 1; }
+    .mod-card-factions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .mod-card-faction-tag { background: rgba(120, 120, 200, 0.2); border: 1px solid rgba(120, 120, 200, 0.4); border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; color: #aaaadd; }
+    .mod-card-play-btn { background: #4466cc; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease; margin-top: 0.5rem; }
+    .mod-card-play-btn:hover { background: #5577dd; }
+    .mod-card-play-btn:focus-visible { outline: 2px solid #88aaff; outline-offset: 2px; }
+
+    /* Loading overlay (hidden by default) */
+    #loading-overlay { position: fixed; inset: 0; background: #1a1a2e; display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 1000; }
+    .loading-content { text-align: center; max-width: 400px; width: 80%; }
+    #loading-bar-container { width: 100%; height: 6px; background: #2a2a4e; border-radius: 3px; overflow: hidden; margin-bottom: 1rem; }
+    #loading-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #4466cc, #6688ee); border-radius: 3px; transition: width 0.3s ease; }
+    #loading-text { color: #aaaaee; font-size: 0.9rem; }
+    .mod-selector-empty, .mod-selector-error { text-align: center; padding: 4rem 1rem; }
+    .mod-selector-empty h1, .mod-selector-error h1 { font-size: 1.5rem; color: #ccccee; margin-bottom: 0.5rem; }
+    .mod-selector-empty p, .mod-selector-error p { color: #8888aa; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Ch22 Game Entry - Mod 选择器首页</h1>
+    <div class="subtitle">ID: ch22-game-entry/mod-selector | 期望结果见 README.md | Phase A 纯 DOM（无 Babylon.js 依赖）</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div id="sandbox-inner">
+        <div id="mod-selector"></div>
+        <div id="loading-overlay">
+          <div class="loading-content">
+            <div id="loading-bar-container"><div id="loading-bar"></div></div>
+            <span id="loading-text">Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="panel">
+      <div class="panel-section">
+        <h3>B. 期望结果 (Expected Results)</h3>
+        <ol style="padding-left:18px;font-size:12px;line-height:1.7;">
+          <li>标题 <span class="metric">"OpenRAWeb3D"</span> + 副标题 <span class="metric">"Select a mod to launch"</span> 在页面加载后 <span class="metric">500ms</span> 内渲染</li>
+          <li><span class="metric">4</span> 张 Mod 卡片，可用卡显示 <span class="metric">"Play →"</span> 按钮（颜色 <span class="metric">#4466cc</span>），TS 卡显示 <span class="metric">"Coming Soon"</span> 丝带（橙色 <span class="metric">#cc8800</span>）</li>
+          <li>阵营标签正确：<span class="metric">RA=Soviet/Allies, TD=GDI/Nod, D2K=Atreides/Harkonnen/Ordos, TS=GDI/Nod</span></li>
+          <li>悬停可用卡片：上浮 <span class="metric">3px</span> (translateY)，边框色变为 <span class="metric">#5555aa</span>，过渡 <span class="metric">200ms</span></li>
+          <li>TS 卡片：<span class="metric">opacity:0.5</span>，无 "Play →" 按钮，悬停无动画，cursor 为 default</li>
+        </ol>
+      </div>
+      <div class="panel-section">
+        <h3>C. 交互观察</h3>
+        <div class="check-row"><span class="check-indicator" id="chk-title"></span> 标题已渲染</div>
+        <div class="check-row"><span class="check-indicator" id="chk-cards"></span> 4 张卡片已渲染</div>
+        <div class="check-row"><span class="check-indicator" id="chk-playbtns"></span> 3 个 Play 按钮</div>
+        <div class="check-row"><span class="check-indicator" id="chk-ribbon"></span> 1 个 Coming Soon 丝带</div>
+        <div class="check-row"><span class="check-indicator" id="chk-factions"></span> 阵营标签: 9 个</div>
+        <button class="primary" id="btn-refresh">↻ 刷新 Mod 选择器</button>
+        <button id="btn-hide">✕ 隐藏 (测试 hide())</button>
+      </div>
+      <div class="panel-section">
+        <h3>交互日志</h3>
+        <div id="interaction-log"><div class="entry"><span class="ts">--:--:--</span>等待交互...</div></div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>渲染: <span id="info-render">纯 DOM</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
