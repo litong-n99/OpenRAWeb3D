@@ -60,6 +60,9 @@ export interface IPaletteWorldRenderer extends WorldRendererStub {
 //
 // Colors 0-3 are bright debug markers; colors 4-7 are semi-transparent
 // black steps that create the fog-of-war darkening effect.
+//
+// NOTE: toArgb(a,r,g,b) produces uint32 in ARGB byte order matching C#
+// Color.ToArgb(). Verified by test expectations.
 // ---------------------------------------------------------------------------
 
 const FOG_BASE: readonly number[] = [

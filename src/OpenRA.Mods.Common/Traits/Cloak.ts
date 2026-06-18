@@ -697,6 +697,8 @@ export class Cloak
 
     // Sound: TODO — full Sound system integration required
     // OpenRA: Game.Sound.Play(SoundType.World, Info.CloakSound, self.CenterPosition)
+    // NOTE: Sound playback requires Game.Sound singleton (future Phase D/E engine
+    // integration). SpriteEffect rendering depends on P1-B.1 (AnimationStub replacement).
     // When Sound.ts singleton is available, uncomment:
     //   Game.Sound.play(SoundType.World, this.info.cloakSound, centerPos)
 
@@ -730,6 +732,8 @@ export class Cloak
 
     // Sound: TODO — full Sound system integration required
     // OpenRA: Game.Sound.Play(SoundType.World, Info.UncloakSound, pos)
+    // NOTE: Sound playback requires Game.Sound singleton (future Phase D/E engine
+    // integration). SpriteEffect rendering depends on P1-B.1 (AnimationStub replacement).
 
     // SpriteEffect
     if (this.info.effectImage !== null && this.info.uncloakEffectSequence !== null) {
@@ -965,6 +969,9 @@ export class Cloak
     if (!selfPos) return false
 
     // Query all actors with DetectCloaked trait
+    // NOTE: Currently uses full trait iteration (O(n) in detector count). For large
+    // numbers of detector units, consider using ScreenMap spatial index for range-based
+    // query. Acceptable for typical RTS games with <20 detector units.
     const pairs = world.actorsWithTrait<{
       info: { detectionTypes: readonly DetectionType[] }
       range: WDist

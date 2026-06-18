@@ -337,6 +337,19 @@ export class FrozenActor {
    */
   private _flashAlpha: number | null = null
 
+  /**
+   * Flash tint modifier flags.
+   *
+   * OpenRA 对照: FrozenActor.flashModifiers (TintModifiers)
+   *
+   * TintModifiers is a flags enum:
+   *   None = 0, ReplaceColor = 1, IgnoreWorldTint = 2
+   *
+   * Set by Flash(): ReplaceColor for the Color+alpha overload,
+   * None for the float3 tint overload.
+   */
+  private _flashModifiers: number = 0
+
   // -----------------------------------------------------------------------
   // Static defaults
   // -----------------------------------------------------------------------
@@ -800,6 +813,7 @@ export class FrozenActor {
 
     if (alpha !== undefined) {
       // Overload 1: Flash(Color, float alpha)
+      this._flashModifiers = 1 // TintModifiers.ReplaceColor
       this._flashTint = {
         r: arg.r / 255,
         g: arg.g / 255,
@@ -808,6 +822,7 @@ export class FrozenActor {
       this._flashAlpha = alpha
     } else {
       // Overload 2: Flash(float3 tint)
+      this._flashModifiers = 0 // TintModifiers.None
       this._flashTint = { r: arg.r, g: arg.g, b: arg.b }
       this._flashAlpha = null
     }
@@ -836,6 +851,18 @@ export class FrozenActor {
    */
   get flashAlpha(): number | null {
     return this.isFlashing ? this._flashAlpha : null
+  }
+
+  /**
+   * Get the current flash tint modifier flags.
+   *
+   * OpenRA 对照: FrozenActor.flashModifiers (TintModifiers)
+   *
+   * Returns TintModifiers.ReplaceColor (1) for Flash(Color, alpha),
+   * TintModifiers.None (0) for Flash(float3), or 0 if not flashing.
+   */
+  get flashModifiers(): number {
+    return this.isFlashing ? this._flashModifiers : 0
   }
 
   // -----------------------------------------------------------------------
