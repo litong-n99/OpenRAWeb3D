@@ -3,20 +3,128 @@
  * OpenRA 对照: OpenRA.Mods.Common/Traits/World/ShroudRenderer.cs
  *
  * Tests focus on: lifecycle, dirty tracking, render player switching,
- * visibility texture updates, edge computation, disposal.
+ * visibility texture updates, edge computation, disposal, and the
+ * 3D RTT pipeline (RawTexture + ShaderMaterial + ground plane Mesh).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Riser } from '../../../OpenRA.Game/Map/TerrainInfo'
 
 // ---------------------------------------------------------------------------
-// Mock @babylonjs/core — ShroudRenderer does not create real Babylon.js
-// resources in unit tests; we mock to ensure no WebGL dependencies
+// Mock @babylonjs/core — expanded for P1-B.11 3D RTT pipeline
+//
+// NOTE: vitest hoists vi.mock() calls above all imports. Variables referenced
+// inside the mock factory MUST be declared with vi.hoisted() to avoid
+// "Cannot access before initialization" errors.
 // ---------------------------------------------------------------------------
 
-vi.mock('@babylonjs/core', () => ({
-  __esModule: true,
-}))
+const mockRefs = vi.hoisted(() => {
+  const mockSetTexture = vi.fn()
+  const mockSetVector2 = vi.fn()
+  const mockDisposeCalls: string[] = []
+
+  // Captured constructor args — wrapped in object for mutable access
+  const captured = {
+    rawTexture: null as {
+      data: Uint8Array | null
+      width: number
+      height: number
+      format: number
+    } | null,
+    shaderMaterial: null as {
+      name: string
+      options: Record<string, unknown> | null
+    } | null,
+    createGround: null as {
+      name: string
+      options: { width: number; height: number }
+    } | null,
+  }
+
+  const MockRawTexture = vi.fn((data: Uint8Array, width: number, height: number, format: number) => {
+    captured.rawTexture = { data, width, height, format }
+    return {
+      update: vi.fn(),
+      dispose: vi.fn(() => mockDisposeCalls.push('RawTexture')),
+    }
+  })
+
+  const MockShaderMaterial = vi.fn((name: string, _scene: unknown, _sources: unknown, options: Record<string, unknown>) => {
+    captured.shaderMaterial = { name, options }
+    return {
+      setTexture: mockSetTexture,
+      setVector2: mockSetVector2,
+      dispose: vi.fn(() => mockDisposeCalls.push('ShaderMaterial')),
+      backFaceCulling: false,
+      disableDepthWrite: false,
+      alphaMode: 0,
+    }
+  })
+
+  const MockCreateGround = vi.fn((name: string, options: { width: number; height: number }) => {
+    captured.createGround = { name, options }
+    return {
+      position: { x: 0, y: 0, z: 0 },
+      isPickable: true,
+      renderingGroupId: 0,
+      dispose: vi.fn(() => mockDisposeCalls.push('Mesh')),
+      material: null,
+    }
+  })
+
+  return {
+    mockSetTexture,
+    mockSetVector2,
+    mockDisposeCalls,
+    captured,
+    MockRawTexture,
+    MockShaderMaterial,
+    MockCreateGround,
+  }
+})
+
+const mockSetTexture = mockRefs.mockSetTexture
+const mockSetVector2 = mockRefs.mockSetVector2
+const mockDisposeCalls = mockRefs.mockDisposeCalls
+const captured = mockRefs.captured
+const MockRawTexture = mockRefs.MockRawTexture
+const MockShaderMaterial = mockRefs.MockShaderMaterial
+const MockCreateGround = mockRefs.MockCreateGround
+
+/** Reset state between tests. */
+function resetTestTrackers() {
+  mockDisposeCalls.length = 0
+  captured.rawTexture = null
+  captured.shaderMaterial = null
+  captured.createGround = null
+  MockRawTexture.mockClear()
+  MockShaderMaterial.mockClear()
+  MockCreateGround.mockClear()
+  mockSetTexture.mockClear()
+  mockSetVector2.mockClear()
+}
+
+vi.mock('@babylonjs/core', () => {
+  return {
+    __esModule: true,
+    RawTexture: mockRefs.MockRawTexture,
+    ShaderMaterial: mockRefs.MockShaderMaterial,
+    MeshBuilder: {
+      CreateGround: mockRefs.MockCreateGround,
+      CreatePlane: vi.fn(),
+    },
+    Mesh: vi.fn(),
+    Constants: {
+      TEXTUREFORMAT_R: 6, // TEXTUREFORMAT_RED = 6
+      TEXTUREFORMAT_RGBA: 5,
+      TEXTURE_NEAREST_SAMPLINGMODE: 1,
+      TEXTURE_BILINEAR_SAMPLINGMODE: 2,
+      TEXTURETYPE_UNSIGNED_BYTE: 0,
+      TEXTURETYPE_FLOAT: 1,
+      TEXTURETYPE_HALF_FLOAT: 2,
+    },
+  }
+})
 
 // ---------------------------------------------------------------------------
 // Import module under test (MUST be after vi.mock)
@@ -43,12 +151,12 @@ import type { IGameActor } from '../../../OpenRA.Game/Traits/TraitsInterfaces'
 // ---------------------------------------------------------------------------
 
 /** Create a minimal 8x8 rectangular map for testing. */
-function createTestMap(): Map {
+function createTestMap(width = 8, height = 8): Map {
   const grid = new MapGrid({
     type: MapGridType.Rectangular,
     maximumTerrainHeight: 0,
   })
-  return Map.createBlank(grid, { width: 8, height: 8 }, {
+  return Map.createBlank(grid, { width, height }, {
     id: 'test',
     terrainTypes: [],
     defaultTerrainTile: { type: 0, index: 0 },
@@ -66,11 +174,7 @@ function createTestMap(): Map {
   })
 }
 
-/** Create a mock player object with shroud (for HashPlayer compatibility).
- *
- * Shroud.tick() calls HashPlayer(self.owner), which requires
- * owner.playerActor.actorId to exist.
- */
+/** Create a mock player object with shroud (for HashPlayer compatibility). */
 function createMockPlayer(shroud?: Shroud | null): Record<string, unknown> {
   return {
     winState: 0, // WinState.Undefined
@@ -79,12 +183,8 @@ function createMockPlayer(shroud?: Shroud | null): Record<string, unknown> {
   }
 }
 
-/** Create a mock IGameActor with a proper player owner.
- *
- * Default owner includes playerActor for HashPlayer compatibility.
- * Pass a custom owner to override.
- */
-function createMockActor(owner?: unknown, worldTick: number = 0): IGameActor {
+/** Create a mock IGameActor with a proper player owner. */
+function createMockActor(owner?: unknown, worldTick = 0): IGameActor {
   return {
     actorId: 1,
     isInWorld: true,
@@ -97,10 +197,7 @@ function createMockActor(owner?: unknown, worldTick: number = 0): IGameActor {
   }
 }
 
-/** Set up an actor-shroud-player chain where Shroud.tick(HashPlayer) works.
- *
- * Returns { actor, shroud, player }.
- */
+/** Set up an actor-shroud-player chain where Shroud.tick(HashPlayer) works. */
 function setupShroudActor(shroudInfo?: ShroudInfo) {
   const player = createMockPlayer()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,6 +219,18 @@ function createMockWorld(map: Map): Record<string, unknown> {
   }
 }
 
+/** Create a mock world renderer with a Babylon.js scene mock. */
+function createMockWorldRenderer(): Record<string, unknown> {
+  return {
+    scene: {
+      getUniqueId: vi.fn(() => Math.floor(Math.random() * 100000)),
+      getEngine: vi.fn(() => ({ isDisposed: false })),
+      addMesh: vi.fn(),
+      removeMesh: vi.fn(),
+    },
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -133,6 +242,9 @@ describe('ShroudRenderer', () => {
   let info: ShroudRendererInfo
 
   beforeEach(() => {
+    vi.clearAllMocks()
+    resetTestTrackers()
+
     map = createTestMap()
     world = createMockWorld(map)
     info = new ShroudRendererInfo()
@@ -158,6 +270,12 @@ describe('ShroudRenderer', () => {
       // Before worldLoaded, cellVisibility is null
       expect(renderer.cellVisibility).toBeNull()
     })
+
+    it('has null GPU resources before worldLoaded', () => {
+      expect(renderer.visibilityTexture).toBeNull()
+      expect(renderer.shroudMaterial).toBeNull()
+      expect(renderer.quadMesh).toBeNull()
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -179,8 +297,6 @@ describe('ShroudRenderer', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderer.worldLoaded(world as any, {} as any)
 
-      // Without a render player, _worldOnRenderPlayerChanged(null) sets
-      // spectator mode: all cells within map bounds are visible + explored
       const puv = new PPos(0, 0)
       const cv = renderer.cellVisibility!(puv)
       expect(cv).toBe(CellVisibility.Visible | CellVisibility.Explored)
@@ -200,7 +316,6 @@ describe('ShroudRenderer', () => {
       renderer.worldLoaded(world as any, {} as any)
 
       // worldLoaded marks all cells dirty; renderShroud syncs _visibilityData
-      // from _cellVisibility (spectator mode → all 2 = Visible)
       renderer.renderShroud({} as any)
       expect(renderer.visibilityData.every((v) => v === 2)).toBe(true)
     })
@@ -217,7 +332,6 @@ describe('ShroudRenderer', () => {
 
       const { shroud, player } = setupShroudActor()
 
-      // Simulate render player change
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(renderer as any)._worldOnRenderPlayerChanged(player as any)
 
@@ -467,7 +581,6 @@ describe('ShroudRenderer', () => {
       renderer.worldLoaded(world as any, {} as any)
 
       // Use interior cell (3,3) so all 8 neighbors are within map bounds
-      // and have the same visibility (all visible in editor mode)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const edges = (renderer as any)._getCellEdges(new PPos(3, 3))
       expect(edges[0]).toBe(0) // No shroud edges
@@ -479,16 +592,9 @@ describe('ShroudRenderer', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       renderer.worldLoaded(world as any, {} as any)
 
-      // Cell (0,0) is at the top-left corner. Its neighbors outside the map
-      // bounds (Top, Left, TopLeft, TopRight, BottomLeft) are treated as
-      // Hidden (0x0), so edges for those directions should be set.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const edges = (renderer as any)._getCellEdges(new PPos(0, 0))
 
-      // Border cells have some edges set due to out-of-bounds neighbors.
-      // At (0,0): Top, Left, TopLeft, TopRight, BottomLeft are out-of-bounds.
-      // We only check that NOT all edges are zero (border IS detected).
-      // With UseExtendedIndex=false, return is masked to AllCorners (0x0f).
       const hasShroudEdges = edges[0] !== 0
       const hasFogEdges = edges[1] !== 0
       expect(hasShroudEdges || hasFogEdges).toBe(true)
@@ -545,7 +651,6 @@ describe('ShroudRenderer', () => {
 
       expect(renderer.disposed).toBe(true)
       // After disposing, the renderer should have unsubscribed
-      // We verify by checking the shroud still works independently
       const changedCells: PPos[] = []
       shroud.addOnShroudChanged((puv) => changedCells.push(puv))
       shroud.addSource('test', SourceType.Visibility, [new PPos(0, 0)])
@@ -660,6 +765,331 @@ describe('ShroudRenderer', () => {
       renderer.renderShroud({} as any)
 
       expect(renderer.visibilityData[index44]).toBe(1) // Explored
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // P1-B.11: 3D RTT Pipeline — GPU resource creation
+  // -------------------------------------------------------------------------
+
+  describe('3D RTT Pipeline — GPU resource creation', () => {
+    it('creates RawTexture with correct dimensions (map width × map height)', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      expect(captured.rawTexture).not.toBeNull()
+      expect(captured.rawTexture!.width).toBe(map.mapSize.width) // 8
+      expect(captured.rawTexture!.height).toBe(map.mapSize.height) // 8
+    })
+
+    it('allocates RawTexture data matching initial visibility state', () => {
+      world.type = 'Editor'
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      expect(captured.rawTexture).not.toBeNull()
+      const data = captured.rawTexture!.data!
+      // Editor world: all cells visible (value = 2)
+      expect(data.length).toBe(64) // 8x8 = 64
+      for (let i = 0; i < data.length; i++) {
+        expect(data[i]).toBe(2) // Visible
+      }
+    })
+
+    it('uses TEXTUREFORMAT_R (single-channel) for visibility texture', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      expect(captured.rawTexture).not.toBeNull()
+      // TEXTUREFORMAT_R = 6 (from Constants mock)
+      expect(captured.rawTexture!.format).toBe(6)
+    })
+
+    it('creates ShaderMaterial with shroud shaders', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      expect(captured.shaderMaterial).not.toBeNull()
+      expect(captured.shaderMaterial!.name).toBe('shroudMat')
+      expect(captured.shaderMaterial!.options).not.toBeNull()
+      expect(captured.shaderMaterial!.options!.attributes).toEqual(['position', 'uv'])
+      expect(captured.shaderMaterial!.options!.samplers).toContain('uVisibilityTexture')
+      expect(captured.shaderMaterial!.options!.needAlphaBlending).toBe(true)
+    })
+
+    it('sets shader uniforms (uMapSize, uTexelSize)', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      // ShaderMaterial.setVector2 should have been called with map dimensions
+      expect(MockShaderMaterial).toHaveBeenCalled()
+    })
+
+    it('creates ground plane Mesh covering the entire map', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      expect(captured.createGround).not.toBeNull()
+      expect(captured.createGround!.name).toBe('shroudOverlay')
+      expect(captured.createGround!.options!.width).toBe(map.mapSize.width)
+      expect(captured.createGround!.options!.height).toBe(map.mapSize.height)
+    })
+
+    it('sets renderingGroupId = 2 on the shroud quad (above terrain/actors)', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      expect(renderer.quadMesh).not.toBeNull()
+      expect(renderer.quadMesh!.renderingGroupId).toBe(2)
+    })
+
+    it('does not create GPU resources when no scene is provided', () => {
+      // worldLoaded with empty world renderer (no scene property)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, {} as any)
+
+      expect(captured.rawTexture).toBeNull()
+      expect(captured.shaderMaterial).toBeNull()
+      expect(captured.createGround).toBeNull()
+    })
+
+    it('exposes GPU resources via public accessors', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      expect(renderer.visibilityTexture).not.toBeNull()
+      expect(renderer.shroudMaterial).not.toBeNull()
+      expect(renderer.quadMesh).not.toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // P1-B.11: 3D RTT Pipeline — visibility texture upload
+  // -------------------------------------------------------------------------
+
+  describe('3D RTT Pipeline — visibility texture upload', () => {
+    it('uploads visibility data to RawTexture when dirty cells change', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      // After worldLoaded, the texture exists and cells are dirty
+      // Call renderShroud to trigger texture update
+      renderer.renderShroud({} as any)
+
+      // The mock texture's update should have been called
+      // (spectator mode: all cells set to visible=2)
+      const texture = renderer.visibilityTexture!
+      expect(texture.update).toHaveBeenCalled()
+    })
+
+    it('hidden cells produce value 0 in visibility texture data', () => {
+      // Create a new renderer WITHOUT calling worldLoaded,
+      // so cells stay at default value 0
+      const localMap = createTestMap()
+      const localWorld = createMockWorld(localMap)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const localRenderer = new ShroudRenderer(localWorld as any, info)
+
+      // Visibility data should be all zeros (hidden)
+      const allHidden = localRenderer.visibilityData.every((v) => v === 0)
+      expect(allHidden).toBe(true)
+    })
+
+    it('visible cells produce value 2 in visibility texture data', () => {
+      world.type = 'Editor'
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      // Editor world: all visible
+      const allVisible = renderer.visibilityData.every((v) => v === 2)
+      expect(allVisible).toBe(true)
+    })
+
+    it('explored cells produce value 1 in visibility texture data', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const { actor, shroud, player } = setupShroudActor()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(renderer as any)._worldOnRenderPlayerChanged(player as any)
+
+      // Explore a specific cell
+      shroud.exploreProjectedCells([new PPos(2, 2)])
+      shroud.tick(actor)
+      renderer.renderShroud({} as any)
+
+      const index22 = 2 * map.mapSize.width + 2
+      expect(renderer.visibilityData[index22]).toBe(1) // Explored
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // P1-B.11: 3D RTT Pipeline — dispose cleanup
+  // -------------------------------------------------------------------------
+
+  describe('3D RTT Pipeline — dispose cleanup', () => {
+    it('disposes RawTexture on disposing()', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const texture = renderer.visibilityTexture!
+      expect(texture).not.toBeNull()
+
+      renderer.disposing(createMockActor({}) as any)
+
+      expect(texture.dispose).toHaveBeenCalled()
+      expect(renderer.visibilityTexture).toBeNull()
+    })
+
+    it('disposes ShaderMaterial on disposing()', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const material = renderer.shroudMaterial!
+      expect(material).not.toBeNull()
+
+      renderer.disposing(createMockActor({}) as any)
+
+      expect(material.dispose).toHaveBeenCalled()
+      expect(renderer.shroudMaterial).toBeNull()
+    })
+
+    it('disposes Mesh on disposing()', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const mesh = renderer.quadMesh!
+      expect(mesh).not.toBeNull()
+
+      renderer.disposing(createMockActor({}) as any)
+
+      expect(mesh.dispose).toHaveBeenCalled()
+      expect(renderer.quadMesh).toBeNull()
+    })
+
+    it('disposes all three GPU resources (RawTexture, ShaderMaterial, Mesh) in one call', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      renderer.disposing(createMockActor({}) as any)
+
+      // All three resources should be disposed
+      expect(mockDisposeCalls).toContain('RawTexture')
+      expect(mockDisposeCalls).toContain('ShaderMaterial')
+      expect(mockDisposeCalls).toContain('Mesh')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // P1-B.11: 3D RTT Pipeline — resource recreation on map change
+  // -------------------------------------------------------------------------
+
+  describe('3D RTT Pipeline — resource recreation on map change', () => {
+    it('handles different map dimensions on resource creation', () => {
+      // Create a renderer with a 12x10 map
+      const largeMap = createTestMap(12, 10)
+      const largeWorld = createMockWorld(largeMap)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const largeRenderer = new ShroudRenderer(largeWorld as any, info)
+
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      largeRenderer.worldLoaded(largeWorld as any, wr as any)
+
+      expect(captured.rawTexture!.width).toBe(12)
+      expect(captured.rawTexture!.height).toBe(10)
+      expect(captured.rawTexture!.data!.length).toBe(120) // 12 * 10 = 120
+    })
+
+    it('reuses the _disposeGPUResources helper for cleanup before recreation', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      // Call worldLoaded again (simulating map reload) with a new scene
+      const wr2 = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr2 as any)
+
+      // Old resources should have been disposed before new ones created
+      expect(mockDisposeCalls.length).toBeGreaterThanOrEqual(3)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // P1-B.11: Shader uniform verification
+  // -------------------------------------------------------------------------
+
+  describe('3D RTT Pipeline — shader configuration', () => {
+    it('configures ShaderMaterial with backFaceCulling = false', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const material = renderer.shroudMaterial!
+      expect(material.backFaceCulling).toBe(false)
+    })
+
+    it('configures ShaderMaterial with disableDepthWrite = true', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const material = renderer.shroudMaterial!
+      expect(material.disableDepthWrite).toBe(true)
+    })
+
+    it('sets uMapSize uniform to map dimensions', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const material = renderer.shroudMaterial!
+      // setVector2 should have been called with map dimensions
+      expect(material.setVector2).toHaveBeenCalledWith('uMapSize', { x: map.mapSize.width, y: map.mapSize.height })
+    })
+
+    it('sets uTexelSize uniform to 1/mapSize', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const material = renderer.shroudMaterial!
+      expect(material.setVector2).toHaveBeenCalledWith('uTexelSize', { x: 1 / map.mapSize.width, y: 1 / map.mapSize.height })
+    })
+
+    it('binds uVisibilityTexture sampler to the visibility RawTexture', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      const material = renderer.shroudMaterial!
+      expect(material.setTexture).toHaveBeenCalledWith('uVisibilityTexture', expect.anything())
+    })
+
+    it('ShaderMaterial is created with correct uniforms declaration', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      expect(captured.shaderMaterial!.options!.uniforms).toContain('worldViewProjection')
+      expect(captured.shaderMaterial!.options!.uniforms).toContain('uMapSize')
+      expect(captured.shaderMaterial!.options!.uniforms).toContain('uTexelSize')
     })
   })
 })

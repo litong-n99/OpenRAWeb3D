@@ -4,8 +4,8 @@
  *
  * 核心范式转换:
  * - C# IProjectile (extends IEffect) → TypeScript IProjectile (extends IEffect)
- * - C# TeslaZapRenderable (2D line segments) → TypeScript stub renderable
- *   (3D lightning: LinesMesh + ShaderMaterial, deferred to rendering pass)
+ * - C# TeslaZapRenderable (2D line segments) → TypeScript TeslaZapRenderable
+ *   (3D lightning: LinesMesh + ShaderMaterial)
  * - C# ISync (VerifySync) → TypeScript no-op (sync is Chapter 6 concern)
  * - C# WPos integer arithmetic → TypeScript {X,Y,Z} integer structs
  * - C# Target.FromPos / WarheadArgs / Weapon.Impact → TypeScript stubs
@@ -17,35 +17,11 @@
 // ---------------------------------------------------------------------------
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
-import { WVec } from '../../OpenRA.Game/WVec.js'
+import { TeslaZapRenderable } from '../Graphics/TeslaZapRenderable.js'
 import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IProjectile } from '../../OpenRA.Mods.Common/Projectiles/Bullet.js'
 import type { WorldRendererStub, IRenderable } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { GameWorldManager } from '../../OpenRA.Game/World.js'
-
-// ---------------------------------------------------------------------------
-// TeslaZapRenderable stub (deferred to Phase C C2 rendering)
-// OpenRA 对照: OpenRA.Mods.Cnc.Graphics.TeslaZapRenderable
-// ---------------------------------------------------------------------------
-
-/** Minimal renderable stub for the lightning zap effect.
- *
- * OpenRA 对照: TeslaZapRenderable
- *
- * TODO-19.C.C2: Full TeslaZapRenderable with 3D LinesMesh + ShaderMaterial.
- * This stub tracks the source/target positions for rendering.
- */
-export interface TeslaZapRenderableStub {
-  readonly source: WPos
-  readonly targetOffset: WVec
-  readonly image: string
-  readonly brightSequence: string
-  readonly brightZaps: number
-  readonly dimSequence: string
-  readonly dimZaps: number
-  readonly palette: string
-  readonly zOffset: number
-}
 
 // ---------------------------------------------------------------------------
 // TeslaZapInfo — projectile configuration
@@ -168,6 +144,7 @@ export interface TeslaZapArgs {
  *
  * The zap is visible for `duration` ticks and applies weapon damage after
  * `damageDuration` ticks. It tracks the target if TrackTarget is enabled.
+ * Uses the real TeslaZapRenderable for 3D lightning (LinesMesh + ShaderMaterial).
  */
 export class TeslaZap implements IProjectile {
   /** Whether this projectile has been destroyed.
@@ -193,7 +170,7 @@ export class TeslaZap implements IProjectile {
    *
    * OpenRA 对照: TeslaZap.zap (TeslaZapRenderable)
    */
-  private _zap: TeslaZapRenderableStub | null = null
+  private _zap: TeslaZapRenderable | null = null
 
   constructor(info: TeslaZapInfo, args: TeslaZapArgs) {
     this._args = args
@@ -260,21 +237,24 @@ export class TeslaZap implements IProjectile {
    *
    * OpenRA 对照: TeslaZap.Render(WorldRenderer)
    *
-   * Creates a TeslaZapRenderable each frame (matching OpenRA behavior).
+   * Creates a real TeslaZapRenderable each frame for 3D lightning rendering
+   * (LinesMesh + ShaderMaterial with emissive-only glow effect).
    */
   render(_worldRenderer: WorldRendererStub): readonly IRenderable[] {
-    this._zap = {
-      source: this._args.source,
-      targetOffset: WPos.subtract(this._target, this._args.source),
-      image: this._info.image,
-      brightSequence: this._info.brightSequence,
-      brightZaps: this._info.brightZaps,
-      dimSequence: this._info.dimSequence,
-      dimZaps: this._info.dimZaps,
-      palette: this._info.palette,
-      zOffset: this._info.zOffset,
-    }
-    // NOTE: yield return in C# → return array in TypeScript
+    const targetOffset = WPos.subtract(this._target, this._args.source)
+
+    this._zap = new TeslaZapRenderable(
+      this._args.source,
+      this._info.zOffset,
+      targetOffset,
+      this._info.image,
+      this._info.brightSequence,
+      this._info.brightZaps,
+      this._info.dimSequence,
+      this._info.dimZaps,
+      this._info.palette,
+    )
+
     return [this._zap as unknown as IRenderable]
   }
 
@@ -310,7 +290,7 @@ export class TeslaZap implements IProjectile {
    *
    * OpenRA 对照: TeslaZap.zap
    */
-  get zap(): TeslaZapRenderableStub | null {
+  get zap(): TeslaZapRenderable | null {
     return this._zap
   }
 }

@@ -3,10 +3,13 @@
  *
  * Tests focus on: lifecycle management (create/add/remove), GpsDotInfo
  * defaults, and effect creation/cleanup.
+ *
+ * Phase B.8: Updated tests to use real GpsDotEffect instead of stub {}.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
 import { GpsDotInfo, GpsDot } from './GpsDot.js'
+import { GpsDotEffect } from '../Effects/GpsDotEffect.js'
 import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
@@ -98,27 +101,39 @@ describe('GpsDot', () => {
   })
 
   describe('created()', () => {
-    it('creates a GpsDotEffect stub', () => {
+    it('creates a real GpsDotEffect instance', () => {
       gpsDot.created(actor)
       expect(gpsDot.effect).not.toBeNull()
+      expect(gpsDot.effect).toBeInstanceOf(GpsDotEffect)
     })
 
-    it('stores references in the effect stub', () => {
+    it('stores actor and info in the effect', () => {
       gpsDot.created(actor)
       const effect = gpsDot.effect!
-      expect(effect.self).toBe(actor)
-      expect(effect.info).toBe(info)
+      expect(effect.actor).toBe(actor)
+      expect(effect.info.indicatorPalettePrefix).toBe(info.indicatorPalettePrefix)
     })
   })
 
   describe('addedToWorld()', () => {
-    it('does not throw when effect is created', () => {
+    it('does not throw when effect is created (world may not have addEffect)', () => {
       gpsDot.created(actor)
       expect(() => gpsDot.addedToWorld(actor)).not.toThrow()
     })
 
     it('does not throw when effect is not yet created', () => {
       expect(() => gpsDot.addedToWorld(actor)).not.toThrow()
+    })
+
+    it('adds effect to world when world supports addEffect', () => {
+      gpsDot.created(actor)
+      const addedEffects: unknown[] = []
+      const actorWithWorld = {
+        ...actor,
+        world: { addEffect: (e: unknown) => addedEffects.push(e) },
+      } as unknown as IGameActor
+      gpsDot.addedToWorld(actorWithWorld)
+      expect(addedEffects.length).toBe(1)
     })
   })
 
@@ -131,17 +146,37 @@ describe('GpsDot', () => {
     it('does not throw when effect is not yet created', () => {
       expect(() => gpsDot.removedFromWorld(actor)).not.toThrow()
     })
+
+    it('clears effect reference after removal', () => {
+      gpsDot.created(actor)
+      gpsDot.removedFromWorld(actor)
+      expect(gpsDot.effect).toBeNull()
+    })
+
+    it('removes effect from world when world supports removeEffect', () => {
+      gpsDot.created(actor)
+      const removedEffects: unknown[] = []
+      const actorWithWorld = {
+        ...actor,
+        world: {
+          addEffect: () => {},
+          removeEffect: (e: unknown) => removedEffects.push(e),
+        },
+      } as unknown as IGameActor
+      gpsDot.removedFromWorld(actorWithWorld)
+      expect(removedEffects.length).toBe(1)
+    })
   })
 
   describe('full lifecycle', () => {
-    it('completes create → add → remove cycle without errors', () => {
+    it('completes create → add → remove cycle and cleans up', () => {
       const actor2 = makeActor('lifecycleActor')
       gpsDot.created(actor2)
       expect(gpsDot.effect).not.toBeNull()
       gpsDot.addedToWorld(actor2)
       gpsDot.removedFromWorld(actor2)
-      // Effect reference is maintained (cleanup is handled by World)
-      expect(gpsDot.effect).not.toBeNull()
+      // Effect is cleaned up on removal
+      expect(gpsDot.effect).toBeNull()
     })
 
     it('works with multiple actors', () => {
@@ -153,8 +188,8 @@ describe('GpsDot', () => {
       dot1.created(a1)
       dot2.created(a2)
 
-      expect(dot1.effect!.self).toBe(a1)
-      expect(dot2.effect!.self).toBe(a2)
+      expect(dot1.effect!.actor).toBe(a1)
+      expect(dot2.effect!.actor).toBe(a2)
       expect(dot1.info.string).toBe('Infantry')
       expect(dot2.info.string).toBe('Vehicle')
     })

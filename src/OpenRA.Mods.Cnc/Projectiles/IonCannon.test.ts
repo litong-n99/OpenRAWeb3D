@@ -4,7 +4,22 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@babylonjs/core', () => ({ Engine: vi.fn(), Scene: vi.fn() }))
+vi.mock('@babylonjs/core', () => ({
+  Engine: vi.fn(),
+  Scene: vi.fn(),
+  MeshBuilder: {
+    CreatePlane: vi.fn(() => ({
+      dispose: vi.fn(),
+      material: null,
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scaling: { x: 1, y: 1, z: 1 },
+      isVisible: true,
+      updateVerticesData: vi.fn(),
+      getVerticesData: vi.fn(() => new Float32Array(24)),
+    })),
+  },
+}))
 
 import { IonCannon } from './IonCannon.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -206,14 +221,15 @@ describe('IonCannon', () => {
   // ---------------------------------------------------------------------------
 
   describe('render', () => {
-    it('returns empty renderable array (visuals deferred)', () => {
+    it('returns non-empty renderable array after animation is started', () => {
       const ion = new IonCannon(
         player, weapon, world, launchPos, target,
         'ionsfx', 'beam', 'effect', 5,
       )
       const result = ion.render(null as any)
       expect(Array.isArray(result)).toBe(true)
-      expect(result).toHaveLength(0)
+      expect(result.length).toBeGreaterThan(0)
+      expect(result).toHaveLength(1)
     })
   })
 

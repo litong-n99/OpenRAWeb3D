@@ -64,9 +64,24 @@ export interface WorldRendererStub {
  *
  * OpenRA 对照: OpenRA.Game/Player.cs
 * Replace with full Player class when Player module is migrated.
+ *
+ * P1-D.6: Extended with optional IPlayer-compatible properties so that
+ * GameWorldManager can be cast to IWorld without a double "unknown" cast.
+ * These properties are optional to preserve backward compatibility with
+ * existing stub constructors.
  */
 export interface PlayerStub {
   readonly playerName: string
+  /** IWorld/IPlayer compatibility (P1-D.6).
+   *
+   * `number` matches the real `Player.color` (palette index).
+   * `{ r, g, b, a }` matches the `IPlayer.color` (RGBA object) used by
+   * WorldRenderer. The union type bridges the two representations. */
+  readonly color?: number | { r: number; g: number; b: number; a: number }
+  /** IWorld/IPlayer compatibility (P1-D.6). */
+  readonly internalName?: string
+  /** IWorld/IPlayer compatibility (P1-D.6). */
+  readonly playerActor?: unknown
 }
 
 /**
@@ -379,7 +394,16 @@ export interface IGameActor {
    * @param typeGuard — optional type guard for type-safe filtering
    * @returns array of matching trait instances
    */
-  traitsImplementing?(interfaceId: string): unknown[]
+  /** Get all traits implementing a given interface on this actor.
+   *
+   * OpenRA 对照: Actor.TraitsImplementing<T>()
+   *
+   * P1-D.6: Made generic with optional interfaceId parameter for IWorldActor
+   * compatibility. Supports both calling conventions:
+   * - traitsImplementing('SomeInterface') → Component[]
+   * - traitsImplementing<SomeType>() → SomeType[]  (no-arg generic form)
+   */
+  traitsImplementing?<T extends Component = Component>(interfaceId?: string): T[]
 
   /** Kill this actor (HP to 0, invoking death notifications).
    *
@@ -398,6 +422,33 @@ export interface IGameActor {
    * Optional method — stub actors may not support dispose.
    */
   dispose?(): void
+
+  // -----------------------------------------------------------------------
+  // IWorldActor compatibility (P1-D.6)
+  //
+  // These optional methods allow GameWorldManager.worldActor (typed as
+  // IGameActor) to be cast to IWorldActor without a double "unknown" cast.
+  // Stub actors return null/empty; full GameActor provides real impls.
+  // -----------------------------------------------------------------------
+
+  /** Look up a trait by type on this actor.
+   *
+   * OpenRA 对照: Actor.TraitOrDefault<T>()
+   *
+   * P1-D.6: Added for IWorldActor compatibility.
+   * Stub actors return null; full GameActor delegates to TraitDictionary.
+   */
+  traitOrDefault?: <T>() => T | null
+
+  /** Collect render objects from this actor's traits.
+   *
+   * OpenRA 对照: WorldActor.Render(WorldRenderer)
+   *
+   * P1-D.6: Added for IWorldActor compatibility.
+   * Only the WorldActor (StubActor with actorId=0) needs this; regular
+   * actors render via ITickRender / ScreenMap collection.
+   */
+  render?: (wr: unknown) => unknown[]
 }
 
 // ---------------------------------------------------------------------------

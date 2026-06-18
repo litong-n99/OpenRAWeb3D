@@ -356,6 +356,16 @@ class StubActor implements IGameActor {
     // Call currentActivity.TickOuter(this) when Activity system
     // is migrated.
   }
+
+  // -----------------------------------------------------------------------
+  // IWorldActor compatibility (P1-D.6)
+  // Optional methods added to IGameActor so that GameWorldManager
+  // can be cast to IWorld without a double "unknown" cast.
+  // -----------------------------------------------------------------------
+
+  traitOrDefault = <T>(): T | null => null
+  // traitsImplementing already defined on IGameActor as (interfaceId: string) => unknown[]
+  render = (_wr: unknown): unknown[] => []
 }
 
 // ---------------------------------------------------------------------------
@@ -519,6 +529,34 @@ export class GameWorldManager {
    * OpenRA 对照: World.nextAID
    */
   private nextActorId = 0
+
+  // -----------------------------------------------------------------------
+  // IWorld-compatible properties (P1-D.6: IWorld interface alignment)
+  //
+  // These properties satisfy the IWorld interface defined in
+  // Graphics/WorldRenderer.ts so that GameWorldManager can be passed
+  // directly to WorldRenderer without a double "as unknown as IWorld" cast.
+  // Sub-type stubs (PlayerStub vs IPlayer, ScreenMapStub vs IScreenMap, etc.)
+  // are structurally compatible at runtime; the remaining "as IWorld" cast
+  // bridges the compile-time stub gap.
+  // -----------------------------------------------------------------------
+
+  /** Map tile size in logical pixels.
+   *
+   * OpenRA 对照: World.Map.Grid.TileSize
+   *
+   * Defaults to standard RA tile dimensions (24x24).
+   * Overridden by constructor options or map data.
+   */
+  readonly tileSize: { width: number; height: number } = { width: 24, height: 24 }
+
+  /** Map tile scale factor.
+   *
+   * OpenRA 对照: World.Map.Grid.TileScale
+   *
+   * Scale factor applied to tile size for zoom-independent calculations.
+   */
+  readonly tileScale: number = 1
 
   // -----------------------------------------------------------------------
   // Public properties (readonly / read-write)
@@ -705,6 +743,18 @@ export class GameWorldManager {
    * OpenRA 对照: World.Disposing
    */
   disposing = false
+
+  /** Whether the world has been fully disposed.
+   *
+   * OpenRA 对照: World.Disposed (implicit via Disposing flag check)
+   *
+   * P1-D.6: Added for IWorld interface compatibility.
+   * Returns the same value as `disposing` since GameWorldManager treats
+   * the start of disposal as the "disposed" state for all practical purposes.
+   */
+  get disposed(): boolean {
+    return this.disposing
+  }
 
   /** Whether this is a replay.
    *
@@ -902,6 +952,21 @@ export class GameWorldManager {
    * OpenRA 对照: World.Effects
    */
   get effects(): readonly IGameEffect[] {
+    return this._effects
+  }
+
+  /** Unpartitioned effects — effects not handled by ScreenMap spatial indexing.
+   *
+   * OpenRA 对照: World.UnpartitionedEffects
+   *
+   * P1-D.6: Added for IWorld interface compatibility.
+   * Currently returns the same list as `effects()` since effect spatial
+   * partitioning is not yet implemented. When ScreenMap partition is
+   * implemented, this will return only effects not yet spatially indexed.
+   */
+  get unpartitionedEffects(): readonly IGameEffect[] {
+    // NOTE: Full ScreenMap effect partitioning not yet implemented.
+    // All effects are treated as unpartitioned for now.
     return this._effects
   }
 

@@ -11,7 +11,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Mock @babylonjs/core
 // ---------------------------------------------------------------------------
 
-vi.mock('@babylonjs/core', () => ({ Engine: vi.fn(), Scene: vi.fn() }))
+vi.mock('@babylonjs/core', () => ({
+  Engine: vi.fn(),
+  Scene: vi.fn(),
+  LinesMesh: vi.fn(),
+  ShaderMaterial: vi.fn(),
+  Color3: vi.fn(function (this: any, r: number, g: number, b: number) { this.r = r; this.g = g; this.b = b }),
+  MeshBuilder: {
+    CreateLines: vi.fn(),
+    CreateDisc: vi.fn(),
+    CreatePlane: vi.fn(),
+  },
+  Mesh: {
+    BILLBOARDMODE_ALL: 7,
+    BILLBOARDMODE_NONE: 0,
+  },
+  Effect: { ShadersStore: {} },
+  Vector3: vi.fn(function (this: any, x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z }),
+}))
 
 // ---------------------------------------------------------------------------
 // Imports

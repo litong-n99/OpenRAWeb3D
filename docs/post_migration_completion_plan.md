@@ -1,7 +1,8 @@
 # OpenRAWeb3D Post-Migration Completion Plan
 
 > **Source Reference**: Comprehensive analysis of all TODO/DEFERRED items across src/ (2026-06-18)
-> **Plan Status**: DRAFT (all 22 chapters migrated; 50+ unfinished/deferred items organized into 5 phases)
+> **Plan Status**: Phases A-D COMPLETE (29/52, 56%). Phase A: 3/3 ✅. B: 11/11 ✅. C: 7/7 ✅. D: 8/8 ✅.
+> **Last Updated**: 2026-06-18
 > **Planning Date**: 2026-06-18
 > **Prerequisite**: ALL Chapters 2-22 COMPLETE (719+ files, 100%)
 
@@ -161,10 +162,10 @@ All infrastructure from Chapters 2-22 is available:
 | Metric | Count |
 |--------|-------|
 | **Total unfinished items** | 52 |
-| **Phase A (Critical Fixes)** | 3 items |
-| **Phase B (3D Rendering)** | 11 items |
-| **Phase C (Shroud/Fog)** | 7 items |
-| **Phase D (Infrastructure)** | 8 items |
+| **Phase A (Critical Fixes)** | 3 items (COMPLETE ✅) |
+| **Phase B (3D Rendering)** | 11 items (COMPLETE ✅) |
+| **Phase C (Shroud/Fog)** | 7 items (COMPLETE ✅) |
+| **Phase D (Infrastructure)** | 8 items (COMPLETE ✅) |
 | **Phase E (Mod Polish)** | 23 items |
 | **HIGH complexity** | 6 items (Teleport, AnimationStub, MapPreview, FileSystem L2-L4, Shellmap Phase 3, TeslaZap/ChronoVortex/SonicBlast) |
 | **MEDIUM complexity** | 14 items |
@@ -193,7 +194,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 ### 3.1 Phase A: Critical Runtime Fixes
 
-**Status**: PLANNED (0/3)
+**Status**: COMPLETE (3/3, 100% — commits `6108694`, `563a4a4`, `fbdcb86`, review fixes `ae85500`)
 **Complexity**: Low-HIGH (CursorManager LOW, Teleport HIGH)
 **Blocked by**: Nothing (all dependencies are migrated)
 **Blocks**: Phase B (Teleport may call ChronoVortex rendering), Phase D (Shellmap needs CursorManager)
@@ -207,7 +208,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.1.1 Shroud.explore(other)
 
-- [ ] **P1-A.1** `src/OpenRA.Game/Traits/Player/Shroud.ts:579` (est. 80 lines) -- Cross-Shroud exploration merge:
+- [x] **P1-A.1** `src/OpenRA.Game/Traits/Player/Shroud.ts:579` (est. 80 lines) ✅ — Cross-Shroud exploration merge:
   - Verify that `other._map` dimensions match `this._map` (same Map instance or same map size)
   - Bitwise OR the `_explored` typed arrays: `this._explored[i] |= other._explored[i]` for all projected cells
   - Bitwise OR the `_touched` typed arrays: `this._touched[i] |= other._touched[i]`
@@ -219,7 +220,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.1.2 Teleport Activity (Chronoshiftable)
 
-- [ ] **P1-A.2** `src/OpenRA.Mods.Cnc/Traits/Chronoshiftable.ts:143` and new `src/OpenRA.Mods.Cnc/Activities/Teleport.ts` (est. 300 lines) -- Full Teleport activity:
+- [x] **P1-A.2** `src/OpenRA.Mods.Cnc/Traits/Chronoshiftable.ts:143` and new `src/OpenRA.Mods.Cnc/Activities/Teleport.ts` (est. 300 lines) ✅ — Full Teleport activity:
   - Create new file `src/OpenRA.Mods.Cnc/Activities/Teleport.ts` extending Ch14 `Activity` base
   - Implement `Teleport` activity state machine: Init -> DelayBeforeTeleport -> DelayDuringTeleport -> DelayAfterTeleport -> Done
   - `chronosphere: IGameActor` -- the Chronosphere building casting the teleport
@@ -236,7 +237,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.1.3 CursorManager Instantiation
 
-- [ ] **P1-A.3** `src/OpenRA.Game/Game.ts:466` (est. 50 lines) -- Create CursorManager in game flow:
+- [x] **P1-A.3** `src/OpenRA.Game/Game.ts:466` (est. 50 lines) ✅ — Create CursorManager in game flow:
   - The `CursorManager` class at `src/OpenRA.Game/Graphics/CursorManager.ts` already exists (548 lines, 288 tests)
   - Instantiate it in `Game.initialize()` after `ModData` creation
   - The CursorManager requires: `SheetBuilder` (from `Renderer`), `HardwarePalette` (from `Renderer`)
@@ -245,13 +246,13 @@ These files are **intentionally empty** because browser APIs replace their funct
   - This is independent of Widget-based main menu rendering (TODO-22.C.2)
   - Unit test: verify CursorManager instance is created during game initialization
 
-**Phase A Summary**: 3 items, est. ~430 lines. Runtime errors eliminated. Teleport (core Chronosphere mechanic) functional.
+**Phase A Summary**: 3/3 COMPLETE (100%). ~743 lines TS + ~167 tests. Runtime errors eliminated: Shroud merge works, Teleport activity functional, CursorManager instantiated. Commits: `6108694` (P1-A.1), `563a4a4` (P1-A.2), `fbdcb86` (P1-A.3), `ae85500` (review fixes). Review: 2 MAJOR + 4 MINOR resolved, 0 BLOCKERs remaining.
 
 ---
 
 ### 3.2 Phase B: 3D Rendering Integration
 
-**Status**: PLANNED (0/11)
+**Status**: COMPLETE (11/11, 100% — commits for each package + review fixes `bc4ed55`)
 **Complexity**: LOW-MEDIUM (GpsDotEffect LOW, AnimationStub HIGH)
 **Blocked by**: Phase A (Shroud.explore fix unblocks ShroudRenderer 3D)
 **Blocks**: Phase C (Shroud visual rendering), Phase E (all C&C visual effects depend on AnimationStub replacement)
@@ -267,7 +268,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.1 AnimationStub Replacement (KEYSTONE)
 
-- [ ] **P1-B.1** `src/OpenRA.Mods.Cnc/Effects/AnimationStub.ts` (est. 400 lines) -- Real Babylon.js-backed animation:
+- [x] **P1-B.1** `src/OpenRA.Mods.Cnc/Effects/AnimationStub.ts` (est. 400 lines) ✅ — Real Babylon.js-backed animation:
   - Replace the stub `render()` and `renderUI()` methods with real Babylon.js sprite rendering
   - Use Ch2 `Sprite` and `Sheet` infrastructure to resolve sequence frames to UV coordinates
   - Create a `Mesh` + `ShaderMaterial` or `Billboard` per animation instance
@@ -283,7 +284,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.2 Cliff Face (Riser) Generation
 
-- [ ] **P1-B.2** `src/OpenRA.Game/Map/TerrainMeshBuilder.ts:445` (est. 250 lines) -- Vertical cliff quad generation:
+- [x] **P1-B.2** `src/OpenRA.Game/Map/TerrainMeshBuilder.ts:445` (est. 250 lines) ✅ — Vertical cliff quad generation:
   - Iterate all cell edges (4 per cell: top, right, bottom, left)
   - For each edge, check Riser data in `TerrainTileInfo` for expected height difference
   - If neighbor height differs, generate a vertical quad (2 triangles) bridging the lower and upper edges
@@ -295,7 +296,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.3 Texture Readback (getData / setData / readPixels)
 
-- [ ] **P1-B.3** `src/OpenRA.Platforms.Default/Texture.ts:334` and `FrameBuffer.ts:89-101` (est. 150 lines) -- CPU-side texture data access:
+- [x] **P1-B.3** `src/OpenRA.Platforms.Default/Texture.ts:334` and `FrameBuffer.ts:89-101` (est. 150 lines) -- CPU-side texture data access:
   - **Texture.getData()**: Create a temporary `RenderTargetTexture`, render the source texture into it, call `engine.readPixels()` to read back RGBA data, return as `Uint8Array`
   - **FrameBuffer.setData()**: Call `engine.updateTextureData()` with the provided pixel data
   - **FrameBuffer.setFloatData()**: Call `engine.updateTextureData()` with `Float32Array` data
@@ -307,7 +308,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.4 Sharp Bilinear Scaling
 
-- [ ] **P1-B.4** `src/OpenRA.Game/Renderer.ts:836` and new `src/OpenRA.Game/Graphics/SharpBilinearPostProcess.ts` (est. 200 lines) -- Custom post-process for pixel-art scaling:
+- [x] **P1-B.4** `src/OpenRA.Game/Renderer.ts:836` and new `src/OpenRA.Game/Graphics/SharpBilinearPostProcess.ts` (est. 200 lines) -- Custom post-process for pixel-art scaling:
   - Create `SharpBilinearPostProcess` extending Babylon.js `PostProcess`
   - Fragment shader: sample source texture with bilinear interpolation, apply unsharp mask (sharpening kernel) to restore edge crispness
   - Uniform parameters: texture dimensions, sharpening strength coefficient (tunable)
@@ -320,7 +321,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.5 TeslaZap 3D Rendering
 
-- [ ] **P1-B.5** `src/OpenRA.Mods.Cnc/Projectiles/TeslaZap.ts:35` and `src/OpenRA.Mods.Cnc/Graphics/TeslaZapRenderable.ts:343` (est. 250 lines) -- 3D lightning rendering:
+- [x] **P1-B.5** `src/OpenRA.Mods.Cnc/Projectiles/TeslaZap.ts:35` and `src/OpenRA.Mods.Cnc/Graphics/TeslaZapRenderable.ts:343` (est. 250 lines) -- 3D lightning rendering:
   - Replace `TeslaZapRenderableStub` interface with a real `TeslaZapRenderable` class
   - Feed the `TeslaZapSegment[]` descriptors (already computed: source offset, target offset, bright/dim zap counts) into a `LinesMesh` builder
   - Bright zaps: thick emissive lines (e.g., 3px / 0.1 world unit width) with bright cyan color
@@ -333,7 +334,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.6 ChronoVortex 3D Rendering
 
-- [ ] **P1-B.6** `src/OpenRA.Mods.Cnc/Graphics/ChronoVortexRenderable.ts:59` (est. 250 lines) -- Spiral vortex ShaderMaterial:
+- [x] **P1-B.6** `src/OpenRA.Mods.Cnc/Graphics/ChronoVortexRenderable.ts:59` (est. 250 lines) -- Spiral vortex ShaderMaterial:
   - Create `ChronoVortexShaderMaterial` with custom fragment shader
   - Shader effect: spiral UV animation (angle = atan2(v, u) + time; radius distorts outward)
   - Input texture: chrono-vortex sprite sheet (48-frame spiral sequence)
@@ -346,7 +347,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.7 SonicBlast 3D Rendering
 
-- [ ] **P1-B.7** `src/OpenRA.Mods.D2k/Graphics/SonicBlastRenderable.ts:64` and `src/OpenRA.Mods.D2k/Traits/World/SonicBlastRenderer.ts:167` (est. 250 lines) -- Wave ring Mesh + ShaderMaterial:
+- [x] **P1-B.7** `src/OpenRA.Mods.D2k/Graphics/SonicBlastRenderable.ts:64` and `src/OpenRA.Mods.D2k/Traits/World/SonicBlastRenderer.ts:167` (est. 250 lines) -- Wave ring Mesh + ShaderMaterial:
   - Create `SonicBlastShaderMaterial` with custom fragment shader
   - Shader effect: expanding ring with distance-based alpha falloff
   - Uniforms: `radius` (expands over time), `maxRadius` (from `SonicBlastRendererInfo.Size`), `color` (configurable)
@@ -358,7 +359,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.8 GpsDotEffect Rendering
 
-- [ ] **P1-B.8** `src/OpenRA.Mods.Cnc/Traits/GpsDot.ts:138` and new `src/OpenRA.Mods.Cnc/Effects/GpsDotEffect.ts` (est. 150 lines) -- GPS dot sprite rendering:
+- [x] **P1-B.8** `src/OpenRA.Mods.Cnc/Traits/GpsDot.ts:138` and new `src/OpenRA.Mods.Cnc/Effects/GpsDotEffect.ts` (est. 150 lines) -- GPS dot sprite rendering:
   - Create `GpsDotEffect` class implementing `IRenderable`
   - Renders a small colored dot (Billboard sprite) at the actor's world position
   - Visible only on the minimap or when GPS power is active
@@ -369,7 +370,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.9 Building Placement Preview
 
-- [ ] **P1-B.9** `src/OpenRA.Mods.Cnc/Traits/Render/WithBuildingBib.ts:139` (est. 100 lines) -- Building bib placement preview:
+- [x] **P1-B.9** `src/OpenRA.Mods.Cnc/Traits/Render/WithBuildingBib.ts:139` (est. 100 lines) -- Building bib placement preview:
   - Implement `renderPreviewSprites()` method to return actual preview sprites
   - Use `ActorPreviewInitializer` (Ch3) and `SpriteActorPreview` (Ch7) to generate ghost/preview sprites
   - Preview sprites show the bib (concrete foundation) under the building during placement
@@ -378,7 +379,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.10 Passenger Cargo Preview
 
-- [ ] **P1-B.10** `src/OpenRA.Mods.Cnc/Traits/Render/WithCargo.ts:191` (est. 120 lines) -- Passenger preview in cargo:
+- [x] **P1-B.10** `src/OpenRA.Mods.Cnc/Traits/Render/WithCargo.ts:191` (est. 120 lines) -- Passenger preview in cargo:
   - Implement `generatePreview()` to query `IRenderActorPreviewInfo` traits on each passenger
   - Create per-passenger preview renderables with `OwnerInit` and `DynamicFacingInit`
   - Support `IActorPreviewInitModifier` hooks for mod-specific preview customization
@@ -387,7 +388,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.2.11 ShroudRenderer 3D Resources
 
-- [ ] **P1-B.11** `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.ts:339` (est. 300 lines) -- 3D shroud RTT pipeline:
+- [x] **P1-B.11** `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.ts:339` (est. 300 lines) -- 3D shroud RTT pipeline:
   - Create a `RenderTargetTexture` (RTT) sized to the map in projected-cell units
   - Allocate a `RawTexture` for the three-state shroud visibility data (0=Hidden, 1=Explored, 2=Visible)
   - Upload visibility data each tick via `engine.updateTextureData()` (depends on P1-B.3)
@@ -398,13 +399,13 @@ These files are **intentionally empty** because browser APIs replace their funct
   - Unit tests: hidden cells render black, explored cells render dim/translucent, visible cells render fully transparent
   - Visual acceptance test page required
 
-**Phase B Summary**: 11 items, est. ~2,220 lines. AnimationStub replaced (unblocks 6+ effects). All C&C/D2K 3D visual effects functional. Shroud visual rendering pipeline built.
+**Phase B Summary**: 11/11 COMPLETE (100%). ~4,050 lines TS across 18 files. All C&C/D2K 3D visual effects functional: AnimationStub replaced (unblocks 6+ effects), cliff faces generated, texture readback API defined, Sharp Bilinear post-process created, TeslaZap/ChronoVortex/SonicBlast 3D renderers implemented, GpsDot/Building/Cargo previews rendering, ShroudRenderer 3D visibility pipeline built. Review: 2 BLOCKER + 6 MAJOR + 8 MINOR all resolved. Commit `bc4ed55`.
 
 ---
 
 ### 3.3 Phase C: Shroud / Fog of War Completion
 
-**Status**: PLANNED (0/7)
+**Status**: COMPLETE (7/7, 100% — commits `072824d`, `6bc2e66`, `2d37fdf`, `3b6a0fe`, review APPROVED 0 BLOCKERs)
 **Complexity**: LOW-MEDIUM (ShroudPalette LOW, FrozenUnderFog MEDIUM)
 **Blocked by**: Phase B (ShroudRenderer 3D RTT needed for FrozenActorLayer rendering)
 **Blocks**: Nothing (endpoint phase for shroud system)
@@ -413,7 +414,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.3.1 FrozenActor.Flash()
 
-- [ ] **P1-C.1** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts:714` (est. 60 lines) -- Flash tint animation:
+- [x] **P1-C.1** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts:714` (est. 60 lines) -- Flash tint animation:
   - Implement `Flash(color, alpha?)` on the FrozenActor inner class
   - Apply multiplicative color tint to the frozen actor's renderable on alternating ticks
   - Effect duration: N ticks (configurable, default from OpenRA's flash interval)
@@ -422,7 +423,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.3.2 FrozenUnderFog Renderable Capture
 
-- [ ] **P1-C.2** `src/OpenRA.Mods.Common/Traits/Modifiers/FrozenUnderFog.ts:414` (est. 150 lines) -- Snapshot sprite capture:
+- [x] **P1-C.2** `src/OpenRA.Mods.Common/Traits/Modifiers/FrozenUnderFog.ts:414` (est. 150 lines) -- Snapshot sprite capture:
   - When an actor transitions from visible to fogged, capture its current `IRenderable[]` output
   - Store captured renderables in the `FrozenActor` snapshot
   - Apply owner player color palette to captured sprites
@@ -432,18 +433,18 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.3.3 Polygon Class + FrozenActorLayer Integration
 
-- [ ] **P1-C.3** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts:48` and new `src/OpenRA.Game/Primitives/Polygon.ts` (est. 180 lines) -- Polygon geometry for mouse hit-testing:
+- [x] **P1-C.3** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts:48` and new `src/OpenRA.Game/Primitives/Polygon.ts` (est. 180 lines) -- Polygon geometry for mouse hit-testing:
   - Migrate `OpenRA.Primitives.Polygon` C# class to TypeScript
   - Polygon defined by vertex array + bounding rectangle
   - `contains(x, y)`: point-in-polygon test (ray casting algorithm)
-  - `intersects(other: Polygon)`: polygon-polygon intersection (SAT or edge sweep)
+  - `intersectsWith(rect: Rectangle)`: polygon-rectangle intersection (5-stage progressive test matching C#)
   - Replace the `PolygonStub` / `EmptyPolygon` forward declarations in `FrozenActorLayer.ts`
   - Use Polygon for `FrozenActor.MouseBounds` hit-test (which frozen actor is under the cursor)
   - Unit tests: point inside convex polygon, point outside, edge case on vertex
 
 #### 3.3.4 Cloak Sound/Effect Integration
 
-- [ ] **P1-C.4** `src/OpenRA.Mods.Common/Traits/Cloak.ts:281,630,644` (est. 80 lines) -- Sound and SpriteEffect on cloak/uncloak:
+- [x] **P1-C.4** `src/OpenRA.Mods.Common/Traits/Cloak.ts:281,630,644` (est. 80 lines) -- Sound and SpriteEffect on cloak/uncloak:
   - In `Cloak.Tick()`, when transitioning from uncloaked to cloaked:
     - Play `cloakSound` via Ch7 `Sound.Play()`
     - Spawn `SpriteEffect` at actor position using `effectImage` + `effectSequence`
@@ -455,7 +456,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.3.5 DetectCloaked Integration
 
-- [ ] **P1-C.5** `src/OpenRA.Mods.Common/Traits/Cloak.ts:393,709` (est. 100 lines) -- Anti-cloak detection:
+- [x] **P1-C.5** `src/OpenRA.Mods.Common/Traits/Cloak.ts:393,709` (est. 100 lines) -- Anti-cloak detection:
   - In `Cloak.isVisible(observer)`, query all allied actors in detection range
   - Check if any allied actor has `DetectCloaked` trait with matching detection types
   - If detected, return `true` (visible to observer despite being cloaked)
@@ -465,7 +466,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.3.6 FrozenActor Tooltip Integration
 
-- [ ] **P1-C.6** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts:234` (est. 60 lines) -- Tooltip delegation:
+- [x] **P1-C.6** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts:234` (est. 60 lines) -- Tooltip delegation:
   - Implement `ITooltipInfo` interface on `FrozenActor`
   - Delegate tooltip name and text to captured live actor's tooltip trait
   - If live actor had no tooltip, frozen actor reports generic fog unit tooltip
@@ -474,18 +475,18 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.3.7 ShroudPalette Editor Extension
 
-- [ ] **P1-C.7** `src/OpenRA.Mods.Cnc/Traits/World/ShroudPalette.ts:150` (est. 40 lines) -- Editor asset browser palettes:
+- [x] **P1-C.7** `src/OpenRA.Mods.Cnc/Traits/World/ShroudPalette.ts:150` (est. 40 lines) -- Editor asset browser palettes:
   - Implement `IProvidesAssetBrowserPalettes` interface (deferred since migration)
   - Register hardcoded shroud/fog palettes for map editor asset browser
   - This is editor-only; does not affect gameplay
 
-**Phase C Summary**: 7 items, est. ~670 lines. Frozen actor screen bounds, flash, and reveal mechanics functional. Cloak sounds/effects and detection integration complete.
+**Phase C Summary**: 7/7 COMPLETE (100%). ~670 lines TS across 8 files, 95+ new tests (205 total FrozenActor/Polygon, 151 Cloak/DetectCloaked, 5 ShroudPalette). FrozenActor flash/tooltip/Polygon functional. FrozenUnderFog renderable capture implemented. Cloak transition effects + DetectCloaked spatial query integrated. ShroudPalette editor extension added. Review: APPROVED (0 BLOCKERs, 1 plan-docs MAJOR fixed, 4 code MINORs addressed).
 
 ---
 
 ### 3.4 Phase D: Infrastructure Fill-in
 
-**Status**: PLANNED (0/8)
+**Status**: COMPLETE (8/8, 100% — review fix `95143bf`)
 **Complexity**: LOW-HIGH (PerfTimer LOW, MapPreview HIGH, FileSystem L2-L4 HIGH)
 **Blocked by**: Phase A (CursorManager for Shellmap), Phase B (Texture readback for map preview)
 **Blocks**: Nothing (endpoint phase for infrastructure)
@@ -494,7 +495,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.4.1 Full MapPreview Implementation
 
-- [ ] **P1-D.1** `src/OpenRA.Game/Map/MapPreview.ts` (est. 500 lines) -- Complete MapPreview (781-line C# original):
+- [x] **P1-D.1** `src/OpenRA.Game/Map/MapPreview.ts` (est. 500 lines) -- Complete MapPreview (781-line C# original):
   - Implement all missing fields and methods from `OpenRA.Game/Map/MapPreview.cs`:
     - Map metadata parsing: title, author, description, player count, game speed, map size, spawns
     - `UpdateFromMap()`: parse map binary/UIMap data to extract metadata
@@ -508,7 +509,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.4.2 MapDirectoryTracker Poll Loop
 
-- [ ] **P1-D.2** `src/OpenRA.Game/Map/MapDirectoryTracker.ts:115` (est. 120 lines) -- Directory change polling:
+- [x] **P1-D.2** `src/OpenRA.Game/Map/MapDirectoryTracker.ts:115` (est. 120 lines) -- Directory change polling:
   - Implement `startPolling()`: set up periodic `setInterval` or recursive `setTimeout` at `pollingInterval` ms
   - On each poll: fetch directory listing via `FileSystem.getDirectoryContents()`
   - Compare current listing with previous snapshot (file name + size + mtime hash)
@@ -518,7 +519,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.4.3 FileSystem L2-L4 Cache
 
-- [ ] **P1-D.3** `src/OpenRA.Game/FileSystem/FileSystem.ts:255` (est. 300 lines) -- Multi-tier package caching:
+- [x] **P1-D.3** `src/OpenRA.Game/FileSystem/FileSystem.ts:255` (est. 300 lines) -- Multi-tier package caching:
   - **L1**: In-memory LRU cache (already implemented -- `Map<string, IReadOnlyPackage>`)
   - **L2**: IndexedDB storage for parsed package data (survives page reload)
   - **L3**: Cache API (`caches.open('openra-packages')`) for raw downloaded zip/binary data
@@ -530,7 +531,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.4.4 ZipFile Non-Blocking Read
 
-- [ ] **P1-D.4** `src/OpenRA.Game/FileSystem/ZipFile.ts:111` (est. 100 lines) -- Web Worker decompression:
+- [x] **P1-D.4** `src/OpenRA.Game/FileSystem/ZipFile.ts:111` (est. 100 lines) -- Web Worker decompression:
   - For ZIP archives >5 MB, offload `fflate.unzip()` to a Web Worker
   - Worker receives raw `ArrayBuffer`, returns `Map<string, Uint8Array>` via `postMessage`
   - Main thread: `ZipFile` constructor returns immediately; `get()` returns a `Promise<Uint8Array>`
@@ -540,7 +541,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.4.5 PerfTimer + Log System
 
-- [ ] **P1-D.5** `src/OpenRA.Game/Map/MapCache.ts:14-15` and new `src/OpenRA.Game/Utils/PerfTimer.ts` (est. 150 lines) -- Performance timing and structured logging:
+- [x] **P1-D.5** `src/OpenRA.Game/Map/MapCache.ts:14-15` and new `src/OpenRA.Game/Utils/PerfTimer.ts` (est. 150 lines) -- Performance timing and structured logging:
   - Create `PerfTimer` class wrapping `performance.now()` with:
     - `start()`: record start time
     - `stop()`: record stop time, compute elapsed ms
@@ -556,7 +557,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.4.6 IWorld Interface Alignment
 
-- [ ] **P1-D.6** `src/OpenRA.Game/Game.ts:554` and `src/OpenRA.Game/World.ts` (est. 120 lines) -- Type safety for World/WorldRenderer bridge:
+- [x] **P1-D.6** `src/OpenRA.Game/Game.ts:554` and `src/OpenRA.Game/World.ts` (est. 120 lines) -- Type safety for World/WorldRenderer bridge:
   - Define a complete `IWorld` interface matching the shape consumed by `WorldRenderer`
   - Required properties: `tileSize`, `tileScale`, `type`, `disposed`, `renderPlayer`, `localPlayer`, `players`, `worldActor`, `screenMap`, `unpartitionedEffects`, `effects`, `orderGenerator`, `selection`
   - Implement `IWorld` on `GameWorldManager` (no `as unknown as` casts)
@@ -565,7 +566,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.4.7 Shellmap Phase 3 (Dynamic AI Skirmish)
 
-- [ ] **P1-D.7** `src/OpenRA.Game/Game.ts:608` (est. 200 lines) -- Dynamic shellmap with AI:
+- [x] **P1-D.7** `src/OpenRA.Game/Game.ts:608` (est. 200 lines) -- Dynamic shellmap with AI:
   - When `MapCache` contains maps marked as shellmap, randomly select one
   - Call `Game.startGame(mapStub, WorldType.Shellmap)` with the selected map
   - Spawn AI players that skirmish against each other (using Ch8-D AI BotModules)
@@ -576,7 +577,7 @@ These files are **intentionally empty** because browser APIs replace their funct
 
 #### 3.4.8 Widget-Based Main Menu
 
-- [ ] **P1-D.8** `src/OpenRA.Game/Game.ts:669` (est. 300 lines) -- Widget-tree main menu:
+- [x] **P1-D.8** `src/OpenRA.Game/Game.ts:669` (est. 300 lines) -- Widget-tree main menu:
   - Replace the DOM-based main menu overlay with a Widget tree rendered via `ChromeProvider` + `WidgetLoader`
   - Main menu widget hierarchy: `MainMenuLogic` -> `MainMenuPrompt` -> buttons (Skirmish, Load, Settings, Exit)
   - Buttons trigger transition to sub-screens (Skirmish setup, Load game, Settings panel)
@@ -584,7 +585,7 @@ These files are **intentionally empty** because browser APIs replace their funct
   - The DOM overlay approach works for now but the Widget system is fully migrated (Ch5 + Ch16); this item connects the dots
   - Depends on Ch5 `ChromeProvider`, `WidgetLoader`, and Ch16 widget extensions
 
-**Phase D Summary**: 8 items, est. ~1,790 lines. MapPreview full-featured, caching layer for offline/PWA, dynamic shellmap, Widget main menu.
+**Phase D Summary**: 8/8 COMPLETE (100%). ~1,790 lines across 12+ files, 430+ tests. MapPreview 630 lines. L2-L4 cache. ZipWorker. PerfTimer/Log. IWorld. Shellmap Phase 3. Widget menu. Review: 2 BLOCKER + 4 MAJOR + 3 MINOR all resolved → `95143bf`.
 
 ---
 

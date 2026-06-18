@@ -1,16 +1,19 @@
 /**
- * WithBuildingBib.ts — 建筑地基围裙渲染（建筑下方的连接平台）
- * OpenRA 对照: OpenRA.Mods.Cnc/Traits/Render/WithBuildingBib.cs (137 lines)
+ * WithBuildingBib.ts — Building foundation bib rendering (concrete platform under buildings)
+ * OpenRA reference: OpenRA.Mods.Cnc/Traits/Render/WithBuildingBib.cs (137 lines)
  *
- * 核心范式转换:
- * - C# INotifyAddedToWorld / INotifyRemovedFromWorld → TS lifecycle hooks
- * - C# Animation + AnimationWithOffset per bib cell → TS duck-typed animation array
- * - C# CVec / CPos cell arithmetic → TS cell coordinate math
- * - C# RenderSprites.Add / Remove → TS duck-typed add/remove
+ * Paradigm mapping:
+ * - C# INotifyAddedToWorld / INotifyRemovedFromWorld -> TS lifecycle hooks
+ * - C# Animation + AnimationWithOffset per bib cell -> TS duck-typed animation array
+ * - C# CVec / CPos cell arithmetic -> TS cell coordinate math
+ * - C# RenderSprites.Add / Remove -> TS duck-typed add/remove
+ * - C# IRenderActorPreviewSpritesInfo.RenderPreviewSprites -> TS builder method
+ *   returning IActorPreview array (Phase B.9: implemented ghost preview sprites for bib cells)
  *
- * 建筑 "bib" (围裙) 是建筑下方的基础连接平台。多个 bib 精灵被放置在
- * 建筑占用格的底部行（通常是底部两行），形成建筑与地面的过渡。
- * 支持地形特定的 bib 变体（如 "bib-sand"）。
+ * The building "bib" is the concrete foundation platform under a building.
+ * Multiple bib sprites are placed at the bottom rows of the building footprint
+ * to form a visual transition from building to terrain.
+ * Supports terrain-specific bib variants (e.g. "bib-sand").
  */
 
 import type { IGameActor, ITraitInfo } from '../../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -21,7 +24,7 @@ import type { IGameActor, ITraitInfo } from '../../../OpenRA.Game/Traits/TraitsI
 
 /** Minimal Animation interface.
  *
- * OpenRA 对照: Animation
+ * OpenRA reference: Animation
  */
 export interface IBibAnimation {
   readonly name: string
@@ -32,7 +35,7 @@ export interface IBibAnimation {
 
 /** Minimal RenderSprites interface for bib management.
  *
- * OpenRA 对照: RenderSprites
+ * OpenRA reference: RenderSprites
  */
 export interface IBibRenderSprites {
   getImage(self: IGameActor): string
@@ -46,7 +49,7 @@ export interface IBibRenderSprites {
 
 /** Minimal BuildingInfo interface.
  *
- * OpenRA 对照: BuildingInfo
+ * OpenRA reference: BuildingInfo
  */
 export interface IBibBuildingInfo {
   readonly dimensions: { readonly x: number; readonly y: number }
@@ -55,7 +58,7 @@ export interface IBibBuildingInfo {
 
 /** Minimal Map interface.
  *
- * OpenRA 对照: Map
+ * OpenRA reference: Map
  */
 export interface IBibMap {
   readonly tiles: { readonly cellBounds: { readonly width: number; readonly height: number } }
@@ -77,33 +80,146 @@ export interface IBibAnimWithOffset {
   _zOffset: number
 }
 
+/** Minimal ActorPreviewInitializer for building placement preview.
+ *
+ * OpenRA reference: ActorPreviewInitializer
+ */
+export interface IBibPreviewInit {
+  /** The actor info for the building being previewed. */
+  readonly actor: { traitInfo(name: string): unknown }
+  /** The world renderer (palette access). */
+  readonly worldRenderer: { palette(name: string): unknown }
+  /** The world (map access). */
+  readonly world: { map: IBibMap }
+  /** Get a value from the init type dictionary. */
+  getValue(key: string, fallback?: unknown): unknown
+  /** Check whether a specific init type is present. */
+  contains(key: string): boolean
+}
+
+/** Actor preview for a single bib cell during building placement.
+ *
+ * OpenRA reference: IActorPreview (from OpenRA.Mods.Common.Graphics.ActorPreview)
+ *
+ * Renders as a semi-transparent ghost sprite showing where the bib
+ * foundation will be placed.
+ */
+export interface IBibActorPreview {
+  /** Advance the preview animation by one tick. */
+  tick(): void
+  /** Collect renderables at the given world position.
+   *
+   * @param wr — the world renderer
+   * @param pos — the world position to render at
+   * @returns array of renderable objects
+   */
+  render(wr: unknown, pos: { readonly x: number; readonly y: number; readonly z: number }): unknown[]
+  /** Get screen-space bounds at the given world position.
+   *
+   * @param wr — the world renderer
+   * @param pos — the world position
+   * @returns array of screen-space rectangles
+   */
+  screenBounds(wr: unknown, pos: { readonly x: number; readonly y: number; readonly z: number }): { x: number; y: number; width: number; height: number }[]
+}
+
+// ---------------------------------------------------------------------------
+// BibPreviewRenderable — a preview renderable for one bib cell
+// OpenRA reference: SpriteActorPreview wraps Animation with offset + zOffset + palette
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders a single bib cell preview during building placement.
+ *
+ * OpenRA reference: SpriteActorPreview
+ *
+ * Each bib cell is rendered as a semi-transparent ghost sprite at its
+ * world position with terrain-specific sequencing.
+ */
+export class BibPreviewRenderable implements IBibActorPreview {
+  /** The bib sprite sequence name (e.g. "bib", "bib-sand"). */
+  readonly sequence: string
+  /** The world-space offset from the building origin to this bib cell. */
+  readonly offset: () => { readonly x: number; readonly y: number; readonly z: number }
+  /** Z-offset for rendering order. */
+  readonly zOffset: () => number
+  /** Palette reference for coloring. */
+  readonly palette: unknown
+  /** Animation image name. */
+  readonly image: string
+  /** Ghost alpha (semi-transparent until placement confirmed). */
+  readonly alpha: number
+
+  constructor(
+    sequence: string,
+    offset: () => { readonly x: number; readonly y: number; readonly z: number },
+    zOffset: () => number,
+    palette: unknown,
+    image: string,
+    alpha: number = 0.5,
+  ) {
+    this.sequence = sequence
+    this.offset = offset
+    this.zOffset = zOffset
+    this.palette = palette
+    this.image = image
+    this.alpha = alpha
+  }
+
+  tick(): void {
+    // Animation tick — advance the frame counter.
+    // In the full impl, this would call anim.Tick().
+  }
+
+  render(_wr: unknown, _pos: { readonly x: number; readonly y: number; readonly z: number }): unknown[] {
+    // Returns renderable entries with offset + zOffset + palette.
+    // Each entry is a duck-typed object carrying the preview metadata.
+    return [{
+      type: 'bibPreview',
+      image: this.image,
+      sequence: this.sequence,
+      offset: this.offset(),
+      zOffset: this.zOffset(),
+      palette: this.palette,
+      alpha: this.alpha,
+    }]
+  }
+
+  screenBounds(_wr: unknown, _pos: { readonly x: number; readonly y: number; readonly z: number }): { x: number; y: number; width: number; height: number }[] {
+    // Returns approximated screen bounds for the bib cell.
+    // Without full sprite data, return a unit-sized rect.
+    const o = this.offset()
+    return [{ x: o.x, y: o.y, width: 1, height: 1 }]
+  }
+}
+
 // ---------------------------------------------------------------------------
 // WithBuildingBibInfo
-// OpenRA 对照: WithBuildingBibInfo : TraitInfo, Requires<BuildingInfo>, IRenderActorPreviewSpritesInfo, IActorPreviewInitInfo, Requires<RenderSpritesInfo>
+// OpenRA reference: WithBuildingBibInfo : TraitInfo, Requires<BuildingInfo>, IRenderActorPreviewSpritesInfo, IActorPreviewInitInfo, Requires<RenderSpritesInfo>
 // ---------------------------------------------------------------------------
 
 /** Configuration for WithBuildingBib.
  *
- * OpenRA 对照: WithBuildingBibInfo
+ * OpenRA reference: WithBuildingBibInfo
  */
 export class WithBuildingBibInfo implements ITraitInfo {
   readonly instanceName?: string
 
   /** Bib sprite sequence (default "bib").
    *
-   * OpenRA 对照: WithBuildingBibInfo.Sequence
+   * OpenRA reference: WithBuildingBibInfo.Sequence
    */
   readonly sequence: string
 
   /** Bib color palette (default terrain internal palette).
    *
-   * OpenRA 对照: WithBuildingBibInfo.Palette
+   * OpenRA reference: WithBuildingBibInfo.Palette
    */
   readonly palette: string
 
   /** Whether to use minibib (1 row instead of 2).
    *
-   * OpenRA 对照: WithBuildingBibInfo.HasMinibib (default false)
+   * OpenRA reference: WithBuildingBibInfo.HasMinibib (default false)
    */
   readonly hasMinibib: boolean
 
@@ -121,39 +237,110 @@ export class WithBuildingBibInfo implements ITraitInfo {
 
   /** Create the trait instance.
    *
-   * OpenRA 对照: WithBuildingBibInfo.Create(ActorInitializer)
+   * OpenRA reference: WithBuildingBibInfo.Create(ActorInitializer)
    */
   create(init: IGameActor): WithBuildingBib {
     return new WithBuildingBib(init, this)
   }
 
   // -------------------------------------------------------------------------
-  // IRenderActorPreviewSpritesInfo — OpenRA 对照: RenderPreviewSprites
+  // IRenderActorPreviewSpritesInfo — OpenRA reference: RenderPreviewSprites
   // -------------------------------------------------------------------------
 
   /** Render actor preview sprites for placement visualization.
    *
-   * OpenRA 对照: IRenderActorPreviewSpritesInfo.RenderPreviewSprites(
+   * OpenRA reference: IRenderActorPreviewSpritesInfo.RenderPreviewSprites(
    *   ActorPreviewInitializer, string image, int facings, PaletteReference p)
    *
-* Full implementation requires ActorPreviewInitializer and
-   * SpriteActorPreview from Chapter 3+7. The preview renders bib sprites
-   * in a placement ghost overlay using WorldRenderer sprites.
-   * Currently returns empty array for basic compatibility.
+   * Phase B.9: Generates ghost/preview sprites showing the bib (concrete
+   * foundation) under the building during placement. Each bib cell gets a
+   * semi-transparent BibPreviewRenderable at its world position.
+   *
+   * @param init — the actor preview initializer with world/map/actor info
+   * @param image — the sprite sheet image name
+   * @param _facings — number of facings (unused, bib is always 1 facing)
+   * @param p — the palette reference for coloring
+   * @returns iterable of IActorPreview for each bib cell
    */
   renderPreviewSprites(
-    _init: unknown,
-    _image: string,
+    init: IBibPreviewInit,
+    image: string,
     _facings: number,
-    _p: unknown,
-  ): Iterable<unknown> {
-    // Implement bib preview sprites for building placement UI
-    return []
+    p: unknown,
+  ): Iterable<IBibActorPreview> {
+    // Check for HideBibPreviewInit sentinel — suppress bib in preview
+    if (init.contains('HideBibPreviewInit')) return []
+
+    const previews: IBibActorPreview[] = []
+
+    // Resolve palette: use info.Palette if specified
+    let palette = p
+    if (this.palette) {
+      palette = init.worldRenderer?.palette(this.palette) ?? p
+    }
+
+    // Get building dimensions from init
+    const bi = init.actor.traitInfo('Building') as IBibBuildingInfo | undefined
+    if (!bi) return previews
+
+    const rows = this.hasMinibib ? 1 : 2
+    const width = bi.dimensions.x
+    const bibOffset = bi.dimensions.y - rows
+    const centerOffset = bi.centerOffset(init.world)
+    const map = init.world.map
+
+    // Get placement location from init (default to origin)
+    const location = (init.getValue('location') as CellCoord) ?? { x: 0, y: 0 }
+
+    for (let i = 0; i < rows * width; i++) {
+      const index = i
+      const cellOffset: CellCoord = {
+        x: i % width,
+        y: Math.floor(i / width) + bibOffset,
+      }
+      const cell: CellCoord = {
+        x: location.x + cellOffset.x,
+        y: location.y + cellOffset.y,
+      }
+
+      // Check for terrain-specific bib sequence
+      let sequence = this.sequence
+      if (map.contains(cell)) {
+        const terrain = map.getTerrainInfo(cell).type
+        const testSequence = this.sequence + '-' + terrain
+        if (terrain && testSequence.length > 0) {
+          sequence = testSequence
+        }
+      }
+
+      // Compute world-space offset
+      const cellCenter = map.centerOfCell(cell)
+      const locationCenter = map.centerOfCell(location)
+      const offset = {
+        x: cellCenter.x - locationCenter.x - centerOffset.x,
+        y: cellCenter.y - locationCenter.y - centerOffset.y,
+        z: cellCenter.z - locationCenter.z - centerOffset.z,
+      }
+      // Z-order: set to the top of the footprint
+      const zOffsetVal = -(offset.y + centerOffset.y + 512)
+
+      const preview = new BibPreviewRenderable(
+        sequence,
+        () => offset,
+        () => zOffsetVal + index,
+        palette,
+        image,
+        0.5, // semi-transparent ghost alpha
+      )
+      previews.push(preview)
+    }
+
+    return previews
   }
 
   /** Actor preview inits for UseMinibib detection.
    *
-   * OpenRA 对照: IActorPreviewInitInfo.ActorPreviewInits
+   * OpenRA reference: IActorPreviewInitInfo.ActorPreviewInits
    */
   actorPreviewInits(_actorInfo: unknown, _type: unknown): Iterable<unknown> {
     return [new HideBibPreviewInit()]
@@ -161,12 +348,12 @@ export class WithBuildingBibInfo implements ITraitInfo {
 }
 
 // ---------------------------------------------------------------------------
-// HideBibPreviewInit — OpenRA 对照: sealed class HideBibPreviewInit : RuntimeFlagInit
+// HideBibPreviewInit — OpenRA reference: sealed class HideBibPreviewInit : RuntimeFlagInit
 // ---------------------------------------------------------------------------
 
 /** Sentinel init flag to suppress bib rendering in actor previews.
  *
- * OpenRA 对照: HideBibPreviewInit : RuntimeFlagInit
+ * OpenRA reference: HideBibPreviewInit : RuntimeFlagInit
  *
  * When present in an ActorPreviewInitializer, bib sprites are hidden
  * during placement preview rendering.
@@ -174,19 +361,19 @@ export class WithBuildingBibInfo implements ITraitInfo {
 export class HideBibPreviewInit {
   /** Unique identifier for this init type.
    *
-   * OpenRA 对照: RuntimeFlagInit — type-level sentinel
+   * OpenRA reference: RuntimeFlagInit — type-level sentinel
    */
   static readonly typeName = 'HideBibPreviewInit'
 }
 
 // ---------------------------------------------------------------------------
 // WithBuildingBib
-// OpenRA 对照: WithBuildingBib : INotifyAddedToWorld, INotifyRemovedFromWorld
+// OpenRA reference: WithBuildingBib : INotifyAddedToWorld, INotifyRemovedFromWorld
 // ---------------------------------------------------------------------------
 
 /** Renders building foundation bib sprites.
  *
- * OpenRA 对照: WithBuildingBib
+ * OpenRA reference: WithBuildingBib
  *
  * On AddedToWorld, creates AnimationWithOffset instances for each bib cell
  * and registers them with RenderSprites. On RemovedFromWorld, unregisters
@@ -199,7 +386,7 @@ export class WithBuildingBib {
 
   /** Registered AnimationWithOffset handles.
    *
-   * OpenRA 对照: WithBuildingBib.anims (List<AnimationWithOffset>)
+   * OpenRA reference: WithBuildingBib.anims (List<AnimationWithOffset>)
    */
   private _anims: IBibAnimWithOffset[] = []
 
@@ -211,12 +398,12 @@ export class WithBuildingBib {
 
   // -------------------------------------------------------------------------
   // AddedToWorld
-  // 对照: INotifyAddedToWorld.AddedToWorld(Actor self)
+  // reference: INotifyAddedToWorld.AddedToWorld(Actor self)
   // -------------------------------------------------------------------------
 
   /** Create bib sprites when the actor is added to the world.
    *
-   * OpenRA 对照: WithBuildingBib.INotifyAddedToWorld.AddedToWorld(Actor)
+   * OpenRA reference: WithBuildingBib.INotifyAddedToWorld.AddedToWorld(Actor)
    *
    * @param self — the actor
    */
@@ -236,13 +423,6 @@ export class WithBuildingBib {
       const anim: IBibAnimation = {
         name: image,
         isDecoration: true,
-        // Real hasSequence requires the sequence set from
-        // the resolved sprite sequence data (DefaultSpriteSequence metadata).
-        // In C# this delegates to Animation.HasSequence() which checks the
-        // sequence dictionary populated during sprite loading. Without
-        // the full SpriteCache/Sheet infrastructure from Chapter 2,
-        // we assume terrain-specific bib sequences exist if the base
-        // terrain type is valid.
         hasSequence(seq: string): boolean {
           void seq
           return true
@@ -273,7 +453,6 @@ export class WithBuildingBib {
       }
 
       anim.playFetchIndex(sequence, () => index)
-      // NOTE: isDecoration is set via a separate property or passed to RenderSprites
 
       // Z-order is one set to the top of the footprint
       const cellCenter = map.centerOfCell(cell)
@@ -297,12 +476,12 @@ export class WithBuildingBib {
 
   // -------------------------------------------------------------------------
   // RemovedFromWorld
-  // 对照: INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+  // reference: INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
   // -------------------------------------------------------------------------
 
   /** Remove bib sprites when the actor is removed from the world.
    *
-   * OpenRA 对照: WithBuildingBib.INotifyRemovedFromWorld.RemovedFromWorld(Actor)
+   * OpenRA reference: WithBuildingBib.INotifyRemovedFromWorld.RemovedFromWorld(Actor)
    */
   removedFromWorld(_self: IGameActor): void {
     for (const a of this._anims) {

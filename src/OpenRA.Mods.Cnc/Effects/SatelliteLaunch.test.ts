@@ -4,7 +4,22 @@
 
 import { describe, it, expect, vi } from 'vitest'
 
-vi.mock('@babylonjs/core', () => ({ Engine: vi.fn(), Scene: vi.fn() }))
+vi.mock('@babylonjs/core', () => ({
+  Engine: vi.fn(),
+  Scene: vi.fn(),
+  MeshBuilder: {
+    CreatePlane: vi.fn(() => ({
+      dispose: vi.fn(),
+      material: null,
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scaling: { x: 1, y: 1, z: 1 },
+      isVisible: true,
+      updateVerticesData: vi.fn(),
+      getVerticesData: vi.fn(() => new Float32Array(24)),
+    })),
+  },
+}))
 
 import { SatelliteLaunch } from './SatelliteLaunch.js'
 import type { GpsPowerInfoStub } from './SatelliteLaunch.js'
@@ -177,9 +192,11 @@ describe('SatelliteLaunch', () => {
   })
 
   describe('render', () => {
-    it('returns empty array (visuals deferred)', () => {
+    it('returns non-empty renderable array after door animation is started', () => {
       const launch = new SatelliteLaunch(makeLauncher(), makeInfo())
-      expect(launch.render(null as any)).toHaveLength(0)
+      const result = launch.render(null as any)
+      expect(result.length).toBeGreaterThan(0)
+      expect(result.length).toBe(1)
     })
   })
 })

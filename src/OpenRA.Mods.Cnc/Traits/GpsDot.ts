@@ -1,17 +1,16 @@
 /**
- * GpsDot.ts — GPS 小地图定位点（GPS激活时显示敌方单位位置）
+ * GpsDot.ts — GPS minimap dot indicator (shows enemy positions when GPS active)
  * OpenRA 对照: OpenRA.Mods.Cnc/Traits/GpsDot.cs (58 lines)
  *
  * 核心范式转换:
- * - C# GpsDotEffect (IRenderable added to World) → TypeScript forward stub
- *   (GpsDotEffect migration is deferred to )
+ * - C# GpsDotEffect (IRenderable added to World) → TypeScript GpsDotEffect class
+ *   (full rendering implemented in Phase B.8 via Billboard IRenderable)
  * - C# INotifyCreated/INotifyAddedToWorld/INotifyRemovedFromWorld
  *   → TypeScript same interfaces (already migrated in Ch3)
- * - C# frameEndTask to add/remove World effects → direct add/remove
+ * - C# frameEndTask to add/remove World effects → direct add/remove on world
  *
- * NOTE: The GpsDotEffect visual rendering is deferred to  in Phase C.
- * This trait manages the lifecycle (create/add/remove) but the actual effect
- * rendering is stubbed.
+ * Phase B.8: Replaced the forward stub {} with the real GpsDotEffect class
+ * that renders GPS dots as Billboard renderables through fog of war.
  */
 
 import type {
@@ -21,6 +20,8 @@ import type {
   INotifyRemovedFromWorld,
   ITraitInfo,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { GpsDotEffect } from '../Effects/GpsDotEffect.js'
+import type { GpsDotInfo as GpsDotEffectInfo } from '../Effects/GpsDotEffect.js'
 
 // ---------------------------------------------------------------------------
 // GpsDotInfo
@@ -69,32 +70,6 @@ export class GpsDotInfo implements ITraitInfo {
 }
 
 // ---------------------------------------------------------------------------
-// GpsDotEffect forward stub
-// ---------------------------------------------------------------------------
-
-/**
- * Forward declaration for GpsDotEffect.
- *
- * OpenRA 对照: OpenRA.Mods.Cnc.Effects.GpsDotEffect
- *
-* Full migration of GpsDotEffect will provide the visual
- * rendering of the GPS dot on the minimap.
- *
- * NOTE: This stub is intentionally minimal. The real GpsDotEffect class
- * (119 lines C#) creates an IRenderable that draws a small sprite indicator
- * on the radar/minimap for enemy actors when GPS is active.
- */
-interface GpsDotEffectStub {
-  readonly self: IGameActor
-  readonly info: GpsDotInfo
-}
-
-/** Create a stubbed GpsDotEffect instance. */
-function createGpsDotEffectStub(self: IGameActor, info: GpsDotInfo): GpsDotEffectStub {
-  return { self, info }
-}
-
-// ---------------------------------------------------------------------------
 // GpsDot
 // OpenRA 对照: GpsDot : INotifyCreated, INotifyAddedToWorld, INotifyRemovedFromWorld
 // ---------------------------------------------------------------------------
@@ -119,7 +94,7 @@ export class GpsDot
    *
    * OpenRA 对照: GpsDot.effect
    */
-  private _effect: GpsDotEffectStub | null = null
+  private _effect: GpsDotEffect | null = null
 
   constructor(info: GpsDotInfo) {
     this.info = info
@@ -134,8 +109,12 @@ export class GpsDot
    * OpenRA 对照: GpsDot.INotifyCreated.Created(Actor)
    */
   created(self: IGameActor): void {
-    this._effect = createGpsDotEffectStub(self, this.info)
-    // Replace with real GpsDotEffect(self, info)
+    const effectInfo: GpsDotEffectInfo = {
+      image: this.info.image,
+      string_: this.info.string,
+      indicatorPalettePrefix: this.info.indicatorPalettePrefix,
+    }
+    this._effect = new GpsDotEffect(self, effectInfo)
   }
 
   // -------------------------------------------------------------------------
@@ -152,10 +131,10 @@ export class GpsDot
   addedToWorld(self: IGameActor): void {
     if (this._effect) {
       // OpenRA: self.World.AddFrameEndTask(w => w.Add(effect))
-      // NOTE: frameEndTask deferred — effect is already created in created().
-      // The actual visual attachment to the scene will be done by the full
-      // GpsDotEffect implementation in .
-      void self
+      const world = (self as any).world
+      if (world && typeof world.addEffect === 'function') {
+        world.addEffect(this._effect)
+      }
     }
   }
 
@@ -166,14 +145,16 @@ export class GpsDot
   /** Remove the GpsDotEffect when the actor leaves the game.
    *
    * OpenRA 对照: GpsDot.INotifyRemovedFromWorld.RemovedFromWorld(Actor)
-   *
-   * Uses frameEndTask to safely remove the effect.
    */
   removedFromWorld(self: IGameActor): void {
     if (this._effect) {
       // OpenRA: self.World.AddFrameEndTask(w => w.Remove(effect))
-      // NOTE: frameEndTask deferred — cleanup is handled by dispose().
-      void self
+      const world = (self as any).world
+      if (world && typeof world.removeEffect === 'function') {
+        world.removeEffect(this._effect)
+      }
+      this._effect.dispose()
+      this._effect = null
     }
   }
 
@@ -185,7 +166,7 @@ export class GpsDot
    *
    * OpenRA 对照: GpsDot.effect (private field, exposed for testability)
    */
-  get effect(): GpsDotEffectStub | null {
+  get effect(): GpsDotEffect | null {
     return this._effect
   }
 }

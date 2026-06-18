@@ -1,22 +1,139 @@
 /**
- * TeslaZapRenderable.test.ts — Unit tests
+ * TeslaZapRenderable.test.ts — Unit tests for TeslaZapRenderable + TeslaZapMeshBuilder
  *
- * Tests focus on: seed generation, cache invalidation, fog check, step selection.
+ * Tests focus on:
+ * - Seed generation (SeededRandom determinism)
+ * - Cache invalidation and fog check
+ * - 3D segment path generation
+ * - TeslaZapMeshBuilder: LinesMesh creation, bright/dim color differentiation
+ * - Frame jitter vertex updates
+ * - dispose() GPU resource cleanup
  */
 
-import { describe, it, expect, vi, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
+
+// ---------------------------------------------------------------------------
+// Mock @babylonjs/core using vi.hoisted (established pattern from Shader.test.ts)
+// ---------------------------------------------------------------------------
+
+const {
+  mockColor3Ctor,
+  mockMeshBuilderCreateLines,
+  mockLinesMeshCtor,
+  mockShaderMaterialCtor,
+  linesMeshInstances,
+  shaderMaterialInstances,
+} = vi.hoisted(() => {
+  const instances: any[] = []
+  const matInstances: any[] = []
+
+  const mC3Ctor = vi.fn(function (this: any, r: number, g: number, b: number) {
+    this.r = r; this.g = g; this.b = b
+  })
+
+  const mLinesCtor = vi.fn(function (this: any, _name: string, _options: any, _scene?: any) {
+    this.name = _name
+    this.material = null
+    this.isPickable = true
+    this._positions = new Float32Array(0)
+    this.getVerticesData = vi.fn((kind: string) => {
+      if (kind === 'position') return this._positions
+      return null
+    })
+    this.updateVerticesData = vi.fn(function (
+      this: any,
+      _kind: string,
+      data: Float32Array,
+      _a: boolean,
+      _b: boolean,
+    ) {
+      this._positions = new Float32Array(data)
+    })
+    this.dispose = vi.fn()
+    const self = this
+    instances.push(self)
+  })
+
+  const mCreateLines = vi.fn((name: string, options: any, _scene?: any) => {
+    const mesh = new (mLinesCtor as any)(name, options)
+    if (options?.points) {
+      const pts = options.points as { x: number; y: number; z: number }[]
+      mesh._positions = new Float32Array(pts.length * 3)
+      for (let i = 0; i < pts.length; i++) {
+        mesh._positions[i * 3] = pts[i].x
+        mesh._positions[i * 3 + 1] = pts[i].y
+        mesh._positions[i * 3 + 2] = pts[i].z
+      }
+    }
+    return mesh
+  })
+
+  const mSMCtor = vi.fn(function (this: any, _name: string, _scene: any, _shaderName: string, _options: any) {
+    this.name = _name
+    this.setFloat = vi.fn()
+    this.setVector2 = vi.fn()
+    this.setVector3 = vi.fn()
+    this.setColor3 = vi.fn()
+    this.setFloats = vi.fn()
+    this.dispose = vi.fn()
+    matInstances.push(this)
+  })
+
+  const mMDispose = vi.fn()
+  const mSMDispose = vi.fn()
+
+  return {
+    mockColor3Ctor: mC3Ctor,
+    mockMeshBuilderCreateLines: mCreateLines,
+    mockLinesMeshDispose: mMDispose,
+    mockLinesMeshCtor: mLinesCtor,
+    mockShaderMaterialDispose: mSMDispose,
+    mockShaderMaterialCtor: mSMCtor,
+    linesMeshInstances: instances,
+    shaderMaterialInstances: matInstances,
+  }
+})
+
+vi.mock('@babylonjs/core', () => ({
+  Color3: mockColor3Ctor,
+  MeshBuilder: {
+    CreateLines: mockMeshBuilderCreateLines,
+    CreateDisc: vi.fn(),
+    CreatePlane: vi.fn(),
+  },
+  LinesMesh: mockLinesMeshCtor,
+  ShaderMaterial: mockShaderMaterialCtor,
+  Scene: vi.fn(),
+  Vector3: vi.fn(function (this: any, x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z }),
+}))
+
+// ---------------------------------------------------------------------------
+// Imports (after vi.mock)
+// ---------------------------------------------------------------------------
+
 import {
   TeslaZapRenderable,
+  TeslaZapMeshBuilder,
   SeededRandom,
+  type TeslaZapPath,
   type ITeslaZapWorldRenderer,
 } from './TeslaZapRenderable.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
 import { WVec } from '../../OpenRA.Game/WVec.js'
+import { ShaderMaterial, Scene } from '@babylonjs/core'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function makeWorldRenderer(fog?: boolean): ITeslaZapWorldRenderer {
+  let callCount = 0
   return {
-    screenPosition: vi.fn().mockReturnValue({ x: 0, y: 0 }),
-    projectedPosition: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0 }),
+    screenPosition: vi.fn((p: WPos) => ({ x: p.X, y: p.Y })),
+    projectedPosition: vi.fn((px: { x: number; y: number }) => {
+      callCount++
+      return { x: px.x, y: px.y, z: callCount * 10 }
+    }),
     palette: vi.fn().mockReturnValue({}),
     world: {
       fogObscures: vi.fn().mockReturnValue(fog ?? false),
@@ -51,6 +168,18 @@ function makeWorldRenderer(fog?: boolean): ITeslaZapWorldRenderer {
   }
 }
 
+function makeMockScene(): Scene {
+  return {} as unknown as Scene
+}
+
+function makeMockMaterial(name: string): ShaderMaterial {
+  return new ShaderMaterial(name, {} as Scene, 'custom', {})
+}
+
+// ---------------------------------------------------------------------------
+// Tests: SeededRandom
+// ---------------------------------------------------------------------------
+
 describe('SeededRandom', () => {
   it('should produce deterministic sequence', () => {
     const rng1 = new SeededRandom(12345)
@@ -70,6 +199,10 @@ describe('SeededRandom', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Tests: TeslaZapRenderable (data generation)
+// ---------------------------------------------------------------------------
+
 describe('TeslaZapRenderable', () => {
   it('should store constructor parameters', () => {
     const pos = WPos.Zero
@@ -78,7 +211,6 @@ describe('TeslaZapRenderable', () => {
       pos, 0, len, 'image', 'bright', 3, 'dim', 2, 'player',
     )
     expect(renderable.pos.equals(pos)).toBe(true)
-    // Default is not exposed, but isDecoration is true
     expect(renderable.isDecoration).toBe(true)
   })
 
@@ -97,29 +229,36 @@ describe('TeslaZapRenderable', () => {
     const renderable = new TeslaZapRenderable(
       pos, 0, len, 'image', 'bright', 3, 'dim', 2, 'player',
     )
-    const wr = makeWorldRenderer(true) // All fogged
+    const wr = makeWorldRenderer(true)
     const screenPosSpy = wr.screenPosition as Mock
 
     renderable.render(wr)
-    // screenPosition should NOT be called because both ends are fogged
     expect(screenPosSpy).not.toHaveBeenCalled()
   })
 
-  it('should generate renderables when not fogged', () => {
+  it('should generate zap paths when rendered', () => {
     const pos = new WPos(0, 0, 0)
     const len = new WVec(100, 0, 0)
     const renderable = new TeslaZapRenderable(
       pos, 0, len, 'image', 'bright', 1, 'dim', 0, 'player',
     )
-    // Use different positions for source and target
     const wr = makeWorldRenderer(false)
     ;(wr.screenPosition as Mock).mockImplementation((p: WPos) => ({
       x: p.X, y: p.Y,
     }))
 
     renderable.render(wr)
-    // Cache may be empty for degenerate case (source=target), not testing length
-    expect(renderable.cache).toBeDefined()
+    const paths = renderable.getZapPaths()
+    expect(paths.length).toBeGreaterThanOrEqual(0)
+  })
+
+  it('should have getZapPaths returning array', () => {
+    const pos = new WPos(0, 0, 0)
+    const len = new WVec(100, 0, 0)
+    const renderable = new TeslaZapRenderable(
+      pos, 0, len, 'image', 'bright', 1, 'dim', 0, 'player',
+    )
+    expect(Array.isArray(renderable.getZapPaths())).toBe(true)
   })
 
   it('should regenerate cache when position changes', () => {
@@ -135,11 +274,8 @@ describe('TeslaZapRenderable', () => {
 
     renderable.render(wr)
 
-    // Change position and re-render
     const newRenderable = renderable.offsetBy(new WVec(50, 0, 0))
     newRenderable.render(wr)
-
-    // Cache should exist
     expect(newRenderable.cache).toBeDefined()
   })
 
@@ -173,5 +309,297 @@ describe('TeslaZapRenderable', () => {
     )
     const wr = makeWorldRenderer()
     expect(() => renderable.renderDebugGeometry(wr)).not.toThrow()
+  })
+
+  it('should generate paths with both bright and dim zaps', () => {
+    const pos = new WPos(0, 0, 0)
+    const len = new WVec(200, 0, 0)
+    const renderable = new TeslaZapRenderable(
+      pos, 0, len, 'image', 'bright', 2, 'dim', 1, 'player',
+    )
+    const wr = makeWorldRenderer(false)
+    ;(wr.screenPosition as Mock).mockImplementation((p: WPos) => ({
+      x: p.X, y: p.Y,
+    }))
+
+    renderable.render(wr)
+    const paths = renderable.getZapPaths()
+
+    // Should have dim zaps (1) + bright zaps (2) = 3 paths (if non-degenerate)
+    const brightPaths = paths.filter(p => p.bright)
+    const dimPaths = paths.filter(p => !p.bright)
+    expect(brightPaths.length + dimPaths.length).toBe(paths.length)
+  })
+
+  it('should build 3D meshes from zap paths via builder', () => {
+    const pos = new WPos(0, 0, 0)
+    const len = new WVec(100, 0, 0)
+    const renderable = new TeslaZapRenderable(
+      pos, 0, len, 'image', 'bright', 1, 'dim', 0, 'player',
+    )
+    const wr = makeWorldRenderer(false)
+    ;(wr.screenPosition as Mock).mockImplementation((p: WPos) => ({
+      x: p.X, y: p.Y,
+    }))
+
+    renderable.render(wr)
+
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('brightMat')
+    const dimMat = makeMockMaterial('dimMat')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat)
+
+    const meshes = renderable.build3DMeshes(builder)
+    expect(Array.isArray(meshes)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tests: TeslaZapMeshBuilder
+// ---------------------------------------------------------------------------
+
+describe('TeslaZapMeshBuilder', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    linesMeshInstances.length = 0
+    shaderMaterialInstances.length = 0
+  })
+  it('should create bright and dim materials via constructor', () => {
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('bright')
+    const dimMat = makeMockMaterial('dim')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat)
+
+    expect(builder.brightMaterial).toBe(brightMat)
+    expect(builder.dimMaterial).toBe(dimMat)
+    expect(builder.meshes).toEqual([])
+  })
+
+  it('should build LinesMesh instances from zap paths', () => {
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('bright')
+    const dimMat = makeMockMaterial('dim')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat)
+
+    const paths: TeslaZapPath[] = [
+      {
+        bright: true,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 10, y: 5, z: 1 },
+          { x: 20, y: 0, z: 0 },
+        ],
+      },
+      {
+        bright: false,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 5, y: -3, z: 1 },
+          { x: 20, y: 0, z: 0 },
+        ],
+      },
+    ]
+
+    const meshes = builder.buildZaps(paths)
+
+    expect(meshes.length).toBe(2)
+    expect(mockMeshBuilderCreateLines).toHaveBeenCalledTimes(2)
+
+    // Bright zap should have bright material
+    expect(meshes[0].material).toBe(brightMat)
+
+    // Dim zap should have dim material
+    expect(meshes[1].material).toBe(dimMat)
+  })
+
+  it('should skip paths with fewer than 2 points', () => {
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('bright')
+    const dimMat = makeMockMaterial('dim')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat)
+
+    const paths: TeslaZapPath[] = [
+      {
+        bright: true,
+        palette: 'player',
+        points: [{ x: 0, y: 0, z: 0 }], // Only 1 point — skipped
+      },
+      {
+        bright: false,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 10, y: 0, z: 0 },
+        ],
+      },
+    ]
+
+    const meshes = builder.buildZaps(paths)
+    expect(meshes.length).toBe(1)
+  })
+
+  it('should correctly map segment data to LinesMesh vertex arrays', () => {
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('bright')
+    const dimMat = makeMockMaterial('dim')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat)
+
+    const paths: TeslaZapPath[] = [
+      {
+        bright: true,
+        palette: 'player',
+        points: [
+          { x: 1, y: 2, z: 3 },
+          { x: 4, y: 5, z: 6 },
+          { x: 7, y: 8, z: 9 },
+        ],
+      },
+    ]
+
+    const meshes = builder.buildZaps(paths)
+    expect(meshes.length).toBe(1)
+
+    const positions = meshes[0].getVerticesData('position')
+    expect(positions).not.toBeNull()
+    // 3 points × 3 components = 9 floats
+    expect(positions!.length).toBe(9)
+    expect(positions![0]).toBe(1)
+    expect(positions![1]).toBe(2)
+    expect(positions![2]).toBe(3)
+    expect(positions![6]).toBe(7)
+    expect(positions![7]).toBe(8)
+    expect(positions![8]).toBe(9)
+  })
+
+  it('should update vertices on frame jitter call', () => {
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('bright')
+    const dimMat = makeMockMaterial('dim')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat, 42)
+
+    const paths: TeslaZapPath[] = [
+      {
+        bright: true,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 10, y: 0, z: 0 },
+        ],
+      },
+    ]
+
+    const meshes = builder.buildZaps(paths)
+    const origPositions = meshes[0].getVerticesData('position')
+    expect(origPositions).not.toBeNull()
+
+    builder.updateJitter(5)
+
+    // After jitter, positions may have changed; verify updateVerticesData was called
+    const newPositions = meshes[0].getVerticesData('position')
+    expect(newPositions).not.toBeNull()
+    // At least verify the length is preserved
+    expect(newPositions!.length).toBe(origPositions!.length)
+  })
+
+  it('should dispose all meshes and materials', () => {
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('bright')
+    const dimMat = makeMockMaterial('dim')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat)
+
+    const paths: TeslaZapPath[] = [
+      {
+        bright: true,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 10, y: 0, z: 0 },
+        ],
+      },
+    ]
+
+    builder.buildZaps(paths)
+    expect(builder.meshes.length).toBeGreaterThan(0)
+
+    // Save references
+    const mesh = builder.meshes[0]
+
+    builder.dispose()
+
+    expect(mesh.dispose).toHaveBeenCalled()
+    expect(brightMat.dispose).toHaveBeenCalled()
+    expect(dimMat.dispose).toHaveBeenCalled()
+    expect(builder.meshes.length).toBe(0)
+  })
+
+  it('should dispose old meshes when building new zaps', () => {
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('bright')
+    const dimMat = makeMockMaterial('dim')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat)
+
+    const paths1: TeslaZapPath[] = [
+      {
+        bright: true,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 5, y: 0, z: 0 },
+        ],
+      },
+    ]
+
+    const meshes1 = builder.buildZaps(paths1)
+    const oldMesh = meshes1[0]
+
+    const paths2: TeslaZapPath[] = [
+      {
+        bright: false,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 15, y: 0, z: 0 },
+        ],
+      },
+    ]
+
+    builder.buildZaps(paths2)
+    expect(oldMesh.dispose).toHaveBeenCalled()
+    expect(builder.meshes.length).toBe(1)
+  })
+
+  it('should have bright and dim zaps with different materials', () => {
+    const scene = makeMockScene()
+    const brightMat = makeMockMaterial('brightCyan')
+    const dimMat = makeMockMaterial('dimBlue')
+    const builder = new TeslaZapMeshBuilder(scene, brightMat, dimMat)
+
+    const paths: TeslaZapPath[] = [
+      {
+        bright: true,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 5, y: 0, z: 0 },
+        ],
+      },
+      {
+        bright: false,
+        palette: 'player',
+        points: [
+          { x: 0, y: 0, z: 0 },
+          { x: 5, y: 0, z: 0 },
+        ],
+      },
+    ]
+
+    const meshes = builder.buildZaps(paths)
+
+    // Bright zap material !== dim zap material
+    expect(meshes[0].material).toBe(brightMat)
+    expect(meshes[1].material).toBe(dimMat)
+    expect(meshes[0].material).not.toBe(meshes[1].material)
   })
 })

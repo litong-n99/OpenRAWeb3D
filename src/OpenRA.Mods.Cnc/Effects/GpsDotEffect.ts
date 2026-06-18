@@ -1,18 +1,19 @@
 /**
- * GpsDotEffect.ts — GPS 小地图定位点视觉效果
+ * GpsDotEffect.ts — GPS minimap dot indicator (renders enemy positions when GPS active)
  * OpenRA 对照: OpenRA.Mods.Cnc/Effects/GpsDotEffect.cs (119 lines)
  *
  * 核心范式转换:
  * - C# IEffect + IEffectAnnotation → TypeScript IEffect + IEffectAnnotation
  * - C# PlayerDictionary<DotState> → TypeScript Map<string, DotState> per player
  * - C# FrozenActorLayer → TypeScript stub (deferred to Ch12 integration)
- * - C# SpriteRenderable.None / Animation.RenderUI → TypeScript stub renderables
- * - C# IVisibilityModifier array → TypeScript visitor modifier array (stub)
- * - C# Shroud.CellVisibility enum → TypeScript bitmask (stub)
- * - C# Viewport.WorldToViewPx / ScreenPxPosition → TypeScript screen pos stubs
+ * - C# Animation.RenderUI → Billboard-based GPS dot renderable (3D world overlay)
+ * - C# IVisibilityModifier array → TypeScript visitor modifier array
+ * - C# Shroud.CellVisibility enum → TypeScript bitmask
+ * - C# Viewport.WorldToViewPx → world-position Billboard at actor CenterPosition
  *
- * NOTE: The visual rendering (Animation, SpriteRenderable, Viewport coordinates)
- * is deferred to Phase C rendering. This class handles the visibility logic.
+ * Phase B.8: Implement actual rendering via Billboard IRenderable instead of
+ * returning empty arrays. The visibility logic (tick/ShouldRender) was already
+ * fully migrated in Phase A.
  */
 
 // ---------------------------------------------------------------------------
@@ -39,6 +40,64 @@ export const ShroudVisibility = {
 } as const
 
 export type ShroudVisibility = (typeof ShroudVisibility)[keyof typeof ShroudVisibility]
+
+// ---------------------------------------------------------------------------
+// GpsDotRenderable — Billboard-based IRenderable for the GPS dot
+// OpenRA 对照: Animation.RenderUI returns IRenderable for minimap overlay
+// ---------------------------------------------------------------------------
+
+/**
+ * Billboard renderable for a GPS dot on the minimap/world overlay.
+ *
+ * OpenRA 对照: Animation.RenderUI yields SpriteRenderable-like objects
+ *
+ * In the 3D Babylon.js paradigm, GPS dots are rendered as oriented
+ * Billboard sprites at the actor's world position, visible through
+ * the shroud (fog of war) when GPS is active.
+ *
+ * Mock-friendly: holds Billboard-like properties as plain data so
+ * tests can inspect position, palette, and visibility without WebGL.
+ */
+export class GpsDotRenderable implements IRenderable {
+  /** Discriminant for type-narrowing in tests. */
+  readonly type = 'gpsDot' as const
+
+  /** World position of the GPS dot (actor CenterPosition). */
+  readonly position: { readonly X: number; readonly Y: number; readonly Z: number }
+
+  /** Palette prefix for color lookup (e.g. "player"). */
+  readonly palettePrefix: string
+
+  /** Player identifier used for palette color resolution. */
+  readonly playerName: string
+
+  /** Image/sprite name for the dot symbol. */
+  readonly image: string
+
+  /** Whether this renderable has been disposed. */
+  private _disposed: boolean = false
+
+  constructor(
+    position: { readonly X: number; readonly Y: number; readonly Z: number },
+    palettePrefix: string,
+    playerName: string,
+    image: string,
+  ) {
+    this.position = position
+    this.palettePrefix = palettePrefix
+    this.playerName = playerName
+    this.image = image
+  }
+
+  /** Clean up resources. */
+  dispose(): void {
+    this._disposed = true
+  }
+
+  get disposed(): boolean {
+    return this._disposed
+  }
+}
 
 // ---------------------------------------------------------------------------
 // GpsDotInfo
@@ -218,16 +277,24 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
 
   // ---------------------------------------------------------------------------
   // Render (IEffect)
-  // OpenRA 对照: GpsDotEffect.Render(WorldRenderer)
+  // OpenRA 对照: GpsDotEffect.Render(WorldRenderer) → SpriteRenderable.None
   // ---------------------------------------------------------------------------
 
   /**
-   * Returns empty array — GPS dot is rendered as annotation, not world geometry.
+   * Returns the GPS dot billboard renderable when the dot is visible to
+   * the current render player.
    *
-   * OpenRA 对照: GpsDotEffect.Render → SpriteRenderable.None
+   * OpenRA 对照: GpsDotEffect.Render → SpriteRenderable.None (world space)
+   *
+   * In the 3D paradigm, the GPS dot is rendered as a Billboard at the actor's
+   * world position so it appears above the terrain through fog of war.
+   *
+   * @param worldRenderer — the world renderer (unused, render player resolved from actor)
+   * @returns array with the GPS dot renderable, or empty if not visible
    */
   render(_worldRenderer: WorldRendererStub): readonly IRenderable[] {
-    return []
+    const renderable = this._createRenderable()
+    return renderable ? [renderable] : []
   }
 
   // ---------------------------------------------------------------------------
@@ -241,11 +308,76 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
    * OpenRA 对照: GpsDotEffect.RenderAnnotation(WorldRenderer)
    *
    * Only renders if the current render player should see the dot.
+   * Returns the same Billboard renderable as render() since annotation
+   * rendering shares the GPS dot visual in the 3D paradigm.
+   *
+   * @param worldRenderer — the world renderer (unused, render player resolved from actor)
+   * @returns array with the GPS dot renderable, or empty if not visible
    */
   renderAnnotation(_worldRenderer: WorldRendererStub): readonly IRenderable[] {
-    // NOTE: In OpenRA, this checks actor.World.RenderPlayer
-    // We return empty for now — visual rendering deferred
-    return []
+    const renderable = this._createRenderable()
+    return renderable ? [renderable] : []
+  }
+
+  // ---------------------------------------------------------------------------
+  // _createRenderable — creates the GPS dot Billboard renderable
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Create a GpsDotRenderable for the current render player if the dot is
+   * visible to them.
+   *
+   * @returns the renderable, or null if the dot should not be visible
+   */
+  private _createRenderable(): GpsDotRenderable | null {
+    // Determine the render player (observer or active player)
+    const actorAny = this._actor as unknown as {
+      world?: {
+        renderPlayer?: PlayerStub & { internalName?: string }
+      }
+      centerPosition?: { X: number; Y: number; Z: number }
+    }
+    const renderPlayer = actorAny.world?.renderPlayer
+    if (!renderPlayer) return null
+
+    const key = (renderPlayer as unknown as { internalName: string }).internalName
+    if (!key) return null
+
+    const state = this._dotStates.get(key)
+    if (!state?.visible) return null
+
+    const centerPos = actorAny.centerPosition
+    if (!centerPos) return null
+
+    // Resolve owner for palette color
+    const effectiveOwner =
+      (this._actor as unknown as {
+        effectiveOwner?: { owner?: PlayerStub & { internalName?: string } }
+      }).effectiveOwner?.owner ??
+      (this._actor as unknown as { owner?: PlayerStub & { internalName?: string } }).owner
+
+    const ownerName = (effectiveOwner as unknown as { internalName?: string })?.internalName ?? 'Neutral'
+
+    return new GpsDotRenderable(
+      centerPos,
+      this._info.indicatorPalettePrefix,
+      ownerName,
+      this._info.image,
+    )
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dispose — clean up resources
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Dispose the effect, cleaning up any GPU resources.
+   *
+   * In the full Babylon.js integration, this would dispose the Billboard
+   * mesh. For now, we clear the dot state map.
+   */
+  dispose(): void {
+    this._dotStates.clear()
   }
 
   // ---------------------------------------------------------------------------

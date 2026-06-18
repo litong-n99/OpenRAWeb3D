@@ -4,7 +4,22 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@babylonjs/core', () => ({ Engine: vi.fn(), Scene: vi.fn() }))
+vi.mock('@babylonjs/core', () => ({
+  Engine: vi.fn(),
+  Scene: vi.fn(),
+  MeshBuilder: {
+    CreatePlane: vi.fn(() => ({
+      dispose: vi.fn(),
+      material: null,
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scaling: { x: 1, y: 1, z: 1 },
+      isVisible: true,
+      updateVerticesData: vi.fn(),
+      getVerticesData: vi.fn(() => new Float32Array(24)),
+    })),
+  },
+}))
 
 import { DropPodImpact } from './DropPodImpact.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -174,13 +189,15 @@ describe('DropPodImpact', () => {
   // ---------------------------------------------------------------------------
 
   describe('render', () => {
-    it('returns empty array (visuals deferred)', () => {
+    it('returns non-empty renderable array after entry animation is started', () => {
       const pod = new DropPodImpact(
         player, weapon, world, launchPos,
         { centerPosition: makeWPos(100, 200, 0) },
         5, 'podfx', 'entry', 'effect',
       )
-      expect(pod.render(null as any)).toHaveLength(0)
+      const result = pod.render(null as any)
+      expect(result.length).toBeGreaterThan(0)
+      expect(result).toHaveLength(1)
     })
   })
 })
