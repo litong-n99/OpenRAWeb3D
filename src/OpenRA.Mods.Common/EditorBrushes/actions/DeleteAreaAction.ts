@@ -212,48 +212,63 @@ export class DeleteAreaAction implements IEditorAction {
 /**
  * Snapshot a map region for undo support.
  *
- * OpenRA 对照: EditorBlit.CopyRegionContents(Map, EditorActorLayer, IResourceLayer, CellCoordsRegion, MapBlitFilters)
+ * OpenRA 对照: EditorBlit.CopyRegionContents(Map, EditorActorLayer,
+ *   IResourceLayer, CellCoordsRegion, MapBlitFilters)
  *
- * TODO-21.B.3: Replace with EditorBlit.CopyRegionContents() when EditorBlit is migrated.
- * This stub captures terrain tiles, heights, resources, and actors in the region.
+ * TODO-21.B.3: Replace with EditorBlit.CopyRegionContents() when EditorBlit is
+ * migrated. This stub captures terrain tiles, heights, resources, and actors
+ * in the region, respecting the MapBlitFilters.
  *
  * @param map — map data accessor
  * @param actorLayer — editor actor layer
  * @param resourceLayer — resource layer (or null)
  * @param region — the region to snapshot
- * @param _filters — which categories to capture (ignored in stub — captures all)
- * @returns a snapshot of the region
+ * @param filters — which categories to capture (terrain/resources/actors)
+ * @returns a snapshot of the region containing only the filtered categories
  */
 function copyRegionContents(
   map: DeleteAreaAction['map'],
   actorLayer: EditorActorLayer,
   resourceLayer: IResourceLayer | null,
   region: CellCoordsRegion,
-  _filters: MapBlitFilters,
+  filters: MapBlitFilters,
 ): EditorBlitSource {
   const tiles = new Map<string, BlitTile>()
   const actors = new Map<string, EditorActorPreview>()
 
-  // Capture terrain and resources for each cell
-  for (const cell of region) {
-    if (!map.tiles.contains(cell)) continue
-    const key = cposKey(cell)
+  // Snapshot terrain and resources only if their filters are set
+  const captureTerrain = (filters & MapBlitFilters.Terrain) !== 0
+  const captureResources = (filters & MapBlitFilters.Resources) !== 0
 
-    const terrainTile = map.tiles.get(cell)
-    const height = map.height.get(cell)
-    const contents = resourceLayer?.getResource(cell) ?? null
+  if (captureTerrain || captureResources || filters === MapBlitFilters.All) {
+    for (const cell of region) {
+      if (!map.tiles.contains(cell)) continue
+      const key = cposKey(cell)
 
-    tiles.set(key, {
-      terrainTile,
-      resourceTile: { type: 0, index: 0 },
-      resourceLayerContents: contents && contents.type ? contents : null,
-      height,
-    })
+      const terrainTile = captureTerrain || filters === MapBlitFilters.All
+        ? map.tiles.get(cell)
+        : { type: 0, index: 0 }
+      const height = captureTerrain || filters === MapBlitFilters.All
+        ? map.height.get(cell)
+        : 0
+      const contents = captureResources || filters === MapBlitFilters.All
+        ? (resourceLayer?.getResource(cell) ?? null)
+        : null
+
+      tiles.set(key, {
+        terrainTile,
+        resourceTile: { type: 0, index: 0 },
+        resourceLayerContents: contents && contents.type ? contents : null,
+        height,
+      })
+    }
   }
 
-  // Capture actors intersecting the region
-  for (const preview of actorLayer.previewsInCellRegion(region)) {
-    actors.set(preview.id, preview)
+  // Snapshot actors only if Actors filter is set
+  if (filters & MapBlitFilters.Actors) {
+    for (const preview of actorLayer.previewsInCellRegion(region)) {
+      actors.set(preview.id, preview)
+    }
   }
 
   return { cellCoords: region, actors, tiles }

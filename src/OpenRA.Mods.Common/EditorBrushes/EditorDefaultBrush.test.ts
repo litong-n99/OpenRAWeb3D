@@ -567,23 +567,32 @@ describe('EditorDefaultBrush', () => {
   // -----------------------------------------------------------------------
 
   describe('handleMouseInput — drag selection', () => {
-    it('drag > 32px creates selectionBounds', () => {
+    /**
+     * OpenRA 对照: MinMouseMoveBeforeDrag = 32. With LengthSquared already
+     * squared, threshold is sqrt(32) ≈ 5.66 pixels. Move of 100px easily exceeds.
+     */
+    it('drag beyond threshold creates selectionBounds', () => {
       actorLayer._setPreviews([])
 
       // Initial click at (100, 100)
       brush.handleMouseInput(makeMouse(MouseInputEvent.Down, MouseButton.Left, 100, 100))
-      // Move more than 32px
+      // Move more than the threshold (squared 10000 >> 32)
       brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 200, 200))
 
       expect(brush.currentDragBounds).not.toBeNull()
     })
 
-    it('drag < 32px does not create selectionBounds', () => {
+    /**
+     * OpenRA 对照: MinMouseMoveBeforeDrag = 32 compared to LengthSquared.
+     * Threshold is sqrt(32) ≈ 5.66 pixels. Moving only 4px (squared 16 < 32)
+     * should NOT trigger a drag — treated as a click.
+     */
+    it('drag < sqrt(32) pixels does not create selectionBounds', () => {
       actorLayer._setPreviews([])
 
       brush.handleMouseInput(makeMouse(MouseInputEvent.Down, MouseButton.Left, 100, 100))
-      // Move less than 32px
-      brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 110, 110))
+      // Move only 4px (squared 16 < 32)
+      brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 104, 100))
 
       expect(brush.currentDragBounds).toBeNull()
     })
@@ -962,7 +971,11 @@ describe('EditorDefaultBrush', () => {
 // ---------------------------------------------------------------------------
 
 describe('drag threshold', () => {
-  it('32px movement triggers selection drag', () => {
+  /**
+   * OpenRA 对照: MinMouseMoveBeforeDrag = 32 compared to LengthSquared
+   * (which already returns X*X + Y*Y). So drag starts at sqrt(32) ≈ 5.66 px.
+   */
+  it('movement of 6px triggers selection drag (squared 36 > 32)', () => {
     const editorWidget = mockEditorWidget()
     const actorLayer = mockActorLayer()
     const actionManager = mockActionManager()
@@ -979,18 +992,100 @@ describe('drag threshold', () => {
       resourceLayer as any,
     )
 
-    // Move exactly 32px — this is a distance of sqrt(1024) ≈ 31.999 which
-    // passes the > 1024 squared threshold (barely)
+    // Move 6px — squared distance 36 > 32 triggers drag
     brush.handleMouseInput(makeMouse(MouseInputEvent.Down, MouseButton.Left, 100, 100))
-    brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 132, 100))
+    brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 106, 100))
+    expect(brush.currentDragBounds).not.toBeNull()
+    brush.dispose()
+  })
+
+  it('movement of 5px does NOT trigger selection drag (squared 25 < 32)', () => {
+    const editorWidget = mockEditorWidget()
+    const actorLayer = mockActorLayer()
+    const actionManager = mockActionManager()
+    const resourceLayer = mockResourceLayer()
+    const { wr } = mockWorldRenderer()
+
+    actorLayer._setPreviews([])
+
+    const brush = new EditorDefaultBrush(
+      editorWidget as any,
+      wr,
+      actorLayer as any,
+      actionManager as any,
+      resourceLayer as any,
+    )
+
+    // Move 5px — squared distance 25 < 32, treated as a click, no drag
+    brush.handleMouseInput(makeMouse(MouseInputEvent.Down, MouseButton.Left, 100, 100))
+    brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 105, 100))
+    expect(brush.currentDragBounds).toBeNull()
+    brush.dispose()
+  })
+
+  it('already-dragging does not re-check threshold (selectionBounds exists)', () => {
+    const editorWidget = mockEditorWidget()
+    const actorLayer = mockActorLayer()
+    const actionManager = mockActionManager()
+    const resourceLayer = mockResourceLayer()
+    const { wr } = mockWorldRenderer()
+
+    actorLayer._setPreviews([])
+
+    const brush = new EditorDefaultBrush(
+      editorWidget as any,
+      wr,
+      actorLayer as any,
+      actionManager as any,
+      resourceLayer as any,
+    )
+
+    // Drag past threshold to create selectionBounds
+    brush.handleMouseInput(makeMouse(MouseInputEvent.Down, MouseButton.Left, 100, 100))
+    brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 106, 100))
+    expect(brush.currentDragBounds).not.toBeNull()
+
+    // Further movement within the bounds will still update bounds
+    // (the || selectionBounds != null short-circuit)
+    brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 106, 102))
+    expect(brush.currentDragBounds).not.toBeNull()
+    brush.dispose()
+  })
+
+  it('drag distance applies diagonally (dx² + dy² > 32)', () => {
+    const editorWidget = mockEditorWidget()
+    const actorLayer = mockActorLayer()
+    const actionManager = mockActionManager()
+    const resourceLayer = mockResourceLayer()
+    const { wr } = mockWorldRenderer()
+
+    actorLayer._setPreviews([])
+
+    const brush = new EditorDefaultBrush(
+      editorWidget as any,
+      wr,
+      actorLayer as any,
+      actionManager as any,
+      resourceLayer as any,
+    )
+
+    // Move 4px X + 4px Y: squared = 4² + 4² = 32 (NOT > 32, no drag)
+    brush.handleMouseInput(makeMouse(MouseInputEvent.Down, MouseButton.Left, 100, 100))
+    brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 104, 104))
     expect(brush.currentDragBounds).toBeNull()
 
-    // Move 33px (squared distance 1089 > 1024)
+    // Move 5px X + 5px Y: squared = 5² + 5² = 50 > 32 (drag triggers)
     brush.dispose()
-    brush.handleMouseInput(makeMouse(MouseInputEvent.Down, MouseButton.Left, 100, 100))
-    brush.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 133, 100))
-    // Bounds might exist after 33px move, but the currentDragBounds check
-    // depends on whether the Viewport.viewToWorld returned different cells.
-    // At minimum, the internal state tracked the start location correctly.
+    const brush2 = new EditorDefaultBrush(
+      editorWidget as any,
+      wr,
+      actorLayer as any,
+      actionManager as any,
+      resourceLayer as any,
+    )
+    brush2.handleMouseInput(makeMouse(MouseInputEvent.Down, MouseButton.Left, 100, 100))
+    brush2.handleMouseInput(makeMouse(MouseInputEvent.Move, MouseButton.Left, 105, 105))
+    expect(brush2.currentDragBounds).not.toBeNull()
+    brush2.dispose()
   })
 })

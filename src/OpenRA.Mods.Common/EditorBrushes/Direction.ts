@@ -240,7 +240,9 @@ export const EuclideanSpread8D: readonly (readonly [number, number, Direction])[
  */
 export function directionToInt2(direction: Direction): [number, number] {
   if (direction >= Direction.R && direction <= Direction.RU) {
-    return [...Spread8[direction]]
+    // PERF: .slice() avoids iterator overhead vs spread, while still
+    // returning a mutable copy (caller contract requires [number, number])
+    return Spread8[direction].slice() as [number, number]
   }
   throw new Error(`Bad direction: ${direction}`)
 }

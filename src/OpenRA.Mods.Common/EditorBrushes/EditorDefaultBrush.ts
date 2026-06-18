@@ -47,14 +47,16 @@ import { RemoveResourceAction } from './actions/RemoveResourceAction.js'
 // ---------------------------------------------------------------------------
 
 /**
- * Minimum mouse movement in screen pixels (squared) before a drag is initiated.
+ * Minimum mouse movement squared threshold before a drag is initiated.
  *
  * OpenRA 对照: const int MinMouseMoveBeforeDrag = 32
  *
- * The C# code compares (mi.Location - selectionStartLocation).LengthSquared
- * against this squared threshold.
+ * IMPORTANT: The C# code compares (mi.Location - selectionStartLocation).LengthSquared
+ * against MinMouseMoveBeforeDrag directly. LengthSquared returns X*X + Y*Y
+ * (already squared). So the drag triggers at sqrt(32) ≈ 5.66 pixels of
+ * straight-line movement, NOT 32 pixels. The value 32 is the squared threshold.
  */
-const MIN_MOUSE_MOVE_BEFORE_DRAG_SQ = 32 * 32 // = 1024
+const MIN_MOUSE_MOVE_BEFORE_DRAG_SQ = 32
 
 // ---------------------------------------------------------------------------
 // Minimal WorldRenderer / World / Map interfaces needed by EditorDefaultBrush

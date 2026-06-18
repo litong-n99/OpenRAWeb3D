@@ -1,10 +1,19 @@
 /**
  * ChangeSelectionAction.test.ts — ChangeSelectionAction migration unit tests
+ * OpenRA 对照: OpenRA.Mods.Common/EditorBrushes/EditorDefaultBrush.cs
+ *   sealed class ChangeSelectionAction : IEditorAction (lines 294-350)
+ *
+ * 核心范式转换:
+ * - C# Selection object equality → TypeScript EditorSelection deep-copy protection
+ * - C# FluentProvider.GetMessage → template literal strings in test assertions
+ * - C# IEditorAction.Do() → TypeScript IEditorAction.redo()
  *
  * Since ChangeSelectionAction has no Babylon.js dependency, no mocks are
  * needed. Tests focus on: execute/redo/undo behavior, text message formatting,
  * deep-copy protection against external mutation, and ISelectionController
  * integration.
+ *
+ * Migration: TODO-21.B.2 — Chapter 21 Phase B
  */
 
 import { describe, it, expect } from 'vitest'
