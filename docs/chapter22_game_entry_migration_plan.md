@@ -1,9 +1,10 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 22 -- Game Entry & Application Shell
 
 > **Source Reference**: `OpenRA/OpenRA.Game/Game.cs` (~1000 lines, `static class Game`), `index.html` (Vite scaffold), `src/main.ts` (Vite scaffold)
-> **Chapter Status**: IN PROGRESS (2/7 migrated, 29%, Phase A COMPLETE)
+> **Chapter Status**: IN PROGRESS (6/7 migrated, 86%, Phases A-B COMPLETE)
 > **Planning Date**: 2026-06-18
 > **Phase A Completion**: 2026-06-18 (Router: 146 lines + 271 test lines, ModSelector: 249 lines + 438 test lines, 51 tests, 0 BLOCKERs)
+> **Phase B Completion**: 2026-06-18 (Game: 588 lines + 1056 test lines, 47 tests, 0 BLOCKERs)
 > **Original Design Doc**: `docs/game_entry_design.md` (1090 lines, ~2026-06-18)
 > **Prerequisite**: Chapters 2-20 COMPLETE (665/665, 100%). No hard dependency on Chapter 21 (Editor & Utilities). Chapter 22 can begin in parallel with Chapter 21.
 > **Note**: Chapter 22 is the **final integration chapter** -- it stitches all migrated subsystems together into a functional web application accessible from a browser URL.
@@ -231,7 +232,8 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 ### 3.2 Phase B: Bootstrap -- Game Class + Mod Loading
 
-**Status**: 📋 PLANNING (0/2 files migrated + 1 file modified)
+**Status**: ✅ COMPLETE (2/2 files migrated + 1 file modified, 81 tests)
+**Completed**: 2026-06-18 | **Commits**: `0a6e5d8` (initial), `ec88735` (review fixes)
 **Complexity**: HIGH
 **Blocked by**: Phase A (Router + ModSelector provide URL routing and mod launch entry point)
 **Blocks**: Phase C (Main Menu needs Game class with loadShellMap support), Phase D (Editor Stub needs Game class with WorldType.Editor type support)
@@ -248,7 +250,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.2.1 Game Class Implementation
 
-- [ ] **TODO-22.B.1** `src/OpenRA.Game/Game.ts` -- Game class (root coordinator):
+- [x] **TODO-22.B.1** `src/OpenRA.Game/Game.ts` -- Game class (root coordinator):
   
   **Lifecycle States**:
   - `GameState` enum: `Uninitialized`, `LoadingMod`, `Shellmap`, `Playing`, `Editor`, `Disposed`
@@ -310,7 +312,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
   | `Game.CreateObject<T>(name)` | `game.modData.objectCreator.createObject<T>(name)` |
   | `Game.OpenWindow(world, widget)` | Widget system (via UI root) |
 
-- [ ] **TODO-22.B.2** `src/OpenRA.Game/Game.test.ts` -- Game class unit tests:
+- [x] **TODO-22.B.2** `src/OpenRA.Game/Game.test.ts` -- Game class unit tests:
   - Lifecycle: `create()` → `dispose()` full round-trip
   - State transitions: `Uninitialized` → `LoadingMod` → `Shellmap` → `Disposed`
   - `loadMod()`: verify manifest fetched, ModData created, Sound initialized
@@ -324,7 +326,7 @@ The following infrastructure from Chapters 2-20 is available for Chapter 22:
 
 #### 3.2.2 Main Entry Point Rewrite
 
-- [ ] **TODO-22.B.3** `src/main.ts` -- Application entry point:
+- [x] **TODO-22.B.3** `src/main.ts` -- Application entry point:
   - Create `Router` instance
   - Register route `"/"` → `ModSelector.show(document.getElementById('mod-selector')!)`
   - Register route `"/play/:modId"` → extract `modId`, call `ModSelector.launchMod(modId, WorldType.Regular)`
