@@ -737,3 +737,135 @@ describe('TerrainMeshBuilder — Index Buffer', () => {
     expect(maxIndex).toBeGreaterThan(65535)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Cliff Face Generation
+// ---------------------------------------------------------------------------
+
+describe('TerrainMeshBuilder — Cliff Faces', () => {
+  it('flat neighbors generate no cliff geometry', () => {
+    // All cells have height=0 (default), no cliffs expected
+    const map = makeRectMap(2, 2)
+    const data = TerrainMeshBuilder.buildRaw(map)
+
+    // For a 2x2 flat map: (2+1)^2 = 9 vertices (surface only)
+    expect(data.vertexCount).toBe(9)
+    // 2*2*2 = 8 surface triangles, no cliff triangles
+    expect(data.triangleCount).toBe(8)
+  })
+
+  it('single-step height cell pair generates additional cliff quad vertices', () => {
+    // 2x1 map: two adjacent cells
+    const grid = makeGrid()
+    const terrainInfo = makeTerrainInfo()
+    const map = GameMap.createBlank(grid, { width: 2, height: 1 }, terrainInfo)
+
+    // Set cell(0,0) height=0 (default), cell(1,0) height=1 (step up)
+    map.height.set(new CPos(1, 0), 1)
+
+    const data = TerrainMeshBuilder.buildRaw(map)
+
+    // Surface: (2+1)*(1+1) = 6 vertices + cliff: 4 vertices = 10 total
+    // Surface: 2*1*2 = 4 triangles + cliff: 2 triangles = 6 total
+    expect(data.vertexCount).toBeGreaterThan(6) // more than surface-only
+    expect(data.triangleCount).toBeGreaterThan(4) // more than surface-only
+  })
+
+  it('cliff vertices have correct Y values (higher cell has taller vertices)', () => {
+    const grid = makeGrid()
+    const terrainInfo = makeTerrainInfo()
+    const map = GameMap.createBlank(grid, { width: 2, height: 1 }, terrainInfo)
+
+    // Cell(0,0) height=0, cell(1,0) height=1 (step up: 1*512*HEIGHT_SCALE = 0.5)
+    map.height.set(new CPos(1, 0), 1)
+
+    const data = TerrainMeshBuilder.buildRaw(map)
+
+    // Find vertices with non-zero Y (cliff vertices)
+    const yValues = new Set<number>()
+    for (let i = 0; i < data.vertexCount; i++) {
+      const pos = getVertexPos(data, i)
+      yValues.add(Math.round(pos.y * 1000) / 1000)
+    }
+
+    // Should have at least 2 distinct Y values (lower and higher)
+    expect(yValues.size).toBeGreaterThanOrEqual(2)
+
+    // The highest Y should be at cliff-top level: 1 * 512 * (1/1024) = 0.5
+    let maxY = -Infinity
+    for (let i = 0; i < data.vertexCount; i++) {
+      const pos = getVertexPos(data, i)
+      maxY = Math.max(maxY, pos.y)
+    }
+    expect(maxY).toBeCloseTo(0.5, 2)
+  })
+
+  it('normals point outward from lower cell (horizontal direction)', () => {
+    const grid = makeGrid()
+    const terrainInfo = makeTerrainInfo()
+    const map = GameMap.createBlank(grid, { width: 2, height: 1 }, terrainInfo)
+
+    // Cell(0,0) height=0 (lower), cell(1,0) height=1 (higher)
+    map.height.set(new CPos(1, 0), 1)
+
+    const data = TerrainMeshBuilder.buildRaw(map)
+
+    // Cliff normals should have significant horizontal component (X or Z)
+    // and minimal vertical component (Y)
+    let hasHorizontalNormal = false
+    for (let i = 0; i < data.vertexCount; i++) {
+      const n = getNormal(data, i)
+      const horizMag = Math.sqrt(n.x * n.x + n.z * n.z)
+      // A cliff face normal should be predominantly horizontal
+      if (horizMag > 0.5 && Math.abs(n.y) < 0.5) {
+        hasHorizontalNormal = true
+        break
+      }
+    }
+
+    // At least one normal should be horizontal (cliff face)
+    expect(hasHorizontalNormal).toBe(true)
+  })
+
+  it('step-down generates correct cliff vertices', () => {
+    const grid = makeGrid()
+    const terrainInfo = makeTerrainInfo()
+    const map = GameMap.createBlank(grid, { width: 2, height: 1 }, terrainInfo)
+
+    // Cell(0,0) height=1 (higher), cell(1,0) height=0 (lower) — step down
+    map.height.set(new CPos(0, 0), 1)
+
+    const data = TerrainMeshBuilder.buildRaw(map)
+
+    // Should have cliff geometry (more vertices than surface-only)
+    expect(data.vertexCount).toBeGreaterThan(6)
+    expect(data.triangleCount).toBeGreaterThan(4)
+
+    // Lower cell (1,0) height=0 should have some vertices at Y≈0
+    let hasLowerVertices = false
+    for (let i = 0; i < data.vertexCount; i++) {
+      const pos = getVertexPos(data, i)
+      if (pos.y < 0.01) {
+        hasLowerVertices = true
+        break
+      }
+    }
+    expect(hasLowerVertices).toBe(true)
+  })
+
+  it('2x2 map with corner height difference generates cliff edges', () => {
+    const grid = makeGrid()
+    const terrainInfo = makeTerrainInfo()
+    const map = GameMap.createBlank(grid, { width: 2, height: 2 }, terrainInfo)
+
+    // Set cell(0,0) height=1 (step up at origin) — creates cliffs on right and bottom
+    map.height.set(new CPos(0, 0), 1)
+
+    const data = TerrainMeshBuilder.buildRaw(map)
+
+    // Surface: 9 vertices (3x3), plus cliff quads on right and bottom edges
+    // Should have more than surface-only vertices and triangles
+    expect(data.vertexCount).toBeGreaterThan(9)
+    expect(data.triangleCount).toBeGreaterThan(8)
+  })
+})

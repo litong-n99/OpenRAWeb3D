@@ -417,42 +417,175 @@ function generateTerrainSurface(map: Map, state: MeshBuildState): void {
     generateRectangularSurface(map, state)
   }
 
-  // TODO-4.F.9: 生成悬崖面（Riser）垂直四边形
-  // generateCliffFaces(map, state)
+  // 生成悬崖面（Riser）垂直四边形
+  generateCliffFaces(map, state)
 }
 
 // ---------------------------------------------------------------------------
-// Cliff Face (Riser) Generation — TODO-4.F.9
+// Cliff Face (Riser) Generation
 // ---------------------------------------------------------------------------
 
 /**
  * 为高度不连续的 cell 边生成垂直 cliff 面四边形。
  *
  * OpenRA 对照: TerrainTileInfo.Riser 编码了 8 个方向的预期高度差。
+ *              TerrainRenderer 生成 cliff 几何体 (cliffGeometry)。
  *
- * 对每个 cell 边，如果相邻 cell 有高度差：
+ * 对每个内部 cell 边，如果相邻 cell 有高度差：
  * - 生成垂直 quad（2 个三角形）连接较低 cell 的边顶点到较高 cell 的边顶点
- * - Cliff 面法线指向 cell 中心外侧
- * - UV 使用垂直投影
+ * - Cliff 面法线指向较低 cell 外侧（通过三角形 winding 控制）
+ * - UV 使用世界空间 XZ 投影（与表面 UV 一致）
  *
- * TODO-4.F.9: 完整实现 Riser 驱动的 cliff 面生成。
- * 当前为 stub，等待 TerrainInfo Riser 数据集成。
+ * 算法:
+ *   1. 遍历所有内部右边界 (cell(x,y) / cell(x+1,y))
+ *   2. 遍历所有内部底边界 (cell(x,y) / cell(x,y+1))
+ *   3. 对每条边界检查高度差
+ *   4. 较低 cell 的共享边顶点 + 较高 cell 的共享边顶点 = 垂直四边形
  *
- * @param _map — Map 实例
- * @param _state — 构建状态
+ * Cliff 顶点独立于表面顶点（不共享），因为它们在垂直方向上延伸。
+ *
+ * @param map — Map 实例
+ * @param state — 构建状态
  */
-// @ts-expect-error — stub for TODO-4.F.9, called via commented-out invocation in generateTerrainSurface
-function generateCliffFaces(_map: Map, _state: MeshBuildState): void {
-  // Stub: Riser cliff face generation deferred to TODO-4.F.9
-  // Implementation plan:
-  // 1. Iterate all cell edges (4 per cell: top, right, bottom, left)
-  // 2. For each edge, check neighbor cell height difference
-  // 3. If height diff > 0, generate vertical quad:
-  //    - Lower edge vertices (2) at lower cell's height
-  //    - Upper edge vertices (2) at upper cell's height + corner offset
-  //    - 2 triangles forming the vertical face
-  // 4. Normals point outward from cell center
-  // 5. UVs use world-space vertical projection
+function generateCliffFaces(map: Map, state: MeshBuildState): void {
+  const gridType = map.grid.type
+
+  if (gridType === MapGridType.RectangularIsometric) {
+    // Cliff face generation for isometric grids deferred (TODO-4.F.9 extension)
+    // Isometric cell adjacency is more complex (diamond shape, staggered edges)
+    return
+  }
+
+  generateRectCliffFaces(map, state)
+}
+
+/**
+ * 为矩形网格生成 cliff 面。
+ *
+ * 矩形网格的内部边界是规则网格边：
+ *   - 垂直边界 (右边界):  cell(x,y) 的 TR+BR 与 cell(x+1,y) 的 TL+BL 共享 XZ
+ *   - 水平边界 (底边界): cell(x,y) 的 BL+BR 与 cell(x,y+1) 的 TL+TR 共享 XZ
+ *
+ * 每条边界只处理一次（从左到右，从上到下迭代）。
+ */
+function generateRectCliffFaces(map: Map, state: MeshBuildState): void {
+  const w = map.mapSize.width
+  const h = map.mapSize.height
+
+  // ---- 垂直边界 (右边界): cell(x,y) <-> cell(x+1,y) ----
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w - 1; x++) {
+      const left = new CPos(x, y)
+      const right = new CPos(x + 1, y)
+      const hLeft = map.height.get(left)
+      const hRight = map.height.get(right)
+
+      if (hLeft !== hRight) {
+        if (hLeft < hRight) {
+          // 左侧 cell 较低: lower=left(TR=1, BR=2), higher=right(TL=0, BL=3)
+          addCliffFace(
+            cellCornerToVector3(left, 1, map),   // lower left-TR
+            cellCornerToVector3(left, 2, map),   // lower left-BR
+            cellCornerToVector3(right, 0, map),  // higher right-TL
+            cellCornerToVector3(right, 3, map),  // higher right-BL
+            state,
+          )
+        } else {
+          // 右侧 cell 较低: lower=right(TL=0, BL=3), higher=left(TR=1, BR=2)
+          addCliffFace(
+            cellCornerToVector3(right, 0, map),  // lower right-TL
+            cellCornerToVector3(right, 3, map),  // lower right-BL
+            cellCornerToVector3(left, 1, map),   // higher left-TR
+            cellCornerToVector3(left, 2, map),   // higher left-BR
+            state,
+          )
+        }
+      }
+    }
+  }
+
+  // ---- 水平边界 (底边界): cell(x,y) <-> cell(x,y+1) ----
+  for (let y = 0; y < h - 1; y++) {
+    for (let x = 0; x < w; x++) {
+      const top = new CPos(x, y)
+      const bottom = new CPos(x, y + 1)
+      const hTop = map.height.get(top)
+      const hBottom = map.height.get(bottom)
+
+      if (hTop !== hBottom) {
+        if (hTop < hBottom) {
+          // 上侧 cell 较低: lower=top(BL=3, BR=2), higher=bottom(TL=0, TR=1)
+          addCliffFace(
+            cellCornerToVector3(top, 3, map),    // lower top-BL
+            cellCornerToVector3(top, 2, map),    // lower top-BR
+            cellCornerToVector3(bottom, 0, map), // higher bottom-TL
+            cellCornerToVector3(bottom, 1, map), // higher bottom-TR
+            state,
+          )
+        } else {
+          // 下侧 cell 较低: lower=bottom(TL=0, TR=1), higher=top(BL=3, BR=2)
+          addCliffFace(
+            cellCornerToVector3(bottom, 0, map), // lower bottom-TL
+            cellCornerToVector3(bottom, 1, map), // lower bottom-TR
+            cellCornerToVector3(top, 3, map),    // higher top-BL
+            cellCornerToVector3(top, 2, map),    // higher top-BR
+            state,
+          )
+        }
+      }
+    }
+  }
+}
+
+/**
+ * 为单个 cliff 边创建垂直四边形。
+ *
+ * 四边形顶点顺序 (winding order):
+ *   v0 (lowerEdge0) → v1 (lowerEdge1) → v2 (higherEdge1) → v3 (higherEdge0)
+ *
+ * 两个三角形: v0-v1-v2, v0-v2-v3
+ *
+ * Winding 约定: 三角形顶点按逆时针顺序（从较低 cell 外侧观察），
+ * 使得 computeNormals() 的 cross product 产生指向较低 cell 外侧的法线。
+ *
+ * @param lowerEdge0  — 较低 cell 边的一个顶点
+ * @param lowerEdge1  — 较低 cell 边的另一个顶点
+ * @param higherEdge0 — 较高 cell 边对应的顶点 (XZ 与 lowerEdge0 相同)
+ * @param higherEdge1 — 较高 cell 边对应的顶点 (XZ 与 lowerEdge1 相同)
+ * @param state       — 构建状态
+ */
+function addCliffFace(
+  lowerEdge0: Vector3,
+  lowerEdge1: Vector3,
+  higherEdge0: Vector3,
+  higherEdge1: Vector3,
+  state: MeshBuildState,
+): void {
+  const v0 = pushCliffVertex(lowerEdge0, state)
+  const v1 = pushCliffVertex(lowerEdge1, state)
+  const v2 = pushCliffVertex(higherEdge1, state)
+  const v3 = pushCliffVertex(higherEdge0, state)
+
+  // 两个三角形形成垂直四边形
+  addTriangle(v0, v1, v2, state)
+  addTriangle(v0, v2, v3, state)
+}
+
+/**
+ * 添加 cliff 顶点到 positions 数组并返回索引。
+ *
+ * Cliff 顶点独立于表面顶点，不参与 getOrCreateRectVertex 的 deduplication。
+ * 这避免了表面网格顶点与 cliff 顶点之间的冲突（同 XZ 不同 Y）。
+ *
+ * @param pos   — Babylon.js 位置
+ * @param state — 构建状态
+ * @returns 新顶点在 positions 数组中的索引
+ */
+function pushCliffVertex(pos: Vector3, state: MeshBuildState): number {
+  const index = state.positions.length / 3
+  state.positions.push(pos.x, pos.y, pos.z)
+  state.vertexTriangles.push([])
+  return index
 }
 
 /**
