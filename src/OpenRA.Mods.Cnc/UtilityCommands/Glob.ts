@@ -116,10 +116,13 @@ export class Glob {
     }
 
     // 检查是否需要添加 "./" 前缀
+    // OpenRA 对照: 同时检查 DirectorySeparatorChar 和 AltDirectorySeparatorChar
     const needDotSlash =
       parts.length === 0 ||
       (parts.length > 0 &&
         parts[0]![0] !== sep &&
+        parts[0]![0] !== '/' &&
+        parts[0]![0] !== '\\' &&
         !parts[0]!.includes(':') &&
         parts[0] !== '.' + sep &&
         parts[0] !== '..' + sep)

@@ -18,23 +18,14 @@ import type { IUtilityCommand, Utility } from '../../OpenRA.Game/IUtilityCommand
 // ---------------------------------------------------------------------------
 
 /**
- * 计算两个颜色之间的曼哈顿距离（通道级）。
- *
- * OpenRA 对照: RemapShpCommand.ColorDistance(uint a, uint b)
- *
- * @param a — 颜色值
- * @param b — 颜色值
- * @returns 曼哈顿距离（RGB 通道差的绝对值之和）
- */
-/**
  * 计算两个 ARGB 颜色值之间的曼哈顿距离。
  *
  * OpenRA 对照: RemapShpCommand.ColorDistance(uint a, uint b)
  *
  * 颜色格式为 0xAARRGGBB (Alpha 位于最高字节)。
- * 仅比较 RGB 通道（忽略 Alpha）。
+ * 仅比较 RGB 通道（忽略 Alpha），通道权重相等。
  *
- * @param a — 32-bit ARGB 颜色值
+ * @param a — 32-bit ARGB 颜色值 (bits 24-31=Alpha, 16-23=Red, 8-15=Green, 0-7=Blue)
  * @param b — 32-bit ARGB 颜色值
  * @returns RGB 通道差的绝对值之和
  */
@@ -95,15 +86,19 @@ export function computeRemap(
 
   // 其余颜色按曼哈顿距离找最佳匹配
   // OpenRA 对照: for (var i = 0; i < Palette.Size; i++)
+  // NOTE: 使用 Set 维护已使用的目标索引，O(1) 查找替代 C# 的 O(n) ContainsValue
+
+  /** 已用作目标值的索引集合（O(1) 查找）。 */
+  const usedDestIndices = new Set(remap.values())
+
   for (let i = 0; i < paletteSize; i++) {
     if (remap.has(i)) continue
 
     let bestDist = Number.MAX_SAFE_INTEGER
-    let bestIdx = 0
+    let bestIdx = -1
 
     for (let j = 0; j < paletteSize; j++) {
-      // 排除已映射到的目标索引
-      if ([...remap.values()].includes(j)) continue
+      if (usedDestIndices.has(j)) continue
 
       const dist = colorDistance(destPalette[j]!, srcPalette[i]!)
       if (dist < bestDist) {
@@ -112,7 +107,10 @@ export function computeRemap(
       }
     }
 
-    remap.set(i, bestIdx)
+    if (bestIdx >= 0) {
+      remap.set(i, bestIdx)
+      usedDestIndices.add(bestIdx)
+    }
   }
 
   return remap

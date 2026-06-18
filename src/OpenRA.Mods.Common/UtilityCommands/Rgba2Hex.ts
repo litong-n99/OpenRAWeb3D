@@ -1,6 +1,6 @@
 /**
  * Rgba2Hex.ts — RGBA/ARGB 颜色值转十六进制字符串工具
- * OpenRA 对照: OpenRA.Mods.Common/UtilityCommands/Rgba2Hex.cs (286 lines)
+ * OpenRA 对照: OpenRA.Mods.Common/UtilityCommands/Rgba2Hex.cs (208 lines)
  *
  * 核心范式转换:
  * - C# Exts.ParseByteInvariant / ToStringInvariant("X2") → Number.parseInt + toString(16).padStart(2, '0')
