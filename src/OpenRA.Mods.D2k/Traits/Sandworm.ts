@@ -15,17 +15,15 @@
 import { CPos } from '../../OpenRA.Game/CPos'
 import { WDist } from '../../OpenRA.Game/WDist'
 import { WVec } from '../../OpenRA.Game/WVec'
-import { WRot } from '../../OpenRA.Game/WRot'
 import type {
   IGameActor,
   ITick,
   INotifyActorDisposing,
-  ConditionalTraitInfo,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces'
-import { ConditionalTrait } from '../../OpenRA.Game/Traits/TraitsInterfaces'
 import { Target } from '../../OpenRA.Game/Traits/Target'
 import { AttackSource } from '../../OpenRA.Mods.Common/Traits/Attack/AttackBase'
 import type { AttractsWorms } from './AttractsWorms'
+import { Wanders, WandersInfo } from '../../OpenRA.Mods.Common/Traits/Wanders.js'
 
 // ---------------------------------------------------------------------------
 // SandwormInfo
@@ -36,44 +34,10 @@ import type { AttractsWorms } from './AttractsWorms'
  *
  * OpenRA 对照: SandwormInfo (sealed class, extends WandersInfo)
  *
- * Inlines WandersInfo fields since Wanders trait is deferred (TODO-8.D.DEFER-WANDERS).
+ * Extends WandersInfo for random patrol behavior with additional
+ * Sandworm-specific hunting parameters.
  */
-export class SandwormInfo implements ConditionalTraitInfo {
-  readonly instanceName?: string
-  readonly requiresCondition?: string
-
-  // WandersInfo fields (inlined)
-  /** Wander movement radius in cells.
-   *
-   * OpenRA 对照: WandersInfo.WanderMoveRadius (default 1)
-   */
-  readonly wanderMoveRadius: number
-
-  /** Ticks to wait before reducing effective move radius.
-   *
-   * OpenRA 对照: WandersInfo.ReduceMoveRadiusDelay (default 5)
-   */
-  readonly reduceMoveRadiusDelay: number
-
-  /** Minimum ticks before starting to wander.
-   *
-   * OpenRA 对照: WandersInfo.MinMoveDelay (default 0)
-   */
-  readonly minMoveDelay: number
-
-  /** Maximum ticks before starting to wander.
-   *
-   * OpenRA 对照: WandersInfo.MaxMoveDelay (default 0)
-   */
-  readonly maxMoveDelay: number
-
-  /** Terrain types to avoid wandering on.
-   *
-   * OpenRA 对照: WandersInfo.AvoidTerrainTypes
-   */
-  readonly avoidTerrainTypes: readonly string[]
-
-  // SandwormInfo fields
+export class SandwormInfo extends WandersInfo {
   /** Time between rescanning for targets (in ticks).
    *
    * OpenRA 对照: SandwormInfo.TargetRescanInterval (default 125)
@@ -111,13 +75,7 @@ export class SandwormInfo implements ConditionalTraitInfo {
     ignoreNoiseAttackRange?: WDist
     chanceToDisappear?: number
   } = {}) {
-    this.instanceName = params.instanceName
-    this.requiresCondition = params.requiresCondition
-    this.wanderMoveRadius = params.wanderMoveRadius ?? 1
-    this.reduceMoveRadiusDelay = params.reduceMoveRadiusDelay ?? 5
-    this.minMoveDelay = params.minMoveDelay ?? 0
-    this.maxMoveDelay = params.maxMoveDelay ?? 0
-    this.avoidTerrainTypes = params.avoidTerrainTypes ?? []
+    super(params)
     this.targetRescanInterval = params.targetRescanInterval ?? 125
     this.maxSearchRadius = params.maxSearchRadius ?? WDist.fromCells(20)
     this.ignoreNoiseAttackRange = params.ignoreNoiseAttackRange ?? WDist.fromCells(3)
@@ -140,16 +98,25 @@ export class SandwormInfo implements ConditionalTraitInfo {
  * range regardless of noise.
  *
  * After attacking, there is a chance the worm disappears from the map.
+ *
+ * Extends Wanders for autonomous patrol behavior when no targets are in
+ * range. Overrides DoAction to integrate noise-seeking behavior.
  */
 export class Sandworm
-  extends ConditionalTrait<SandwormInfo>
+  extends Wanders
   implements ITick, INotifyActorDisposing
 {
   /** Sandworm-specific config shortcut.
    *
    * OpenRA 对照: Sandworm.WormInfo
    */
-  readonly wormInfo: SandwormInfo
+  declare readonly info: SandwormInfo
+
+  /** Sandworm-specific config shortcut (alias for info).
+   *
+   * OpenRA 对照: Sandworm.WormInfo
+   */
+  get wormInfo(): SandwormInfo { return this.info }
 
   /** Whether the worm is currently moving toward a noise-attracted target.
    *
@@ -163,25 +130,6 @@ export class Sandworm
    */
   isAttacking: boolean = false
 
-  // Wanders state fields (inlined)
-  /** Wander countdown timer.
-   *
-   * OpenRA 对照: Wanders.countdown
-   */
-  private _wanderCountdown: number
-
-  /** Ticks idle counter.
-   *
-   * OpenRA 对照: Wanders.ticksIdle
-   */
-  private _ticksIdle: number = 0
-
-  /** Current effective move radius (reduced when stuck).
-   *
-   * OpenRA 对照: Wanders.effectiveMoveRadius
-   */
-  private _effectiveMoveRadius: number
-
   // Sandworm state fields
   /** Target rescan countdown.
    *
@@ -189,11 +137,11 @@ export class Sandworm
    */
   private _targetCountdown: number
 
-  /** Cached reference to the owning actor.
+  /** Cached reference to the owning actor (alias for Wanders.self).
    *
    * OpenRA 对照: Wanders self (from constructor)
    */
-  private readonly _self: IGameActor
+  private _self: IGameActor
 
   /** ActorSpawnManager reference (manager that tracks spawned actor count).
    *
@@ -223,24 +171,17 @@ export class Sandworm
    * OpenRA 对照: Sandworm(Actor self, SandwormInfo info)
    *
    * Caches mobile and attack traits from the actor, and resolves the
-   * ActorSpawnManager from the world actor.
+   * ActorSpawnManager from the world actor. The Wanders base class
+   * handles wander state initialization (countdown, effectiveMoveRadius).
    *
    * @param self — the actor that owns this trait
    * @param info — trait configuration
    */
   constructor(self: IGameActor, info: SandwormInfo) {
-    super(info)
-    this.wormInfo = info
+    super(self, info)
     this._self = self
 
-    // Initialize wander state
-    this._wanderCountdown = this.getSharedRandomNext(
-      info.minMoveDelay,
-      info.maxMoveDelay,
-    )
-    this._effectiveMoveRadius = info.wanderMoveRadius
-
-    // Initialize target rescan
+    // Initialize target rescan countdown
     this._targetCountdown = info.targetRescanInterval
 
     // Cache traits (matching C# pattern)
@@ -252,95 +193,8 @@ export class Sandworm
   }
 
   // ---------------------------------------------------------------------------
-  // Wanders.TickIdle (inlined)
-  // OpenRA 对照: Wanders.TickIdle(Actor) → Sandworm overrides DoAction
-  // ---------------------------------------------------------------------------
-
-  /** Called when the actor is idle. Picks a random target cell and either
-   * moves toward noise (attracted targets) or wanders randomly.
-   *
-   * OpenRA 对照: Wanders.TickIdle(Actor) → Sandworm.DoAction(Actor, CPos)
-   *
-   * @param self — the actor
-   */
-  tickIdle(self: IGameActor): void {
-    if (this.isTraitDisabled) return
-
-    if (--this._wanderCountdown > 0) return
-
-    const targetCell = this.pickTargetLocation(self)
-    if (targetCell !== null) {
-      this.doAction(self, targetCell)
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Wanders.OnBecomingIdle (inlined)
-  // OpenRA 对照: Wanders.OnBecomingIdle(Actor)
-  // ---------------------------------------------------------------------------
-
-  /** Reset wander countdown when the actor becomes idle.
-   *
-   * OpenRA 对照: Wanders.OnBecomingIdle(Actor)
-   *
-   * @param self — the actor
-   */
-  onBecomingIdle(_self: IGameActor): void {
-    this._wanderCountdown = this.getSharedRandomNext(
-      this.info.minMoveDelay,
-      this.info.maxMoveDelay,
-    )
-  }
-
-  // ---------------------------------------------------------------------------
-  // Wanders.PickTargetLocation (inlined)
-  // OpenRA 对照: Wanders.PickTargetLocation(Actor)
-  // ---------------------------------------------------------------------------
-
-  /** Pick a random target location for wandering.
-   *
-   * OpenRA 对照: Wanders.PickTargetLocation(Actor)
-   *
-   * Chooses a cell at the wander move radius in a random direction.
-   * Handles map bounds and avoid-terrain-type checks.
-   *
-   * @param self — the actor
-   * @returns the target cell, or null if no valid cell found
-   */
-  private pickTargetLocation(_self: IGameActor): CPos | null {
-    const centerPos = this.getActorCenterPosition()
-    const offset = new WVec(0, -1024 * this._effectiveMoveRadius, 0)
-    // Rotate the offset by a random facing angle (OpenRA: WRot.FromFacing(random.Next(256)))
-    const randomFacing = this.getSharedRandomNext(0, 256)
-    const rotatedOffset = offset.rotate(WRot.fromFacing(randomFacing))
-    const target = WVec.add(centerPos, rotatedOffset)
-    const map = this.getWorldMap()
-    if (!map) return null
-
-    const targetCell = map.cellContaining(target)
-    if (!map.contains(targetCell)) {
-      // If MoveRadius is too big there might not be a valid cell
-      if (++this._ticksIdle % this.info.reduceMoveRadiusDelay === 0)
-        this._effectiveMoveRadius--
-
-      return null
-    }
-
-    if (this.info.avoidTerrainTypes.length > 0) {
-      const terrainType = map.getTerrainInfo(targetCell)?.type
-      if (terrainType && this.info.avoidTerrainTypes.includes(terrainType))
-        return null
-    }
-
-    this._ticksIdle = 0
-    this._effectiveMoveRadius = this.info.wanderMoveRadius
-
-    return targetCell
-  }
-
-  // ---------------------------------------------------------------------------
   // DoAction (override of Wanders.DoAction)
-  // OpenRA 对照: Sandworm.DoAction(Actor, CPos)
+  // OpenRA 对照: Sandworm.DoAction(Actor, CPos) [override]
   // ---------------------------------------------------------------------------
 
   /** Perform the wander action: scan for targets first, then move.
@@ -584,10 +438,9 @@ export class Sandworm
     return a.isInWorld ?? false
   }
 
-  /** Get the actor's center position. */
+  /** Get the actor's center position (alias for Wanders.getCenterPosition). */
   private getActorCenterPosition(): WVec {
-    const a = this._self as unknown as { centerPosition?: WVec }
-    return a.centerPosition ?? WVec.Zero
+    return this.getCenterPosition(this._self)
   }
 
   /** Get the actor's cell location. */
@@ -600,13 +453,6 @@ export class Sandworm
   private getActorLocationOf(actor: IGameActor): CPos {
     const a = actor as unknown as { location?: CPos }
     return a.location ?? CPos.Zero
-  }
-
-  /** Get the world's map. */
-  private getWorldMap(): WorldMapStub | null {
-    const world = this._self.world as Record<string, unknown> | undefined
-    const map = world?.map as WorldMapStub | undefined
-    return map ?? null
   }
 
   /** Resolve the Mobile trait from the actor (called once in constructor).
@@ -661,18 +507,6 @@ export class Sandworm
       return mobile.canEnterCell(cell, null, 0 /* BlockedByActor.None */)
     }
     return true
-  }
-
-  /** Get a random int in [min, max) from shared random (fallback Math.random). */
-  private getSharedRandomNext(min: number, max: number): number {
-    const world = this._self.world as Record<string, unknown> | undefined
-    const sr = world?.sharedRandom as
-      | { next?: (min: number, max: number) => number }
-      | undefined
-    if (sr?.next) {
-      return sr.next(min, max)
-    }
-    return min + Math.floor(Math.random() * (max - min))
   }
 
   /** Find actors in a circle around a position. */
@@ -747,13 +581,6 @@ export class Sandworm
 // ---------------------------------------------------------------------------
 // Stub interfaces for duck-typing
 // ---------------------------------------------------------------------------
-
-/** Stub interface for the map. */
-interface WorldMapStub {
-  contains(cell: CPos): boolean
-  cellContaining(pos: WVec): CPos
-  getTerrainInfo(cell: CPos): { type: string } | null
-}
 
 /** Stub interface for Mobile trait. */
 interface MobileStub {
