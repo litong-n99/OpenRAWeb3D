@@ -116,6 +116,24 @@ interface KillLike {
 }
 
 // ---------------------------------------------------------------------------
+// Trait lookup helper -- centralizes the duck-typed trait access pattern
+// ---------------------------------------------------------------------------
+
+/**
+ * Look up a trait by name from an actor's duck-typed trait map.
+ *
+ * Centralizes the repeated pattern:
+ *   (self as unknown as Record<string, unknown>).traits?.get(name) as T
+ *
+ * @param self -- the actor to query
+ * @param name -- trait name (e.g. 'Mobile', 'Kill', 'PortableChrono')
+ * @returns the trait cast to T, or undefined if not found
+ */
+function getTrait<T>(self: GameActor, name: string): T | undefined {
+  return (self as unknown as { traits?: Map<string, unknown> }).traits?.get(name) as unknown as T | undefined
+}
+
+// ---------------------------------------------------------------------------
 // Teleport -- activity implementation
 // OpenRA 对照: Teleport : Activity
 // ---------------------------------------------------------------------------
@@ -219,15 +237,21 @@ export class Teleport extends Activity {
     duringDelayTicks: number = DEFAULT_DURING_DELAY,
     postDelayTicks: number = DEFAULT_POST_DELAY,
     returnToOrigin: boolean = false,
+    maxTileSearchRange: number = 50,
   ) {
     super()
 
     // OpenRA: Validate maximumDistance against map's max tile search range
     // var max = teleporter.World.Map.Grid.MaximumTileSearchRange;
-    const maxTileSearchRange = 50 // Default: OpenRA map grid max
-    if (maximumDistance !== null && maximumDistance > maxTileSearchRange) {
+    //
+    // TODO: Query teleporter.world.map.grid.MaximumTileSearchRange when World
+    // reference is available. The hardcoded 50 is sufficient for standard maps
+    // (128x128 with 50-cell teleport range) but may fail for very large maps
+    // with non-rectangular grid types.
+    const effectiveTileSearchRange = maxTileSearchRange
+    if (maximumDistance !== null && maximumDistance > effectiveTileSearchRange) {
       throw new Error(
-        `Teleport distance cannot exceed MaximumTileSearchRange (${maxTileSearchRange}). Got: ${maximumDistance}`,
+        `Teleport distance cannot exceed MaximumTileSearchRange (${effectiveTileSearchRange}). Got: ${maximumDistance}`,
       )
     }
 
@@ -268,12 +292,8 @@ export class Teleport extends Activity {
    * @returns true when the activity is complete
    */
   override tick(self: GameActor): boolean {
-    const selfAny = self as unknown as { traits?: Map<string, unknown> }
-
     // Check PortableChrono canTeleport (runs every tick, not just Execute)
-    const pc = selfAny.traits?.get('PortableChrono') as unknown as
-      | PortableChronoLike
-      | undefined
+    const pc = getTrait<PortableChronoLike>(self, 'PortableChrono')
 
     if (
       this._teleporter === self &&
@@ -281,9 +301,7 @@ export class Teleport extends Activity {
       (!pc.canTeleport || this.isCanceling)
     ) {
       if (this._killOnFailure) {
-        const killTrait = selfAny.traits?.get('Kill') as unknown as
-          | KillLike
-          | undefined
+        const killTrait = getTrait<KillLike>(self, 'Kill')
         killTrait?.kill(self, this._killDamageTypes)
       }
       return true
@@ -333,20 +351,13 @@ export class Teleport extends Activity {
     const bestCell = this._chooseBestDestinationCell(self)
     if (bestCell === null) {
       if (this._killOnFailure) {
-        const selfAny = self as unknown as { traits?: Map<string, unknown> }
-        const killTrait = selfAny.traits?.get('Kill') as unknown as
-          | KillLike
-          | undefined
+        const killTrait = getTrait<KillLike>(self, 'Kill')
         killTrait?.kill(self, this._killDamageTypes)
       }
       return true
     }
 
     this._destination = bestCell
-
-    // Play teleport start sound
-    // NOTE: Sound system deferred to Ch7 audio integration
-    void this._sound
 
     this._phaseTick = this._preDelayTicks
 
@@ -408,21 +419,15 @@ export class Teleport extends Activity {
    * Sets position, kills cargo, consumes charges, triggers building animation.
    */
   private _tickExecute(self: GameActor): boolean {
-    const selfAny = self as unknown as { traits?: Map<string, unknown> }
-
     // Play sound at source and destination
     // OpenRA: Game.Sound.Play(SoundType.World, sound, self.CenterPosition)
     // OpenRA: Game.Sound.Play(SoundType.World, sound, world.Map.CenterOfCell(destination))
-    // NOTE: Sound system deferred to Ch7 audio integration
+    // TODO: Play sound once at source and once at destination when Ch7 Sound system is wired in
     void this._sound
 
     // Set new position
-    const pos = selfAny.traits?.get('Mobile') as unknown as
-      | PositionableLike
-      | undefined
-    const fallbackPos = selfAny.traits?.get('OccupiesSpace') as unknown as
-      | PositionableLike
-      | undefined
+    const pos = getTrait<PositionableLike>(self, 'Mobile')
+    const fallbackPos = getTrait<PositionableLike>(self, 'OccupiesSpace')
     const positionable = pos ?? fallbackPos
 
     if (positionable) {
@@ -435,9 +440,7 @@ export class Teleport extends Activity {
 
     // Kill cargo if needed
     if (this._killCargo) {
-      const cargo = selfAny.traits?.get('Cargo') as unknown as
-        | CargoLike
-        | undefined
+      const cargo = getTrait<CargoLike>(self, 'Cargo')
       if (cargo && this._teleporter !== null) {
         while (!cargo.isEmpty()) {
           const unloadedActor = cargo.unload(self)
@@ -453,8 +456,9 @@ export class Teleport extends Activity {
     }
 
     // Consume teleport charges (if self-teleporting via PortableChrono)
-    if (this._teleporter === self && pc(selfAny)) {
-      pc(selfAny)!.resetChargeTime()
+    const portableChrono = getTrait<PortableChronoLike>(self, 'PortableChrono')
+    if (this._teleporter === self && portableChrono) {
+      portableChrono.resetChargeTime()
     }
 
     // Screen flash effect (trigger on execute, suppressed for return trips)
@@ -470,12 +474,7 @@ export class Teleport extends Activity {
       self !== this._teleporter &&
       !this._teleporter.disposed
     ) {
-      const teleporterTraits = this._teleporter as unknown as {
-        traits?: Map<string, unknown>
-      }
-      const building = teleporterTraits.traits?.get('WithSpriteBody') as unknown as
-        | WithSpriteBodyLike
-        | undefined
+      const building = getTrait<WithSpriteBodyLike>(this._teleporter, 'WithSpriteBody')
       if (
         building &&
         building.defaultAnimation.hasSequence('active')
@@ -582,16 +581,8 @@ export class Teleport extends Activity {
   private _chooseBestDestinationCell(self: GameActor): CPos | null {
     if (this._teleporter === null) return null
 
-    const selfAny = self as unknown as {
-      location: CPos
-      traits?: Map<string, unknown>
-    }
-    const pos = selfAny.traits?.get('Mobile') as unknown as
-      | PositionableLike
-      | undefined
-    const fallbackPos = selfAny.traits?.get('OccupiesSpace') as unknown as
-      | PositionableLike
-      | undefined
+    const pos = getTrait<PositionableLike>(self, 'Mobile')
+    const fallbackPos = getTrait<PositionableLike>(self, 'OccupiesSpace')
     const positionable = pos ?? fallbackPos
 
     if (!positionable) return null
@@ -599,7 +590,7 @@ export class Teleport extends Activity {
     const shroud = (this._teleporter as unknown as {
       owner?: { shroud?: { isExplored(cell: CPos): boolean } }
     }).owner?.shroud
-    const selfLocation = selfAny.location
+    const selfLocation = (self as unknown as { location: CPos }).location
 
     // Build restricted tile set if maximumDistance is specified
     let restrictTo: Set<number> | null = null
@@ -613,33 +604,39 @@ export class Teleport extends Activity {
       }
     }
 
-    // Expand search from destination outward by increasing radius
-    for (let r = 0; r <= maxRadius; r++) {
-      const tiles = this._findTilesInCircle(this._destination, r)
-      // Sort by distance to destination (closest first)
-      tiles.sort((a, b) => {
-        const da =
-          Math.abs(a.X - this._destination.X) +
-          Math.abs(a.Y - this._destination.Y)
-        const db =
-          Math.abs(b.X - this._destination.X) +
-          Math.abs(b.Y - this._destination.Y)
-        return da - db
-      })
+    // NOTE: TS version finds nearest enterable cell via radial search from
+    // original destination. C# first adjusts destination to closest cell
+    // within restricted area via restrictTo.MinBy(x => (x - destination)
+    // .LengthSquared) before radial search. The TS approach is equivalent
+    // for the common case where the desired destination is within the
+    // restricted area.
 
-      for (const tile of tiles) {
-        // Skip tiles outside the restricted area
-        const key = tile.X * 65536 + tile.Y
-        if (restrictTo !== null && !restrictTo.has(key)) continue
+    // Generate all tiles within maxRadius once, sort by Manhattan distance
+    // to destination (closest first).  This avoids O(r^3) duplicate checks
+    // from regenerating + re-sorting tiles for each radius increment.
+    const allTiles = this._findTilesInCircle(this._destination, maxRadius)
+    allTiles.sort((a, b) => {
+      const da =
+        Math.abs(a.X - this._destination.X) +
+        Math.abs(a.Y - this._destination.Y)
+      const db =
+        Math.abs(b.X - this._destination.X) +
+        Math.abs(b.Y - this._destination.Y)
+      return da - db
+    })
 
-        // Check shroud explored
-        if (shroud && !shroud.isExplored(tile)) continue
+    for (const tile of allTiles) {
+      // Skip tiles outside the restricted area
+      const key = tile.X * 65536 + tile.Y
+      if (restrictTo !== null && !restrictTo.has(key)) continue
 
-        // Check enterable
-        if (!positionable.canEnterCell(tile)) continue
+      // Check shroud explored
+      if (shroud && !shroud.isExplored(tile)) continue
 
-        return tile
-      }
+      // Check enterable
+      if (!positionable.canEnterCell(tile)) continue
+
+      return tile
     }
 
     return null
@@ -727,16 +724,4 @@ export class Teleport extends Activity {
   get killCargo(): boolean {
     return this._killCargo
   }
-}
-
-// ---------------------------------------------------------------------------
-// Helper: resolve PortableChrono
-// ---------------------------------------------------------------------------
-
-function pc(selfAny: {
-  traits?: Map<string, unknown>
-}): PortableChronoLike | undefined {
-  return selfAny.traits?.get('PortableChrono') as unknown as
-    | PortableChronoLike
-    | undefined
 }
