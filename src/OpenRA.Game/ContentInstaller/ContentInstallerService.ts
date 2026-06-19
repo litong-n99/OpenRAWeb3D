@@ -1177,6 +1177,11 @@ export class ContentInstallerService {
    * This helps the UI inform the user: "You have Red Alert content installed.
    * Tiberian Dawn needs its own content. Install now?"
    *
+   * Performs a SINGLE IndexedDB cursor pass that simultaneously collects all
+   * installed mod IDs AND counts packages belonging to mods other than the
+   * current one. Avoids the double-scan pattern of calling getInstalledModIds()
+   * followed by a second cursor scan.
+   *
    * @param currentModId — The mod the user is switching TO.
    * @returns Information about other mods with content installed, or null
    *   if no other mod content exists.
@@ -1184,53 +1189,52 @@ export class ContentInstallerService {
   async detectOtherModsContent(
     currentModId: string,
   ): Promise<{ otherModIds: string[]; totalOtherPackages: number } | null> {
-    const installedModIds = await this.getInstalledModIds()
-
-    // Filter out the current mod
-    const otherModIds = Array.from(installedModIds).filter(
-      (id) => id !== currentModId,
-    )
-
-    if (otherModIds.length === 0) return null
-
-    // Count total packages for the other mods
-    let totalOtherPackages = 0
     const db = await this._openDb()
-    if (db) {
-      await new Promise<void>((resolvePkg) => {
-        try {
-          const tx = db.transaction(STORE_NAME, 'readonly')
-          const store = tx.objectStore(STORE_NAME)
-          const req = store.openCursor()
+    if (!db) return null
 
-          req.onsuccess = () => {
-            const cursor = req.result as IDBCursorWithValue | null
-            if (cursor) {
-              const record = cursor.value as ContentPackageRecord
-              if (typeof record.packageId === 'string') {
-                const colonIdx = record.packageId.indexOf(':')
-                if (
-                  colonIdx > 0 &&
-                  otherModIds.includes(record.packageId.substring(0, colonIdx))
-                ) {
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE_NAME, 'readonly')
+        const store = tx.objectStore(STORE_NAME)
+        const req = store.openCursor()
+
+        const allModIds = new Set<string>()
+        let totalOtherPackages = 0
+
+        req.onsuccess = () => {
+          const cursor = req.result as IDBCursorWithValue | null
+          if (cursor) {
+            const record = cursor.value as ContentPackageRecord
+            if (typeof record.packageId === 'string') {
+              const colonIdx = record.packageId.indexOf(':')
+              if (colonIdx > 0) {
+                const modId = record.packageId.substring(0, colonIdx)
+                allModIds.add(modId)
+                if (modId !== currentModId) {
                   totalOtherPackages++
                 }
               }
-              cursor.continue()
+            }
+            cursor.continue()
+          } else {
+            // Cursor exhausted — compute result
+            const otherModIds = Array.from(allModIds).filter(
+              (id) => id !== currentModId,
+            )
+            if (otherModIds.length === 0) {
+              resolve(null)
             } else {
-              resolvePkg()
+              resolve({ otherModIds, totalOtherPackages })
             }
           }
-
-          tx.onerror = () => resolvePkg()
-          tx.onabort = () => resolvePkg()
-        } catch {
-          resolvePkg()
         }
-      })
-    }
 
-    return { otherModIds, totalOtherPackages }
+        tx.onerror = () => resolve(null)
+        tx.onabort = () => resolve(null)
+      } catch {
+        resolve(null)
+      }
+    })
   }
 
   /**

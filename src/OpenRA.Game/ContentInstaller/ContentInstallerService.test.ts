@@ -600,34 +600,113 @@ describe('ContentInstallerService', () => {
   // -------------------------------------------------------------------------
 
   describe('detectOtherModsContent()', () => {
+    /**
+     * Create a mock IndexedDB database whose cursor iterates over
+     * the given package records. This allows testing the single-pass
+     * cursor in detectOtherModsContent.
+     */
+    function mockDbWithRecords(records: ContentPackageRecord[]): IDBDatabase {
+      let cursorIndex = 0
+      return {
+        transaction: vi.fn(() => ({
+          objectStore: vi.fn(() => ({
+            openCursor: vi.fn(() => {
+              const req: any = {}
+              const schedule = () => {
+                if (cursorIndex < records.length) {
+                  req.result = { value: records[cursorIndex] }
+                  cursorIndex++
+                  Object.defineProperty(req.result, 'continue', {
+                    value: vi.fn(() => {
+                      req.result = null
+                      schedule()
+                    }),
+                  })
+                } else {
+                  req.result = null
+                }
+                if (req.onsuccess) req.onsuccess()
+              }
+              setTimeout(schedule, 0)
+              return req
+            }),
+          })),
+          set onerror(_cb: any) {},
+          set onabort(_cb: any) {},
+        })),
+      } as any
+    }
+
     it('returns null when only current mod has content', async () => {
-      ;(service as any).getInstalledModIds = vi
-        .fn()
-        .mockResolvedValue(new Set(['ra']))
+      const records: ContentPackageRecord[] = [
+        {
+          packageId: 'ra:quickinstall',
+          version: 'v1',
+          sha1: 'aaa',
+          installedAt: 1,
+          files: ['a.mix'],
+        },
+        {
+          packageId: 'ra:movies',
+          version: 'v1',
+          sha1: 'bbb',
+          installedAt: 2,
+          files: ['b.mix'],
+        },
+      ]
+      ;(service as any)._db = mockDbWithRecords(records)
 
       const result = await service.detectOtherModsContent('ra')
       expect(result).toBeNull()
     })
 
     it('returns null when no mods have content', async () => {
-      ;(service as any).getInstalledModIds = vi
-        .fn()
-        .mockResolvedValue(new Set<string>())
+      ;(service as any)._db = mockDbWithRecords([])
 
       const result = await service.detectOtherModsContent('ra')
       expect(result).toBeNull()
     })
 
-    it('returns other mod IDs when switching mods', async () => {
-      ;(service as any).getInstalledModIds = vi
-        .fn()
-        .mockResolvedValue(new Set(['ra', 'cnc', 'd2k']))
+    it('returns other mod IDs and package count when switching mods', async () => {
+      const records: ContentPackageRecord[] = [
+        {
+          packageId: 'ra:quickinstall',
+          version: 'v1',
+          sha1: 'aaa',
+          installedAt: 1,
+          files: ['a.mix'],
+        },
+        {
+          packageId: 'cnc:basefiles',
+          version: 'v1',
+          sha1: 'bbb',
+          installedAt: 2,
+          files: ['c.mix'],
+        },
+        {
+          packageId: 'cnc:movies',
+          version: 'v1',
+          sha1: 'ccc',
+          installedAt: 3,
+          files: ['d.mix'],
+        },
+        {
+          packageId: 'd2k:quickinstall',
+          version: 'v1',
+          sha1: 'ddd',
+          installedAt: 4,
+          files: ['e.r16'],
+        },
+      ]
+      ;(service as any)._db = mockDbWithRecords(records)
 
       const result = await service.detectOtherModsContent('ra')
       expect(result).not.toBeNull()
       expect(result!.otherModIds).toContain('cnc')
       expect(result!.otherModIds).toContain('d2k')
       expect(result!.otherModIds).not.toContain('ra')
+      // 2 cnc + 1 d2k = 3 packages from other mods
+      expect(result!.totalOtherPackages).toBe(3)
     })
   })
 
