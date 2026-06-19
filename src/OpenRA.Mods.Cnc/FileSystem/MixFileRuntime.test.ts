@@ -724,8 +724,11 @@ function createEncryptedMixBuffer(
 function createOpenRAEncryptedBuffer(): ArrayBuffer {
   const buf = new ArrayBuffer(100)
   const dv = new DataView(buf)
-  dv.setUint16(0, 0x0000, true)    // OpenRA format marker
-  dv.setUint16(2, 0x0002, true)    // bit 1 = encrypted
+  // C# 对照: var flags = s.ReadUInt32(); (flags & 0x2) != 0
+  // The encrypted flag is checked at bit 1 of the LE uint32.
+  // This means bit 1 of byte 0 (the low byte of the first uint16).
+  dv.setUint16(0, 0x0002, true)    // first uint16: bit 1 = encrypted flag
+  dv.setUint16(2, 0x0000, true)    // reserved / sub-format
   // Fill remaining with non-zero filler
   for (let i = 4; i < 100; i++) {
     dv.setUint8(i, 0x42)

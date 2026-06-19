@@ -91,6 +91,20 @@ export class MixLoader implements IPackageLoader {
     }
 
     // Check 2: Encrypted format (RA/TS/RA2) — try before C&C (Phase B/C)
+    // Check 2: C&C format (unencrypted) — try BEFORE encrypted.
+    // C&C must come first: C&C files with numFiles=3/7/11... have
+    // bit 1 set in the low uint16, which would falsely trigger
+    // isEncryptedFormat if checked first.
+    if (MixFileRuntime.isCncFormat(stream)) {
+      try {
+        return MixFileRuntime.parse(filename, stream, _mixDb)
+      } catch (err) {
+        console.warn(`MixLoader: Failed to parse "${filename}" as C&C MIX: ${String(err)}`)
+        return null
+      }
+    }
+
+    // Check 3: Encrypted format (RA/TS/RA2) — try AFTER C&C
     if (MixFileRuntime.isEncryptedFormat(stream)) {
       let encryptedAttemptFailed = false
       try {
@@ -122,16 +136,6 @@ export class MixLoader implements IPackageLoader {
         if (firstUint16 !== 1) {
           return null
         }
-      }
-    }
-
-    // Check 3: C&C format (unencrypted)
-    if (MixFileRuntime.isCncFormat(stream)) {
-      try {
-        return MixFileRuntime.parse(filename, stream, _mixDb)
-      } catch (err) {
-        console.warn(`MixLoader: Failed to parse "${filename}" as C&C MIX: ${String(err)}`)
-        return null
       }
     }
 

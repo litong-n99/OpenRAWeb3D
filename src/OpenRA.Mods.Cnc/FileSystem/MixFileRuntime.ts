@@ -470,24 +470,21 @@ export class MixFileRuntime implements IReadOnlyPackage {
     const dv = new DataView(data)
     const firstUint16 = dv.getUint16(0, true)
 
-    // OpenRA format: first uint16 == 0, check second uint16 for encrypted flag
+    // OpenRA format: first uint16 == 0 with encrypted flag at bit 1 of uint32
+    // C# 对照: var flags = s.ReadUInt32(); (flags & 0x2) != 0
     if (firstUint16 === OPENRA_FORMAT_MARKER) {
       if (data.byteLength >= 4) {
-        const secondUint16 = dv.getUint16(2, true)
-        return (secondUint16 & OPENRA_ENCRYPTED_FLAG) !== 0
+        const flags = dv.getUint32(0, true)
+        return (flags & OPENRA_ENCRYPTED_FLAG) !== 0
       }
       return false
     }
 
-    // Universal key format: first uint16 == 1 (bit 0 set)
-    if (firstUint16 === UNIVERSAL_KEY_FLAG) {
-      return true
-    }
+    // Universal key format: first uint16 == 1 (hardcoded Blowfish key)
+    if (firstUint16 === UNIVERSAL_KEY_FLAG) return true
 
-    // RSA key format: first uint16 == 2 (bit 1 set) — detected but not supported
-    if (firstUint16 === RSA_KEY_FLAG) {
-      return true
-    }
+    // RSA key format: first uint16 == 2 (RSA-encrypted keyblock at offset 4)
+    if (firstUint16 === RSA_KEY_FLAG) return true
 
     return false
   }
