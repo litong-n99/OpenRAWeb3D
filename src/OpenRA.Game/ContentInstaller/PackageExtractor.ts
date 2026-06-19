@@ -207,19 +207,33 @@ export class PackageExtractor {
         if (MixFileRuntime.isEncryptedFormat(data)) {
           try {
             pkg = MixFileRuntime.parseEncrypted(destPath, data, undefined, mixDb)
-          } catch {
-            // Encrypted parse failed — fall through to C&C check
+          } catch (err) {
+            console.warn(
+              `PackageExtractor: encrypted MIX parse failed for "${destPath}": ` +
+              `${err instanceof Error ? err.message : String(err)}`,
+            )
           }
         }
         if (!pkg && MixFileRuntime.isCncFormat(data)) {
           try {
             pkg = MixFileRuntime.parse(destPath, data, mixDb)
-          } catch {
-            // C&C parse failed — pkg stays null, handled below as pass-through
+          } catch (err) {
+            console.warn(
+              `PackageExtractor: C&C MIX parse failed for "${destPath}": ` +
+              `${err instanceof Error ? err.message : String(err)}`,
+            )
           }
         }
         if (!pkg && !MixFileRuntime.isEncryptedFormat(data) && !MixFileRuntime.isCncFormat(data)) {
-          // Not a recognized MIX format — skip parse, will be passed through as raw
+          // Not a recognized MIX format — log diagnostic info
+          const dv = new DataView(data)
+          const first = dv.getUint16(0, true)
+          const second = data.byteLength >= 4 ? dv.getUint16(2, true) : 0
+          console.warn(
+            `PackageExtractor: "${destPath}" is not a recognized MIX format ` +
+            `(firstUint16=0x${first.toString(16).padStart(4, '0')}, ` +
+            `secondUint16=0x${second.toString(16).padStart(4, '0')}, size=${data.byteLength})`,
+          )
         }
       } else if (format === 'pak') {
         pkg = _pakLoader.tryParsePackage(destPath, data)
