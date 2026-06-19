@@ -2,7 +2,7 @@
 
 > **Source Reference**: [CLAUDE.md](../CLAUDE.md) — Project Status table, Acceptance Testing section
 > **Audit Date**: 2026-06-19
-> **Current Coverage**: 76 test pages across 16 chapter directories (Ch02-Ch22)
+> **Current Coverage**: 87 test pages across 16 chapter directories (Ch02-Ch22). P0-A: ✅ (7/7), P0-B: ✅ (4/4)
 > **Target**: Comprehensive manual visual acceptance test coverage for all rendering-dependent modules
 >
 > **Important Statement**: Test pages reside under `src/__e2e__/manual/`. The `acceptance-test-assistant` agent owns this directory exclusively. The `acceptance-test-runner` agent executes Playwright automated verification. All test page creation must follow the agent workflow defined in [CLAUDE.md](../CLAUDE.md) and `.claude/agents/acceptance-test-assistant.md`.
@@ -79,7 +79,7 @@ The following test infrastructure is already in place:
 | Ch05 UI System | 16 | 1 | 🟠 Thin | Moderate |
 | Ch06 Network Sync | 29 | 0 | ⚪ N/A | None (pure logic) |
 | Ch07 Input/Camera/Audio/Effects | 13 | 1 | 🔴 Very Sparse | **MAJOR** |
-| Ch08 Weapons & Combat | 57 | 1 | 🔴 Critical | **CRITICAL** |
+| Ch08 Weapons & Combat | 57 | 8 | 🟡 Improved | Moderate (P0-A complete, P0-B pending) |
 | Ch09 Movement & Physics | 30 | 0 | 🟡 Missing | Minor |
 | Ch10 Resource Economy | 25 | 3 | 🟢 Good | None |
 | Ch11 Production & Building | 37 | 0 | 🟠 Missing | Moderate |
@@ -177,8 +177,8 @@ The following test infrastructure is already in place:
 
 | Phase | Priority | Pages | Est. Hours | Status |
 |:---|:---:|:---:|:---:|:---|
-| P0-A: Ch08 Projectile Visuals | P0 | 7 | ~35 | 📋 PLANNED |
-| P0-B: Ch08 Combat VFX & Warheads | P0 | 4 | ~20 | 📋 PLANNED |
+| P0-A: Ch08 Projectile Visuals | P0 | 7 | ~35 | ✅ COMPLETE (2026-06-19) |
+| P0-B: Ch08 Combat VFX & Warheads | P0 | 4 | ~20 | ✅ COMPLETE (2026-06-19) |
 | P1-A: Ch21 Editor Visuals | P1 | 4 | ~20 | 📋 PLANNED |
 | P1-B: Ch07 Effects & Selection | P1 | 3 | ~12 | 📋 PLANNED |
 | P2-A: Ch11 Production & Building | P2 | 3 | ~15 | 📋 PLANNED |
@@ -194,11 +194,11 @@ The following test infrastructure is already in place:
 
 ### 4.1 Phase P0-A: Ch08 Projectile Visuals
 
-**Status**: 📋 PLANNED (0/7 completed)
+**Status**: ✅ COMPLETE (7/7, 2026-06-19) — 21 files, 14 review rounds, 0 TS errors
 **Priority**: P0 (Critical)
 **Complexity**: High (Missile, NukeLaunch complex multi-stage trajectories)
 **Blocked by**: Ch02 (Renderer), Ch03 (Actor/World), Ch08 source migration (COMPLETE)
-**Blocks**: Phase P0-B (explosion effects triggered by projectile impact)
+**Blocks**: Phase P0-B (explosion effects triggered by projectile impact) — NOW UNBLOCKED
 
 **Description**: The projectiles system is the most visually complex subsystem in Ch08 and has the largest test gap (only 1 existing test page: `projectile-lifecycle`). Each projectile type has a unique visual signature — Missile has arcing paths with contrails, LaserZap renders instant beams with player-color glow, NukeLaunch has a multi-stage ascent-descent-detonation sequence. These visual behaviors directly affect gameplay readability and player feedback. Each test page must validate the 3D rendering, timing, and coordinate-space correctness against OpenRA's 2D reference behavior.
 
@@ -282,10 +282,10 @@ The following test infrastructure is already in place:
 
 ### 4.2 Phase P0-B: Ch08 Combat VFX & Warhead Effects
 
-**Status**: 📋 PLANNED (0/4 completed)
+**Status**: 🔧 IN PROGRESS (0/4 completed)
 **Priority**: P0 (Critical)
 **Complexity**: High (explosion effects), Medium (muzzle, animation, gallery)
-**Blocked by**: Phase P0-A (projectile impact triggers warhead effects), Ch07 Phase E (SpriteEffect, FloatingSpriteEmitter)
+**Blocked by**: Phase P0-A (projectile impact triggers warhead effects) — ✅ RESOLVED, Ch07 Phase E (SpriteEffect, FloatingSpriteEmitter) — ✅ COMPLETE
 **Blocks**: None (terminal visual layer)
 
 **Description**: Combat VFX — explosions, muzzle flashes, attack animations, and warhead impact effects — are the most player-facing visual feedback in an RTS. These effects must be visually punchy, correctly positioned in 3D space, and synchronized with combat logic timing. OpenRA uses 2D sprite sequences with palette-based color cycling; Babylon.js equivalents use `SpriteEffect` billboards, `ParticleSystem` for debris, and `ShaderMaterial` effects for screen flash and shake.

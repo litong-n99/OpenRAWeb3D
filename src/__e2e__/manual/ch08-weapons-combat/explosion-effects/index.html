@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explosion Effects - 爆炸特效 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #main-layout { display: flex; height: calc(100vh - 180px); }
+    #sandbox { flex: 1; position: relative; min-width: 0; }
+    #sandbox canvas { display: block; }
+    #sidebar { width: 320px; background: #0d1b2e; border-left: 1px solid #0f3460; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    #controls { padding: 10px 20px; background: #16213e; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-top: 1px solid #0f3460; }
+    #controls label { font-size: 12px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input { padding: 6px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    #controls button:hover { background: #0f3460; }
+    #controls button.fire-btn { border-left: 3px solid #ff6d00; min-width: 100px; }
+    #controls button.water-btn { border-left: 3px solid #4fc3f7; min-width: 100px; }
+    #controls button.reset-btn { border-left: 3px solid #888; }
+    #controls input[type="number"] { width: 55px; text-align: center; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; }
+    #info-bar span { white-space: nowrap; }
+    .panel-title { font-size: 12px; font-weight: 600; color: #4fc3f7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .panel-title.fire { color: #ff6d00; }
+    .panel-title.water { color: #4fc3f7; }
+    .diag-row { display: flex; gap: 8px; font-size: 11px; padding: 3px 0; border-bottom: 1px solid #1a2740; font-family: 'Consolas', monospace; }
+    .diag-label { color: #888; width: 90px; flex-shrink: 0; }
+    .diag-value { color: #ccc; }
+    .diag-value.highlight { color: #ff6d00; font-weight: 600; }
+    .diag-value.water-hl { color: #4fc3f7; font-weight: 600; }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 10px; color: #888; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+    .preset-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+    .preset-badge.large { background: #ff6d0030; color: #ff6d00; }
+    .preset-badge.small { background: #ffab4030; color: #ffab40; }
+    .sep { color: #333; margin: 0 4px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Explosion Effects — 爆炸特效可视化</h1>
+    <div class="subtitle">ID: ch08-weapons-combat/explosion-effects | 期望结果见 README.md | CreateEffectWarhead + SpriteEffect</div>
+  </div>
+  <div id="main-layout">
+    <div id="sandbox">
+      <canvas id="renderCanvas"></canvas>
+    </div>
+    <div id="sidebar">
+      <div>
+        <div class="panel-title fire">Explosion State</div>
+        <div class="diag-row"><span class="diag-label">Active</span><span class="diag-value highlight" id="diag-active">0</span></div>
+        <div class="diag-row"><span class="diag-label">Preset</span><span class="diag-value" id="diag-preset">none</span></div>
+        <div class="diag-row"><span class="diag-label">Phase</span><span class="diag-value highlight" id="diag-phase">none</span></div>
+        <div class="diag-row"><span class="diag-label">Progress</span><span class="diag-value" id="diag-progress">-</span></div>
+        <div class="diag-row"><span class="diag-label">Ticks</span><span class="diag-value" id="diag-ticks">-</span></div>
+        <div class="diag-row"><span class="diag-label">Position</span><span class="diag-value" id="diag-pos">-</span></div>
+      </div>
+      <div>
+        <div class="panel-title">Particles &amp; Effects</div>
+        <div class="diag-row"><span class="diag-label">Debris</span><span class="diag-value highlight" id="diag-total">0</span></div>
+        <div class="diag-row"><span class="diag-label">Scorch Marks</span><span class="diag-value" id="diag-scorch">0</span></div>
+        <div class="diag-row"><span class="diag-label">Ripple Rings</span><span class="diag-value water-hl" id="diag-ripples">0</span></div>
+      </div>
+      <div>
+        <div class="panel-title">Verification</div>
+        <div class="diag-row"><span class="diag-label">Water Variant</span><span class="diag-value water-hl" id="diag-water">-</span></div>
+        <div class="diag-row"><span class="diag-label">Billboard → Cam</span><span class="diag-value highlight" id="diag-facing">-</span></div>
+      </div>
+      <div>
+        <div class="panel-title">Legend</div>
+        <div style="font-size:10px; color:#888; line-height:1.6;">
+          <span class="legend-dot" style="background:#ff6d00;"></span> Orange disc = billboard explosion<br>
+          <span class="legend-dot" style="background:#5d4037;"></span> Brown spheres = debris particles<br>
+          <span class="legend-dot" style="background:#1a1a1a;"></span> Dark patch = scorch mark<br>
+          <span class="legend-dot" style="background:#4fc3f7;"></span> Blue ring = water ripple (Torus)<br>
+          <span class="legend-dot" style="background:#1e3a5f;"></span> Blue plane = water zone (Z = -5)
+        </div>
+      </div>
+      <div>
+        <div class="panel-title">Presets</div>
+        <div style="font-size:10px; color:#888; line-height:1.5;">
+          <span class="preset-badge large">LARGE</span> peak <b>3.0</b> wu, <b>24</b>t expand + <b>12</b>t fade, <b>18</b> debris<br>
+          <span class="preset-badge small">SMALL</span> peak <b>1.2</b> wu, <b>16</b>t expand + <b>8</b>t fade, <b>8</b> debris
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="controls">
+    <label for="preset-select">Preset:</label>
+    <select id="preset-select">
+      <option value="large" selected>Large (3.0 wu)</option>
+      <option value="small">Small (1.2 wu)</option>
+    </select>
+    <span class="sep">|</span>
+    <label for="pos-x">Target X:</label>
+    <input type="number" id="pos-x" value="0" step="0.5">
+    <label for="pos-z">Target Z:</label>
+    <input type="number" id="pos-z" value="0" step="0.5">
+    <button id="btn-pos-center" style="font-size:11px;">Center</button>
+    <button id="btn-pos-east" style="font-size:11px;">East</button>
+    <button id="btn-pos-north" style="font-size:11px;">Water Zone</button>
+    <span class="sep">|</span>
+    <button class="fire-btn" id="btn-ground">Ground Explosion</button>
+    <button class="water-btn" id="btn-water">Water Explosion</button>
+    <span class="sep">|</span>
+    <button class="reset-btn" id="btn-reset">Reset Scene</button>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>Viewport: <span id="info-viewport">-</span></span>
+    <span>Engine: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>Time: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
