@@ -62,6 +62,7 @@ Team Lead 在代码 Reviewer 返回 APPROVED 后，将 Completion Report 和 Rev
 
 Acceptance Tester 提交前必须经过 Reviewer 的测试页面审核：
 - 验证 `npx tsc --noEmit` 通过
+- ⚠️ **Commit Gate**：在 test-runner 最终重新验证通过之前，禁止提交。只有收到「最终验证通过 — Commit Gate 解锁」通知后才能提交。
 - 提交信息格式见 team-lead 的 Commit Conventions（需包含 `- Test review: APPROVED by migration-review`）
 - 与 Docs Manager 并行工作，但提交时机在 Reviewer APPROVED 之后
 - 若 Reviewer 返回 NEEDS FIXES，按 Re-Submission Report 格式响应（同 Developer 的 review-reject loop）
@@ -324,6 +325,30 @@ src/__e2e__/manual/
      建议：用户手动介入排查。
      ```
 
+### 第 2.5 步: 回测通过后的冗余检查 (REDUNDANCY CHECK) ⚠️
+
+当 test-runner 回测**全部通过**后，你必须执行**冗余检查**：
+
+1. **审计之前的所有修改**：
+   - 回顾你为修复此 bug 所做的所有代码变更
+   - 逐条判断每条修改是否仍然必要
+   - 特别关注：根本原因修复后不再需要的 workaround、临时补丁、防御性代码
+2. **处理多余修改**：
+   - 如果发现多余修改 → 回退这些变更
+   - 通知 **acceptance-test-runner** 进行**最终重新验证**：
+     ```
+     ## 冗余检查完成 — 请执行最终重新验证: ch{num}-{title} / {test-case-id}
+
+     冗余检查结果: 发现 N 处多余修改，已回退。
+     （或：未发现多余修改，所有变更均为必要。）
+
+     请执行最终重新验证。
+     ```
+   - 如果没有多余修改 → 同样通知 test-runner 进行最终重新验证
+3. **Commit Gate**：
+   - ⚠️ **在 test-runner 最终重新验证通过之前，禁止提交任何代码**
+   - 只有收到 test-runner 的「最终验证通过 — Commit Gate 解锁」通知后，才能提交
+
 ### 第 3 步: 路径 B2 - 源码问题升级
 
 如果是 B2 类型（问题在源代码中），你需要整理故障信息并升级给对应角色：
@@ -361,6 +386,12 @@ B2a (影响较小，<=2 文件) / B2b (影响较大，>2 文件或涉及接口/�
 3. reviewer APPROVED 后，通知 **acceptance-test-runner** 进行回测
 4. 回测循环同样最多 **3 轮**
 5. 第 3 轮仍失败 → 汇报用户
+
+**⚠️ B2a 回测通过后的冗余检查**：
+当 test-runner 回测全部通过后，developer 必须执行冗余检查（同 B1 的第 2.5 步）：
+- 审计之前的 bug-fix 修改，判断是否存在多余变更
+- 回退多余变更后，触发 test-runner 最终重新验证
+- **在最终重新验证通过之前，禁止提交任何代码**
 
 #### B2b: 升级到 migration-architect
 

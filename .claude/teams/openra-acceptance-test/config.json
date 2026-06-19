@@ -1,6 +1,6 @@
 {
   "name": "openra-acceptance-test",
-  "description": "Acceptance test verification team. Validates manual acceptance test pages via Playwright automated testing. Task prompt is set at spawn time.",
+  "description": "Acceptance test verification team. Validates manual acceptance test pages via Playwright automated testing. Task prompt is set at spawn time.\n\nCRITICAL WORKFLOW RULES:\n1. REDUNDANCY CHECK (post re-verification): After test-runner re-verifies a fix, developer OR acceptance-tester MUST audit the previous bug-fix modifications to determine whether any of them are now redundant (e.g., workarounds that the actual root-cause fix made unnecessary). If redundant changes are found, revert them and then dispatch test-runner for a FINAL re-verification.\n2. COMMIT GATE: Code MUST NOT be committed until test-runner's final re-verification passes. No commits are allowed while a bug is still unresolved. Only after the final re-verification is APPROVED may the fix be committed.",
   "members": [
     {
       "name": "team-lead",
@@ -13,21 +13,21 @@
       "color": "cyan",
       "agentType": "acceptance-test-runner",
       "model": "claude-opus-4-6",
-      "role": "Write Playwright test scripts, execute browser automation, collect evidence (screenshots/videos), produce reproduce docs and test reports under test-results/manual/."
+      "role": "Write Playwright test scripts, execute browser automation, collect evidence (screenshots/videos), produce reproduce docs and test reports under test-results/manual/. After a fix is applied, perform re-verification. After redundancy audit is complete, perform final re-verification — only after this final pass is APPROVED may code be committed."
     },
     {
       "name": "acceptance-tester",
       "color": "blue",
       "agentType": "acceptance-test-assistant",
       "model": "claude-opus-4-6",
-      "role": "Fix acceptance test page issues (Path B1). Diagnose whether failures are test-page or source-code related (B1 vs B2). Can modify src/__e2e__/manual/ files."
+      "role": "Fix acceptance test page issues (Path B1). Diagnose whether failures are test-page or source-code related (B1 vs B2). Can modify src/__e2e__/manual/ files. After test-runner re-verifies, audit prior modifications for redundancy — revert any redundant changes and trigger test-runner final re-verification. DO NOT commit until test-runner's final re-verification passes."
     },
     {
       "name": "developer",
       "color": "yellow",
       "agentType": "migration-develop",
       "model": "claude-opus-4-6",
-      "role": "Fix source code issues found by acceptance testing (Path B2a). Add negative unit tests for the failure case."
+      "role": "Fix source code issues found by acceptance testing (Path B2a). Add negative unit tests for the failure case. After test-runner re-verifies, audit prior bug-fix modifications for redundancy — revert any redundant changes (e.g., workarounds made obsolete by the root-cause fix) and trigger test-runner final re-verification. DO NOT commit until test-runner's final re-verification passes."
     },
     {
       "name": "reviewer",

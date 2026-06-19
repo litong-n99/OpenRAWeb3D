@@ -205,7 +205,7 @@ Acceptance Tester's test pages MUST be reviewed by Reviewer before final approva
    - BUG DETECTION: Visual correctness, color accuracy, canvas sizing, coordinate system errors
    - CODE FORMAT & COMMENTS: File header, JSDoc, quantifiable expectations in README.md
 3. **Reviewer** issues ONE of three verdicts:
-   - **APPROVED** → Acceptance Tester may commit; Team Lead routes to Docs Manager for finalization
+   - **APPROVED** → Acceptance Tester may commit (subject to Acceptance Test Commit Gate — see Commit Rules); Team Lead routes to Docs Manager for finalization
    - **NEEDS FIXES** → Team Lead routes findings to Acceptance Tester (fix loop below)
    - **INCOMPLETE** → Team Lead routes back to Acceptance Tester for re-scoping
 4. If NEEDS FIXES:
@@ -278,11 +278,12 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 
 ### Commit Rules
 - **Developer commits** after self-check passes and BEFORE submitting to reviewer
-- **Acceptance Tester commits** after Reviewer APPROVED on test pages and `npx tsc --noEmit` passes
+- **Acceptance Tester commits** after Reviewer APPROVED on test pages, `npx tsc --noEmit` passes, **AND** test-runner's final re-verification passes (Commit Gate unlocked). See Acceptance Test Verification Flow in CLAUDE.md.
 - **Docs Manager commits** after all doc updates are complete (independent of test review timing)
 - **Never commit broken code** — `npx tsc --noEmit` and `npx vitest run` must pass before any commit
 - **Atomic commits** — one commit per migrated file
 - **Never commit `OpenRA/` files** — absolute rule
+- **Acceptance Test Commit Gate** — for bug fixes discovered via acceptance testing: no commits until test-runner's final re-verification passes. Redundancy check must be completed before final re-verification.
 
 ---
 

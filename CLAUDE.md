@@ -427,11 +427,48 @@ test-runner (writes Playwright scripts, executes tests, collects evidence)
   │
   └── Path B (failures): escalates to acceptance-tester
         │
-        ├── Path B1 (test page bug): fix → reviewer → back to test-runner (max 3 rounds)
+        ├── Path B1 (test page bug):
+        │     fix → reviewer → back to test-runner (max 3 rounds)
+        │       │
+        │       └── test-runner re-verify passes
+        │             │
+        │             ▼
+        │           REDUNDANCY CHECK (acceptance-tester):
+        │           Audit prior fix modifications for redundancy
+        │           (e.g., workarounds made obsolete by root-cause fix)
+        │             │
+        │             ├── Redundant changes found → revert them
+        │             │     └── test-runner FINAL re-verification
+        │             │
+        │             └── No redundancy
+        │                   └── test-runner FINAL re-verification
+        │                         │
+        │                         └── PASS → COMMIT (gate unlocked)
         │
         └── Path B2 (source code bug):
-              ├── B2a (minor, <=2 files): developer fixes + negative tests → reviewer → back to test-runner (max 3 rounds)
-              └── B2b (major, >2 files or interface changes): architect re-plans → reports to user
+              ├── B2a (minor, <=2 files):
+              │     developer fixes + negative tests → reviewer → back to test-runner (max 3 rounds)
+              │       │
+              │       └── test-runner re-verify passes
+              │             │
+              │             ▼
+              │           REDUNDANCY CHECK (developer):
+              │           Audit prior bug-fix modifications for redundancy
+              │           (e.g., workarounds made obsolete by root-cause fix)
+              │             │
+              │             ├── Redundant changes found → revert them
+              │             │     └── test-runner FINAL re-verification
+              │             │
+              │             └── No redundancy
+              │                   └── test-runner FINAL re-verification
+              │                         │
+              │                         └── PASS → COMMIT (gate unlocked)
+              │
+              └── B2b (major, >2 files or interface changes):
+                    architect re-plans → reports to user
+
+⚠️ COMMIT GATE: No commits allowed until test-runner's FINAL re-verification passes.
+   Bug not fully resolved = commit gate locked.
 ```
 
 ### Agent Rules
@@ -445,7 +482,7 @@ test-runner (writes Playwright scripts, executes tests, collects evidence)
 
 Sub-agents (Architect, Developer, Reviewer, Acceptance Tester, Docs Manager) have full read/write access to the files within their domain.
 
-- **Acceptance Tester may commit test code** — can write and commit files under `src/__e2e__/manual/` after verifying `tsc --noEmit` passes
+- **Acceptance Tester may commit test code** — can write and commit files under `src/__e2e__/manual/` after verifying `tsc --noEmit` passes. **However, commits are gated**: no commit is allowed until `test-runner`'s final re-verification passes (see Acceptance Test Verification Flow above). Bug not fully resolved = commit locked.
 - **Acceptance test pages belong to acceptance-test-assistant** — all modifications, fixes, and thinking related to files under `src/__e2e__/manual/` must be delegated to the acceptance-test-assistant agent. The Team Lead and other agents should NOT directly modify these files.
 - **Acceptance Tester creates test pages** — can write `.html`, `.ts`, `.md` files under `src/__e2e__/manual/`, verify with `tsc --noEmit`
 - **Acceptance Tester commits after Reviewer APPROVED** — test pages must pass Reviewer's acceptance test review before commit (or commit and amend after approval)

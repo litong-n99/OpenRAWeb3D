@@ -223,7 +223,7 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
    ```
    **审核状态**: ✅ 全部审核通过 (自动化验收测试, YYYY-MM-DD)
    ```
-2. 向 Team Lead 报告：验收通过，全部 N 项指标通过。
+2. 向 Team Lead 报告：验收通过，全部 N 项指标通过，Commit Gate 解锁。
 3. 流程结束。
 
 #### 路径 B: 有问题 (NEEDS FIXES / INCOMPLETE)
@@ -263,11 +263,11 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
 
 ---
 
-## 回测流程 (Loop)
+## 回测流程 (Re-verify)
 
 当 acceptance-test-assistant 或 migration-develop 完成修复并提交 reviewer 审查通过后，你会收到回测请求。
 
-回测步骤：
+### 常规回测步骤：
 1. 读取最新的修复代码
 2. 检查现有 `script/` 目录中的测试脚本是否需要更新（修复可能改变了行为）
 3. 如果需要更新脚本，重复 STEP 2-3
@@ -275,8 +275,51 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
 5. 更新 reproduce.md 和 report.md（STEP 5-6）
 6. 判断结果（STEP 7）
 
-**回测轮次限制**：
-- 最多 **3 轮** 回测（即 1 次初测 + 2 次修复后回测 = 最多 3 次完整测试循环）
+### 回测通过后 → 触发冗余检查
+
+当回测**全部通过**后，你的任务**尚未结束**。你必须通知对应的修复者进行**冗余检查**：
+
+- **Path B1 修复者** → 通知 **acceptance-tester** 进行冗余审计
+- **Path B2a 修复者** → 通知 **developer** 进行冗余审计
+
+通知格式：
+```
+## 回测通过 — 请执行冗余检查: ch{num}-{title} / {test-case-id}
+
+回测结果: N/N 通过 (100%)
+
+请审计你之前针对此 bug 的所有修改，判断是否存在多余变更：
+- 例如：根本原因修复后不再需要的 workaround、临时补丁、防御性代码
+- 如果存在多余变更，请回退这些修改，然后通知我进行最终重新验证
+- 如果没有多余变更，也请告知，我会进行最终重新验证
+
+⚠️ 提醒：在最终重新验证通过之前，禁止提交任何代码。
+```
+
+### 最终重新验证 (FINAL Re-verification)
+
+冗余检查完成后，你会收到最终验证请求。执行最终验证：
+
+1. 读取最新代码（可能包含冗余回退）
+2. 重新运行全部测试（STEP 4）
+3. 更新 reproduce.md 和 report.md（STEP 5-6）
+4. 判断结果（STEP 7）
+
+**最终验证通过** → 报告 Team Lead，Commit Gate 解锁：
+```
+## 最终验证通过 — Commit Gate 解锁: ch{num}-{title} / {test-case-id}
+
+最终验证结果: N/N 通过 (100%)
+冗余检查: 已完成
+Commit Gate: ✅ 解锁，允许提交
+```
+
+**最终验证失败** → 重新进入修复循环。
+
+### 回测轮次限制
+
+- 最多 **3 轮** 常规回测（即 1 次初测 + 2 次修复后回测 = 最多 3 次完整测试循环）
+- 最终验证**不计入** 3 轮限制
 - 第 3 轮仍失败 → 停止循环，向 Team Lead 汇报：
   ```
   ## 验收测试已达上限: ch{num}-{title} / {test-case-id}
@@ -347,3 +390,4 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
 6. **只读验收页面**: 正常流程下 `src/__e2e__/manual/` 下的页面文件只读取不修改。仅在路径 A 的最后一步更新 README.md 的审核状态行。
 7. **视频录制**: 尽量不录视频。仅当视觉异常（如闪烁、动画错误）无法用静态截图表达时才录制。视频文件较大，应压缩后存储。
 8. **截图约命名**: 使用描述性命名，如 `screenshot-1-initial-state.png`、`screenshot-2-after-click.png`。
+9. **Commit Gate**: 回测通过后，必须触发冗余检查 → 最终重新验证。只有最终重新验证通过后，Commit Gate 才解锁。在此之前，禁止任何代码提交。
