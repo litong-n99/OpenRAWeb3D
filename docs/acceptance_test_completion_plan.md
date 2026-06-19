@@ -180,7 +180,7 @@ The following test infrastructure is already in place:
 | P0-A: Ch08 Projectile Visuals | P0 | 7 | ~35 | ✅ COMPLETE (2026-06-19) |
 | P0-B: Ch08 Combat VFX & Warheads | P0 | 4 | ~20 | ✅ COMPLETE (2026-06-19) |
 | P1-A: Ch21 Editor Visuals | P1 | 4 | ~20 | ✅ COMPLETE (2026-06-19) |
-| P1-B: Ch07 Effects & Selection | P1 | 3 | ~12 | 📋 PLANNED |
+| P1-B: Ch07 Effects & Selection | P1 | 3 | ~12 | ✅ COMPLETE (2026-06-19) |
 | P2-A: Ch11 Production & Building | P2 | 3 | ~15 | 📋 PLANNED |
 | P2-B: Ch08 Air & Turreted | P2 | 2 | ~10 | 📋 PLANNED |
 | P3-A: Ch05 UI Core | P3 | 2 | ~6 | 📋 PLANNED |

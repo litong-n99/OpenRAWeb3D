@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WithIdleOverlay - 空闲动画叠加层 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { overscroll-behavior: none; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 380px; min-width: 380px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0; font-size: 16px; color: #e94560; }
+    #left-panel h3 { margin: 8px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel .subtitle { color: #a0a0b0; font-size: 12px; margin-bottom: 4px; }
+
+    .info-box {
+      padding: 8px 12px; background: rgba(13,17,23,0.5); border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 11px; line-height: 1.6;
+    }
+    .info-box .label { color: #889; }
+    .info-box .value { color: #eee; font-family: 'Consolas', monospace; }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+    .stat-grid .s-label { color: #889; font-size: 11px; }
+    .stat-grid .s-value { color: #ddd; font-family: 'Consolas', monospace; font-size: 12px; text-align: right; }
+
+    .kv-row { display: flex; justify-content: space-between; align-items: center; }
+    .kv-row .key { color: #889; font-size: 11px; }
+    .kv-row .val { font-family: 'Consolas', monospace; font-size: 12px; }
+
+    .status-badge {
+      display: inline-block; padding: 2px 10px; border-radius: 10px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+    }
+    .status-idle { background: #1b5e20; color: #81c784; }
+    .status-busy { background: #b71c1c; color: #ef9a9a; }
+    .status-visible { background: #0d47a1; color: #90caf9; }
+    .status-hidden { background: #424242; color: #9e9e9e; }
+    .status-play { background: #33691e; color: #aed581; }
+    .status-pause { background: #e65100; color: #ffcc80; }
+
+    #left-panel button {
+      padding: 6px 14px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      text-align: center; white-space: nowrap;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #e94560; color: #e94560; }
+    #left-panel button.primary { border-color: #2e7d32; color: #81c784; }
+    #left-panel button.danger { border-color: #c62828; color: #ef9a9a; }
+
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; }
+
+    .slider-group { margin: 2px 0; }
+    .slider-group label { font-size: 11px; color: #aab; display: flex; justify-content: space-between; }
+    .slider-group input[type="range"] { width: 100%; margin-top: 2px; }
+
+    .event-log {
+      background: rgba(0,0,0,0.3); border-radius: 4px; padding: 6px 8px;
+      font-family: 'Consolas', monospace; font-size: 10px; color: #888;
+      max-height: 120px; overflow-y: auto; line-height: 1.4;
+    }
+    .event-log .entry { border-bottom: 1px solid rgba(255,255,255,0.04); padding: 1px 0; }
+    .event-log .entry.idle { color: #81c784; }
+    .event-log .entry.busy { color: #ef9a9a; }
+    .event-log .entry.phase { color: #ffcc80; }
+
+    #viewport {
+      flex: 1; position: relative; background: #0d1117;
+    }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    /* Expected results overlay */
+    #expected-overlay {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22,33,62,0.92); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px; line-height: 1.5;
+      max-width: 340px; pointer-events: none; user-select: none; z-index: 15;
+    }
+    #expected-overlay h4 { margin: 0 0 6px; color: #8f8; font-size: 12px; }
+    #expected-overlay ul { margin: 4px 0; padding-left: 16px; }
+    #expected-overlay li { margin: 2px 0; }
+    #expected-overlay .metric { color: #aad; font-family: monospace; }
+
+    /* Legend overlay */
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 6px 14px; z-index: 15;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #333; flex-shrink: 0; }
+
+    /* Info bar */
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+
+    .phase-bar {
+      width: 100%; height: 4px; background: #1a1a2e; border-radius: 2px; margin-top: 4px;
+      overflow: hidden;
+    }
+    .phase-bar-fill {
+      height: 100%; border-radius: 2px; transition: width 0.04s linear;
+    }
+    .phase-bar-fill.play-fill { background: #4caf50; }
+    .phase-bar-fill.pause-fill { background: #ff9800; }
+  </style>
+</head>
+<body ondragstart="return false;" oncontextmenu="return false;">
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. WithIdleOverlay 验收测试</h2>
+      <div class="subtitle">ID: ch07-input-camera/idle-overlay | 期望结果见 README.md</div>
+
+      <h3>Actor 状态</h3>
+      <div class="info-box">
+        <div class="kv-row">
+          <span class="key">Actor 状态:</span>
+          <span id="actor-state-badge" class="status-badge status-idle">IDLE</span>
+        </div>
+        <div class="kv-row" style="margin-top:4px;">
+          <span class="key">Overlay 可见性:</span>
+          <span id="overlay-vis-badge" class="status-badge status-visible">VISIBLE</span>
+        </div>
+        <div class="kv-row" style="margin-top:4px;">
+          <span class="key">当前阶段:</span>
+          <span id="phase-badge" class="status-badge status-play">PLAY</span>
+        </div>
+        <div class="phase-bar">
+          <div id="phase-bar-fill" class="phase-bar-fill play-fill" style="width:50%;"></div>
+        </div>
+        <div class="kv-row" style="margin-top:4px;">
+          <span class="key">当前序列:</span>
+          <span class="val" id="stat-sequence">idle-overlay</span>
+        </div>
+        <div class="kv-row" style="margin-top:2px;">
+          <span class="key">已过 Ticks:</span>
+          <span class="val" id="stat-elapsed-ticks">0 / 60</span>
+        </div>
+        <div class="kv-row" style="margin-top:2px;">
+          <span class="key">总循环次数:</span>
+          <span class="val" id="stat-cycles">0</span>
+        </div>
+      </div>
+
+      <h3>期望结果 (B. Expected)</h3>
+      <div class="info-box" style="font-size:11px; line-height:1.5;">
+        <div style="color:#8f8; margin-bottom:4px;">E1. 播放阶段 overlay 可见</div>
+        <div style="color:#aab;">
+          Actor <b>IDLE</b> + Play 阶段: overlay 网格<b>完全可见</b> (alpha=1.0)，<br>
+          有动画效果（脉冲/旋转/颜色变化）。
+        </div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E2. 暂停阶段 overlay 隐藏</div>
+        <div style="color:#aab;">
+          Actor <b>IDLE</b> + Pause 阶段: overlay 网格<b>完全隐藏</b> (isVisible=false)，<br>
+          状态栏显示 HIDDEN。
+        </div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E3. 播放阶段时长准确</div>
+        <div style="color:#aab;">
+          播放阶段持续 <span class="metric">配置 ticks ±2</span> ticks<br>
+          (默认 60 ticks = 2.4s @ 25tps)。
+        </div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E4. 暂停阶段时长准确</div>
+        <div style="color:#aab;">
+          暂停阶段持续 <span class="metric">配置 ticks ±2</span> ticks<br>
+          (默认 30 ticks = 1.2s @ 25tps)。
+        </div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E5. Actor 非空闲时 overlay 立即停止</div>
+        <div style="color:#aab;">
+          从 IDLE 切换到 BUSY 后，overlay 在<br>
+          <span class="metric">≤2 ticks (≤80ms)</span> 内隐藏。
+        </div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E6. Overlay 偏移定位</div>
+        <div style="color:#aab;">
+          Overlay 位置 = Body 中心 + 配置的偏移量 (WVec)。<br>
+          调整 X/Y/Z 滑块后 overlay 实时移动。
+        </div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E7. 序列名可查询</div>
+        <div style="color:#aab;">
+          当前序列名可通过 test harness 查询，<br>
+          IDLE 时为 <span class="metric">"idle-overlay"</span>。
+        </div>
+      </div>
+
+      <h3>操作</h3>
+      <div class="btn-row" style="margin-top:2px;">
+        <button id="btn-set-idle" class="primary active">设置为 IDLE</button>
+        <button id="btn-set-busy" class="danger">设置为 BUSY</button>
+      </div>
+      <div class="btn-row" style="margin-top:4px;">
+        <button id="btn-force-play">强制 Play 阶段</button>
+        <button id="btn-force-pause">强制 Pause 阶段</button>
+      </div>
+
+      <h3 style="margin-top:6px;">Overlay 偏移 (WVec, su)</h3>
+      <div class="slider-group">
+        <label>X (东+ / 西-): <span id="offset-x-val">0 su</span></label>
+        <input type="range" id="offset-x" min="-2048" max="2048" value="0" step="64">
+      </div>
+      <div class="slider-group">
+        <label>Y (南+ / 北-): <span id="offset-y-val">0 su</span></label>
+        <input type="range" id="offset-y" min="-2048" max="2048" value="512" step="64">
+      </div>
+      <div class="slider-group">
+        <label>Z (高度+): <span id="offset-z-val">1024 su</span></label>
+        <input type="range" id="offset-z" min="-1024" max="4096" value="1024" step="64">
+      </div>
+
+      <h3 style="margin-top:6px;">Play/Pause 循环配置 (ticks)</h3>
+      <div class="slider-group">
+        <label>Play Ticks: <span id="play-ticks-val">60</span></label>
+        <input type="range" id="play-ticks" min="10" max="300" value="60" step="5">
+      </div>
+      <div class="slider-group">
+        <label>Pause Ticks: <span id="pause-ticks-val">30</span></label>
+        <input type="range" id="pause-ticks" min="5" max="300" value="30" step="5">
+      </div>
+
+      <h3 style="margin-top:6px;">速度</h3>
+      <div class="slider-group">
+        <label>模拟速度: <span id="speed-val">1.0x</span></label>
+        <input type="range" id="speed" min="0.25" max="4" value="1" step="0.25">
+      </div>
+
+      <button id="btn-reset" style="margin-top:4px;">重置 (Reset)</button>
+
+      <h3 style="margin-top:6px;">事件日志</h3>
+      <div id="event-log" class="event-log">
+        <div class="entry idle">[0.0s] 初始化: Actor IDLE, Overlay Play 阶段</div>
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
+        <div id="expected-overlay">
+          <h4>检验清单</h4>
+          <ul>
+            <li>IDLE + Play 阶段时 overlay 网格<b>可见且有动画</b>？</li>
+            <li>IDLE + Pause 阶段时 overlay 网格<b>完全消失</b>？</li>
+            <li>Play 阶段持续 <span class="metric">配置±2 ticks</span>？</li>
+            <li>Pause 阶段持续 <span class="metric">配置±2 ticks</span>？</li>
+            <li>切换到 BUSY 后 overlay 在 <span class="metric">≤2 ticks</span> 内隐藏？</li>
+            <li>调整偏移后 overlay 位置实时更新？</li>
+            <li>testHarness.getOverlaySequence() 返回 <span class="metric">"idle-overlay"</span>？</li>
+          </ul>
+        </div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#8d6e63;"></div>Body (Actor 本体)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffd54f;"></div>Overlay (空闲装饰)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,255,255,0.2);"></div>偏移连线 (Offset)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#4caf50;"></div>参考网格 1 单元格</div>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span style="color:#667">TICK_RATE=25tps | WORLD_SCALE=1/1024 | WVec=(X,Y,Z)</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

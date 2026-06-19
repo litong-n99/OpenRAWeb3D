@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>单元选择 - 高亮/框选/Shift组合/血量条 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { overscroll-behavior: none; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 360px; min-width: 360px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0; font-size: 16px; color: #e94560; }
+    #left-panel h3 { margin: 8px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel .subtitle { color: #a0a0b0; font-size: 12px; margin-bottom: 4px; }
+
+    .info-box {
+      padding: 8px 12px; background: rgba(13,17,23,0.5); border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 11px; line-height: 1.5;
+    }
+    .info-box .label { color: #889; }
+    .info-box .value { color: #eee; font-family: 'Consolas', monospace; }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+    .stat-grid .s-label { color: #889; font-size: 11px; }
+    .stat-grid .s-value { color: #ddd; font-family: 'Consolas', monospace; font-size: 12px; text-align: right; }
+
+    #selection-list {
+      max-height: 100px; overflow-y: auto;
+      font-size: 11px; font-family: 'Consolas', monospace;
+      color: #ffd700; line-height: 1.6;
+    }
+    #selection-list .removed { color: #f44; text-decoration: line-through; animation: fade-out 0.3s ease-out forwards; }
+    @keyframes fade-out { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+    #left-panel button {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      text-align: center;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #e94560; color: #e94560; }
+    #left-panel button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; }
+
+    .hp-row {
+      display: flex; align-items: center; gap: 8px; margin: 2px 0;
+    }
+    .hp-row .actor-label { font-size: 10px; color: #aab; min-width: 80px; }
+    .hp-bar-bg {
+      flex: 1; height: 10px; background: #3a0000; border-radius: 3px; border: 1px solid #0f3460;
+      overflow: hidden;
+    }
+    .hp-bar-fill { height: 100%; transition: width 0.15s; border-radius: 2px; }
+    .hp-row .hp-pct { font-size: 10px; color: #aaa; min-width: 36px; text-align: right; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; position: relative; }
+
+    #viewport {
+      flex: 1; position: relative; background: #0d1117;
+    }
+    #viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+    /* Rubber-band selection box */
+    #rubber-band {
+      position: absolute; pointer-events: none; z-index: 100;
+      border: 2px dashed #FFFFFF;
+      display: none;
+      /* dash pattern applied via border + box-shadow for crisp rendering */
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.3);  /* subtle outline for contrast on dark terrain */
+    }
+
+    /* Legend overlay */
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 6px 14px; z-index: 15;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #333; flex-shrink: 0; }
+
+    /* Expected results overlay */
+    #expected-overlay {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22,33,62,0.92); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px; line-height: 1.5;
+      max-width: 300px; pointer-events: none; user-select: none; z-index: 15;
+    }
+    #expected-overlay h4 { margin: 0 0 6px; color: #8f8; font-size: 12px; }
+    #expected-overlay ul { margin: 4px 0; padding-left: 16px; }
+    #expected-overlay li { margin: 2px 0; }
+    #expected-overlay .metric { color: #aad; font-family: monospace; }
+
+    /* Info bar */
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    .modifier-indicator {
+      display: inline-block; padding: 1px 6px; border-radius: 3px;
+      font-size: 10px; font-family: 'Consolas', monospace;
+      background: #0f3460; color: #889;
+    }
+    .modifier-indicator.pressed { background: #e94560; color: #fff; }
+
+    .event-log {
+      font-size: 10px; color: #667; max-height: 60px; overflow-y: auto;
+      line-height: 1.4;
+    }
+    .event-log .entry { border-left: 2px solid #0f3460; padding-left: 6px; margin: 2px 0; }
+    .event-log .entry.select { border-left-color: #ffd700; color: #ffd700; }
+    .event-log .entry.deselect { border-left-color: #e94560; color: #e94560; }
+    .event-log .entry.box { border-left-color: #fff; color: #ccc; }
+  </style>
+</head>
+<body ondragstart="return false;">
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. 单元选择验收测试</h2>
+      <div class="subtitle">ID: ch07-input-camera/selection-visual | 期望结果见 README.md</div>
+
+      <h3>选中状态</h3>
+      <div class="info-box">
+        <div style="margin-bottom:2px; font-size:10px; color:#889;">当前选中:</div>
+        <div id="selection-list" style="color:#667;">(无)</div>
+        <div class="stat-grid" style="margin-top:6px;">
+          <span class="s-label">选中数量:</span><span class="s-value" id="stat-count">0</span>
+          <span class="s-label">最后操作:</span><span class="s-value" id="stat-last-action">-</span>
+          <span class="s-label">Shift:</span><span class="s-value"><span id="mod-shift" class="modifier-indicator">OFF</span></span>
+          <span class="s-label">Ctrl:</span><span class="s-value"><span id="mod-ctrl" class="modifier-indicator">OFF</span></span>
+        </div>
+      </div>
+
+      <h3>Actor 血量 (HP)</h3>
+      <div class="info-box" id="hp-panel">
+        <div class="hp-row">
+          <span class="actor-label">marine_a</span>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%; background:#00FF00;"></div></div>
+          <span class="hp-pct">100%</span>
+        </div>
+        <div class="hp-row">
+          <span class="actor-label">marine_b</span>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:75%; background:#40FF00;"></div></div>
+          <span class="hp-pct">75%</span>
+        </div>
+        <div class="hp-row">
+          <span class="actor-label">marine_c</span>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%; background:#00FF00;"></div></div>
+          <span class="hp-pct">100%</span>
+        </div>
+        <div class="hp-row">
+          <span class="actor-label">marine_d</span>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:25%; background:#FF4400;"></div></div>
+          <span class="hp-pct">25%</span>
+        </div>
+        <div class="hp-row">
+          <span class="actor-label">tank_alpha</span>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:100%; background:#00FF00;"></div></div>
+          <span class="hp-pct">100%</span>
+        </div>
+        <div class="hp-row">
+          <span class="actor-label">tank_beta</span>
+          <div class="hp-bar-bg"><div class="hp-bar-fill" style="width:50%; background:#80FF00;"></div></div>
+          <span class="hp-pct">50%</span>
+        </div>
+      </div>
+
+      <h3>期望结果 (B. Expected)</h3>
+      <div class="info-box" style="font-size:11px; line-height:1.5;">
+        <div style="color:#8f8; margin-bottom:4px;">E1. 选中高亮 ≤1帧</div>
+        <div style="color:#aab;">点击 actor → 金黄色高亮环 <span class="metric">#FFD700</span><br>瞬间出现，无可见延迟</div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E2. Rubber-band 白色虚线</div>
+        <div style="color:#aab;">线宽 <span class="metric">2px</span>，颜色 <span class="metric">#FFFFFF</span><br>虚线样式 dash=<span class="metric">[6,4]</span>px</div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E3. Shift+click 追加选中</div>
+        <div style="color:#aab;">Shift+单击 → 添加到已有选区<br>Shift+已选中 → 移除 (toggle)</div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E4. 血量条 proportional to HP%</div>
+        <div style="color:#aab;">满血 <span class="metric">100%</span> 全绿，<span class="metric">50%</span> 半绿半红<br><span class="metric">25%</span> 绿色仅占 1/4，红色警告</div>
+        <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E5. 空点击清除所有选区</div>
+        <div style="color:#aab;">点击空地 → 所有高亮环/血量条消失</div>
+      </div>
+
+      <h3>操作</h3>
+      <button id="btn-reset">重置选区 (Esc)</button>
+      <div class="btn-row" style="margin-top:4px;">
+        <button id="btn-select-marine-a">选中 marine_a</button>
+        <button id="btn-select-tank-alpha">选中 tank_alpha</button>
+      </div>
+      <div class="btn-row" style="margin-top:2px;">
+        <button id="btn-select-all">全选所有 actor</button>
+        <button id="btn-deselect-all">取消所有选中</button>
+      </div>
+      <div class="btn-row" style="margin-top:2px;">
+        <button id="btn-toggle-healthbars">切换血量条显示</button>
+      </div>
+      <div style="font-size:10px; color:#667; margin-top:6px;">
+        左键单击 → 单选 actor<br>
+        左键拖拽 → 框选 (rubber-band)<br>
+        Shift+左键 → 追加选择 / 移除<br>
+        Shift+拖拽 → 追加框选<br>
+        Esc → 取消所有选中<br>
+        鼠标滚轮 → 缩放视角
+      </div>
+
+      <h3>事件日志</h3>
+      <div class="event-log" id="event-log">
+        <div class="entry" style="color:#667;">等待交互...</div>
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="rubber-band"></div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffd700;"></div>选中高亮环 (#FFD700)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff4444;"></div>陆战队员 (步兵)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#4444ff;"></div>坦克 (车辆)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#00ff00;"></div>血量条 (绿色=高HP)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,0,0,0.5);"></div>血量条 (红色=低HP)</div>
+        </div>
+        <div id="expected-overlay">
+          <h4>检验清单</h4>
+          <ul>
+            <li>单击 actor → 高亮环 <span class="metric">≤1帧</span>？</li>
+            <li>拖拽 → 白色虚线框 <span class="metric">#FFF 2px [6,4]</span>？</li>
+            <li>Shift+单击 → <b>追加</b>到选区？</li>
+            <li>Shift+已选中 → <b>移除</b> (toggle)？</li>
+            <li>血量条宽度 = HP%，<span class="metric">25%</span> 显示红色？</li>
+            <li>点击空地 → 所有高亮消失？</li>
+            <li>松手 ≤4px → 退化为单击？</li>
+          </ul>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span style="color:#667">alpha=-PI/2 | LH坐标系 | SelectionUtils.ts verified</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

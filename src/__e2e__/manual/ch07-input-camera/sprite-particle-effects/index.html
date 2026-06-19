@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>精灵粒子特效 - Billboard 粒子发射器 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { overscroll-behavior: none; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 360px; min-width: 360px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 8px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0; font-size: 16px; color: #e94560; }
+    #left-panel h3 { margin: 6px 0 2px; font-size: 12px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 3px; }
+    #left-panel .subtitle { color: #a0a0b0; font-size: 11px; margin-bottom: 2px; }
+
+    .info-box {
+      padding: 6px 10px; background: rgba(13,17,23,0.5); border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 11px; line-height: 1.4;
+    }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
+    .stat-grid .s-label { color: #889; font-size: 10px; }
+    .stat-grid .s-value { color: #ddd; font-family: 'Consolas', monospace; font-size: 11px; text-align: right; }
+
+    #left-panel button {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      text-align: center; white-space: nowrap;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #e94560; color: #e94560; }
+    #left-panel button.running { background: #1a3a1a; border-color: #4f4; color: #8f8; }
+
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row button { flex: 1; }
+
+    .slider-group { margin: 2px 0; }
+    .slider-group label { font-size: 10px; color: #aab; display: flex; justify-content: space-between; }
+    .slider-group input[type="range"] { width: 100%; margin-top: 2px; }
+    .slider-group .slider-val { font-family: 'Consolas', monospace; color: #e94560; font-size: 10px; }
+
+    input[type="color"] { width: 28px; height: 22px; border: 1px solid #0f3460; border-radius: 3px; padding: 0; cursor: pointer; background: transparent; }
+
+    #viewport {
+      flex: 1; position: relative; background: #0d1117;
+    }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    /* Expected results overlay */
+    #expected-overlay {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(22,33,62,0.93); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 12px; font-size: 10px; line-height: 1.4;
+      max-width: 300px; pointer-events: none; user-select: none; z-index: 15;
+    }
+    #expected-overlay h4 { margin: 0 0 4px; color: #8f8; font-size: 11px; }
+    #expected-overlay ul { margin: 2px 0; padding-left: 14px; }
+    #expected-overlay li { margin: 1px 0; }
+    #expected-overlay .metric { color: #aad; font-family: monospace; }
+
+    /* Particle count badge */
+    #particle-badge {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(22,33,62,0.93); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 12px; font-size: 11px;
+      z-index: 15; pointer-events: none; user-select: none;
+    }
+    #particle-badge .count { font-size: 28px; font-weight: bold; color: #e94560; }
+    #particle-badge .label { color: #889; font-size: 10px; }
+
+    /* Info bar */
+    #info-bar {
+      height: 26px; background: #0f0f1a; font-size: 9px; color: #555;
+      display: flex; gap: 18px; align-items: center; padding: 0 14px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+
+    /* Type selector row */
+    .type-selector { display: flex; gap: 4px; flex-wrap: wrap; }
+    .type-selector button { font-size: 10px !important; padding: 3px 8px !important; }
+  </style>
+</head>
+<body ondragstart="return false;">
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. 精灵粒子特效验收</h2>
+      <div class="subtitle">ID: ch07-input-camera/sprite-particle-effects | Billboard 粒子发射器 | 期望见 README.md</div>
+
+      <h3>效果预设</h3>
+      <div class="type-selector">
+        <button id="btn-type-explosion" class="active">爆炸</button>
+        <button id="btn-type-smoke">烟雾</button>
+        <button id="btn-type-fire">火焰</button>
+        <button id="btn-type-spark">火花</button>
+        <button id="btn-type-debris">碎片</button>
+      </div>
+
+      <h3>发射器参数</h3>
+      <div class="slider-group">
+        <label>发射速率 (particles/s): <span class="slider-val" id="val-rate">30</span></label>
+        <input type="range" id="slider-rate" min="1" max="200" step="1" value="30">
+      </div>
+      <div class="slider-group">
+        <label>生命周期 (s): <span class="slider-val" id="val-lifetime">2.0</span></label>
+        <input type="range" id="slider-lifetime" min="0.1" max="5.0" step="0.1" value="2.0">
+      </div>
+      <div class="slider-group">
+        <label>初始速度 (wu/s): <span class="slider-val" id="val-speed">3.0</span></label>
+        <input type="range" id="slider-speed" min="0.5" max="15" step="0.1" value="3.0">
+      </div>
+      <div class="slider-group">
+        <label>重力 (wu/s²): <span class="slider-val" id="val-gravity">-1.5</span></label>
+        <input type="range" id="slider-gravity" min="-10" max="10" step="0.1" value="-1.5">
+      </div>
+      <div class="slider-group">
+        <label>粒子大小 (wu): <span class="slider-val" id="val-size">0.3</span></label>
+        <input type="range" id="slider-size" min="0.05" max="1.5" step="0.01" value="0.3">
+      </div>
+
+      <h3>粒子颜色</h3>
+      <div class="btn-row" style="align-items:center;">
+        <input type="color" id="picker-color1" value="#ff6600">
+        <span style="font-size:10px;color:#889;">→</span>
+        <input type="color" id="picker-color2" value="#ff0000">
+        <span style="font-size:10px;color:#889;">渐变</span>
+        <button id="btn-reset-color" style="flex:0;">重置颜色</button>
+      </div>
+
+      <h3>混合模式</h3>
+      <div class="btn-row">
+        <button id="btn-blend-add" class="active">加法混合 (Add)</button>
+        <button id="btn-blend-standard">标准混合</button>
+      </div>
+
+      <h3>操作</h3>
+      <div class="btn-row">
+        <button id="btn-start" class="running">⏸ 暂停发射</button>
+        <button id="btn-burst">💥 爆发 (50粒子)</button>
+        <button id="btn-reset">↺ 全部清除</button>
+      </div>
+
+      <h3>发射器统计</h3>
+      <div class="info-box">
+        <div class="stat-grid">
+          <span class="s-label">活跃粒子:</span><span class="s-value" id="stat-active">0</span>
+          <span class="s-label">累计产生:</span><span class="s-value" id="stat-total">0</span>
+          <span class="s-label">已回收:</span><span class="s-value" id="stat-recycled">0</span>
+          <span class="s-label">池大小:</span><span class="s-value" id="stat-pool">0</span>
+          <span class="s-label">实际发射率:</span><span class="s-value" id="stat-empirical-rate">-</span>
+          <span class="s-label">最大存活时间:</span><span class="s-value" id="stat-max-age">-</span>
+          <span class="s-label">相机距离:</span><span class="s-value" id="stat-cam-dist">-</span>
+          <span class="s-label">Billboard:</span><span class="s-value" id="stat-billboard">-</span>
+        </div>
+      </div>
+
+      <h3 style="margin-top:6px;">相机控制提示</h3>
+      <div style="font-size:9px; color:#667;">
+        左键拖拽 = 轨道旋转 | 滚轮 = 缩放<br>
+        Shift+左键拖拽 = 平移 | 旋转观察 billboard 效果
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
+        <div id="particle-badge">
+          <div class="count" id="badge-count">0</div>
+          <div class="label">活跃粒子 / 池上限 300</div>
+        </div>
+        <div id="expected-overlay">
+          <h4>B. 期望结果 (5条量化标准)</h4>
+          <ul>
+            <li><b>E1.</b> 粒子以配置速率产生 <span class="metric">±1/s</span></li>
+            <li><b>E2.</b> 粒子存活 = 配置 lifetime <span class="metric">±0.1s</span></li>
+            <li><b>E3.</b> 所有粒子面向相机 <span class="metric">dot&gt;0.99</span></li>
+            <li><b>E4.</b> 粒子颜色 RGB <span class="metric">±5%</span> (255级中±13)</li>
+            <li><b>E5.</b> lifetime 后 dispose <span class="metric">无泄漏</span></li>
+          </ul>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span style="color:#556">BillboardMode_ALL | Shared Material | Lazy-Init</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
