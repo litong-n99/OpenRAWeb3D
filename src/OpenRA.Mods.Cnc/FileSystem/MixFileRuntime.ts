@@ -952,6 +952,18 @@ export class MixFileRuntime implements IReadOnlyPackage {
       decryptedFirstBytes.buffer, decryptedFirstBytes.byteOffset, 8,
     ).getUint16(0, true)
 
+    // Validate: numFiles must be in a reasonable range.
+    // A garbage value here means the RSA/Blowfish key was wrong and the
+    // header decrypted to junk. (Common causes: RSA DER/byte-order bugs,
+    // wrong Blowfish key, or the file is not actually encrypted MIX.)
+    if (numFiles === 0 || numFiles > 65535) {
+      throw new Error(
+        `Decrypted header numFiles=${numFiles} is out of range [1, 65535]. ` +
+        `The Blowfish key derived from RSA decryption is likely incorrect, ` +
+        `or this is not an encrypted MIX file.`,
+      )
+    }
+
     // Total header size and block count (integer division, matches OpenRA C#)
     // OpenRA 对照: var blockCount = (13 + numFiles * PackageEntry.Size) / 8;
     // 13 = 6 (header prefix) + 7 (rounding up before integer division)
