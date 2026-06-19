@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrome Theme — Panel/Button/Scrollbar | Acceptance Test</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 19px; } #header .sub { color: #a0a0b0; font-size: 12px; margin-top: 3px; }
+    #controls { padding: 10px 24px; background: #16213e; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    #controls button { padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    #controls select { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    #sandbox { padding: 20px; display: flex; gap: 30px; flex-wrap: wrap; align-items: flex-start; }
+    .panel { width: 240px; border-radius: 4px; overflow: hidden; }
+    .panel-header { padding: 8px 12px; font-size: 13px; font-weight: bold; }
+    .panel-body { padding: 12px; font-size: 12px; }
+    .btn-row { display: flex; gap: 8px; margin: 10px 0; }
+    .btn { padding: 6px 14px; border-radius: 3px; font-size: 12px; cursor: pointer; border: none; }
+    .btn:hover { filter: brightness(1.2); }
+    .btn:active { filter: brightness(0.8); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+    .scroll-demo { width: 220px; height: 120px; overflow-y: auto; padding: 8px; border-radius: 3px; }
+    .scroll-demo p { margin: 4px 0; font-size: 11px; }
+    #info-bar { padding: 6px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; }
+    #diag { position: fixed; right: 0; top: 100px; width: 240px; padding: 12px; background: #16213e; font-size: 12px; border-left: 1px solid #0f3460; max-height: 50vh; overflow-y: auto; }
+    #diag h3 { margin: 4px 0; font-size: 12px; color: #7ec8e3; }
+    #diag .r { display: flex; justify-content: space-between; padding: 1px 0; }
+    #diag .r .v { color: #ffd966; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div id="header"><h1>P3A.2 Chrome Theme — Panel, Button & Scrollbar</h1><div class="sub">Module: ChromeProvider + ChromeMetrics | RA / CNC / D2K theme switching</div></div>
+  <div id="controls">
+    <select id="selTheme"><option value="ra">RA Theme</option><option value="cnc">CNC Theme</option><option value="d2k">D2K Theme</option></select>
+    <button id="btnHover" class="btn">Hover Me</button>
+    <button id="btnDisabled" class="btn" disabled>Disabled</button>
+    <button id="btnReset">Reset</button>
+  </div>
+  <div id="sandbox">
+    <div class="panel" id="testPanel">
+      <div class="panel-header" id="panelHdr">Panel Header</div>
+      <div class="panel-body" id="panelBody">Panel body content with sample text. Border width and header color change per theme.</div>
+      <div class="btn-row"><button class="btn" id="btnPrimary">Primary</button><button class="btn" id="btnSecondary">Secondary</button></div>
+    </div>
+    <div class="scroll-demo" id="scrollDemo"><p>Item 1</p><p>Item 2</p><p>Item 3</p><p>Item 4</p><p>Item 5</p><p>Item 6</p><p>Item 7</p><p>Item 8</p></div>
+  </div>
+  <div id="diag">
+    <h3>Current Theme</h3><div class="r"><span>Name</span><span class="v" id="dName">ra</span></div>
+    <h3>Panel</h3><div class="r"><span>Border</span><span class="v" id="dBorder">-</span></div><div class="r"><span>Header BG</span><span class="v" id="dHdrBg">-</span></div>
+    <h3>Button</h3><div class="r"><span>BG (normal)</span><span class="v" id="dBtnBg">-</span></div><div class="r"><span>Text</span><span class="v" id="dBtnTxt">-</span></div>
+    <h3>Scrollbar</h3><div class="r"><span>Thumb ratio</span><span class="v" id="dThumb">-</span></div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span><span>VP: <span id="info-viewport">-</span></span><span>T: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
