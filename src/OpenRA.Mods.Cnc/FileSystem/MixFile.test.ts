@@ -1,15 +1,76 @@
 /**
  * MixFile.test.ts — MixFile / MixLoader 迁移单元测试
  *
- * 测试重点：ADR-5.1 存根行为、JSDoc 完整性、参考实现。
+ * 测试重点：ADR-5.1 存根行为、JSDoc 完整性、参考实现、C&C 格式运行时解析。
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { MixLoader, MixFile } from './MixFile.js'
 import { PackageEntry, PackageHashType } from './PackageEntry.js'
+import { MixFileRuntime } from './MixFileRuntime.js'
 
 // ---------------------------------------------------------------------------
-// MixLoader — tryParsePackage 存根行为
+// Helpers — build a minimal valid C&C-format MIX binary
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a byte array that represents a valid C&C-format MIX file with the given
+ * number of files. Each file entry gets a unique hash, zero offset, and a small
+ * data size. All numeric fields are little-endian.
+ *
+ * Layout:
+ * - bytes 0–1: numFiles (uint16 LE)
+ * - bytes 2–5: totalDataSize (uint32 LE)
+ * - bytes 6 – 6+12*numFiles-1: PackageEntry[] (12 bytes each)
+ * - remaining: raw file data blocks (each file gets 4 bytes of filler)
+ */
+function buildCncMix(numFiles: number, fileSizes?: number[]): ArrayBuffer {
+  const entrySize = 12
+  const headerSize = 6 + numFiles * entrySize
+
+  // Compute total data size
+  const sizes = fileSizes ?? Array.from({ length: numFiles }, () => 4)
+  const totalData = sizes.reduce((a, b) => a + b, 0)
+
+  const buf = new ArrayBuffer(headerSize + totalData)
+  const dv = new DataView(buf)
+
+  dv.setUint16(0, numFiles, true)
+  dv.setUint32(2, totalData, true)
+
+  let dataOffset = 0
+  for (let i = 0; i < numFiles; i++) {
+    const eo = 6 + i * entrySize
+    dv.setUint32(eo, 0x1000 + i, true) // hash
+    dv.setUint32(eo + 4, dataOffset, true) // offset
+    dv.setUint32(eo + 8, sizes[i], true) // size
+    // Write filler data bytes
+    for (let b = 0; b < sizes[i]; b++) {
+      dv.setUint8(headerSize + dataOffset + b, 0x42 + i)
+    }
+    dataOffset += sizes[i]
+  }
+
+  return buf
+}
+
+/**
+ * Build a byte array that looks like an encrypted RA/TS/RA2 MIX file.
+ * The first uint16 is 0 (flags field), followed by a non-zero uint16 for
+ * numFiles at offset 2 (but we keep it 0 to clearly mark it as encrypted).
+ */
+function buildEncryptedMix(): ArrayBuffer {
+  const buf = new ArrayBuffer(100)
+  const dv = new DataView(buf)
+  // Flags = 0 (encrypted format indicator)
+  dv.setUint16(0, 0, true)
+  // Fill rest with non-zero to avoid too-small check
+  dv.setUint16(2, 5, true) // numFiles at offset 2
+  return buf
+}
+
+// ---------------------------------------------------------------------------
+// MixLoader — tryParsePackage (updated: runtime C&C parsing)
 // ---------------------------------------------------------------------------
 
 describe('MixLoader', () => {
@@ -25,23 +86,7 @@ describe('MixLoader', () => {
     warnSpy.mockRestore()
   })
 
-  describe('tryParsePackage', () => {
-    it('returns null for .mix files', () => {
-      const result = loader.tryParsePackage(
-        'conquer.mix',
-        new ArrayBuffer(100),
-      )
-      expect(result).toBeNull()
-    })
-
-    it('logs a warning for .mix files directing to build-time tooling', () => {
-      loader.tryParsePackage('conquer.mix', new ArrayBuffer(100))
-      expect(warnSpy).toHaveBeenCalledTimes(1)
-      const callArg = warnSpy.mock.calls[0]?.[0] as string
-      expect(callArg).toContain('build time')
-      expect(callArg).toContain('conquer.mix')
-    })
-
+  describe('tryParsePackage — non-.mix files', () => {
     it('returns null for non-.mix files without logging a warning', () => {
       const result = loader.tryParsePackage(
         'conquer.big',
@@ -51,31 +96,107 @@ describe('MixLoader', () => {
       expect(warnSpy).not.toHaveBeenCalled()
     })
 
-    it('handles .MIX uppercase extension', () => {
+    it('returns null for files with no extension', () => {
       const result = loader.tryParsePackage(
-        'CONQUER.MIX',
+        'README',
         new ArrayBuffer(100),
       )
       expect(result).toBeNull()
-      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(warnSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('tryParsePackage — C&C format (.mix)', () => {
+    it('returns a MixFileRuntime instance for valid C&C MIX data', () => {
+      const mixData = buildCncMix(1, [10])
+      const result = loader.tryParsePackage('test.mix', mixData)
+      expect(result).not.toBeNull()
+      expect(result).toBeInstanceOf(MixFileRuntime)
+      expect(result!.name).toBe('test.mix')
     })
 
-    it('handles .Mix mixed-case extension', () => {
-      const result = loader.tryParsePackage(
-        'Conquer.Mix',
-        new ArrayBuffer(100),
-      )
-      expect(result).toBeNull()
-      expect(warnSpy).toHaveBeenCalledTimes(1)
+    it('parsed package contains the expected files', () => {
+      const mixData = buildCncMix(2, [10, 20])
+      const result = loader.tryParsePackage('data.mix', mixData)
+      expect(result).not.toBeNull()
+      // Without a mixDb, files get placeholder names
+      expect(result!.contents.length).toBe(2)
+      for (const name of result!.contents) {
+        expect(name).toMatch(/^unresolved_0x00001[0-9a-fA-F]{3}\.bin$/)
+      }
     })
 
-    it('passes optional files parameter without error', () => {
-      const result = loader.tryParsePackage(
-        'test.mix',
-        new ArrayBuffer(100),
-        { openAsync: async () => null, exists: () => false, isMounted: () => false },
-      )
+    it('can open files from the parsed MIX package', async () => {
+      const mixData = buildCncMix(1, [10])
+      const result = loader.tryParsePackage('test.mix', mixData)!
+      expect(result).not.toBeNull()
+
+      const contents = result.contents
+      expect(contents.length).toBe(1)
+      const fileData = await result.open(contents[0])
+      expect(fileData).not.toBeNull()
+      expect(fileData!.byteLength).toBe(10)
+    })
+
+    it('resolves filenames when mixDb is set', () => {
+      // Build a MIX with file hash 0x1000
+      const mixData = buildCncMix(1, [8])
+      const mixDb = new Map<string, string>()
+      mixDb.set('0x00001000', 'e1.shp')
+      MixLoader.setMixDb(mixDb)
+
+      const result = loader.tryParsePackage('test.mix', mixData)
+      expect(result).not.toBeNull()
+      expect(result!.contents).toContain('e1.shp')
+    })
+
+    it('handles .MIX uppercase extension for C&C data', () => {
+      const mixData = buildCncMix(1, [5])
+      const result = loader.tryParsePackage('CONQUER.MIX', mixData)
+      expect(result).not.toBeNull()
+      expect(result!.name).toBe('CONQUER.MIX')
+    })
+
+    it('handles .Mix mixed-case extension for C&C data', () => {
+      const mixData = buildCncMix(1, [5])
+      const result = loader.tryParsePackage('Conquer.Mix', mixData)
+      expect(result).not.toBeNull()
+      expect(result!.name).toBe('Conquer.Mix')
+    })
+
+    it('calls contains correctly for files in the package', () => {
+      const mixData = buildCncMix(2, [10, 20])
+      const result = loader.tryParsePackage('test.mix', mixData)!
+      const firstFile = result.contents[0]
+      expect(result.contains(firstFile)).toBe(true)
+      expect(result.contains('nonexistent.shp')).toBe(false)
+    })
+  })
+
+  describe('tryParsePackage — encrypted format (.mix)', () => {
+    it('returns null for encrypted MIX (first uint16 == 0)', () => {
+      const encData = buildEncryptedMix()
+      const result = loader.tryParsePackage('encrypted.mix', encData)
       expect(result).toBeNull()
+    })
+
+    it('logs a warning for encrypted MIX files', () => {
+      const encData = buildEncryptedMix()
+      loader.tryParsePackage('encrypted.mix', encData)
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      const callArg = warnSpy.mock.calls[0]?.[0] as string
+      expect(callArg).toContain('Encrypted MIX not supported in Phase A')
+      expect(callArg).toContain('encrypted.mix')
+    })
+  })
+
+  describe('tryParsePackage — too-small .mix data', () => {
+    it('returns null for .mix files smaller than header minimum', () => {
+      const result = loader.tryParsePackage('tiny.mix', new ArrayBuffer(2))
+      expect(result).toBeNull()
+      // Small buffer: MixFileRuntime.isCncFormat returns false (too small),
+      // and the first uint16 read could be anything but is treated as encrypted.
+      expect(warnSpy).toHaveBeenCalledTimes(1)
     })
   })
 })

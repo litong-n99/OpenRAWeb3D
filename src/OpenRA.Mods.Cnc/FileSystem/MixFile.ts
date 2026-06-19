@@ -1,28 +1,48 @@
 /**
- * MixFile.ts — MIX 归档格式（文档桩，per ADR-5.1）
+ * MixFile.ts — MIX 归档格式（文档桩 + 运行时 C&C 解析）
  * OpenRA 对照: OpenRA.Mods.Cnc/FileSystem/MixFile.cs
  *
  * 核心范式转换:
- * - C# 运行时 MIX 读取（Stream + Blowfish/RSA 解密）→ 构建时解包 (ADR-5.1)
- * - C# Blowfish/RSA crypto (~300KB WASM) → 浏览器端无需携带，构建工具负责
- * - C# tryParsePackage 返回 MixFile → 浏览器端返回 null + console.warn
+ * - C# 运行时 MIX 读取（Stream + Blowfish/RSA 解密）→ C&C 格式运行时解析 (via MixFileRuntime)
+ * - C# Blowfish/RSA crypto (~300KB WASM) → 加密 RA/TS/RA2 格式暂不支持 (Phase A)
+ * - C# tryParsePackage 返回 MixFile → 委托给 MixFileRuntime.parse()（C&C 格式）
  * - 完整格式规范保留为 JSDoc，供构建工具作者使用
  * - 参考实现（parseHeader、parseIndex、decryptHeader）作为文档化但未使用的代码保留
  */
 
 import type { IReadOnlyPackage, IReadOnlyFileSystem, IPackageLoader } from '../../OpenRA.Game/FileSystem/IPackage.js'
 import { PackageEntry, PackageHashType } from './PackageEntry.js'
+import { MixFileRuntime } from './MixFileRuntime.js'
 
 // ---------------------------------------------------------------------------
-// MixLoader — MIX 包加载器（文档桩）
+// Module-level MIX hash database cache
 // ---------------------------------------------------------------------------
 
 /**
- * MIX 包加载器（ADR-5.1：构建时解包，不在浏览器中运行）。
+ * Active MIX hash database for filename resolution.
+ *
+ * Set via {@link MixLoader.setMixDb}. Shared across all MixLoader instances.
+ * Keys are hex-formatted hash strings like `"0x1234ABCD"` (uppercase, 8-digit zero-padded).
+ * Values are resolved filenames.
+ */
+let _mixDb: Map<string, string> | undefined
+
+// ---------------------------------------------------------------------------
+// MixLoader — MIX 包加载器（运行时 C&C + 构建时加密格式文档桩）
+// ---------------------------------------------------------------------------
+
+/**
+ * MIX 包加载器。
  *
  * OpenRA 对照: OpenRA.Mods.Cnc.FileSystem.MixLoader
  *
- * 构建时工作流:
+ * **Phase A 运行时路径**: 对于 C&C 格式（未加密）的 MIX 文件，
+ * 委托给 {@link MixFileRuntime.parse} 进行内存解析。
+ *
+ * **加密 MIX 文件 (RA/TS/RA2)**：不支持浏览器端解密，
+ * 记录警告并返回 null。必须使用构建时工具解包。
+ *
+ * 构建时工作流（用于加密 MIX）:
  * ```
  * MIX 文件 → build-tool 中的 MixFile.parseHeader/parseIndex/decryptHeader
  *          → 每个文件写入输出目录 + 生成 JSON 清单
@@ -31,26 +51,60 @@ import { PackageEntry, PackageHashType } from './PackageEntry.js'
  */
 export class MixLoader implements IPackageLoader {
   /**
-   * 始终返回 null — MIX 文件必须在构建时解包。
+   * Set the MIX hash database for filename resolution.
+   *
+   * The database maps hex-formatted Westwood filename hashes to their
+   * resolved filenames. This is shared across all MixLoader instances.
+   *
+   * OpenRA 对照: MixLoader.XccGlobalDatabase / XccLocalDatabase
+   *
+   * @param mixDb — hash-to-filename database.
+   *                Keys are hex-formatted like `"0x1234ABCD"` (uppercase, 8-digit zero-padded).
+   */
+  static setMixDb(mixDb: Map<string, string>): void {
+    _mixDb = mixDb
+  }
+
+  /**
+   * Attempt to parse a stream as a MIX package.
    *
    * OpenRA 对照: MixLoader.TryParsePackage(Stream, string, FileSystem, out IReadOnlyPackage)
    *
-   * @param filename — 文件名
-   * @param _stream — 文件内容（忽略）
-   * @param _files — 文件系统上下文（忽略）
-   * @returns 始终返回 null，并打印一条警告引导用户使用构建时工具
+   * Detection logic:
+   * 1. If filename does not end with `.mix` (case-insensitive) → return null
+   * 2. If data is C&C format (first uint16 > 0) → parse via MixFileRuntime
+   * 3. If data is encrypted format (first uint16 == 0) → warn + return null
+   *
+   * @param filename — filename (for extension check and package name)
+   * @param stream — file content (ArrayBuffer)
+   * @param _files — file system context (unused)
+   * @returns MixFileRuntime instance for C&C format, null otherwise
    */
   tryParsePackage(
     filename: string,
-    _stream: ArrayBuffer,
+    stream: ArrayBuffer,
     _files?: IReadOnlyFileSystem,
   ): IReadOnlyPackage | null {
-    if (filename.toLowerCase().endsWith('.mix')) {
-      console.warn(
-        `MixLoader: MIX files must be unpacked at build time. ` +
-        `Skipping "${filename}". Use the build-time MIX unpacker instead.`,
-      )
+    // Check 1: file extension
+    if (!filename.toLowerCase().endsWith('.mix')) {
+      return null
     }
+
+    // Check 2: C&C format (unencrypted) vs encrypted RA/TS/RA2 format
+    if (MixFileRuntime.isCncFormat(stream)) {
+      try {
+        return MixFileRuntime.parse(filename, stream, _mixDb)
+      } catch (err) {
+        console.warn(`MixLoader: Failed to parse "${filename}" as C&C MIX: ${String(err)}`)
+        return null
+      }
+    }
+
+    // Encrypted RA/TS/RA2 format — not supported in Phase A
+    console.warn(
+      `Encrypted MIX not supported in Phase A: ${filename}. ` +
+      `Use the build-time MIX unpacker for encrypted RA/TS/RA2 archives.`,
+    )
     return null
   }
 }
