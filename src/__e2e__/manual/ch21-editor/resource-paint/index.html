@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EditorResourceLayer - 资源绘制笔刷 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 320px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .control-group input[type="range"] { width: 100%; accent-color: #e94560; }
+    .control-group .range-value { font-size: 11px; color: #888; float: right; }
+    .control-group select { width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 13px; cursor: pointer; font-weight: 600; transition: background 0.15s; }
+    .control-group button:hover { background: #e94560; color: #fff; }
+    .control-group button.active { background: #e94560; color: #fff; }
+    .control-group button.secondary { border-color: #0f3460; color: #a0a0b0; margin-top: 4px; }
+    .control-group button.secondary:hover { background: #0f3460; color: #eee; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+    .color-swatch { display: inline-block; width: 16px; height: 16px; border-radius: 2px; border: 1px solid #555; vertical-align: middle; margin-right: 4px; }
+    .hover-info { font-size: 11px; color: #a0a0b0; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 编辑器 - 资源绘制笔刷 (EditorResourceLayer)</h1>
+    <div class="subtitle">ID: ch21-editor/resource-paint | 期望结果见 README.md | OpenRA 对照: EditorResourceLayer.cs</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C. 资源类型选择</h3>
+        <label for="resource-type">资源类型</label>
+        <select id="resource-type">
+          <option value="ore">Ore — 橙棕色 #C8641E</option>
+          <option value="gems">Gems — 蓝白色 #6496FF</option>
+          <option value="tiberium">Tiberium — 绿色 #00CC00</option>
+        </select>
+        <div style="margin-top:6px;font-size:11px;color:#888;">
+          当前颜色: <span class="color-swatch" id="current-color-swatch" style="background:#C8641E;"></span>
+          <span id="current-color-hex">#C8641E</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <h3>笔刷设置</h3>
+        <label>绘制密度: <span class="range-value" id="brush-density-val">50%</span></label>
+        <input type="range" id="brush-density" min="0" max="100" value="50" step="5">
+        <label for="brush-size">笔刷大小 (cells)</label>
+        <select id="brush-size">
+          <option value="1">1×1 (单格)</option>
+          <option value="2">2×2 (四格)</option>
+          <option value="3">3×3 (九格)</option>
+        </select>
+        <label style="margin-top:8px;">
+          <input type="checkbox" id="eraser-mode"> 橡皮擦模式 (清除资源)
+        </label>
+      </div>
+      <div class="control-group">
+        <h3>操作</h3>
+        <button id="btn-reset">重置全部 (Reset All)</button>
+        <button id="btn-showhide" class="secondary">隐藏资源层 (Toggle Visibility)</button>
+        <button id="btn-preset" class="secondary">载入预置场景 (Preset)</button>
+      </div>
+      <div class="control-group">
+        <h3>网格信息</h3>
+        <div class="info-row"><span>网格尺寸</span><span class="val" id="info-grid-size">10×8</span></div>
+        <div class="info-row"><span>已绘制 cells</span><span class="val" id="info-painted-cells">0</span></div>
+        <div class="info-row"><span>Net Worth</span><span class="val" id="info-net-worth">0</span></div>
+        <div class="hover-info" id="hover-cell-info">悬停: -</div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">帧时间:</span> <span class="val" id="info-frame-time">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

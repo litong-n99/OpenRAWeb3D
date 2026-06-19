@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>编辑器画笔/光标 - Brush覆盖 & 路径绘制 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #controls {
+      padding: 12px 24px; background: #16213e; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center; border-bottom: 1px solid #0f3460;
+    }
+    #controls label { font-size: 13px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer;
+    }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active { background: #0f3460; border-color: #4a9; }
+    #controls button.brush-size-btn { min-width: 48px; text-align: center; }
+    #controls button.brush-size-btn.active { background: #1a4a8a; border-color: #4a9; }
+    #controls .sep { color: #333; font-size: 18px; margin: 0 4px; user-select: none; }
+    #controls .hint { color: #888; font-size: 12px; margin-left: auto; }
+    #sandbox { position: relative; width: 100%; height: calc(100vh - 290px); }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #expected-panel {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.93); color: #eee;
+      padding: 14px 18px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+      max-width: 380px;
+    }
+    #expected-panel h4 { margin: 0 0 8px; color: #8f8; font-size: 14px; }
+    #expected-panel ul { margin: 6px 0; padding-left: 18px; }
+    #expected-panel li { margin: 3px 0; }
+    #expected-panel .metric { color: #aad; font-family: monospace; }
+    #tile-panel {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.7;
+      pointer-events: auto; user-select: none;
+      max-width: 200px;
+    }
+    #tile-panel h4 { margin: 0 0 6px; color: #aad; font-size: 13px; }
+    #tile-panel .tile-row { display: flex; gap: 6px; align-items: center; margin: 3px 0; cursor: pointer; }
+    #tile-panel .tile-row:hover { background: rgba(255,255,255,0.05); border-radius: 3px; }
+    #tile-panel .tile-swatch {
+      display: inline-block; width: 16px; height: 16px;
+      border: 1px solid #555; border-radius: 2px;
+    }
+    #tile-panel .tile-swatch.selected { border-color: #4a9; box-shadow: 0 0 6px #4a9; }
+    #tile-panel .tile-label { font-size: 12px; color: #ccc; }
+    #status-panel {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 13px; line-height: 1.8;
+      pointer-events: none; user-select: none;
+    }
+    #status-panel .val { color: #aad; font-family: monospace; }
+    #brush-preview {
+      position: absolute; bottom: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); color: #eee;
+      padding: 12px 16px; border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 12px; line-height: 1.7;
+      pointer-events: none; user-select: none;
+    }
+    #brush-preview h4 { margin: 0 0 4px; color: #8af; font-size: 13px; }
+    #brush-preview .swatch {
+      display: inline-block; width: 14px; height: 14px;
+      border: 1px solid #555; border-radius: 2px; vertical-align: middle;
+    }
+    #info-bar {
+      padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666;
+      display: flex; gap: 24px; border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>编辑器画笔/光标 - Brush覆盖 &amp; 路径绘制 (EditorCursorLayer + TilingPathTool)</h1>
+    <div class="subtitle">ID: ch21-editor/cursor-brush | 验证: Brush NxN高亮 | Tile类型切换 | Bresenham路径绘制</div>
+  </div>
+  <div id="controls">
+    <label>Brush 尺寸:</label>
+    <button class="brush-size-btn" data-size="1">1x1</button>
+    <button class="brush-size-btn" data-size="3">3x3</button>
+    <button class="brush-size-btn active" data-size="5">5x5</button>
+    <span class="sep">|</span>
+    <label>Tile 类型:</label>
+    <select id="sel-tile-type">
+      <option value="Sand">Sand (沙地)</option>
+      <option value="Rock">Rock (岩石)</option>
+      <option value="Grass">Grass (草地)</option>
+      <option value="Water">Water (水域)</option>
+      <option value="Road">Road (道路)</option>
+      <option value="Cliff">Cliff (悬崖)</option>
+    </select>
+    <span class="sep">|</span>
+    <label>模式:</label>
+    <button id="btn-brush-mode" class="active">画笔 (Brush)</button>
+    <button id="btn-path-mode">路径 (Path)</button>
+    <button id="btn-reset">⟳ 重置</button>
+    <span class="sep">|</span>
+    <label>高亮透明度:</label>
+    <input id="range-opacity" type="range" min="10" max="90" value="40" style="width:60px">
+    <span id="val-opacity" style="font-size:12px;color:#a0a0b0">40%</span>
+    <span class="hint">鼠标悬停预览Brush覆盖 | 点击放置Tile | 路径模式: 点击设置起点/终点</span>
+  </div>
+  <div id="sandbox">
+    <canvas id="renderCanvas"></canvas>
+    <div id="expected-panel">
+      <h4>期望结果 (Expected Results)</h4>
+      <ul>
+        <li><b>E1. Brush覆盖 NxN cells:</b> 1x1=1 cell, 3x3=9 cells, 5x5=25 cells 高亮, <span class="metric">数量精确=size²</span></li>
+        <li><b>E2. 高亮颜色=蓝色 40%:</b> 半透明蓝色 <span class="metric">rgba(64,128,255,0.40)</span>, 叠加网格清晰可见</li>
+        <li><b>E3. 路径连接 start→end:</b> Bresenham超覆盖, 8方向连续, <span class="metric">对角(0,0)→(4,4) 路径=9 cells</span></li>
+        <li><b>E4. Tile类型切换立即生效:</b> 选择不同Tile → <span class="metric">&lt;100ms</span> 内状态面板更新为新类型</li>
+        <li><b>E5. Brush size边界正确:</b> 切换size后, 旧size区域外cells <span class="metric">不再高亮</span>, 新size区域精确匹配</li>
+      </ul>
+    </div>
+    <div id="tile-panel">
+      <h4>Tile 选择面板</h4>
+      <div class="tile-row" data-tile="Sand">
+        <span class="tile-swatch selected" style="background:#e6c87a"></span>
+        <span class="tile-label">Sand (沙地)</span>
+      </div>
+      <div class="tile-row" data-tile="Rock">
+        <span class="tile-swatch" style="background:#888888"></span>
+        <span class="tile-label">Rock (岩石)</span>
+      </div>
+      <div class="tile-row" data-tile="Grass">
+        <span class="tile-swatch" style="background:#4caf50"></span>
+        <span class="tile-label">Grass (草地)</span>
+      </div>
+      <div class="tile-row" data-tile="Water">
+        <span class="tile-swatch" style="background:#42a5f5"></span>
+        <span class="tile-label">Water (水域)</span>
+      </div>
+      <div class="tile-row" data-tile="Road">
+        <span class="tile-swatch" style="background:#666666"></span>
+        <span class="tile-label">Road (道路)</span>
+      </div>
+      <div class="tile-row" data-tile="Cliff">
+        <span class="tile-swatch" style="background:#a0522d"></span>
+        <span class="tile-label">Cliff (悬崖)</span>
+      </div>
+    </div>
+    <div id="status-panel">
+      光标Cell: <span class="val" id="st-cursor">-</span><br>
+      Brush尺寸: <span class="val" id="st-brush-size">5x5</span><br>
+      高亮Cells: <span class="val" id="st-highlight-count">0</span><br>
+      当前Tile: <span class="val" id="st-tile">Sand</span>
+    </div>
+    <div id="brush-preview">
+      <h4>画笔预览</h4>
+      画刷颜色: <span class="swatch" id="swatch-brush" style="background:rgba(64,128,255,0.40)"></span> <span id="tx-brush-color">rgba(64,128,255,0.40)</span><br>
+      路径颜色: <span class="swatch" id="swatch-path" style="background:rgba(255,180,0,0.55)"></span> <span id="tx-path-color">rgba(255,180,0,0.55)</span><br>
+      起点: <span class="val" id="st-path-start">-</span> | 终点: <span class="val" id="st-path-end">-</span><br>
+      路径Cells: <span class="val" id="st-path-count">0</span>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

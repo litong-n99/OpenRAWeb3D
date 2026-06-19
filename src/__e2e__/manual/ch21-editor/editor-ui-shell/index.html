@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor UI Shell - 编辑器整体布局 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* --- Global --- */
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-width: 1280px;
+      min-height: 720px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* --- Menu Bar --- */
+    #menu-bar {
+      display: flex;
+      align-items: center;
+      height: 28px;
+      background: #12122a;
+      border-bottom: 1px solid #2a2a4a;
+      padding: 0 4px;
+      flex-shrink: 0;
+      user-select: none;
+      z-index: 10;
+    }
+    #menu-bar .menu-item {
+      position: relative;
+      padding: 3px 10px;
+      font-size: 12px;
+      color: #ccc;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: background 0.1s;
+    }
+    #menu-bar .menu-item:hover { background: #2a2a5a; color: #fff; }
+    #menu-bar .menu-item.open { background: #3a3a6a; color: #fff; }
+
+    #menu-bar .menu-item .dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 180px;
+      background: #1a1a3a;
+      border: 1px solid #3a3a6a;
+      border-radius: 4px;
+      padding: 4px 0;
+      z-index: 20;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    #menu-bar .menu-item.open .dropdown { display: block; }
+
+    #menu-bar .dropdown-item {
+      padding: 5px 20px;
+      font-size: 12px;
+      color: #ccc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.1s;
+    }
+    #menu-bar .dropdown-item:hover { background: #2a2a5a; color: #fff; }
+    #menu-bar .dropdown-item .shortcut {
+      margin-left: auto;
+      color: #666;
+      font-size: 11px;
+    }
+    #menu-bar .dropdown-separator {
+      height: 1px;
+      background: #2a2a4a;
+      margin: 3px 0;
+    }
+
+    /* --- Toolbar --- */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 36px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      padding: 0 8px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    #toolbar .tool-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #aaa;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+    #toolbar .tool-btn:hover { background: #0f3460; color: #fff; }
+    #toolbar .tool-btn.active {
+      background: #1a4a7a;
+      border-color: #3388cc;
+      color: #fff;
+    }
+    #toolbar .tool-btn[data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      background: #000;
+      color: #eee;
+      padding: 2px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+      z-index: 30;
+    }
+    #toolbar .tool-separator {
+      width: 1px;
+      height: 20px;
+      background: #0f3460;
+      margin: 0 4px;
+    }
+
+    /* --- Main Layout --- */
+    #main-area {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+
+    /* --- Left Sidebar (Property Panel) --- */
+    #property-panel {
+      width: 240px;
+      min-width: 200px;
+      background: #16213e;
+      border-right: 1px solid #0f3460;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+    #property-panel .panel-header {
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #8899aa;
+      border-bottom: 1px solid #0f3460;
+      background: #0f1a30;
+    }
+    #property-panel .prop-group {
+      border-bottom: 1px solid #0f3460;
+    }
+    #property-panel .prop-group-title {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #7799bb;
+      background: #121a30;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #property-panel .prop-group-title::before {
+      content: '▾';
+      font-size: 9px;
+      transition: transform 0.2s;
+    }
+    #property-panel .prop-group.collapsed .prop-group-title::before {
+      transform: rotate(-90deg);
+    }
+    #property-panel .prop-group.collapsed .prop-fields { display: none; }
+    #property-panel .prop-fields { padding: 4px 0; }
+    #property-panel .prop-row {
+      display: flex;
+      align-items: center;
+      padding: 3px 12px;
+      font-size: 11px;
+    }
+    #property-panel .prop-label {
+      color: #8899aa;
+      width: 70px;
+      flex-shrink: 0;
+    }
+    #property-panel .prop-value {
+      color: #c0d0e0;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 10px;
+      flex: 1;
+    }
+    #property-panel .prop-value.editable {
+      background: #0a1020;
+      border: 1px solid #1a2a4a;
+      border-radius: 2px;
+      padding: 1px 4px;
+      cursor: text;
+    }
+    #property-panel .no-selection {
+      padding: 20px 12px;
+      color: #556;
+      font-size: 11px;
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* --- 3D Viewport --- */
+    #viewport-area {
+      flex: 1;
+      position: relative;
+      background: #0d1117;
+      min-width: 0;
+    }
+    #viewport-area canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #viewport-area .view-overlay {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      font-size: 11px;
+      color: #8899aa;
+      font-family: 'Consolas', monospace;
+      pointer-events: none;
+      z-index: 5;
+    }
+    #viewport-area .view-hint {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: #556;
+      background: rgba(0,0,0,0.6);
+      padding: 2px 12px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    /* --- Minimap --- */
+    #minimap-container {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      width: 180px;
+      height: 120px;
+      background: #000;
+      border: 2px solid #30363d;
+      border-radius: 2px;
+      z-index: 5;
+      cursor: pointer;
+      transition: width 0.2s, height 0.2s;
+    }
+    #minimap-container.expanded {
+      width: 280px;
+      height: 180px;
+    }
+    #minimap-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+    }
+    #minimap-container .mm-label {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 8px;
+      color: #8899aa;
+      pointer-events: none;
+    }
+    #minimap-container .mm-expand-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 14px;
+      height: 14px;
+      font-size: 9px;
+      line-height: 14px;
+      text-align: center;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+    #minimap-container .mm-expand-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* --- Status Bar --- */
+    #status-bar {
+      display: flex;
+      align-items: center;
+      height: 24px;
+      background: #0a0a1a;
+      border-top: 1px solid #1a1a3a;
+      padding: 0 12px;
+      flex-shrink: 0;
+      gap: 16px;
+      font-size: 11px;
+      color: #667;
+      user-select: none;
+    }
+    #status-bar .status-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #status-bar .status-label { color: #445; }
+    #status-bar .status-value { color: #8899aa; font-family: 'Consolas', monospace; }
+
+    /* --- Info Bar --- */
+    #info-bar {
+      padding: 5px 12px;
+      background: #0f0f1a;
+      font-size: 10px;
+      color: #555;
+      display: flex;
+      gap: 16px;
+      flex-shrink: 0;
+      border-top: 1px solid #0f3460;
+    }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', monospace; }
+
+    /* --- Toast Notifications --- */
+    #toast {
+      position: fixed;
+      bottom: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 20px;
+      background: #2a2a5a;
+      color: #fff;
+      font-size: 12px;
+      border-radius: 4px;
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #toast.show { opacity: 1; }
+
+    /* --- Menu dimmer for click-outside close --- */
+    #menu-dimmer {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9;
+    }
+    #menu-dimmer.active { display: block; }
+  </style>
+</head>
+<body>
+  <!-- Menu Bar -->
+  <div id="menu-bar">
+    <div class="menu-item" data-menu="file">File
+      <div class="dropdown">
+        <div class="dropdown-item" data-action="new">🆕 New<span class="shortcut">Ctrl+N</span></div>
+        <div class="dropdown-item" data-action="open">📂 Open<span class="shortcut">Ctrl+O</span></div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" data-action="save">💾 Save<span class="shortcut">Ctrl+S</span></div>
+        <div class="dropdown-item" data-action="saveAs">💾 Save As...<span class="shortcut">Ctrl+Shift+S</span></div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" data-action="exit">🚪 Exit</div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="edit">Edit
+      <div class="dropdown">
+        <div class="dropdown-item" data-action="undo">↩ Undo<span class="shortcut">Ctrl+Z</span></div>
+        <div class="dropdown-item" data-action="redo">↪ Redo<span class="shortcut">Ctrl+Y</span></div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" data-action="cut">✂ Cut<span class="shortcut">Ctrl+X</span></div>
+        <div class="dropdown-item" data-action="copy">📋 Copy<span class="shortcut">Ctrl+C</span></div>
+        <div class="dropdown-item" data-action="paste">📄 Paste<span class="shortcut">Ctrl+V</span></div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" data-action="selectAll">▣ Select All<span class="shortcut">Ctrl+A</span></div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="view">View
+      <div class="dropdown">
+        <div class="dropdown-item" data-action="zoomIn">🔍 Zoom In<span class="shortcut">Ctrl+=</span></div>
+        <div class="dropdown-item" data-action="zoomOut">🔎 Zoom Out<span class="shortcut">Ctrl+-</span></div>
+        <div class="dropdown-item" data-action="zoomReset">↺ Reset Zoom<span class="shortcut">Ctrl+0</span></div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" data-action="toggleGrid">📐 Toggle Grid<span class="shortcut">G</span></div>
+        <div class="dropdown-item" data-action="toggleMinimap">🗺 Toggle Minimap<span class="shortcut">M</span></div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="map">Map
+      <div class="dropdown">
+        <div class="dropdown-item" data-action="mapResize">📏 Resize Map...</div>
+        <div class="dropdown-item" data-action="mapProperties">⚙ Map Properties...</div>
+        <div class="dropdown-separator"></div>
+        <div class="dropdown-item" data-action="mapValidate">✅ Validate Map</div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="help">Help
+      <div class="dropdown">
+        <div class="dropdown-item" data-action="helpAbout">ℹ About Editor</div>
+        <div class="dropdown-item" data-action="helpShortcuts">⌨ Keyboard Shortcuts</div>
+      </div>
+    </div>
+    <div id="menu-dimmer"></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <button class="tool-btn active" data-tool="select" data-tooltip="Select (S)">⬚</button>
+    <button class="tool-btn" data-tool="paint" data-tooltip="Paint (P)">🖌</button>
+    <button class="tool-btn" data-tool="fill" data-tooltip="Fill (F)">🪣</button>
+    <button class="tool-btn" data-tool="erase" data-tooltip="Erase (E)">⌫</button>
+    <span class="tool-separator"></span>
+    <button class="tool-btn" data-tool="line" data-tooltip="Line (L)">╱</button>
+    <button class="tool-btn" data-tool="rect" data-tooltip="Rectangle (R)">◻</button>
+    <span class="tool-separator"></span>
+    <button class="tool-btn" data-tool="undo" data-tooltip="Undo (Ctrl+Z)">↩</button>
+    <button class="tool-btn" data-tool="redo" data-tooltip="Redo (Ctrl+Y)">↪</button>
+    <span class="tool-separator"></span>
+    <button class="tool-btn" data-tool="zoomIn" data-tooltip="Zoom In">🔍</button>
+    <button class="tool-btn" data-tool="zoomOut" data-tooltip="Zoom Out">🔎</button>
+  </div>
+
+  <!-- Main Area -->
+  <div id="main-area">
+    <!-- Property Panel (Left Sidebar) -->
+    <div id="property-panel">
+      <div class="panel-header">▣ Properties</div>
+      <div class="no-selection" id="no-selection-msg">Select an object to view properties</div>
+      <div class="prop-group" id="prop-group-general" style="display:none;">
+        <div class="prop-group-title">General</div>
+        <div class="prop-fields">
+          <div class="prop-row"><span class="prop-label">Name:</span><span class="prop-value editable" id="prop-name">-</span></div>
+          <div class="prop-row"><span class="prop-label">Type:</span><span class="prop-value" id="prop-type">-</span></div>
+          <div class="prop-row"><span class="prop-label">Owner:</span><span class="prop-value" id="prop-owner">-</span></div>
+        </div>
+      </div>
+      <div class="prop-group" id="prop-group-position" style="display:none;">
+        <div class="prop-group-title">Position</div>
+        <div class="prop-fields">
+          <div class="prop-row"><span class="prop-label">Cell X:</span><span class="prop-value editable" id="prop-pos-x">-</span></div>
+          <div class="prop-row"><span class="prop-label">Cell Y:</span><span class="prop-value editable" id="prop-pos-y">-</span></div>
+          <div class="prop-row"><span class="prop-label">World:</span><span class="prop-value" id="prop-pos-world">-</span></div>
+        </div>
+      </div>
+      <div class="prop-group" id="prop-group-health" style="display:none;">
+        <div class="prop-group-title">Stats</div>
+        <div class="prop-fields">
+          <div class="prop-row"><span class="prop-label">Health:</span><span class="prop-value editable" id="prop-health">-</span></div>
+          <div class="prop-row"><span class="prop-label">Armor:</span><span class="prop-value" id="prop-armor">-</span></div>
+          <div class="prop-row"><span class="prop-label">Speed:</span><span class="prop-value" id="prop-speed">-</span></div>
+        </div>
+      </div>
+      <div class="prop-group" id="prop-group-visual" style="display:none;">
+        <div class="prop-group-title">Visual</div>
+        <div class="prop-fields">
+          <div class="prop-row"><span class="prop-label">Facing:</span><span class="prop-value editable" id="prop-facing">-</span></div>
+          <div class="prop-row"><span class="prop-label">Color:</span><span class="prop-value" id="prop-color">-</span></div>
+          <div class="prop-row"><span class="prop-label">Scale:</span><span class="prop-value editable" id="prop-scale">-</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Viewport -->
+    <div id="viewport-area">
+      <div class="view-overlay" id="view-label">Editor Viewport — Select Tool Active</div>
+      <div class="view-hint">Middle-click to pan | Scroll to zoom | Right-click to rotate</div>
+      <canvas id="viewport-canvas"></canvas>
+      <!-- Minimap -->
+      <div id="minimap-container">
+        <span class="mm-label">Minimap</span>
+        <button class="mm-expand-btn" id="mm-expand-btn" title="Expand minimap">＋</button>
+        <canvas id="minimap-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div id="status-bar">
+    <div class="status-item"><span class="status-label">Zoom:</span><span class="status-value" id="st-zoom">100%</span></div>
+    <div class="status-item"><span class="status-label">Cell:</span><span class="status-value" id="st-cell">-</span></div>
+    <div class="status-item"><span class="status-label">WPos:</span><span class="status-value" id="st-wpos">-</span></div>
+    <div class="status-item"><span class="status-label">Layer:</span><span class="status-value" id="st-layer">Terrain</span></div>
+    <div class="status-item" style="margin-left:auto;"><span class="status-label">Grid:</span><span class="status-value" id="st-grid">ON</span></div>
+    <div class="status-item"><span class="status-label">Minimap:</span><span class="status-value" id="st-minimap">ON</span></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Info Bar -->
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

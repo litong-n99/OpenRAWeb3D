@@ -2,7 +2,7 @@
 
 > **Source Reference**: [CLAUDE.md](../CLAUDE.md) — Project Status table, Acceptance Testing section
 > **Audit Date**: 2026-06-19
-> **Current Coverage**: 87 test pages across 16 chapter directories (Ch02-Ch22). P0-A: ✅ (7/7), P0-B: ✅ (4/4)
+> **Current Coverage**: 91 test pages across 17 chapter directories (Ch02-Ch22). P0-A: ✅ (7/7), P0-B: ✅ (4/4), P1-A: ✅ (4/4)
 > **Target**: Comprehensive manual visual acceptance test coverage for all rendering-dependent modules
 >
 > **Important Statement**: Test pages reside under `src/__e2e__/manual/`. The `acceptance-test-assistant` agent owns this directory exclusively. The `acceptance-test-runner` agent executes Playwright automated verification. All test page creation must follow the agent workflow defined in [CLAUDE.md](../CLAUDE.md) and `.claude/agents/acceptance-test-assistant.md`.
@@ -179,7 +179,7 @@ The following test infrastructure is already in place:
 |:---|:---:|:---:|:---:|:---|
 | P0-A: Ch08 Projectile Visuals | P0 | 7 | ~35 | ✅ COMPLETE (2026-06-19) |
 | P0-B: Ch08 Combat VFX & Warheads | P0 | 4 | ~20 | ✅ COMPLETE (2026-06-19) |
-| P1-A: Ch21 Editor Visuals | P1 | 4 | ~20 | 📋 PLANNED |
+| P1-A: Ch21 Editor Visuals | P1 | 4 | ~20 | ✅ COMPLETE (2026-06-19) |
 | P1-B: Ch07 Effects & Selection | P1 | 3 | ~12 | 📋 PLANNED |
 | P2-A: Ch11 Production & Building | P2 | 3 | ~15 | 📋 PLANNED |
 | P2-B: Ch08 Air & Turreted | P2 | 2 | ~10 | 📋 PLANNED |

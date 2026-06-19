@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor - Actor 放置与选择 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+
+    #app { display: flex; height: 100vh; }
+
+    /* Left panel: controls */
+    #left-panel {
+      width: 320px; min-width: 320px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0 0 4px; font-size: 16px; color: #8af; }
+    #left-panel h3 { margin: 10px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+    #left-panel button, #left-panel select {
+      padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+      width: 100%; text-align: left;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #4a9; }
+
+    .actor-btn-row { display: flex; gap: 6px; }
+    .actor-btn-row button { flex: 1; text-align: center; font-size: 11px; padding: 8px 4px; }
+    .actor-btn-row button .icon { display: block; font-size: 18px; margin-bottom: 2px; }
+    .actor-btn-row button .size-hint { font-size: 9px; color: #889; }
+
+    .filter-row { display: flex; gap: 6px; }
+    .filter-row input {
+      flex: 1; padding: 6px 8px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px;
+    }
+    .filter-row input::placeholder { color: #556; }
+
+    .expected-box {
+      background: rgba(13,17,23,0.6); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px; line-height: 1.6;
+    }
+    .expected-box h4 { margin: 0 0 6px; color: #8f8; font-size: 12px; }
+    .expected-box ul { margin: 4px 0; padding-left: 16px; }
+    .expected-box li { margin: 3px 0; }
+    .expected-box .metric { color: #aad; font-family: monospace; }
+
+    .stat-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+    .stat-row .label { color: #889; }
+    .stat-row .value { color: #eee; font-family: 'Consolas', monospace; font-weight: 600; }
+
+    /* Center: 3D viewport */
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+    #viewport { flex: 1; position: relative; background: #0d1117; }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    #overlay-legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 11px;
+      display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 500px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #333; }
+
+    #click-hint {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 16px; font-size: 12px; color: #a0b0d0;
+      pointer-events: none; white-space: nowrap;
+    }
+
+    /* Info bar */
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. Editor Actor 放置</h2>
+      <div class="stat-row"><span class="label">选中 Actor 类型:</span><span class="value" id="stat-actor-type">-</span></div>
+      <div class="stat-row"><span class="label">鼠标所在格:</span><span class="value" id="stat-hover-cell">-</span></div>
+      <div class="stat-row"><span class="label">Ghost 状态:</span><span class="value" id="stat-ghost-state">-</span></div>
+      <div class="stat-row"><span class="label">已放置数量:</span><span class="value" id="stat-placed-count">0</span></div>
+      <div class="stat-row"><span class="label">选中数量:</span><span class="value" id="stat-selected-count">0</span></div>
+
+      <h3>Actor 类型选择</h3>
+      <div class="actor-btn-row">
+        <button id="btn-infantry" class="active">
+          <span class="icon">&#x1F6B6;</span>Infantry
+          <span class="size-hint">1x1</span>
+        </button>
+        <button id="btn-vehicle">
+          <span class="icon">&#x1F698;</span>Vehicle
+          <span class="size-hint">1x1</span>
+        </button>
+        <button id="btn-building">
+          <span class="icon">&#x1F3ED;</span>Building
+          <span class="size-hint">2x2</span>
+        </button>
+      </div>
+
+      <h3>搜索 / 过滤</h3>
+      <div class="filter-row">
+        <input type="text" id="filter-input" placeholder="输入 actor 名称过滤..." autocomplete="off">
+      </div>
+      <div id="filter-result" style="font-size:11px;color:#889;min-height:18px;"></div>
+
+      <h3>操作</h3>
+      <button id="btn-reset">重置场景 (清空所有 actor)</button>
+      <button id="btn-delete-selected">删除选中 actor</button>
+      <button id="btn-random-fill">随机放置 5 个 actor</button>
+
+      <h3>选择模式</h3>
+      <button id="btn-select-mode" class="active">Rubber-band 选择: 开启 (拖拽空白区域)</button>
+      <button id="btn-deselect-all">取消全部选择</button>
+
+      <h3>B. 期望结果</h3>
+      <div class="expected-box">
+        <h4>1. Ghost 跟随延迟</h4>
+        <ul>
+          <li>Ghost 应在鼠标移动到新格后 <span class="metric">≤1 帧 (16.7ms)</span> 内更新位置</li>
+          <li>Ghost 位置严格<span class="metric">吸附到 cell center</span></li>
+          <li>无目标格之间跳帧残留</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>2. 有效/无效放置颜色</h4>
+        <ul>
+          <li>有效放置: ghost 为<span class="metric">绿色 (R:0.2±5%, G:0.7±5%, B:0.2±5%)</span></li>
+          <li>无效放置 (被阻挡/越界/重叠): ghost 为<span class="metric">红色 (R:0.8±5%, G:0.15±5%, B:0.15±5%)</span></li>
+          <li>颜色切换在鼠标移动后 <span class="metric">≤1 帧</span> 完成</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>3. Grid Snap 精度</h4>
+        <ul>
+          <li>放置后 actor center 与 cell center 偏差 ≤ <span class="metric">0.1 世界单位 (wu)</span></li>
+          <li>Visual cell size = 1.0wu, cell center = <span class="metric">(cx+0.5, cz+0.5)</span></li>
+          <li>1x1 actor 精确占据单格，2x2 actor 精确占据 4 格</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>4. 碰撞检测</h4>
+        <ul>
+          <li>放置到障碍物格 → ghost 红色，无法放置</li>
+          <li>放置到已有 actor 占据的格 → ghost 红色，无法放置</li>
+          <li>放置到 OOB (网格外) → ghost 不显示</li>
+          <li>Building (2x2) 所有 4 格均需空闲且可行走</li>
+        </ul>
+      </div>
+      <div class="expected-box">
+        <h4>5. Rubber-band 选择</h4>
+        <ul>
+          <li>拖拽空白区域显示<span class="metric">虚线矩形框</span> (颜色: #44aaff)</li>
+          <li>释放后框内所有 actor 被选中（<span class="metric">黄色高亮</span>）</li>
+          <li>选择框大小精确匹配拖拽起点到终点的<span class="metric">屏幕像素矩形</span></li>
+          <li>点击已放置 actor 直接选中该 actor（不需要 rubber-band）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="click-hint">左键点击地面放置 actor | 左键拖拽空白区域进行 rubber-band 选择 | 右键取消选择</div>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#33cc55"></div>Ghost 有效 (绿色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#dd2222"></div>Ghost 无效 (红色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#3399f2"></div>Infantry (蓝色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#44aaff"></div>Vehicle (青色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#dddd44"></div>Building (黄色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#555"></div>障碍物</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff8800"></div>OOB 区域</div>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span>网格: <span id="info-grid">10x10</span></span>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
