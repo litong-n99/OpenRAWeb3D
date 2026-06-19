@@ -16,6 +16,7 @@ import { Renderer } from './Renderer.js'
 import { Manifest } from './Manifest.js'
 import { ModData } from './ModData.js'
 import { FileSystem } from './FileSystem/FileSystem.js'
+import { Folder } from './FileSystem/Folder.js'
 import { GameWorldManager, WorldType } from './World.js'
 import type { MapStub } from './World.js'
 import type { WorldRendererStub } from './Traits/TraitsInterfaces.js'
@@ -496,6 +497,11 @@ export class Game {
     this.modData = new ModData(manifest, fileSystem)
     await this.modData.init()
 
+    // 4.5. Mount mod data folders (rules/weapons/sequences JSON from build-mods.ts)
+    // These provide the YAML→JSON rule data that loadRuleSet() needs.
+    // They are NOT the binary game assets (those come from the Content Installer).
+    this._mountModDataFolders(fileSystem, manifest)
+
     // 5. 加载 RuleSet
     await this.modData.loadRuleSet()
 
@@ -520,6 +526,79 @@ export class Game {
     // 这些依赖在 Phase C 主菜单阶段才就绪。
     // this.sound = new Sound(...)
     this._continueAfterContentCheck()
+  }
+
+  /**
+   * Mount mod data folders from public/mods/ into the FileSystem.
+   *
+   * The build-mods.ts script converts OpenRA YAML rules/weapons/sequences/etc
+   * to JSON files under public/mods/{modId}/. This method creates Folder
+   * packages that map manifest paths (e.g. "ra|rules/misc.yaml") to the
+   * corresponding JSON URLs (e.g. "/mods/ra/rules/misc.json").
+   *
+   * This runs BEFORE loadRuleSet() so that rule/weapon/sequence file
+   * references resolve correctly.
+   */
+  private _mountModDataFolders(
+    fileSystem: FileSystem,
+    manifest: Manifest,
+  ): void {
+    // Collect all path references from the manifest that use the
+    // "packageId|filePath" syntax.
+    const pathLists = [
+      manifest.rules,
+      manifest.weapons,
+      manifest.sequences,
+      manifest.chrome,
+      manifest.chromeLayout,
+      manifest.voices,
+      manifest.notifications,
+      manifest.music,
+      manifest.tileSets,
+      manifest.chromeMetrics,
+      manifest.missions,
+      manifest.hotkeys,
+      manifest.fluentMessages,
+      manifest.cursors,
+    ]
+
+    // pkgName → { filePath → URL }
+    const folderMaps = new Map<string, Map<string, string>>()
+    const mounted = new Set<string>()
+
+    for (const paths of pathLists) {
+      for (const rawPath of paths) {
+        // Parse "ra|rules/misc.yaml" → {pkg: "ra", file: "rules/misc.yaml"}
+        const pipeIdx = rawPath.indexOf('|')
+        if (pipeIdx < 0) continue
+        const pkgName = rawPath.slice(0, pipeIdx)
+        const filePath = rawPath.slice(pipeIdx + 1)
+
+        // Map .yaml/.ftl reference to actual .json file on the server
+        const urlPath = `/mods/${pkgName}/${filePath.replace(/\.yaml$/, '.json').replace(/\.ftl$/, '.json')}`
+
+        let fileMap = folderMaps.get(pkgName)
+        if (!fileMap) {
+          fileMap = new Map()
+          folderMaps.set(pkgName, fileMap)
+        }
+        fileMap.set(filePath, urlPath)
+      }
+    }
+
+    // Create Folder packages and mount them
+    for (const [pkgName, fileMap] of folderMaps) {
+      if (mounted.has(pkgName)) continue
+      try {
+        const folder = new Folder(pkgName, fileMap)
+        fileSystem.mountPackage(folder, pkgName)
+        mounted.add(pkgName)
+      } catch (e) {
+        console.warn(
+          `[Game] Failed to mount mod data folder '${pkgName}': ${String(e)}`,
+        )
+      }
+    }
   }
 
   /**
