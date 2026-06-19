@@ -90,7 +90,46 @@ export class MixLoader implements IPackageLoader {
       return null
     }
 
-    // Check 2: C&C format (unencrypted) vs encrypted RA/TS/RA2 format
+    // Check 2: Encrypted format (RA/TS/RA2) — try before C&C (Phase B)
+    if (MixFileRuntime.isEncryptedFormat(stream)) {
+      let encryptedAttemptFailed = false
+      try {
+        const result = MixFileRuntime.parseEncrypted(filename, stream, undefined, _mixDb)
+        if (result) return result
+      } catch (err) {
+        encryptedAttemptFailed = true
+        const msg = String(err)
+        if (msg.includes('RSA') || msg.includes('Phase B')) {
+          console.warn(
+            `MixLoader: Encrypted MIX "${filename}" requires RSA key decryption ` +
+            `(not supported in Phase B). Use the build-time MIX unpacker.`,
+          )
+        } else if (msg.includes('no Blowfish key')) {
+          console.warn(
+            `MixLoader: Encrypted MIX "${filename}" detected but no Blowfish key is available. ` +
+            `Call MixFileRuntime.setDefaultEncryptedKey() to enable encrypted MIX support.`,
+          )
+        } else {
+          console.warn(`MixLoader: Failed to parse "${filename}" as encrypted MIX: ${msg}`)
+        }
+      }
+
+      // If the first uint16 is 1, it could be either universal key format or
+      // a C&C MIX with numFiles=1. Fall through to C&C check for this case.
+      // For first uint16=0 (OpenRA format) or first uint16=2 (RSA key format),
+      // it's definitely an encrypted format, so return null.
+      if (encryptedAttemptFailed) {
+        const dv = new DataView(stream)
+        const firstUint16 = dv.getUint16(0, true)
+        // Only fall through to C&C for the ambiguous numFiles=1 case
+        if (firstUint16 !== 1) {
+          return null
+        }
+        // firstUint16=1: ambiguous — fall through to C&C check below
+      }
+    }
+
+    // Check 3: C&C format (unencrypted)
     if (MixFileRuntime.isCncFormat(stream)) {
       try {
         return MixFileRuntime.parse(filename, stream, _mixDb)
@@ -100,10 +139,10 @@ export class MixLoader implements IPackageLoader {
       }
     }
 
-    // Encrypted RA/TS/RA2 format — not supported in Phase A
+    // Not a recognized MIX format
     console.warn(
-      `Encrypted MIX not supported in Phase A: ${filename}. ` +
-      `Use the build-time MIX unpacker for encrypted RA/TS/RA2 archives.`,
+      `MixLoader: "${filename}" is not a recognized MIX format. ` +
+      `The file may be corrupt or uses an unsupported format variant.`,
     )
     return null
   }

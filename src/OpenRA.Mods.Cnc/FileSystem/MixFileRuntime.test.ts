@@ -2,12 +2,13 @@
  * MixFileRuntime.test.ts — MixFileRuntime 迁移单元测试
  *
  * 测试重点：C&C MIX 格式解析、isCncFormat 检测、文件名解析、
- * 数据访问正确性、边界情况处理、dispose 清理。
+ * 数据访问正确性、边界情况处理、dispose 清理、Phase B 加密格式支持。
  * 所有逻辑均为纯数据处理，无需 Babylon.js 依赖。
  */
 
 import { describe, it, expect } from 'vitest'
 import { MixFileRuntime } from './MixFileRuntime.js'
+import { Blowfish } from '../FileFormats/Blowfish.js'
 
 // ---------------------------------------------------------------------------
 // Helper: construct C&C MIX binary data
@@ -620,7 +621,7 @@ describe('MixFileRuntime — duplicate filenames', () => {
 })
 
 // ---------------------------------------------------------------------------
-// MixFileRuntime — error message includes name
+// MixFileRuntime.parse error message
 // ---------------------------------------------------------------------------
 
 describe('MixFileRuntime.parse error message', () => {
@@ -629,5 +630,349 @@ describe('MixFileRuntime.parse error message', () => {
     expect(() => {
       MixFileRuntime.parse('my-custom-file.mix', buf)
     }).toThrow(/my-custom-file\.mix/)
+  })
+})
+
+// ===========================================================================
+// Phase B: Encrypted MIX support tests
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Encrypted MIX test helpers
+// ---------------------------------------------------------------------------
+
+/** Generate a deterministic 56-byte test Blowfish key. */
+function createTestKey(seed: number = 0x42): Uint8Array {
+  const key = new Uint8Array(56)
+  for (let i = 0; i < 56; i++) {
+    key[i] = (seed + i * 7) & 0xFF
+  }
+  return key
+}
+
+/**
+ * Build a universal key format encrypted MIX ArrayBuffer.
+ *
+ * Format:
+ * - offset 0: uint16 flags = 0x0001 (universal key)
+ * - offset 2: uint32 dataSize
+ * - offset 6: Blowfish-encrypted header (padded to 8-byte blocks)
+ * - after header: raw data blocks
+ */
+function createEncryptedMixBuffer(
+  files: FileSpec[],
+  key: Uint8Array,
+): ArrayBuffer {
+  const fish = new Blowfish(key)
+
+  // Build plaintext header: numFiles(uint16) + dataSize(uint32) + entries(12 each)
+  const numFiles = files.length
+  let totalDataSize = 0
+  for (const f of files) totalDataSize += f.data.byteLength
+
+  const headerSize = 6 + numFiles * 12
+  const blockCount = Math.ceil(headerSize / 8)
+  const headerByteLength = blockCount * 8
+  const dataStart = 6 + headerByteLength  // absolute offset of data blocks
+  const totalSize = dataStart + totalDataSize
+
+  const buf = new ArrayBuffer(totalSize)
+  const dv = new DataView(buf)
+
+  // Write flags (universal key) and dataSize
+  dv.setUint16(0, 0x0001, true)
+  dv.setUint32(2, totalDataSize, true)
+
+  // Build plaintext header in a temporary buffer
+  const plainHeader = new ArrayBuffer(headerByteLength)
+  const plainDv = new DataView(plainHeader)
+  plainDv.setUint16(0, numFiles, true)
+  plainDv.setUint32(2, totalDataSize, true)
+
+  let dataCursor = 0
+  for (let i = 0; i < numFiles; i++) {
+    const eo = 6 + i * 12
+    plainDv.setUint32(eo, files[i].hash, true)
+    plainDv.setUint32(eo + 4, dataCursor, true)
+    plainDv.setUint32(eo + 8, files[i].data.byteLength, true)
+    dataCursor += files[i].data.byteLength
+  }
+
+  // Encrypt header with Blowfish (returns a NEW Uint32Array)
+  const headerU32 = new Uint32Array(plainHeader, 0, blockCount * 2)
+  const encryptedU32 = fish.encrypt(headerU32)
+
+  // Copy encrypted header bytes to output
+  const encryptedBytes = new Uint8Array(encryptedU32.buffer, encryptedU32.byteOffset, headerByteLength)
+  const outHeader = new Uint8Array(buf, 6, headerByteLength)
+  outHeader.set(encryptedBytes)
+
+  // Write data blocks
+  dataCursor = 0
+  for (const f of files) {
+    const dest = new Uint8Array(buf, dataStart + dataCursor, f.data.byteLength)
+    dest.set(f.data)
+    dataCursor += f.data.byteLength
+  }
+
+  return buf
+}
+
+/**
+ * Build an OpenRA format (flags=0, encrypted) buffer for detection testing.
+ */
+function createOpenRAEncryptedBuffer(): ArrayBuffer {
+  const buf = new ArrayBuffer(100)
+  const dv = new DataView(buf)
+  dv.setUint16(0, 0x0000, true)    // OpenRA format marker
+  dv.setUint16(2, 0x0002, true)    // bit 1 = encrypted
+  // Fill remaining with non-zero filler
+  for (let i = 4; i < 100; i++) {
+    dv.setUint8(i, 0x42)
+  }
+  return buf
+}
+
+/** Test file specs for encrypted MIX tests. */
+const ENC_TEST_KEY = createTestKey(0xAA)
+const ENC_FILE_A_DATA = strToData('Encrypted file A')
+const ENC_FILE_B_DATA = strToData('Encrypted file B content')
+
+// ---------------------------------------------------------------------------
+// MixFileRuntime.isEncryptedFormat
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.isEncryptedFormat', () => {
+  it('returns true for universal key format (flags=1)', () => {
+    const buf = createEncryptedMixBuffer(
+      [{ hash: 0x1000, data: ENC_FILE_A_DATA }],
+      ENC_TEST_KEY,
+    )
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(true)
+  })
+
+  it('returns true for OpenRA format (flags=0, encrypted bit set)', () => {
+    const buf = createOpenRAEncryptedBuffer()
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(true)
+  })
+
+  it('returns true for RSA key format (flags=2)', () => {
+    const buf = new ArrayBuffer(10)
+    const dv = new DataView(buf)
+    dv.setUint16(0, 0x0002, true)  // RSA key flag
+    dv.setUint32(2, 100, true)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(true)
+  })
+
+  it('returns false for valid C&C format with numFiles > 2', () => {
+    // Use numFiles=3 to avoid conflict with universal key flag (1) and RSA flag (2)
+    const files: FileSpec[] = [
+      { hash: 0x3000, data: strToData('aaa') },
+      { hash: 0x3001, data: strToData('bbb') },
+      { hash: 0x3002, data: strToData('ccc') },
+    ]
+    const buf = createCncMixBuffer(files)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(false)
+  })
+
+  it('returns false for buffer smaller than minimum size', () => {
+    const buf = new ArrayBuffer(4)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(false)
+  })
+
+  it('returns false for OpenRA format without encrypted flag', () => {
+    const buf = new ArrayBuffer(100)
+    const dv = new DataView(buf)
+    dv.setUint16(0, 0x0000, true)  // OpenRA marker
+    dv.setUint16(2, 0x0000, true)  // no flags
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// MixFileRuntime.parseEncrypted
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.parseEncrypted', () => {
+  it('parses a single-file encrypted MIX with explicit key', () => {
+    const files: FileSpec[] = [
+      { hash: 0x1234, data: ENC_FILE_A_DATA },
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    const mix = MixFileRuntime.parseEncrypted('enc-test.mix', buf, ENC_TEST_KEY)
+
+    expect(mix.name).toBe('enc-test.mix')
+    expect(mix.contents.length).toBe(1)
+    expect(mix.contents[0]).toMatch(/^unresolved_0x[0-9A-F]{8}\.bin$/)
+  })
+
+  it('parses a multi-file encrypted MIX', () => {
+    const files: FileSpec[] = [
+      { hash: 0xAA00, data: ENC_FILE_A_DATA },
+      { hash: 0xBB00, data: ENC_FILE_B_DATA },
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    const mix = MixFileRuntime.parseEncrypted('multi-enc.mix', buf, ENC_TEST_KEY)
+
+    expect(mix.name).toBe('multi-enc.mix')
+    expect(mix.contents.length).toBe(2)
+  })
+
+  it('resolves filenames via mixDb', () => {
+    const hashA = 0xCAFE0001
+    const hashB = 0xCAFE0002
+    const files: FileSpec[] = [
+      { hash: hashA, data: strToData('aaaa') },
+      { hash: hashB, data: strToData('bbbb') },
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    const mixDb = new Map<string, string>()
+    const hexA = '0x' + hashA.toString(16).toUpperCase().padStart(8, '0')
+    const hexB = '0x' + hashB.toString(16).toUpperCase().padStart(8, '0')
+    mixDb.set(hexA, 'alpha.dat')
+    mixDb.set(hexB, 'bravo.dat')
+
+    const mix = MixFileRuntime.parseEncrypted('resolved-enc.mix', buf, ENC_TEST_KEY, mixDb)
+
+    expect(mix.contents).toContain('alpha.dat')
+    expect(mix.contents).toContain('bravo.dat')
+    expect(mix.contains('alpha.dat')).toBe(true)
+    expect(mix.contains('bravo.dat')).toBe(true)
+  })
+
+  it('returns correct data for each file', async () => {
+    const hashA = 0xD00D0001
+    const hashB = 0xD00D0002
+    const files: FileSpec[] = [
+      { hash: hashA, data: strToData('first data block') },
+      { hash: hashB, data: strToData('second block here') },
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    const mixDb = new Map<string, string>()
+    const hexA = '0x' + hashA.toString(16).toUpperCase().padStart(8, '0')
+    const hexB = '0x' + hashB.toString(16).toUpperCase().padStart(8, '0')
+    mixDb.set(hexA, 'one.dat')
+    mixDb.set(hexB, 'two.dat')
+
+    const mix = MixFileRuntime.parseEncrypted('data-enc.mix', buf, ENC_TEST_KEY, mixDb)
+
+    const dataA = await mix.open('one.dat')
+    const dataB = await mix.open('two.dat')
+
+    expect(new TextDecoder().decode(dataA!)).toBe('first data block')
+    expect(new TextDecoder().decode(dataB!)).toBe('second block here')
+  })
+
+  it('throws without a key (none set as default)', () => {
+    const files: FileSpec[] = [
+      { hash: 0x1000, data: ENC_FILE_A_DATA },
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    // No key set as default and no explicit key
+    expect(() => {
+      MixFileRuntime.parseEncrypted('nokey.mix', buf)
+    }).toThrow(/no Blowfish key available/i)
+  })
+
+  it('uses default key set via setDefaultEncryptedKey', () => {
+    const files: FileSpec[] = [
+      { hash: 0x9999, data: ENC_FILE_A_DATA },
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    MixFileRuntime.setDefaultEncryptedKey(ENC_TEST_KEY)
+    try {
+      const mix = MixFileRuntime.parseEncrypted('default-key.mix', buf)
+      expect(mix.contents.length).toBe(1)
+    } finally {
+      MixFileRuntime.setDefaultEncryptedKey(null)
+    }
+  })
+
+  it('throws for RSA key format (flags=2)', () => {
+    const buf = new ArrayBuffer(20)
+    const dv = new DataView(buf)
+    dv.setUint16(0, 0x0002, true)
+    dv.setUint32(2, 100, true)
+
+    expect(() => {
+      MixFileRuntime.parseEncrypted('rsa.mix', buf, ENC_TEST_KEY)
+    }).toThrow(/RSA-encrypted key/i)
+  })
+
+  it('throws for OpenRA format (flags=0, encrypted)', () => {
+    const buf = createOpenRAEncryptedBuffer()
+
+    expect(() => {
+      MixFileRuntime.parseEncrypted('openra.mix', buf, ENC_TEST_KEY)
+    }).toThrow(/RSA key decryption/i)
+  })
+
+  it('throws for non-encrypted data', () => {
+    // Use 3 files so first uint16 = 3 (not flags 1 or 2 which could be
+    // confused with encrypted format indicators)
+    const files: FileSpec[] = [
+      { hash: 0x5100, data: strToData('aaa') },
+      { hash: 0x5101, data: strToData('bbb') },
+      { hash: 0x5102, data: strToData('ccc') },
+    ]
+    const buf = createCncMixBuffer(files)  // C&C format
+
+    expect(() => {
+      MixFileRuntime.parseEncrypted('plain.mix', buf, ENC_TEST_KEY)
+    }).toThrow(/not a recognized encrypted MIX format/i)
+  })
+
+  it('handles multiple files with various data sizes', async () => {
+    const files: FileSpec[] = [
+      { hash: 0xE001, data: new Uint8Array([1]) },
+      { hash: 0xE002, data: new Uint8Array(100).fill(0xAB) },
+      { hash: 0xE003, data: new Uint8Array(7).fill(0xCD) },
+      { hash: 0xE004, data: new Uint8Array(0) },  // empty file
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    const mix = MixFileRuntime.parseEncrypted('various.mix', buf, ENC_TEST_KEY)
+    expect(mix.contents.length).toBe(4)
+
+    const names = mix.contents
+    const data1 = await mix.open(names[0])
+    const data4 = await mix.open(names[3])
+    expect(data1!.byteLength).toBe(1)
+    expect(data4!.byteLength).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// MixFileRuntime.setDefaultEncryptedKey
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.setDefaultEncryptedKey', () => {
+  it('setting to null disables default key', () => {
+    MixFileRuntime.setDefaultEncryptedKey(ENC_TEST_KEY)
+    MixFileRuntime.setDefaultEncryptedKey(null)
+
+    const files: FileSpec[] = [
+      { hash: 0x1111, data: strToData('test') },
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    expect(() => {
+      MixFileRuntime.parseEncrypted('disabled.mix', buf)
+    }).toThrow(/no Blowfish key available/i)
+  })
+
+  it('can be called multiple times without error', () => {
+    expect(() => {
+      MixFileRuntime.setDefaultEncryptedKey(ENC_TEST_KEY)
+      MixFileRuntime.setDefaultEncryptedKey(null)
+      MixFileRuntime.setDefaultEncryptedKey(ENC_TEST_KEY)
+      MixFileRuntime.setDefaultEncryptedKey(null)
+    }).not.toThrow()
   })
 })

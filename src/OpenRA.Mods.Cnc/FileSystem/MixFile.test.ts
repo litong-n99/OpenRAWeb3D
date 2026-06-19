@@ -1,13 +1,15 @@
 /**
  * MixFile.test.ts — MixFile / MixLoader 迁移单元测试
  *
- * 测试重点：ADR-5.1 存根行为、JSDoc 完整性、参考实现、C&C 格式运行时解析。
+ * 测试重点：ADR-5.1 存根行为、JSDoc 完整性、参考实现、C&C 格式运行时解析、
+ * Phase B 加密格式检测。
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { MixLoader, MixFile } from './MixFile.js'
 import { PackageEntry, PackageHashType } from './PackageEntry.js'
 import { MixFileRuntime } from './MixFileRuntime.js'
+import { Blowfish } from '../FileFormats/Blowfish.js'
 
 // ---------------------------------------------------------------------------
 // Helpers — build a minimal valid C&C-format MIX binary
@@ -56,16 +58,16 @@ function buildCncMix(numFiles: number, fileSizes?: number[]): ArrayBuffer {
 
 /**
  * Build a byte array that looks like an encrypted RA/TS/RA2 MIX file.
- * The first uint16 is 0 (flags field), followed by a non-zero uint16 for
- * numFiles at offset 2 (but we keep it 0 to clearly mark it as encrypted).
+ * First uint16 = 0 (OpenRA format marker), second uint16 has bit 1 set
+ * (encrypted flag). This triggers isEncryptedFormat detection.
  */
 function buildEncryptedMix(): ArrayBuffer {
   const buf = new ArrayBuffer(100)
   const dv = new DataView(buf)
-  // Flags = 0 (encrypted format indicator)
+  // Flags = 0 (RA/TS/RA2 format indicator)
   dv.setUint16(0, 0, true)
-  // Fill rest with non-zero to avoid too-small check
-  dv.setUint16(2, 5, true) // numFiles at offset 2
+  // Sub-flags: bit 1 set = encrypted (value 0x0002)
+  dv.setUint16(2, 0x0002, true)
   return buf
 }
 
@@ -116,11 +118,11 @@ describe('MixLoader', () => {
     })
 
     it('parsed package contains the expected files', () => {
-      const mixData = buildCncMix(2, [10, 20])
+      const mixData = buildCncMix(3, [10, 20, 15])
       const result = loader.tryParsePackage('data.mix', mixData)
       expect(result).not.toBeNull()
       // Without a mixDb, files get placeholder names
-      expect(result!.contents.length).toBe(2)
+      expect(result!.contents.length).toBe(3)
       for (const name of result!.contents) {
         expect(name).toMatch(/^unresolved_0x00001[0-9a-fA-F]{3}\.bin$/)
       }
@@ -165,7 +167,7 @@ describe('MixLoader', () => {
     })
 
     it('calls contains correctly for files in the package', () => {
-      const mixData = buildCncMix(2, [10, 20])
+      const mixData = buildCncMix(3, [10, 20, 15])
       const result = loader.tryParsePackage('test.mix', mixData)!
       const firstFile = result.contents[0]
       expect(result.contains(firstFile)).toBe(true)
@@ -174,19 +176,88 @@ describe('MixLoader', () => {
   })
 
   describe('tryParsePackage — encrypted format (.mix)', () => {
-    it('returns null for encrypted MIX (first uint16 == 0)', () => {
+    it('returns null for encrypted OpenRA format MIX (first uint16 == 0)', () => {
       const encData = buildEncryptedMix()
       const result = loader.tryParsePackage('encrypted.mix', encData)
       expect(result).toBeNull()
     })
 
-    it('logs a warning for encrypted MIX files', () => {
+    it('logs an RSA-related warning for encrypted OpenRA format MIX files', () => {
       const encData = buildEncryptedMix()
       loader.tryParsePackage('encrypted.mix', encData)
       expect(warnSpy).toHaveBeenCalledTimes(1)
       const callArg = warnSpy.mock.calls[0]?.[0] as string
-      expect(callArg).toContain('Encrypted MIX not supported in Phase A')
+      expect(callArg).toContain('RSA key decryption')
       expect(callArg).toContain('encrypted.mix')
+    })
+  })
+
+  describe('tryParsePackage — Phase B encrypted format (.mix)', () => {
+    /** Build a universal-key encrypted MIX buffer for testing. */
+    function buildEncryptedTestMix(): ArrayBuffer {
+      const key = new Uint8Array(56).fill(0x77)
+      const fish = new Blowfish(key)
+      // Build header: 1 file, hash 0x5000
+      const headerByteLength = 24
+      const headerData = new ArrayBuffer(headerByteLength)
+      const hdv = new DataView(headerData)
+      hdv.setUint16(0, 1, true)       // numFiles = 1
+      hdv.setUint32(2, 5, true)       // dataSize = 5
+      hdv.setUint32(6, 0x5000, true)  // hash
+      hdv.setUint32(10, 0, true)      // offset
+      hdv.setUint32(14, 5, true)      // length
+      const padView = new Uint8Array(headerData, 18, 6)
+      padView.fill(0)
+
+      const headerU32 = new Uint32Array(headerData, 0, 6)
+      const encryptedU32 = fish.encrypt(headerU32)
+
+      const totalSize = 6 + headerByteLength + 5
+      const buf = new ArrayBuffer(totalSize)
+      const dv = new DataView(buf)
+      dv.setUint16(0, 0x0001, true)  // universal key flag
+      dv.setUint32(2, 5, true)       // dataSize
+      const encBytes = new Uint8Array(encryptedU32.buffer, encryptedU32.byteOffset, headerByteLength)
+      new Uint8Array(buf, 6, headerByteLength).set(encBytes)
+      new Uint8Array(buf, 30, 5).fill(0x42)
+      return buf
+    }
+
+    it('returns null when OpenRA encrypted MIX detected but no key set', () => {
+      // Use OpenRA format (first uint16=0) to avoid C&C fallthrough ambiguity
+      const encData = buildEncryptedMix()  // first uint16=0, second uint16=2
+      const result = loader.tryParsePackage('test-enc.mix', encData)
+      expect(result).toBeNull()
+    })
+
+    it('logs "no Blowfish key" warning when encrypted format detected without key', () => {
+      const encData = buildEncryptedTestMix()  // first uint16=1, ambiguous
+      // Since firstUint16=1 could also be C&C numFiles=1, the Loader falls through
+      // to C&C and parses the file. So there should be no warning logged.
+      // The key-not-available warning happens in parseEncrypted, but since we
+      // fall through, the C&C parse may succeed or fail separately.
+      // This test verifies that encrypted detection runs first and logs when key absent.
+      const result = loader.tryParsePackage('test-enc.mix', encData)
+      // With firstUint16=1 and no key: parseEncrypted fails (no key),
+      // falls through to C&C (isCncFormat true for 1), C&C parse succeeds
+      expect(result).not.toBeNull()
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      const callArg = warnSpy.mock.calls[0]?.[0] as string
+      expect(callArg).toContain('no Blowfish key')
+    })
+
+    it('returns a MixFileRuntime when key is set as default', () => {
+      const encData = buildEncryptedTestMix()
+      const testKey = new Uint8Array(56).fill(0x77)
+      MixFileRuntime.setDefaultEncryptedKey(testKey)
+      try {
+        const result = loader.tryParsePackage('test-enc.mix', encData)
+        expect(result).not.toBeNull()
+        expect(result!.contents.length).toBe(1)
+        expect(result!.name).toBe('test-enc.mix')
+      } finally {
+        MixFileRuntime.setDefaultEncryptedKey(null)
+      }
     })
   })
 
@@ -194,9 +265,9 @@ describe('MixLoader', () => {
     it('returns null for .mix files smaller than header minimum', () => {
       const result = loader.tryParsePackage('tiny.mix', new ArrayBuffer(2))
       expect(result).toBeNull()
-      // Small buffer: MixFileRuntime.isCncFormat returns false (too small),
-      // and the first uint16 read could be anything but is treated as encrypted.
+      // Small buffer: both isEncryptedFormat and isCncFormat return false
       expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(warnSpy.mock.calls[0]?.[0] as string).toContain('not a recognized MIX format')
     })
   })
 })

@@ -1,22 +1,21 @@
 /**
- * MixFileRuntime.ts — Runtime C&C-format MIX file parser
+ * MixFileRuntime.ts — Runtime C&C-format MIX file parser (Phase B: + encrypted support)
  * OpenRA 对照: OpenRA.Mods.Cnc/FileSystem/MixFile.cs (MixLoader.MixFile)
  *
  * 核心范式转换:
  * - C# Stream + seek → DataView + ArrayBuffer offset-based access
- * - C# Blowfish/RSA decryption → not supported (Phase A: C&C unencrypted only)
+ * - C# Blowfish/RSA decryption → Blowfish (FileFormats) for header decryption
  * - C# SegmentStream (lazy, shared buffer) → ArrayBuffer.slice() (eager independent copy)
  * - C# global mix database (XccGlobalDatabase) → optional mixDb Map<string, string>
  * - C# tryParsePackage returns MixFile → MixFileRuntime.parse() static factory
  * - C# Dictionary<uint, PackageEntry> index → Map<string, MixFileEntry> with pre-resolved names
- *
- * NOTE: Phase A scope is C&C format (unencrypted) only. Encrypted RA/TS/RA2 format
- * is deferred to Phase B per the task specification. The `isCncFormat()` method
- * detects the format by checking that the first uint16 (numFiles) is non-zero.
+ * - C# BlowfishKeyProvider.DecryptKey → Phase B: universal key mode (key source=1);
+ *   RSA mode (key source=2) not supported in Phase B
  */
 
 import type { IReadOnlyPackage, IReadOnlyFileSystem } from '../../OpenRA.Game/FileSystem/IPackage.js'
 import { PackageEntry } from './PackageEntry.js'
+import { Blowfish } from '../FileFormats/Blowfish.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -33,6 +32,47 @@ const MIN_CNC_FILES = 1
 
 /** Maximum numFiles value for C&C format (uint16 range). */
 const MAX_CNC_FILES = 65535
+
+// ---------------------------------------------------------------------------
+// Encrypted MIX format constants (Phase B)
+// ---------------------------------------------------------------------------
+
+/** Minimum buffer size for encrypted format detection (6 bytes: flags + dataSize). */
+const ENCRYPTED_MIN_SIZE = 6
+
+/**
+ * OpenRA RA/TS/RA2 format marker: first uint16 == 0 indicates non-C&C format.
+ * In OpenRA C#, the second uint16 at offset 2 is checked for bit 1 (encrypted).
+ */
+const OPENRA_FORMAT_MARKER = 0x0000
+
+/** Bit 1 of the RA/TS/RA2 second uint16 indicates Blowfish-encrypted header. */
+const OPENRA_ENCRYPTED_FLAG = 0x0002
+
+/**
+ * Universal key format: first uint16 == 1 (bit 0 set) means use a
+ * hardcoded universal Blowfish key. No RSA keyblock in the file.
+ */
+const UNIVERSAL_KEY_FLAG = 0x0001
+
+/**
+ * RSA key format: first uint16 == 2 (bit 1 set) means the file contains
+ * an RSA-encrypted Blowfish keyblock. Not supported in Phase B.
+ */
+const RSA_KEY_FLAG = 0x0002
+
+/**
+ * Universal key encrypted MIX header offset.
+ * Layout: flags(2) + dataSize(4) + encrypted_header...
+ */
+const UNIVERSAL_KEY_HEADER_OFFSET = 6
+
+/**
+ * OpenRA format: offset of the RSA-encrypted keyblock (80 bytes).
+ * Encrypted header follows at offset 84 (4 + 80).
+ */
+// Phase C (RSA): OPENRA_KEYBLOCK_OFFSET = 4, OPENRA_KEYBLOCK_SIZE = 80
+// const OPENRA_HEADER_OFFSET = OPENRA_KEYBLOCK_OFFSET + OPENRA_KEYBLOCK_SIZE // 84
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -191,6 +231,14 @@ export class MixFileRuntime implements IReadOnlyPackage {
     let end = start + entry.size
 
     // Clamp to available buffer bounds for truncated/corrupt MIX files
+    if (start > this._data.byteLength) {
+      return null
+    }
+    // Allow zero-length files at the exact end of buffer (genuine 0-byte entry)
+    if (start === this._data.byteLength && entry.size === 0) {
+      return new ArrayBuffer(0)
+    }
+    // Offset at buffer end with non-zero size means truncated data
     if (start >= this._data.byteLength) {
       return null
     }
@@ -296,34 +344,8 @@ export class MixFileRuntime implements IReadOnlyPackage {
     // dataStart is the byte offset at which raw data blocks begin
     const dataStart = entryOffset // = HEADER_SIZE + numFiles * ENTRY_SIZE
 
-    // Resolve filenames and build internal entry map
-    const entries = new Map<string, MixFileEntry>()
-
-    for (const pkgEntry of pkgEntries) {
-      const hexKey = '0x' + pkgEntry.hash.toString(16).toUpperCase().padStart(8, '0')
-      let resolvedName: string
-
-      if (mixDb) {
-        const dbName = mixDb.get(hexKey)
-        if (dbName) {
-          resolvedName = dbName
-        } else {
-          resolvedName = `unresolved_${hexKey}.bin`
-        }
-      } else {
-        resolvedName = `unresolved_${hexKey}.bin`
-      }
-
-      // Handle duplicate filenames: keep last (overwrite).
-      // This matches OpenRA's ToDictionaryWithConflictLog which logs a warning
-      // but keeps the last value. We omit the log for simplicity.
-      const absoluteOffset = dataStart + pkgEntry.offset
-      entries.set(resolvedName, {
-        hash: pkgEntry.hash,
-        offset: absoluteOffset,
-        size: pkgEntry.length,
-      })
-    }
+    // Resolve filenames and build internal entry map (shared helper)
+    const entries = MixFileRuntime._buildEntryMap(pkgEntries, dataStart, mixDb)
 
     return new MixFileRuntime(name, data, entries)
   }
@@ -355,5 +377,323 @@ export class MixFileRuntime implements IReadOnlyPackage {
 
     // C&C: first uint16 > 0 (it is numFiles). RA/TS/RA2: first uint16 == 0 (flags).
     return firstUint16 >= MIN_CNC_FILES && firstUint16 <= MAX_CNC_FILES
+  }
+
+  // -----------------------------------------------------------------------
+  // Static — encrypted format support (Phase B)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Default Blowfish key used for encrypted MIX decryption.
+   *
+   * Set via {@link MixFileRuntime.setDefaultEncryptedKey}.
+   * When null, encrypted MIX parsing is disabled.
+   *
+   * TODO-10.B.1: Replace with the actual universal Blowfish key for RA/TS MIX files.
+   * The universal key is a 56-byte constant used by XCC utilities. It can be
+   * extracted from OpenRA's BlowfishKeyProvider by RSA-decrypting the keyblock
+   * from a known RA MIX file, then hardcoded here. Until the key is obtained,
+   * encrypted MIX parsing requires an explicit key parameter to parseEncrypted().
+   */
+  private static _defaultEncryptedKey: Uint8Array | null = null
+
+  /**
+   * Set the default Blowfish key for encrypted MIX decryption.
+   *
+   * This key is shared across all encrypted MIX parses that do not provide
+   * an explicit key. Call this during app initialization after deriving or
+   * loading the key.
+   *
+   * @param key — 56-byte Blowfish key (universal key for RA/TS MIX files),
+   *              or null to disable automatic encrypted MIX parsing
+   */
+  static setDefaultEncryptedKey(key: Uint8Array | null): void {
+    MixFileRuntime._defaultEncryptedKey = key
+  }
+
+  /**
+   * Check if the data appears to be an encrypted RA/TS/RA2 MIX file.
+   *
+   * OpenRA 对照: `var isEncrypted = (s.ReadUInt16() & 0x2) != 0`
+   *
+   * Detects two encrypted format variants:
+   *
+   * **OpenRA format** (matching C# MixFile.cs):
+   * - First uint16 == 0 (RA/TS/RA2 format marker)
+   * - Second uint16 has bit 1 set (encrypted flag)
+   *
+   * **Universal key format** (simpler, no RSA keyblock):
+   * - First uint16 == 1 (bit 0 set = universal key)
+   *
+   * NOTE: A first uint16 of 2 (bit 1 set = RSA key) is also an encrypted
+   * format, but it is not supported in Phase B. It is detected here for
+   * clear error messaging but parseEncrypted() will refuse it.
+   *
+   * @param data — raw file data to inspect
+   * @returns true if the data appears to be an encrypted MIX file
+   */
+  static isEncryptedFormat(data: ArrayBuffer): boolean {
+    if (data.byteLength < ENCRYPTED_MIN_SIZE) return false
+
+    const dv = new DataView(data)
+    const firstUint16 = dv.getUint16(0, true)
+
+    // OpenRA format: first uint16 == 0, check second uint16 for encrypted flag
+    if (firstUint16 === OPENRA_FORMAT_MARKER) {
+      if (data.byteLength >= 4) {
+        const secondUint16 = dv.getUint16(2, true)
+        return (secondUint16 & OPENRA_ENCRYPTED_FLAG) !== 0
+      }
+      return false
+    }
+
+    // Universal key format: first uint16 == 1 (bit 0 set)
+    if (firstUint16 === UNIVERSAL_KEY_FLAG) {
+      return true
+    }
+
+    // RSA key format: first uint16 == 2 (bit 1 set) — detected but not supported
+    if (firstUint16 === RSA_KEY_FLAG) {
+      return true
+    }
+
+    return false
+  }
+
+  /**
+   * Parse an encrypted RA/TS/RA2 MIX file into a `MixFileRuntime` instance.
+   *
+   * OpenRA 对照: MixLoader.MixFile constructor (encrypted path with Blowfish)
+   *
+   * Supports two encrypted format variants:
+   *
+   * **Universal key format** (flags == 1 at offset 0):
+   * ```
+   * Offset  Size  Description
+   * 0       2     flags (uint16 LE) = 0x0001 (universal key)
+   * 2       4     dataSize (uint32 LE) — total size of all data blocks
+   * 6       N*8   Blowfish-encrypted header (padded to 8-byte blocks)
+   * 6+N*8   ...   Raw data blocks
+   * ```
+   * The header, after Blowfish decryption, contains:
+   * - uint16 numFiles
+   * - uint32 dataSize (duplicate of offset 2)
+   * - PackageEntry[] entries (12 bytes each)
+   *
+   * **OpenRA format** (flags == 0 at offset 0, bit 1 at offset 2):
+   * ```
+   * Offset  Size  Description
+   * 0       2     flags (uint16 LE) = 0x0000
+   * 2       2     subFlags (uint16 LE), bit 1 = encrypted
+   * 4       80    RSA-encrypted Blowfish keyblock
+   * 84      N*8   Blowfish-encrypted header
+   * 84+N*8  ...   Raw data blocks
+   * ```
+   * NOTE: OpenRA format requires RSA key decryption, not supported in Phase B.
+   *
+   * @param name — package name (e.g. "scores.mix")
+   * @param data — raw MIX file data
+   * @param key — Blowfish key (56 bytes). If not provided, uses the default
+   *              key set via {@link setDefaultEncryptedKey}. For universal key
+   *              format, this must be the universal RA/TS key.
+   * @param mixDb — optional hash-to-filename database
+   * @returns a parsed MixFileRuntime instance
+   * @throws Error if the data is not a supported encrypted format or
+   *               if no key is available
+   */
+  static parseEncrypted(
+    name: string,
+    data: ArrayBuffer,
+    key?: Uint8Array,
+    mixDb?: Map<string, string>,
+  ): MixFileRuntime {
+    if (!MixFileRuntime.isEncryptedFormat(data)) {
+      throw new Error(
+        `MixFileRuntime.parseEncrypted: "${name}" is not a recognized encrypted MIX format.`,
+      )
+    }
+
+    const dv = new DataView(data)
+    const firstUint16 = dv.getUint16(0, true)
+
+    // Check unsupported formats first (before key check)
+    if (firstUint16 === RSA_KEY_FLAG) {
+      throw new Error(
+        `MixFileRuntime.parseEncrypted: "${name}" uses RSA-encrypted key (flags=0x0002), ` +
+        `which is not supported in Phase B.`,
+      )
+    }
+
+    if (firstUint16 === OPENRA_FORMAT_MARKER) {
+      throw new Error(
+        `MixFileRuntime.parseEncrypted: "${name}" uses OpenRA format ` +
+        `(first uint16=0, encrypted flag set). ` +
+        `This requires RSA key decryption, not supported in Phase B. ` +
+        `TODO-10.B.1: Implement RSA key decryption for OpenRA format.`,
+      )
+    }
+
+    const effectiveKey = key ?? MixFileRuntime._defaultEncryptedKey
+    if (!effectiveKey || effectiveKey.length === 0) {
+      throw new Error(
+        `MixFileRuntime.parseEncrypted: no Blowfish key available for "${name}". ` +
+        `Call MixFileRuntime.setDefaultEncryptedKey() or pass a key explicitly. ` +
+        `TODO-10.B.1: The universal RA/TS Blowfish key must be extracted from OpenRA.`,
+      )
+    }
+
+    if (firstUint16 === UNIVERSAL_KEY_FLAG) {
+      // Universal key format: encrypted header at offset 6
+      return MixFileRuntime._parseEncryptedUniversalKey(name, data, effectiveKey, mixDb)
+    }
+
+    throw new Error(
+      `MixFileRuntime.parseEncrypted: unknown encrypted format for "${name}" ` +
+      `(flags=0x${firstUint16.toString(16)}).`,
+    )
+  }
+
+  /**
+   * Parse a universal key format encrypted MIX file.
+   *
+   * Format: flags(2) + dataSize(4) + Blowfish-encrypted header(N*8) + data blocks.
+   *
+   * @param name — package name
+   * @param data — raw MIX data
+   * @param key — Blowfish key
+   * @param mixDb — optional hash-to-filename database
+   * @returns parsed MixFileRuntime
+   */
+  private static _parseEncryptedUniversalKey(
+    name: string,
+    data: ArrayBuffer,
+    key: Uint8Array,
+    mixDb?: Map<string, string>,
+  ): MixFileRuntime {
+    const fish = new Blowfish(key)
+
+    // Decrypt the header starting at offset 6
+    const { entries: pkgEntries, headerByteLength } =
+      MixFileRuntime._decryptHeaderUniversalKey(data, fish)
+
+    // dataStart is after the encrypted header
+    const dataStart = UNIVERSAL_KEY_HEADER_OFFSET + headerByteLength
+
+    // Resolve filenames and build internal entry map
+    const entries = MixFileRuntime._buildEntryMap(pkgEntries, dataStart, mixDb)
+
+    return new MixFileRuntime(name, data, entries)
+  }
+
+  /**
+   * Decrypt and parse the header in universal key format.
+   *
+   * OpenRA 对照: MixFile.DecryptHeader() (simplified: no RSA step)
+   *
+   * 1. Read and decrypt the first 8-byte block at UNIVERSAL_KEY_HEADER_OFFSET
+   * 2. Get numFiles from the decrypted data
+   * 3. Calculate total header size and round up to 8-byte blocks
+   * 4. Read and decrypt all header blocks
+   * 5. Parse PackageEntry records from the decrypted header
+   *
+   * @param data — raw MIX data
+   * @param fish — initialized Blowfish cipher
+   * @returns parsed entries and the encrypted header's total byte length
+   */
+  private static _decryptHeaderUniversalKey(
+    data: ArrayBuffer,
+    fish: Blowfish,
+  ): { entries: PackageEntry[]; headerByteLength: number } {
+    // Decrypt first block (8 bytes) to get numFiles
+    // NOTE: Must copy to aligned buffer — ArrayBuffer offsets may not be
+    // 4-byte aligned, which Uint32Array requires.
+    const firstBlockSrc = new Uint8Array(data, UNIVERSAL_KEY_HEADER_OFFSET, 8)
+    const firstBlockBuf = new ArrayBuffer(8)
+    new Uint8Array(firstBlockBuf).set(firstBlockSrc)
+    const firstBlockU32 = new Uint32Array(firstBlockBuf, 0, 2)
+    const decryptedFirst = fish.decrypt(firstBlockU32)
+
+    // numFiles is the first uint16 (little-endian) in the decrypted data
+    // The decrypted result is a Uint32Array — read as byte array
+    const decryptedFirstBytes = new Uint8Array(decryptedFirst.buffer, decryptedFirst.byteOffset, 8)
+    const numFiles = new DataView(decryptedFirstBytes.buffer, decryptedFirstBytes.byteOffset, 8).getUint16(0, true)
+
+    // Total header size: 2 (numFiles) + 4 (dataSize) + numFiles * 12 (entries)
+    const headerSize = 6 + numFiles * PackageEntry.SIZE
+    // Round up to 8-byte blocks (Blowfish block size)
+    const blockCount = Math.ceil(headerSize / 8)
+    const headerByteLength = blockCount * 8
+
+    // Read all header blocks (copy to aligned buffer for Uint32Array)
+    const encryptedHeaderSrc = new Uint8Array(data, UNIVERSAL_KEY_HEADER_OFFSET, headerByteLength)
+    const headerBuf = new ArrayBuffer(headerByteLength)
+    new Uint8Array(headerBuf).set(encryptedHeaderSrc)
+    const headerU32 = new Uint32Array(headerBuf, 0, blockCount * 2)
+    const decryptedHeader = fish.decrypt(headerU32)
+
+    // Parse PackageEntry records from decrypted header
+    const decryptedBytes = new Uint8Array(
+      decryptedHeader.buffer,
+      decryptedHeader.byteOffset,
+      headerByteLength,
+    )
+    const decryptedDv = new DataView(
+      decryptedBytes.buffer,
+      decryptedBytes.byteOffset,
+      decryptedBytes.byteLength,
+    )
+
+    const entries: PackageEntry[] = []
+    // Skip numFiles (uint16, 2 bytes) and dataSize (uint32, 4 bytes) = 6 bytes offset
+    let entryOffset = 6
+    for (let i = 0; i < numFiles; i++) {
+      const { entry, nextOffset } = PackageEntry.fromDataView(decryptedDv, entryOffset)
+      entries.push(entry)
+      entryOffset = nextOffset
+    }
+
+    return { entries, headerByteLength }
+  }
+
+  /**
+   * Build the internal filename-to-entry map from a list of PackageEntry records.
+   *
+   * Shared by both C&C and encrypted parse paths.
+   *
+   * @param pkgEntries — parsed PackageEntry records
+   * @param dataStart — absolute byte offset where data blocks begin
+   * @param mixDb — optional hash-to-filename database
+   * @returns filename → MixFileEntry map
+   */
+  private static _buildEntryMap(
+    pkgEntries: PackageEntry[],
+    dataStart: number,
+    mixDb?: Map<string, string>,
+  ): Map<string, MixFileEntry> {
+    const entries = new Map<string, MixFileEntry>()
+
+    for (const pkgEntry of pkgEntries) {
+      const hexKey = '0x' + pkgEntry.hash.toString(16).toUpperCase().padStart(8, '0')
+      let resolvedName: string
+
+      if (mixDb) {
+        const dbName = mixDb.get(hexKey)
+        if (dbName) {
+          resolvedName = dbName
+        } else {
+          resolvedName = `unresolved_${hexKey}.bin`
+        }
+      } else {
+        resolvedName = `unresolved_${hexKey}.bin`
+      }
+
+      entries.set(resolvedName, {
+        hash: pkgEntry.hash,
+        offset: dataStart + pkgEntry.offset,
+        size: pkgEntry.length,
+      })
+    }
+
+    return entries
   }
 }
