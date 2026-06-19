@@ -82,6 +82,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Editor & Utilities (Ch21) | **ALL PHASES A-G COMPLETE (54+ active files, 100%, 25 deferred + 12 legacy deferred)**. Plan: [chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) |
 | **Chapters 22: Game Entry & App Shell (7 files)** | **ALL PHASES A-E COMPLETE (7/7, 100%)** |
 | Router + ModSelector + Game (Ch22) | ALL PHASES COMPLETE (Phase A: Router/ModSelector 51 tests; Phase B: Game/main.ts 81 tests; Phase C: Main Menu/Shellmap; Phase D: Editor Stub; Phase E: Build Pipeline 150+ assets). Plan: [chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) |
+| **Content Installer Pipeline (Phase A)** | COMPLETE (13/13 tasks, 100%), ~4,800 impl lines, 171 tests |
 
 ## Directory Layout
 
@@ -597,6 +598,8 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-22 remaining systems migration plan (15 chapters, Ch8-20 COMPLETE, Ch21-22 PLANNING) |
 | [docs/post_migration_completion_plan.md](docs/post_migration_completion_plan.md) | Post-migration completion plan: 52 genuinely unfinished items across 5 phases A-E (Runtime Critical, 3D Rendering, Shroud/Fog, Infrastructure, Mod Polish) |
 | [docs/acceptance_test_completion_plan.md](docs/acceptance_test_completion_plan.md) | Acceptance test completion plan: 31 new test pages across 10 phases P0-P3, covering Ch08/21/07/11/05/09/16/03/20 |
+| [docs/content_installer_design.md](docs/content_installer_design.md) | Web Content Installer pipeline design — download from OpenRA mirrors, SHA1 verify, MIX extraction |
+| [docs/content_installer_execution_plan.md](docs/content_installer_execution_plan.md) | Content Installer execution plan — 25 tasks across 3 phases (A-C), Phase A COMPLETE |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 

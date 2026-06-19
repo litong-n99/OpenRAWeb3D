@@ -1,8 +1,8 @@
 # OpenRAWeb3D Migration Progress
 
-> **Last updated**: 2026-06-18
-> **Current phase**: 🎉 ALL CHAPTERS 2-22 COMPLETE (100%). Project migration finished.
-> **Overall status**: Chapters 2-21 COMPLETE: Ch2-20: 665/665 (100%) + Ch21: 54+ active files (100%, ALL PHASES A-G COMPLETE, 25 deferred + 12 legacy deferred). Chapter 22: ALL 5 PHASES COMPLETE (100%, 7 impl/test files + build script + 150+ generated assets). Total project: ~763+ files, **100% complete** 🎉.
+> **Last updated**: 2026-06-19
+> **Current phase**: 🎉 ALL CHAPTERS 2-22 COMPLETE (100%). Content Installer Phase A COMPLETE.
+> **Overall status**: Chapters 2-21 COMPLETE: Ch2-20: 665/665 (100%) + Ch21: 54+ active files (100%, ALL PHASES A-G COMPLETE, 25 deferred + 12 legacy deferred). Chapter 22: ALL 5 PHASES COMPLETE (100%, 7 impl/test files + build script + 150+ generated assets). Content Installer: Phase A COMPLETE (13/13, 34 files, ~4,800 impl lines, 171 tests). Total project: ~763+ files + 34 content installer files, all **100% complete** 🎉.
 > **Planning document**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 
 ---
@@ -34,7 +34,7 @@
 | **Chapter 20 planned files (Scripting System)** | **62** total (62 migrated; 7 Phases A-G). ALL PHASES A-G COMPLETE (62/62, 100%). Phase A (Scripting Core): COMPLETE (7 files, ~128 tests). Phase B (Trigger System): COMPLETE (3+1 files, 88 tests). Phase C (Global API Tables): COMPLETE (16+1 files, 84 tests). Phase D (Actor Properties): COMPLETE (29 files). Phase E (Player Properties): COMPLETE (5 files). Phase F (C&C Mod Properties): COMPLETE (4 files). Phase G (Lua VM): COMPLETE (fengari integration). Plan: [docs/chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md) |
 | **Chapter 21 planned files (Editor & Utilities)** | ~91 (7 Phases A-G, 54 active + 25 deferred + 12 legacy import), **ALL PHASES A-G COMPLETE (54+ active files, 100%)**. Plan: [chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) |
 | **Chapter 22 planned files (Game Entry & App Shell)** | 7 (5 Phases A-E planned, 4 impl + 3 test files + build script + 150+ generated assets), **7/7 migrated (ALL PHASES A-E COMPLETE, 100%, ~132 tests)**. Plan: [chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) |
-| **Overall project completion** | ALL Chapters 2-22 COMPLETE (665/665 + 54+ active + 7 = ~726+ files, **100%**). Post-migration completion phase: 52 remaining items tracked in [post_migration_completion_plan.md](docs/post_migration_completion_plan.md). |
+| **Overall project completion** | ALL Chapters 2-22 COMPLETE (665/665 + 54+ active + 7 = ~726+ files, **100%**). Content Installer Phase A COMPLETE (13/13 tasks, 34 new/modified files, ~4,800 impl lines, 171 tests). Post-migration completion phase: 52 remaining items tracked in [post_migration_completion_plan.md](docs/post_migration_completion_plan.md). |
 
 > **Note**: Chapters 2-21 are fully complete (665 + 54+ active = ~719+ files, ~100%). Chapter 8 (57/57, 758 tests, ALL PHASES A-E COMPLETE). Chapter 9 (30/30 active, 1,084 tests, ALL PHASES A-D COMPLETE): Phase A (5 files, 361 tests), Phase B (4 files, 358 tests), Phase C (10 files, 175 tests), Phase D (11 files, 190 tests). 2 deferred: PathFinderOverlay, HierarchicalPathFinderOverlay. Chapter 10 ALL PHASES COMPLETE (25/25 = 17 core + 8 optional, 972 tests, ~8,665 TS lines): Phase A (8 files, 344 tests, 2 review rounds), Phase B (11 files, 425 tests), Phase B-Optional (8 files, 203 tests). **Chapter 11 ALL PHASES COMPLETE (37 files: 14 Phase A + 23 Phase B, ~9,571 TS lines, ~771 tests, 2 review rounds per phase)**. Phase A (14 files, ~4,216 TS lines, ~296 tests): ProductionQueue.ts (~1,554 TS), Production.ts (~248 TS), ClassicProductionQueue.ts (~256 TS), ProductionParadrop.ts (~148 TS), ProductionFromMapEdge.ts (~123 TS), ProductionAirdrop.ts (~156 TS), Exit.ts (~228 TS), RallyPoint.ts (~268 TS), PrimaryBuilding.ts (~185 TS), plus prereqs (Buildable, TechTree, PowerManager, DeveloperMode, ActorInitializer). Phase B (23 files, ~5,355 TS lines, ~475 tests): Building.ts (~550 TS), BuildingInfluence.ts (~180 TS), BuildingUtils.ts (~260 TS), PlaceBuilding.ts (~470 TS), PlaceBuildingOrderGenerator.ts (~600 TS), plus gap additions (ActorMap, GivesBuildableArea, LineBuildNode, Plug/Pluggable, etc.). **Chapter 12 ALL PHASES COMPLETE (16 files, Phase A APPROVED)**: Shroud.ts, ShroudRenderer.ts, FrozenActorLayer.ts, Cloak.ts, AffectsShroud.ts, FrozenUnderFog.ts, RevealsMap.ts, PlayerRadarTerrain.ts, CreatesShroud.ts, RevealsShroud.ts, HiddenUnderShroud.ts, HiddenUnderFog.ts, DetectCloaked.ts, ShroudExts.ts, ShroudPalette.ts, RevealsShroudMultiplier.ts. **Chapter 13 ALL PHASES COMPLETE (14 files + 1 interface, Phase A APPROVED, 285 tests)**: SupportPower.ts (745 TS), SupportPowerManager.ts (864 TS), AirstrikePower.ts (599 TS), NukePower.ts (731 TS), ParatroopersPower.ts (622 TS), ProduceActorPower.ts (316 TS), SpawnActorPower.ts (442 TS), GrantExternalConditionPower.ts (511 TS), DirectionalSupportPower.ts (154 TS), SelectDirectionalTarget.ts (485 TS), SupportPowerChargeBar.ts (271 TS), WithSupportPowerActivationAnimation.ts (255 TS), WithSupportPowerActivationOverlay.ts (310 TS), SupportPowerCrateAction.ts (118 TS). **Chapter 14 ALL PHASES COMPLETE (49/49 files, 100%, Phases A-F, 82+70+~180+161+~48+45 tests, 3 E2E pages)**: Phase A (11 files, 82 tests): Move.ts (~1,400 TS), MoveAdjacentTo.ts (~200 TS), MoveOnto.ts (~80 TS), MoveOntoAndTurn.ts (~70 TS), MoveWithinRange.ts (~120 TS), Drag.ts (~90 TS), Nudge.ts (~80 TS), Follow.ts (~130 TS), LocalMoveIntoTarget.ts (~110 TS), AttackMoveActivity.ts (~160 TS), MoveCooldownHelper.ts (~120 TS). Phase B (6 files, ~70 tests): Enter.ts (~350 TS), Attack.ts (~620 TS), Hunt.ts (~110 TS), CaptureActor.ts (~340 TS), Demolish.ts (~180 TS), Turn.ts (~90 TS). Phase C (12 files, ~180 tests): Fly.ts (~370 TS), TakeOff.ts (~120 TS), Land.ts (~360 TS), FlyForward.ts (~80 TS), FlyIdle.ts (~110 TS), FlyOffMap.ts (~110 TS), FlyAttack.ts (~400 TS), FlyFollow.ts (~130 TS), ReturnToBase.ts (~270 TS), FallToEarth.ts (~120 TS), DeliverBulkOrder.ts (~230 TS), Parachute.ts (~110 TS), plus shared `AircraftFlightUtils.ts`. Phase D (7 files, 161 tests): MoveToDock.ts, GenericDockSequence.ts, Resupply.ts, HarvestResource.ts, FindAndDeliverResources.ts, Sell.ts, LayMines.ts, plus shared `EconomicActivityInterfaces.ts`. Phase E (7 files, ~48 tests): EnterTransport.ts, ExitTransport.ts, UnloadCargo.ts, DeliverUnit.ts, PickupUnit.ts, RideTransport.ts, Transform.ts. Phase F (8+1 files, ~45 tests): MovePart.ts, RepairBuilding.ts, RepairBridge.ts, TeleportAttack.ts, ChronoResourceDelivery.ts, Infiltrate.ts, Disguise.ts, DonateSupplies.ts, plus shared `ActivityInterfaces.ts`. Commits: `4501c29` (Phase A), `d307624` (Phase A review), `68d9e14` (E2E), `b58a891` (Phase D), `487ba29` (Phase D fix), `1545492` (Phase E), `3b78f83` (Phase F), `bf09913` (merge ALL PHASES). **Chapter 15 ALL PHASES COMPLETE (11/11 files, 100%, Phases A-C, 59+104+43 = 206 tests)**: Phase A: OrderGenerator.ts (275 lines, 29 tests), EnterAlliedActorTargeter.ts (262 lines, 30 tests), TraitsInterfaces.ts (IOrderGenerator interface + MouseActionType + IMouseSettings). Phase B: UnitOrderGenerator.ts (~460 lines, 42 tests), RepairOrderGenerator.ts (~200 lines, 21 tests), BeaconOrderGenerator.ts (~120 lines, 13 tests), GlobalButtonOrderGenerator.ts (~300 lines, 28 tests). Phase C: GuardOrderGenerator.ts (~260 lines, 28 tests), ForceModifiersOrderGenerator.ts (~200 lines, 15 tests). All 3 Phases APPROVED (Phase A R1, Phase B R2, Phase C R2, 0 BLOCKERs across all). Commits: `d47edf3` (plan), `cb792bd` (Phase A), `5070c5b` (Phase B), `af57cb2` (Phase C), `cb6f6aa`/`5d1f760`/`ff3d917` (review fixes), `016798e`/`59e7933` (docs).
 
@@ -2046,6 +2046,69 @@ Phase E (Real Assets: build pipeline, blocked on external dependencies)
 
 **Chapter 22 can begin in parallel with Chapter 21 (Editor & Utilities).** No hard dependency between the two.
 
+
+---
+
+## Content Installer Pipeline (Phase A COMPLETE, 13/13, 100%)
+
+> **Execution Plan**: [docs/content_installer_execution_plan.md](docs/content_installer_execution_plan.md)
+> **Design Document**: [docs/content_installer_design.md](docs/content_installer_design.md)
+> **Created**: 2026-06-19 | **Updated**: 2026-06-19
+> **Status**: Phase A COMPLETE (13/13 tasks, 100%). Phase B PLANNING. Phase C PLANNING.
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| Completed (Phase A) | 13 | 52% (of 25 total) |
+| Planning (Phase B) | 8 | 32% |
+| Planning (Phase C) | 4 | 16% |
+| **Total planned** | **25** | **100%** |
+
+### Phase A Completion
+
+| Phase | Description | Files | Status |
+|:---|:---|:---:|:---|
+| A | Core Download Pipeline | 13 (8 new TS + 2 modified + 2 build scripts + 1 test batch) | COMPLETE |
+| B | Polish & Offline | 8 | PLANNING |
+| C | Multi-Mod Support | 4 | PLANNING |
+
+### Phase A Details
+
+| Metric | Value |
+|--------|-------|
+| **Date Completed** | 2026-06-19 |
+| **Commit Range** | `f6970d8` through `c908c43` |
+| **Files Created/Modified** | 34 |
+| **Implementation Lines** | ~4,800 |
+| **Test Lines** | ~800+ |
+| **Phase A Tests** | 171+ (all passing) |
+| **Total Test Suite** | 17,047 tests, all passing |
+
+### New Modules (Phase A)
+
+| Module | File | Description |
+|--------|------|-------------|
+| ContentInstallerTypes | `src/OpenRA.Game/ContentInstaller/ContentInstallerTypes.ts` | Type definitions for installation pipeline |
+| Sha1Verifier | `src/OpenRA.Game/ContentInstaller/Sha1Verifier.ts` | SHA1 via Web Crypto API |
+| MirrorResolver | `src/OpenRA.Game/ContentInstaller/MirrorResolver.ts` | Fetch mirror list, random selection |
+| DownloadManager | `src/OpenRA.Game/ContentInstaller/DownloadManager.ts` | Streaming download + retry |
+| MixFileRuntime | `src/OpenRA.Mods.Cnc/FileSystem/MixFileRuntime.ts` | Runtime C&C MIX parser |
+| PackageExtractor | `src/OpenRA.Game/ContentInstaller/PackageExtractor.ts` | ZIP + sub-format extraction |
+| ContentInstallerService | `src/OpenRA.Game/ContentInstaller/ContentInstallerService.ts` | State machine orchestrator |
+| ContentInstallerUI | `src/OpenRA.Game/ContentInstaller/ContentInstallerUI.ts` | DOM overlay UI |
+
+### Build Scripts (Phase A)
+
+| Script | Description |
+|--------|-------------|
+| `scripts/build-content.ts` | Converts OpenRA installer YAML to web JSON manifests |
+| `scripts/build-mixdb.ts` | Generates MIX filename hash database |
+
+### Modified Existing Files (Phase A)
+
+| File | Change |
+|------|--------|
+| `src/OpenRA.Mods.Cnc/FileSystem/MixFile.ts` | Updated MixLoader to use MixFileRuntime |
+| `src/OpenRA.Game/Game.ts` | Content install check in loadMod pipeline |
 
 ---
 
