@@ -234,6 +234,9 @@ export class ContentInstallerUI {
     manifest: ModContentManifest,
     modId: string,
   ): void {
+    // NOTE: innerHTML = '' is adequate for Phase A (typical mods have
+    // <10 packages). If package count grows significantly in Phase C,
+    // switch to incremental DOM diffing or a <template>-based approach.
     container.innerHTML = ''
 
     // Group packages: required first, then optional
@@ -564,9 +567,22 @@ export class ContentInstallerUI {
 
     const container = document.getElementById(PROGRESS_CONTAINER_ID)
     if (!container) {
-      // Should not happen, but create a fallback
+      // BLOCKER fix: the orphan fallback div created below was never appended
+      // to the DOM. Now we create it, append it to the panel if available,
+      // and emit a warning so the root cause can be investigated.
+      console.warn(
+        '[ContentInstallerUI] PROGRESS_CONTAINER_ID not found in DOM — ' +
+        'appending fallback to panel.',
+      )
       const fallback = document.createElement('div')
       fallback.id = PROGRESS_CONTAINER_ID
+      const panel = document.getElementById(PANEL_ID)
+      if (panel) {
+        panel.appendChild(fallback)
+      } else {
+        // Last resort: append to body
+        document.body.appendChild(fallback)
+      }
       return fallback
     }
 

@@ -2445,6 +2445,9 @@ describe('Content Installer Integration (CI-A.11)', () => {
       }
       game._fileSystem = { mount: vi.fn().mockResolvedValue(undefined) }
 
+      // Must set state to ContentInstall for the guard to pass
+      game.state = GameState.ContentInstall
+
       await game._onContentInstalled()
 
       expect(game.orderManager).not.toBeNull()

@@ -514,22 +514,30 @@ export class Game {
       return // Don't create OrderManager yet — wait for content installation
     }
 
-    // 6. 创建 OrderManager（本地单人模式）
-    const connection = new EchoConnection()
-    this.orderManager = new OrderManager(connection)
-
-    // 7. Create CursorManager
-    // OpenRA 对照: Cursor = new CursorManager(ModData)
-    // Phase A: instantiate with empty configs — cursor sprite sequences
-    // are loaded from mod assets in Phase C (TODO-22.C.1).
-    // The CursorManager creates its own SheetBuilder internally.
-    this.cursorManager?.dispose()
-    this.cursorManager = new CursorManager()
-
+    // 6-7. Create OrderManager + CursorManager (shared helper)
     // NOTE: Sound 初始化推迟到 Phase C。
     // Sound 需要 ISoundEngine + SoundSettings + FileSystem 设置，
     // 这些依赖在 Phase C 主菜单阶段才就绪。
     // this.sound = new Sound(...)
+    this._continueAfterContentCheck()
+  }
+
+  /**
+   * Shared initialization after content check passes.
+   *
+   * Creates OrderManager + CursorManager and transitions to Shellmap.
+   * Extracted from loadMod() and _onContentInstalled() to eliminate
+   * duplicate initialization logic (MAJOR #8 fix).
+   */
+  private _continueAfterContentCheck(): void {
+    // Create OrderManager（本地单人模式）
+    const connection = new EchoConnection()
+    this.orderManager = new OrderManager(connection)
+
+    // Create CursorManager
+    // OpenRA 对照: Cursor = new CursorManager(ModData)
+    this.cursorManager?.dispose()
+    this.cursorManager = new CursorManager()
 
     this.state = GameState.Shellmap
   }
@@ -543,18 +551,13 @@ export class Game {
    * 重建 OrderManager 并启动 shellmap + 主菜单。
    */
   private _onContentInstalled(): void {
-    // Re-create OrderManager now that content is available
-    const connection = new EchoConnection()
-    this.orderManager = new OrderManager(connection)
+    // MAJOR #5: guard against stale state (e.g. game disposed / mod switched
+    // while the content installer UI was showing)
+    if (this.state !== GameState.ContentInstall) return
 
-    // Create CursorManager (same as in loadMod)
-    // NOTE: _onContentInstalled runs after content packages are mounted,
-    // so cursor assets might now be available.
-    this.cursorManager?.dispose()
-    this.cursorManager = new CursorManager()
+    this._continueAfterContentCheck()
 
     // Continue to shellmap + main menu
-    this.state = GameState.Shellmap
     this.loadShellMap().then(() => {
       this.showMainMenu()
     }).catch((err) => {

@@ -66,7 +66,9 @@ export class PackageExtractor {
    * @param zipBuffer — the downloaded ZIP file as ArrayBuffer
    * @param extractMap — map of {destPath: archiveEntryPath} from ContentDownload.extract
    * @param mixDb — optional MIX hash database for .mix filename resolution
-   * @param onProgress — progress callback (entry: string, current: number, total: number)
+   * @param onProgress — progress callback.
+   *   Called with (entryPath: string, current: number, total: number).
+   *   On completion the entryPath is the sentinel string `'__done__'`.
    * @returns Map of filename → ArrayBuffer for all extracted files
    * @throws Error if a required archive entry is not found in the ZIP
    */
@@ -156,7 +158,9 @@ export class PackageExtractor {
       }
     }
 
-    // Report completion
+    // Report completion with '__done__' sentinel.
+    // Callers use this to detect the end of an extraction batch
+    // (the sentinel string will never match a real zip entry path).
     if (onProgress) {
       onProgress('__done__', total, total)
     }
@@ -202,6 +206,10 @@ export class PackageExtractor {
 
       if (!pkg) {
         // Loader couldn't parse the data — treat as raw bytes pass-through
+        console.warn(
+          `PackageExtractor: could not parse "${destPath}" as ${format}, ` +
+          `passing through as raw bytes`,
+        )
         const result = new Map<string, ArrayBuffer>()
         result.set(destPath, data.slice(0) as ArrayBuffer)
         return result
@@ -222,6 +230,10 @@ export class PackageExtractor {
       return result
     } catch (err) {
       // If sub-package parsing fails, dispose and pass through as raw bytes
+      console.warn(
+        `PackageExtractor: error extracting "${destPath}" as ${format}: ` +
+        `${String(err)}, passing through as raw bytes`,
+      )
       if (pkg) {
         try { pkg.dispose() } catch { /* ignore dispose errors */ }
       }

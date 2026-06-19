@@ -84,6 +84,18 @@ export class ContentInstallerService {
   private _db: IDBDatabase | null = null
   private _dbPromise: Promise<IDBDatabase | null> | null = null
 
+  /** MIX hash database for .mix filename resolution (lazy, fetched once).
+   *
+   * Referenced by TODO-22-CI-A.10 (mixDb generation in build pipeline).
+   * Fetched from `/mods/_mixdb.json` which maps hash hex strings to
+   * original filenames (e.g. "0A1B2C3D" -> "e1.shp").
+   */
+  private _mixDb: Map<string, string> | null = null
+  private _mixDbPromise: Promise<Map<string, string> | null> | null = null
+
+  /** Concurrent install guard — prevents overlapping installPackage() calls. */
+  private _isInstalling = false
+
   // ---------------------------------------------------------------------------
   // Construction
   // ---------------------------------------------------------------------------
@@ -257,6 +269,36 @@ export class ContentInstallerService {
    *   or if installation fails at any stage.
    */
   async installPackage(modId: string, packageName: string): Promise<void> {
+    // BLOCKER fix: guard against concurrent installPackage() calls
+    if (this._isInstalling) {
+      throw new Error(
+        'Another package is already being installed. Wait for it to complete.',
+      )
+    }
+    this._isInstalling = true
+
+    try {
+      return await this._installPackageImpl(modId, packageName)
+    } finally {
+      this._isInstalling = false
+    }
+  }
+
+  /**
+   * Internal implementation of installPackage (after concurrent guard).
+   *
+   * Pipeline: resolve mirrors -> download -> verify SHA1 -> extract ->
+   * persist to IndexedDB + mount to FileSystem.
+   *
+   * @param modId -- The game mod identifier.
+   * @param packageName -- Internal package identifier (key in manifest.packages).
+   * @throws Error if the package or download definition is not found,
+   *   or if installation fails at any stage.
+   */
+  private async _installPackageImpl(
+    modId: string,
+    packageName: string,
+  ): Promise<void> {
     const manifest = this._modContent.get(modId)
     if (!manifest) {
       throw new Error(`No content manifest loaded for mod '${modId}'`)
@@ -365,10 +407,11 @@ export class ContentInstallerService {
         bytesTotal: 0,
       })
 
+      const mixDb = await this._loadMixDb()
       const extractedFiles = await this._extractor.extract(
         zipBuffer,
         download.extract,
-        undefined, // mixDb -- not needed for Phase A
+        mixDb ?? undefined,
         (_entry, current, total) => {
           const pct = total > 0 ? Math.round((current / total) * 100) : 0
           this._notifyListeners({
@@ -476,23 +519,29 @@ export class ContentInstallerService {
    * @throws Error if a required package fails to install.
    */
   async installAll(modId: string): Promise<void> {
-    const missing = await this.checkContent(modId)
-    if (missing.length === 0) {
+    const manifest = await this.getContentManifest(modId)
+    if (!manifest) {
+      // No content installer for this mod — nothing to do
       this._setState('ready')
       return
     }
 
-    const manifest = this._modContent.get(modId)
-    if (!manifest) {
-      throw new Error(`No content manifest loaded for mod '${modId}'`)
+    // Build the list of all packages from manifest (not checkContent,
+    // to avoid redundant DB round-trip mid-installation)
+    const allPackageKeys = Object.keys(manifest.packages)
+    if (allPackageKeys.length === 0) {
+      this._setState('ready')
+      return
     }
 
-    for (const packageName of missing) {
+    let anyInstalled = false
+    for (const packageName of allPackageKeys) {
       const pkg = manifest.packages[packageName]
       if (!pkg) continue
 
       try {
         await this.installPackage(modId, packageName)
+        anyInstalled = true
       } catch (err) {
         if (pkg.required) {
           this._setState('error')
@@ -505,14 +554,11 @@ export class ContentInstallerService {
           `[ContentInstaller] Optional package '${packageName}' failed to install:`,
           err,
         )
-        // Reset state to needs_install so UI can show partial progress
         this._setState('needs_install')
       }
     }
 
-    // Re-check: if all required packages are now installed, transition to ready
-    const stillMissing = await this.checkContent(modId)
-    if (stillMissing.length === 0) {
+    if (anyInstalled) {
       this._setState('ready')
     }
   }
@@ -709,8 +755,28 @@ export class ContentInstallerService {
         store.put(record)
 
         tx.oncomplete = () => resolve()
-        tx.onerror = () => resolve()
-        tx.onabort = () => resolve()
+        tx.onerror = () => {
+          console.warn(
+            '[ContentInstaller] IndexedDB write failed (quota exceeded or DB error)',
+            tx.error?.message,
+          )
+          this._notifyListeners({
+            state: this._currentState,
+            packageId: record.packageId,
+            statusText: 'Storage error: disk quota may be exceeded',
+            progressPercent: -1,
+            bytesReceived: 0,
+            bytesTotal: 0,
+            error: `IndexedDB write failed: ${tx.error?.message ?? 'unknown error'}`,
+          })
+          resolve()
+        }
+        tx.onabort = () => {
+          console.warn(
+            '[ContentInstaller] IndexedDB transaction aborted',
+          )
+          resolve()
+        }
       } catch {
         resolve()
       }
@@ -723,8 +789,12 @@ export class ContentInstallerService {
 
   /**
    * Set the current state and emit progress to all listeners.
+   *
+   * Skips no-op transitions (same state -> same state) to avoid
+   * redundant listener notifications during rapid state changes.
    */
   private _setState(state: ContentInstallState): void {
+    if (this._currentState === state) return
     this._currentState = state
     // Notify listeners of the state change
     this._notifyListeners({
@@ -753,6 +823,54 @@ export class ContentInstallerService {
       case 'complete': return 'Installation complete'
       case 'error': return 'An error occurred'
     }
+  }
+
+  /**
+   * Load the MIX hash database from `/mods/_mixdb.json`.
+   *
+   * The mixDb maps lowercase hex hash strings (without "0x" prefix) to
+   * original MIX entry filenames (e.g. "0a1b2c3d" -> "e1.shp"). This is
+   * essential for MIX sub-archive extraction — without it, all MIX entries
+   * resolve as "unresolved_0xHHHHHHHH.bin".
+   *
+   * Fetched once and cached in `_mixDb`. Returns null if the file is
+   * unavailable (graceful degradation for mods without MIX content).
+   *
+   * Referenced by TODO-22-CI-A.10 (mixDb generation in build pipeline).
+   *
+   * @returns Map of hex hash -> original filename, or null if unavailable.
+   */
+  private async _loadMixDb(): Promise<Map<string, string> | null> {
+    if (this._mixDb) return this._mixDb
+
+    if (!this._mixDbPromise) {
+      this._mixDbPromise = (async () => {
+        try {
+          const response = await fetch('/mods/_mixdb.json')
+          if (!response.ok) {
+            if (response.status === 404) {
+              // No mixDb available for this build — normal for mods without MIX
+              return null
+            }
+            console.warn(
+              `[ContentInstaller] Failed to fetch mixDb: HTTP ${response.status}`,
+            )
+            return null
+          }
+          const json = (await response.json()) as Record<string, string>
+          this._mixDb = new Map(Object.entries(json))
+          return this._mixDb
+        } catch (err) {
+          console.warn(
+            '[ContentInstaller] Error loading mixDb:',
+            err,
+          )
+          return null
+        }
+      })()
+    }
+
+    return this._mixDbPromise
   }
 
   /**

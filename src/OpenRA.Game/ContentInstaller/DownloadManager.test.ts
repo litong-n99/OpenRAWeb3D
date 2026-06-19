@@ -268,7 +268,7 @@ describe('DownloadManager', () => {
           expectedHash,
           onProgress,
         ),
-      ).rejects.toThrow(/SHA1 mismatch/)
+      ).rejects.toThrow(/SHA1_MISMATCH/)
     })
 
     it('skips SHA1 verification when expectedSha1 is empty string', async () => {

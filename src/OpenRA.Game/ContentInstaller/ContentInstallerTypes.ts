@@ -24,7 +24,7 @@
 // ---------------------------------------------------------------------------
 
 /**
- * SIngle-step state of the content installation pipeline.
+ * Single-step state of the content installation pipeline.
  *
  * OpenRA 对照: No direct C# enum — this is a web-specific state machine that
  *             combines ContentInstallerFileSystemLoader, DownloadPackageLogic,

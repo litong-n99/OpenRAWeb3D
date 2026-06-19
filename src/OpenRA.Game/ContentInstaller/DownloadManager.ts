@@ -147,19 +147,18 @@ export class DownloadManager {
       onProgress(received, total, finalPercent)
     }
 
-    // Trim buffer to exact size
-    const result = buffer.slice(0, received).buffer.slice(
-      0,
-      received,
-    ) as ArrayBuffer
+    // Trim buffer to exact size (single slice on the ArrayBuffer)
+    const result = buffer.buffer.slice(0, received) as ArrayBuffer
 
     // SHA1 verification
     if (expectedSha1) {
       const ok = await Sha1Verifier.verify(result, expectedSha1)
       if (!ok) {
         const actual = await Sha1Verifier.compute(result)
+        // Prefix with "SHA1_MISMATCH:" so downloadWithRetry can distinguish
+        // permanent (hash mismatch) vs retry-eligible (network) errors.
         throw new Error(
-          `SHA1 mismatch: expected ${expectedSha1}, got ${actual}`,
+          `SHA1_MISMATCH: expected ${expectedSha1}, got ${actual}`,
         )
       }
     }
@@ -211,8 +210,12 @@ export class DownloadManager {
       try {
         return await this.download(url, expectedSha1, onProgress, signal)
       } catch (err) {
-        // If aborted, stop immediately without counting as retry exhaustion
+        // If aborted, stop immediately
         if (err instanceof DOMException && err.name === 'AbortError') {
+          throw err
+        }
+        // SHA1 mismatch is permanent — retrying a different mirror won't help
+        if (err instanceof Error && err.message.startsWith('SHA1_MISMATCH:')) {
           throw err
         }
         lastError = err instanceof Error ? err : new Error(String(err))
