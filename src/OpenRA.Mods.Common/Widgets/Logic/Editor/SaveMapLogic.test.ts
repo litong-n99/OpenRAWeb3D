@@ -470,7 +470,7 @@ describe('SaveMapLogic.SaveMap', () => {
   it('shows overwrite dialog when target path matches existing map', () => {
     // Create MapCache mock that yields a matching map at the target path
     const existingMapPreview = {
-      status: 2, // MapStatus.Available
+      status: 0, // MapStatus.Available (= 0)
       path: '/maps/existing.oramap',
       uid: 'map:/maps/existing.oramap',
     }
@@ -515,7 +515,7 @@ describe('SaveMapLogic.SaveMap', () => {
         uid === 'map:/maps/same-name.oramap' ? recentUid : null,
       ),
       get: vi.fn((key: string) => ({
-        status: 2, // MapStatus.Available
+        status: 0, // MapStatus.Available (= 0)
         path: '/maps/same-name.oramap',
         uid: key,
       })),
