@@ -11,9 +11,16 @@ interface WidgetDef {
 }
 const widgets: Map<string, {def: WidgetDef; el: HTMLDivElement}> = new Map()
 
+// Compute nesting depth from parent chain
+function getDepth(def: WidgetDef): number {
+  let d = 0; let p = def.parent
+  while (p && widgets.has(p)) { d++; p = widgets.get(p)!.def.parent }
+  return d
+}
 function createWidget(def: WidgetDef): void {
   const el = document.createElement('div')
-  el.className = `widget level-${def.parent ? 1 : 0}`
+  const depth = getDepth(def)
+  el.className = `widget level-${Math.min(depth, 4)}`
   el.id = 'w-' + def.id
   el.style.left = def.x + 'px'; el.style.top = def.y + 'px'
   el.style.width = def.width + 'px'; el.style.height = def.height + 'px'
@@ -28,8 +35,6 @@ function clearAll(): void { widgets.forEach(w => w.el.remove()); widgets.clear()
 
 function buildTree3(): void {
   clearAll()
-  // Root
-  widgets.set('root', {def:{id:'root',x:10,y:10,width:600,height:350,margin:5,padding:15,zIndex:1,align:'tl'},el:createWidgetEl({id:'root',x:10,y:10,width:600,height:350,margin:5,padding:15,zIndex:1,align:'tl'})})
   createWidget({id:'root',x:10,y:10,width:600,height:350,margin:5,padding:15,zIndex:1,align:'tl'})
   createWidget({id:'childA',parent:'root',x:20,y:20,width:250,height:280,margin:3,padding:10,zIndex:10,align:'tl'})
   createWidget({id:'childB',parent:'root',x:300,y:20,width:250,height:280,margin:3,padding:10,zIndex:11,align:'center'})
@@ -47,17 +52,6 @@ function buildTree5(): void {
   createWidget({id:'l4',parent:'l3a',x:10,y:10,width:60,height:60,margin:1,padding:2,zIndex:40,align:'center'})
   updateDiag()
 }
-// Helper to create the root widget's element
-function createWidgetEl(def: WidgetDef): HTMLDivElement {
-  const el = document.createElement('div')
-  el.className = `widget level-0`; el.id = 'w-' + def.id
-  el.style.left=def.x+'px';el.style.top=def.y+'px';el.style.width=def.width+'px';el.style.height=def.height+'px'
-  el.style.padding=def.padding+'px';el.style.zIndex=String(def.zIndex)
-  document.getElementById('sandbox')!.appendChild(el)
-  const lbl = document.createElement('div');lbl.className='widget-label';lbl.textContent=`${def.id} (z:${def.zIndex})`;el.appendChild(lbl)
-  return el
-}
-
 function bringChild2ToTop(): void {
   const w = widgets.get('l1b'); if (w) { w.el.style.zIndex = '999'; updateDiag() }
 }
