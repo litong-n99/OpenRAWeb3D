@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turret Rotation — Tracking & Turn Rate | Acceptance Test</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 19px; } #header .sub { color: #a0a0b0; font-size: 12px; margin-top: 3px; }
+    #layout { display: flex; height: calc(100vh - 145px); }
+    #sandbox { flex: 1; } #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #sidebar { width: 250px; padding: 12px; background: #16213e; overflow-y: auto; font-size: 12px; border-left: 1px solid #0f3460; }
+    #sidebar h3 { margin: 8px 0 4px; font-size: 13px; color: #7ec8e3; }
+    #sidebar .r { display: flex; justify-content: space-between; padding: 2px 0; }
+    #sidebar .r .v { color: #ffd966; font-family: monospace; }
+    #controls { padding: 10px 24px; background: #16213e; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    #controls button { padding: 6px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    #controls button:hover { background: #0f3460; }
+    #controls label { font-size: 12px; color: #a0a0b0; }
+    #controls input { padding: 4px 8px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; }
+    #info-bar { padding: 6px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; }
+  </style>
+</head>
+<body>
+  <div id="header"><h1>P2B.2 Turret Rotation — Tracking &amp; Turn Rate</h1><div class="sub">Module: Turreted + AttackTurreted | Smooth rotation, rate limit, target tracking</div></div>
+  <div id="controls">
+    <button id="btnTarget">Set Target (0)</button>
+    <button id="btnTarget90">Set Target (90°)</button>
+    <button id="btnTarget180">Set Target (180°)</button>
+    <button id="btnTarget270">Set Target (270°)</button>
+    <label>Turn Rate: <input id="sldRate" type="range" min="5" max="90" value="25" style="width:70px"> <span id="valRate">25</span>°/t</label>
+    <label>Moving: <input id="chkMoving" type="checkbox"> <span id="lblMoving">OFF</span></label>
+    <button id="btnReset">Reset</button>
+  </div>
+  <div id="layout">
+    <div id="sandbox"><canvas id="renderCanvas"></canvas></div>
+    <div id="sidebar">
+      <h3>Turret 0</h3><div class="r"><span>Angle</span><span class="v" id="dA0">0°</span></div><div class="r"><span>Target</span><span class="v" id="dT0">-</span></div><div class="r"><span>Facing?</span><span class="v" id="dF0">no</span></div>
+      <h3>Turret 1</h3><div class="r"><span>Angle</span><span class="v" id="dA1">0°</span></div><div class="r"><span>Target</span><span class="v" id="dT1">-</span></div><div class="r"><span>Facing?</span><span class="v" id="dF1">no</span></div>
+      <h3>Turn Rate</h3><div class="r"><span>Config</span><span class="v" id="dRate">25°/t</span></div><div class="r"><span>Ticks</span><span class="v" id="dTicks">0</span></div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span><span>VP: <span id="info-viewport">-</span></span><span>Engine: <span id="info-engine">-</span></span><span>FPS: <span id="info-fps">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
