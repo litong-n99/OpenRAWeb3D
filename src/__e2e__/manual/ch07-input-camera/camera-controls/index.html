@@ -147,7 +147,7 @@
         <div style="color:#8f8; margin-bottom:4px;">E1. 坐标系方向</div>
         <div style="color:#aab;">
           红色(+X)标记在白色(原点)<b>右侧</b>。<br>
-          蓝色(+Z)标记在白色(原点)<b>下方</b>。<br>
+          蓝色(+Z)标记在白色(原点)<b>上方</b>（+Z 远离相机=投影到屏幕上方）。<br>
           屏幕右=世界+X ✅
         </div>
         <div style="color:#8f8; margin-bottom:4px; margin-top:6px;">E2. 缩放到光标</div>
@@ -197,7 +197,7 @@
         <div id="overlay-legend">
           <div class="legend-item"><div class="legend-swatch" style="background:#fff;"></div>原点 (WPos 0,0,0)</div>
           <div class="legend-item"><div class="legend-swatch" style="background:#f44;"></div>+X 标记 (世界右)</div>
-          <div class="legend-item"><div class="legend-swatch" style="background:#44f;"></div>+Z 标记 (WPos.Y+ = 南)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#44f;"></div>+Z 标记 (WPos.Y+ = 南，投影到屏幕上方)</div>
           <div class="legend-item"><div class="legend-swatch" style="background:#4f4;"></div>+Y (高度) 标记</div>
           <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,255,255,0.3);"></div>地图边界</div>
           <div class="legend-item"><div class="legend-swatch" style="background:rgba(233,69,96,0.4);"></div>边缘滚屏区域 (15px)</div>
@@ -206,7 +206,7 @@
           <h4>检验清单</h4>
           <ul>
             <li>红色标记在白色标记<b>右侧</b>？</li>
-            <li>蓝色标记在白色标记<b>下方</b>？</li>
+            <li>蓝色标记在白色标记<b>上方</b>？</li>
             <li>滚动缩放时交叉准星处 WPos <span class="metric">±2 su</span>？</li>
             <li>鼠标距边缘 <span class="metric">≤15px</span> 时红色边框出现？</li>
             <li>边界处相机/网格停止，不越界？</li>

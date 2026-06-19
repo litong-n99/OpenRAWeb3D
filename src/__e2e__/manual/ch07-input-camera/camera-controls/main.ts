@@ -470,12 +470,19 @@ function setZoom(factor: number): void {
     camera.orthoBottom = -orthoSize
     camera.orthoLeft = -orthoSize
     camera.orthoRight = orthoSize
+    // Force projection matrix recompute so subsequent pickTerrainAt calls
+    // use the new ortho values, not a cached stale matrix.
+    camera.getProjectionMatrix(true)
   } else {
-    // In perspective mode, smaller radius = more zoomed in
-    camera.radius = 20 / currentZoom
+    // In perspective mode, smaller radius = more zoomed in.
+    // radius=15 at 1x matches orthoTop=6 ground extent more closely
+    // than the original 20, reducing the ortho<->persp shift.
+    camera.radius = 15 / currentZoom
+    camera.getProjectionMatrix(true)
   }
 
   // Clamp camera target to map bounds
+  // (zoomAtCursor will re-clamp after delta correction if applicable)
   camera.target = clampToMapBounds(camera.target)
 
   // Update slider
@@ -490,18 +497,21 @@ function setZoom(factor: number): void {
 function zoomAtCursor(factor: number, screenX: number, screenY: number): void {
   // Record world position under cursor before zoom
   const beforeHit = pickTerrainAt(screenX, screenY)
+  const oldZoom = currentZoom
+  const targetBefore = camera.target.clone()
 
   // Apply zoom
   setZoom(factor)
 
-  // If we have a "before" position, adjust camera target to keep it under cursor
+  // If we have a "before" position, adjust camera target to keep it under cursor.
+  // Use analytic correction: delta = (1 - oldZoom/newZoom) * (beforeHit - target)
+  // This is EXACT for orthographic cameras centered on the target (ArcRotateCamera
+  // always centers its ortho frustum on the look-at target). Avoids the fragile
+  // second pickTerrainAt which depends on camera matrix synchronization timing.
   if (beforeHit) {
-    const afterHit = pickTerrainAt(screenX, screenY)
-    if (afterHit) {
-      // Adjust target so the world position under cursor stays the same
-      const delta = beforeHit.subtract(afterHit)
-      camera.target = clampToMapBounds(camera.target.add(delta))
-    }
+    const scale = 1 - oldZoom / factor
+    const delta = beforeHit.subtract(targetBefore).scale(scale)
+    camera.target = clampToMapBounds(targetBefore.add(delta))
   }
 
   updateCameraStateDisplay()
@@ -540,7 +550,8 @@ document.getElementById('btn-reset-cam')!.addEventListener('click', () => {
 document.getElementById('btn-toggle-mode')!.addEventListener('click', () => {
   if (camera.mode === Camera.ORTHOGRAPHIC_CAMERA) {
     camera.mode = Camera.PERSPECTIVE_CAMERA
-    camera.radius = 20 / currentZoom
+    camera.radius = 15 / currentZoom
+    camera.getProjectionMatrix(true)
   } else {
     camera.mode = Camera.ORTHOGRAPHIC_CAMERA
     const orthoSize = BASE_ORTHO_SIZE / currentZoom
