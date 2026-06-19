@@ -2,7 +2,7 @@
 
 > **Source Reference**: [CLAUDE.md](../CLAUDE.md) — Project Status table, Acceptance Testing section
 > **Audit Date**: 2026-06-19
-> **Current Coverage**: 91 test pages across 17 chapter directories (Ch02-Ch22). P0-A: ✅ (7/7), P0-B: ✅ (4/4), P1-A: ✅ (4/4)
+> **Current Coverage**: 107 test pages across 20 chapter directories (Ch02-Ch22). ALL PHASES P0-P3 COMPLETE ✅
 > **Target**: Comprehensive manual visual acceptance test coverage for all rendering-dependent modules
 >
 > **Important Statement**: Test pages reside under `src/__e2e__/manual/`. The `acceptance-test-assistant` agent owns this directory exclusively. The `acceptance-test-runner` agent executes Playwright automated verification. All test page creation must follow the agent workflow defined in [CLAUDE.md](../CLAUDE.md) and `.claude/agents/acceptance-test-assistant.md`.
