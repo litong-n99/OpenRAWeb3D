@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Button States | Acceptance Test</title>
+<style>
+body{margin:0;font-family:'Segoe UI',system-ui;background:#1a1a2e;color:#eee}
+#header{padding:14px 24px;background:#16213e;border-bottom:1px solid #0f3460}
+#header h1{margin:0;font-size:19px}#header .sub{color:#a0a0b0;font-size:12px;margin-top:3px}
+#sandbox{display:flex;gap:30px;padding:30px;flex-wrap:wrap;align-items:flex-start}
+.btn-group{display:flex;flex-direction:column;gap:12px}
+.btn-group h3{margin:0 0 4px;font-size:13px;color:#7ec8e3}
+.btn{padding:8px 20px;border-radius:4px;border:1px solid #0f3460;background:#1a1a2e;color:#eee;font-size:14px;cursor:pointer;transition:all .15s ease;position:relative}
+.btn:hover{background:#254060;border-color:#3a7bd5}
+.btn:active{background:#0d1520;box-shadow:inset 0 2px 4px rgba(0,0,0,.4)}
+.btn:disabled{background:#1a1a2e;color:#555;cursor:not-allowed;opacity:0.5;border-color:#0a0a1a}
+#info-bar{padding:6px 24px;background:#0f0f1a;font-size:11px;color:#666;display:flex;gap:24px}
+#diag{width:260px;padding:12px;background:#16213e;font-size:12px}
+#diag h3{margin:4px 0;font-size:12px;color:#7ec8e3}
+#diag .r{display:flex;justify-content:space-between;padding:1px 0}
+#diag .r .v{color:#ffd966;font-family:monospace}
+</style></head><body>
+<div id="header"><h1>P3C.1 Button States</h1><div class="sub">Module: ButtonWidget | Hover/Press/Disabled visual states</div></div>
+<div id="sandbox">
+<div class="btn-group"><h3>States</h3>
+<button class="btn" id="btnDefault">Default Button</button>
+<button class="btn" id="btnHover">Hover Me</button>
+<button class="btn" id="btnPress">Press Me</button>
+<button class="btn" disabled id="btnDisabled">Disabled</button>
+</div>
+<div id="diag"><h3>Diagnostics</h3>
+<div class="r"><span>Default BG</span><span class="v" id="dBg">-</span></div>
+<div class="r"><span>Hover BG</span><span class="v" id="dHov">-</span></div>
+<div class="r"><span>Press BG</span><span class="v" id="dPrs">-</span></div>
+<div class="r"><span>Disabled BG</span><span class="v" id="dDis">-</span></div>
+<div class="r"><span>Clickable</span><span class="v" id="dClick">-</span></div>
+<div class="r"><span>Clicks</span><span class="v" id="dCnt">0</span></div>
+</div>
+</div>
+<div id="info-bar"><span>UA: <span id="info-ua">-</span></span><span>VP: <span id="info-viewport">-</span></span><span>T: <span id="info-time">-</span></span></div>
+<script type="module" src="./main.ts"></script>
+</body></html>

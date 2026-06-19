@@ -1,0 +1,38 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Slider Control | Acceptance Test</title>
+<style>
+body{margin:0;font-family:'Segoe UI',system-ui;background:#1a1a2e;color:#eee}
+#header{padding:14px 24px;background:#16213e;border-bottom:1px solid #0f3460}
+#header h1{margin:0;font-size:19px}#header .sub{color:#a0a0b0;font-size:12px;margin-top:3px}
+#sandbox{padding:30px;display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start}
+.slider-group h3{margin:0 0 8px;font-size:13px;color:#7ec8e3}
+.slider-container{position:relative;width:300px;height:40px;display:flex;align-items:center}
+.slider-track{position:absolute;width:100%;height:6px;background:#0f3460;border-radius:3px}
+.slider-fill{position:absolute;height:6px;background:#3a7bd5;border-radius:3px;transition:width .05s}
+.slider-thumb{position:absolute;width:16px;height:16px;background:#7ec8e3;border-radius:50%;top:12px;cursor:grab;transform:translateX(-8px);z-index:1}
+.slider-thumb:active{cursor:grabbing}
+.slider-value{margin-left:16px;font-size:18px;font-family:monospace;color:#ffd966;min-width:60px}
+#info-bar{padding:6px 24px;background:#0f0f1a;font-size:11px;color:#666;display:flex;gap:24px}
+#diag{width:240px;padding:12px;background:#16213e;font-size:12px}
+#diag h3{margin:4px 0;font-size:12px;color:#7ec8e3}
+#diag .r{display:flex;justify-content:space-between;padding:1px 0}
+#diag .r .v{color:#ffd966;font-family:monospace}
+</style></head><body>
+<div id="header"><h1>P3C.2 Slider Control</h1><div class="sub">Module: SliderWidget | Track, Thumb, Step Snap</div></div>
+<div id="sandbox">
+<div class="slider-group"><h3>Volume (0-100, step=5)</h3>
+<div class="slider-container" id="slider">
+<div class="slider-track"></div><div class="slider-fill" id="fill"></div><div class="slider-thumb" id="thumb"></div>
+</div>
+<div class="slider-value" id="val">50</div>
+</div>
+<div id="diag"><h3>Diagnostics</h3>
+<div class="r"><span>Value</span><span class="v" id="dV">50</span></div>
+<div class="r"><span>Thumb X</span><span class="v" id="dX">-</span></div>
+<div class="r"><span>Fill Width</span><span class="v" id="dW">-</span></div>
+<div class="r"><span>Step</span><span class="v" id="dS">5</span></div>
+</div>
+</div>
+<div id="info-bar"><span>UA: <span id="info-ua">-</span></span><span>VP: <span id="info-viewport">-</span></span><span>T: <span id="info-time">-</span></span></div>
+<script type="module" src="./main.ts"></script>
+</body></html>

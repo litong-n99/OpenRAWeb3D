@@ -1,0 +1,46 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Dropdown Menu | Acceptance Test</title>
+<style>
+body{margin:0;font-family:'Segoe UI',system-ui;background:#1a1a2e;color:#eee}
+#header{padding:14px 24px;background:#16213e;border-bottom:1px solid #0f3460}
+#header h1{margin:0;font-size:19px}#header .sub{color:#a0a0b0;font-size:12px;margin-top:3px}
+#sandbox{padding:30px;display:flex;gap:40px;flex-wrap:wrap}
+.dropdown{position:relative;width:220px}
+.dropdown-toggle{padding:8px 14px;background:#1a1a2e;border:1px solid #0f3460;border-radius:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.dropdown-toggle .arrow{transition:transform .2s;font-size:10px}
+.dropdown.open .arrow{transform:rotate(180deg)}
+.dropdown-menu{position:absolute;top:100%;left:0;width:100%;background:#1a1a2e;border:1px solid #0f3460;border-radius:0 0 4px 4px;max-height:0;overflow:hidden;transition:max-height .2s ease;z-index:10;list-style:none;margin:0;padding:0}
+.dropdown.open .dropdown-menu{max-height:200px;overflow-y:auto}
+.dropdown-item{padding:8px 14px;cursor:pointer;font-size:13px;transition:background .1s}
+.dropdown-item:hover{background:#254060}
+.dropdown-item.selected{background:#0f3460;color:#7ec8e3}
+#info-bar{padding:6px 24px;background:#0f0f1a;font-size:11px;color:#666;display:flex;gap:24px}
+#diag{width:220px;padding:12px;background:#16213e;font-size:12px}
+#diag h3{margin:4px 0;font-size:12px;color:#7ec8e3}
+#diag .r{display:flex;justify-content:space-between;padding:1px 0}
+#diag .r .v{color:#ffd966;font-family:monospace}
+</style></head><body>
+<div id="header"><h1>P3C.3 Dropdown Menu</h1><div class="sub">Module: DropDownWidget | Open/close animation, item highlight, scroll</div></div>
+<div id="sandbox">
+<div class="dropdown" id="dd">
+<div class="dropdown-toggle" id="ddToggle"><span id="ddLabel">Select Item</span><span class="arrow">▼</span></div>
+<ul class="dropdown-menu" id="ddMenu">
+<li class="dropdown-item" data-idx="0">Option Alpha</li>
+<li class="dropdown-item" data-idx="1">Option Beta</li>
+<li class="dropdown-item" data-idx="2">Option Gamma</li>
+<li class="dropdown-item" data-idx="3">Option Delta</li>
+<li class="dropdown-item" data-idx="4">Option Epsilon</li>
+<li class="dropdown-item" data-idx="5">Option Zeta</li>
+<li class="dropdown-item" data-idx="6">Option Eta</li>
+<li class="dropdown-item" data-idx="7">Option Theta</li>
+</ul>
+</div>
+<div id="diag"><h3>Diagnostics</h3>
+<div class="r"><span>Open</span><span class="v" id="dOpen">no</span></div>
+<div class="r"><span>Selected</span><span class="v" id="dSel">-</span></div>
+<div class="r"><span>Menu Height</span><span class="v" id="dH">0px</span></div>
+</div>
+</div>
+<div id="info-bar"><span>UA: <span id="info-ua">-</span></span><span>VP: <span id="info-viewport">-</span></span><span>T: <span id="info-time">-</span></span></div>
+<script type="module" src="./main.ts"></script>
+</body></html>
