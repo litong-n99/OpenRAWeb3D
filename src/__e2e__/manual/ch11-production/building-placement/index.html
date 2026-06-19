@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>建筑放置 - Ghost Preview + Grid 验证 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { overscroll-behavior: none; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #app { display: flex; height: 100vh; }
+
+    /* Left Panel */
+    #left-panel {
+      width: 340px; min-width: 340px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 12px; display: flex; flex-direction: column; gap: 8px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0; font-size: 15px; color: #e94560; }
+    #left-panel h3 { margin: 6px 0 2px; font-size: 12px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 2px; }
+    #left-panel .subtitle { color: #a0a0b0; font-size: 11px; }
+
+    #left-panel button {
+      padding: 5px 10px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 11px; cursor: pointer;
+      text-align: center; width: 100%;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.active { background: #0f3460; border-color: #e94560; color: #e94560; font-weight: bold; }
+    #left-panel button.primary { background: #0f3460; border-color: #e94560; color: #e94560; font-weight: bold; }
+    #left-panel button.primary:hover { background: #1a2a4e; }
+
+    .tc-row { display: flex; gap: 4px; align-items: center; }
+    .tc-row button { flex: 1; }
+
+    /* Main Area */
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+
+    /* Viewport */
+    #viewport {
+      flex: 1; position: relative; background: #0d1117;
+      display: flex;
+    }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    /* Expected overlay */
+    #expected-overlay {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22,33,62,0.92); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 12px; font-size: 10px; line-height: 1.4;
+      max-width: 280px; pointer-events: none; user-select: none; z-index: 15;
+    }
+    #expected-overlay h4 { margin: 0 0 4px; color: #8f8; font-size: 11px; }
+    #expected-overlay ul { margin: 3px 0; padding-left: 14px; }
+    #expected-overlay li { margin: 1px 0; }
+    #expected-overlay .metric { color: #aad; font-family: monospace; }
+
+    /* Legend */
+    #overlay-legend {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 8px 12px; font-size: 10px;
+      display: flex; flex-wrap: wrap; gap: 4px 12px; z-index: 15;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-swatch { width: 10px; height: 10px; border-radius: 2px; border: 1px solid #333; flex-shrink: 0; }
+
+    /* Right Panel */
+    #right-panel {
+      width: 320px; min-width: 320px;
+      background: #16213e; border-left: 1px solid #0f3460;
+      padding: 12px; display: flex; flex-direction: column; gap: 8px;
+      overflow-y: auto;
+    }
+    #right-panel h3 { margin: 4px 0; font-size: 12px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 2px; }
+
+    .stat-row { display: flex; justify-content: space-between; font-size: 10px; padding: 2px 4px; border-bottom: 1px solid rgba(15,52,96,0.4); }
+    .stat-label { color: #889; }
+    .stat-value { color: #aab; font-family: 'Consolas', monospace; }
+
+    /* Footprint diagnostic */
+    #footprint-diag { font-family: 'Consolas', monospace; font-size: 10px; line-height: 1.3; }
+    .fp-cell { display: inline-block; width: 22px; height: 22px; text-align: center; line-height: 22px; border-radius: 2px; margin: 1px; font-size: 9px; }
+    .fp-valid { background: rgba(34,139,34,0.5); color: #8f8; border: 1px solid #2a2; }
+    .fp-invalid { background: rgba(200,30,30,0.5); color: #f88; border: 1px solid #d33; }
+    .fp-oob { background: rgba(80,50,10,0.5); color: #d90; border: 1px solid #840; }
+    .fp-passable { background: rgba(100,100,200,0.4); color: #aaf; border: 1px solid #64a; }
+
+    /* Info bar */
+    #info-bar {
+      height: 26px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 16px; align-items: center; padding: 0 12px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+  </style>
+</head>
+<body ondragstart="return false;">
+  <div id="app">
+    <!-- Left Panel -->
+    <div id="left-panel">
+      <h2>A. 建筑放置验收</h2>
+      <div class="subtitle">ID: ch11-production/building-placement | PlaceBuilding + BuildingUtils</div>
+
+      <h3>建筑类型选择</h3>
+      <button id="btn-power-plant" class="active">发电厂 (2x2, solid)</button>
+      <button id="btn-barracks">兵营 (2x2, partial-passable)</button>
+      <button id="btn-turret">防御炮塔 (1x1)</button>
+
+      <h3>操作</h3>
+      <button id="btn-place">🖱 点击放置建筑</button>
+      <button id="btn-rotate">🔄 旋转建筑方向 (R)</button>
+      <button id="btn-reset">↺ 重置所有</button>
+
+      <h3>B. 期望结果</h3>
+      <div style="font-size:10px; line-height:1.5; color:#aab;">
+        <div style="color:#8f8; margin-top:2px;">E1. Ghost 半透明预览</div>
+        <div style="margin-bottom:4px;">
+          Ghost 覆盖层 alpha=<span class="metric">0.50±0.02</span>，
+          跟随鼠标实时移动，无可见延迟
+        </div>
+        <div style="color:#8f8;">E2. Footprint 精确匹配</div>
+        <div style="margin-bottom:4px;">
+          每个 footprint cell 类型与<br>
+          BuildingInfo.footprint Map 完全一致
+        </div>
+        <div style="color:#8f8;">E3. 有效/无效颜色</div>
+        <div style="margin-bottom:4px;">
+          有效=<span class="metric">(0.13,0.55,0.13)±5%</span>
+          无效=<span class="metric">(0.76,0.14,0.14)±5%</span>
+        </div>
+        <div style="color:#8f8;">E4. Grid Snap</div>
+        <div style="margin-bottom:4px;">
+          建筑位置对齐到 cell center<br>
+          偏差 &lt;<span class="metric">0.1wu</span> (世界单位)
+        </div>
+        <div style="color:#8f8;">E5. 旋转循环</div>
+        <div>
+          每次旋转 90° 顺时针循环<br>
+          4 个方向 (0°/90°/180°/270°)
+        </div>
+      </div>
+
+      <div style="margin-top:auto; font-size:9px; color:#445;">
+        鼠标拖拽旋转 | 滚轮缩放<br>
+        12x12 格网 | CELL_SIZE=1.0wu<br>
+        右键点击切换建筑类型
+      </div>
+    </div>
+
+    <!-- Main Area -->
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
+        <div id="overlay-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#268c26;"></div>有效放置 (绿色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#c42424;"></div>无效放置 (红色)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#6464c8;"></div>Passable footprint</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#444;"></div>障碍物/占用</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#d94;"></div>越界 (OOB)</div>
+        </div>
+        <div id="expected-overlay">
+          <h4>检验清单</h4>
+          <ul>
+            <li>E1: Ghost 透明度是否 ~50%？是否会跟随鼠标？</li>
+            <li>E2: 兵营的 passable 格 (蓝色) 是否正确显示？</li>
+            <li>E3: 移至空地=绿色，移至障碍=红色？</li>
+            <li>E4: 放置后 building 是否对齐网格中心？</li>
+            <li>E5: 旋转后 footprint 是否交换宽高？</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Info Bar -->
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+        <span style="color:#667">BuildingUtils.isCellBuildable | BuildingInfo.tiles | CPos grid</span>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div id="right-panel">
+      <h3>C. 实时状态</h3>
+      <div class="stat-row"><span class="stat-label">建筑类型</span><span class="stat-value" id="stat-building-type">-</span></div>
+      <div class="stat-row"><span class="stat-label">Footprint 尺寸</span><span class="stat-value" id="stat-footprint-size">-</span></div>
+      <div class="stat-row"><span class="stat-label">旋转角度</span><span class="stat-value" id="stat-rotation">0°</span></div>
+      <div class="stat-row"><span class="stat-label">悬停 Cell</span><span class="stat-value" id="stat-hover-cell">-</span></div>
+      <div class="stat-row"><span class="stat-label">放置状态</span><span class="stat-value" id="stat-ghost-state">-</span></div>
+      <div class="stat-row"><span class="stat-label">已放置建筑数</span><span class="stat-value" id="stat-placed-count">0</span></div>
+      <div class="stat-row"><span class="stat-label">Ghost 颜色</span><span class="stat-value" id="stat-ghost-color">-</span></div>
+      <div class="stat-row"><span class="stat-label">Snap 偏移 (wu)</span><span class="stat-value" id="stat-snap-offset">-</span></div>
+
+      <h3>D. Footprint 诊断</h3>
+      <div id="footprint-diag" style="min-height:40px;">
+        <div style="color:#667; padding:4px;">移动鼠标到格网上方查看 footprint</div>
+      </div>
+
+      <h3>E. Footprint 单元格列表</h3>
+      <div id="footprint-cells" style="font-family:'Consolas',monospace; font-size:10px; color:#aab; max-height:150px; overflow-y:auto;">
+        <div style="color:#667; padding:4px;">无数据</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

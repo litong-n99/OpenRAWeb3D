@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rally Point - 集结旗帜+线渲染 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #main-layout { display: flex; height: calc(100vh - 180px); }
+    #sandbox { flex: 1; position: relative; min-width: 0; }
+    #sandbox canvas { display: block; }
+    #sidebar { width: 340px; background: #0d1b2e; border-left: 1px solid #0f3460; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    #controls { padding: 10px 16px; background: #16213e; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-top: 1px solid #0f3460; }
+    #controls label { font-size: 12px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input { padding: 6px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active-mode { background: #0f3460; border-color: #4fc3f7; }
+    #controls button[data-slot].active-slot { background: #1a3a5e; border-color: #ffb74d; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; }
+    #info-bar span { white-space: nowrap; }
+    .panel-title { font-size: 12px; font-weight: 600; color: #4fc3f7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .diag-row { display: flex; gap: 8px; font-size: 11px; padding: 3px 0; border-bottom: 1px solid #1a2740; font-family: 'Consolas', monospace; }
+    .diag-label { color: #888; width: 90px; flex-shrink: 0; }
+    .diag-value { color: #ccc; }
+    .diag-value.highlight { color: #4fc3f7; font-weight: 600; }
+    .slot-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    .mode-hint { font-size: 10px; color: #ffb74d; padding: 6px 0; }
+    .mode-hint.active { color: #81c784; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Rally Point — 集结点旗帜 + 虚线渲染</h1>
+    <div class="subtitle">ID: ch11-production/rally-point | 期望结果见 README.md | 单击地面放置集结点</div>
+  </div>
+  <div id="main-layout">
+    <div id="sandbox">
+      <canvas id="renderCanvas"></canvas>
+    </div>
+    <div id="sidebar">
+      <div>
+        <div class="panel-title">Building Selection</div>
+        <div style="margin-bottom: 6px;">
+          <select id="building-select" style="width:100%; padding:4px 8px; border-radius:4px; border:1px solid #0f3460; background:#1a1a2e; color:#eee; font-size:12px;">
+            <option value="barracks">Barracks (蓝)</option>
+            <option value="warfactory">War Factory (绿)</option>
+            <option value="navalyard">Naval Yard (橙)</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div class="panel-title">Production Slot</div>
+        <div style="display:flex; gap:6px;">
+          <button data-slot="1" class="active-slot" id="slot-1">Slot 1</button>
+          <button data-slot="2" id="slot-2">Slot 2</button>
+          <button data-slot="3" id="slot-3">Slot 3</button>
+        </div>
+      </div>
+      <div>
+        <div class="panel-title">Placement Mode</div>
+        <div class="mode-hint" id="mode-hint">Click on the ground grid to place rally point</div>
+      </div>
+      <div>
+        <div class="panel-title">Diagnostics</div>
+        <div class="diag-row"><span class="diag-label">Active Bldg</span><span class="diag-value highlight" id="diag-bldg">-</span></div>
+        <div class="diag-row"><span class="diag-label">Active Slot</span><span class="diag-value" id="diag-slot">-</span></div>
+        <div class="diag-row"><span class="diag-label">Flag Cell</span><span class="diag-value" id="diag-cell">-</span></div>
+        <div class="diag-row"><span class="diag-label">Flag 3D Pos</span><span class="diag-value" id="diag-position">-</span></div>
+        <div class="diag-row"><span class="diag-label">Dash Segs</span><span class="diag-value" id="diag-dashes">-</span></div>
+        <div class="diag-row"><span class="diag-label">Total Flags</span><span class="diag-value" id="diag-flagcount">-</span></div>
+        <div class="diag-row"><span class="diag-label">Frame #</span><span class="diag-value" id="diag-frame">-</span></div>
+        <div class="diag-row"><span class="diag-label">Last Update</span><span class="diag-value" id="diag-lastupdate">-</span></div>
+      </div>
+      <div>
+        <div class="panel-title">Legend</div>
+        <div style="font-size:10px; color:#888; line-height:1.7;">
+          <span class="slot-indicator" style="background:#ff4444;"></span> Slot 1 flag<br>
+          <span class="slot-indicator" style="background:#ffaa00;"></span> Slot 2 flag<br>
+          <span class="slot-indicator" style="background:#44ff44;"></span> Slot 3 flag<br>
+          <span style="color:#4fc3f7;">---</span> 虚线: building exit → flag<br>
+          <span style="color:#888;">□</span> 彩色方块: 建筑物
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="controls">
+    <select id="building-select-bottom" style="padding:6px 14px; border-radius:4px; border:1px solid #0f3460; background:#1a1a2e; color:#eee; font-size:13px; cursor:pointer;">
+      <option value="barracks">Barracks</option>
+      <option value="warfactory">War Factory</option>
+      <option value="navalyard">Naval Yard</option>
+    </select>
+    <span style="color:#555;">|</span>
+    <button data-slot="1" class="active-slot" id="slot-1-b">Slot 1</button>
+    <button data-slot="2" id="slot-2-b">Slot 2</button>
+    <button data-slot="3" id="slot-3-b">Slot 3</button>
+    <span style="color:#555;">|</span>
+    <button id="btn-clear-building">Clear Building</button>
+    <button id="btn-clear-all">Clear All</button>
+    <button id="btn-reset">Reset Scene</button>
+    <span style="color:#555;">|</span>
+    <label for="anim-speed">Flag Anim:</label>
+    <input type="range" id="anim-speed" min="0.5" max="3" step="0.1" value="1.5" style="width:80px;">
+    <span id="anim-speed-val" style="font-size:11px; color:#888;">1.5</span>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>Viewport: <span id="info-viewport">-</span></span>
+    <span>Engine: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>Time: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
