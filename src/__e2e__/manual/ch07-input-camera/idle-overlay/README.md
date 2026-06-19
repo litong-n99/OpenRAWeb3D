@@ -4,7 +4,7 @@
 **Test Case ID**: `ch07-input-camera/idle-overlay`
 **OpenRA Source**: `OpenRA.Mods.Common/Traits/Render/WithIdleOverlay.cs`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Traits/Render/WithIdleOverlay.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 审核通过 (Review R1 — 3 MAJOR fixed)
 
 ---
 

@@ -309,9 +309,9 @@ function updateOverlayAnimation(deltaMs: number): void {
   // Rotate the ring in opposite direction
   overlayRing.rotation.z -= deltaMs * 0.001 * 1.5
 
-  // Color pulse: vary emissive intensity
+  // Color pulse: vary emissive intensity (pre-allocated _emissiveTemp)
   const emissiveIntensity = 0.5 + 0.5 * Math.sin(animTime * 3.0)
-  overlayMat.emissiveColor = new Color3(
+  overlayMat.emissiveColor = _emissiveTemp.set(
     0.8 * emissiveIntensity,
     0.6 * emissiveIntensity,
     0.0,
@@ -588,6 +588,8 @@ function updateInfoBar(): void {
 let totalTicksElapsed = 0
 let lastTickTime = performance.now()
 let dtAccum = 0
+// Pre-allocated for hot-path mutation (MAJOR fix: no per-frame allocation)
+const _emissiveTemp = new Color3()
 
 engine.runRenderLoop(() => {
   const now = performance.now()
@@ -671,6 +673,7 @@ window.addEventListener('keydown', (event) => {
     actorIdle = false
     lastBusyTransitionTick = totalTicksElapsed
     applyOverlayVisibility()
+    overlayHiddenAtTick = totalTicksElapsed  // MAJOR fix: harness needs immediate timestamp for latency measurement
     updateUI()
     return { actorIdle: false, overlayVisible: isOverlayVisible() }
   },

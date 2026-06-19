@@ -390,11 +390,17 @@ function colorToHex(c: Color3): string {
   return `${r}${g}${b}`
 }
 
+const _hexColorCache = new Map<string, Color3>()
 function hexToColor3(hex: string): Color3 {
-  const r = parseInt(hex.slice(0, 2), 16) / 255
-  const g = parseInt(hex.slice(2, 4), 16) / 255
-  const b = parseInt(hex.slice(4, 6), 16) / 255
-  return new Color3(r, g, b)
+  let c = _hexColorCache.get(hex)
+  if (!c) {
+    const r = parseInt(hex.slice(0, 2), 16) / 255
+    const g = parseInt(hex.slice(2, 4), 16) / 255
+    const b = parseInt(hex.slice(4, 6), 16) / 255
+    c = new Color3(r, g, b)
+    _hexColorCache.set(hex, c)
+  }
+  return c
 }
 
 function getOrCreateTintedMaterial(color: Color3): StandardMaterial {
@@ -519,7 +525,7 @@ function updateParticles(dt: number): void {
       const age = now - p.birthTime
       const remainingRatio = 1 - age / p.lifetime
       if (remainingRatio < 0.2 && p.mesh.material) {
-        p.mesh.material.alpha = Math.max(0, remainingRatio / 0.2) * getCurrentMaterial().alpha
+        p.mesh.material.alpha = Math.max(0, Math.min(1, remainingRatio / 0.2)) * getCurrentMaterial().alpha
       }
     }
 

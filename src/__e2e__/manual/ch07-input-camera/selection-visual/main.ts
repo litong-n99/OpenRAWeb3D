@@ -61,6 +61,7 @@ interface TestActor {
   hpPct: number    // 0.0 - 1.0
   priority: number
   radius: number   // body radius in Babylon units
+  selectionClass: string  // BLOCKER fix: group for double-click select-all-same-type
 
   // Babylon.js meshes
   body: Mesh
@@ -157,6 +158,7 @@ function createActor(
   priority: number,
   radius: number,
   bodyType: 'sphere' | 'box',
+  selectionClass: string,  // BLOCKER fix: for double-click select-all-same-type
 ): TestActor {
   // Body mesh
   let body: Mesh
@@ -271,7 +273,7 @@ function createActor(
   boundsFrame.isPickable = false
 
   const actor: TestActor = {
-    id, label, position: pos.clone(), bodyColor, hpPct, priority, radius,
+    id, label, position: pos.clone(), bodyColor, hpPct, priority, radius, selectionClass,
     body, groundLabel: labelDisc, selectionRing: ring,
     healthBarBg: hbBg, healthBarFill: hbFill, boundsFrame,
   }
@@ -284,14 +286,14 @@ function createActor(
 // ---------------------------------------------------------------------------
 
 // Marines (infantry) — red-ish spheres, smaller, priority 10
-createActor('marine_a', '陆战队员 A', new Vector3(3, 0.3, 3), new Color3(0.88, 0.19, 0.19), 1.00, 10, 0.35, 'sphere')
-createActor('marine_b', '陆战队员 B', new Vector3(5, 0.3, 3), new Color3(0.88, 0.19, 0.19), 0.75, 10, 0.35, 'sphere')
-createActor('marine_c', '陆战队员 C', new Vector3(7, 0.3, 3), new Color3(0.88, 0.19, 0.19), 1.00, 10, 0.35, 'sphere')
-createActor('marine_d', '陆战队员 D', new Vector3(3, 0.3, 6), new Color3(0.88, 0.19, 0.19), 0.25, 10, 0.35, 'sphere')
+createActor('marine_a', '陆战队员 A', new Vector3(3, 0.3, 3), new Color3(0.88, 0.19, 0.19), 1.00, 10, 0.35, 'sphere', 'infantry')
+createActor('marine_b', '陆战队员 B', new Vector3(5, 0.3, 3), new Color3(0.88, 0.19, 0.19), 0.75, 10, 0.35, 'sphere', 'infantry')
+createActor('marine_c', '陆战队员 C', new Vector3(7, 0.3, 3), new Color3(0.88, 0.19, 0.19), 1.00, 10, 0.35, 'sphere', 'infantry')
+createActor('marine_d', '陆战队员 D', new Vector3(3, 0.3, 6), new Color3(0.88, 0.19, 0.19), 0.25, 10, 0.35, 'sphere', 'infantry')
 
 // Tanks (vehicles) — blue-ish boxes, larger, priority 50
-createActor('tank_alpha', '坦克 Alpha', new Vector3(5, 0.35, 6), new Color3(0.19, 0.25, 0.88), 1.00, 50, 0.65, 'box')
-createActor('tank_beta', '坦克 Beta', new Vector3(7, 0.35, 6), new Color3(0.19, 0.25, 0.88), 0.50, 50, 0.65, 'box')
+createActor('tank_alpha', '坦克 Alpha', new Vector3(5, 0.35, 6), new Color3(0.19, 0.25, 0.88), 1.00, 50, 0.65, 'box', 'vehicle')
+createActor('tank_beta', '坦克 Beta', new Vector3(7, 0.35, 6), new Color3(0.19, 0.25, 0.88), 0.50, 50, 0.65, 'box', 'vehicle')
 
 // ---------------------------------------------------------------------------
 // Selection State
@@ -305,6 +307,13 @@ let healthBarsVisible = true
 // Modifier tracking
 let shiftHeld = false
 let ctrlHeld = false
+
+// Double-click state (BLOCKER fix: select-all-same-type on dblclick)
+let lastClickTime = 0
+let lastClickX = 0
+let lastClickY = 0
+const DBLCLICK_INTERVAL_MS = 300
+const DBLCLICK_RADIUS_PX = 5
 
 // Drag state
 let isDragging = false
@@ -351,6 +360,7 @@ function deselectActor(actorId: string, source: string = 'click'): void {
 
 function clearSelection(source: string = 'clear'): void {
   if (selectedActors.size === 0) return
+  const prevCount = selectedActors.size  // MAJOR fix: capture before clear
   for (const actorId of selectedActors) {
     const actor = actors.find(a => a.id === actorId)
     if (actor) {
@@ -358,7 +368,7 @@ function clearSelection(source: string = 'clear'): void {
     }
   }
   selectedActors.clear()
-  logEvent('deselect', `${source}: 清除所有 (${selectedActors.size}→0)`)
+  logEvent('deselect', `${source}: 清除所有 (${prevCount}→0)`)
   updateSelectionUI()
 }
 
@@ -370,6 +380,19 @@ function selectAll(source: string = 'selectAll'): void {
     }
   }
   logEvent('select', `${source}: 全选 (${actors.length})`)
+  updateSelectionUI()
+}
+
+/** BLOCKER fix: Double-click selects all actors of the same selectionClass */
+function selectAllOfSameClass(targetClass: string, source: string = 'dblclick'): void {
+  const matching = actors.filter(a => a.selectionClass === targetClass)
+  for (const actor of matching) {
+    if (!selectedActors.has(actor.id)) {
+      selectedActors.add(actor.id)
+      setActorSelected(actor, true)
+    }
+  }
+  logEvent('select', `${source}: 全选同类 '${targetClass}' (${matching.length})`)
   updateSelectionUI()
 }
 
@@ -554,16 +577,30 @@ canvas.addEventListener('pointerup', (event: PointerEvent) => {
     const hits = getActorsAtPoint(dragStartX, dragStartY)
     if (hits.length > 0) {
       const actor = hits[0] // highest priority would be selected by SelectionUtils
-      if (shiftHeld) {
+
+      // BLOCKER fix: double-click detection for select-all-same-type
+      const now = performance.now()
+      const isDoubleClick =
+        now - lastClickTime < DBLCLICK_INTERVAL_MS &&
+        Math.abs(dragStartX - lastClickX) < DBLCLICK_RADIUS_PX &&
+        Math.abs(dragStartY - lastClickY) < DBLCLICK_RADIUS_PX
+
+      if (isDoubleClick) {
+        selectAllOfSameClass(actor.selectionClass, 'dblclick')
+        lastClickTime = 0 // reset to prevent triple-click cascade
+      } else if (shiftHeld) {
         toggleActorSelection(actor.id)
       } else {
         // Clear existing and select new (single select)
         clearSelection('click')
         selectActor(actor.id, 'click')
       }
+
+      lastClickTime = now; lastClickX = dragStartX; lastClickY = dragStartY
     } else {
       // Click on empty ground → clear all
       clearSelection('空地点击')
+      lastClickTime = 0
     }
   } else {
     // Drag box selection
