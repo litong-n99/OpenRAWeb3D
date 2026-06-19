@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gravity Bomb - 重力炸弹弹道 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #main-layout { display: flex; height: calc(100vh - 180px); }
+    #sandbox { flex: 1; position: relative; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; }
+    #sidebar { width: 360px; background: #0d1b2e; border-left: 1px solid #0f3460; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    #controls { padding: 10px 16px; background: #16213e; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-top: 1px solid #0f3460; }
+    #controls label { font-size: 12px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input { padding: 6px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    #controls button:hover { background: #0f3460; }
+    #controls button.primary { background: #1565c0; border-color: #42a5f5; font-weight: 600; }
+    #controls button.primary:hover { background: #1976d2; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; }
+    #info-bar span { white-space: nowrap; }
+    .panel-title { font-size: 12px; font-weight: 600; color: #42a5f5; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .diag-row { display: flex; gap: 8px; font-size: 11px; padding: 3px 0; border-bottom: 1px solid #1a2740; font-family: 'Consolas', monospace; }
+    .diag-label { color: #888; width: 115px; flex-shrink: 0; }
+    .diag-value { color: #ccc; }
+    .diag-value.highlight { color: #ff9800; font-weight: 600; }
+    .log-container { max-height: 160px; overflow-y: auto; font-size: 10px; font-family: 'Consolas', monospace; background: #0a0f1a; border-radius: 4px; padding: 6px; }
+    .log-row { padding: 2px 4px; border-bottom: 1px solid #111; }
+    .log-tick { color: #666; margin-right: 6px; }
+    .log-info { color: #4fc3f7; }
+    .log-impact { color: #ef5350; }
+    .config-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+    .config-row label { color: #a0a0b0; font-size: 10px; width: 72px; flex-shrink: 0; font-family: 'Consolas', monospace; }
+    .config-row input[type="range"] { flex: 1; accent-color: #42a5f5; }
+    .config-row .val { color: #64b5f6; font-size: 10px; width: 85px; text-align: right; font-family: 'Consolas', monospace; }
+    .legend { font-size: 10px; color: #888; line-height: 1.5; }
+    .legend-box { width: 10px; height: 10px; display: inline-block; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Gravity Bomb — 重力炸弹弹道（Euler 积分 + 抛物轨迹）</h1>
+    <div class="subtitle">ID: ch08-weapons-combat/gravity-bomb-3d | 期望结果见 README.md | WAngle 0=北 CCW</div>
+  </div>
+  <div id="main-layout">
+    <div id="sandbox">
+      <canvas id="renderCanvas"></canvas>
+    </div>
+    <div id="sidebar">
+      <div>
+        <div class="panel-title">Bomb Diagnostics</div>
+        <div class="diag-row"><span class="diag-label">Tick</span><span class="diag-value" id="diag-tick">-</span></div>
+        <div class="diag-row"><span class="diag-label">Position (WPos)</span><span class="diag-value" id="diag-pos">-</span></div>
+        <div class="diag-row"><span class="diag-label">Velocity (WVec)</span><span class="diag-value" id="diag-vel">-</span></div>
+        <div class="diag-row"><span class="diag-label">Altitude (Z)</span><span class="diag-value" id="diag-altitude">-</span></div>
+        <div class="diag-row"><span class="diag-label">Target Ground Z</span><span class="diag-value" id="diag-ground">-</span></div>
+        <div class="diag-row"><span class="diag-label">Horiz Speed (XY)</span><span class="diag-value" id="diag-hv">-</span></div>
+        <div class="diag-row"><span class="diag-label">Status</span><span class="diag-value" id="diag-status">IDLE</span></div>
+        <div class="diag-row"><span class="diag-label">Impact Count</span><span class="diag-value" id="diag-impact-count">0</span></div>
+      </div>
+      <div>
+        <div class="panel-title">Config (next drop)</div>
+        <div class="config-row">
+          <label>Vel X</label>
+          <input type="range" id="config-velx" min="128" max="768" value="384" step="32">
+          <span class="val" id="val-velx">384 su/t</span>
+        </div>
+        <div class="config-row">
+          <label>Vel Y</label>
+          <input type="range" id="config-vely" min="-256" max="256" value="0" step="32">
+          <span class="val" id="val-vely">0 su/t</span>
+        </div>
+        <div class="config-row">
+          <label>Accel Z</label>
+          <input type="range" id="config-accz" min="-30" max="-3" value="-15" step="1">
+          <span class="val" id="val-accz">-15 su/t²</span>
+        </div>
+        <div class="config-row">
+          <label>Altitude</label>
+          <input type="range" id="config-alt" min="512" max="4096" value="2048" step="64">
+          <span class="val" id="val-alt">2048 su (4.00 wu)</span>
+        </div>
+        <div class="config-row">
+          <label>Target X</label>
+          <input type="range" id="config-targetx" min="2048" max="16384" value="8192" step="256">
+          <span class="val" id="val-targetx">8192 su (8.00 wu)</span>
+        </div>
+      </div>
+      <div>
+        <div class="panel-title">3D Scene Legend</div>
+        <div class="legend">
+          <span class="legend-box" style="background:#4dc8ff;"></span> Source marker (drop point, at altitude)
+          <span class="legend-box" style="background:#ff3333;"></span> Target ring (on ground plane)
+          <span class="legend-box" style="background:#e69926;"></span> Bomb sphere + trail (trajectory)
+          <span class="legend-box" style="background:#ff991a;"></span> Impact flash (detonation)
+        </div>
+      </div>
+      <div>
+        <div class="panel-title">Event Log</div>
+        <div class="log-container" id="event-log">
+          <div class="log-row log-info">Ready. Configure bomb parameters and press FIRE BOMB.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="controls">
+    <button class="primary" id="btn-fire">FIRE BOMB</button>
+    <span style="color:#555;">|</span>
+    <span style="font-size:10px; color:#888;">Drop altitude → parabolic arc → ground impact</span>
+    <span style="color:#555;">|</span>
+    <span style="font-size:10px; color:#888;">Blue sphere = source (high) | Red ring = target (ground) | Orange sphere = bomb</span>
+    <span style="color:#555; margin-left:auto;">|</span>
+    <button id="btn-reset" style="border-left: 3px solid #666;">Reset Scene</button>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>Viewport: <span id="info-viewport">-</span></span>
+    <span>Engine: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>Time: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

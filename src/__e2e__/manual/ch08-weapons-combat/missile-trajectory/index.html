@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Missile Trajectory - 导弹弹道 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #main-layout { display: flex; height: calc(100vh - 180px); }
+    #sandbox { flex: 1; position: relative; min-width: 0; }
+    #sandbox canvas { display: block; }
+    #sidebar { width: 340px; background: #0d1b2e; border-left: 1px solid #0f3460; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    #controls { padding: 10px 16px; background: #16213e; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-top: 1px solid #0f3460; }
+    #controls label { font-size: 12px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input { padding: 6px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    #controls button:hover { background: #0f3460; }
+    #controls button.active-mode { background: #0f3460; border-color: #4fc3f7; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; }
+    #info-bar span { white-space: nowrap; }
+    .panel-title { font-size: 12px; font-weight: 600; color: #4fc3f7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .diag-row { display: flex; gap: 8px; font-size: 11px; padding: 3px 0; border-bottom: 1px solid #1a2740; font-family: 'Consolas', monospace; }
+    .diag-label { color: #888; width: 80px; flex-shrink: 0; }
+    .diag-value { color: #ccc; }
+    .diag-value.highlight { color: #4fc3f7; font-weight: 600; }
+    .log-container { max-height: 200px; overflow-y: auto; font-size: 10px; font-family: 'Consolas', monospace; background: #0a0f1a; border-radius: 4px; padding: 6px; }
+    .log-row { padding: 2px 4px; border-bottom: 1px solid #111; }
+    .log-tick { color: #666; margin-right: 6px; }
+    .log-info { color: #4fc3f7; }
+    .log-state { color: #ffb74d; }
+    .log-impact { color: #ef5350; }
+    .log-dispose { color: #81c784; }
+    .log-error { color: #ef5350; }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 10px; color: #888; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+    button.mode-btn { min-width: 90px; }
+    button.mode-btn[data-mode="straight"] { border-left: 3px solid #4fc3f7; }
+    button.mode-btn[data-mode="homing"] { border-left: 3px solid #ffb74d; }
+    button.mode-btn[data-mode="arcing"] { border-left: 3px solid #ef5350; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Missile Trajectory — 导弹弹道可视化</h1>
+    <div class="subtitle">ID: ch08-weapons-combat/missile-trajectory | 期望结果见 README.md | 坐标系: WAngle 0=北 CCW</div>
+  </div>
+  <div id="main-layout">
+    <div id="sandbox">
+      <canvas id="renderCanvas"></canvas>
+    </div>
+    <div id="sidebar">
+      <div>
+        <div class="panel-title">Diagnostics</div>
+        <div class="diag-row"><span class="diag-label">Flight Mode</span><span class="diag-value highlight" id="diag-mode">-</span></div>
+        <div class="diag-row"><span class="diag-label">State</span><span class="diag-value" id="diag-state">-</span></div>
+        <div class="diag-row"><span class="diag-label">Position</span><span class="diag-value" id="diag-pos">-</span></div>
+        <div class="diag-row"><span class="diag-label">Angle (h/v)</span><span class="diag-value" id="diag-angle">-</span></div>
+        <div class="diag-row"><span class="diag-label">Distance</span><span class="diag-value" id="diag-dist">-</span></div>
+        <div class="diag-row"><span class="diag-label">Trail Length</span><span class="diag-value" id="diag-trail">-</span></div>
+        <div class="diag-row"><span class="diag-label">Ticks</span><span class="diag-value" id="diag-ticks">-</span></div>
+        <div class="diag-row"><span class="diag-label">Destroyed</span><span class="diag-value" id="diag-destroyed">-</span></div>
+      </div>
+      <div>
+        <div class="panel-title">Flight Mode Summary</div>
+        <div style="font-size:10px; color:#888; line-height:1.6;">
+          <span class="legend-dot" style="background:#4fc3f7;"></span> Straight: homing=off, gravity=0<br>
+          <span class="legend-dot" style="background:#ffb74d;"></span> Homing: tracks moving target, turn rate limited<br>
+          <span class="legend-dot" style="background:#ef5350;"></span> Arcing: ballistic arc, gravity=10
+        </div>
+      </div>
+      <div>
+        <div class="panel-title">Event Log</div>
+        <div class="log-container" id="event-log">
+          <div class="log-row log-info">Ready. Press a fire button to launch missile.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="controls">
+    <button class="mode-btn" data-mode="straight" id="btn-straight">Straight</button>
+    <button class="mode-btn" data-mode="homing" id="btn-homing">Homing</button>
+    <button class="mode-btn" data-mode="arcing" id="btn-arcing">Arcing</button>
+    <span style="color:#555;">|</span>
+    <label for="target-speed">Target Speed:</label>
+    <input type="range" id="target-speed" min="0" max="3" step="0.1" value="0.8" style="width:100px;">
+    <span id="target-speed-val" style="font-size:11px; color:#888;">0.8</span>
+    <span style="color:#555;">|</span>
+    <button id="btn-reset" style="border-left: 3px solid #888;">Reset Scene</button>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>Viewport: <span id="info-viewport">-</span></span>
+    <span>Engine: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>Time: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

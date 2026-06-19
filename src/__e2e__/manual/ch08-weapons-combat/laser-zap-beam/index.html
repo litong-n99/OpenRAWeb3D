@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laser Zap Beam - 激光光束 | 人工验收</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #header { padding: 16px 24px; background: #16213e; border-bottom: 1px solid #0f3460; }
+    #header h1 { margin: 0; font-size: 20px; }
+    #header .subtitle { color: #a0a0b0; font-size: 13px; margin-top: 4px; }
+    #main-layout { display: flex; height: calc(100vh - 175px); }
+    #sandbox { flex: 1; position: relative; min-width: 0; }
+    #sandbox canvas { display: block; }
+    #sidebar { width: 340px; background: #0d1b2e; border-left: 1px solid #0f3460; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    #controls { padding: 10px 16px; background: #16213e; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-top: 1px solid #0f3460; }
+    #controls label { font-size: 12px; color: #a0a0b0; }
+    #controls button, #controls select, #controls input { padding: 6px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    #controls button:hover { background: #0f3460; }
+    #controls button.primary { background: #0f3460; border-color: #4fc3f7; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; }
+    #info-bar span { white-space: nowrap; }
+    .panel-title { font-size: 12px; font-weight: 600; color: #4fc3f7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .diag-row { display: flex; gap: 8px; font-size: 11px; padding: 3px 0; border-bottom: 1px solid #1a2740; font-family: 'Consolas', monospace; }
+    .diag-label { color: #888; width: 105px; flex-shrink: 0; }
+    .diag-value { color: #ccc; }
+    .diag-value.highlight { color: #4fc3f7; font-weight: 600; }
+    .log-container { max-height: 180px; overflow-y: auto; font-size: 10px; font-family: 'Consolas', monospace; background: #0a0f1a; border-radius: 4px; padding: 6px; }
+    .log-row { padding: 2px 4px; border-bottom: 1px solid #111; }
+    .log-tick { color: #666; margin-right: 6px; }
+    .log-info { color: #4fc3f7; }
+    .log-impact { color: #ef5350; }
+    .log-dispose { color: #81c784; }
+    .color-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 4px; border: 1px solid #333; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #a0a0b0; }
+    .toggle-row input[type="checkbox"] { accent-color: #4fc3f7; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Laser Zap Beam — 激光光束可视化</h1>
+    <div class="subtitle">ID: ch08-weapons-combat/laser-zap-beam | 期望结果见 README.md | WAngle 0=北 CCW</div>
+  </div>
+  <div id="main-layout">
+    <div id="sandbox">
+      <canvas id="renderCanvas"></canvas>
+    </div>
+    <div id="sidebar">
+      <div>
+        <div class="panel-title">Beam Diagnostics</div>
+        <div class="diag-row"><span class="diag-label">Beam Visible</span><span class="diag-value highlight" id="diag-visible">-</span></div>
+        <div class="diag-row"><span class="diag-label">Beam Alpha</span><span class="diag-value" id="diag-alpha">-</span></div>
+        <div class="diag-row"><span class="diag-label">Ticks Remaining</span><span class="diag-value" id="diag-remaining">-</span></div>
+        <div class="diag-row"><span class="diag-label">Width (wu / px)</span><span class="diag-value" id="diag-width">-</span></div>
+        <div class="diag-row"><span class="diag-label">Color (RGB)</span><span class="diag-value" id="diag-color">-</span></div>
+        <div class="diag-row"><span class="diag-label">Tracking</span><span class="diag-value" id="diag-tracking">-</span></div>
+        <div class="diag-row"><span class="diag-label">Source → Target</span><span class="diag-value" id="diag-endpoints">-</span></div>
+        <div class="diag-row"><span class="diag-label">Impact Count</span><span class="diag-value" id="diag-impacts">-</span></div>
+        <div class="diag-row"><span class="diag-label">Destroyed</span><span class="diag-value" id="diag-destroyed">-</span></div>
+      </div>
+      <div>
+        <div class="panel-title">Event Log</div>
+        <div class="log-container" id="event-log">
+          <div class="log-row log-info">Ready. Configure beam settings and press Fire.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="controls">
+    <button class="primary" id="btn-fire">Fire Laser</button>
+    <span style="color:#555;">|</span>
+    <label for="player-color">Color:</label>
+    <select id="player-color">
+      <option value="255,0,0">Red</option>
+      <option value="0,100,255">Blue</option>
+      <option value="0,255,100">Green</option>
+      <option value="255,255,100">Yellow</option>
+      <option value="255,128,0">Orange</option>
+      <option value="200,100,255">Purple</option>
+    </select>
+    <span style="color:#555;">|</span>
+    <label class="toggle-row"><input type="checkbox" id="toggle-track" checked> Track Target</label>
+    <label class="toggle-row"><input type="checkbox" id="toggle-moving"> Moving Target</label>
+    <label class="toggle-row"><input type="checkbox" id="toggle-secondary"> 2nd Beam</label>
+    <span style="color:#555;">|</span>
+    <label for="beam-width">Width:</label>
+    <input type="range" id="beam-width" min="1" max="20" value="8" style="width:80px;">
+    <span id="beam-width-val" style="font-size:11px; color:#888;">86 wu</span>
+    <span style="color:#555;">|</span>
+    <label for="beam-duration">Duration:</label>
+    <input type="range" id="beam-duration" min="3" max="40" value="15" style="width:80px;">
+    <span id="beam-duration-val" style="font-size:11px; color:#888;">15 t</span>
+    <span style="color:#555;">|</span>
+    <button id="btn-reset">Reset</button>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>Viewport: <span id="info-viewport">-</span></span>
+    <span>Engine: <span id="info-engine">-</span></span>
+    <span>FPS: <span id="info-fps">-</span></span>
+    <span>Time: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
