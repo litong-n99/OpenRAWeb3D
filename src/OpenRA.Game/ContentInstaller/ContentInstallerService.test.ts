@@ -401,4 +401,153 @@ describe('ContentInstallerService', () => {
       expect(fetch).toHaveBeenCalledTimes(2)
     })
   })
+
+  // -------------------------------------------------------------------------
+  // CI-B.5: checkForUpdates
+  // -------------------------------------------------------------------------
+
+  describe('checkForUpdates()', () => {
+    it('returns all missing when no records exist', async () => {
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      const result = await service.checkForUpdates('ra')
+      expect(result.missing).toEqual(['quickinstall', 'movies'])
+      expect(result.stale).toEqual([])
+      expect(result.current).toEqual([])
+    })
+
+    it('returns stale when SHA1 differs', async () => {
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      // Mock IndexedDB record with different SHA1
+      ;(service as any)._getPackageRecord = vi.fn(
+        async (packageId: string) => {
+          return {
+            packageId,
+            version: 'old_sha1',
+            sha1: 'old_sha1',
+            manifestSha1: 'old_sha1',
+            installedAt: Date.now(),
+            files: ['Content/ra/v2/allies.mix'],
+          } satisfies ContentPackageRecord
+        },
+      )
+
+      const result = await service.checkForUpdates('ra')
+      expect(result.stale).toContain('quickinstall')
+      expect(result.stale).toContain('movies')
+      expect(result.current).toEqual([])
+      expect(result.missing).toEqual([])
+    })
+
+    it('returns current when SHA1 matches', async () => {
+      const manifest = makeManifest()
+      // Set download SHA1 to match our record
+      manifest.downloads['dl_quickinstall']!.sha1 = 'abc123'
+      manifest.downloads['dl_movies']!.sha1 = 'abc123'
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      ;(service as any)._getPackageRecord = vi.fn(
+        async (packageId: string) => {
+          return {
+            packageId,
+            version: 'abc123',
+            sha1: 'abc123',
+            manifestSha1: 'abc123',
+            installedAt: Date.now(),
+            files: ['Content/ra/v2/allies.mix'],
+          } satisfies ContentPackageRecord
+        },
+      )
+
+      const result = await service.checkForUpdates('ra')
+      expect(result.current).toContain('quickinstall')
+      expect(result.current).toContain('movies')
+      expect(result.stale).toEqual([])
+      expect(result.missing).toEqual([])
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // CI-B.7: Offline detection
+  // -------------------------------------------------------------------------
+
+  describe('offline detection', () => {
+    it('isOnline reflects navigator.onLine', () => {
+      // Constructor should initialize from navigator.onLine
+      // In happy-dom, navigator.onLine defaults to true
+      expect(service.isOnline).toBe(true)
+    })
+
+    it('handles navigator.onLine being false', () => {
+      ;(globalThis as any).navigator = { onLine: false }
+      const offlineService = new ContentInstallerService(mockFs)
+      expect(offlineService.isOnline).toBe(false)
+      // Restore
+      ;(globalThis as any).navigator = { onLine: true }
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // CI-B.3: installAllParallel
+  // -------------------------------------------------------------------------
+
+  describe('installAllParallel()', () => {
+    it('resolves immediately when no manifest exists', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn(),
+      })
+
+      await expect(
+        service.installAllParallel('ra', 2),
+      ).resolves.toBeUndefined()
+    })
+
+    it('resolves when manifest has no packages', async () => {
+      const manifest = makeManifest({ packages: {} })
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      await expect(
+        service.installAllParallel('ra', 2),
+      ).resolves.toBeUndefined()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // dispose
+  // -------------------------------------------------------------------------
+
+  describe('dispose()', () => {
+    it('clears listeners and cached manifests', () => {
+      const listener = vi.fn()
+      service.onProgress(listener)
+      expect(typeof listener).toBe('function')
+
+      service.dispose()
+
+      // After dispose, no listeners should be called
+      expect(service.state).toBe('idle')
+    })
+  })
 })

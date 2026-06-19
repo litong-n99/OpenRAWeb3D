@@ -78,6 +78,29 @@ export class ContentInstallerUI {
   private static _lastProgressTime = 0
   private static _lastProgressBytes = 0
 
+  /**
+   * Whether the UI is in parallel download mode (installAllParallel active).
+   *
+   * In parallel mode, the progress view shows per-package rows with
+   * individual progress bars instead of a single combined progress view.
+   */
+  private static _parallelMode = false
+
+  /**
+   * Active concurrent package downloads, keyed by package key.
+   * Each entry tracks the last received progress for that package.
+   */
+  private static _activePackages = new Map<
+    string,
+    { state: string; percent: number; statusText: string }
+  >()
+
+  /**
+   * Total number of packages started in the current parallel batch.
+   * Used to determine when all concurrent downloads are finished.
+   */
+  private static _parallelTotalCount = 0
+
   // -------------------------------------------------------------------------
   // Public API
   // -------------------------------------------------------------------------
@@ -213,6 +236,9 @@ export class ContentInstallerUI {
     ContentInstallerUI._onComplete = null
     ContentInstallerUI._onBack = undefined
     ContentInstallerUI._installedPackages.clear()
+    ContentInstallerUI._parallelMode = false
+    ContentInstallerUI._activePackages.clear()
+    ContentInstallerUI._parallelTotalCount = 0
   }
 
   // -------------------------------------------------------------------------
@@ -465,7 +491,8 @@ export class ContentInstallerUI {
         installAllBtn.disabled = true
         installAllBtn.textContent = 'Installing...'
         try {
-          await ContentInstallerUI._service!.installAll(modId)
+          // CI-B.3: Use parallel install for better throughput
+          await ContentInstallerUI._service!.installAllParallel(modId, 2)
           // Re-check and refresh
           const m = await ContentInstallerUI._service!.getContentManifest(
             modId,
@@ -680,6 +707,72 @@ export class ContentInstallerUI {
 
     const state = progress.state
 
+    // CI-B.3: Detect parallel mode — when we see progress for a package
+    // that isn't the "current" single-download package, switch to parallel UI.
+    // Also detect when multiple active packages exist simultaneously.
+    if (progress.packageId) {
+      // Extract package key from packageId ("ra:quickinstall" -> "quickinstall")
+      const pkgKey = ContentInstallerUI._extractPackageKey(progress.packageId)
+
+      // Track active/in-progress states
+      if (
+        state === 'downloading' ||
+        state === 'verifying' ||
+        state === 'extracting' ||
+        state === 'mounting'
+      ) {
+        if (pkgKey) {
+          ContentInstallerUI._activePackages.set(pkgKey, {
+            state,
+            percent: progress.progressPercent,
+            statusText: progress.statusText,
+          })
+        }
+
+        // If we have 2+ active packages, switch to parallel mode
+        if (
+          ContentInstallerUI._activePackages.size >= 2 &&
+          !ContentInstallerUI._parallelMode
+        ) {
+          ContentInstallerUI._parallelMode = true
+          ContentInstallerUI._parallelTotalCount =
+            ContentInstallerUI._activePackages.size
+          ContentInstallerUI._showParallelProgressView()
+        }
+      }
+
+      // If in parallel mode, handle all state transitions
+      if (ContentInstallerUI._parallelMode) {
+        if (pkgKey) {
+          ContentInstallerUI._updateParallelPackageRow(
+            pkgKey,
+            state,
+            progress.progressPercent,
+            progress.statusText,
+          )
+        }
+        // Track completion/error
+        if (state === 'complete' || state === 'error') {
+          // Remove from active packages
+          if (pkgKey) ContentInstallerUI._activePackages.delete(pkgKey)
+        }
+        // Check if all packages in this parallel batch are done
+        // (no more active packages, and we've started the expected total)
+        if (
+          ContentInstallerUI._activePackages.size === 0 &&
+          ContentInstallerUI._parallelTotalCount > 0
+        ) {
+          ContentInstallerUI._hideProgressView()
+          ContentInstallerUI._parallelMode = false
+          ContentInstallerUI._activePackages.clear()
+          ContentInstallerUI._parallelTotalCount = 0
+          ContentInstallerUI._updatePlayButton()
+        }
+        return
+      }
+    }
+
+    // Single-package mode (existing behavior)
     if (state === 'downloading') {
       const container = document.getElementById(PROGRESS_CONTAINER_ID)
       if (!container || container.style.display === 'none') {
@@ -851,5 +944,176 @@ export class ContentInstallerUI {
    */
   private static _formatSpeed(bytesPerSec: number): string {
     return `${ContentInstallerUI._formatBytes(Math.round(bytesPerSec))}/s`
+  }
+
+  // -------------------------------------------------------------------------
+  // Parallel Progress (CI-B.3)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Show the parallel progress view with per-package rows.
+   *
+   * Replaces the package list with a container that shows each package
+   * being downloaded concurrently, each with its own progress bar.
+   */
+  private static _showParallelProgressView(): void {
+    const pkgList = document.getElementById(PACKAGE_LIST_ID)
+    if (pkgList) {
+      pkgList.style.display = 'none'
+    }
+
+    const container = document.getElementById(PROGRESS_CONTAINER_ID)
+    if (!container) {
+      console.warn(
+        '[ContentInstallerUI] PROGRESS_CONTAINER_ID not found for parallel view',
+      )
+      return
+    }
+
+    container.style.display = ''
+    container.innerHTML = ''
+
+    // Header
+    const header = document.createElement('div')
+    header.textContent = 'Downloading content packages...'
+    header.style.cssText =
+      'font-size:0.9rem;color:#ccc;margin-bottom:12px;text-align:center;font-weight:600;'
+    container.appendChild(header)
+
+    // Per-package rows container
+    const rowsContainer = document.createElement('div')
+    rowsContainer.className = 'parallel-progress-rows'
+    rowsContainer.style.cssText =
+      'display:flex;flex-direction:column;gap:8px;'
+    container.appendChild(rowsContainer)
+
+    // Create a row for each active package
+    for (const [pkgKey, info] of ContentInstallerUI._activePackages) {
+      ContentInstallerUI._createParallelPackageRow(
+        rowsContainer,
+        pkgKey,
+        info.state,
+        info.percent,
+        info.statusText,
+      )
+    }
+
+    // Cancel All button
+    const cancelAllBtn = document.createElement('button')
+    cancelAllBtn.textContent = 'Cancel All'
+    cancelAllBtn.style.cssText =
+      'display:block;margin:12px auto 0;padding:8px 20px;' +
+      'border:1px solid rgba(100,100,180,0.4);border-radius:5px;' +
+      'background:rgba(30,30,50,0.8);color:#9999bb;' +
+      'font-size:0.85rem;cursor:pointer;'
+    cancelAllBtn.addEventListener('click', () => {
+      ContentInstallerUI._service?.cancel()
+      ContentInstallerUI._hideProgressView()
+      ContentInstallerUI._parallelMode = false
+      ContentInstallerUI._activePackages.clear()
+      ContentInstallerUI._parallelTotalCount = 0
+    })
+    container.appendChild(cancelAllBtn)
+  }
+
+  /**
+   * Create a row in the parallel progress container for one package.
+   */
+  private static _createParallelPackageRow(
+    container: HTMLElement,
+    pkgKey: string,
+    state: string,
+    percent: number,
+    statusText: string,
+  ): void {
+    const row = document.createElement('div')
+    row.className = 'parallel-pkg-row'
+    row.dataset.packageKey = pkgKey
+    row.style.cssText =
+      'display:flex;align-items:center;gap:10px;' +
+      'padding:8px 12px;background:rgba(40,40,70,0.4);' +
+      'border:1px solid rgba(80,80,130,0.25);border-radius:6px;'
+
+    // Package name
+    const nameEl = document.createElement('span')
+    nameEl.className = 'parallel-pkg-name'
+    nameEl.textContent = ContentInstallerUI._packageDisplayName(pkgKey)
+    nameEl.style.cssText =
+      'min-width:100px;font-size:0.85rem;font-weight:600;color:#e0e0f0;'
+    row.appendChild(nameEl)
+
+    // Mini progress bar
+    const progressEl = document.createElement('progress')
+    progressEl.className = 'parallel-pkg-progress'
+    progressEl.max = 100
+    progressEl.value = Math.min(100, Math.max(0, percent))
+    progressEl.style.cssText = 'flex:1;height:10px;border-radius:3px;'
+    row.appendChild(progressEl)
+
+    // Status text
+    const statusEl = document.createElement('span')
+    statusEl.className = 'parallel-pkg-status'
+    statusEl.textContent = statusText || state
+    statusEl.style.cssText =
+      'min-width:80px;font-size:0.75rem;color:#8888aa;text-align:right;'
+    row.appendChild(statusEl)
+
+    container.appendChild(row)
+  }
+
+  /**
+   * Update a parallel package row with new progress data.
+   */
+  private static _updateParallelPackageRow(
+    pkgKey: string,
+    state: string,
+    percent: number,
+    statusText: string,
+  ): void {
+    const row = document.querySelector(
+      `.parallel-pkg-row[data-package-key="${CSS.escape(pkgKey)}"]`,
+    ) as HTMLElement | null
+    if (!row) return
+
+    const progressEl = row.querySelector(
+      '.parallel-pkg-progress',
+    ) as HTMLProgressElement | null
+    if (progressEl && percent >= 0) {
+      progressEl.value = Math.min(100, Math.max(0, percent))
+    }
+
+    const statusEl = row.querySelector(
+      '.parallel-pkg-status',
+    ) as HTMLElement | null
+    if (statusEl) {
+      statusEl.textContent = statusText || state
+      if (state === 'complete') {
+        statusEl.style.color = '#66cc88'
+      } else if (state === 'error') {
+        statusEl.style.color = '#ff6666'
+      }
+    }
+  }
+
+  /**
+   * Extract the package key from a packageId string.
+   *
+   * @param packageId — e.g. "ra:quickinstall" → "quickinstall"
+   * @returns The package key, or null if packageId is empty.
+   */
+  private static _extractPackageKey(packageId: string): string | null {
+    if (!packageId) return null
+    const colonIdx = packageId.indexOf(':')
+    return colonIdx > 0 ? packageId.substring(colonIdx + 1) : packageId
+  }
+
+  /**
+   * Convert a package key to a display-friendly name.
+   */
+  private static _packageDisplayName(pkgKey: string): string {
+    // Capitalize first letter, replace hyphens with spaces
+    return pkgKey
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
   }
 }

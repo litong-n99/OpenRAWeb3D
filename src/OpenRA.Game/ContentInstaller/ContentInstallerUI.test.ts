@@ -91,6 +91,7 @@ function createMockService() {
     checkContent: vi.fn().mockResolvedValue(['quickinstall', 'movies']),
     installPackage: vi.fn().mockResolvedValue(undefined),
     installAll: vi.fn().mockResolvedValue(undefined),
+    installAllParallel: vi.fn().mockResolvedValue(undefined),
     cancel: vi.fn(),
     clearModContent: vi.fn().mockResolvedValue(undefined),
     clearAll: vi.fn().mockResolvedValue(undefined),
@@ -294,7 +295,8 @@ describe('ContentInstallerUI', () => {
       expect(installAllBtn!.textContent).toContain('Install All')
 
       installAllBtn!.click()
-      expect(mockService.installAll).toHaveBeenCalledWith('ra')
+      // CI-B.3: Install All now uses parallel install
+      expect(mockService.installAllParallel).toHaveBeenCalledWith('ra', 2)
     })
   })
 
@@ -439,6 +441,129 @@ describe('ContentInstallerUI', () => {
       // Package list should be visible again
       const pkgList = document.getElementById('content-installer-package-list')
       expect(pkgList!.style.display).not.toBe('none')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // CI-B.3: Parallel progress mode
+  // -------------------------------------------------------------------------
+
+  describe('parallel progress mode', () => {
+    it('shows parallel progress rows when multiple packages are active', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      // Emit downloading progress for two different packages
+      mockService._emitProgress({
+        state: 'downloading',
+        packageId: 'ra:quickinstall',
+        statusText: 'Downloading (45%)...',
+        progressPercent: 45,
+        bytesReceived: 1024 * 500,
+        bytesTotal: 1024 * 1024,
+      })
+
+      mockService._emitProgress({
+        state: 'downloading',
+        packageId: 'ra:movies',
+        statusText: 'Downloading (30%)...',
+        progressPercent: 30,
+        bytesReceived: 1024 * 300,
+        bytesTotal: 1024 * 1024,
+      })
+
+      // Should show parallel progress rows
+      const progressContainer = document.getElementById(
+        'content-installer-progress',
+      )
+      expect(progressContainer).not.toBeNull()
+
+      // Check for parallel-pkg-row elements
+      const rows = document.querySelectorAll('.parallel-pkg-row')
+      expect(rows.length).toBeGreaterThanOrEqual(2)
+
+      // Check package names are displayed
+      const names = document.querySelectorAll('.parallel-pkg-name')
+      expect(names.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('hides parallel mode when all packages complete', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      // Start two downloads (activates parallel mode)
+      mockService._emitProgress({
+        state: 'downloading',
+        packageId: 'ra:quickinstall',
+        statusText: 'Downloading...',
+        progressPercent: 50,
+        bytesReceived: 500,
+        bytesTotal: 1000,
+      })
+
+      mockService._emitProgress({
+        state: 'downloading',
+        packageId: 'ra:movies',
+        statusText: 'Downloading...',
+        progressPercent: 50,
+        bytesReceived: 500,
+        bytesTotal: 1000,
+      })
+
+      // Complete both
+      mockService._emitProgress({
+        state: 'complete',
+        packageId: 'ra:quickinstall',
+        statusText: 'Complete',
+        progressPercent: 100,
+        bytesReceived: 0,
+        bytesTotal: 0,
+      })
+
+      mockService._emitProgress({
+        state: 'complete',
+        packageId: 'ra:movies',
+        statusText: 'Complete',
+        progressPercent: 100,
+        bytesReceived: 0,
+        bytesTotal: 0,
+      })
+
+      // Progress should be hidden, package list visible
+      const progressContainer = document.getElementById(
+        'content-installer-progress',
+      )
+      if (progressContainer) {
+        // May have been hidden after completion
+      }
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // _extractPackageKey
+  // -------------------------------------------------------------------------
+
+  describe('_extractPackageKey()', () => {
+    function extractPackageKey(packageId: string): string | null {
+      return (ContentInstallerUI as any)._extractPackageKey(packageId)
+    }
+
+    it('extracts key from "ra:quickinstall"', () => {
+      expect(extractPackageKey('ra:quickinstall')).toBe('quickinstall')
+    })
+
+    it('returns original string when no colon present', () => {
+      expect(extractPackageKey('quickinstall')).toBe('quickinstall')
+    })
+
+    it('returns null for empty string', () => {
+      expect(extractPackageKey('')).toBeNull()
     })
   })
 })

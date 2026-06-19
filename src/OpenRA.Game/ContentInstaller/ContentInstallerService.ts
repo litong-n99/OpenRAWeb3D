@@ -66,6 +66,20 @@ export class ContentInstallerService {
     return this._currentState
   }
 
+  /**
+   * Whether the browser currently has internet connectivity.
+   *
+   * Reflects `navigator.onLine`. Updated in real-time via `online`/`offline`
+   * window events registered in the constructor. When offline, download
+   * operations will throw clear user-facing errors.
+   *
+   * OpenRA 对照: No direct C# equivalent — desktop OpenRA assumes always-online
+   *             for content downloads (handled by system network stack).
+   */
+  get isOnline(): boolean {
+    return this._online
+  }
+
   // ---------------------------------------------------------------------------
   // Private fields
   // ---------------------------------------------------------------------------
@@ -96,6 +110,18 @@ export class ContentInstallerService {
   /** Concurrent install guard — prevents overlapping installPackage() calls. */
   private _isInstalling = false
 
+  /**
+   * Online status flag.
+   *
+   * Initialized from `navigator.onLine` and updated by `online`/`offline`
+   * window events. Used by offline detection (CI-B.7) to provide clear
+   * error messages when content download is impossible.
+   */
+  private _online: boolean
+
+  /** Cleanup function for online/offline event listeners. */
+  private _onlineCleanup: (() => void) | null = null
+
   // ---------------------------------------------------------------------------
   // Construction
   // ---------------------------------------------------------------------------
@@ -110,6 +136,45 @@ export class ContentInstallerService {
     this._fileSystem = fileSystem
     this._downloadManager = new DownloadManager()
     this._extractor = new PackageExtractor()
+
+    // CI-B.7: Offline detection
+    this._online = typeof navigator !== 'undefined' ? navigator.onLine : true
+
+    const handleOnline = () => {
+      const wasOffline = !this._online
+      this._online = true
+      if (wasOffline) {
+        this._notifyListeners({
+          state: this._currentState,
+          packageId: '',
+          statusText: 'Internet connection restored',
+          progressPercent: -1,
+          bytesReceived: 0,
+          bytesTotal: 0,
+        })
+      }
+    }
+
+    const handleOffline = () => {
+      this._online = false
+      this._notifyListeners({
+        state: this._currentState,
+        packageId: '',
+        statusText: 'Internet connection lost — downloads paused',
+        progressPercent: -1,
+        bytesReceived: 0,
+        bytesTotal: 0,
+      })
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnline)
+      window.addEventListener('offline', handleOffline)
+      this._onlineCleanup = () => {
+        window.removeEventListener('online', handleOnline)
+        window.removeEventListener('offline', handleOffline)
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -155,6 +220,16 @@ export class ContentInstallerService {
     const contentModId = `${modId}-content`
     const url = `/mods/${contentModId}/content.json`
 
+    // CI-B.7: If offline and we have no cached manifest, skip fetch
+    if (!this.isOnline) {
+      console.log(
+        `[ContentInstaller] Offline — cannot fetch manifest for '${modId}', using cached if available`,
+      )
+      // Return null if no cached manifest — caller must handle
+      // the offline case by checking IndexedDB records only
+      return null
+    }
+
     try {
       const response = await fetch(url)
       if (!response.ok) {
@@ -176,6 +251,10 @@ export class ContentInstallerService {
         `[ContentInstaller] Error fetching content manifest for '${modId}':`,
         err,
       )
+      // CI-B.7: When fetch fails and we're offline, it's expected
+      if (!this.isOnline) {
+        console.log('[ContentInstaller] Manifest fetch failed due to offline status')
+      }
       return null
     }
   }
@@ -249,6 +328,106 @@ export class ContentInstallerService {
     }
 
     return missing
+  }
+
+  /**
+   * Check which content packages need updating (stale) or are missing.
+   *
+   * Compares each package's stored SHA1 against the current manifest's
+   * download SHA1. A package is:
+   * - `current`: Installed and SHA1 matches the manifest
+   * - `stale`: Installed but SHA1 differs (content was updated on mirror)
+   * - `missing`: No record found in IndexedDB
+   *
+   * OpenRA 对照: Synthesized from ModContent check + version comparison
+   *             (no direct C# equivalent — desktop OpenRA uses file timestamps
+   *             and version strings)
+   *
+   * @param modId -- The game mod identifier.
+   * @returns Object with three arrays: current, stale, and missing package keys.
+   *   If the manifest is not available (404), all arrays are empty.
+   */
+  async checkForUpdates(modId: string): Promise<{
+    current: string[]
+    stale: string[]
+    missing: string[]
+  }> {
+    this._setState('checking')
+
+    const manifest = await this.getContentManifest(modId)
+    if (!manifest) {
+      this._setState('ready')
+      return { current: [], stale: [], missing: [] }
+    }
+
+    const db = await this._openDb()
+    if (!db) {
+      // IndexedDB unavailable -- treat all packages as missing
+      const missing = Object.keys(manifest.packages)
+      if (missing.length > 0) {
+        this._setState('needs_install')
+      } else {
+        this._setState('ready')
+      }
+      return { current: [], stale: [], missing }
+    }
+
+    const current: string[] = []
+    const stale: string[] = []
+    const missing: string[] = []
+
+    for (const [pkgKey, pkg] of Object.entries(manifest.packages)) {
+      const packageId = `${modId}:${pkgKey}`
+      const record = await this._getPackageRecord(packageId)
+
+      if (!record) {
+        missing.push(pkgKey)
+        continue
+      }
+
+      // Get the expected SHA1 from the download definition
+      const downloadKey = pkg.download
+      if (!downloadKey) {
+        // Source-only package — check by test files
+        if (pkg.testFiles && pkg.testFiles.length > 0) {
+          const allPresent = pkg.testFiles.every((tf) =>
+            record.files.includes(tf),
+          )
+          if (allPresent) {
+            current.push(pkgKey)
+          } else {
+            stale.push(pkgKey)
+          }
+        } else {
+          current.push(pkgKey)
+        }
+        continue
+      }
+
+      const download = manifest.downloads[downloadKey]
+      if (!download) {
+        // Download definition missing — treat as current if installed
+        current.push(pkgKey)
+        continue
+      }
+
+      const expectedSha1 = download.sha1
+
+      // Compare record SHA1 with expected SHA1
+      if (record.sha1 === expectedSha1) {
+        current.push(pkgKey)
+      } else {
+        stale.push(pkgKey)
+      }
+    }
+
+    if (stale.length > 0 || missing.length > 0) {
+      this._setState('needs_install')
+    } else {
+      this._setState('ready')
+    }
+
+    return { current, stale, missing }
   }
 
   // ---------------------------------------------------------------------------
@@ -357,6 +536,14 @@ export class ContentInstallerService {
       }
 
       // Phase 2: Download
+      // CI-B.7: Check online status before attempting download
+      if (!this.isOnline) {
+        throw new Error(
+          'Cannot download content while offline. ' +
+          'Please connect to the internet to download required game assets.',
+        )
+      }
+
       this._setState('downloading')
       this._notifyListeners({
         state: 'downloading',
@@ -367,25 +554,93 @@ export class ContentInstallerService {
         bytesTotal: -1,
       })
 
-      const zipBuffer = await this._downloadManager.downloadWithRetry(
-        mirrors,
+      // ----- CI-B.8: Cache API warm — check browser cache first -----
+      let zipBuffer: ArrayBuffer | null = null
+      const primaryUrl = mirrors[0]!
+      const cachedData = await this._warmContentCache(
+        primaryUrl,
         download.sha1,
-        (received, total, percentage) => {
-          this._notifyListeners({
-            state: 'downloading',
-            packageId,
-            statusText: total > 0
-              ? `Downloading (${percentage}%)`
-              : `Downloading (${this._formatBytes(received)})`,
-            progressPercent: percentage,
-            bytesReceived: received,
-            bytesTotal: total,
-          })
-        },
-        signal,
       )
+      if (cachedData) {
+        zipBuffer = cachedData
+        // Skip the download — cache hit. Report as downloaded
+        this._notifyListeners({
+          state: 'downloading',
+          packageId,
+          statusText: 'Using cached content',
+          progressPercent: 100,
+          bytesReceived: cachedData.byteLength,
+          bytesTotal: cachedData.byteLength,
+        })
+      }
 
-      // Phase 3: Verify
+      // ----- CI-B.4: Download with resume support (fallback to retry) -----
+      if (!zipBuffer) {
+        try {
+          // Try resume-enabled download first
+          zipBuffer = await this._downloadManager.downloadWithResume(
+            primaryUrl,
+            download.sha1,
+            (received, total, percentage) => {
+              this._notifyListeners({
+                state: 'downloading',
+                packageId,
+                statusText: total > 0
+                  ? `Downloading (${percentage}%)`
+                  : `Downloading (${this._formatBytes(received)})`,
+                progressPercent: percentage,
+                bytesReceived: received,
+                bytesTotal: total,
+              })
+            },
+            signal,
+          )
+
+          // CI-B.8: Cache successful download for future reuse
+          this._cacheContentUrl(primaryUrl, zipBuffer).catch(() => {
+            // Best-effort caching — failures are non-fatal
+          })
+        } catch (resumeErr) {
+          // If resume download fails (e.g., SHA1 mismatch, Range not supported
+          // but server returned corrupt data), fall back to mirror retry
+          if (
+            resumeErr instanceof DOMException &&
+            resumeErr.name === 'AbortError'
+          ) {
+            throw resumeErr
+          }
+          if (
+            resumeErr instanceof Error &&
+            resumeErr.message.startsWith('SHA1_MISMATCH:')
+          ) {
+            throw resumeErr
+          }
+
+          // Fallback: try retry-based download across mirrors
+          zipBuffer = await this._downloadManager.downloadWithRetry(
+            mirrors,
+            download.sha1,
+            (received, total, percentage) => {
+              this._notifyListeners({
+                state: 'downloading',
+                packageId,
+                statusText: total > 0
+                  ? `Downloading (${percentage}%)`
+                  : `Downloading (${this._formatBytes(received)})`,
+                progressPercent: percentage,
+                bytesReceived: received,
+                bytesTotal: total,
+              })
+            },
+            signal,
+          )
+
+          // Cache the successful download
+          this._cacheContentUrl(mirrors[0]!, zipBuffer).catch(() => {})
+        }
+      }
+
+      // Phase 3: Verify (SHA1 already verified by download step)
       this._setState('verifying')
       this._notifyListeners({
         state: 'verifying',
@@ -455,10 +710,12 @@ export class ContentInstallerService {
       }
 
       // Store in IndexedDB
+      // CI-B.5: Include manifestSha1 for update detection
       const record: ContentPackageRecord = {
         packageId,
         version: download.sha1,
         sha1: download.sha1,
+        manifestSha1: download.sha1,
         installedAt: Date.now(),
         files: fileList,
       }
@@ -563,6 +820,195 @@ export class ContentInstallerService {
     }
   }
 
+  /**
+   * Install all content packages for a mod in parallel, up to maxConcurrent
+   * at a time.
+   *
+   * Uses a simple pool pattern: starts up to `maxConcurrent` downloads
+   * simultaneously. When a download finishes (success or failure), the next
+   * pending package starts. Required package failures stop the entire
+   * installation; optional package failures are logged and continue.
+   *
+   * Each download emits independent progress events via the packageId in
+   * {@link ContentInstallProgress}, enabling per-package progress display
+   * in ContentInstallerUI.
+   *
+   * OpenRA 对照: No direct C# equivalent — desktop OpenRA installs packages
+   *             sequentially. This is a web-specific optimization for
+   *             concurrent HTTP/2 downloads.
+   *
+   * @param modId -- The game mod identifier.
+   * @param maxConcurrent -- Maximum number of simultaneous downloads
+   *   (default 2, browser-friendly).
+   * @throws Error if a required package fails to install.
+   */
+  async installAllParallel(
+    modId: string,
+    maxConcurrent: number = 2,
+  ): Promise<void> {
+    const manifest = await this.getContentManifest(modId)
+    if (!manifest) {
+      this._setState('ready')
+      return
+    }
+
+    const allPackageKeys = Object.keys(manifest.packages)
+    if (allPackageKeys.length === 0) {
+      this._setState('ready')
+      return
+    }
+
+    if (maxConcurrent < 1) maxConcurrent = 1
+
+    // Separate required vs optional — required packages are higher priority
+    const required: string[] = []
+    const optional: string[] = []
+    for (const key of allPackageKeys) {
+      const pkg = manifest.packages[key]
+      if (pkg?.required) {
+        required.push(key)
+      } else {
+        optional.push(key)
+      }
+    }
+
+    const queue = [...required, ...optional]
+    const maxSlots = Math.min(maxConcurrent, queue.length)
+
+    let activeCount = 0
+    let queueIndex = 0
+    let firstRequiredError: Error | null = null
+    let anyInstalled = false
+
+    // Per-package install function
+    const installOne = async (packageName: string): Promise<void> => {
+      const pkg = manifest.packages[packageName]
+      if (!pkg) return
+
+      try {
+        await this._installPackageImpl(modId, packageName)
+        anyInstalled = true
+      } catch (err) {
+        if (pkg.required) {
+          firstRequiredError = err instanceof Error
+            ? err
+            : new Error(String(err))
+        } else {
+          console.warn(
+            `[ContentInstaller] Optional package '${packageName}' failed to install:`,
+            err,
+          )
+        }
+      }
+    }
+
+    // Pool executor: when a slot is free, start next package
+    const runNext = async (): Promise<void> => {
+      while (queueIndex < queue.length) {
+        // If a required package failed, stop launching new downloads
+        if (firstRequiredError) return
+
+        const packageName = queue[queueIndex]!
+        queueIndex++
+        activeCount++
+        await installOne(packageName)
+        activeCount--
+      }
+    }
+
+    // Start initial pool
+    const workers: Promise<void>[] = []
+    for (let i = 0; i < maxSlots; i++) {
+      workers.push(runNext())
+    }
+
+    await Promise.allSettled(workers)
+
+    // If any required package failed, throw
+    if (firstRequiredError) {
+      this._setState('error')
+      throw firstRequiredError
+    }
+
+    if (anyInstalled) {
+      this._setState('ready')
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cache API (CI-B.8)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Cache downloaded content in the browser's Cache API for offline reuse.
+   *
+   * After a successful download, stores the data in a Cache API entry keyed
+   * by URL. On subsequent download requests, the cache is checked first
+   * before making network requests.
+   *
+   * NOTE: Cache API requires HTTPS (or localhost). In non-HTTPS contexts
+   * or private browsing modes where Cache API is unavailable, this method
+   * silently skips caching.
+   *
+   * @param url — The download URL to cache.
+   * @param data — The downloaded content to store.
+   */
+  private async _cacheContentUrl(
+    url: string,
+    data: ArrayBuffer,
+  ): Promise<void> {
+    try {
+      if (typeof caches === 'undefined') return
+      const cache = await caches.open('openra-content-v1')
+      await cache.put(url, new Response(data))
+    } catch {
+      // Cache API unavailable (non-HTTPS, private browsing, quota exceeded)
+      // Silently skip — cache is best-effort, not required
+    }
+  }
+
+  /**
+   * Warm the content cache by checking the Cache API for a previously
+   * cached download before falling back to IndexedDB or network.
+   *
+   * Called by installPackage() before initiating a download. If the URL
+   * is found in the Cache API and the cached response's body matches the
+   * expected SHA1, the download is skipped entirely.
+   *
+   * @param url — The download URL to check.
+   * @param expectedSha1 — Expected SHA1 hex string for verification.
+   * @returns The cached data as ArrayBuffer, or null if not found or
+   *   SHA1 mismatch.
+   */
+  private async _warmContentCache(
+    url: string,
+    expectedSha1: string,
+  ): Promise<ArrayBuffer | null> {
+    try {
+      if (typeof caches === 'undefined') return null
+      const cache = await caches.open('openra-content-v1')
+      const cachedResponse = await cache.match(url)
+      if (!cachedResponse) return null
+
+      const data = await cachedResponse.arrayBuffer()
+
+      // Verify SHA1 if expected
+      if (expectedSha1) {
+        const { Sha1Verifier } = await import('./Sha1Verifier.js')
+        const ok = await Sha1Verifier.verify(data, expectedSha1)
+        if (!ok) {
+          // Cached data is stale — delete it
+          await cache.delete(url)
+          return null
+        }
+      }
+
+      return data
+    } catch {
+      return null
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Cleanup
   // ---------------------------------------------------------------------------
@@ -647,6 +1093,23 @@ export class ContentInstallerService {
     if (this._abortController) {
       this._abortController.abort()
     }
+  }
+
+  /**
+   * Release all resources held by this service.
+   *
+   * Removes online/offline event listeners and clears cached manifests.
+   * Safe to call multiple times.
+   */
+  dispose(): void {
+    // CI-B.7: Clean up online/offline listeners
+    if (this._onlineCleanup) {
+      this._onlineCleanup()
+      this._onlineCleanup = null
+    }
+    this._modContent.clear()
+    this._listeners.clear()
+    this._abortController = null
   }
 
   // ---------------------------------------------------------------------------

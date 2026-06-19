@@ -541,4 +541,350 @@ describe('DownloadManager', () => {
       ).rejects.toThrow(/Download failed after 3 attempt/)
     })
   })
+
+  // -----------------------------------------------------------------------
+  // downloadWithResume() — CI-B.4
+  // -----------------------------------------------------------------------
+
+  describe('downloadWithResume', () => {
+    it('downloads data without prior partial (fresh download)', async () => {
+      const testData = 'Fresh download content'
+      let fetchCalled = false
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation(() => {
+          fetchCalled = true
+          return Promise.resolve(
+            mockFetchResponse(testData, 200, {
+              'Content-Length': String(testData.length),
+            }),
+          )
+        }),
+      )
+
+      // Mock IndexedDB for chunk storage
+      const idbStore = new Map<string, any>()
+      ;(globalThis as any).indexedDB = {
+        open: vi.fn((_name: string, _version?: number) => {
+          const request: any = {
+            result: {
+              objectStoreNames: {
+                contains: vi.fn(() => idbStore.has('_init')),
+              },
+              createObjectStore: vi.fn(() => {
+                idbStore.set('_init', true)
+              }),
+              transaction: vi.fn((_storeName: string, _mode: string) => ({
+                objectStore: vi.fn(() => ({
+                  get: vi.fn((_key: string) => ({
+                    result: undefined,
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                  put: vi.fn((_v: any, _key: string) => ({
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                  delete: vi.fn((_key: string) => ({
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                })),
+                set oncomplete(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                set onerror(_cb: any) {},
+                set onabort(_cb: any) {},
+              })),
+              close: vi.fn(),
+            },
+            set onupgradeneeded(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onerror(_cb: any) {},
+            set onblocked(_cb: any) {},
+          }
+          return request
+        }),
+        deleteDatabase: vi.fn(),
+      }
+
+      const onProgress = vi.fn()
+      const result = await manager.downloadWithResume(
+        'https://example.com/file.zip',
+        '',
+        onProgress,
+      )
+
+      const text = new TextDecoder().decode(result)
+      expect(text).toBe(testData)
+      expect(fetchCalled).toBe(true)
+    })
+
+    it('sends Range header when partial data exists', async () => {
+      const partialData = new Uint8Array([1, 2, 3, 4, 5])
+      const restData = new Uint8Array([6, 7, 8, 9, 10])
+
+      // Store partial data in mock IndexedDB
+      const idbStore = new Map<string, any>()
+      idbStore.set(
+        'https://example.com/resume.zip',
+        partialData.buffer,
+      )
+      idbStore.set('_init', true)
+
+      ;(globalThis as any).indexedDB = {
+        open: vi.fn((_name: string, _version?: number) => {
+          const request: any = {
+            result: {
+              objectStoreNames: {
+                contains: vi.fn(() => idbStore.has('_init')),
+              },
+              createObjectStore: vi.fn(() => {
+                idbStore.set('_init', true)
+              }),
+              transaction: vi.fn((_storeName: string, _mode: string) => ({
+                objectStore: vi.fn(() => ({
+                  get: vi.fn((key: string) => ({
+                    result: idbStore.get(key),
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                  put: vi.fn((v: any, key: string) => {
+                    idbStore.set(key, v)
+                    return {
+                      set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                      set onerror(_cb: any) {},
+                    }
+                  }),
+                  delete: vi.fn((key: string) => {
+                    idbStore.delete(key)
+                    return {
+                      set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                      set onerror(_cb: any) {},
+                    }
+                  }),
+                })),
+                set oncomplete(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                set onerror(_cb: any) {},
+                set onabort(_cb: any) {},
+              })),
+              close: vi.fn(),
+            },
+            set onupgradeneeded(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onerror(_cb: any) {},
+            set onblocked(_cb: any) {},
+          }
+          return request
+        }),
+        deleteDatabase: vi.fn(),
+      }
+
+      let capturedHeaders: Record<string, string> = {}
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation(
+          (_url: string, init?: { headers?: Record<string, string> }) => {
+            capturedHeaders = init?.headers ?? {}
+            // Return 206 Partial Content with the rest of the data
+            const chunk = restData
+            let pulled = false
+            const stream = new ReadableStream<Uint8Array>({
+              pull(controller) {
+                if (!pulled) {
+                  pulled = true
+                  controller.enqueue(chunk)
+                } else {
+                  controller.close()
+                }
+              },
+            })
+            const responseHeaders = new Headers()
+            responseHeaders.set('Content-Length', String(restData.length))
+            return Promise.resolve({
+              ok: true,
+              status: 206,
+              headers: responseHeaders,
+              body: stream,
+            } as unknown as Response)
+          },
+        ),
+      )
+
+      const onProgress = vi.fn()
+      const result = await manager.downloadWithResume(
+        'https://example.com/resume.zip',
+        '',
+        onProgress,
+      )
+
+      expect(capturedHeaders['Range']).toBe('bytes=5-')
+      // Result should be the concatenation of partial + rest
+      expect(result.byteLength).toBe(10)
+    })
+
+    it('restarts from scratch when server returns 200 (ignores Range)', async () => {
+      // Store partial data that should be discarded
+      const partialData = new Uint8Array([1, 2, 3])
+      const fullData = new Uint8Array([4, 5, 6, 7, 8, 9, 10])
+
+      const idbStore = new Map<string, any>()
+      idbStore.set(
+        'https://example.com/no-resume.zip',
+        partialData.buffer,
+      )
+      idbStore.set('_init', true)
+
+      ;(globalThis as any).indexedDB = {
+        open: vi.fn((_name: string, _version?: number) => {
+          const request: any = {
+            result: {
+              objectStoreNames: {
+                contains: vi.fn(() => idbStore.has('_init')),
+              },
+              createObjectStore: vi.fn(() => {
+                idbStore.set('_init', true)
+              }),
+              transaction: vi.fn((_storeName: string, _mode: string) => ({
+                objectStore: vi.fn(() => ({
+                  get: vi.fn((key: string) => ({
+                    result: idbStore.get(key),
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                  put: vi.fn((v: any, key: string) => {
+                    idbStore.set(key, v)
+                    return {
+                      set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                      set onerror(_cb: any) {},
+                    }
+                  }),
+                  delete: vi.fn((key: string) => {
+                    idbStore.delete(key)
+                    return {
+                      set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                      set onerror(_cb: any) {},
+                    }
+                  }),
+                })),
+                set oncomplete(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                set onerror(_cb: any) {},
+                set onabort(_cb: any) {},
+              })),
+              close: vi.fn(),
+            },
+            set onupgradeneeded(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onerror(_cb: any) {},
+            set onblocked(_cb: any) {},
+          }
+          return request
+        }),
+        deleteDatabase: vi.fn(),
+      }
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          mockFetchResponse(
+            new TextDecoder().decode(fullData),
+            200,
+            { 'Content-Length': String(fullData.length) },
+          ),
+        ),
+      )
+
+      const onProgress = vi.fn()
+      const result = await manager.downloadWithResume(
+        'https://example.com/no-resume.zip',
+        '',
+        onProgress,
+      )
+
+      // Should return the full data (not concatenated with partial)
+      expect(result.byteLength).toBe(7)
+    })
+
+    it('deletes IndexedDB chunk on SHA1 mismatch', async () => {
+      const testData = 'corrupt data'
+      const expectedHash = 'aaaa1111bbbb2222cccc3333dddd4444eeee5555'
+      const actualHash = 'ffff0000eeee1111dddd2222cccc3333bbbb4444'
+
+      mockDigest.mockImplementation(
+        async (_algo: string, data: ArrayBuffer) => {
+          if (data.byteLength === 0) {
+            return hexToBuffer(EMPTY_SHA1)
+          }
+          return hexToBuffer(actualHash)
+        },
+      )
+
+      // Mock empty IndexedDB
+      const idbStore = new Map<string, any>()
+      idbStore.set('_init', true)
+      ;(globalThis as any).indexedDB = {
+        open: vi.fn((_name: string, _version?: number) => {
+          const request: any = {
+            result: {
+              objectStoreNames: {
+                contains: vi.fn(() => idbStore.has('_init')),
+              },
+              createObjectStore: vi.fn(() => {
+                idbStore.set('_init', true)
+              }),
+              transaction: vi.fn((_storeName: string, _mode: string) => ({
+                objectStore: vi.fn(() => ({
+                  get: vi.fn((_key: string) => ({
+                    result: undefined,
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                  put: vi.fn((v: any, key: string) => {
+                    idbStore.set(key, v)
+                    return {
+                      set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                      set onerror(_cb: any) {},
+                    }
+                  }),
+                  delete: vi.fn((key: string) => {
+                    idbStore.delete(key)
+                    return {
+                      set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                      set onerror(_cb: any) {},
+                    }
+                  }),
+                })),
+                set oncomplete(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                set onerror(_cb: any) {},
+                set onabort(_cb: any) {},
+              })),
+              close: vi.fn(),
+            },
+            set onupgradeneeded(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onerror(_cb: any) {},
+            set onblocked(_cb: any) {},
+          }
+          return request
+        }),
+        deleteDatabase: vi.fn(),
+      }
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          mockFetchResponse(testData, 200, {
+            'Content-Length': String(testData.length),
+          }),
+        ),
+      )
+
+      const onProgress = vi.fn()
+      await expect(
+        manager.downloadWithResume(
+          'https://example.com/bad.zip',
+          expectedHash,
+          onProgress,
+        ),
+      ).rejects.toThrow(/SHA1_MISMATCH/)
+    })
+  })
 })

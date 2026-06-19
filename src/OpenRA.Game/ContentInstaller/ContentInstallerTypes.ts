@@ -349,6 +349,15 @@ export interface ContentPackageRecord {
   version: string
 
   /**
+   * Manifest SHA1 for update detection.
+   * Compared against the current manifest's download SHA1 to detect
+   * when content has been updated on the mirror.
+   *
+   * TODO-CI-B.5: Added for content update check in Phase B.
+   */
+  manifestSha1?: string
+
+  /**
    * SHA1 hash of the downloaded archive.
    * Used for integrity verification and cache key derivation.
    */
