@@ -76,23 +76,23 @@ The following test infrastructure is already in place:
 | Ch02 Rendering | 27 | 13 | 🟢 Good | None |
 | Ch03 Actor System | 36 | 3 | 🟡 Sparse | Minor |
 | Ch04 Map & Terrain | 37 | 6 | 🟢 Good | None |
-| Ch05 UI System | 16 | 1 | 🟠 Thin | Moderate |
+| Ch05 UI System | 16 | 3 | 🟢 Good | P3-A complete (3 pages) |
 | Ch06 Network Sync | 29 | 0 | ⚪ N/A | None (pure logic) |
-| Ch07 Input/Camera/Audio/Effects | 13 | 1 | 🔴 Very Sparse | **MAJOR** |
-| Ch08 Weapons & Combat | 57 | 8 | 🟡 Improved | Moderate (P0-A complete, P0-B pending) |
-| Ch09 Movement & Physics | 30 | 0 | 🟡 Missing | Minor |
+| Ch07 Input/Camera/Audio/Effects | 13 | 4 | 🟢 Good | P1-B complete (4 pages) |
+| Ch08 Weapons & Combat | 57 | 12 | 🟢 Good | P0-A+P0-B complete (12 pages) |
+| Ch09 Movement & Physics | 30 | 2 | 🟢 Good | P3-B complete (2 pages) |
 | Ch10 Resource Economy | 25 | 3 | 🟢 Good | None |
-| Ch11 Production & Building | 37 | 0 | 🟠 Missing | Moderate |
+| Ch11 Production & Building | 37 | 3 | 🟢 Good | P2-A complete (3 pages) |
 | Ch12 Shroud & Fog | 16 | 6 | 🟢 Good | None |
 | Ch13 Support Powers | 14 | 3 | 🟡 Adequate | Minor |
 | Ch14 Activities | 49 | 11 | 🟢 Good | None |
 | Ch15 Order Generators | 11 | 0 | ⚪ N/A | None (pure logic) |
-| Ch16 UI Widgets | 65 | 4 | 🟡 Sparse | Minor |
+| Ch16 UI Widgets | 65 | 7 | 🟢 Good | P3-C complete (7 pages) |
 | Ch17 Replay & Save | 8 | 4 | 🟢 Good | None |
 | Ch18 Server System | 10 | 0 | ⚪ N/A | None (pure logic) |
 | Ch19 Mod Content | 119 | 15 | 🟡 Adequate | Minor |
-| Ch20 Scripting | 62 | 1 | 🟡 Sparse | Minor |
-| Ch21 Editor & Utilities | 54+ | 0 | 🔴 Missing | **MAJOR** |
+| Ch20 Scripting | 62 | 2 | 🟢 Good | P3-D complete (2 pages) |
+| Ch21 Editor & Utilities | 54+ | 4 | 🟢 Good | P1-A complete (4 pages) |
 | Ch22 Game Entry | 7 | 4 | 🟢 Good | None |
 
 ### 2.2 Gap Summary
@@ -181,12 +181,12 @@ The following test infrastructure is already in place:
 | P0-B: Ch08 Combat VFX & Warheads | P0 | 4 | ~20 | ✅ COMPLETE (2026-06-19) |
 | P1-A: Ch21 Editor Visuals | P1 | 4 | ~20 | ✅ COMPLETE (2026-06-19) |
 | P1-B: Ch07 Effects & Selection | P1 | 3 | ~12 | ✅ COMPLETE (2026-06-19) |
-| P2-A: Ch11 Production & Building | P2 | 3 | ~15 | 📋 PLANNED |
-| P2-B: Ch08 Air & Turreted | P2 | 2 | ~10 | 📋 PLANNED |
-| P3-A: Ch05 UI Core | P3 | 2 | ~6 | 📋 PLANNED |
-| P3-B: Ch09 Movement | P3 | 2 | ~8 | 📋 PLANNED |
-| P3-C: Ch16 Widget Primitives | P3 | 3 | ~6 | 📋 PLANNED |
-| P3-D: Ch03/Ch20 Misc | P3 | 1 | ~4 | 📋 PLANNED |
+| P2-A: Ch11 Production & Building | P2 | 3 | ~15 | ✅ COMPLETE (2026-06-19) |
+| P2-B: Ch08 Air & Turreted | P2 | 2 | ~10 | ✅ COMPLETE (2026-06-19) |
+| P3-A: Ch05 UI Core | P3 | 2 | ~6 | ✅ COMPLETE (2026-06-19) |
+| P3-B: Ch09 Movement | P3 | 2 | ~8 | ✅ COMPLETE (2026-06-19) |
+| P3-C: Ch16 Widget Primitives | P3 | 3 | ~6 | ✅ COMPLETE (2026-06-19) |
+| P3-D: Ch03/Ch20 Misc | P3 | 1 | ~4 | ✅ COMPLETE (2026-06-19) |
 
 ---
 
@@ -282,7 +282,7 @@ The following test infrastructure is already in place:
 
 ### 4.2 Phase P0-B: Ch08 Combat VFX & Warhead Effects
 
-**Status**: 🔧 IN PROGRESS (0/4 completed)
+**Status**: ✅ COMPLETE (4/4, 2026-06-19)
 **Priority**: P0 (Critical)
 **Complexity**: High (explosion effects), Medium (muzzle, animation, gallery)
 **Blocked by**: Phase P0-A (projectile impact triggers warhead effects) — ✅ RESOLVED, Ch07 Phase E (SpriteEffect, FloatingSpriteEmitter) — ✅ COMPLETE
@@ -764,3 +764,41 @@ src/__e2e__/manual/ch08-weapons-combat/missile-trajectory/
 - Test case ID: kebab-case descriptive (e.g., `missile-trajectory`, `building-placement`)
 - Full path: `src/__e2e__/manual/{chapter}/{test-case-id}/`
 - URL: `http://localhost:5173/test/{chapter}/{test-case-id}/`
+
+---
+
+## Completion Summary (2026-06-19)
+
+**ALL 31/31 pages complete across 10 phases P0-P3.**
+
+| Metric | Before | After |
+|--------|:---:|:---:|
+| Total test pages | 76 | 107 |
+| Chapter directories | 16 | 20 |
+| Ch08 test pages | 1 | 12 |
+| Chapters with zero tests | 6 | 0 |
+| Total commits | — | 17 |
+| Review cycles | — | 8 real reviews |
+
+### Phase Completion Order
+
+```
+P0-A (7 pages) → P0-B (4) → P1-A (4) → P1-B (3) → P2-A (3)
+→ P2-B (2) → P3-A (2) → P3-B (2) → P3-C (3) → P3-D (1)
+```
+
+### New Chapters Covered
+- Ch05 (was 1 → 3), Ch07 (1 → 4), Ch08 (1 → 12)
+- Ch09 (0 → 2), Ch11 (0 → 3), Ch16 (4 → 7)
+- Ch20 (1 → 2), Ch21 (0 → 4)
+
+### Review Summary
+8 migration-review agents produced substantive reports. Key findings:
+- 5 BLOCKERs found (missing __testHarness, AbstractMesh instantiation, CSS brightness mismatch, duplicate root widget)
+- 24 MAJORs found (per-frame allocations, missing engine dispose, missing README sections)
+- All issues fixed before merge
+
+### Next Steps
+- Playwright test-runner verification for all 31 pages
+- Jenkins CI integration for automated acceptance test runs
+- Periodic re-runs to detect test page rot from source changes
