@@ -9,13 +9,13 @@ let value = 50; const min = 0; const max = 100; const step = 5
 let dragging = false
 
 function valueToX(v: number): number {
-  const pct = (v - min) / (max - min)
-  return pct * track.clientWidth
+  return ((v - min) / (max - min)) * track.clientWidth
 }
-function xToValue(x: number): number {
-  const pct = Math.max(0, Math.min(1, x / track.clientWidth))
-  return Math.round((min + pct * (max - min)) / step) * step
+function xToRawValue(x: number): number {
+  return Math.max(min, Math.min(max, min + (x / track.clientWidth) * (max - min)))
 }
+function snapValue(v: number): number { return Math.round(v / step) * step }
+let rawValue = value // continuous value during drag (MAJOR fix)
 function updateUI(): void {
   const x = valueToX(value)
   thumb.style.left = x + 'px'; fill.style.width = x + 'px'; valEl.textContent = String(value)
@@ -29,15 +29,15 @@ function updDiag(): void {
 thumb.addEventListener('mousedown',(e)=>{dragging=true;e.preventDefault()})
 document.addEventListener('mousemove',(e)=>{
   if(!dragging)return; const rect=track.getBoundingClientRect()
-  value=xToValue(e.clientX-rect.left);updateUI();updDiag()
+  rawValue=xToRawValue(e.clientX-rect.left);value=rawValue;updateUI();updDiag() // continuous during drag
 })
 document.addEventListener('mouseup',()=>{
   if(!dragging)return; dragging=false
-  value=xToValue(valueToX(value));updateUI();updDiag() // snap to step
+  value=snapValue(rawValue);updateUI();updDiag() // snap to step on release
 })
 track.addEventListener('click',(e)=>{
   if(dragging)return; const rect=track.getBoundingClientRect()
-  value=xToValue(e.clientX-rect.left);updateUI();updDiag()
+  rawValue=xToRawValue(e.clientX-rect.left);value=snapValue(rawValue);updateUI();updDiag()
 })
 updateUI();updDiag()
 document.getElementById('info-ua')!.textContent=navigator.userAgent.slice(0,60)
