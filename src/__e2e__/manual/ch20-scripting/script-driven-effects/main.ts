@@ -90,6 +90,7 @@ engine.runRenderLoop(()=>{scene.render();const n=performance.now();if(n-lf>500){
   const s=(id:string,v:string)=>{const e=document.getElementById(id);if(e)e.textContent=v}
   s('info-fps',cfps);s('info-ua',navigator.userAgent.slice(0,60))
   s('info-viewport',window.innerWidth+'x'+window.innerHeight);s('info-engine','WebGL 2.0')
+  s('info-time',new Date().toISOString())
 })
 
 // UI
