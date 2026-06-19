@@ -167,7 +167,7 @@ export interface ModContentManifest {
    *
    * OpenRA 对照: ModContent.Sources (ImmutableArray<string>)
    *
-   * TODO-22-CI-B.2: Implement source-based installation in Phase B.
+   * TODO-CI-B.2: Source-based installation implemented in Phase B.
    */
   sources?: Record<string, ContentSource>
 }
@@ -353,7 +353,7 @@ export interface ContentPackageRecord {
    * Compared against the current manifest's download SHA1 to detect
    * when content has been updated on the mirror.
    *
-   * TODO-CI-B.5: Added for content update check in Phase B.
+   * CI-B.5: Manifest SHA1 for content update check (implemented in Phase B).
    */
   manifestSha1?: string
 

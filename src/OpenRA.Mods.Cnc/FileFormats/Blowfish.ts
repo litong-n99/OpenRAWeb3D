@@ -1,5 +1,5 @@
 /**
- * Blowfish.ts — Blowfish block cipher (64-bit blocks)
+ * Blowfish.ts — Blowfish block cipher (64-bit blocks, ECB mode)
  * OpenRA 对照: OpenRA.Mods.Cnc/FileFormats/Blowfish.cs
  *
  * 核心范式转换:
@@ -13,6 +13,23 @@
  *
  * The key schedule uses the standard Blowfish P-array and S-boxes
  * initialized from the hexadecimal digits of pi.
+ *
+ * ## ECB mode
+ *
+ * This implementation uses Electronic Codebook (ECB) mode: each 8-byte block
+ * is encrypted/decrypted independently with no chaining. ECB is generally
+ * insecure for multi-block data because identical plaintext blocks produce
+ * identical ciphertext blocks, revealing patterns.
+ *
+ * **Why ECB is sufficient for MIX headers:**
+ * - MIX headers are small (typically 18-100 bytes = 3-13 blocks)
+ * - The header contains structured metadata (file counts, offsets, hashes)
+ *   with no repeated patterns across blocks
+ * - Each MIX file uses a unique Blowfish key (derived from RSA), making
+ *   known-plaintext attacks infeasible
+ * - This matches OpenRA's C# implementation exactly (also ECB)
+ * - TLS/HTTPS provides transport-layer encryption; Blowfish here is
+ *   only for the at-rest MIX archive format, not network transmission
  */
 
 // ---------------------------------------------------------------------------

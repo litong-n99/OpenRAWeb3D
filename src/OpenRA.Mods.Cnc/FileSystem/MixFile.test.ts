@@ -230,20 +230,17 @@ describe('MixLoader', () => {
       expect(result).toBeNull()
     })
 
-    it('logs "no Blowfish key" warning when encrypted format detected without key', () => {
+    it('suppresses "no Blowfish key" warning for ambiguous firstUint16=1 (C&C fallback)', () => {
+      // firstUint16=1 could be either universal key format or C&C numFiles=1.
+      // The Loader tries encrypted first, catches "no Blowfish key", suppresses
+      // the warning (to avoid spurious noise when C&C fallback succeeds),
+      // falls through to C&C, and parses successfully.
       const encData = buildEncryptedTestMix()  // first uint16=1, ambiguous
-      // Since firstUint16=1 could also be C&C numFiles=1, the Loader falls through
-      // to C&C and parses the file. So there should be no warning logged.
-      // The key-not-available warning happens in parseEncrypted, but since we
-      // fall through, the C&C parse may succeed or fail separately.
-      // This test verifies that encrypted detection runs first and logs when key absent.
       const result = loader.tryParsePackage('test-enc.mix', encData)
-      // With firstUint16=1 and no key: parseEncrypted fails (no key),
-      // falls through to C&C (isCncFormat true for 1), C&C parse succeeds
+      // C&C fallback succeeds (firstUint16=1 looks like numFiles=1 C&C)
       expect(result).not.toBeNull()
-      expect(warnSpy).toHaveBeenCalledTimes(1)
-      const callArg = warnSpy.mock.calls[0]?.[0] as string
-      expect(callArg).toContain('no Blowfish key')
+      // No spurious warning logged (suppressed for ambiguous fallthrough)
+      expect(warnSpy).not.toHaveBeenCalled()
     })
 
     it('returns a MixFileRuntime when key is set as default', () => {

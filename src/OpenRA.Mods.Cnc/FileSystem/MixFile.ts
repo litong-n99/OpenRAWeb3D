@@ -99,16 +99,28 @@ export class MixLoader implements IPackageLoader {
       } catch (err) {
         encryptedAttemptFailed = true
         const msg = String(err)
+
+        // Determine whether we'll fall through to C&C (ambiguous firstUint16=1
+        // case). If so, suppress the warning — C&C fallback may succeed silently.
+        const dv = new DataView(stream)
+        const firstUint16 = dv.getUint16(0, true)
+        const willFallThrough = firstUint16 === 1
+
         if (msg.includes('RSA') || msg.includes('Phase B')) {
           console.warn(
             `MixLoader: Encrypted MIX "${filename}" requires RSA key decryption ` +
             `(not supported in Phase B). Use the build-time MIX unpacker.`,
           )
         } else if (msg.includes('no Blowfish key')) {
-          console.warn(
-            `MixLoader: Encrypted MIX "${filename}" detected but no Blowfish key is available. ` +
-            `Call MixFileRuntime.setDefaultEncryptedKey() to enable encrypted MIX support.`,
-          )
+          // Suppress warning when falling through to C&C (firstUint16=1 is
+          // ambiguous — could be numFiles=1 C&C format). If C&C succeeds,
+          // the warning would be spurious.
+          if (!willFallThrough) {
+            console.warn(
+              `MixLoader: Encrypted MIX "${filename}" detected but no Blowfish key is available. ` +
+              `Call MixFileRuntime.setDefaultEncryptedKey() to enable encrypted MIX support.`,
+            )
+          }
         } else {
           console.warn(`MixLoader: Failed to parse "${filename}" as encrypted MIX: ${msg}`)
         }

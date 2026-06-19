@@ -71,7 +71,10 @@ const UNIVERSAL_KEY_HEADER_OFFSET = 6
  * OpenRA format: offset of the RSA-encrypted keyblock (80 bytes).
  * Encrypted header follows at offset 84 (4 + 80).
  */
-// Phase C (RSA): OPENRA_KEYBLOCK_OFFSET = 4, OPENRA_KEYBLOCK_SIZE = 80
+// TODO-CI-C.3: Phase C (RSA) — uncomment and use these constants for OpenRA
+// format encrypted MIX support (RSA-decrypted Blowfish key at offset 4).
+// const OPENRA_KEYBLOCK_OFFSET = 4
+// const OPENRA_KEYBLOCK_SIZE = 80
 // const OPENRA_HEADER_OFFSET = OPENRA_KEYBLOCK_OFFSET + OPENRA_KEYBLOCK_SIZE // 84
 
 // ---------------------------------------------------------------------------
