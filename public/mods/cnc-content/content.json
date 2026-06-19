@@ -1,0 +1,43 @@
+{
+  "modId": "cnc-content",
+  "targetModId": "td",
+  "packages": {
+    "basefiles": {
+      "title": "Base Freeware Content",
+      "identifier": "basefiles",
+      "testFiles": [
+        "Content/cnc/conquer.mix",
+        "Content/cnc/desert.mix",
+        "Content/cnc/general.mix",
+        "Content/cnc/sounds.mix",
+        "Content/cnc/speech.mix",
+        "Content/cnc/temperat.mix",
+        "Content/cnc/tempicnh.mix",
+        "Content/cnc/transit.mix",
+        "Content/cnc/winter.mix"
+      ],
+      "sources": [],
+      "required": true,
+      "download": "basefiles"
+    }
+  },
+  "downloads": {
+    "basefiles": {
+      "title": "Base Freeware Content",
+      "sha1": "72f337464963fa37d3688eb03e80eefd33669a3d",
+      "type": "ZipFile",
+      "extract": {
+        "Content/cnc/conquer.mix": "conquer.mix",
+        "Content/cnc/desert.mix": "desert.mix",
+        "Content/cnc/general.mix": "general.mix",
+        "Content/cnc/sounds.mix": "sounds.mix",
+        "Content/cnc/speech.mix": "speech.mix",
+        "Content/cnc/temperat.mix": "temperat.mix",
+        "Content/cnc/tempicnh.mix": "tempicnh.mix",
+        "Content/cnc/transit.mix": "transit.mix",
+        "Content/cnc/winter.mix": "winter.mix"
+      },
+      "mirrorList": "https://www.openra.net/packages/cnc-mirrors.txt"
+    }
+  }
+}

@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "build:mods": "tsx scripts/build-mods.ts"
+    "build:mods": "tsx scripts/build-mods.ts",
+    "build:content": "tsx scripts/build-content.ts",
+    "build:mixdb": "tsx scripts/build-mixdb.ts",
+    "build:all": "tsx scripts/build-content.ts && tsx scripts/build-mixdb.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
