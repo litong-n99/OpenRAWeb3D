@@ -594,9 +594,10 @@ export class ContentInstallerUI {
 
     const container = document.getElementById(PROGRESS_CONTAINER_ID)
     if (!container) {
-      // BLOCKER fix: the orphan fallback div created below was never appended
-      // to the DOM. Now we create it, append it to the panel if available,
-      // and emit a warning so the root cause can be investigated.
+      // RESOLVED (R1 BLOCKER): The orphan fallback div is now appended to
+      // the panel (or document.body as last resort), preventing DOM leaks.
+      // The warning is retained for diagnostics — if this fires, the panel
+      // element (PANEL_ID) was removed or renamed without updating show().
       console.warn(
         '[ContentInstallerUI] PROGRESS_CONTAINER_ID not found in DOM — ' +
         'appending fallback to panel.',

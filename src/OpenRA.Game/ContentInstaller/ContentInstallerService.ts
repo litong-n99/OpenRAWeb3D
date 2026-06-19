@@ -20,6 +20,7 @@ import type { FileSystem } from '../FileSystem/FileSystem.js'
 import { DownloadManager } from './DownloadManager.js'
 import { PackageExtractor } from './PackageExtractor.js'
 import { MirrorResolver } from './MirrorResolver.js'
+import { Sha1Verifier } from './Sha1Verifier.js'
 import type {
   ContentInstallState,
   ContentInstallProgress,
@@ -93,6 +94,13 @@ export class ContentInstallerService {
 
   /** Cached content manifests, keyed by modId. */
   private _modContent = new Map<string, ModContentManifest>()
+
+  /**
+   * Set of modIds for which we already determined there is no content
+   * installer (received 404 or fetch failure). Prevents repeated
+   * failing network requests.
+   */
+  private _modContentMissing = new Set<string>()
 
   /** IndexedDB database instance (lazy, opened on first use). */
   private _db: IDBDatabase | null = null
@@ -217,6 +225,11 @@ export class ContentInstallerService {
     const cached = this._modContent.get(modId)
     if (cached) return cached
 
+    // Avoid repeated 404 fetches — we already know this mod has no installer
+    if (this._modContentMissing.has(modId)) {
+      return null
+    }
+
     const contentModId = `${modId}-content`
     const url = `/mods/${contentModId}/content.json`
 
@@ -234,7 +247,8 @@ export class ContentInstallerService {
       const response = await fetch(url)
       if (!response.ok) {
         if (response.status === 404) {
-          // Mod has no content installer -- this is normal
+          // Mod has no content installer -- cache the negative result
+          this._modContentMissing.add(modId)
           return null
         }
         console.warn(
@@ -254,7 +268,11 @@ export class ContentInstallerService {
       // CI-B.7: When fetch fails and we're offline, it's expected
       if (!this.isOnline) {
         console.log('[ContentInstaller] Manifest fetch failed due to offline status')
+        // Don't cache the miss when offline -- we might be online later
+        return null
       }
+      // Cache this miss to avoid repeated failing requests
+      this._modContentMissing.add(modId)
       return null
     }
   }
@@ -477,6 +495,7 @@ export class ContentInstallerService {
   private async _installPackageImpl(
     modId: string,
     packageName: string,
+    externalSignal?: AbortSignal,
   ): Promise<void> {
     const manifest = this._modContent.get(modId)
     if (!manifest) {
@@ -507,9 +526,14 @@ export class ContentInstallerService {
       )
     }
 
-    // Create abort controller for cancellation
+    // Create abort controller for cancellation.
+    // When externalSignal is provided (concurrent installAllParallel),
+    // combine it with the local signal so both cancellation paths work.
     this._abortController = new AbortController()
-    const signal = this._abortController.signal
+    const localSignal = this._abortController.signal
+    const signal = externalSignal
+      ? AbortSignal.any([localSignal, externalSignal])
+      : localSignal
 
     try {
       // Phase 1: Resolve mirrors
@@ -875,6 +899,14 @@ export class ContentInstallerService {
     const queue = [...required, ...optional]
     const maxSlots = Math.min(maxConcurrent, queue.length)
 
+    // CI-B.1 BLOCKER: shared AbortController for concurrent downloads.
+    // Without this, the second download overwrites this._abortController,
+    // making the first download uncancellable. Each _installPackageImpl()
+    // combines its local signal with this shared signal via AbortSignal.any().
+    const sharedController = new AbortController()
+    this._abortController = sharedController
+    const sharedSignal = sharedController.signal
+
     let activeCount = 0
     let queueIndex = 0
     let firstRequiredError: Error | null = null
@@ -886,7 +918,7 @@ export class ContentInstallerService {
       if (!pkg) return
 
       try {
-        await this._installPackageImpl(modId, packageName)
+        await this._installPackageImpl(modId, packageName, sharedSignal)
         anyInstalled = true
       } catch (err) {
         if (pkg.required) {
@@ -994,7 +1026,6 @@ export class ContentInstallerService {
 
       // Verify SHA1 if expected
       if (expectedSha1) {
-        const { Sha1Verifier } = await import('./Sha1Verifier.js')
         const ok = await Sha1Verifier.verify(data, expectedSha1)
         if (!ok) {
           // Cached data is stale — delete it
@@ -1024,6 +1055,7 @@ export class ContentInstallerService {
   async clearModContent(modId: string): Promise<void> {
     // Clear cached manifest first (always, regardless of DB availability)
     this._modContent.delete(modId)
+    this._modContentMissing.delete(modId)
 
     const db = await this._openDb()
     if (!db) return
@@ -1066,6 +1098,7 @@ export class ContentInstallerService {
    */
   async clearAll(): Promise<void> {
     this._modContent.clear()
+    this._modContentMissing.clear()
 
     // Delete the entire database
     return new Promise((resolve) => {
@@ -1102,12 +1135,16 @@ export class ContentInstallerService {
    * Safe to call multiple times.
    */
   dispose(): void {
+    // Abort any in-flight download before cleaning up listeners
+    this.cancel()
+
     // CI-B.7: Clean up online/offline listeners
     if (this._onlineCleanup) {
       this._onlineCleanup()
       this._onlineCleanup = null
     }
     this._modContent.clear()
+    this._modContentMissing.clear()
     this._listeners.clear()
     this._abortController = null
   }

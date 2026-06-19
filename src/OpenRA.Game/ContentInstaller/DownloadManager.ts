@@ -484,7 +484,9 @@ export class DownloadManager {
         }
       }
     } catch (err) {
-      reader.releaseLock()
+      // NOTE: Do NOT call reader.releaseLock() here — the finally block
+      // (line below) already releases the lock. Double releaseLock() throws
+      // TypeError, masking the original error.
       // Save partial data on error (unless aborted)
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
         if (db && received > 0) {
