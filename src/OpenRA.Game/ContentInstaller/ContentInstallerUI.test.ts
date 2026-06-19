@@ -1,0 +1,444 @@
+/**
+ * ContentInstallerUI.test.ts -- DOM unit tests for ContentInstallerUI
+ *
+ * Tests the DOM overlay UI using happy-dom to verify:
+ * - show() creates overlay with expected elements
+ * - Package list rendering with required/optional badges
+ * - Button bar rendering with Back, Install All, Play buttons
+ * - hide() removes all DOM elements
+ * - Progress view show/hide behavior
+ * - _formatBytes and _formatSpeed formatting helpers
+ *
+ * Mock ContentInstallerService to avoid actual network/IndexedDB calls.
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { ContentInstallerUI } from './ContentInstallerUI.js'
+import type { ModContentManifest, ContentInstallProgress } from './ContentInstallerTypes.js'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeManifest(): ModContentManifest {
+  return {
+    modId: 'ra-content',
+    targetModId: 'ra',
+    packages: {
+      quickinstall: {
+        title: 'Quick Install Package',
+        identifier: 'quickinstall',
+        testFiles: ['Content/ra/v2/allies.mix'],
+        sources: [],
+        required: true,
+        download: 'dl_quickinstall',
+      },
+      movies: {
+        title: 'Movie Files',
+        identifier: 'movies',
+        testFiles: ['Content/ra/v2/movies.mix'],
+        sources: [],
+        required: false,
+        download: 'dl_movies',
+      },
+      music: {
+        title: 'Music Tracks',
+        identifier: 'music',
+        testFiles: ['Content/ra/v2/scores.mix'],
+        sources: [],
+        required: false,
+        download: 'dl_music',
+      },
+    },
+    downloads: {
+      dl_quickinstall: {
+        title: 'Quick Install',
+        url: 'https://example.com/quickinstall.zip',
+        sha1: 'abc123',
+        type: 'ZipFile',
+        extract: {},
+      },
+      dl_movies: {
+        title: 'Movies',
+        url: 'https://example.com/movies.zip',
+        sha1: 'def456',
+        type: 'ZipFile',
+        extract: {},
+      },
+      dl_music: {
+        title: 'Music',
+        url: 'https://example.com/music.zip',
+        sha1: 'ghi789',
+        type: 'ZipFile',
+        extract: {},
+      },
+    },
+  }
+}
+
+function createMockService() {
+  let _listeners: Array<(p: ContentInstallProgress) => void> = []
+
+  return {
+    state: 'idle' as const,
+    onProgress: vi.fn((listener: (p: ContentInstallProgress) => void) => {
+      _listeners.push(listener)
+      return () => {
+        _listeners = _listeners.filter((l) => l !== listener)
+      }
+    }),
+    getContentManifest: vi.fn().mockResolvedValue(makeManifest()),
+    checkContent: vi.fn().mockResolvedValue(['quickinstall', 'movies']),
+    installPackage: vi.fn().mockResolvedValue(undefined),
+    installAll: vi.fn().mockResolvedValue(undefined),
+    cancel: vi.fn(),
+    clearModContent: vi.fn().mockResolvedValue(undefined),
+    clearAll: vi.fn().mockResolvedValue(undefined),
+    // Simulate progress emission for testing
+    _emitProgress: (progress: ContentInstallProgress) => {
+      for (const l of _listeners) l(progress)
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('ContentInstallerUI', () => {
+  let mockService: ReturnType<typeof createMockService>
+
+  beforeEach(() => {
+    mockService = createMockService()
+  })
+
+  afterEach(() => {
+    // Clean up DOM
+    ContentInstallerUI.hide()
+    const overlay = document.getElementById('content-installer-overlay')
+    if (overlay) overlay.remove()
+  })
+
+  // -------------------------------------------------------------------------
+  // show() / hide()
+  // -------------------------------------------------------------------------
+
+  describe('show()', () => {
+    it('creates overlay with title, description, and button bar', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+        vi.fn(),
+      )
+
+      const overlay = document.getElementById('content-installer-overlay')
+      expect(overlay).not.toBeNull()
+      expect(overlay!.style.position).toBe('fixed')
+
+      // Title
+      const title = document.getElementById('content-installer-title')
+      expect(title).not.toBeNull()
+      expect(title!.textContent).toContain('Game Content Required')
+
+      // Description
+      const desc = document.getElementById('content-installer-description')
+      expect(desc).not.toBeNull()
+
+      // Button bar
+      const btnBar = document.getElementById('content-installer-button-bar')
+      expect(btnBar).not.toBeNull()
+    })
+
+    it('renders package list with required and optional packages', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+        vi.fn(),
+      )
+
+      const pkgList = document.getElementById('content-installer-package-list')
+      expect(pkgList).not.toBeNull()
+      expect(pkgList!.textContent).toContain('Quick Install Package')
+      expect(pkgList!.textContent).toContain('Required')
+      expect(pkgList!.textContent).toContain('Optional')
+    })
+
+    it('shows Back button when onBack is provided', async () => {
+      const onBack = vi.fn()
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+        onBack,
+      )
+
+      const backBtn = document.getElementById('content-installer-back')
+      expect(backBtn).not.toBeNull()
+      expect(backBtn!.textContent).toContain('Back')
+
+      backBtn!.click()
+      expect(onBack).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not show Back button when onBack is not provided', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const backBtn = document.getElementById('content-installer-back')
+      expect(backBtn).toBeNull()
+    })
+
+    it('subscribes to service.onProgress', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      expect(mockService.onProgress).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('hide()', () => {
+    it('removes overlay from DOM', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      expect(document.getElementById('content-installer-overlay')).not.toBeNull()
+
+      ContentInstallerUI.hide()
+
+      expect(document.getElementById('content-installer-overlay')).toBeNull()
+    })
+
+    it('is safe to call twice', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      ContentInstallerUI.hide()
+      expect(() => ContentInstallerUI.hide()).not.toThrow()
+    })
+
+    it('is safe to call before show', () => {
+      expect(() => ContentInstallerUI.hide()).not.toThrow()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Play button
+  // -------------------------------------------------------------------------
+
+  describe('Play button', () => {
+    it('calls onComplete when Play button is clicked', async () => {
+      const onComplete = vi.fn()
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        onComplete,
+      )
+
+      // Play button should exist but may be hidden initially if packages exist
+      const playBtn = document.getElementById('content-installer-play')
+      expect(playBtn).not.toBeNull()
+      // Make it visible for the test
+      if (playBtn) {
+        playBtn.style.display = ''
+        playBtn.click()
+        expect(onComplete).toHaveBeenCalledTimes(1)
+      }
+    })
+
+    it('Play button hides the overlay', async () => {
+      const onComplete = vi.fn()
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        onComplete,
+      )
+
+      const playBtn = document.getElementById('content-installer-play')
+      if (playBtn) {
+        playBtn.style.display = ''
+        playBtn.click()
+      }
+
+      expect(document.getElementById('content-installer-overlay')).toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Install All button
+  // -------------------------------------------------------------------------
+
+  describe('Install All button', () => {
+    it('calls service.installAll when clicked', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const installAllBtn = document.getElementById('content-installer-install-all')
+      expect(installAllBtn).not.toBeNull()
+      expect(installAllBtn!.textContent).toContain('Install All')
+
+      installAllBtn!.click()
+      expect(mockService.installAll).toHaveBeenCalledWith('ra')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Formatting helpers (accessed via private static methods)
+  // -------------------------------------------------------------------------
+
+  describe('_formatBytes()', () => {
+    // Test using reflection to access private static method
+    function formatBytes(bytes: number): string {
+      return (ContentInstallerUI as any)._formatBytes(bytes)
+    }
+
+    it('formats 0 as "0 B"', () => {
+      expect(formatBytes(0)).toBe('0 B')
+    })
+
+    it('formats bytes < 1024', () => {
+      expect(formatBytes(500)).toBe('500 B')
+    })
+
+    it('formats KB range', () => {
+      expect(formatBytes(1536)).toBe('1.5 KB')
+    })
+
+    it('formats MB range', () => {
+      expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB')
+    })
+
+    it('formats GB range', () => {
+      expect(formatBytes(2.5 * 1024 * 1024 * 1024)).toBe('2.50 GB')
+    })
+  })
+
+  describe('_formatSpeed()', () => {
+    function formatSpeed(bytesPerSec: number): string {
+      return (ContentInstallerUI as any)._formatSpeed(bytesPerSec)
+    }
+
+    it('appends /s suffix', () => {
+      const result = formatSpeed(1024 * 1024)
+      expect(result).toContain('/s')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Progress handling
+  // -------------------------------------------------------------------------
+
+  describe('progress handling', () => {
+    it('shows progress view on downloading state', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      // Emit a downloading progress
+      mockService._emitProgress({
+        state: 'downloading',
+        packageId: 'ra:quickinstall',
+        statusText: 'Downloading (45%)...',
+        progressPercent: 45,
+        bytesReceived: 1024 * 500,
+        bytesTotal: 1024 * 1024,
+      })
+
+      const progressContainer = document.getElementById(
+        'content-installer-progress',
+      )
+      expect(progressContainer).not.toBeNull()
+      // Progress should be visible now
+      expect(progressContainer!.style.display).not.toBe('none')
+    })
+
+    it('shows error message on error state', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      // First trigger download to show progress view
+      mockService._emitProgress({
+        state: 'downloading',
+        packageId: 'ra:quickinstall',
+        statusText: 'Downloading...',
+        progressPercent: 10,
+        bytesReceived: 100,
+        bytesTotal: 1000,
+      })
+
+      // Then emit error
+      mockService._emitProgress({
+        state: 'error',
+        packageId: 'ra:quickinstall',
+        statusText: 'Installation failed',
+        progressPercent: 0,
+        bytesReceived: 0,
+        bytesTotal: 0,
+        error: 'Download failed: HTTP 500',
+      })
+
+      const errorEl = document.querySelector('.progress-error') as HTMLElement
+      expect(errorEl).not.toBeNull()
+      expect(errorEl?.textContent).toContain('HTTP 500')
+    })
+
+    it('hides progress view on complete state', async () => {
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      // Trigger download
+      mockService._emitProgress({
+        state: 'downloading',
+        packageId: 'ra:quickinstall',
+        statusText: 'Downloading...',
+        progressPercent: 10,
+        bytesReceived: 100,
+        bytesTotal: 1000,
+      })
+
+      // Then complete
+      mockService._emitProgress({
+        state: 'complete',
+        packageId: 'ra:quickinstall',
+        statusText: 'Installation complete',
+        progressPercent: 100,
+        bytesReceived: 0,
+        bytesTotal: 0,
+      })
+
+      // Progress should be hidden
+      const progressContainer = document.getElementById(
+        'content-installer-progress',
+      )
+      expect(progressContainer!.style.display).toBe('none')
+
+      // Package list should be visible again
+      const pkgList = document.getElementById('content-installer-package-list')
+      expect(pkgList!.style.display).not.toBe('none')
+    })
+  })
+})

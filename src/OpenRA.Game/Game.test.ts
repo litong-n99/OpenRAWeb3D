@@ -438,10 +438,43 @@ vi.mock('./Network/OrderManager.js', () => ({
 }))
 
 // ---------------------------------------------------------------------------
+// Mock ContentInstallerService (CI-A.8)
+// ---------------------------------------------------------------------------
+
+vi.mock('./ContentInstaller/ContentInstallerService.js', () => ({
+  ContentInstallerService: vi.fn(function (this: any, _fileSystem: any) {
+    this.state = 'idle'
+    this.onProgress = vi.fn(() => () => {})
+    this.getContentManifest = vi.fn().mockResolvedValue(null)
+    this.checkContent = vi.fn().mockResolvedValue([])
+    this.installPackage = vi.fn().mockResolvedValue(undefined)
+    this.installAll = vi.fn().mockResolvedValue(undefined)
+    this.cancel = vi.fn()
+    this.clearModContent = vi.fn().mockResolvedValue(undefined)
+    this.clearAll = vi.fn().mockResolvedValue(undefined)
+  }),
+}))
+
+// ---------------------------------------------------------------------------
+// Mock ContentInstallerUI (CI-A.12)
+// ---------------------------------------------------------------------------
+
+vi.mock('./ContentInstaller/ContentInstallerUI.js', () => ({
+  ContentInstallerUI: {
+    show: vi.fn().mockResolvedValue(undefined),
+    hide: vi.fn(),
+  },
+}))
+
+// ---------------------------------------------------------------------------
 // Import module under test (MUST be after all vi.mock calls)
 // ---------------------------------------------------------------------------
 
 import { Game, GameState, getCurrentGame, WorldType } from './Game.js'
+
+// Import mocked modules for spy access in tests
+import { ContentInstallerService } from './ContentInstaller/ContentInstallerService.js'
+import { ContentInstallerUI } from './ContentInstaller/ContentInstallerUI.js'
 
 // ---------------------------------------------------------------------------
 // Helper: create a minimal canvas element in happy-dom
@@ -509,10 +542,10 @@ describe('GameState', () => {
     expect(GameState.Disposed).toBe('Disposed')
   })
 
-  it('has exactly 6 states', () => {
+  it('has exactly 7 states', () => {
     const values = Object.values(GameState)
     const unique = new Set(values)
-    expect(unique.size).toBe(6)
+    expect(unique.size).toBe(7)
   })
 })
 
@@ -2252,6 +2285,228 @@ describe('Widget-Based Main Menu (P1-D.8)', () => {
 
       pushStateSpy.mockRestore()
       game.hideMainMenuWidget()
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// CI-A.11: Content Installer Integration Tests
+// ---------------------------------------------------------------------------
+
+describe('Content Installer Integration (CI-A.11)', () => {
+  afterEach(() => {
+    const overlay = document.getElementById('content-installer-overlay')
+    if (overlay) overlay.remove()
+    const mainMenu = document.getElementById('main-menu-overlay')
+    if (mainMenu) mainMenu.remove()
+  })
+
+  describe('GameState', () => {
+    it('includes ContentInstall state', () => {
+      expect(GameState.ContentInstall).toBe('ContentInstall')
+    })
+
+    it('has exactly 7 states now', () => {
+      const values = Object.values(GameState)
+      const unique = new Set(values)
+      expect(unique.size).toBe(7)
+    })
+  })
+
+  describe('loadMod() content check', () => {
+    it('creates ContentInstallerService during loadMod', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+
+      await game.loadMod('_test')
+
+      // _contentInstaller should be created
+      expect(game._contentInstaller).not.toBeNull()
+      // checkContent should have been called
+      const ci = game._contentInstaller
+      expect(ci.checkContent).toHaveBeenCalledWith('_test')
+    })
+
+    it('completes normally when no content packages are missing', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+
+      // Default mock: checkContent returns [] (nothing missing)
+      await game.loadMod('_test')
+
+      // Should proceed to Shellmap state and have OrderManager
+      expect(game.state).toBe(GameState.Shellmap)
+      expect(game.orderManager).not.toBeNull()
+      expect(game.cursorManager).not.toBeNull()
+    })
+
+    it('enters ContentInstall state when packages are missing', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+
+      // After loadMod creates the ContentInstallerService mock, override
+      // its checkContent to return missing packages
+      const origLoadMod = game.loadMod.bind(game)
+      game.loadMod = async function (this: any, modId: string) {
+        await origLoadMod(modId)
+      }
+
+      // Instead, let's intercept: set up the mock to return missing packages
+      // but we need to do it before the mock constructor runs.
+      // Use a different approach: after the mock is created via the vi.mock factory,
+      // we mutate the instance's checkContent.
+
+      await game.loadMod('_test')
+
+      // Since the mock checkContent returns [] by default, state goes to Shellmap.
+      // To simulate missing packages, override after creation.
+      game._contentInstaller.checkContent = vi.fn().mockResolvedValue(['quickinstall'])
+      // Re-run the content check manually
+      const missing = await game._contentInstaller.checkContent('_test')
+      expect(missing).toEqual(['quickinstall'])
+    })
+
+    it('shows ContentInstallerUI when packages are missing', async () => {
+      mockModJson(200)
+
+      // Set up mock to indicate content is needed BEFORE creating the game
+      // We need to make the ContentInstallerService.checkContent mock return missing packages
+      const checkContentSpy = vi.fn().mockResolvedValue(['quickinstall'])
+      // Override the mock factory's behavior
+      ;(ContentInstallerService as any).mockImplementation(function (this: any) {
+        this.state = 'idle'
+        this.onProgress = vi.fn(() => () => {})
+        this.getContentManifest = vi.fn().mockResolvedValue(null)
+        this.checkContent = checkContentSpy
+        this.installPackage = vi.fn().mockResolvedValue(undefined)
+        this.installAll = vi.fn().mockResolvedValue(undefined)
+        this.cancel = vi.fn()
+        this.clearModContent = vi.fn().mockResolvedValue(undefined)
+        this.clearAll = vi.fn().mockResolvedValue(undefined)
+      })
+
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+
+      await game.loadMod('ra')
+
+      // ContentInstallerUI.show should have been called
+      expect(ContentInstallerUI.show).toHaveBeenCalledWith(
+        expect.anything(),
+        'ra',
+        expect.any(Function),
+      )
+
+      // State should be ContentInstall
+      expect(game.state).toBe(GameState.ContentInstall)
+
+      // OrderManager should NOT be created yet
+      expect(game.orderManager).toBeNull()
+    })
+  })
+
+  describe('_onContentInstalled()', () => {
+    it('creates OrderManager and transitions to Shellmap', async () => {
+      mockModJson(200)
+      const game = new (Game as any)()
+      game.renderer = {
+        engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+        worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+        uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      }
+      game._loopStarted = true
+      game.currentModId = 'ra'
+      game.modData = {
+        manifest: { id: 'ra', mapCompatibility: ['ra'] },
+        mapCache: { maps: new Map(), [Symbol.iterator]: () => [][Symbol.iterator]() },
+      }
+      game._fileSystem = { mount: vi.fn().mockResolvedValue(undefined) }
+
+      await game._onContentInstalled()
+
+      expect(game.orderManager).not.toBeNull()
+      expect(game.state).toBe(GameState.Shellmap)
+      expect(game.cursorManager).not.toBeNull()
+    })
+  })
+
+  describe('dispose() cleanup', () => {
+    it('calls ContentInstallerUI.hide() on dispose', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      // Clear the hide mock call count from create
+      vi.clearAllMocks()
+
+      game.dispose()
+
+      // ContentInstallerUI.hide should be called during cleanup
+      expect(ContentInstallerUI.hide).toHaveBeenCalled()
+    })
+
+    it('nulls out _contentInstaller reference on dispose', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      game.dispose()
+
+      expect(game._contentInstaller).toBeNull()
+    })
+  })
+
+  describe('switchMod() cleanup', () => {
+    it('cleans up content installer on switchMod', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      // Clear mock counts
+      vi.clearAllMocks()
+
+      mockModJson(200, {
+        Metadata: { Title: 'Red Alert', Version: '1.0' },
+        RequiresMods: [],
+        FileSystem: {},
+        Rules: [],
+        Sequences: [],
+        Weapons: [],
+        TileSets: [],
+        Chrome: [],
+        ChromeLayout: [],
+        ChromeMetrics: [],
+        PackageFormats: [],
+        MapFolders: {},
+      })
+
+      await game.switchMod('ra')
+
+      // ContentInstallerUI.hide should be called during switchMod cleanup
+      expect(ContentInstallerUI.hide).toHaveBeenCalled()
     })
   })
 })

@@ -1,0 +1,404 @@
+/**
+ * ContentInstallerService.test.ts -- Unit tests for ContentInstallerService
+ *
+ * Mocks IndexedDB, fetch, and FileSystem to test:
+ * - State transitions (idle -> checking -> ready / needs_install)
+ * - Manifest loading and caching
+ * - Package check logic with IndexedDB records
+ * - Progress listener subscription/unsubscription
+ * - clearModContent / clearAll lifecycle
+ * - Error handling paths
+ *
+ * Since happy-dom provides a functional IndexedDB implementation,
+ * we use the real indexedDB for DB operations but mock fetch and FileSystem.
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { ContentInstallerService } from './ContentInstallerService.js'
+import type { ModContentManifest, ContentPackageRecord } from './ContentInstallerTypes.js'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Minimal manifest for testing. */
+function makeManifest(overrides?: Partial<ModContentManifest>): ModContentManifest {
+  return {
+    modId: 'ra-content',
+    targetModId: 'ra',
+    packages: {
+      quickinstall: {
+        title: 'Quick Install',
+        identifier: 'quickinstall',
+        testFiles: ['Content/ra/v2/allies.mix'],
+        sources: [],
+        required: true,
+        download: 'dl_quickinstall',
+      },
+      movies: {
+        title: 'Movies',
+        identifier: 'movies',
+        testFiles: ['Content/ra/v2/movies.mix'],
+        sources: [],
+        required: false,
+        download: 'dl_movies',
+      },
+    },
+    downloads: {
+      dl_quickinstall: {
+        title: 'Quick Install Download',
+        url: 'https://example.com/quickinstall.zip',
+        sha1: 'abc123',
+        type: 'ZipFile',
+        extract: { 'Content/ra/v2/allies.mix': 'allies.mix' },
+      },
+      dl_movies: {
+        title: 'Movies Download',
+        url: 'https://example.com/movies.zip',
+        sha1: 'def456',
+        type: 'ZipFile',
+        extract: { 'Content/ra/v2/movies.mix': 'movies.mix' },
+      },
+    },
+    ...overrides,
+  }
+}
+
+/** Create a mock FileSystem object. */
+function createMockFileSystem() {
+  return {
+    mountFromBuffer: vi.fn(() => ({ contents: [] })),
+    mount: vi.fn().mockResolvedValue(undefined),
+    dispose: vi.fn(),
+  } as any
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('ContentInstallerService', () => {
+  let service: ContentInstallerService
+  let mockFs: ReturnType<typeof createMockFileSystem>
+
+  beforeEach(() => {
+    mockFs = createMockFileSystem()
+    service = new ContentInstallerService(mockFs)
+    globalThis.fetch = vi.fn()
+
+    // Mock IndexedDB for happy-dom (which does not implement it)
+    if (typeof indexedDB === 'undefined') {
+      const store = new Map<string, any>()
+      ;(globalThis as any).indexedDB = {
+        open: vi.fn((_name: string, _version?: number) => {
+          const request: any = {
+            result: {
+              objectStoreNames: {
+                contains: vi.fn(() => store.has('_init')),
+              },
+              createObjectStore: vi.fn(() => {
+                store.set('_init', true)
+              }),
+              transaction: vi.fn(() => ({
+                objectStore: vi.fn(() => ({
+                  get: vi.fn((_key: string) => ({
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                    result: null,
+                  })),
+                  put: vi.fn((_value: any) => ({
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                  openCursor: vi.fn(() => ({
+                    set onsuccess(_cb: any) { setTimeout(() => {
+                      ;(this as any).result = null
+                      _cb?.()
+                    }, 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                  delete: vi.fn(() => ({
+                    set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                    set onerror(_cb: any) {},
+                  })),
+                })),
+                set oncomplete(_cb: any) { setTimeout(() => _cb?.(), 0) },
+                set onerror(_cb: any) {},
+                set onabort(_cb: any) {},
+              })),
+            },
+            set onupgradeneeded(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onerror(_cb: any) {},
+            set onblocked(_cb: any) {},
+          }
+          return request
+        }),
+        deleteDatabase: vi.fn((_name: string) => {
+          store.clear()
+          const request: any = {
+            set onsuccess(_cb: any) { setTimeout(() => _cb?.(), 0) },
+            set onerror(_cb: any) {},
+            set onblocked(_cb: any) {},
+          }
+          return request
+        }),
+      }
+    }
+  })
+
+  afterEach(async () => {
+    vi.restoreAllMocks()
+  })
+
+  // -------------------------------------------------------------------------
+  // Construction and initial state
+  // -------------------------------------------------------------------------
+
+  describe('construction', () => {
+    it('starts with idle state', () => {
+      expect(service.state).toBe('idle')
+    })
+
+    it('provides a working onProgress subscription/unsubscription', () => {
+      const listener = vi.fn()
+      const unsubscribe = service.onProgress(listener)
+
+      // Trigger a state change to verify subscription works
+      // (We check indirectly via checkContent later)
+      expect(typeof unsubscribe).toBe('function')
+
+      // Unsubscribe should not throw
+      unsubscribe()
+      expect(() => unsubscribe()).not.toThrow() // Double unsubscribe safe
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // getContentManifest
+  // -------------------------------------------------------------------------
+
+  describe('getContentManifest()', () => {
+    it('returns null on HTTP 404', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn(),
+      })
+
+      const result = await service.getContentManifest('ra')
+      expect(result).toBeNull()
+      expect(fetch).toHaveBeenCalledWith('/mods/ra-content/content.json')
+    })
+
+    it('returns parsed manifest on success', async () => {
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      const result = await service.getContentManifest('ra')
+      expect(result).not.toBeNull()
+      expect(result!.targetModId).toBe('ra')
+      expect(result!.packages['quickinstall']).toBeDefined()
+    })
+
+    it('caches manifest and returns cached on second call', async () => {
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      const result1 = await service.getContentManifest('ra')
+      const result2 = await service.getContentManifest('ra')
+
+      // fetch should only be called once (cached)
+      expect(fetch).toHaveBeenCalledTimes(1)
+      expect(result2).toBe(result1) // Same reference (from cache)
+    })
+
+    it('returns null on fetch network error', async () => {
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+
+      const result = await service.getContentManifest('ra')
+      expect(result).toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // checkContent
+  // -------------------------------------------------------------------------
+
+  describe('checkContent()', () => {
+    it('returns empty array and ready state when no manifest exists', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn(),
+      })
+
+      const result = await service.checkContent('ra')
+      expect(result).toEqual([])
+      expect(service.state).toBe('ready')
+    })
+
+    it('returns all packages as missing when no records in IndexedDB', async () => {
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      const result = await service.checkContent('ra')
+      expect(result.length).toBe(2)
+      expect(result).toContain('quickinstall')
+      expect(result).toContain('movies')
+      expect(service.state).toBe('needs_install')
+    })
+
+    it('returns only packages with missing test files', async () => {
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      // Mock the internal IndexedDB methods to simulate one installed package
+      ;(service as any)._getPackageRecord = vi.fn(
+        async (packageId: string) => {
+          if (packageId === 'ra:quickinstall') {
+            return {
+              packageId: 'ra:quickinstall',
+              version: 'abc123',
+              sha1: 'abc123',
+              installedAt: Date.now(),
+              files: ['Content/ra/v2/allies.mix'],
+            } satisfies ContentPackageRecord
+          }
+          return null
+        },
+      )
+
+      const result = await service.checkContent('ra')
+      // quickinstall should be found as installed, movies should be missing
+      expect(result).not.toContain('quickinstall')
+      expect(result).toContain('movies')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Progress listener
+  // -------------------------------------------------------------------------
+
+  describe('onProgress()', () => {
+    it('notifies listener on state changes during checkContent', async () => {
+      const listener = vi.fn()
+      service.onProgress(listener)
+
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      await service.checkContent('ra')
+
+      // Should have been called at least twice: checking, then needs_install
+      expect(listener).toHaveBeenCalled()
+      const calls = listener.mock.calls.map((c: any[]) => c[0].state)
+      expect(calls).toContain('checking')
+      expect(calls).toContain('needs_install')
+    })
+
+    it('unsubscribe stops receiving events', async () => {
+      const listener = vi.fn()
+      const unsubscribe = service.onProgress(listener)
+
+      // Unsubscribe immediately
+      unsubscribe()
+
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      await service.checkContent('ra')
+
+      // Should not have been called
+      expect(listener).not.toHaveBeenCalled()
+    })
+
+    it('handles errors in listeners gracefully', async () => {
+      const badListener = vi.fn(() => {
+        throw new Error('Listener error')
+      })
+      const goodListener = vi.fn()
+
+      service.onProgress(badListener)
+      service.onProgress(goodListener)
+
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      // Should not throw
+      await expect(service.checkContent('ra')).resolves.toBeDefined()
+
+      // Good listener should still have been called
+      expect(goodListener).toHaveBeenCalled()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // clearModContent / clearAll
+  // -------------------------------------------------------------------------
+
+  describe('clearModContent()', () => {
+    it('clears cached manifest and returns without error when no DB', async () => {
+      // First cache a manifest
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+      await service.getContentManifest('ra')
+
+      await service.clearModContent('ra')
+
+      // Fetch again -- should go to network (cache cleared)
+      await service.getContentManifest('ra')
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('clearAll()', () => {
+    it('clears all manifests and deletes database', async () => {
+      const manifest = makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(manifest),
+      })
+
+      await service.getContentManifest('ra')
+      await service.clearAll()
+
+      // Fetch again -- should go to network
+      await service.getContentManifest('ra')
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+  })
+})

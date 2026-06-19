@@ -24,6 +24,8 @@ import type { IWorld } from './Graphics/WorldRenderer.js'
 import { CursorManager } from './Graphics/CursorManager.js'
 import { EchoConnection } from './Network/Connection.js'
 import { OrderManager } from './Network/OrderManager.js'
+import { ContentInstallerService } from './ContentInstaller/ContentInstallerService.js'
+import { ContentInstallerUI } from './ContentInstaller/ContentInstallerUI.js'
 import type { Sound } from './Sound/Sound.js'
 
 // ---------------------------------------------------------------------------
@@ -43,6 +45,7 @@ export { WorldType }
 export const GameState = {
   Uninitialized: 'Uninitialized',
   LoadingMod: 'LoadingMod',
+  ContentInstall: 'ContentInstall',
   Shellmap: 'Shellmap',
   Playing: 'Playing',
   Editor: 'Editor',
@@ -186,6 +189,16 @@ export class Game {
    * OpenRA 对照: Game.RunAfterTick(Action) + Game.PerformDelayedActions()
    */
   private _delayedActions: Array<() => void> = []
+
+  /**
+   * 内容安装服务 — 管理游戏资产下载和安装管线。
+   *
+   * OpenRA 对照: ModContentLogic + DownloadPackageLogic
+   *
+   * 在 loadMod() 中创建，用于检查所需内容包是否已安装。
+   * 如果没有内容安装器（此 mod 没有 content.json），则保持为 null。
+   */
+  private _contentInstaller: ContentInstallerService | null = null
 
   // -----------------------------------------------------------------------
   // Accessors
@@ -486,6 +499,21 @@ export class Game {
     // 5. 加载 RuleSet
     await this.modData.loadRuleSet()
 
+    // 5.5. 内容安装检查 (CI-A.11)
+    this._contentInstaller = new ContentInstallerService(fileSystem)
+    const missingPackages = await this._contentInstaller.checkContent(modId)
+
+    if (missingPackages.length > 0) {
+      console.log(
+        `[Game] Content packages missing: ${missingPackages.join(', ')}`,
+      )
+      this.state = GameState.ContentInstall
+      ContentInstallerUI.show(this._contentInstaller, modId, () => {
+        this._onContentInstalled()
+      })
+      return // Don't create OrderManager yet — wait for content installation
+    }
+
     // 6. 创建 OrderManager（本地单人模式）
     const connection = new EchoConnection()
     this.orderManager = new OrderManager(connection)
@@ -504,6 +532,37 @@ export class Game {
     // this.sound = new Sound(...)
 
     this.state = GameState.Shellmap
+  }
+
+  /**
+   * 内容安装完成后的回调 — 重新创建 OrderManager 并继续加载。
+   *
+   * OpenRA 对照: 无直接对应（C# 中内容安装在启动前完成）
+   *
+   * 当用户通过 ContentInstallerUI 安装完所有必需内容包后调用。
+   * 重建 OrderManager 并启动 shellmap + 主菜单。
+   */
+  private _onContentInstalled(): void {
+    // Re-create OrderManager now that content is available
+    const connection = new EchoConnection()
+    this.orderManager = new OrderManager(connection)
+
+    // Create CursorManager (same as in loadMod)
+    // NOTE: _onContentInstalled runs after content packages are mounted,
+    // so cursor assets might now be available.
+    this.cursorManager?.dispose()
+    this.cursorManager = new CursorManager()
+
+    // Continue to shellmap + main menu
+    this.state = GameState.Shellmap
+    this.loadShellMap().then(() => {
+      this.showMainMenu()
+    }).catch((err) => {
+      console.warn('[Game] Shellmap load failed after content install:', err)
+      // Fallback to static background
+      this.setShellmapFallback()
+      this.showMainMenu()
+    })
   }
 
   // -----------------------------------------------------------------------
@@ -1271,6 +1330,10 @@ export class Game {
     this.modData?.dispose()
     this.modData = null
 
+    // Clean up content installer (hide UI if visible)
+    ContentInstallerUI.hide()
+    this._contentInstaller = null
+
     this.sound = null
 
     // 重置累加器 — 防止 switchMod 后突发追赶 tick
@@ -1306,7 +1369,9 @@ export class Game {
   dispose(): void {
     this.state = GameState.Disposed
 
-    // 0. 清理主菜单 DOM（防止残留在 DOM 中）
+    // 0. 清理内容安装器 UI + 主菜单 DOM（防止残留在 DOM 中）
+    ContentInstallerUI.hide()
+    this._contentInstaller = null
     this.hideMainMenu()
 
     // 1. World
