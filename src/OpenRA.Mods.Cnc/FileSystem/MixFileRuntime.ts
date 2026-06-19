@@ -737,6 +737,18 @@ export class MixFileRuntime implements IReadOnlyPackage {
       // RSA decrypt: plaintext = ciphertext^exponent mod modulus
       const decryptedBigInt = MixFileRuntime._modPow(chunkBigInt, RSA_EXPONENT, modulus)
 
+      // RSA self-verification: decrypted^exponent mod modulus should equal ciphertext
+      const reverified = MixFileRuntime._modPow(decryptedBigInt, RSA_EXPONENT, modulus)
+      if (reverified !== chunkBigInt) {
+        console.warn(
+          `MixFileRuntime RSA: chunk ${Math.floor(srcOffset / inSize)} self-verification FAILED. ` +
+          `Ciphertext prefix: 0x${chunkBigInt.toString(16).slice(0, 8)}... ` +
+          `Decrypted prefix: 0x${decryptedBigInt.toString(16).slice(0, 8)}... ` +
+          `Re-encrypted prefix: 0x${reverified.toString(16).slice(0, 8)}... ` +
+          `(outSize=${outSize}, inSize=${inSize}, modulus bits=${MixFileRuntime._bitLength(modulus)})`,
+        )
+      }
+
       // Extract LEAST significant outSize bytes (matches OpenRA's
       // Buffer.BlockCopy(n3, 0, dest, destOffset, a) which copies
       // bytes from the start of the little-endian uint array)
@@ -906,8 +918,22 @@ export class MixFileRuntime implements IReadOnlyPackage {
     // 1. Extract RSA-encrypted Blowfish keyblock at offset 4
     const keyblockSrc = new Uint8Array(data, OPENRA_KEYBLOCK_OFFSET, OPENRA_KEYBLOCK_SIZE)
 
+    const dv = new DataView(data)
+    const keyblockHex = Array.from(keyblockSrc.slice(0, 16))
+      .map(b => b.toString(16).padStart(2, '0')).join(' ')
+    console.log(
+      `MixFileRuntime: "${name}" keyblock first 16 bytes: ${keyblockHex}... ` +
+      `(flags=0x${dv.getUint16(0, true).toString(16)}, subFlags=0x${dv.getUint16(2, true).toString(16)})`,
+    )
+
     // 2. RSA-decrypt the Blowfish key
     const blowfishKey = MixFileRuntime._rsaDecryptKey(keyblockSrc)
+
+    const keyHex = Array.from(blowfishKey.slice(0, 8))
+      .map(b => b.toString(16).padStart(2, '0')).join(' ')
+    console.log(
+      `MixFileRuntime: "${name}" derived Blowfish key first 8 bytes: ${keyHex}...`,
+    )
 
     // 3. Create Blowfish cipher
     const fish = new Blowfish(blowfishKey)
@@ -957,10 +983,12 @@ export class MixFileRuntime implements IReadOnlyPackage {
     // header decrypted to junk. (Common causes: RSA DER/byte-order bugs,
     // wrong Blowfish key, or the file is not actually encrypted MIX.)
     if (numFiles === 0 || numFiles > 65535) {
+      const headerHex = Array.from(decryptedFirstBytes.slice(0, 8))
+        .map(b => b.toString(16).padStart(2, '0')).join(' ')
       throw new Error(
         `Decrypted header numFiles=${numFiles} is out of range [1, 65535]. ` +
-        `The Blowfish key derived from RSA decryption is likely incorrect, ` +
-        `or this is not an encrypted MIX file.`,
+        `Decrypted header first 8 bytes: ${headerHex}. ` +
+        `The Blowfish key derived from RSA decryption is likely incorrect.`,
       )
     }
 
