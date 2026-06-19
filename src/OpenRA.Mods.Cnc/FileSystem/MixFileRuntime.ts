@@ -355,7 +355,7 @@ export class MixFileRuntime implements IReadOnlyPackage {
       throw new Error(
         `MixFileRuntime.parse: "${name}" is not a valid C&C-format MIX file. ` +
         `The first uint16 is 0 (indicating encrypted RA/TS/RA2 format) or the file is too small. ` +
-        `Encrypted MIX files are not supported in Phase A.`,
+        `Use parseEncrypted() for encrypted MIX files (requires Blowfish key or RSA decryption).`,
       )
     }
 

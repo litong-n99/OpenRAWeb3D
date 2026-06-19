@@ -202,7 +202,25 @@ export class PackageExtractor {
 
     try {
       if (format === 'mix') {
-        pkg = MixFileRuntime.parse(destPath, data, mixDb)
+        // Try encrypted format first (RA/TS/RA2 with Blowfish/RSA),
+        // then fall back to unencrypted C&C format.
+        if (MixFileRuntime.isEncryptedFormat(data)) {
+          try {
+            pkg = MixFileRuntime.parseEncrypted(destPath, data, undefined, mixDb)
+          } catch {
+            // Encrypted parse failed — fall through to C&C check
+          }
+        }
+        if (!pkg && MixFileRuntime.isCncFormat(data)) {
+          try {
+            pkg = MixFileRuntime.parse(destPath, data, mixDb)
+          } catch {
+            // C&C parse failed — pkg stays null, handled below as pass-through
+          }
+        }
+        if (!pkg && !MixFileRuntime.isEncryptedFormat(data) && !MixFileRuntime.isCncFormat(data)) {
+          // Not a recognized MIX format — skip parse, will be passed through as raw
+        }
       } else if (format === 'pak') {
         pkg = _pakLoader.tryParsePackage(destPath, data)
       } else if (format === 'big') {
