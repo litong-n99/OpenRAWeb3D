@@ -58,7 +58,17 @@ async function main() {
 
   fs.mkdirSync(PUBLIC_MODS_DIR, { recursive: true })
 
-  const allFilenames = new Set<string>()
+  /** Map from filename → list of mod dirs it was found in.
+   *  Used to determine hash type (CRC32 for ts-content, Classic for others). */
+  const allFilenames = new Map<string, string[]>()
+  function addFilename(fn: string, modDir: string) {
+    const existing = allFilenames.get(fn)
+    if (existing) {
+      if (!existing.includes(modDir)) existing.push(modDir)
+    } else {
+      allFilenames.set(fn, [modDir])
+    }
+  }
 
   // -----------------------------------------------------------------------
   // 1. Try to find files.yaml (common or mod-specific file lists)
@@ -68,7 +78,7 @@ async function main() {
   if (fs.existsSync(commonFilesPath)) {
     console.log(`  Found common files list: ${commonFilesPath}`)
     const filenames = parseFilesYaml(commonFilesPath)
-    for (const fn of filenames) allFilenames.add(fn)
+    for (const fn of filenames) addFilename(fn, '__common__')
     console.log(`  -> Added ${filenames.length} filenames from common-content/files.yaml`)
   } else {
     console.log('  No common-content/files.yaml found (expected for this OpenRA version).')
@@ -79,7 +89,7 @@ async function main() {
     if (fs.existsSync(filesYamlPath)) {
       console.log(`  Found mod file list: ${filesYamlPath}`)
       const filenames = parseFilesYaml(filesYamlPath)
-      for (const fn of filenames) allFilenames.add(fn)
+      for (const fn of filenames) addFilename(fn, modDir)
       console.log(`  -> Added ${filenames.length} filenames from ${modDir}/files.yaml`)
     }
   }
@@ -104,7 +114,7 @@ async function main() {
         const parsed = parser.parse(yamlContent) as Record<string, unknown>
 
         const filenames = extractMixFilenames(parsed)
-        for (const fn of filenames) allFilenames.add(fn)
+        for (const fn of filenames) addFilename(fn, modDir)
         console.log(`  -> Extracted ${filenames.length} filenames from ${modDir}/installer/downloads.yaml`)
       } catch (e) {
         console.warn(`  WARNING: Failed to parse ${downloadsPath}: ${e instanceof Error ? e.message : String(e)}`)
@@ -120,15 +130,37 @@ async function main() {
 
   const hashDb: Record<string, string> = {}
 
-  for (const filename of allFilenames) {
-    // Hash the filename as-is
-    const hashHex = hashFilename(filename)
+  for (const [filename, modDirs] of allFilenames) {
+    // Determine primary mod dir (for hash type selection)
+    const modDir = modDirs[0] ?? '__common__'
+
+    // Hash the filename as-is with the primary hash type
+    const hashHex = hashFilename(filename, modDir)
     hashDb[hashHex] = filename
+
+    // For ts-content files, also add Classic hash as fallback
+    // (CC MIX files may embed ts-content archive entries with Classic hashes)
+    if (modDir === 'ts-content') {
+      const classicHash = PackageEntry.hashFilename(filename, PackageHashType.Classic)
+      const classicHex = '0x' + (classicHash >>> 0).toString(16).toUpperCase().padStart(8, '0')
+      if (!(classicHex in hashDb)) {
+        hashDb[classicHex] = filename
+      }
+    }
+
+    // For non-ts-content files, also add CRC32 hash as fallback
+    if (modDir !== 'ts-content') {
+      const crc32Hash = PackageEntry.hashFilename(filename, PackageHashType.CRC32)
+      const crc32Hex = '0x' + (crc32Hash >>> 0).toString(16).toUpperCase().padStart(8, '0')
+      if (!(crc32Hex in hashDb)) {
+        hashDb[crc32Hex] = filename
+      }
+    }
 
     // Also hash without the .mix extension (some references omit it)
     if (filename.toLowerCase().endsWith('.mix')) {
       const noExt = filename.slice(0, filename.length - 4)
-      const noExtHash = hashFilename(noExt)
+      const noExtHash = hashFilename(noExt, modDir)
       // Only add if not already present (avoid overwriting)
       if (!(noExtHash in hashDb)) {
         hashDb[noExtHash] = noExt
@@ -151,18 +183,24 @@ async function main() {
 // ---------------------------------------------------------------------------
 
 /**
- * Compute the Classic Westwood filename hash as a hex string.
+ * Compute the Westwood filename hash as a hex string.
  *
- * OpenRA 对照: PackageEntry.hashFilename(filename, PackageHashType.Classic)
+ * OpenRA 对照: PackageEntry.hashFilename(filename, PackageHashType)
+ *
+ * Uses different hash types for different content mods:
+ * - cnc-content, ra-content, d2k-content: Classic (like TD/RA1/Dune)
+ * - ts-content: CRC32 (Tiberian Sun and RA2 use CRC32 in MIX files)
  *
  * The hash value is converted to the "0x" uppercase hex format
  * used in _mixdb.json keys.
  *
  * @param filename — Filename to hash (case-insensitive)
+ * @param modDir — Content mod directory name (e.g. "ts-content", "ra-content")
  * @returns Hash as hex string like "0x12ABCDEF"
  */
-function hashFilename(filename: string): string {
-  const hash = PackageEntry.hashFilename(filename, PackageHashType.Classic)
+function hashFilename(filename: string, modDir: string): string {
+  const hashType = modDir === 'ts-content' ? PackageHashType.CRC32 : PackageHashType.Classic
+  const hash = PackageEntry.hashFilename(filename, hashType)
   return '0x' + (hash >>> 0).toString(16).toUpperCase().padStart(8, '0')
 }
 

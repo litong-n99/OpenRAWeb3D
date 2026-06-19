@@ -411,6 +411,55 @@ describe('PackageExtractor', () => {
   })
 
   // ---------------------------------------------------------------------
+  // extract — .tem terrain tileset pass-through (Phase C)
+  // ---------------------------------------------------------------------
+
+  describe('extract — .tem terrain tileset', () => {
+    it('passes through .tem files as raw bytes', async () => {
+      const temData = new Uint8Array(200)
+      for (let i = 0; i < temData.length; i++) temData[i] = i & 0xFF
+      const zipData = zipSync({ 'blat01.tem': temData })
+      const extractMap = { 'Content/ts/firestorm/blat01.tem': 'blat01.tem' }
+
+      const result = await extractor.extract(
+        zipData.buffer as ArrayBuffer,
+        extractMap,
+      )
+
+      expect(result.size).toBe(1)
+      expect(result.has('Content/ts/firestorm/blat01.tem')).toBe(true)
+      const extracted = result.get('Content/ts/firestorm/blat01.tem')!
+      const extractedArr = new Uint8Array(extracted)
+      expect(extractedArr.byteLength).toBe(200)
+      for (let i = 0; i < 200; i++) {
+        expect(extractedArr[i]).toBe(i & 0xFF)
+      }
+    })
+
+    it('handles multiple .tem files in one extraction', async () => {
+      const tem1 = new Uint8Array(50).fill(0xAA)
+      const tem2 = new Uint8Array(100).fill(0xBB)
+      const zipData = zipSync({
+        'tiles1.tem': tem1,
+        'tiles2.tem': tem2,
+      })
+      const extractMap = {
+        'out/tiles1.tem': 'tiles1.tem',
+        'out/tiles2.tem': 'tiles2.tem',
+      }
+
+      const result = await extractor.extract(
+        zipData.buffer as ArrayBuffer,
+        extractMap,
+      )
+
+      expect(result.size).toBe(2)
+      expect(new Uint8Array(result.get('out/tiles1.tem')!)[0]).toBe(0xAA)
+      expect(new Uint8Array(result.get('out/tiles2.tem')!)[0]).toBe(0xBB)
+    })
+  })
+
+  // ---------------------------------------------------------------------
   // extract — binary fidelity (content preservation)
   // ---------------------------------------------------------------------
 

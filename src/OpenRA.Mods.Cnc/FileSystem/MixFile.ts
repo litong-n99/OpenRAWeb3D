@@ -1,11 +1,11 @@
 /**
- * MixFile.ts — MIX 归档格式（文档桩 + 运行时 C&C 解析）
+ * MixFile.ts — MIX 归档格式（文档桩 + 运行时解析 + RSA/Blowfish 解密）
  * OpenRA 对照: OpenRA.Mods.Cnc/FileSystem/MixFile.cs
  *
  * 核心范式转换:
- * - C# 运行时 MIX 读取（Stream + Blowfish/RSA 解密）→ C&C 格式运行时解析 (via MixFileRuntime)
- * - C# Blowfish/RSA crypto (~300KB WASM) → 加密 RA/TS/RA2 格式暂不支持 (Phase A)
- * - C# tryParsePackage 返回 MixFile → 委托给 MixFileRuntime.parse()（C&C 格式）
+ * - C# 运行时 MIX 读取（Stream + Blowfish/RSA 解密）→ 委托给 MixFileRuntime
+ * - C# Blowfish/RSA crypto → JavaScript BigInt (RSA) + Blowfish.ts (Phase C)
+ * - C# tryParsePackage 返回 MixFile → 委托给 MixFileRuntime（C&C + all encrypted variants）
  * - 完整格式规范保留为 JSDoc，供构建工具作者使用
  * - 参考实现（parseHeader、parseIndex、decryptHeader）作为文档化但未使用的代码保留
  */
@@ -90,7 +90,7 @@ export class MixLoader implements IPackageLoader {
       return null
     }
 
-    // Check 2: Encrypted format (RA/TS/RA2) — try before C&C (Phase B)
+    // Check 2: Encrypted format (RA/TS/RA2) — try before C&C (Phase B/C)
     if (MixFileRuntime.isEncryptedFormat(stream)) {
       let encryptedAttemptFailed = false
       try {
@@ -100,21 +100,11 @@ export class MixLoader implements IPackageLoader {
         encryptedAttemptFailed = true
         const msg = String(err)
 
-        // Determine whether we'll fall through to C&C (ambiguous firstUint16=1
-        // case). If so, suppress the warning — C&C fallback may succeed silently.
         const dv = new DataView(stream)
         const firstUint16 = dv.getUint16(0, true)
         const willFallThrough = firstUint16 === 1
 
-        if (msg.includes('RSA') || msg.includes('Phase B')) {
-          console.warn(
-            `MixLoader: Encrypted MIX "${filename}" requires RSA key decryption ` +
-            `(not supported in Phase B). Use the build-time MIX unpacker.`,
-          )
-        } else if (msg.includes('no Blowfish key')) {
-          // Suppress warning when falling through to C&C (firstUint16=1 is
-          // ambiguous — could be numFiles=1 C&C format). If C&C succeeds,
-          // the warning would be spurious.
+        if (msg.includes('no Blowfish key')) {
           if (!willFallThrough) {
             console.warn(
               `MixLoader: Encrypted MIX "${filename}" detected but no Blowfish key is available. ` +
@@ -126,18 +116,12 @@ export class MixLoader implements IPackageLoader {
         }
       }
 
-      // If the first uint16 is 1, it could be either universal key format or
-      // a C&C MIX with numFiles=1. Fall through to C&C check for this case.
-      // For first uint16=0 (OpenRA format) or first uint16=2 (RSA key format),
-      // it's definitely an encrypted format, so return null.
       if (encryptedAttemptFailed) {
         const dv = new DataView(stream)
         const firstUint16 = dv.getUint16(0, true)
-        // Only fall through to C&C for the ambiguous numFiles=1 case
         if (firstUint16 !== 1) {
           return null
         }
-        // firstUint16=1: ambiguous — fall through to C&C check below
       }
     }
 

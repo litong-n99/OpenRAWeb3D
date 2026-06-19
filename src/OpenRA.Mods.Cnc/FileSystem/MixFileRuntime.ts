@@ -1,16 +1,16 @@
 /**
- * MixFileRuntime.ts — Runtime C&C-format MIX file parser (Phase B: + encrypted support)
+ * MixFileRuntime.ts — Runtime C&C-format MIX file parser (Phase C: + RSA key path + OpenRA format)
  * OpenRA 对照: OpenRA.Mods.Cnc/FileSystem/MixFile.cs (MixLoader.MixFile)
  *
  * 核心范式转换:
  * - C# Stream + seek → DataView + ArrayBuffer offset-based access
  * - C# Blowfish/RSA decryption → Blowfish (FileFormats) for header decryption
+ * - C# BlowfishKeyProvider.DecryptKey → JavaScript BigInt modular exponentiation
+ *   (square-and-multiply, same algorithm as OpenRA's CalcKey)
  * - C# SegmentStream (lazy, shared buffer) → ArrayBuffer.slice() (eager independent copy)
  * - C# global mix database (XccGlobalDatabase) → optional mixDb Map<string, string>
  * - C# tryParsePackage returns MixFile → MixFileRuntime.parse() static factory
  * - C# Dictionary<uint, PackageEntry> index → Map<string, MixFileEntry> with pre-resolved names
- * - C# BlowfishKeyProvider.DecryptKey → Phase B: universal key mode (key source=1);
- *   RSA mode (key source=2) not supported in Phase B
  */
 
 import type { IReadOnlyPackage, IReadOnlyFileSystem } from '../../OpenRA.Game/FileSystem/IPackage.js'
@@ -70,12 +70,41 @@ const UNIVERSAL_KEY_HEADER_OFFSET = 6
 /**
  * OpenRA format: offset of the RSA-encrypted keyblock (80 bytes).
  * Encrypted header follows at offset 84 (4 + 80).
+ *
+ * OpenRA 对照: MixFile.DecryptHeader — offset 4, keyblock 80 bytes
  */
-// TODO-CI-C.3: Phase C (RSA) — uncomment and use these constants for OpenRA
-// format encrypted MIX support (RSA-decrypted Blowfish key at offset 4).
-// const OPENRA_KEYBLOCK_OFFSET = 4
-// const OPENRA_KEYBLOCK_SIZE = 80
-// const OPENRA_HEADER_OFFSET = OPENRA_KEYBLOCK_OFFSET + OPENRA_KEYBLOCK_SIZE // 84
+const OPENRA_KEYBLOCK_OFFSET = 4
+const OPENRA_KEYBLOCK_SIZE = 80
+const OPENRA_HEADER_OFFSET = OPENRA_KEYBLOCK_OFFSET + OPENRA_KEYBLOCK_SIZE // 84
+
+// ---------------------------------------------------------------------------
+// RSA constants (Phase C — Tiberian Sun / Red Alert 2 encrypted MIX)
+// ---------------------------------------------------------------------------
+
+/**
+ * RSA public exponent for Blowfish key decryption.
+ * OpenRA 对照: BlowfishKeyProvider.InitPublicKey — KeyTwo = {0x10001, 0, ..., 0}
+ */
+const RSA_EXPONENT = 65537n // 0x10001
+
+/**
+ * RSA public key modulus (base64-encoded big-endian integer).
+ * OpenRA 对照: BlowfishKeyProvider.PublicKeyString
+ *
+ * Decoded: 42 bytes, ~330-bit modulus.
+ */
+const RSA_PUBLIC_KEY_B64 = 'AihRvNoIbTn85FZRYNZRcT+i6KpU+maCsEqr3Q5q+LDB5tH7Tz2qQ38V'
+
+/** RSA key chunk output size in bytes. Computed from modulus bit length.
+ * OpenRA 对照: a = (int)((pubkey.Len - 1) / 8)  — output bytes per chunk */
+let _rsaChunkOutSize = -1
+
+/** RSA key chunk input size in bytes (output + 1).
+ * OpenRA 对照: a + 1  — input bytes per chunk */
+let _rsaChunkInSize = -1
+
+/** Decoded RSA modulus as BigInt, lazily computed. */
+let _rsaModulus: bigint | null = null
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -519,21 +548,15 @@ export class MixFileRuntime implements IReadOnlyPackage {
     const dv = new DataView(data)
     const firstUint16 = dv.getUint16(0, true)
 
-    // Check unsupported formats first (before key check)
+    // Determine format and decrypt accordingly
     if (firstUint16 === RSA_KEY_FLAG) {
-      throw new Error(
-        `MixFileRuntime.parseEncrypted: "${name}" uses RSA-encrypted key (flags=0x0002), ` +
-        `which is not supported in Phase B.`,
-      )
+      // RSA key format (flags=0x0002): encrypted header with RSA-decrypted key
+      return MixFileRuntime._parseEncryptedRsaKey(name, data, mixDb)
     }
 
     if (firstUint16 === OPENRA_FORMAT_MARKER) {
-      throw new Error(
-        `MixFileRuntime.parseEncrypted: "${name}" uses OpenRA format ` +
-        `(first uint16=0, encrypted flag set). ` +
-        `This requires RSA key decryption, not supported in Phase B. ` +
-        `TODO-10.B.1: Implement RSA key decryption for OpenRA format.`,
-      )
+      // OpenRA format (flags=0x0000): RSA-encrypted keyblock at offset 4
+      return MixFileRuntime._parseEncryptedOpenRA(name, data, mixDb)
     }
 
     const effectiveKey = key ?? MixFileRuntime._defaultEncryptedKey
@@ -656,6 +679,310 @@ export class MixFileRuntime implements IReadOnlyPackage {
     }
 
     return { entries, headerByteLength }
+  }
+
+  // -----------------------------------------------------------------------
+  // RSA key decryption (Phase C — Tiberian Sun / RA2 encrypted MIX)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Decrypt the Blowfish key from the RSA-encrypted keyblock in an
+   * OpenRA format MIX file.
+   *
+   * OpenRA 对照: BlowfishKeyProvider.DecryptKey(byte[])
+   *
+   * Uses JavaScript BigInt for modular exponentiation (square-and-multiply).
+   * The 80-byte encrypted keyblock is split into chunks and each chunk
+   * is RSA-decrypted independently, matching OpenRA's ProcessPredata.
+   *
+   * Algorithm (mirrors OpenRA C#):
+   * 1. Decode base64 RSA modulus → BigInt
+   * 2. Compute chunk sizes: outSize = floor((modulusBitLen - 1) / 8), inSize = outSize + 1
+   * 3. For each chunk of inSize bytes from the keyblock:
+   *    a. Convert to BigInt (big-endian unsigned)
+   *    b. Compute plaintext = ciphertext^exponent mod modulus
+   *    c. Convert plaintext to outSize bytes
+   * 4. Concatenate all chunk outputs
+   * 5. Return the last 56 bytes as the Blowfish key
+   *
+   * @param encryptedKeyblock — 80-byte RSA-encrypted keyblock from MIX header
+   * @returns 56-byte Blowfish key
+   */
+  private static _rsaDecryptKey(encryptedKeyblock: Uint8Array): Uint8Array {
+    const modulus = MixFileRuntime._getRsaModulus()
+    const { outSize, inSize } = MixFileRuntime._getRsaChunkSizes(modulus)
+
+    // pre_len: total input bytes to process (matches OpenRA's pre_len calculation)
+    const preLen = (Math.floor(55 / outSize) + 1) * inSize
+
+    // Decrypt chunks
+    const dest = new Uint8Array(preLen)
+    let srcOffset = 0
+    let destOffset = 0
+
+    for (let remaining = preLen; inSize <= remaining; remaining -= inSize) {
+      // Extract inSize bytes from encrypted keyblock (pad with zeros if needed)
+      const chunkBytes = new Uint8Array(inSize)
+      for (let i = 0; i < inSize; i++) {
+        chunkBytes[i] = srcOffset + i < encryptedKeyblock.length
+          ? encryptedKeyblock[srcOffset + i]
+          : 0
+      }
+
+      // Convert encrypted chunk to BigInt (big-endian unsigned)
+      const chunkBigInt = MixFileRuntime._bytesToBigInt(chunkBytes)
+
+      // RSA decrypt: plaintext = ciphertext^exponent mod modulus
+      const decryptedBigInt = MixFileRuntime._modPow(chunkBigInt, RSA_EXPONENT, modulus)
+
+      // Extract LEAST significant outSize bytes (matches OpenRA's
+      // Buffer.BlockCopy(n3, 0, dest, destOffset, a) which copies
+      // bytes from the start of the little-endian uint array)
+      // OpenRA 对照: first `a` bytes of n3 (least significant bytes)
+      let remainingVal = decryptedBigInt
+      for (let i = 0; i < outSize; i++) {
+        dest[destOffset + i] = Number(remainingVal & 0xFFn)
+        remainingVal >>= 8n
+      }
+
+      srcOffset += inSize
+      destOffset += outSize
+    }
+
+    // Return first 56 bytes (the Blowfish key)
+    // OpenRA 对照: ProcessPredata(src).Take(56).ToArray()
+    return dest.slice(0, 56)
+  }
+
+  /**
+   * Decode the base64 RSA modulus and return it as a BigInt.
+   * Result is lazily cached for subsequent calls.
+   *
+   * OpenRA 对照: KeyToBigNum(pubkey.KeyOne, Convert.FromBase64String(PublicKeyString), 64)
+   */
+  private static _getRsaModulus(): bigint {
+    if (_rsaModulus !== null) return _rsaModulus
+
+    // Decode base64: atob → raw bytes → BigInt
+    const binaryStr = atob(RSA_PUBLIC_KEY_B64)
+    const bytes = new Uint8Array(binaryStr.length)
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i)
+    }
+    _rsaModulus = MixFileRuntime._bytesToBigInt(bytes)
+    return _rsaModulus
+  }
+
+  /**
+   * Compute RSA chunk sizes from the modulus.
+   * OpenRA 对照: a = (int)((pubkey.Len - 1) / 8)
+   */
+  private static _getRsaChunkSizes(modulus: bigint): { outSize: number; inSize: number } {
+    if (_rsaChunkOutSize < 0) {
+      const bitLen = MixFileRuntime._bitLength(modulus)
+      _rsaChunkOutSize = Math.floor((bitLen - 1) / 8)
+      _rsaChunkInSize = _rsaChunkOutSize + 1
+    }
+    return { outSize: _rsaChunkOutSize, inSize: _rsaChunkInSize }
+  }
+
+  // -----------------------------------------------------------------------
+  // BigInt utility functions
+  // -----------------------------------------------------------------------
+
+  /**
+   * Convert a Uint8Array (big-endian unsigned) to BigInt.
+   */
+  private static _bytesToBigInt(bytes: Uint8Array): bigint {
+    let result = 0n
+    for (let i = 0; i < bytes.length; i++) {
+      result = (result << 8n) | BigInt(bytes[i])
+    }
+    return result
+  }
+
+  /**
+   * Compute the bit length of a positive BigInt.
+   */
+  private static _bitLength(n: bigint): number {
+    if (n === 0n) return 0
+    return n.toString(2).length
+  }
+
+  /**
+   * Modular exponentiation (square-and-multiply algorithm).
+   *
+   * OpenRA 对照: BlowfishKeyProvider.CalcKey — same algorithm, implemented
+   * with uint64 arrays in C#, with JavaScript BigInt here.
+   *
+   * Computes: base^exp mod modulus
+   */
+  private static _modPow(base: bigint, exp: bigint, modulus: bigint): bigint {
+    if (modulus === 1n) return 0n
+
+    let result = 1n
+    let b = base % modulus
+    let e = exp
+
+    while (e > 0n) {
+      if (e & 1n) {
+        result = (result * b) % modulus
+      }
+      e >>= 1n
+      b = (b * b) % modulus
+    }
+
+    return result
+  }
+
+  // -----------------------------------------------------------------------
+  // OpenRA format encrypted MIX parsing (Phase C)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Parse an OpenRA format encrypted MIX file (flags=0, encrypted bit set).
+   *
+   * OpenRA 对照: MixFile constructor — encrypted path for RA/TS/RA2 format
+   *
+   * Format:
+   * ```
+   * Offset  Size  Description
+   * 0       2     flags (uint16 LE) = 0x0000
+   * 2       2     subFlags (uint16 LE), bit 1 = encrypted
+   * 4       80    RSA-encrypted Blowfish keyblock
+   * 84      N*8   Blowfish-encrypted header (padded to 8-byte blocks)
+   * 84+N*8  ...   Raw data blocks
+   * ```
+   *
+   * @param name — package name
+   * @param data — raw MIX data
+   * @param mixDb — optional hash-to-filename database
+   * @returns parsed MixFileRuntime
+   */
+  private static _parseEncryptedOpenRA(
+    name: string,
+    data: ArrayBuffer,
+    mixDb?: Map<string, string>,
+  ): MixFileRuntime {
+    // 1. Extract RSA-encrypted Blowfish keyblock at offset 4
+    const keyblockSrc = new Uint8Array(data, OPENRA_KEYBLOCK_OFFSET, OPENRA_KEYBLOCK_SIZE)
+
+    // 2. RSA-decrypt the Blowfish key
+    const blowfishKey = MixFileRuntime._rsaDecryptKey(keyblockSrc)
+
+    // 3. Create Blowfish cipher
+    const fish = new Blowfish(blowfishKey)
+
+    // 4. Decrypt header at offset 84
+    const { entries: pkgEntries, headerByteLength } =
+      MixFileRuntime._decryptHeaderOpenRA(data, fish)
+
+    // 5. dataStart is after the encrypted header
+    const dataStart = OPENRA_HEADER_OFFSET + headerByteLength
+
+    // 6. Resolve filenames and build entry map
+    const entries = MixFileRuntime._buildEntryMap(pkgEntries, dataStart, mixDb)
+
+    return new MixFileRuntime(name, data, entries)
+  }
+
+  /**
+   * Decrypt and parse the header in OpenRA format (encrypted header at offset 84).
+   *
+   * OpenRA 对照: MixFile.DecryptHeader(Stream, long offset, out long headerEnd)
+   *
+   * @param data — raw MIX data
+   * @param fish — initialized Blowfish cipher
+   * @returns parsed entries and the encrypted header's total byte length
+   */
+  private static _decryptHeaderOpenRA(
+    data: ArrayBuffer,
+    fish: Blowfish,
+  ): { entries: PackageEntry[]; headerByteLength: number } {
+    // Decrypt first block (8 bytes) at OPENRA_HEADER_OFFSET to get numFiles
+    const firstBlockSrc = new Uint8Array(data, OPENRA_HEADER_OFFSET, 8)
+    const firstBlockBuf = new ArrayBuffer(8)
+    new Uint8Array(firstBlockBuf).set(firstBlockSrc)
+    const firstBlockU32 = new Uint32Array(firstBlockBuf, 0, 2)
+    const decryptedFirst = fish.decrypt(firstBlockU32)
+
+    const decryptedFirstBytes = new Uint8Array(
+      decryptedFirst.buffer, decryptedFirst.byteOffset, 8,
+    )
+    const numFiles = new DataView(
+      decryptedFirstBytes.buffer, decryptedFirstBytes.byteOffset, 8,
+    ).getUint16(0, true)
+
+    // Total header size and block count (integer division, matches OpenRA C#)
+    // OpenRA 对照: var blockCount = (13 + numFiles * PackageEntry.Size) / 8;
+    // 13 = 6 (header prefix) + 7 (rounding up before integer division)
+    const blockCount = Math.floor((13 + numFiles * PackageEntry.SIZE) / 8)
+    const headerByteLength = blockCount * 8
+
+    // Read all header blocks
+    const encryptedHeaderSrc = new Uint8Array(data, OPENRA_HEADER_OFFSET, headerByteLength)
+    const headerBuf = new ArrayBuffer(headerByteLength)
+    new Uint8Array(headerBuf).set(encryptedHeaderSrc)
+    const headerU32 = new Uint32Array(headerBuf, 0, blockCount * 2)
+    const decryptedHeader = fish.decrypt(headerU32)
+
+    // Parse PackageEntry records
+    const decryptedBytes = new Uint8Array(
+      decryptedHeader.buffer, decryptedHeader.byteOffset, headerByteLength,
+    )
+    const decryptedDv = new DataView(
+      decryptedBytes.buffer, decryptedBytes.byteOffset, decryptedBytes.byteLength,
+    )
+
+    const entries: PackageEntry[] = []
+    let entryOffset = 6 // skip numFiles (uint16) + dataSize (uint32)
+    for (let i = 0; i < numFiles; i++) {
+      const { entry, nextOffset } = PackageEntry.fromDataView(decryptedDv, entryOffset)
+      entries.push(entry)
+      entryOffset = nextOffset
+    }
+
+    return { entries, headerByteLength }
+  }
+
+  /**
+   * Parse an RSA key format encrypted MIX file (flags=2 at offset 0).
+   *
+   * Same layout as universal key format but uses RSA-decrypted key
+   * instead of the hardcoded universal key.
+   *
+   * OpenRA 对照: MixFile constructor — encrypted path (first uint16 == 0)
+   *
+   * @param name — package name
+   * @param data — raw MIX data
+   * @param mixDb — optional hash-to-filename database
+   * @returns parsed MixFileRuntime
+   */
+  private static _parseEncryptedRsaKey(
+    name: string,
+    data: ArrayBuffer,
+    mixDb?: Map<string, string>,
+  ): MixFileRuntime {
+    // RSA key format: the entire header structure follows the flags
+    // The 80-byte keyblock starts at offset 4 (after flags+dataSize = 2+2=4 bytes)
+    // Then the encrypted header follows at offset 4+80=84
+    const dv = new DataView(data)
+    dv.getUint16(0, true) // flags = 0x0002 (already verified)
+    dv.getUint32(2, true) // dataSize (not used for offset calculation)
+
+    // Extract and decrypt the Blowfish key
+    const keyblockSrc = new Uint8Array(data, 4, OPENRA_KEYBLOCK_SIZE)
+    const blowfishKey = MixFileRuntime._rsaDecryptKey(keyblockSrc)
+    const fish = new Blowfish(blowfishKey)
+
+    // Decrypt header — same layout as OpenRA format (header at offset 84)
+    const { entries: pkgEntries, headerByteLength } =
+      MixFileRuntime._decryptHeaderOpenRA(data, fish)
+
+    const dataStart = OPENRA_HEADER_OFFSET + headerByteLength
+    const entries = MixFileRuntime._buildEntryMap(pkgEntries, dataStart, mixDb)
+
+    return new MixFileRuntime(name, data, entries)
   }
 
   /**

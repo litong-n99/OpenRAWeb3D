@@ -149,6 +149,13 @@ export class PackageExtractor {
         for (const [innerName, innerData] of innerFiles) {
           result.set(innerName, innerData)
         }
+      } else if (lower.endsWith('.tem') || lowerZip.endsWith('.tem')) {
+        // .tem terrain tileset — pass through as raw bytes for runtime parsing
+        // TODO-CI-C.5: Add TemTileset.parse() integration if on-the-fly tile extraction is needed
+        result.set(destPath, entryData.buffer.slice(
+          entryData.byteOffset,
+          entryData.byteOffset + entryData.byteLength,
+        ) as ArrayBuffer)
       } else {
         // Pass through as raw bytes
         result.set(destPath, entryData.buffer.slice(
