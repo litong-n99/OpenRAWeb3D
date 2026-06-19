@@ -269,7 +269,11 @@ describe('ModData', () => {
   // -----------------------------------------------------------------------
 
   describe('init', () => {
-    it('mounts all manifest.mounts paths', async () => {
+    it('does NOT call mount() — mounts are caller responsibility', async () => {
+      // Mounting is now the caller's job (done by Game.loadMod() before
+      // ModData.init()).  ModData.init() should NOT re-mount paths because
+      // that would cause duplicate network requests and fatal errors when
+      // binary assets are not available in the web build.
       const m = createManifestWithMounts('testmod', {
         '~^content/cnc': 'cnc.mix',
         '$modid': 'test.mix',
@@ -277,9 +281,25 @@ describe('ModData', () => {
       const md = new ModData(m, mockFiles as unknown as import('./FileSystem/FileSystem.js').FileSystem)
       await md.init()
 
-      expect(mockFiles.mount).toHaveBeenCalledTimes(2)
-      expect(mockFiles.mount).toHaveBeenCalledWith('~^content/cnc')
-      expect(mockFiles.mount).toHaveBeenCalledWith('$modid')
+      expect(mockFiles.mount).not.toHaveBeenCalled()
+    })
+
+    it('works with pre-mounted FileSystem (caller already mounted)', async () => {
+      // Verify that init() succeeds when the FileSystem has already been
+      // mounted by the caller (matching the Game.loadMod() → ModData.init()
+      // call order).
+      const m = createManifestWithMounts('premounted', {
+        'package/file': 'pkg.mix',
+      })
+      // Simulate pre-mounting: caller mounts before ModData.init()
+      await mockFiles.mount('package/file')
+      vi.clearAllMocks()
+
+      const md = new ModData(m, mockFiles as unknown as import('./FileSystem/FileSystem.js').FileSystem)
+      await md.init()
+
+      // init() should NOT call mount() — mounts are already done
+      expect(mockFiles.mount).not.toHaveBeenCalled()
     })
 
     it('handles manifest with no mounts', async () => {
@@ -480,14 +500,19 @@ describe('ModData', () => {
   // -----------------------------------------------------------------------
 
   describe('init → dispose lifecycle', () => {
-    it('completes full lifecycle without errors', async () => {
+    it('completes full lifecycle without errors (mounts done by caller)', async () => {
       const m = createManifestWithMounts('lifecycle', {
         'test/package': 'pkg.mix',
       })
+      // Simulate caller pre-mounting
+      await mockFiles.mount('test/package')
+      vi.clearAllMocks()
+
       const md = new ModData(m, mockFiles as unknown as import('./FileSystem/FileSystem.js').FileSystem)
 
       await md.init()
-      expect(mockFiles.mount).toHaveBeenCalledWith('test/package')
+      // init() should NOT call mount() — mounts are caller responsibility
+      expect(mockFiles.mount).not.toHaveBeenCalled()
 
       md.dispose()
       expect(mockFiles.dispose).toHaveBeenCalled()

@@ -208,8 +208,12 @@ export class ModData {
    *
    * 序列:
    * 1. 验证依赖（如果提供了 availableMods）
-   * 2. 挂载所有 manifest.mounts 路径
-   * 3. 加载 LoadScreen（如果配置了）
+   * 2. 加载 LoadScreen（如果配置了）
+   *
+   * 调用方职责:
+   * - 在调用 init() 之前，调用方必须已通过 FileSystem.mount() 挂载
+   *   manifest.mounts 中的所有路径。Game.loadMod() 会在构造 ModData
+   *   之前执行此操作。不在此处重复挂载以避免双重挂载和致命错误。
    *
    * 注意: WidgetLoader 创建推迟到 Phase D。
    *
@@ -226,10 +230,12 @@ export class ModData {
       }
     }
 
-    // 2. 挂载所有 manifest.mounts 路径
-    for (const mountPath of this.manifest.mounts) {
-      await this.modFiles.mount(mountPath)
-    }
+    // 2. FileSystem 挂载已由调用方（Game.loadMod()）在此方法调用前完成。
+    //    不在此处重复挂载：FileSystem.mount() 具有网络副作用（fetch），
+    //    双重调用会导致已经失败（因为 Vite SPA 回退返回 HTML）的挂载再次尝试
+    //    并因缺少 try-catch 而抛出致命错误。
+    //    FileSystem.mount() 内部的幂等性守卫可防止重复挂载，但调用方仍应
+    //    避免主动双重循环。
 
     // 3. 加载 LoadScreen（如果配置了）
     // NOTE: LoadScreen 接口已定义，但具体实现推迟到 Phase D/E。

@@ -776,6 +776,155 @@ describe('FileSystem', () => {
   })
 
   // -----------------------------------------------------------------------
+  // Mount idempotency and HTML fallback detection (Fix: duplicate mount + SPA)
+  // -----------------------------------------------------------------------
+
+  describe('mount() — idempotency and graceful degradation', () => {
+    it('should skip duplicate mount attempts for the same name', async () => {
+      const loader = createMockLoader('.zip', 'idem-pkg')
+      const fs = new FileSystem([loader])
+
+      const zipData = createTestZipForFetch('idem.zip')
+      const originalFetch = globalThis.fetch
+      let fetchCalls = 0
+      globalThis.fetch = vi.fn().mockImplementation(async () => {
+        fetchCalls++
+        return {
+          ok: true,
+          arrayBuffer: async () => zipData.buffer as ArrayBuffer,
+          headers: new Headers({ 'Content-Type': 'application/zip' }),
+        }
+      })
+
+      try {
+        // First mount should fetch
+        await fs.mount('/test/idem.zip')
+        expect(fetchCalls).toBe(1)
+        expect(fs.exists('file.zip')).toBe(true)
+
+        // Second mount for same name should be no-op (no fetch)
+        await fs.mount('/test/idem.zip')
+        expect(fetchCalls).toBe(1) // Still 1 — skipped
+      } finally {
+        globalThis.fetch = originalFetch
+      }
+    })
+
+    it('should not re-throw when duplicate mount previously failed', async () => {
+      const fs = new FileSystem([])
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        headers: new Headers(),
+      })
+
+      try {
+        // First mount fails but is tracked
+        await expect(fs.mount('/test/missing.mix')).rejects.toThrow('HTTP 404')
+
+        // Second mount for same name should be no-op (silently return,
+        // even though it previously failed — the name is in _attemptedMounts)
+        // Use a fresh FileSystem to test the duplicate behavior correctly
+      } finally {
+        globalThis.fetch = originalFetch
+      }
+
+      // A second FileSystem instance: first attempt fails, second is no-op
+      const fs2 = new FileSystem([])
+      const fetch2 = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        headers: new Headers(),
+      })
+      globalThis.fetch = fetch2
+
+      try {
+        await expect(fs2.mount('/test/missing2.mix')).rejects.toThrow('HTTP 404')
+
+        // Second attempt should NOT call fetch again
+        const callCountAfterFirst = fetch2.mock.calls.length
+        // Try again — should be no-op since name is in _attemptedMounts
+        try {
+          await fs2.mount('/test/missing2.mix')
+        } catch {
+          // Should not reach here — idempotency returns early
+        }
+        // No additional fetch calls
+        expect(fetch2.mock.calls.length).toBe(callCountAfterFirst)
+      } finally {
+        globalThis.fetch = (globalThis as Record<string, unknown>).__originalFetch as typeof fetch
+      }
+    })
+
+    it('should handle optional mounts (with ~ prefix) gracefully on non-package response', async () => {
+      const fs = new FileSystem([])
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => new TextEncoder().encode('<!DOCTYPE html><html>...</html>').buffer as ArrayBuffer,
+        headers: new Headers({ 'Content-Type': 'text/html' }),
+      })
+
+      try {
+        // Optional mount (~ prefix) should not throw even with HTML response
+        await expect(fs.mount('~optional/html-response')).resolves.toBeUndefined()
+      } finally {
+        globalThis.fetch = originalFetch
+      }
+    })
+
+    it('should detect HTML fallback even without Content-Type header', async () => {
+      const fs = new FileSystem([])
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => new TextEncoder().encode('<!doctype html>\n<html lang="en">').buffer as ArrayBuffer,
+        headers: new Headers({ 'Content-Type': 'application/octet-stream' }),
+      })
+
+      try {
+        // Even with octet-stream Content-Type, HTML heuristic catches it
+        await expect(fs.mount('/test/html-disguised')).rejects.toThrow('appears to be HTML')
+      } finally {
+        globalThis.fetch = originalFetch
+      }
+    })
+
+    it('should clear _attemptedMounts on unmountAll', async () => {
+      const fs = new FileSystem([])
+      const originalFetch = globalThis.fetch
+      let fetchCalls = 0
+      globalThis.fetch = vi.fn().mockImplementation(async () => {
+        fetchCalls++
+        return {
+          ok: false,
+          status: 404,
+          headers: new Headers(),
+        }
+      })
+
+      try {
+        // First attempt fails
+        await expect(fs.mount('/test/pre-clear.mix')).rejects.toThrow('HTTP 404')
+        expect(fetchCalls).toBe(1)
+
+        // Clear all state
+        fs.unmountAll()
+
+        // After unmountAll, the name should not be in _attemptedMounts,
+        // so a new mount attempt should fetch again
+        await expect(fs.mount('/test/pre-clear.mix')).rejects.toThrow('HTTP 404')
+        expect(fetchCalls).toBe(2) // fetch was called again
+      } finally {
+        globalThis.fetch = originalFetch
+      }
+    })
+  })
+
+  // -----------------------------------------------------------------------
   // L2-L4 Cache Pipeline (P1-D.3) — Graceful Degradation
   // -----------------------------------------------------------------------
 

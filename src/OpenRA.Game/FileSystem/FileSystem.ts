@@ -489,6 +489,15 @@ export class FileSystem implements IReadOnlyFileSystem {
   /** MOD 拥有的包（不应由 FileSystem dispose）。OpenRA 对照: modPackages */
   private _modPackages = new Set<IReadOnlyPackage>()
 
+  /**
+   * 已尝试挂载的名称集合（无论成功或失败）。
+   * 用于防止重复挂载：名称加入此集合后，后续 mount() 调用将直接返回。
+   *
+   * 这解决了双重挂载循环问题 — 当 Game.loadMod() 和 ModData.init()
+   * 都遍历 manifest.mounts 并调用 mount() 时，第二次调用是无操作。
+   */
+  private _attemptedMounts = new Set<string>()
+
   // -----------------------------------------------------------------------
   // L1 LRU Cache
   // -----------------------------------------------------------------------
@@ -722,6 +731,16 @@ export class FileSystem implements IReadOnlyFileSystem {
     const optional = name.startsWith('~')
     if (optional) name = name.slice(1)
 
+    // 幂等性守卫：如果此名称已经尝试过挂载（成功或失败），直接返回。
+    // 这防止了双重挂载循环（例如 Game.loadMod() 和 ModData.init()
+    // 都遍历 manifest.mounts 时）。如果调用方需要强制重新挂载，
+    // 应使用 mountPackage() 或 mountFromBuffer() 代替。
+    if (this._attemptedMounts.has(name)) {
+      // 如果之前是可选的且失败了，再次也应该是可选的（静默返回）
+      return
+    }
+    this._attemptedMounts.add(name)
+
     const cacheKey = this._buildCacheKey(name, options?.version ?? 'unknown')
 
     try {
@@ -778,13 +797,55 @@ export class FileSystem implements IReadOnlyFileSystem {
         `L4 fetch for "${name}"`)
       const response = await fetch(name)
       if (!response.ok) {
-        if (optional) return
+        if (optional) {
+          Log.write('filesystem', LogLevel.WARN,
+            `Optional mount '${name}' not found (HTTP ${response.status}), skipping.`)
+          return
+        }
         throw new Error(`Failed to mount '${name}': HTTP ${response.status}`)
       }
+
+      // 检测 SPA 回退响应（Vite dev server 对未知路径返回 HTML 首页）
+      // 而非有效的二进制包数据。
+      // 防御性访问 — response.headers 在 mock/测试中可能为 undefined。
+      const contentType: string =
+        (typeof response.headers?.get === 'function'
+          ? response.headers.get('Content-Type') ?? ''
+          : '')
+      if (contentType.includes('text/html')) {
+        Log.write('filesystem', LogLevel.WARN,
+          `Mount '${name}': received HTML response instead of binary package data. ` +
+          `This typically means the asset does not exist in the web build. ` +
+          `(Hint: run 'npx tsx scripts/build-mods.ts' to rebuild mod assets.)`)
+        if (optional) return
+        // NOTE: 非可选挂载收到 HTML 时抛出明确的错误信息，
+        // 但如果此路径已被标记为可选（以 '~' 开头），则静默跳过。
+        throw new Error(
+          `Could not open package '${name}': received HTML instead of package data. ` +
+          `The file may not exist in the web build.`,
+        )
+      }
+
       const data = await response.arrayBuffer()
+
+      // 额外的启发式检测：如果响应数据以 HTML 标记开头（即使
+      // Content-Type 未正确设置），同样视为非包响应。
+      if (data.byteLength > 0 && this._looksLikeHtml(data)) {
+        Log.write('filesystem', LogLevel.WARN,
+          `Mount '${name}': response data looks like HTML (SPA fallback), not a package.`)
+        if (optional) return
+        throw new Error(
+          `Could not open package '${name}': response appears to be HTML, not a package.`,
+        )
+      }
+
       const pkg = this.tryParsePackage(data, name)
       if (!pkg) {
-        if (optional) return
+        if (optional) {
+          Log.write('filesystem', LogLevel.WARN,
+            `Optional mount '${name}': format not recognized, skipping.`)
+          return
+        }
         throw new Error(
           `Could not open package '${name}', format not recognized.`,
         )
@@ -801,7 +862,11 @@ export class FileSystem implements IReadOnlyFileSystem {
 
       this.mountPackage(pkg, explicitName)
     } catch (e) {
-      if (optional) return
+      if (optional) {
+        Log.write('filesystem', LogLevel.WARN,
+          `Optional mount '${name}' failed: ${e instanceof Error ? e.message : String(e)}`)
+        return
+      }
       throw e
     }
   }
@@ -891,6 +956,7 @@ export class FileSystem implements IReadOnlyFileSystem {
     this._explicitMounts.clear()
     this._modPackages.clear()
     this._fileIndex.clear()
+    this._attemptedMounts.clear()
     this._clearCache()
   }
 
@@ -1154,6 +1220,28 @@ export class FileSystem implements IReadOnlyFileSystem {
    */
   private _buildCacheKey(name: string, version: string): string {
     return `pkg:${name}#v=${version}`
+  }
+
+  /**
+   * 启发式检测 ArrayBuffer 是否包含 HTML 内容（SPA 回退响应）。
+   *
+   * Vite dev server 对未匹配任何路由的路径返回 index.html。
+   * 如果 fetch 请求的是 .mix / .pak 等二进制包文件但收到 HTML，
+   * 说明该资产在 web 构建中不存在。
+   *
+   * 检测方式：查看前 256 字节中是否包含 HTML 特征标记。
+   *
+   * @param data — 响应数据
+   * @returns 如果数据看起来像 HTML 则返回 true
+   */
+  private _looksLikeHtml(data: ArrayBuffer): boolean {
+    // 仅检查前 256 字节（足够包含 <!DOCTYPE html> 或 <html 等标记）
+    const slice = data.byteLength > 256
+      ? new Uint8Array(data, 0, 256)
+      : new Uint8Array(data)
+    // 转换为字符串进行检查
+    const text = new TextDecoder().decode(slice).trim().toLowerCase()
+    return text.startsWith('<!doctype') || text.startsWith('<html')
   }
 
   /**

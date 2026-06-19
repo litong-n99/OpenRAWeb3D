@@ -103,7 +103,19 @@ export class Manifest {
 
   // ---- 文件系统挂载 ----
 
-  /** 文件系统挂载路径列表。OpenRA 对照: Manifest.FileSystem MiniYaml 键 */
+  /**
+   * 文件系统挂载名称列表。
+   *
+   * OpenRA 对照: Manifest.FileSystem MiniYaml 键
+   *
+   * 这些是 OpenRA 逻辑挂载名称（如 "EngineDir", "ra", "common",
+   * "allies.mix"），而非 web URL。它们来自 mod.yaml 的 FileSystem
+   * 区块，由 build-mods.ts 作为 Object.keys() 提取。
+   *
+   * 在 web 环境中，Game.loadMod() 使用 try-catch 循环尝试挂载每个名称；
+   * 如果二进制资产（.mix 文件等）不在 web 构建中，挂载失败会被记录为
+   * 警告而非致命错误，游戏仍会以空资产状态启动。
+   */
   readonly mounts: string[]
 
   // ---- 资源路径列表 ----
