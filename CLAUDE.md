@@ -4,7 +4,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: ALL CHAPTERS 2-22 COMPLETE (665/665 + 54+ active + 7 = ~726+ files, 100%).
+**Phase**: ALL CHAPTERS 2-22 COMPLETE, CHAPTERS 23-26 PLANNING (665/665 + 54+ active + 7 = ~726+ files, 100%).
 **Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 49/49 (100%, ALL PHASES COMPLETE). Chapter 15: 11/11 (100%, ALL PHASES COMPLETE, 206 tests). Chapter 16: 65/65 (100%, ALL PHASES COMPLETE, 1,900+ tests). Chapter 17: 8/8 (100%, ALL PHASES COMPLETE, 237 tests). Chapter 18: 10/10 (100%, ALL PHASES COMPLETE, 240 tests). Chapter 19: 119/119 (100%, ALL PHASES COMPLETE). Chapter 20: 62/62 (100%, ALL PHASES A-G COMPLETE). Chapter 21: ALL PHASES A-G COMPLETE (54+ active files, 100%, 25 deferred + 12 legacy deferred). Chapter 22: ALL PHASES A-E COMPLETE (7/7, 100% — 4 impl + 3 test files + 1 build script + 150+ generated assets).
 **Planning Doc**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 **Chapter 9 Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)
@@ -82,6 +82,10 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Editor & Utilities (Ch21) | **ALL PHASES A-G COMPLETE (54+ active files, 100%, 25 deferred + 12 legacy deferred)**. Plan: [chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) |
 | **Chapters 22: Game Entry & App Shell (7 files)** | **ALL PHASES A-E COMPLETE (7/7, 100%)** |
 | Router + ModSelector + Game (Ch22) | ALL PHASES COMPLETE (Phase A: Router/ModSelector 51 tests; Phase B: Game/main.ts 81 tests; Phase C: Main Menu/Shellmap; Phase D: Editor Stub; Phase E: Build Pipeline 150+ assets). Plan: [chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) |
+| **Chapter 23: MIX File Runtime Parsing** | PLANNING (design doc ready) |
+| **Chapter 24: Animation & 3D Visual Effects** | PLANNING (design doc ready) |
+| **Chapter 25: Shroud & Fog of War 3D** | PLANNING (design doc ready) |
+| **Chapter 26: Game World & Shellmap Integration** | PLANNING (design doc ready) |
 | **Content Installer Pipeline (ALL PHASES)** | COMPLETE (25/25 tasks, 100%), ~10,000 impl lines, 500+ tests |
 
 ## Directory Layout
@@ -594,6 +598,10 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md) | Chapter 20 scripting system migration plan with TODO checklist (62 files, 7 phases A-G, ALL PHASES COMPLETE) |
 | [docs/chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) | Chapter 21 editor, utilities & tooling migration plan with TODO checklist (~91 files, 7 phases A-G, ALL PHASES COMPLETE) |
 | [docs/chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) | Chapter 22 game entry & application shell migration plan with TODO checklist (7 files, 5 phases A-E, ALL PHASES COMPLETE) |
+| [docs/chapter23_mix_runtime_plan.md](docs/chapter23_mix_runtime_plan.md) | Chapter 23: MIX file format runtime parsing — CDN MIX extraction |
+| [docs/chapter24_animation_effects_plan.md](docs/chapter24_animation_effects_plan.md) | Chapter 24: Animation & 3D visual effects — AnimationStub replacement + C&C effects |
+| [docs/chapter25_shroud_3d_plan.md](docs/chapter25_shroud_3d_plan.md) | Chapter 25: Shroud & Fog of War 3D — vertex-based fog visualization |
+| [docs/chapter26_gameworld_integration_plan.md](docs/chapter26_gameworld_integration_plan.md) | Chapter 26: Game World & Shellmap — map loading, actor spawning, skirmish |
 | [docs/game_entry_design.md](docs/game_entry_design.md) | Chapter 22 original architecture design document (merged into chapter22 plan) |
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-22 remaining systems migration plan (15 chapters, Ch8-20 COMPLETE, Ch21-22 PLANNING) |
 | [docs/post_migration_completion_plan.md](docs/post_migration_completion_plan.md) | Post-migration completion plan: 52 genuinely unfinished items across 5 phases A-E (Runtime Critical, 3D Rendering, Shroud/Fog, Infrastructure, Mod Polish) |
