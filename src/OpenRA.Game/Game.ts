@@ -543,23 +543,14 @@ export class Game {
     fileSystem: FileSystem,
     manifest: Manifest,
   ): void {
-    // Collect all path references from the manifest that use the
-    // "packageId|filePath" syntax.
+    // Collect path references for asset types that build-mods.ts converts
+    // from YAML to JSON. Other types (voices, notifications, music, cursors,
+    // chrome, etc.) are loaded from MIX archives by the Content Installer
+    // or parsed at runtime from their raw formats.
     const pathLists = [
       manifest.rules,
       manifest.weapons,
       manifest.sequences,
-      manifest.chrome,
-      manifest.chromeLayout,
-      manifest.voices,
-      manifest.notifications,
-      manifest.music,
-      manifest.tileSets,
-      manifest.chromeMetrics,
-      manifest.missions,
-      manifest.hotkeys,
-      manifest.fluentMessages,
-      manifest.cursors,
     ]
 
     // pkgName → { filePath → URL }
