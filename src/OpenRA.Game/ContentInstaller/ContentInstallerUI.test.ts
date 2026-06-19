@@ -14,6 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ContentInstallerUI } from './ContentInstallerUI.js'
+import { StorageManager } from './StorageManager.js'
 import type { ModContentManifest, ContentInstallProgress } from './ContentInstallerTypes.js'
 
 // ---------------------------------------------------------------------------
@@ -95,6 +96,8 @@ function createMockService() {
     cancel: vi.fn(),
     clearModContent: vi.fn().mockResolvedValue(undefined),
     clearAll: vi.fn().mockResolvedValue(undefined),
+    getInstalledModIds: vi.fn().mockResolvedValue(new Set<string>()),
+    detectOtherModsContent: vi.fn().mockResolvedValue(null),
     // Simulate progress emission for testing
     _emitProgress: (progress: ContentInstallProgress) => {
       for (const l of _listeners) l(progress)
@@ -108,9 +111,28 @@ function createMockService() {
 
 describe('ContentInstallerUI', () => {
   let mockService: ReturnType<typeof createMockService>
+  let storageGetModUsageSpy: ReturnType<typeof vi.fn>
+  let storageGetQuotaSpy: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     mockService = createMockService()
+
+    // Mock StorageManager static methods
+    storageGetModUsageSpy = vi.fn().mockResolvedValue([])
+    storageGetQuotaSpy = vi.fn().mockResolvedValue({
+      usage: 0,
+      quota: Infinity,
+      percentage: 0,
+    })
+    vi.spyOn(StorageManager, 'getModUsage').mockImplementation(storageGetModUsageSpy)
+    vi.spyOn(StorageManager, 'getQuota').mockImplementation(storageGetQuotaSpy)
+    vi.spyOn(StorageManager, 'formatBytes').mockImplementation((bytes: number) => {
+      if (bytes === 0) return '0 B'
+      if (bytes < 1024) return `${bytes} B`
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+      if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+      return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+    })
   })
 
   afterEach(() => {
@@ -564,6 +586,212 @@ describe('ContentInstallerUI', () => {
 
     it('returns null for empty string', () => {
       expect(extractPackageKey('')).toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // CI-C.4: Storage Breakdown
+  // -------------------------------------------------------------------------
+
+  describe('storage breakdown (CI-C.4)', () => {
+    it('renders storage breakdown section with per-mod usage', async () => {
+      storageGetModUsageSpy.mockResolvedValue([
+        { modId: 'ra', usageBytes: 450 * 1024 * 1024 },
+        { modId: 'cnc', usageBytes: 380 * 1024 * 1024 },
+      ])
+      storageGetQuotaSpy.mockResolvedValue({
+        usage: 830 * 1024 * 1024,
+        quota: 2 * 1024 * 1024 * 1024,
+        percentage: 41,
+      })
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const storageSection = document.getElementById('content-installer-storage')
+      expect(storageSection).not.toBeNull()
+      expect(storageSection!.textContent).toContain('Storage Usage')
+      expect(storageSection!.textContent).toContain('Red Alert')
+      expect(storageSection!.textContent).toContain('Tiberian Dawn')
+    })
+
+    it('shows current mod indicator', async () => {
+      storageGetModUsageSpy.mockResolvedValue([
+        { modId: 'ra', usageBytes: 450 * 1024 * 1024 },
+      ])
+      storageGetQuotaSpy.mockResolvedValue({
+        usage: 450 * 1024 * 1024,
+        quota: 2 * 1024 * 1024 * 1024,
+        percentage: 22,
+      })
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const storageSection = document.getElementById('content-installer-storage')
+      expect(storageSection!.textContent).toContain('(current)')
+    })
+
+    it('shows free space when quota is finite', async () => {
+      storageGetModUsageSpy.mockResolvedValue([])
+      storageGetQuotaSpy.mockResolvedValue({
+        usage: 500 * 1024 * 1024,
+        quota: 2 * 1024 * 1024 * 1024,
+        percentage: 25,
+      })
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const storageSection = document.getElementById('content-installer-storage')
+      expect(storageSection!.textContent).toContain('Free')
+    })
+
+    it('does not show free space when quota is infinite', async () => {
+      storageGetModUsageSpy.mockResolvedValue([])
+      storageGetQuotaSpy.mockResolvedValue({
+        usage: 0,
+        quota: Infinity,
+        percentage: 0,
+      })
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const storageSection = document.getElementById('content-installer-storage')
+      expect(storageSection!.textContent).not.toContain('Free')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // CI-C.4: Per-Mod Clear Buttons
+  // -------------------------------------------------------------------------
+
+  describe('per-mod clear buttons (CI-C.4)', () => {
+    it('shows clear buttons for other mods with content', async () => {
+      mockService.getInstalledModIds.mockResolvedValue(
+        new Set(['ra', 'cnc']),
+      )
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const clearSection = document.getElementById('content-installer-clear-mods')
+      expect(clearSection).not.toBeNull()
+      expect(clearSection!.textContent).toContain('Clear')
+      expect(clearSection!.textContent).toContain('Tiberian Dawn')
+    })
+
+    it('does not show clear button for current mod', async () => {
+      mockService.getInstalledModIds.mockResolvedValue(
+        new Set(['ra']),
+      )
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const clearSection = document.getElementById('content-installer-clear-mods')
+      expect(clearSection!.innerHTML).toBe('')
+    })
+
+    it('does not show clear buttons when no other mods have content', async () => {
+      mockService.getInstalledModIds.mockResolvedValue(new Set<string>())
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const clearSection = document.getElementById('content-installer-clear-mods')
+      expect(clearSection!.innerHTML).toBe('')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // CI-C.4: Other Mods Content Notice
+  // -------------------------------------------------------------------------
+
+  describe('other mods content notice (CI-C.4)', () => {
+    it('shows notice when other mods have content', async () => {
+      mockService.detectOtherModsContent.mockResolvedValue({
+        otherModIds: ['cnc', 'd2k'],
+        totalOtherPackages: 3,
+      })
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const notice = document.getElementById('content-installer-other-mods')
+      expect(notice).not.toBeNull()
+      expect(notice!.style.display).not.toBe('none')
+      expect(notice!.textContent).toContain('Tiberian Dawn')
+      expect(notice!.textContent).toContain('Dune 2000')
+      expect(notice!.textContent).toContain('own content')
+    })
+
+    it('does not show notice when no other mods have content', async () => {
+      mockService.detectOtherModsContent.mockResolvedValue(null)
+
+      await ContentInstallerUI.show(
+        mockService as any,
+        'ra',
+        vi.fn(),
+      )
+
+      const notice = document.getElementById('content-installer-other-mods')
+      expect(notice!.style.display).toBe('none')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // _modIdToDisplayName
+  // -------------------------------------------------------------------------
+
+  describe('_modIdToDisplayName()', () => {
+    function modIdToDisplayName(modId: string): string {
+      return (ContentInstallerUI as any)._modIdToDisplayName(modId)
+    }
+
+    it('maps "ra" to "Red Alert"', () => {
+      expect(modIdToDisplayName('ra')).toBe('Red Alert')
+    })
+
+    it('maps "cnc" to "Tiberian Dawn"', () => {
+      expect(modIdToDisplayName('cnc')).toBe('Tiberian Dawn')
+    })
+
+    it('maps "d2k" to "Dune 2000"', () => {
+      expect(modIdToDisplayName('d2k')).toBe('Dune 2000')
+    })
+
+    it('maps "ts" to "Tiberian Sun"', () => {
+      expect(modIdToDisplayName('ts')).toBe('Tiberian Sun')
+    })
+
+    it('maps unknown modId to uppercase', () => {
+      expect(modIdToDisplayName('unknown')).toBe('UNKNOWN')
     })
   })
 })

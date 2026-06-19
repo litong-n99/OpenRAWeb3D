@@ -1117,6 +1117,122 @@ export class ContentInstallerService {
     })
   }
 
+  // ---------------------------------------------------------------------------
+  // Multi-Mod Content Switching (CI-C.4)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get the set of mod IDs that currently have content installed.
+   *
+   * Scans IndexedDB for all package records and extracts mod prefixes.
+   * A mod is considered to have content if at least one package record
+   * exists with that mod's prefix.
+   *
+   * OpenRA 对照: No direct C# equivalent — synthesized from ModContent
+   *             enumeration logic. Desktop OpenRA checks per-mod directories
+   *             in SupportDir/Content/{mod}/.
+   *
+   * @returns Set of mod IDs (e.g. "ra", "cnc", "d2k") with installed content.
+   *   Empty set if IndexedDB is unavailable or no content is installed.
+   */
+  async getInstalledModIds(): Promise<Set<string>> {
+    const db = await this._openDb()
+    if (!db) return new Set()
+
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE_NAME, 'readonly')
+        const store = tx.objectStore(STORE_NAME)
+        const request = store.openCursor()
+
+        const modIds = new Set<string>()
+
+        request.onsuccess = () => {
+          const cursor = request.result as IDBCursorWithValue | null
+          if (cursor) {
+            const record = cursor.value as ContentPackageRecord
+            if (typeof record.packageId === 'string') {
+              const colonIdx = record.packageId.indexOf(':')
+              if (colonIdx > 0) {
+                modIds.add(record.packageId.substring(0, colonIdx))
+              }
+            }
+            cursor.continue()
+          } else {
+            resolve(modIds)
+          }
+        }
+
+        tx.onerror = () => resolve(modIds)
+        tx.onabort = () => resolve(modIds)
+      } catch {
+        resolve(new Set())
+      }
+    })
+  }
+
+  /**
+   * Detect whether content for other mods exists when switching to a new mod.
+   *
+   * This helps the UI inform the user: "You have Red Alert content installed.
+   * Tiberian Dawn needs its own content. Install now?"
+   *
+   * @param currentModId — The mod the user is switching TO.
+   * @returns Information about other mods with content installed, or null
+   *   if no other mod content exists.
+   */
+  async detectOtherModsContent(
+    currentModId: string,
+  ): Promise<{ otherModIds: string[]; totalOtherPackages: number } | null> {
+    const installedModIds = await this.getInstalledModIds()
+
+    // Filter out the current mod
+    const otherModIds = Array.from(installedModIds).filter(
+      (id) => id !== currentModId,
+    )
+
+    if (otherModIds.length === 0) return null
+
+    // Count total packages for the other mods
+    let totalOtherPackages = 0
+    const db = await this._openDb()
+    if (db) {
+      await new Promise<void>((resolvePkg) => {
+        try {
+          const tx = db.transaction(STORE_NAME, 'readonly')
+          const store = tx.objectStore(STORE_NAME)
+          const req = store.openCursor()
+
+          req.onsuccess = () => {
+            const cursor = req.result as IDBCursorWithValue | null
+            if (cursor) {
+              const record = cursor.value as ContentPackageRecord
+              if (typeof record.packageId === 'string') {
+                const colonIdx = record.packageId.indexOf(':')
+                if (
+                  colonIdx > 0 &&
+                  otherModIds.includes(record.packageId.substring(0, colonIdx))
+                ) {
+                  totalOtherPackages++
+                }
+              }
+              cursor.continue()
+            } else {
+              resolvePkg()
+            }
+          }
+
+          tx.onerror = () => resolvePkg()
+          tx.onabort = () => resolvePkg()
+        } catch {
+          resolvePkg()
+        }
+      })
+    }
+
+    return { otherModIds, totalOtherPackages }
+  }
+
   /**
    * Cancel the currently running installation.
    *

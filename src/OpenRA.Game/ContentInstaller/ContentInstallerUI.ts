@@ -16,6 +16,7 @@
  */
 
 import type { ContentInstallerService } from './ContentInstallerService.js'
+import { StorageManager } from './StorageManager.js'
 import type {
   ModContentManifest,
   ContentInstallProgress,
@@ -34,6 +35,9 @@ const BUTTON_BAR_ID = 'content-installer-button-bar'
 const INSTALL_ALL_BTN_ID = 'content-installer-install-all'
 const PLAY_BTN_ID = 'content-installer-play'
 const BACK_BTN_ID = 'content-installer-back'
+const STORAGE_BREAKDOWN_ID = 'content-installer-storage'
+const CLEAR_MOD_SECTION_ID = 'content-installer-clear-mods'
+const OTHER_MODS_NOTICE_ID = 'content-installer-other-mods'
 const TITLE_ID = 'content-installer-title'
 const DESCRIPTION_ID = 'content-installer-description'
 
@@ -190,12 +194,31 @@ export class ContentInstallerUI {
     progressContainer.style.display = 'none'
     panel.appendChild(progressContainer)
 
+    // Other mods notice (hidden initially)
+    const otherModsNotice = document.createElement('div')
+    otherModsNotice.id = OTHER_MODS_NOTICE_ID
+    otherModsNotice.style.display = 'none'
+    panel.appendChild(otherModsNotice)
+
     // Button bar
     const buttonBar = document.createElement('div')
     buttonBar.id = BUTTON_BAR_ID
     buttonBar.style.cssText =
       'display:flex;gap:10px;margin-top:1.5rem;justify-content:space-between;'
     panel.appendChild(buttonBar)
+
+    // Storage breakdown
+    const storageSection = document.createElement('div')
+    storageSection.id = STORAGE_BREAKDOWN_ID
+    storageSection.style.cssText =
+      'margin-top:1.2rem;padding-top:1rem;' +
+      'border-top:1px solid rgba(100,100,180,0.2);'
+    panel.appendChild(storageSection)
+
+    // Clear mod content section (below storage)
+    const clearModSection = document.createElement('div')
+    clearModSection.id = CLEAR_MOD_SECTION_ID
+    panel.appendChild(clearModSection)
 
     backdrop.appendChild(panel)
     document.body.appendChild(backdrop)
@@ -208,6 +231,51 @@ export class ContentInstallerUI {
 
     // Render button bar
     ContentInstallerUI._renderButtonBar(buttonBar, manifest)
+
+    // Render storage breakdown
+    await ContentInstallerUI._renderStorageBreakdown(storageSection, modId)
+
+    // Render per-mod clear buttons
+    await ContentInstallerUI._renderClearModButtons(clearModSection, modId, manifest)
+
+    // Detect other mods' content and show notice if applicable
+    await ContentInstallerUI._checkOtherModsContent(otherModsNotice, modId)
+  }
+
+  /**
+   * Check if other mods have content installed and show a notice.
+   *
+   * CI-C.4: Mod switch detection.
+   *
+   * @param noticeEl — The notice DOM element.
+   * @param currentModId — The mod being viewed.
+   */
+  private static async _checkOtherModsContent(
+    noticeEl: HTMLElement,
+    currentModId: string,
+  ): Promise<void> {
+    if (!ContentInstallerUI._service) return
+
+    const result = await ContentInstallerUI._service.detectOtherModsContent(
+      currentModId,
+    )
+    if (!result || result.otherModIds.length === 0) return
+
+    // Format mod names for display
+    const modNames = result.otherModIds
+      .map((id) => ContentInstallerUI._modIdToDisplayName(id))
+      .join(' and ')
+
+    noticeEl.style.display = ''
+    noticeEl.style.cssText =
+      'margin-bottom:1rem;padding:10px 14px;' +
+      'background:rgba(100,160,220,0.15);' +
+      'border:1px solid rgba(100,160,220,0.3);border-radius:6px;' +
+      'font-size:0.85rem;color:#aaccee;line-height:1.4;'
+    noticeEl.textContent =
+      `You have ${modNames} content installed. ` +
+      `${ContentInstallerUI._modIdToDisplayName(currentModId)} ` +
+      `needs its own content. Old content will be kept.`
   }
 
   /**
@@ -577,8 +645,254 @@ export class ContentInstallerUI {
   }
 
   // -------------------------------------------------------------------------
-  // Private: Download Progress Rendering
+  // Private: Storage Breakdown Rendering (CI-C.4)
   // -------------------------------------------------------------------------
+
+  /**
+   * Render the per-mod storage usage breakdown.
+   *
+   * CI-C.4: Shows how much storage each mod's content is using,
+   * plus total available space.
+   *
+   * @param container — DOM element to render into.
+   * @param currentModId — The mod currently being viewed.
+   */
+  private static async _renderStorageBreakdown(
+    container: HTMLElement,
+    currentModId: string,
+  ): Promise<void> {
+    container.innerHTML = ''
+
+    try {
+      const [modUsage, quota] = await Promise.all([
+        StorageManager.getModUsage(),
+        StorageManager.getQuota(),
+      ])
+
+      if (modUsage.length === 0 && quota.usage === 0) {
+        // No content installed and Storage API unavailable — nothing to show
+        return
+      }
+
+      // Section header
+      const header = document.createElement('div')
+      header.textContent = 'Storage Usage'
+      header.style.cssText =
+        'font-size:0.85rem;font-weight:600;color:#9999bb;' +
+        'margin-bottom:8px;'
+      container.appendChild(header)
+
+      // Per-mod rows
+      let totalContentBytes = 0
+      for (const entry of modUsage) {
+        const row = document.createElement('div')
+        row.style.cssText =
+          'display:flex;align-items:center;justify-content:space-between;' +
+          'padding:4px 0;font-size:0.8rem;'
+
+        const nameEl = document.createElement('span')
+        nameEl.textContent =
+          `  ${ContentInstallerUI._modIdToDisplayName(entry.modId)}` +
+          (entry.modId === currentModId ? ' (current)' : '')
+        nameEl.style.cssText = 'color:#bbbbdd;'
+        row.appendChild(nameEl)
+
+        const sizeEl = document.createElement('span')
+        sizeEl.textContent = StorageManager.formatBytes(entry.usageBytes)
+        sizeEl.style.cssText = 'color:#8888aa;'
+        row.appendChild(sizeEl)
+
+        container.appendChild(row)
+        totalContentBytes += entry.usageBytes
+      }
+
+      // Total and free space
+      if (quota.quota !== Infinity) {
+        const separator = document.createElement('div')
+        separator.style.cssText =
+          'border-top:1px solid rgba(100,100,180,0.15);margin:6px 0 4px;'
+        container.appendChild(separator)
+
+        const totalRow = document.createElement('div')
+        totalRow.style.cssText =
+          'display:flex;align-items:center;justify-content:space-between;' +
+          'padding:4px 0;font-size:0.8rem;'
+
+        const totalLabel = document.createElement('span')
+        totalLabel.textContent = '  Total Used'
+        totalLabel.style.cssText = 'color:#9999bb;font-weight:600;'
+        totalRow.appendChild(totalLabel)
+
+        const totalSize = document.createElement('span')
+        totalSize.textContent = StorageManager.formatBytes(quota.usage)
+        totalSize.style.cssText = 'color:#bbbbdd;font-weight:600;'
+        totalRow.appendChild(totalSize)
+
+        container.appendChild(totalRow)
+
+        const freeRow = document.createElement('div')
+        freeRow.style.cssText =
+          'display:flex;align-items:center;justify-content:space-between;' +
+          'padding:4px 0;font-size:0.8rem;'
+
+        const freeLabel = document.createElement('span')
+        freeLabel.textContent = '  Free'
+        freeLabel.style.cssText = 'color:#88aa88;'
+        freeRow.appendChild(freeLabel)
+
+        const freeSize = document.createElement('span')
+        const freeBytes = Math.max(0, quota.quota - quota.usage)
+        freeSize.textContent =
+          `${StorageManager.formatBytes(freeBytes)} / ` +
+          `${StorageManager.formatBytes(quota.quota)}`
+        freeSize.style.cssText = 'color:#66cc88;'
+        freeRow.appendChild(freeSize)
+
+        container.appendChild(freeRow)
+      }
+    } catch {
+      // Storage API may be unavailable — gracefully show nothing
+      container.innerHTML = ''
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Private: Per-Mod Content Clearing (CI-C.4)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Render per-mod content clearing buttons.
+   *
+   * CI-C.4: Shows "Clear RA Content", "Clear C&C Content" buttons
+   * for mods that have content installed.
+   *
+   * @param container — DOM element to render into.
+   * @param currentModId — The mod currently being viewed.
+   * @param manifest — The content manifest for the current mod (or null).
+   */
+  private static async _renderClearModButtons(
+    container: HTMLElement,
+    currentModId: string,
+    manifest: ModContentManifest | null,
+  ): Promise<void> {
+    if (!ContentInstallerUI._service) return
+
+    const installedModIds = await ContentInstallerUI._service.getInstalledModIds()
+
+    // Remove current mod from clearable list (its content is managed
+    // through the package install/uninstall flow)
+    const clearableModIds = Array.from(installedModIds).filter(
+      (id) => id !== currentModId,
+    )
+
+    if (clearableModIds.length === 0) {
+      container.innerHTML = ''
+      return
+    }
+
+    container.innerHTML = ''
+
+    // Section header
+    const header = document.createElement('div')
+    header.textContent = 'Other Installed Content'
+    header.style.cssText =
+      'font-size:0.8rem;font-weight:600;color:#7777aa;' +
+      'margin:0.8rem 0 6px;padding-top:0.6rem;' +
+      'border-top:1px solid rgba(100,100,180,0.15);'
+    container.appendChild(header)
+
+    for (const modId of clearableModIds) {
+      const btn = document.createElement('button')
+      btn.textContent = `Clear ${ContentInstallerUI._modIdToDisplayName(modId)} Content`
+      btn.style.cssText =
+        'display:block;width:100%;margin-bottom:6px;padding:6px 16px;' +
+        'border:1px solid rgba(180,100,100,0.3);border-radius:5px;' +
+        'background:rgba(60,20,20,0.4);color:#cc8888;' +
+        'font-size:0.8rem;cursor:pointer;text-align:left;' +
+        'transition:all 0.15s ease;'
+
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'rgba(80,30,30,0.5)'
+        btn.style.color = '#eeaaaa'
+      })
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'rgba(60,20,20,0.4)'
+        btn.style.color = '#cc8888'
+      })
+
+      btn.addEventListener('click', async () => {
+        // Get storage estimate before clearing for the confirmation message
+        const modUsage = await StorageManager.getModUsage()
+        const usageEntry = modUsage.find((u) => u.modId === modId)
+        const sizeStr = usageEntry
+          ? StorageManager.formatBytes(usageEntry.usageBytes)
+          : 'unknown'
+
+        const confirmed = window.confirm(
+          `This will remove ${sizeStr} of ${ContentInstallerUI._modIdToDisplayName(modId)} content. ` +
+          'You can download it again later. Continue?',
+        )
+        if (!confirmed) return
+
+        btn.disabled = true
+        btn.textContent = 'Clearing...'
+
+        try {
+          await ContentInstallerUI._service!.clearModContent(modId)
+
+          // Refresh storage breakdown
+          const storageEl = document.getElementById(STORAGE_BREAKDOWN_ID)
+          if (storageEl) {
+            await ContentInstallerUI._renderStorageBreakdown(
+              storageEl,
+              currentModId,
+            )
+          }
+
+          // Refresh clear buttons
+          const clearEl = document.getElementById(CLEAR_MOD_SECTION_ID)
+          if (clearEl) {
+            await ContentInstallerUI._renderClearModButtons(
+              clearEl,
+              currentModId,
+              manifest,
+            )
+          }
+
+          // Hide other-mods notice if no more other mods
+          const noticeEl = document.getElementById(OTHER_MODS_NOTICE_ID)
+          if (noticeEl) {
+            const remaining = await ContentInstallerUI._service!.detectOtherModsContent(currentModId)
+            if (!remaining || remaining.otherModIds.length === 0) {
+              noticeEl.style.display = 'none'
+            }
+          }
+        } catch {
+          btn.disabled = false
+          btn.textContent = `Clear ${ContentInstallerUI._modIdToDisplayName(modId)} Content`
+        }
+      })
+
+      container.appendChild(btn)
+    }
+  }
+
+  /**
+   * Convert a mod ID to a human-readable display name.
+   *
+   * @param modId — Internal mod identifier (e.g. "ra", "cnc", "d2k", "ts").
+   * @returns Display name (e.g. "Red Alert", "Tiberian Dawn").
+   */
+  private static _modIdToDisplayName(modId: string): string {
+    const MOD_DISPLAY_NAMES: Record<string, string> = {
+      ra: 'Red Alert',
+      cnc: 'Tiberian Dawn',
+      td: 'Tiberian Dawn',
+      d2k: 'Dune 2000',
+      ts: 'Tiberian Sun',
+    }
+    return MOD_DISPLAY_NAMES[modId] ?? modId.toUpperCase()
+  }
 
   /**
    * Show the download progress view, replacing the package list.
