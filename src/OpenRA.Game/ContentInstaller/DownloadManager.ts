@@ -17,6 +17,7 @@
  */
 
 import { Sha1Verifier } from './Sha1Verifier.js'
+import { proxiedFetch } from './ProxyResolver.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -66,7 +67,7 @@ export class DownloadManager {
     onProgress: (received: number, total: number, percentage: number) => void,
     signal?: AbortSignal,
   ): Promise<ArrayBuffer> {
-    const response = await fetch(url, { signal })
+    const response = await proxiedFetch(url, { signal })
 
     if (!response.ok) {
       throw new Error(`Download failed: HTTP ${response.status}`)
@@ -362,7 +363,7 @@ export class DownloadManager {
       headers['Range'] = `bytes=${storedBytes}-`
     }
 
-    const response = await fetch(url, {
+    const response = await proxiedFetch(url, {
       signal,
       headers: Object.keys(headers).length > 0 ? headers : undefined,
     })

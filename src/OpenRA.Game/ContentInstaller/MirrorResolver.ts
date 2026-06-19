@@ -20,6 +20,10 @@
 // MirrorResolver — Static mirror list utilities
 // ---------------------------------------------------------------------------
 
+import { proxiedFetch } from './ProxyResolver.js'
+
+// ---------------------------------------------------------------------------
+
 export class MirrorResolver {
   /**
    * Fetch the mirror list from the given URL and return a randomly selected
@@ -61,7 +65,7 @@ export class MirrorResolver {
    * @throws Error if the HTTP request fails (non-2xx status).
    */
   static async fetchMirrors(mirrorListUrl: string): Promise<string[]> {
-    const response = await fetch(mirrorListUrl);
+    const response = await proxiedFetch(mirrorListUrl);
 
     if (!response.ok) {
       throw new Error(
