@@ -182,12 +182,13 @@ describe('MixLoader', () => {
       expect(result).toBeNull()
     })
 
-    it('logs an RSA-related warning for encrypted OpenRA format MIX files', () => {
+    it('logs a warning (not silent) for encrypted OpenRA format MIX files', () => {
       const encData = buildEncryptedMix()
       loader.tryParsePackage('encrypted.mix', encData)
       expect(warnSpy).toHaveBeenCalledTimes(1)
       const callArg = warnSpy.mock.calls[0]?.[0] as string
-      expect(callArg).toContain('RSA key decryption')
+      // Phase C wraps parse errors as: 'MixLoader: Failed to parse "name" as encrypted MIX: ...'
+      expect(callArg).toContain('Failed to parse')
       expect(callArg).toContain('encrypted.mix')
     })
   })
