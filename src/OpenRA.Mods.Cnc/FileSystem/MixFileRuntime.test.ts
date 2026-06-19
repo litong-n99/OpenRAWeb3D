@@ -996,18 +996,22 @@ const RSA_PUBLIC_KEY_B64 = 'AihRvNoIbTn85FZRYNZRcT+i6KpU+maCsEqr3Q5q+LDB5tH7Tz2q
 const RSA_EXPONENT_UINT32 = 0x10001 // 65537
 
 /**
- * Decode base64 public key to BigInt modulus (using BigInt).
- * This mirrors the MixFileRuntime._getRsaModulus logic.
+ * Decode base64 public key to BigInt modulus.
+ * Mirrors MixFileRuntime._getRsaModulus: strips DER header (ASN.1 INTEGER
+ * tag 0x02 + length byte), then interprets remaining 40 bytes as big-endian.
  */
 function getRsaModulus(): bigint {
   const binaryStr = atob(RSA_PUBLIC_KEY_B64)
-  const bytes = new Uint8Array(binaryStr.length)
+  const derBytes = new Uint8Array(binaryStr.length)
   for (let i = 0; i < binaryStr.length; i++) {
-    bytes[i] = binaryStr.charCodeAt(i)
+    derBytes[i] = binaryStr.charCodeAt(i)
   }
+  // Strip DER header: byte 0 = 0x02 (INTEGER tag), byte 1 = length
+  const modulusLen = derBytes[1]
+  const modulusBytes = derBytes.slice(2, 2 + modulusLen)
   let result = 0n
-  for (let i = 0; i < bytes.length; i++) {
-    result = (result << 8n) | BigInt(bytes[i])
+  for (let i = 0; i < modulusBytes.length; i++) {
+    result = (result << 8n) | BigInt(modulusBytes[i])
   }
   return result
 }
@@ -1097,8 +1101,8 @@ describe('MixFileRuntime — RSA utilities (Phase C)', () => {
     const modulus = getRsaModulus()
     expect(modulus > 0n).toBe(true)
     const bitLen = bigIntBitLength(modulus)
-    expect(bitLen).toBeGreaterThan(320)
-    expect(bitLen).toBeLessThan(340)
+    expect(bitLen).toBeGreaterThan(310)
+    expect(bitLen).toBeLessThan(330)
   })
 
   // NOTE: RSA encrypt/decrypt round-trip cannot be tested without the private
@@ -1110,43 +1114,8 @@ describe('MixFileRuntime — RSA utilities (Phase C)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Phase C: RSA key decryption + OpenRA format verification
+// Phase C: RSA chunk sizes (structural verification)
 // ---------------------------------------------------------------------------
-
-describe('MixFileRuntime.parseEncrypted — RSA key decryption (Phase C)', () => {
-  it('RSA modulus is correctly decoded from base64', () => {
-    const modulus = getRsaModulus()
-    expect(modulus > 0n).toBe(true)
-    const bitLen = bigIntBitLength(modulus)
-    expect(bitLen).toBeGreaterThan(320)
-    expect(bitLen).toBeLessThan(340)
-  })
-
-  it('BigInt utility functions work correctly', () => {
-    // bytesToBigIntForTest + bigIntToBytes roundtrip
-    const original = new Uint8Array([0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF])
-    const bigInt = bytesToBigIntForTest(original)
-    const converted = bigIntToBytes(bigInt, original.length)
-    expect(converted).toEqual(original)
-  })
-
-  it('BigInt zero is handled correctly', () => {
-    const zeroBigInt = 0n
-    const converted = bigIntToBytes(zeroBigInt, 4)
-    expect(converted).toEqual(new Uint8Array([0, 0, 0, 0]))
-  })
-
-  it('modPow computes modular exponentiation correctly', () => {
-    // Known test: 3^5 mod 7 = 243 mod 7 = 5
-    expect(modPow(3n, 5n, 7n)).toBe(5n)
-  })
-
-  // NOTE: RSA encrypt/decrypt round-trip cannot be tested end-to-end
-  // without the private key exponent d. OpenRA uses the private key for
-  // encrypting the keyblock and the public key (e=65537, given modulus)
-  // for decrypting it. The encryption tool is proprietary/unknown.
-  // TODO-CI-C.3: Add round-trip test if private exponent becomes available.
-})
 
 describe('MixFileRuntime — RSA chunk sizes (Phase C)', () => {
   it('RSA chunk sizes are computed correctly from modulus', () => {
@@ -1155,14 +1124,14 @@ describe('MixFileRuntime — RSA chunk sizes (Phase C)', () => {
     const outSize = Math.floor((bitLen - 1) / 8)
     const inSize = outSize + 1
 
-    // For a ~330-bit modulus, outSize should be 41, inSize 42
-    expect(outSize).toBe(41)
-    expect(inSize).toBe(42)
+    // For a 319-bit modulus, outSize should be 39, inSize 40
+    expect(outSize).toBe(39)
+    expect(inSize).toBe(40)
 
     // pre_len = (55 / outSize + 1) * (outSize + 1)
     const preLen = (Math.floor(55 / outSize) + 1) * inSize
-    // (55/41+1)*42 = (1+1)*42 = 84
-    expect(preLen).toBe(84)
+    // (55/39+1)*40 = (1+1)*40 = 80 (exactly matches keyblock size!)
+    expect(preLen).toBe(80)
   })
 })
 

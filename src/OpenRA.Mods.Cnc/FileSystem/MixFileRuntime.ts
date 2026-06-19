@@ -57,7 +57,7 @@ const UNIVERSAL_KEY_FLAG = 0x0001
 
 /**
  * RSA key format: first uint16 == 2 (bit 1 set) means the file contains
- * an RSA-encrypted Blowfish keyblock. Not supported in Phase B.
+ * an RSA-encrypted Blowfish keyblock. Supported in Phase C.
  */
 const RSA_KEY_FLAG = 0x0002
 
@@ -729,8 +729,10 @@ export class MixFileRuntime implements IReadOnlyPackage {
           : 0
       }
 
-      // Convert encrypted chunk to BigInt (big-endian unsigned)
-      const chunkBigInt = MixFileRuntime._bytesToBigInt(chunkBytes)
+      // Convert encrypted chunk to BigInt (little-endian unsigned)
+      // OpenRA 对照: Buffer.BlockCopy copies bytes directly into LE uint32 array;
+      // first byte of src becomes LSB of the BigInt value
+      const chunkBigInt = MixFileRuntime._bytesToBigIntLE(chunkBytes)
 
       // RSA decrypt: plaintext = ciphertext^exponent mod modulus
       const decryptedBigInt = MixFileRuntime._modPow(chunkBigInt, RSA_EXPONENT, modulus)
@@ -759,17 +761,32 @@ export class MixFileRuntime implements IReadOnlyPackage {
    * Result is lazily cached for subsequent calls.
    *
    * OpenRA 对照: KeyToBigNum(pubkey.KeyOne, Convert.FromBase64String(PublicKeyString), 64)
+   *
+   * The base64 string decodes to a DER-encoded ASN.1 INTEGER:
+   * - Byte 0: 0x02 (DER INTEGER tag)
+   * - Byte 1: length (0x28 = 40 bytes of modulus)
+   * - Bytes 2-41: 40-byte RSA modulus (big-endian unsigned)
+   *
+   * OpenRA's KeyToBigNum strips the DER header and passes the raw modulus
+   * bytes to MoveKeyToBig, which reverses them into a LE uint32 array.
+   * The net effect (MoveKeyToBig reversal + LE uint32) is big-endian
+   * interpretation, so we use _bytesToBigIntBE().
    */
   private static _getRsaModulus(): bigint {
     if (_rsaModulus !== null) return _rsaModulus
 
-    // Decode base64: atob → raw bytes → BigInt
+    // Decode base64: atob → raw DER-encoded bytes
     const binaryStr = atob(RSA_PUBLIC_KEY_B64)
-    const bytes = new Uint8Array(binaryStr.length)
+    const derBytes = new Uint8Array(binaryStr.length)
     for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i)
+      derBytes[i] = binaryStr.charCodeAt(i)
     }
-    _rsaModulus = MixFileRuntime._bytesToBigInt(bytes)
+
+    // Strip DER header: byte 0 = 0x02 (INTEGER tag), byte 1 = length
+    const modulusLen = derBytes[1]
+    const modulusBytes = derBytes.slice(2, 2 + modulusLen)
+
+    _rsaModulus = MixFileRuntime._bytesToBigIntBE(modulusBytes)
     return _rsaModulus
   }
 
@@ -791,11 +808,28 @@ export class MixFileRuntime implements IReadOnlyPackage {
   // -----------------------------------------------------------------------
 
   /**
-   * Convert a Uint8Array (big-endian unsigned) to BigInt.
+   * Convert a Uint8Array (big-endian unsigned, first byte = MSB) to BigInt.
+   *
+   * Used for the RSA modulus (loaded via MoveKeyToBig which reverses bytes
+   * into a LE uint32 array — net effect is big-endian interpretation).
    */
-  private static _bytesToBigInt(bytes: Uint8Array): bigint {
+  private static _bytesToBigIntBE(bytes: Uint8Array): bigint {
     let result = 0n
     for (let i = 0; i < bytes.length; i++) {
+      result = (result << 8n) | BigInt(bytes[i])
+    }
+    return result
+  }
+
+  /**
+   * Convert a Uint8Array (little-endian unsigned, first byte = LSB) to BigInt.
+   *
+   * Used for encrypted keyblock chunks (loaded via Buffer.BlockCopy which
+   * copies bytes directly into a LE uint32 array — first byte = LSB).
+   */
+  private static _bytesToBigIntLE(bytes: Uint8Array): bigint {
+    let result = 0n
+    for (let i = bytes.length - 1; i >= 0; i--) {
       result = (result << 8n) | BigInt(bytes[i])
     }
     return result
@@ -813,9 +847,14 @@ export class MixFileRuntime implements IReadOnlyPackage {
    * Modular exponentiation (square-and-multiply algorithm).
    *
    * OpenRA 对照: BlowfishKeyProvider.CalcKey — same algorithm, implemented
-   * with uint64 arrays in C#, with JavaScript BigInt here.
+   * with uint64 arrays in C#, using JavaScript BigInt here.
    *
    * Computes: base^exp mod modulus
+   *
+   * @param base — the base value
+   * @param exp — the exponent
+   * @param modulus — the modulus
+   * @returns base^exp mod modulus
    */
   private static _modPow(base: bigint, exp: bigint, modulus: bigint): bigint {
     if (modulus === 1n) return 0n
