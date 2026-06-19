@@ -20,6 +20,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 **Chapter 21 Plan**: [docs/chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md)
 **Chapter 22 Plan**: [docs/chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md)
 **Post-Migration Plan**: [docs/post_migration_completion_plan.md](docs/post_migration_completion_plan.md) (52 remaining items across 5 phases A-E)
+**Acceptance Test Plan**: [docs/acceptance_test_completion_plan.md](docs/acceptance_test_completion_plan.md) (31 new test pages across 10 phases P0-P3)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
 
 | Module | Status |
@@ -467,8 +468,8 @@ test-runner (writes Playwright scripts, executes tests, collects evidence)
               └── B2b (major, >2 files or interface changes):
                     architect re-plans → reports to user
 
-⚠️ COMMIT GATE: No commits allowed until test-runner's FINAL re-verification passes.
-   Bug not fully resolved = commit gate locked.
+⚠️ COMMIT GATE (bug-fix phase only, Path B1/B2a): No commits allowed until test-runner's FINAL re-verification passes. Bug not fully resolved = commit gate locked.
+   During initial test page DEVELOPMENT: normal commit rules apply — commit after reviewer APPROVED. Redundancy check + commit gate are NOT activated for new page creation.
 ```
 
 ### Agent Rules
@@ -482,7 +483,7 @@ test-runner (writes Playwright scripts, executes tests, collects evidence)
 
 Sub-agents (Architect, Developer, Reviewer, Acceptance Tester, Docs Manager) have full read/write access to the files within their domain.
 
-- **Acceptance Tester may commit test code** — can write and commit files under `src/__e2e__/manual/` after verifying `tsc --noEmit` passes. **However, commits are gated**: no commit is allowed until `test-runner`'s final re-verification passes (see Acceptance Test Verification Flow above). Bug not fully resolved = commit locked.
+- **Acceptance Tester may commit test code** — can write and commit files under `src/__e2e__/manual/` after verifying `tsc --noEmit` passes. **During development phase**: commit after migration-review APPROVED (normal rules). **During bug-fix phase (Path B1/B2a)**: commit gate is active — no commit until `test-runner`'s final re-verification passes (see Acceptance Test Verification Flow above). Bug not fully resolved = commit locked.
 - **Acceptance test pages belong to acceptance-test-assistant** — all modifications, fixes, and thinking related to files under `src/__e2e__/manual/` must be delegated to the acceptance-test-assistant agent. The Team Lead and other agents should NOT directly modify these files.
 - **Acceptance Tester creates test pages** — can write `.html`, `.ts`, `.md` files under `src/__e2e__/manual/`, verify with `tsc --noEmit`
 - **Acceptance Tester commits after Reviewer APPROVED** — test pages must pass Reviewer's acceptance test review before commit (or commit and amend after approval)
@@ -595,6 +596,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/game_entry_design.md](docs/game_entry_design.md) | Chapter 22 original architecture design document (merged into chapter22 plan) |
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-22 remaining systems migration plan (15 chapters, Ch8-20 COMPLETE, Ch21-22 PLANNING) |
 | [docs/post_migration_completion_plan.md](docs/post_migration_completion_plan.md) | Post-migration completion plan: 52 genuinely unfinished items across 5 phases A-E (Runtime Critical, 3D Rendering, Shroud/Fog, Infrastructure, Mod Polish) |
+| [docs/acceptance_test_completion_plan.md](docs/acceptance_test_completion_plan.md) | Acceptance test completion plan: 31 new test pages across 10 phases P0-P3, covering Ch08/21/07/11/05/09/16/03/20 |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 

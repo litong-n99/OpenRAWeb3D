@@ -263,9 +263,9 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
 
 ---
 
-## 回测流程 (Re-verify)
+## 回测流程 (Re-verify) — 仅用于 Bug 修复阶段
 
-当 acceptance-test-assistant 或 migration-develop 完成修复并提交 reviewer 审查通过后，你会收到回测请求。
+当 acceptance-test-assistant 或 migration-develop 完成**bug 修复**并提交 reviewer 审查通过后，你会收到回测请求。此流程适用于 Path B1/B2a，**不适用于新测试页面开发**。
 
 ### 常规回测步骤：
 1. 读取最新的修复代码
@@ -390,4 +390,4 @@ Commit Gate: ✅ 解锁，允许提交
 6. **只读验收页面**: 正常流程下 `src/__e2e__/manual/` 下的页面文件只读取不修改。仅在路径 A 的最后一步更新 README.md 的审核状态行。
 7. **视频录制**: 尽量不录视频。仅当视觉异常（如闪烁、动画错误）无法用静态截图表达时才录制。视频文件较大，应压缩后存储。
 8. **截图约命名**: 使用描述性命名，如 `screenshot-1-initial-state.png`、`screenshot-2-after-click.png`。
-9. **Commit Gate**: 回测通过后，必须触发冗余检查 → 最终重新验证。只有最终重新验证通过后，Commit Gate 才解锁。在此之前，禁止任何代码提交。
+9. **Commit Gate (bug-fix phase only)**: 仅在 bug 修复阶段 (Path B1/B2a) 激活。回测通过后，必须触发冗余检查 → 最终重新验证。只有最终重新验证通过后，Commit Gate 才解锁。在此之前，禁止任何代码提交。**新测试页面开发阶段不适用 Commit Gate**——正常提交规则适用（reviewer APPROVED 后提交）。

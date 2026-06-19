@@ -278,12 +278,12 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>
 
 ### Commit Rules
 - **Developer commits** after self-check passes and BEFORE submitting to reviewer
-- **Acceptance Tester commits** after Reviewer APPROVED on test pages, `npx tsc --noEmit` passes, **AND** test-runner's final re-verification passes (Commit Gate unlocked). See Acceptance Test Verification Flow in CLAUDE.md.
+- **Acceptance Tester commits (development phase)**: after Reviewer APPROVED on test pages + `npx tsc --noEmit` passes. During **bug-fix phase (Path B1/B2a)**: additionally requires test-runner's final re-verification (Commit Gate). See Acceptance Test Verification Flow in CLAUDE.md.
 - **Docs Manager commits** after all doc updates are complete (independent of test review timing)
 - **Never commit broken code** — `npx tsc --noEmit` and `npx vitest run` must pass before any commit
 - **Atomic commits** — one commit per migrated file
 - **Never commit `OpenRA/` files** — absolute rule
-- **Acceptance Test Commit Gate** — for bug fixes discovered via acceptance testing: no commits until test-runner's final re-verification passes. Redundancy check must be completed before final re-verification.
+- **Acceptance Test Commit Gate (bug-fix only)** — for bug fixes discovered via acceptance testing (Path B1/B2a): no commits until test-runner's final re-verification passes. Redundancy check must be completed before final re-verification. **Not applicable during initial test page development** — normal rules apply (commit after reviewer APPROVED).
 
 ---
 

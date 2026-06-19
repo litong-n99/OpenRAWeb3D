@@ -62,7 +62,7 @@ Team Lead 在代码 Reviewer 返回 APPROVED 后，将 Completion Report 和 Rev
 
 Acceptance Tester 提交前必须经过 Reviewer 的测试页面审核：
 - 验证 `npx tsc --noEmit` 通过
-- ⚠️ **Commit Gate**：在 test-runner 最终重新验证通过之前，禁止提交。只有收到「最终验证通过 — Commit Gate 解锁」通知后才能提交。
+- ⚠️ **Commit Gate (仅 Bug 修复阶段)**：仅在 Bug 修复阶段 (Path B1/B2a) 激活。在 test-runner 最终重新验证通过之前，禁止提交。只有收到「最终验证通过 — Commit Gate 解锁」通知后才能提交。**新页面开发阶段**：reviewer APPROVED + `npx tsc --noEmit` 通过后即可提交，无需等待 test-runner。
 - 提交信息格式见 team-lead 的 Commit Conventions（需包含 `- Test review: APPROVED by migration-review`）
 - 与 Docs Manager 并行工作，但提交时机在 Reviewer APPROVED 之后
 - 若 Reviewer 返回 NEEDS FIXES，按 Re-Submission Report 格式响应（同 Developer 的 review-reject loop）
@@ -325,7 +325,9 @@ src/__e2e__/manual/
      建议：用户手动介入排查。
      ```
 
-### 第 2.5 步: 回测通过后的冗余检查 (REDUNDANCY CHECK) ⚠️
+### 第 2.5 步: 回测通过后的冗余检查 (REDUNDANCY CHECK) ⚠️ — 仅 Bug 修复
+
+**此步骤仅在 Bug 修复阶段 (Path B1/B2a) 适用。新页面开发阶段跳过此步骤。**
 
 当 test-runner 回测**全部通过**后，你必须执行**冗余检查**：
 
@@ -387,11 +389,11 @@ B2a (影响较小，<=2 文件) / B2b (影响较大，>2 文件或涉及接口/�
 4. 回测循环同样最多 **3 轮**
 5. 第 3 轮仍失败 → 汇报用户
 
-**⚠️ B2a 回测通过后的冗余检查**：
+**⚠️ B2a 回测通过后的冗余检查（仅 Bug 修复阶段）**：
 当 test-runner 回测全部通过后，developer 必须执行冗余检查（同 B1 的第 2.5 步）：
 - 审计之前的 bug-fix 修改，判断是否存在多余变更
 - 回退多余变更后，触发 test-runner 最终重新验证
-- **在最终重新验证通过之前，禁止提交任何代码**
+- **在最终重新验证通过之前，禁止提交任何代码**（Commit Gate 仅适用于 bug 修复，不影响初始开发阶段）
 
 #### B2b: 升级到 migration-architect
 

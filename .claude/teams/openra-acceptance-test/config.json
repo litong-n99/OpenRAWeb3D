@@ -1,6 +1,6 @@
 {
   "name": "openra-acceptance-test",
-  "description": "Acceptance test verification team. Validates manual acceptance test pages via Playwright automated testing. Task prompt is set at spawn time.\n\nCRITICAL WORKFLOW RULES:\n1. REDUNDANCY CHECK (post re-verification): After test-runner re-verifies a fix, developer OR acceptance-tester MUST audit the previous bug-fix modifications to determine whether any of them are now redundant (e.g., workarounds that the actual root-cause fix made unnecessary). If redundant changes are found, revert them and then dispatch test-runner for a FINAL re-verification.\n2. COMMIT GATE: Code MUST NOT be committed until test-runner's final re-verification passes. No commits are allowed while a bug is still unresolved. Only after the final re-verification is APPROVED may the fix be committed.",
+  "description": "Acceptance test verification team. Validates manual acceptance test pages via Playwright automated testing. Task prompt is set at spawn time.\n\nCRITICAL WORKFLOW RULES (applicable ONLY during bug-fix phases — Path B1/B2a):\n1. REDUNDANCY CHECK (post re-verification): After test-runner re-verifies a bug fix, developer OR acceptance-tester MUST audit the previous bug-fix modifications to determine whether any of them are now redundant (e.g., workarounds that the actual root-cause fix made unnecessary). If redundant changes are found, revert them and then dispatch test-runner for a FINAL re-verification.\n2. COMMIT GATE (bug-fix only): During bug-fix phases (Path B1/B2a), code MUST NOT be committed until test-runner's final re-verification passes. No commits are allowed while a bug is still unresolved. Only after the final re-verification is APPROVED may the fix be committed.\n\nNOTE: During initial acceptance test page DEVELOPMENT (new page creation), normal commit rules apply — commit after migration-review APPROVED. The commit gate and redundancy check only activate when FIXING bugs found by the test-runner.",
   "members": [
     {
       "name": "team-lead",
@@ -13,21 +13,21 @@
       "color": "cyan",
       "agentType": "acceptance-test-runner",
       "model": "claude-opus-4-6",
-      "role": "Write Playwright test scripts, execute browser automation, collect evidence (screenshots/videos), produce reproduce docs and test reports under test-results/manual/. After a fix is applied, perform re-verification. After redundancy audit is complete, perform final re-verification — only after this final pass is APPROVED may code be committed."
+      "role": "Write Playwright test scripts, execute browser automation, collect evidence (screenshots/videos), produce reproduce docs and test reports under test-results/manual/. During bug-fix phase: after a fix is applied, perform re-verification. After redundancy audit is complete, perform final re-verification — only after this final pass is APPROVED may bug-fix code be committed (commit gate). During dev phase: verify new pages without blocking commits."
     },
     {
       "name": "acceptance-tester",
       "color": "blue",
       "agentType": "acceptance-test-assistant",
       "model": "claude-opus-4-6",
-      "role": "Fix acceptance test page issues (Path B1). Diagnose whether failures are test-page or source-code related (B1 vs B2). Can modify src/__e2e__/manual/ files. After test-runner re-verifies, audit prior modifications for redundancy — revert any redundant changes and trigger test-runner final re-verification. DO NOT commit until test-runner's final re-verification passes."
+      "role": "Create new acceptance test pages (dev phase) and fix test page issues (Path B1 bug-fix phase). Diagnose whether failures are test-page or source-code related (B1 vs B2). Can modify src/__e2e__/manual/ files. During dev phase: commit after reviewer APPROVED. During bug-fix phase (B1): after test-runner re-verifies, audit prior modifications for redundancy — revert any redundant changes and trigger test-runner final re-verification. BUG-FIX COMMITS: DO NOT commit until test-runner's final re-verification passes. Dev phase commits follow normal rules."
     },
     {
       "name": "developer",
       "color": "yellow",
       "agentType": "migration-develop",
       "model": "claude-opus-4-6",
-      "role": "Fix source code issues found by acceptance testing (Path B2a). Add negative unit tests for the failure case. After test-runner re-verifies, audit prior bug-fix modifications for redundancy — revert any redundant changes (e.g., workarounds made obsolete by the root-cause fix) and trigger test-runner final re-verification. DO NOT commit until test-runner's final re-verification passes."
+      "role": "Fix source code issues found by acceptance testing (Path B2a bug-fix phase). Add negative unit tests for the failure case. After test-runner re-verifies, audit prior bug-fix modifications for redundancy — revert any redundant changes (e.g., workarounds made obsolete by the root-cause fix) and trigger test-runner final re-verification. BUG-FIX COMMITS: DO NOT commit until test-runner's final re-verification passes."
     },
     {
       "name": "reviewer",
