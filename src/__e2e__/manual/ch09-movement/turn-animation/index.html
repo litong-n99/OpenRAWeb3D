@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile - Unit Turn Animation | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 340px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .control-group select { width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    .control-group input[type="range"] { width: 100%; accent-color: #e94560; }
+    .control-group .range-value { font-size: 11px; color: #888; float: right; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 13px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 4px; }
+    .control-group button:hover { background: #e94560; color: #fff; }
+    .control-group button.active { background: #e94560; color: #fff; }
+    .control-group button.direction-btn { width: 48%; display: inline-block; margin: 2px 1%; border-color: #0f3460; color: #a0a0b0; font-size: 12px; }
+    .control-group button.direction-btn:hover { background: #e94560; color: #fff; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; margin-top: 3px; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    .info-row .warn { color: #f39c12; }
+    .turn-frame-indicator { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+    .turn-dot { width: 8px; height: 8px; border-radius: 50%; background: #333; transition: background 0.1s; }
+    .turn-dot.turning { background: #f39c12; }
+    .turn-dot.complete { background: #2ecc71; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. 移动系统 - 单位转向动画验证</h1>
+    <div class="subtitle">ID: ch09-movement/turn-animation | 期望结果见 README.md | OpenRA 对照: Mobile.ts + WAngle.tickFacing()</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C. 目标方向</h3>
+        <button class="direction-btn" data-facing="0"   style="color:#e94560;">↑ 北 (0)</button>
+        <button class="direction-btn" data-facing="256" style="color:#e94560;">→ 东 (256)</button>
+        <button class="direction-btn" data-facing="512" style="color:#e94560;">↓ 南 (512)</button>
+        <button class="direction-btn" data-facing="768" style="color:#e94560;">← 西 (768)</button>
+        <button class="direction-btn" data-facing="128" style="color:#f39c12;">↗ 东北 (128)</button>
+        <button class="direction-btn" data-facing="384" style="color:#f39c12;">↘ 东南 (384)</button>
+        <button class="direction-btn" data-facing="640" style="color:#f39c12;">↙ 西南 (640)</button>
+        <button class="direction-btn" data-facing="896" style="color:#f39c12;">↖ 西北 (896)</button>
+      </div>
+      <div class="control-group">
+        <h3>转速配置</h3>
+        <label for="turn-rate">TurnSpeed (WAngle/tick): <span class="range-value" id="turn-rate-val">32 (11.25&deg;/tick)</span></label>
+        <input type="range" id="turn-rate" min="4" max="512" step="4" value="32">
+        <div class="info-row" style="margin-top:4px;">
+          <span>角度/秒</span><span class="val" id="state-degps">-</span>
+        </div>
+        <label style="margin-top:8px;">Tick 间隔 (ms): <span class="range-value" id="tick-ms-val">40ms (25 ticks/s)</span></label>
+        <input type="range" id="tick-ms" min="10" max="200" step="10" value="40">
+      </div>
+      <div class="control-group">
+        <h3>转向控制</h3>
+        <label>当前 Facing: <span class="val" id="state-facing">0</span> (WAngle) / <span class="val" id="state-deg">0.0&deg;</span></label>
+        <label>目标 Facing: <span class="val" id="state-target-dir">0</span> (WAngle) / <span class="val" id="state-target-deg">0.0&deg;</span></label>
+        <label>角度差: <span class="val" id="state-delta">0</span> WAngle / <span class="val" id="state-delta-deg">0.0&deg;</span></label>
+        <div class="info-row">
+          <span>状态</span><span class="val" id="state-status">空闲</span>
+        </div>
+        <div class="info-row">
+          <span>累计 Tick</span><span class="val" id="state-ticks">0</span>
+        </div>
+        <div class="info-row">
+          <span>Turn 帧</span><span class="val" id="state-turn-frame">-</span>
+        </div>
+        <button id="btn-reset" style="border-color:#555;color:#888;margin-top:8px;">↺ 重置到北 (0)</button>
+      </div>
+      <div class="control-group">
+        <h3>小角度阈值测试</h3>
+        <label>测试角度差 (WAngle, <=14 = ~5&deg;): <span class="range-value" id="small-delta-val">8</span></label>
+        <input type="range" id="small-delta" min="1" max="30" step="1" value="8">
+        <button id="btn-small-turn" style="border-color:#f39c12;color:#f39c12;">执行小角度转向</button>
+        <div class="info-row" style="margin-top:6px;">
+          <span>动画触发?</span><span class="val" id="state-anim-triggered">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
