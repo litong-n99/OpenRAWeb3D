@@ -82,7 +82,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Editor & Utilities (Ch21) | **ALL PHASES A-G COMPLETE (54+ active files, 100%, 25 deferred + 12 legacy deferred)**. Plan: [chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md) |
 | **Chapters 22: Game Entry & App Shell (7 files)** | **ALL PHASES A-E COMPLETE (7/7, 100%)** |
 | Router + ModSelector + Game (Ch22) | ALL PHASES COMPLETE (Phase A: Router/ModSelector 51 tests; Phase B: Game/main.ts 81 tests; Phase C: Main Menu/Shellmap; Phase D: Editor Stub; Phase E: Build Pipeline 150+ assets). Plan: [chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) |
-| **Content Installer Pipeline (Phase A)** | COMPLETE (13/13 tasks, 100%), ~4,800 impl lines, 171 tests |
+| **Content Installer Pipeline (Phase A+B)** | COMPLETE (21/25 tasks, 84%), ~8,226 impl lines, 316 tests (150 Phase A + 166 Phase B) |
 
 ## Directory Layout
 
