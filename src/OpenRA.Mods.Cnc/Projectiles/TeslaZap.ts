@@ -24,6 +24,7 @@
 
 import type { Scene } from '@babylonjs/core'
 import { WPos } from '../../OpenRA.Game/WPos.js'
+import { WVec } from '../../OpenRA.Game/WVec.js'
 import { TeslaZapRenderable } from '../Graphics/TeslaZapRenderable.js'
 import {
   TeslaZapMeshBuilder,
@@ -208,6 +209,12 @@ export class TeslaZap implements IProjectile {
   /** Running tick counter for jitter seed computation (incremented each tick()). */
   private _ticks: number = 0
 
+  /** Last known target offset (WVec). Used to detect position changes when
+   * trackTarget is enabled. When the offset changes, _zapBuilt is reset to
+   * force mesh rebuild with updated geometry.
+   */
+  private _lastTargetOffset: WVec | null = null
+
   constructor(info: TeslaZapInfo, args: TeslaZapArgs) {
     this._args = args
     this._info = info
@@ -327,6 +334,17 @@ export class TeslaZap implements IProjectile {
         typeof wr.world.fogObscures === 'function'
       ) {
         try {
+          // Reset zap when source/target position changes significantly
+          // (e.g., when trackTarget is enabled and target moves)
+          if (
+            this._zapBuilt &&
+            this._lastTargetOffset &&
+            !WVec.equals(this._lastTargetOffset, targetOffset)
+          ) {
+            this._zapBuilt = false
+          }
+          this._lastTargetOffset = targetOffset
+
           if (!this._zapBuilt) {
             // First frame or zap geometry changed: build new LinesMesh instances
             this._zap.render(wr)

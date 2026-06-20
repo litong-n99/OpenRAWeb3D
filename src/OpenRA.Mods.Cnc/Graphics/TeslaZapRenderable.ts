@@ -147,6 +147,13 @@ export class TeslaZapMeshBuilder {
   private _baseSeed: number
   private _ownsMaterials: boolean = false
 
+  /** Concatenated baseline vertex positions from all meshes (set by buildZaps()).
+   *
+   * Stored to prevent random-walk drift in updateJitter(): jitter is always
+   * computed relative to these baseline positions, never to already-jittered data.
+   */
+  private _baselinePositions: Float32Array | null = null
+
   /** Create a new TeslaZapMeshBuilder.
    *
    * @param scene — the Babylon.js scene to add meshes to
@@ -215,33 +222,54 @@ export class TeslaZapMeshBuilder {
       this._meshes.push(linesMesh)
     }
 
+    // Store concatenated baseline positions for jitter drift prevention
+    const allPos: number[] = []
+    for (const mesh of this._meshes) {
+      const pos = mesh.getVerticesData('position')
+      if (pos) {
+        for (let i = 0; i < pos.length; i++) allPos.push(pos[i])
+      }
+    }
+    this._baselinePositions = allPos.length > 0 ? new Float32Array(allPos) : null
+
     return this._meshes
   }
 
   /** Update vertex positions with jitter offset for lightning branching effect.
    *
    * Called each frame to apply random jitter to the zap vertices.
+   * Jitter is always computed from the baseline positions stored in buildZaps(),
+   * preventing the cumulative random-walk drift that would occur if jitter were
+   * applied on top of already-jittered data each frame.
    *
    * @param tickCount — current tick for deterministic pseudo-random jitter
    */
   updateJitter(tickCount: number): void {
+    if (!this._baselinePositions) return
+
     const rng = new SeededRandom(this._baseSeed + tickCount * 9973)
     const jitterMax = 0.5 // max jitter in world units
 
+    // Compute jittered positions from the original baseline (not from
+    // already-jittered data) to prevent per-frame random walk accumulation
+    const jittered = new Float32Array(this._baselinePositions.length)
+    for (let i = 0; i < this._baselinePositions.length; i += 3) {
+      const jx = (rng.next(100) / 100 - 0.5) * 2 * jitterMax
+      const jy = (rng.next(100) / 100 - 0.5) * 2 * jitterMax
+      const jz = (rng.next(100) / 100 - 0.5) * 2 * jitterMax
+      jittered[i] = this._baselinePositions[i] + jx
+      jittered[i + 1] = this._baselinePositions[i + 1] + jy
+      jittered[i + 2] = this._baselinePositions[i + 2] + jz
+    }
+
+    // Distribute jittered data back to individual meshes in order
+    let offset = 0
     for (const mesh of this._meshes) {
       const positions = mesh.getVerticesData('position')
       if (!positions) continue
-
-      const jittered = new Float32Array(positions.length)
-      for (let i = 0; i < positions.length; i += 3) {
-        const jx = (rng.next(100) / 100 - 0.5) * 2 * jitterMax
-        const jy = (rng.next(100) / 100 - 0.5) * 2 * jitterMax
-        const jz = (rng.next(100) / 100 - 0.5) * 2 * jitterMax
-        jittered[i] = positions[i] + jx
-        jittered[i + 1] = positions[i + 1] + jy
-        jittered[i + 2] = positions[i + 2] + jz
-      }
-      mesh.updateVerticesData('position', jittered, false, true)
+      const slice = jittered.subarray(offset, offset + positions.length)
+      mesh.updateVerticesData('position', slice, false, true)
+      offset += positions.length
     }
   }
 
@@ -256,6 +284,7 @@ export class TeslaZapMeshBuilder {
       mesh.dispose()
     }
     this._meshes = []
+    this._baselinePositions = null
     if (this._ownsMaterials) {
       this._brightMaterial.dispose()
       this._dimMaterial.dispose()
