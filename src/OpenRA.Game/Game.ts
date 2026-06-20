@@ -620,13 +620,14 @@ export class Game {
   /**
    * Mount mod data folders from public/mods/ into the FileSystem.
    *
-   * The build-mods.ts script converts OpenRA YAML rules/weapons/sequences/etc
-   * to JSON files under public/mods/{modId}/. This method creates Folder
-   * packages that map manifest paths (e.g. "ra|rules/misc.yaml") to the
-   * corresponding JSON URLs (e.g. "/mods/ra/rules/misc.json").
+   * The build-mods.ts script converts OpenRA YAML rules, weapons, sequences,
+   * chrome, chromeLayout, and chromeMetrics to JSON files under
+   * public/mods/{modId}/. This method creates Folder packages that map
+   * manifest paths (e.g. "ra|rules/misc.yaml") to the corresponding JSON
+   * URLs (e.g. "/mods/ra/rules/misc.json").
    *
-   * This runs BEFORE loadRuleSet() so that rule/weapon/sequence file
-   * references resolve correctly.
+   * This runs BEFORE loadRuleSet() so that rule, weapon, sequence, and
+   * chrome file references resolve correctly.
    */
   private _mountModDataFolders(
     fileSystem: FileSystem,
@@ -655,7 +656,10 @@ export class Game {
       for (const rawPath of paths) {
         // Parse "ra|rules/misc.yaml" → {pkg: "ra", file: "rules/misc.yaml"}
         const pipeIdx = rawPath.indexOf('|')
-        if (pipeIdx < 0) continue
+        if (pipeIdx < 0) {
+          console.warn(`[Game] Skipping malformed mount path (missing '|' separator): "${rawPath}"`)
+          continue
+        }
         const pkgName = rawPath.slice(0, pipeIdx)
         const filePath = rawPath.slice(pipeIdx + 1)
 
@@ -2231,9 +2235,12 @@ export class Game {
     this.modData?.dispose()
     this.modData = null
 
-    // ChromeProvider is a static singleton — deinitialize before switching
-    // mods to ensure stale collection data doesn't leak into the new mod.
-    ChromeProvider.deinitialize()
+    // NOTE: ChromeProvider.deinitialize() is NOT called here in switchMod().
+    // ChromeProvider.initialize() (invoked later by loadMod() → loadRuleSet())
+    // internally calls deinitialize() to reset its own state. Calling
+    // deinitialize() here would cause a redundant double-deinitialize.
+    // The call in dispose() (Game.dispose()) remains: after final disposal,
+    // no further initialize() is expected.
 
     // Clean up content installer (hide UI if visible)
     ContentInstallerUI.hide()
