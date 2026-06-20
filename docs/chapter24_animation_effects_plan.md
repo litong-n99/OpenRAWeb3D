@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 24 -- Animation & 3D Visual Effects
 
 > **Source Reference**: OpenRA C# rendering effects + C&C projectile/effect animations
-> **Chapter Status**: PLANNING (0/10 migrated)
+> **Chapter Status**: IN PROGRESS (4/10 migrated — Phase A COMPLETE)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: Chapters 2-22 COMPLETE, Chapter 23 (MIX assets accessible)
 
@@ -116,7 +116,7 @@ The TeslaZap and ChronoVortex have their own renderers (`TeslaZapRenderable`, `C
 
 | Phase | Operations | Impl Lines | Test Lines | Status |
 |:---|:---:|:---:|:---:|:---|
-| A: AnimationStub | 4 | ~280 | -- | PLANNING |
+| A: AnimationStub | 4 | ~280 | -- | COMPLETE |
 | B: TeslaZap | 2 | ~170 | -- | PLANNING |
 | C: ChronoVortex | 1 | ~100 | -- | PLANNING |
 | D: GpsDot + Tests | 3 | ~80 | ~500 | PLANNING |
@@ -127,7 +127,7 @@ The TeslaZap and ChronoVortex have their own renderers (`TeslaZapRenderable`, `C
 
 ### 3.1 Phase A: AnimationStub Material Integration
 
-**Status**: PLANNING
+**Status**: COMPLETE
 **Complexity**: MEDIUM
 **Blocked by**: Chapter 23 (sprites/sheets must be accessible from MIX files for texture data)
 **Blocks**: IonCannon visual, DropPodImpact visual, SatelliteLaunch visual, ConyardChronoVortex visual, all AnimationStub consumers
