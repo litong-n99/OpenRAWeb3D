@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 26 -- Game World & Shellmap Integration
 
 > **Source Reference**: `OpenRA.Game/Game.cs`, `OpenRA.Game/World.cs`, `OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`
-> **Chapter Status**: PHASE A COMPLETE (3/10 migrated, 30%), Phases B-D PLANNING
+> **Chapter Status**: PHASES A-B COMPLETE (6/10 migrated, 60%), Phases C-D PLANNING
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: Chapters 2-25 COMPLETE (all subsystems ready for end-to-end integration)
 
@@ -116,7 +116,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 | Phase | Operations | Impl Lines | Test Lines | Status |
 |:---|:---:|:---:|:---:|:---|
 | A: Map Loading | 3 | ~520 | -- | COMPLETE |
-| B: Skirmish Flow | 3 | ~370 | -- | PLANNING |
+| B: Skirmish Flow | 3 | ~370 | -- | COMPLETE |
 | C: Shellmap | 2 | ~280 | -- | PLANNING |
 | D: Widgets + Tests | 2 | ~150 | ~500 | PLANNING |
 
@@ -204,10 +204,10 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 ### 3.2 Phase B: Skirmish Game Flow
 
-**Status**: PLANNING
+**Status**: COMPLETE
 **Complexity**: MEDIUM
 **Blocked by**: Phase A (map must spawn actors for skirmish to be meaningful)
-**Blocks**: Nothing (endpoint phase for playable game)
+**Blocks**: Phase D (widget main menu completion needs working skirmish path)
 
 **Description**: Connects the "Skirmish" button to an actual game start. Replaces the `alert("coming soon")` with a map selection flow that loads a map and calls `startGame()`. Also handles player faction selection, AI difficulty, and starting unit configuration.
 
@@ -217,7 +217,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 #### 3.2.1 Replace "Coming Soon" with Skirmish Setup
 
-- [ ] **TODO-26.B.1** `src/OpenRA.Game/Game.ts` (est. 150 lines) -- Skirmish game setup flow:
+- [x] **TODO-26.B.1** `src/OpenRA.Game/Game.ts` (est. 150 lines, actual: ~180 lines) ✅ COMPLETE -- Skirmish game setup flow:
   - **Current**: The Skirmish button calls `_showComingSoon('Skirmish')` which shows `alert(...)`.
   - **Replace with**: A skirmish setup modal that:
     1. **Select map**: Show a list of available maps from `MapCache`. Each map shows its name, player count, and a small preview (if MapPreview data is loaded). Use a simple DOM-based list (or Widget if Ch16 integration is complete).
@@ -226,10 +226,11 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
   - **Map selection data source**: `this.modData.mapCache` provides `MapPreview[]` with map metadata.
   - **UI approach**: Use a DOM overlay (consistent with the existing main menu). The full Widget-based approach can be deferred to Phase D.
   - **Fallback**: If no maps are available (MapCache is empty), show a helpful message: "No maps found. Maps are downloaded with game content packages."
+  - **Implementation**: Replaced `_showComingSoon('Skirmish')` with `_showSkirmishSetup()` DOM overlay. Map selection dropdown populated from `MapCache`. Player slot configuration with Human/AI/Closed toggles and AI difficulty selector. Faction picker per slot. "Start Game" button calls `startGame()` with configured `SkirmishLobbyInfo`. "Cancel" button hides the modal. Toast notification on game load.
 
 #### 3.2.2 Skirmish-Specific Player Setup
 
-- [ ] **TODO-26.B.2** `src/OpenRA.Game/Game.ts` (est. 120 lines) -- Configure players for skirmish:
+- [x] **TODO-26.B.2** `src/OpenRA.Game/Game.ts` (est. 120 lines, actual: ~140 lines) ✅ COMPLETE -- Configure players for skirmish:
   - **Before `startGame()`**: The `MapStub` passed to `startGame()` must include player configuration:
     - Which player slot is the human (usually slot 0)
     - Which slots are AI and at what difficulty
@@ -237,15 +238,26 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
   - **`GameWorldManager` constructor extension**: Accept an optional `lobbyInfo` parameter with player configuration. During world construction, override the map's default player settings with the lobby configuration.
   - **Human player camera**: After `startGame()` completes, call `viewport.centerOn(humanPlayer.spawnPosition)` to center the camera on the human player's starting location.
   - **Starting units**: The map defines starting units per player (MCV, infantry, etc.). These are spawned by Phase A's map actor loading. No additional spawning is needed for standard skirmish maps.
+  - **Implementation**: `SkirmishLobbyInfo` interface with player slot array (playerName, faction, team, isHuman, botDifficulty). Lobby info passed through `MapStub.lobbyInfo` to `startGame()`. `GameWorldManager` reads `lobbyInfo` during `loadComplete()` to override default player configuration. Human player camera positioning via `viewport.centerOn()` after world load.
 
 #### 3.2.3 "Load Game" Button
 
-- [ ] **TODO-26.B.3** `src/OpenRA.Game/Game.ts` (est. 100 lines) -- Enable the "Load Game" button (or accept its disabled state):
+- [x] **TODO-26.B.3** `src/OpenRA.Game/Game.ts` (est. 100 lines, actual: ~126 lines) ✅ COMPLETE -- Enable the "Load Game" button (or accept its disabled state):
   - **If Save/Load is implemented** (Ch17): The button opens a save file browser. On selection, it calls `SaveGame.load(saveData)` which creates a world from the save state.
   - **If Save/Load is not functional**: Keep the button disabled with "(Coming Soon)" label. The Replay & Save system (Ch17) is migrated at code level but may not be end-to-end tested.
   - **Decision**: For Chapter 26 scope, keep "Load Game" disabled. Skirmish (new game) is the priority. Enabling load is Chapter 17 integration, which is out of scope.
+  - **Implementation**: "Load Game" button wired with toast notification: "Load Game is coming soon — save system requires Ch17 integration testing." Button stays visible but shows informative message rather than `alert()`. `_collectSkirmishMaps()` helper method added to aggregate maps from all loaded mods.
 
-**Phase B Summary**: 3 operations, ~370 lines TS. After Phase B, clicking "Skirmish" on the main menu leads to map selection, player configuration, and a fully loaded game world with actors, terrain, and fog of war.
+**Phase B Summary**: 3 operations, ~446 lines TS (+764 test lines, 136 tests). After Phase B, clicking "Skirmish" on the main menu leads to map selection, player configuration, and a fully loaded game world with actors, terrain, and fog of war.
+
+**Phase B Implementation Details** (completed 2026-06-20):
+
+- **1 file changed**: `src/OpenRA.Game/Game.ts` (+446 lines), `src/OpenRA.Game/Game.test.ts` (+764 lines)
+- **136 tests**: skirmish setup modal lifecycle, map selection dropdown, player slot configuration, Start/Cancel buttons, lobby info construction, load game toast notification, map collection helper
+- **Key features**: Skirmish setup modal (map selection dropdown, player slot Human/AI/Closed toggles, faction picker, AI difficulty selector, Start Game / Cancel buttons), `SkirmishLobbyInfo` interface with player slots, Load Game toast notification, `_collectSkirmishMaps()` helper aggregates maps from all loaded mods
+- **Commits**: `37c5e72` (initial implementation), `1ccee3b` (review fixes R1)
+- **Review**: R1 NEEDS FIXES (1 MAJOR, 4 MINOR) -- MAJOR: missing error handling for `startGame()` failure path. MINOR: JSDoc completeness on `_showSkirmishSetup`, DOM element ID naming consistency, toast auto-dismiss timer, `_collectSkirmishMaps` deduplication logic. R2 APPROVED (all fixed).
+- **E2E**: Not needed -- DOM-based flow, 136 unit tests cover all interactions (modal open/close, map selection, player configuration, button states, toast notification, error paths)
 
 ---
 
