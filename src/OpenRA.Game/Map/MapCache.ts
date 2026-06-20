@@ -21,10 +21,12 @@ import { SheetType } from '../Graphics/Sheet.js'
 import type { IReadOnlyPackage, IReadWritePackage } from '../FileSystem/IReadOnlyPackage.js'
 import type { MapGridType } from './MapGridType.js'
 import { MapGridType as MapGridTypeConst } from './MapGridType.js'
-import { MapPreview, MapStatus, MapClassification, MapClassificationExts } from './MapPreview.js'
+import { MapPreview, MapStatus, MapClassification, MapClassificationExts, parseMapQueryResponse } from './MapPreview.js'
 import { MapDirectoryTracker } from './MapDirectoryTracker.js'
 import type { MersenneTwisterStub } from '../Traits/TraitsInterfaces.js'
 import { Log, LogLevel } from '../Utils/Log.js'
+import { PerfTimer } from '../Utils/PerfTimer.js'
+import { fetchWithRetry } from '../Net/HttpClient.js'
 
 // ---------------------------------------------------------------------------
 // Stubs for dependencies not yet migrated
@@ -543,19 +545,34 @@ export class MapCache implements Iterable<MapPreview> {
 
     for (const batchUids of batches) {
       const url = `${repositoryUrl}hash/${batchUids.join(',')}/yaml`
+      const timer = new PerfTimer()
+      timer.start()
 
       try {
-        const response = await fetch(url)
+        // 如果预览加载器已取消，传递一个已中止的信号
+        const signal = this._previewLoaderCancelled
+          ? AbortSignal.abort()
+          : undefined
+        const response = await fetchWithRetry(url, undefined, undefined, signal)
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
         }
-        const data = await response.json() as Record<string, unknown>
+        const text = await response.text()
+        const data = parseMapQueryResponse(text, url)
 
         for (const [uid, value] of Object.entries(data)) {
           this._previews.get(uid).completeRemoteSearch(value, mapDetailsReceived)
         }
       } catch (e) {
         Log.write('mapcache', LogLevel.WARN, `Remote map query failed: ${String(e)}`)
+        Log.write('mapcache', LogLevel.DEBUG, `URL was: ${url}`)
+      } finally {
+        const elapsed = timer.stop()
+        Log.write(
+          'mapcache',
+          LogLevel.DEBUG,
+          `RemoteMapDetails batch (${batchUids.length} maps): ${Math.round(elapsed)}ms`,
+        )
       }
 
       // 将此批次中仍处于 Searching 状态的任何地图标记为失败

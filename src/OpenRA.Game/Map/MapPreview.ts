@@ -532,9 +532,8 @@ export class MapPreview {
 
     this.class = MapClassification.Remote
 
-    // Type-narrow: treat null/undefined/falsy non-objects as null
-    const remoteData: RemoteMapData | null =
-      data && typeof data === 'object' ? (data as RemoteMapData) : null
+    // Type-narrow: use validateRemoteMapData for thorough validation
+    const remoteData: RemoteMapData | null = validateRemoteMapData(data)
 
     if (remoteData) {
       try {
@@ -904,4 +903,75 @@ export class MapPreview {
     }
     return bytes
   }
+}
+
+// ---------------------------------------------------------------------------
+// RemoteMapData validation
+// ---------------------------------------------------------------------------
+
+/**
+ * 验证一个未知对象是否符合 RemoteMapData 接口。
+ * 返回类型窄化后的 RemoteMapData，如果验证失败则返回 null。
+ *
+ * OpenRA 对照: 无直接等效（OpenRA 使用 MiniYaml 解析 + 字段访问，
+ *   类型安全由 C# 编译器在编译时保证）
+ *
+ * @param data — 待验证的未知数据
+ * @returns 有效的 RemoteMapData 或 null
+ */
+export function validateRemoteMapData(data: unknown): RemoteMapData | null {
+  if (!data || typeof data !== 'object') return null
+  const d = data as Record<string, unknown>
+  if (typeof d.title !== 'string') return null
+  if (typeof d.author !== 'string') return null
+  if (!Array.isArray(d.categories)) return null
+  if (typeof d.players !== 'number') return null
+  if (!d.bounds || typeof d.bounds !== 'object') return null
+  if (!Array.isArray(d.spawnpoints)) return null
+  if (typeof d.minimap !== 'string') return null
+  if (typeof d.tileset !== 'string') return null
+  if (typeof d.mapformat !== 'number') return null
+  // Optional fields (downloading, rules, players_block, game_mod, map_grid_type)
+  // are not required for basic validation — they will be accessed conditionally
+  return data as RemoteMapData
+}
+
+// ---------------------------------------------------------------------------
+// Response parsing
+// ---------------------------------------------------------------------------
+
+/**
+ * 解析远程地图查询响应，自动检测 JSON vs YAML 格式。
+ *
+ * OpenRA 对照: MiniYaml.FromStream() / MiniYamlLoader
+ *
+ * OpenRA 原始实现使用 MiniYaml.FromStream() 进行 YAML 解析。
+ * Web 适配：先尝试 JSON（现代 API），如果失败则抛出错误。
+ * YAML 回退路径（运行时 MiniYaml）延后至后续阶段。
+ *
+ * @param text — 原始响应正文
+ * @param url — 源 URL（用于错误消息）
+ * @returns 解析后的键值映射 (uid => RemoteMapData 或原始对象)
+ * @throws Error 如果无法解析响应
+ */
+export function parseMapQueryResponse(
+  text: string,
+  url: string,
+): Record<string, unknown> {
+  // 先尝试 JSON（大多数 Web API 使用 JSON）
+  try {
+    const parsed = JSON.parse(text)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    // 非 JSON，回退至 YAML（延后至 TODO-4.E.3-YAML）
+  }
+
+  // 回退：YAML 解析（延后）
+  // NOTE: 运行时 YAML 解析需要 MiniYaml 基础设施集成。
+  // 如果服务器仅返回 JSON，此回退可以是存根。
+  throw new Error(
+    `Unable to parse response from ${url}: response is not valid JSON`,
+  )
 }
