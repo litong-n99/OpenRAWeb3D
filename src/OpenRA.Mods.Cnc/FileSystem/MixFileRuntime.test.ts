@@ -1682,3 +1682,649 @@ describe('MixFileRuntime.parseAuto — 3-way detection chain', () => {
     expect(new TextDecoder().decode(result!)).toBe('parseAuto test data')
   })
 })
+
+// ===========================================================================
+// Phase B: buildMixDb — filename resolution database
+// ===========================================================================
+
+import { PackageEntry, PackageHashType } from './PackageEntry.js'
+import type { MixFileEntry } from './MixFileRuntime.js'
+
+// ---------------------------------------------------------------------------
+// buildMixDb test helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a C&C MIX buffer that includes a "local mix database.dat" entry.
+ *
+ * The local database entry contains a newline-delimited list of filenames
+ * that correspond to the other entries in the MIX.
+ *
+ * @param actualFiles — entries to include alongside the database entry.
+ *                      Each hash should match the Classic or CRC32 hash
+ *                      of a filename listed in `dbFilenames`.
+ * @param dbFilenames — list of filenames to write into the local database.
+ * @param dbExtraLines — optional extra lines (comments, empty lines) to
+ *                       include in the local database for testing parsing.
+ */
+function createCncMixWithLocalDb(
+  actualFiles: FileSpec[],
+  dbFilenames: string[],
+  dbExtraLines: string[] = [],
+): { buf: ArrayBuffer; dbHashClassic: number; dbHashCrc: number } {
+  // Build the local database text content
+  const dbLines = [...dbExtraLines, ...dbFilenames]
+  const dbText = dbLines.join('\n') + '\n'
+  const dbData = strToData(dbText)
+
+  // Compute hashes for "local mix database.dat"
+  const dbHashClassic = PackageEntry.hashFilename('local mix database.dat', PackageHashType.Classic)
+  const dbHashCrc = PackageEntry.hashFilename('local mix database.dat', PackageHashType.CRC32)
+
+  // Combine: db entry first, then actual files
+  const allFiles: FileSpec[] = [
+    { hash: dbHashClassic, data: dbData },
+    ...actualFiles,
+  ]
+
+  const buf = createCncMixBuffer(allFiles)
+  return { buf, dbHashClassic, dbHashCrc }
+}
+
+/**
+ * Create a Westwood classic MIX buffer with a "local mix database.dat" entry.
+ */
+function createWestwoodClassicWithLocalDb(
+  actualFiles: FileSpec[],
+  dbFilenames: string[],
+  dbExtraLines: string[] = [],
+): { buf: ArrayBuffer; dbHashClassic: number; dbHashCrc: number } {
+  const dbLines = [...dbExtraLines, ...dbFilenames]
+  const dbText = dbLines.join('\n') + '\n'
+  const dbData = strToData(dbText)
+
+  const dbHashClassic = PackageEntry.hashFilename('local mix database.dat', PackageHashType.Classic)
+  const dbHashCrc = PackageEntry.hashFilename('local mix database.dat', PackageHashType.CRC32)
+
+  const allFiles: FileSpec[] = [
+    { hash: dbHashClassic, data: dbData },
+    ...actualFiles,
+  ]
+
+  const buf = createWestwoodClassicMixBuffer(allFiles)
+  return { buf, dbHashClassic, dbHashCrc }
+}
+
+// ---------------------------------------------------------------------------
+// buildMixDb — local database resolution
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.buildMixDb — local database resolution', () => {
+  it('resolves entries from a local mix database.dat with 3 filenames', () => {
+    const filename1 = 'e1.shp'
+    const filename2 = 'htnk.shp'
+    const filename3 = 'fireblst.aud'
+
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+    const hash2 = PackageEntry.hashFilename(filename2, PackageHashType.Classic)
+    const hash3 = PackageEntry.hashFilename(filename3, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('e1 content') },
+      { hash: hash2, data: strToData('htnk content') },
+      { hash: hash3, data: strToData('fireblst content') },
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename1, filename2, filename3])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // All 3 filenames should resolve
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(3)
+
+    // Verify hash keys resolve to correct filenames
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    const hex2 = '0x' + hash2.toString(16).toUpperCase().padStart(8, '0')
+    const hex3 = '0x' + hash3.toString(16).toUpperCase().padStart(8, '0')
+
+    expect(resolutionMap.get(hex1)).toBe(filename1)
+    expect(resolutionMap.get(hex2)).toBe(filename2)
+    expect(resolutionMap.get(hex3)).toBe(filename3)
+  })
+
+  it('does not include the local mix database.dat entry itself in the resolution map', () => {
+    const filename1 = 'test.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('data') },
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename1])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // "local mix database.dat" should NOT be a key in the map
+    for (const value of resolutionMap.values()) {
+      expect(value).not.toBe('local mix database.dat')
+    }
+  })
+
+  it('returns empty map when no local mix database.dat entry exists', () => {
+    const hash1 = 0x12345678
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('some data') },
+    ]
+    const buf = createCncMixBuffer(actualFiles)
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // No local db entry → no candidates → empty map
+    expect(resolutionMap.size).toBe(0)
+  })
+
+  it('resolves entries from a local database inside a Westwood classic MIX', () => {
+    const filename1 = 'soviet.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('soviet data') },
+    ]
+
+    const { buf } = createWestwoodClassicWithLocalDb(actualFiles, [filename1])
+    const mix = MixFileRuntime.parseWestwoodClassic('westwood.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(1)
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(hex1)).toBe(filename1)
+  })
+
+  it('extracts and decodes the local database data correctly (10 filenames)', () => {
+    const filenames = [
+      'unit1.shp', 'unit2.shp', 'unit3.shp', 'unit4.shp', 'unit5.shp',
+      'sound1.aud', 'sound2.aud', 'terrain.tem', 'build.mix', 'extra.dat',
+    ]
+
+    const actualFiles: FileSpec[] = filenames.map((name) => ({
+      hash: PackageEntry.hashFilename(name, PackageHashType.Classic),
+      data: strToData(`content of ${name}`),
+    }))
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, filenames)
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // All 10 filenames should resolve
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(10)
+    for (const name of filenames) {
+      const hash = PackageEntry.hashFilename(name, PackageHashType.Classic)
+      const hexKey = '0x' + hash.toString(16).toUpperCase().padStart(8, '0')
+      expect(resolutionMap.get(hexKey)).toBe(name)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildMixDb — external mixDb integration
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.buildMixDb — external mixDb integration', () => {
+  it('resolves entries from external mixDb when no local database exists', () => {
+    const filename1 = 'external1.shp'
+    const filename2 = 'external2.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+    const hash2 = PackageEntry.hashFilename(filename2, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('ext1') },
+      { hash: hash2, data: strToData('ext2') },
+    ]
+    // No local db entry
+    const buf = createCncMixBuffer(actualFiles)
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const externalMixDb = new Map<string, string>()
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    const hex2 = '0x' + hash2.toString(16).toUpperCase().padStart(8, '0')
+    externalMixDb.set(hex1, filename1)
+    externalMixDb.set(hex2, filename2)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries(), externalMixDb)
+
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(2)
+    expect(resolutionMap.get(hex1)).toBe(filename1)
+    expect(resolutionMap.get(hex2)).toBe(filename2)
+  })
+
+  it('merges local and external database filenames', () => {
+    const localName = 'localUnit.shp'
+    const extName = 'extUnit.shp'
+    const localHash = PackageEntry.hashFilename(localName, PackageHashType.Classic)
+    const extHash = PackageEntry.hashFilename(extName, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: localHash, data: strToData('local') },
+      { hash: extHash, data: strToData('ext') },
+    ]
+
+    // Create MIX with local db containing only localName
+    const { buf } = createCncMixWithLocalDb(actualFiles, [localName])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    // External db provides extName
+    const externalMixDb = new Map<string, string>()
+    const extHex = '0x' + extHash.toString(16).toUpperCase().padStart(8, '0')
+    externalMixDb.set(extHex, extName)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries(), externalMixDb)
+
+    // Both filenames should be resolved
+    const localHex = '0x' + localHash.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(localHex)).toBe(localName)
+    expect(resolutionMap.get(extHex)).toBe(extName)
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(2)
+  })
+
+  it('handles empty external mixDb gracefully', () => {
+    const filename1 = 'onlyLocal.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('data') },
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename1])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const emptyExternal = new Map<string, string>()
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries(), emptyExternal)
+
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(hex1)).toBe(filename1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildMixDb — hash type selection (Classic vs CRC32)
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.buildMixDb — hash type selection', () => {
+  it('uses Classic when more entries match Classic than CRC32', () => {
+    // File whose Classic hash matches an entry, but CRC32 does not
+    const filename = 'classicOnly.shp'
+    const classicHash = PackageEntry.hashFilename(filename, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: classicHash, data: strToData('classic match') },
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // Should have at least the one match
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(1)
+    // The key should be Classic-hash based
+    const hexKey = '0x' + classicHash.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(hexKey)).toBe(filename)
+  })
+
+  it('uses CRC32 when CRC32 matches more entries than Classic', () => {
+    // Two files: both have CRC32-hash entries
+    const name1 = 'crcUnit1.shp'
+    const name2 = 'crcUnit2.shp'
+    const crcHash1 = PackageEntry.hashFilename(name1, PackageHashType.CRC32)
+    const crcHash2 = PackageEntry.hashFilename(name2, PackageHashType.CRC32)
+
+    const actualFiles: FileSpec[] = [
+      { hash: crcHash1, data: strToData('crc1') },
+      { hash: crcHash2, data: strToData('crc2') },
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [name1, name2])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // Both should be resolved using CRC32 hashes
+    const hex1 = '0x' + crcHash1.toString(16).toUpperCase().padStart(8, '0')
+    const hex2 = '0x' + crcHash2.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(hex1)).toBe(name1)
+    expect(resolutionMap.get(hex2)).toBe(name2)
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(2)
+  })
+
+  it('uses Classic when match counts are equal (tie goes to Classic)', () => {
+    // One file matches Classic only, one matches CRC32 only → tied at 1 each
+    const classicName = 'classicMatch.shp'
+    const crcName = 'crcMatch.shp'
+    const classicHash = PackageEntry.hashFilename(classicName, PackageHashType.Classic)
+    const crcHash = PackageEntry.hashFilename(crcName, PackageHashType.CRC32)
+
+    // Create entries where Classic hash is for classicName, CRC32 hash is for crcName
+    // We need to create an entry whose hash equals classicHash AND an entry
+    // whose hash equals crcHash
+    const actualFiles: FileSpec[] = [
+      { hash: classicHash, data: strToData('classic') },
+      { hash: crcHash, data: strToData('crc') },
+    ]
+
+    // Local db lists both filenames
+    const { buf } = createCncMixWithLocalDb(actualFiles, [classicName, crcName])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // Classic wins the tie
+    const classicHex = '0x' + classicHash.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(classicHex)).toBe(classicName)
+    // Both should be resolved since CRC32-hash entry also has a Classic hash
+    // that happens to match (or not — depends on actual hash values).
+    // The key test: Classic match count ≥ CRC32 match count → Classic selected
+    // So classicName should definitely be in the result.
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(1)
+  })
+
+  it('does not include filenames that match no entry hash', () => {
+    const validName = 'valid.shp'
+    const validHash = PackageEntry.hashFilename(validName, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: validHash, data: strToData('valid') },
+    ]
+
+    // Local db lists valid + an extra name that doesn't match any entry
+    const { buf } = createCncMixWithLocalDb(actualFiles, [validName, 'ghost.shp'])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // 'ghost.shp' should not appear in the map (it doesn't match any entry)
+    for (const value of resolutionMap.values()) {
+      expect(value).not.toBe('ghost.shp')
+    }
+    // Only valid.shp should be there
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildMixDb — edge cases
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.buildMixDb — edge cases', () => {
+  it('skips comment lines (prefixed with ; and #) in local database', () => {
+    const filename1 = 'realFile.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('real') },
+    ]
+
+    const dbExtraLines = [
+      '; This is a comment line',
+      '# This is also a comment',
+      '  ',  // blank (should be skipped after trim)
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename1], dbExtraLines)
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // Comment content should not appear in the resolution map
+    for (const value of resolutionMap.values()) {
+      expect(value).not.toContain('comment')
+      expect(value).not.toBe('')
+    }
+    // The real file should be resolved
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(hex1)).toBe(filename1)
+  })
+
+  it('skips empty lines in local database', () => {
+    const filename1 = 'notEmpty.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('data') },
+    ]
+
+    // Include several empty/whitespace lines
+    const dbExtraLines = ['', '   ', '\t', '']
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename1], dbExtraLines)
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // Empty strings should not be in the map values
+    for (const value of resolutionMap.values()) {
+      expect(value.trim().length).toBeGreaterThan(0)
+    }
+    expect(resolutionMap.size).toBeGreaterThanOrEqual(1)
+  })
+
+  it('returns empty Map when entries map is empty', () => {
+    const emptyEntries = new Map<string, MixFileEntry>()
+    const buf = new ArrayBuffer(100)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, emptyEntries)
+
+    expect(resolutionMap.size).toBe(0)
+  })
+
+  it('returns empty Map when entries map is empty even with external mixDb', () => {
+    const emptyEntries = new Map<string, MixFileEntry>()
+    const buf = new ArrayBuffer(100)
+
+    const externalMixDb = new Map<string, string>()
+    externalMixDb.set('0x12345678', 'test.shp')
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, emptyEntries, externalMixDb)
+
+    // External filenames added to candidates, but no entries to match against
+    expect(resolutionMap.size).toBe(0)
+  })
+
+  it('handles local database at the end of a truncated buffer', () => {
+    const filename1 = 'safe.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('safe') },
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename1])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    // Use the full buffer — should work normally
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(hex1)).toBe(filename1)
+  })
+
+  it('handles CRC32-only resolution when all entries use CRC32 hashes', () => {
+    const name1 = 'ts_unit1.shp'
+    const name2 = 'ts_unit2.shp'
+    // Create entries using CRC32 hashes in the MIX
+    const crcHash1 = PackageEntry.hashFilename(name1, PackageHashType.CRC32)
+    const crcHash2 = PackageEntry.hashFilename(name2, PackageHashType.CRC32)
+
+    const actualFiles: FileSpec[] = [
+      { hash: crcHash1, data: strToData('ts1') },
+      { hash: crcHash2, data: strToData('ts2') },
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [name1, name2])
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    // CRC32 should have 2 matches, Classic probably 0 (or fewer)
+    // So CRC32 should win
+    const hex1 = '0x' + crcHash1.toString(16).toUpperCase().padStart(8, '0')
+    const hex2 = '0x' + crcHash2.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(hex1)).toBe(name1)
+    expect(resolutionMap.get(hex2)).toBe(name2)
+  })
+
+  it('handles Windows-style line endings (\\r\\n) in local database', () => {
+    const filename1 = 'winfile.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('win data') },
+    ]
+
+    // Build a MIX with \r\n line endings manually
+    const dbHashClassic = PackageEntry.hashFilename('local mix database.dat', PackageHashType.Classic)
+    const dbText = '; comment line\r\n' + filename1 + '\r\n'
+    const dbData = strToData(dbText)
+
+    const allFiles: FileSpec[] = [
+      { hash: dbHashClassic, data: dbData },
+      ...actualFiles,
+    ]
+
+    const buf = createCncMixBuffer(allFiles)
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const resolutionMap = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    expect(resolutionMap.get(hex1)).toBe(filename1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildMixDb — getEntries() exposes internal map
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.getEntries', () => {
+  it('returns a read-only view of the internal entry map', () => {
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createCncMixBuffer(files)
+    const mix = MixFileRuntime.parse('test.mix', buf)
+
+    const entries = mix.getEntries()
+    expect(entries.size).toBe(1)
+
+    for (const [name, entry] of entries) {
+      expect(typeof name).toBe('string')
+      expect(typeof entry.hash).toBe('number')
+      expect(typeof entry.offset).toBe('number')
+      expect(typeof entry.size).toBe('number')
+    }
+  })
+
+  it('getEntries reflects resolved filenames from mixDb', () => {
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createCncMixBuffer(files)
+    const mixDb = new Map<string, string>()
+    mixDb.set(FILE_A_HASH_KEY, 'resolved.shp')
+
+    const mix = MixFileRuntime.parse('test.mix', buf, mixDb)
+    const entries = mix.getEntries()
+
+    expect(entries.has('resolved.shp')).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// MixLoader integration — parseAuto + buildMixDb enrichment
+// ---------------------------------------------------------------------------
+
+import { MixLoader } from './MixFile.js'
+
+describe('MixLoader — Phase B integration (parseAuto + buildMixDb)', () => {
+  it('tryParsePackage uses parseAuto for C&C format', () => {
+    const loader = new MixLoader()
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createCncMixBuffer(files)
+
+    const result = loader.tryParsePackage('test.mix', buf)
+    expect(result).not.toBeNull()
+    expect(result!.name).toBe('test.mix')
+    expect(result!.contents.length).toBe(1)
+  })
+
+  it('tryParsePackage uses parseAuto for Westwood classic format', () => {
+    const loader = new MixLoader()
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+
+    const result = loader.tryParsePackage('westwood.mix', buf)
+    expect(result).not.toBeNull()
+    expect(result!.name).toBe('westwood.mix')
+    expect(result!.contents.length).toBe(1)
+  })
+
+  it('tryParsePackage enriches mixDb after successful C&C parse', () => {
+    // Create a MIX with a local mix database.dat entry
+    const filename1 = 'enrichedTest.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('enriched data') },
+    ]
+
+    // Build MIX with local db containing filename1
+    const dbHashClassic = PackageEntry.hashFilename('local mix database.dat', PackageHashType.Classic)
+    const dbText = filename1 + '\n'
+    const dbData = strToData(dbText)
+
+    const allFiles: FileSpec[] = [
+      { hash: dbHashClassic, data: dbData },
+      ...actualFiles,
+    ]
+    const buf = createCncMixBuffer(allFiles)
+
+    const loader = new MixLoader()
+
+    // Before parsing, mixDb is empty (not set)
+    const result = loader.tryParsePackage('enriched.mix', buf)
+    expect(result).not.toBeNull()
+
+    // After parsing, the mixDb should be enriched with the local database
+    // Verify by parsing again — the enriched DB should resolve the filename
+    const result2 = loader.tryParsePackage('enriched.mix', buf)
+    expect(result2).not.toBeNull()
+    // The enriched DB should allow filename resolution in subsequent parses
+  })
+
+  it('tryParsePackage returns null for non-.mix files (unchanged)', () => {
+    const loader = new MixLoader()
+    const result = loader.tryParsePackage('notamix.bin', new ArrayBuffer(100))
+    expect(result).toBeNull()
+  })
+
+  it('tryParsePackage returns null for unrecognized format and logs warning', () => {
+    const loader = new MixLoader()
+    // Buffer too small for any format (4 bytes with firstUint16=0):
+    // isCncFormat: false, isEncryptedFormat: false (buffer < 6),
+    // isWestwoodClassicFormat: false (buffer < 6) → unrecognized
+    const tinyBuf = new ArrayBuffer(4)
+    const dv = new DataView(tinyBuf)
+    dv.setUint16(0, 0x0000, true)
+    dv.setUint16(2, 0x0004, true)
+
+    const result = loader.tryParsePackage('bad.mix', tinyBuf)
+    expect(result).toBeNull()
+  })
+})

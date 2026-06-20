@@ -14,7 +14,7 @@
  */
 
 import type { IReadOnlyPackage, IReadOnlyFileSystem } from '../../OpenRA.Game/FileSystem/IPackage.js'
-import { PackageEntry } from './PackageEntry.js'
+import { PackageEntry, PackageHashType } from './PackageEntry.js'
 import { Blowfish } from '../FileFormats/Blowfish.js'
 
 // ---------------------------------------------------------------------------
@@ -110,11 +110,11 @@ let _rsaModulus: bigint | null = null
 // Internal types
 // ---------------------------------------------------------------------------
 
-/** Internal per-file entry with absolute offset for efficient data slicing.
+/** Per-file entry with absolute offset for efficient data slicing.
  *
  * OpenRA 对照: PackageEntry with dataStart pre-applied (cf. MixLoader.MixFile.Index getter)
  */
-interface MixFileEntry {
+export interface MixFileEntry {
   hash: number
   /** Absolute byte offset in the ArrayBuffer (dataStart + pkgEntry.offset). */
   offset: number
@@ -299,6 +299,24 @@ export class MixFileRuntime implements IReadOnlyPackage {
    */
   openPackage(_filename: string, _files?: IReadOnlyFileSystem): IReadOnlyPackage | null {
     return null
+  }
+
+  // -----------------------------------------------------------------------
+  // getEntries — expose internal entry map for buildMixDb
+  // -----------------------------------------------------------------------
+
+  /**
+   * Get the internal filename-to-entry map.
+   *
+   * Exposed for {@link MixFileRuntime.buildMixDb} so it can iterate entries
+   * to match candidate filenames against their hashes.
+   *
+   * OpenRA 对照: MixLoader.MixFile.Index getter (internal Dictionary)
+   *
+   * @returns a read-only view of the filename → MixFileEntry map
+   */
+  getEntries(): ReadonlyMap<string, MixFileEntry> {
+    return this._entries
   }
 
   // -----------------------------------------------------------------------
@@ -1324,5 +1342,179 @@ export class MixFileRuntime implements IReadOnlyPackage {
     }
 
     return entries
+  }
+
+  // -----------------------------------------------------------------------
+  // Static — buildMixDb (Phase B: filename resolution database)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Build a hash-to-filename resolution database from MIX file entries.
+   *
+   * OpenRA 对照: MixFile.ParseIndex(Dictionary, string[])
+   *
+   * MIX files store only filename hashes (Classic or CRC32), not actual
+   * filenames. This method constructs a resolution map by:
+   *
+   * 1. Searching for a `"local mix database.dat"` entry inside the MIX file
+   *    (identified by its Classic or CRC32 hash). If found, the entry's data
+   *    is extracted from the raw buffer, decoded as UTF-8 text, and parsed as
+   *    a newline-delimited list of filenames.
+   * 2. Merging those filenames with the externally-provided `externalMixDb`
+   *    (e.g., a global database loaded from the filesystem).
+   * 3. For each unique candidate filename, computing both Classic and CRC32
+   *    hashes and checking which hash type matches more entries in the MIX.
+   *    The hash type that matches more entries is used to build the final
+   *    resolution map. Ties go to Classic.
+   *
+   * The result is a hexKey-to-filename map suitable for use as the `mixDb`
+   * parameter in {@link MixFileRuntime.parse}, {@link parseAuto}, etc.
+   *
+   * ## Edge cases
+   * - Empty entries map -> returns empty Map
+   * - No local database entry found -> only external mixDb filenames are used
+   * - Comment lines (`;` and `#` prefix) and empty lines in the local database
+   *   are skipped
+   * - Duplicate filenames across local and external db -> last writer wins
+   *   (external entries naturally overwrite if the Map is merged afterward)
+   * - Filenames that don't match any entry hash -> not included in result
+   *
+   * @param data — raw MIX file data (used to extract the local db entry)
+   * @param entries — pre-parsed filename-to-entry map from a parsed MIX file
+   * @param externalMixDb — optional externally-provided hash-to-filename
+   *                        database (keys: hex like "0x1234ABCD", values: filenames)
+   * @returns a hexKey-to-filename map for use in subsequent MIX parses.
+   *          Keys are uppercase hex with "0x" prefix, e.g. "0x1234ABCD".
+   */
+  static buildMixDb(
+    data: ArrayBuffer,
+    entries: ReadonlyMap<string, MixFileEntry>,
+    externalMixDb?: Map<string, string>,
+  ): Map<string, string> {
+    const candidateFilenames = new Set<string>()
+
+    // -------------------------------------------------------------------
+    // Step 1: Search for "local mix database.dat" entry inside the MIX
+    // -------------------------------------------------------------------
+    // OpenRA 对照: ParseIndex — checks both Classic and CRC32 hashes
+
+    const localDbClassicHash = PackageEntry.hashFilename(
+      'local mix database.dat', PackageHashType.Classic,
+    )
+    const localDbCrcHash = PackageEntry.hashFilename(
+      'local mix database.dat', PackageHashType.CRC32,
+    )
+
+    for (const entry of entries.values()) {
+      if (entry.hash === localDbClassicHash || entry.hash === localDbCrcHash) {
+        // Extract the database entry data from the raw buffer
+        const start = entry.offset
+        const end = Math.min(start + entry.size, data.byteLength)
+
+        if (start < data.byteLength) {
+          const dbBytes = new Uint8Array(data.slice(start, end))
+          const dbText = new TextDecoder().decode(dbBytes)
+
+          // Parse newline-delimited filename list
+          // OpenRA 对照: XccLocalDatabase — newline-delimited, skip empty/comment lines
+          for (const line of dbText.split(/\r?\n/)) {
+            const trimmed = line.trim()
+            if (trimmed.length === 0) continue
+            if (trimmed.startsWith(';') || trimmed.startsWith('#')) continue
+            candidateFilenames.add(trimmed)
+          }
+
+          // NOTE: The db entry itself should NOT be in the resolution map.
+          // Remove it if it was added (defensive — it would not resolve
+          // any other entry's hash anyway).
+          candidateFilenames.delete('local mix database.dat')
+        }
+        break
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // Step 2: Merge externally-provided mixDb filenames
+    // -------------------------------------------------------------------
+    // OpenRA 对照: MixLoader.XccGlobalDatabase — external filename list
+
+    if (externalMixDb && externalMixDb.size > 0) {
+      for (const filename of externalMixDb.values()) {
+        candidateFilenames.add(filename)
+      }
+    }
+
+    // If no candidate filenames at all, return empty map
+    if (candidateFilenames.size === 0) {
+      return new Map<string, string>()
+    }
+
+    // -------------------------------------------------------------------
+    // Step 3: Determine which hash type matches more entries
+    // -------------------------------------------------------------------
+    // OpenRA 对照: ParseIndex — builds separate Classic and CRC32 indices,
+    //   then returns whichever has more entries (tie goes to Classic)
+
+    let classicMatchCount = 0
+    let crcMatchCount = 0
+
+    // Pre-compute hashes for all filenames and check against entries
+    const filenameClassicHashes = new Map<string, number>()
+    const filenameCrcHashes = new Map<string, number>()
+
+    for (const filename of candidateFilenames) {
+      const classicHash = PackageEntry.hashFilename(filename, PackageHashType.Classic)
+      const crcHash = PackageEntry.hashFilename(filename, PackageHashType.CRC32)
+      filenameClassicHashes.set(filename, classicHash)
+      filenameCrcHashes.set(filename, crcHash)
+
+      // Check if this filename's Classic hash matches any entry
+      for (const entry of entries.values()) {
+        if (entry.hash === classicHash) {
+          classicMatchCount++
+          break
+        }
+      }
+
+      // Check if this filename's CRC32 hash matches any entry
+      for (const entry of entries.values()) {
+        if (entry.hash === crcHash) {
+          crcMatchCount++
+          break
+        }
+      }
+    }
+
+    // Decide which hash type to use
+    // OpenRA 对照: crcIndex.Count > classicIndex.Count ? crcIndex : classicIndex
+    const useCrc = crcMatchCount > classicMatchCount
+
+    // -------------------------------------------------------------------
+    // Step 4: Build the resolution map using the preferred hash type
+    // -------------------------------------------------------------------
+
+    const resolutionMap = new Map<string, string>()
+
+    for (const filename of candidateFilenames) {
+      const hash = useCrc
+        ? filenameCrcHashes.get(filename)!
+        : filenameClassicHashes.get(filename)!
+
+      // Check if this hash actually matches an entry in the MIX
+      let matched = false
+      for (const entry of entries.values()) {
+        if (entry.hash === hash) {
+          matched = true
+          break
+        }
+      }
+
+      if (matched) {
+        const hexKey = '0x' + hash.toString(16).toUpperCase().padStart(8, '0')
+        resolutionMap.set(hexKey, filename)
+      }
+    }
+
+    return resolutionMap
   }
 }

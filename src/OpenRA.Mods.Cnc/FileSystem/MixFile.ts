@@ -70,15 +70,18 @@ export class MixLoader implements IPackageLoader {
    *
    * OpenRA 对照: MixLoader.TryParsePackage(Stream, string, FileSystem, out IReadOnlyPackage)
    *
-   * Detection logic:
+   * Detection logic (Phase B: unified 3-way chain + db enrichment):
    * 1. If filename does not end with `.mix` (case-insensitive) → return null
-   * 2. If data is C&C format (first uint16 > 0) → parse via MixFileRuntime
-   * 3. If data is encrypted format (first uint16 == 0) → warn + return null
+   * 2. Delegate to {@link MixFileRuntime.parseAuto} for 3-way format detection
+   *    (C&C → encrypted → Westwood classic)
+   * 3. After successful parse, call {@link MixFileRuntime.buildMixDb} to
+   *    extract the "local mix database.dat" entry and enrich the shared mixDb
+   * 4. On unrecognized format → log diagnostic warning + return null
    *
    * @param filename — filename (for extension check and package name)
    * @param stream — file content (ArrayBuffer)
    * @param _files — file system context (unused)
-   * @returns MixFileRuntime instance for C&C format, null otherwise
+   * @returns MixFileRuntime instance for recognized formats, null otherwise
    */
   tryParsePackage(
     filename: string,
@@ -90,61 +93,47 @@ export class MixLoader implements IPackageLoader {
       return null
     }
 
-    // Check 2: Encrypted format (RA/TS/RA2) — try before C&C (Phase B/C)
-    // Check 2: C&C format (unencrypted) — try BEFORE encrypted.
-    // C&C must come first: C&C files with numFiles=3/7/11... have
-    // bit 1 set in the low uint16, which would falsely trigger
-    // isEncryptedFormat if checked first.
-    if (MixFileRuntime.isCncFormat(stream)) {
-      try {
-        return MixFileRuntime.parse(filename, stream, _mixDb)
-      } catch (err) {
-        console.warn(`MixLoader: Failed to parse "${filename}" as C&C MIX: ${String(err)}`)
-        return null
-      }
-    }
+    // Phase B: Use the unified 3-way format detection chain (parseAuto)
+    // and enrich the mixDb from the MIX's own "local mix database.dat" entry.
+    //
+    // OpenRA 对照: MixLoader.TryParsePackage — constructs MixFile which
+    //   internally calls ParseIndex to build the filename index from
+    //   local/global databases.
+    try {
+      const mixInstance = MixFileRuntime.parseAuto(filename, stream, _mixDb)
 
-    // Check 3: Encrypted format (RA/TS/RA2) — try AFTER C&C
-    if (MixFileRuntime.isEncryptedFormat(stream)) {
-      let encryptedAttemptFailed = false
-      try {
-        const result = MixFileRuntime.parseEncrypted(filename, stream, undefined, _mixDb)
-        if (result) return result
-      } catch (err) {
-        encryptedAttemptFailed = true
-        const msg = String(err)
+      // Enrich the mix database from the MIX's own local database entry.
+      // This allows subsequent MIX parses to resolve more filenames.
+      const enrichedDb = MixFileRuntime.buildMixDb(
+        stream,
+        mixInstance.getEntries(),
+        _mixDb,
+      )
 
-        const dv = new DataView(stream)
-        const firstUint16 = dv.getUint16(0, true)
-        const willFallThrough = firstUint16 === 1
-
-        if (msg.includes('no Blowfish key')) {
-          if (!willFallThrough) {
-            console.warn(
-              `MixLoader: Encrypted MIX "${filename}" detected but no Blowfish key is available. ` +
-              `Call MixFileRuntime.setDefaultEncryptedKey() to enable encrypted MIX support.`,
-            )
-          }
-        } else {
-          console.warn(`MixLoader: Failed to parse "${filename}" as encrypted MIX: ${msg}`)
+      // Merge enriched DB with existing: enriched takes priority (it's
+      // more specific to this MIX file's content), then fall back to
+      // the existing _mixDb for keys not in enriched.
+      if (enrichedDb.size > 0) {
+        const mergedDb = new Map(_mixDb) // copy existing
+        for (const [key, value] of enrichedDb) {
+          mergedDb.set(key, value)
         }
+        MixLoader.setMixDb(mergedDb)
       }
 
-      if (encryptedAttemptFailed) {
-        const dv = new DataView(stream)
-        const firstUint16 = dv.getUint16(0, true)
-        if (firstUint16 !== 1) {
-          return null
-        }
+      return mixInstance
+    } catch (err) {
+      const msg = String(err)
+
+      // Log diagnostic info for unrecognized format
+      if (msg.includes('not a recognized MIX format')) {
+        console.warn(`MixLoader: ${msg}`)
+      } else {
+        console.warn(`MixLoader: Failed to parse "${filename}": ${msg}`)
       }
+
+      return null
     }
-
-    // Not a recognized MIX format
-    console.warn(
-      `MixLoader: "${filename}" is not a recognized MIX format. ` +
-      `The file may be corrupt or uses an unsupported format variant.`,
-    )
-    return null
   }
 }
 
