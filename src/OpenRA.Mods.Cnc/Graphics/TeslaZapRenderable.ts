@@ -13,16 +13,24 @@
  *
  * 3D rendering: LinesMesh instances with emissive ShaderMaterial for bright/dim zaps,
  * dynamic vertex updates each frame for jitter/branching effects.
+ *
+ * Phase B 变更 (24.B.1):
+ * - TeslaZapMeshBuilder 新增静态工厂方法 createBrightMaterial/createDimMaterial
+ * - 新增 createWithDefaults 便捷构造器，内部创建 ShaderMaterial
+ * - buildZaps() 修复: 传入 scene 参数, 设置 updatable: true, renderingGroupId=1
+ * - 存储 _scene 引用用于 MeshBuilder.CreateLines 调用
  */
 
 import { WPos } from '../../OpenRA.Game/WPos.js'
 import { WVec } from '../../OpenRA.Game/WVec.js'
 import {
   type LinesMesh,
-  type ShaderMaterial,
-  type Scene,
+  ShaderMaterial,
+  Scene,
   Vector3,
   MeshBuilder,
+  Effect,
+  Color3,
 } from '@babylonjs/core'
 
 // ---------------------------------------------------------------------------
@@ -132,10 +140,12 @@ export interface ITeslaZapWorldRenderer {
  * Vertex positions are updated each frame for jitter effects.
  */
 export class TeslaZapMeshBuilder {
+  private _scene: Scene
   private _brightMaterial: ShaderMaterial
   private _dimMaterial: ShaderMaterial
   private _meshes: LinesMesh[] = []
   private _baseSeed: number
+  private _ownsMaterials: boolean = false
 
   /** Create a new TeslaZapMeshBuilder.
    *
@@ -150,7 +160,7 @@ export class TeslaZapMeshBuilder {
     dimMaterial: ShaderMaterial,
     baseSeed: number = 42,
   ) {
-    void scene
+    this._scene = scene
     this._brightMaterial = brightMaterial
     this._dimMaterial = dimMaterial
     this._baseSeed = baseSeed
@@ -192,10 +202,12 @@ export class TeslaZapMeshBuilder {
       // Use CreateLines for a line strip
       const linesMesh = MeshBuilder.CreateLines(
         name + '_' + this._meshes.length,
-        { points: path.points.map(p => new Vector3(p.x, p.y, p.z)) },
+        { points: path.points.map(p => new Vector3(p.x, p.y, p.z)), updatable: true },
+        this._scene,
       )
       linesMesh.material = material
       linesMesh.isPickable = false
+      linesMesh.renderingGroupId = 1 // RenderGroup.Actor (effects layer per WorldRenderer.ts)
 
       this._meshes.push(linesMesh)
     }
@@ -230,17 +242,120 @@ export class TeslaZapMeshBuilder {
     }
   }
 
-  /** Dispose all GPU resources (LinesMesh instances).
+  /** Dispose all GPU resources (LinesMesh instances and optionally materials).
    *
    * Call when the zap effect is complete and no longer needed.
+   * Materials are only disposed if this builder owns them (created via createWithDefaults).
+   * If materials were provided externally, the caller is responsible for their lifecycle.
    */
   dispose(): void {
     for (const mesh of this._meshes) {
       mesh.dispose()
     }
     this._meshes = []
-    this._brightMaterial.dispose()
-    this._dimMaterial.dispose()
+    if (this._ownsMaterials) {
+      this._brightMaterial.dispose()
+      this._dimMaterial.dispose()
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Static factory methods (Phase B: 24.B.1)
+  // ---------------------------------------------------------------------------
+
+  /** Create an emissive bright ShaderMaterial for tesla zaps (cyan glow).
+   *
+   * Registers custom vertex and fragment shaders in Effect.ShadersStore.
+   * The material uses an emissive-only pipeline: no lighting, just position +
+   * color * intensity output.
+   *
+   * @param name — unique name for the material (used as shader store key)
+   * @param scene — the Babylon.js scene
+   * @returns a configured ShaderMaterial with cyan color and 1.5 intensity
+   */
+  static createBrightMaterial(name: string, scene: Scene): ShaderMaterial {
+    Effect.ShadersStore[`${name}VertexShader`] = `
+      precision highp float;
+      attribute vec3 position;
+      uniform mat4 worldViewProjection;
+      void main(void) {
+        gl_Position = worldViewProjection * vec4(position, 1.0);
+      }
+    `
+    Effect.ShadersStore[`${name}FragmentShader`] = `
+      precision highp float;
+      uniform vec3 uColor;
+      uniform float uIntensity;
+      void main(void) {
+        gl_FragColor = vec4(uColor * uIntensity, 1.0);
+      }
+    `
+    const mat = new ShaderMaterial(name, scene, name, {
+      attributes: ['position'],
+      uniforms: ['worldViewProjection', 'uColor', 'uIntensity'],
+    })
+    // Bright cyan with high intensity for the main lightning bolt
+    mat.setColor3('uColor', new Color3(0.2, 0.8, 1.0))
+    mat.setFloat('uIntensity', 1.5)
+    mat.needAlphaBlending = () => true
+    mat.backFaceCulling = false
+    return mat
+  }
+
+  /** Create an emissive dim ShaderMaterial for tesla zaps (dark blue glow).
+   *
+   * Same shader structure as createBrightMaterial but with lower intensity
+   * and darker blue color for the secondary/edge lightning branches.
+   *
+   * @param name — unique name for the material (used as shader store key)
+   * @param scene — the Babylon.js scene
+   * @returns a configured ShaderMaterial with dark blue color and 0.6 intensity
+   */
+  static createDimMaterial(name: string, scene: Scene): ShaderMaterial {
+    Effect.ShadersStore[`${name}VertexShader`] = `
+      precision highp float;
+      attribute vec3 position;
+      uniform mat4 worldViewProjection;
+      void main(void) {
+        gl_Position = worldViewProjection * vec4(position, 1.0);
+      }
+    `
+    Effect.ShadersStore[`${name}FragmentShader`] = `
+      precision highp float;
+      uniform vec3 uColor;
+      uniform float uIntensity;
+      void main(void) {
+        gl_FragColor = vec4(uColor * uIntensity, 1.0);
+      }
+    `
+    const mat = new ShaderMaterial(name, scene, name, {
+      attributes: ['position'],
+      uniforms: ['worldViewProjection', 'uColor', 'uIntensity'],
+    })
+    // Dark blue with lower intensity for the dim lightning branches
+    mat.setColor3('uColor', new Color3(0.1, 0.3, 0.8))
+    mat.setFloat('uIntensity', 0.6)
+    mat.needAlphaBlending = () => true
+    mat.backFaceCulling = false
+    return mat
+  }
+
+  /** Create a TeslaZapMeshBuilder with internally-managed ShaderMaterials.
+   *
+   * Convenience constructor that creates both bright and dim materials,
+   * then returns a fully configured TeslaZapMeshBuilder. The builder owns
+   * the materials and will dispose them when dispose() is called.
+   *
+   * @param scene — the Babylon.js scene
+   * @param baseSeed — seed for per-frame jitter randomization (default: 42)
+   * @returns a TeslaZapMeshBuilder ready to build zap LinesMesh instances
+   */
+  static createWithDefaults(scene: Scene, baseSeed?: number): TeslaZapMeshBuilder {
+    const bright = TeslaZapMeshBuilder.createBrightMaterial('teslaBright', scene)
+    const dim = TeslaZapMeshBuilder.createDimMaterial('teslaDim', scene)
+    const builder = new TeslaZapMeshBuilder(scene, bright, dim, baseSeed)
+    builder._ownsMaterials = true
+    return builder
   }
 }
 

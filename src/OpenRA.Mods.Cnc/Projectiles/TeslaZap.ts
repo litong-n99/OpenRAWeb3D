@@ -10,14 +10,25 @@
  * - C# WPos integer arithmetic → TypeScript {X,Y,Z} integer structs
  * - C# Target.FromPos / WarheadArgs / Weapon.Impact → TypeScript stubs
  * - C# yield return IEnumerable<IRenderable> → TypeScript render() returns array
+ *
+ * Phase B 变更 (24.B.2):
+ * - 新增 setScene() 方法用于注入 Babylon.js Scene
+ * - render() 中在创建 TeslaZapRenderable 后构建 3D LinesMesh
+ * - tick() 在过期时 dispose TeslaZapMeshBuilder
+ * - 向后兼容: 未设置 Scene 时行为不变（仅返回 renderable 描述符）
  */
 
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
 
+import type { Scene } from '@babylonjs/core'
 import { WPos } from '../../OpenRA.Game/WPos.js'
 import { TeslaZapRenderable } from '../Graphics/TeslaZapRenderable.js'
+import {
+  TeslaZapMeshBuilder,
+  type ITeslaZapWorldRenderer,
+} from '../Graphics/TeslaZapRenderable.js'
 import type { IGameActor } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { IProjectile } from '../../OpenRA.Mods.Common/Projectiles/Bullet.js'
 import type { WorldRendererStub, IRenderable } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -172,6 +183,20 @@ export class TeslaZap implements IProjectile {
    */
   private _zap: TeslaZapRenderable | null = null
 
+  /** Optional Babylon.js Scene for 3D mesh rendering (Phase B: 24.B.2).
+   *
+   * When set, render() builds 3D LinesMesh instances via TeslaZapMeshBuilder.
+   * When null, behavior is unchanged (only returns renderable descriptors).
+   */
+  private _scene: Scene | null = null
+
+  /** TeslaZapMeshBuilder for constructing 3D LinesMesh instances.
+   *
+   * Created lazily when setScene() is called. Disposed in tick() when
+   * the projectile expires.
+   */
+  private _meshBuilder: TeslaZapMeshBuilder | null = null
+
   constructor(info: TeslaZapInfo, args: TeslaZapArgs) {
     this._args = args
     this._info = info
@@ -179,6 +204,20 @@ export class TeslaZap implements IProjectile {
     this._damageDuration =
       info.damageDuration > info.duration ? info.duration : info.damageDuration
     this._target = args.passiveTarget
+  }
+
+  /** Inject a Babylon.js Scene for 3D lightning rendering.
+   *
+   * Creates a TeslaZapMeshBuilder with default bright/dim materials.
+   * Must be called before the first render() call for 3D meshes to appear.
+   * Backward compatible: omitting this call preserves the original 2D
+   * renderable-only behavior.
+   *
+   * @param scene — the Babylon.js scene to add LinesMesh instances to
+   */
+  setScene(scene: Scene): void {
+    this._scene = scene
+    this._meshBuilder = TeslaZapMeshBuilder.createWithDefaults(scene)
   }
 
   // ---------------------------------------------------------------------------
@@ -200,6 +239,11 @@ export class TeslaZap implements IProjectile {
       world.addFrameEndTask?.(() => {
         world.removeEffect?.(this)
       })
+      // Dispose 3D mesh builder when projectile expires (Phase B: 24.B.2)
+      if (this._meshBuilder) {
+        this._meshBuilder.dispose()
+        this._meshBuilder = null
+      }
     }
 
     // Track target
@@ -240,7 +284,7 @@ export class TeslaZap implements IProjectile {
    * Creates a real TeslaZapRenderable each frame for 3D lightning rendering
    * (LinesMesh + ShaderMaterial with emissive-only glow effect).
    */
-  render(_worldRenderer: WorldRendererStub): readonly IRenderable[] {
+  render(worldRenderer: WorldRendererStub): readonly IRenderable[] {
     const targetOffset = WPos.subtract(this._target, this._args.source)
 
     this._zap = new TeslaZapRenderable(
@@ -254,6 +298,26 @@ export class TeslaZap implements IProjectile {
       this._info.dimZaps,
       this._info.palette,
     )
+
+    // Wire 3D mesh rendering if Scene is available (Phase B: 24.B.2)
+    if (this._scene && this._meshBuilder) {
+      const wr = worldRenderer as unknown as ITeslaZapWorldRenderer
+      // Validate that worldRenderer provides the required interface
+      if (
+        wr &&
+        typeof (wr as any).screenPosition === 'function' &&
+        wr.world &&
+        typeof wr.world.fogObscures === 'function'
+      ) {
+        try {
+          this._zap.render(wr)
+          this._zap.build3DMeshes(this._meshBuilder)
+        } catch {
+          // Gracefully ignore if worldRenderer doesn't fully implement
+          // ITeslaZapWorldRenderer (e.g., in unit test environments)
+        }
+      }
+    }
 
     return [this._zap as unknown as IRenderable]
   }
