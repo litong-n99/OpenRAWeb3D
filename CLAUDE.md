@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: ALL CHAPTERS 2-26 COMPLETE (100%). (665/665 + 54+ active + 7 + 18 + 7 + 10 + 21 = ~782+ files, 100%).
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 49/49 (100%, ALL PHASES COMPLETE). Chapter 15: 11/11 (100%, ALL PHASES COMPLETE, 206 tests). Chapter 16: 65/65 (100%, ALL PHASES COMPLETE, 1,900+ tests). Chapter 17: 8/8 (100%, ALL PHASES COMPLETE, 237 tests). Chapter 18: 10/10 (100%, ALL PHASES COMPLETE, 240 tests). Chapter 19: 119/119 (100%, ALL PHASES COMPLETE). Chapter 20: 62/62 (100%, ALL PHASES A-G COMPLETE). Chapter 21: ALL PHASES A-G COMPLETE (54+ active files, 100%, 25 deferred + 12 legacy deferred). Chapter 22: ALL PHASES A-E COMPLETE (7/7, 100% — 4 impl + 3 test files + 1 build script + 150+ generated assets). Chapter 23: ALL PHASES A-C COMPLETE (8/8, 100%). Chapter 24: ALL PHASES A-D COMPLETE (10/10, 100%). Chapter 25: ALL PHASES A-C COMPLETE (7/7, 100%). Chapter 26: ALL PHASES A-D COMPLETE (10/10, 100%).
+**Phase**: ALL CHAPTERS 2-26 COMPLETE (100%). Chapter 27 PLANNING (main menu GUI integration). (665/665 + 54+ active + 7 + 18 + 7 + 10 + 21 = ~782+ files, 100%).
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 49/49 (100%, ALL PHASES COMPLETE). Chapter 15: 11/11 (100%, ALL PHASES COMPLETE, 206 tests). Chapter 16: 65/65 (100%, ALL PHASES COMPLETE, 1,900+ tests). Chapter 17: 8/8 (100%, ALL PHASES COMPLETE, 237 tests). Chapter 18: 10/10 (100%, ALL PHASES COMPLETE, 240 tests). Chapter 19: 119/119 (100%, ALL PHASES COMPLETE). Chapter 20: 62/62 (100%, ALL PHASES A-G COMPLETE). Chapter 21: ALL PHASES A-G COMPLETE (54+ active files, 100%, 25 deferred + 12 legacy deferred). Chapter 22: ALL PHASES A-E COMPLETE (7/7, 100% — 4 impl + 3 test files + 1 build script + 150+ generated assets). Chapter 23: ALL PHASES A-C COMPLETE (8/8, 100%). Chapter 24: ALL PHASES A-D COMPLETE (10/10, 100%). Chapter 25: ALL PHASES A-C COMPLETE (7/7, 100%). Chapter 26: ALL PHASES A-D COMPLETE (10/10, 100%). Chapter 27: PLANNING (main menu GUI integration, 15 tasks across 5 phases A-E).
 **Planning Doc**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 **Chapter 9 Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)
 **Chapter 10 Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
@@ -19,6 +19,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 **Chapter 20 Plan**: [docs/chapter20_scripting_system_migration_plan.md](docs/chapter20_scripting_system_migration_plan.md)
 **Chapter 21 Plan**: [docs/chapter21_editor_utilities_tooling_migration_plan.md](docs/chapter21_editor_utilities_tooling_migration_plan.md)
 **Chapter 22 Plan**: [docs/chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md)
+**Chapter 27 Plan**: [docs/chapter27_main_menu_gui_fix_plan.md](docs/chapter27_main_menu_gui_fix_plan.md) (main menu GUI integration, 15 tasks across 5 phases A-E)
 **Post-Migration Plan**: [docs/post_migration_completion_plan.md](docs/post_migration_completion_plan.md) (52 remaining items across 5 phases A-E)
 **Acceptance Test Plan**: [docs/acceptance_test_completion_plan.md](docs/acceptance_test_completion_plan.md) (**✅ COMPLETE**: 31/31 pages, 107 total, all 10 phases P0-P3 done)
 **Details**: [docs/migration_progress.md](docs/migration_progress.md)
@@ -86,6 +87,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | **Chapter 24: Animation & 3D Visual Effects** | ALL PHASES A-D COMPLETE (10/10, 100%) |
 | **Chapter 25: Shroud & Fog of War 3D** | ALL PHASES A-C COMPLETE (7/7, 100%) |
 | **Chapter 26: Game World & Shellmap Integration** | ALL PHASES A-D COMPLETE (10/10, 100%) -- map loading, actor spawning, skirmish game flow, shellmap AI + ModularBot + camera, widget main menu + integration tests |
+| **Chapter 27: Main Menu GUI Fix** | PLANNING (0/15 tasks, 0%) -- chrome asset pipeline, ChromeProvider wiring, Widget-based main menu activation, shellmap asset enablement, integration testing |
 | **Content Installer Pipeline (ALL PHASES)** | COMPLETE (25/25 tasks, 100%), ~10,000 impl lines, 500+ tests |
 
 ## Directory Layout
@@ -604,6 +606,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/chapter24_animation_effects_plan.md](docs/chapter24_animation_effects_plan.md) | Chapter 24: Animation & 3D visual effects — AnimationStub replacement + C&C effects |
 | [docs/chapter25_shroud_3d_plan.md](docs/chapter25_shroud_3d_plan.md) | Chapter 25: Shroud & Fog of War 3D — vertex-based fog visualization |
 | [docs/chapter26_gameworld_integration_plan.md](docs/chapter26_gameworld_integration_plan.md) | Chapter 26: Game World & Shellmap — map loading, actor spawning, skirmish |
+| [docs/chapter27_main_menu_gui_fix_plan.md](docs/chapter27_main_menu_gui_fix_plan.md) | Chapter 27: Main Menu GUI Fix — chrome pipeline, ChromeProvider wiring, Widget menu activation, shellmap integration |
 | [docs/game_entry_design.md](docs/game_entry_design.md) | Chapter 22 original architecture design document (merged into chapter22 plan) |
 | [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md) | Chapters 8-22 remaining systems migration plan (15 chapters, Ch8-20 COMPLETE, Ch21-22 PLANNING) |
 | [docs/post_migration_completion_plan.md](docs/post_migration_completion_plan.md) | Post-migration completion plan: 52 genuinely unfinished items across 5 phases A-E (Runtime Critical, 3D Rendering, Shroud/Fog, Infrastructure, Mod Polish) |
