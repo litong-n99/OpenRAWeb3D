@@ -64,6 +64,10 @@ function corsProxyPlugin(): Plugin {
           res.setHeader('Access-Control-Allow-Origin', '*')
           res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
           res.setHeader('Access-Control-Allow-Headers', '*')
+          // Prevent browser HTTP cache from storing proxy responses.
+          // Without this, a 502 error response gets cached and all
+          // subsequent retries serve the stale failure from disk.
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
 
           // Stream the response body
           if (upstream.body) {

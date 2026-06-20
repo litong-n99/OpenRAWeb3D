@@ -79,5 +79,8 @@ export async function proxiedFetch(
   } catch {
     // location not available (test environment) — fall through to proxied
   }
-  return fetch(proxiedUrl(url), init)
+  return fetch(proxiedUrl(url), {
+    ...init,
+    cache: 'no-store',
+  })
 }
