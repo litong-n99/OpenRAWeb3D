@@ -383,6 +383,99 @@ export class MixFileRuntime implements IReadOnlyPackage {
   }
 
   // -----------------------------------------------------------------------
+  // Static — parseWestwoodClassic (Phase A)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Parse an unencrypted Westwood RA/TS/RA2 MIX file into a `MixFileRuntime`.
+   *
+   * OpenRA 对照: MixFile constructor — path for `!isCncMix && !isEncrypted`
+   *   which calls `ParseHeader(s, 4, out dataStart)` for the unencrypted RA format.
+   *
+   * The binary layout for Westwood classic (unencrypted RA/TS/RA2) is:
+   * ```
+   * Offset  Size    Field
+   * 0       2       format marker (uint16 LE) — must be 0 for RA/TS/RA2
+   * 2       2       flags (uint16 LE) — bit 0: hasChecksum, bit 1: encrypted (must be 0)
+   * 4       2       numFiles (uint16 LE) — number of entries
+   * 6       4       dataSize (uint32 LE) — total size of data blocks (informational)
+   * 10      12×N    PackageEntry[] entries (12 bytes each, unencrypted)
+   * 10+12×N  ...    Raw data blocks
+   * dataStart = 10 + numFiles * 12
+   * ```
+   *
+   * NOTE: This is the exact layout from the C# ParseHeader(s, 4, ...) path.
+   * The first 4 bytes (format marker + flags) are consumed by the constructor
+   * before ParseHeader is called, so ParseHeader reads from offset 4.
+   * This method reads from the full buffer with explicit absolute offsets.
+   *
+   * @param name — package name (e.g. "scores.mix")
+   * @param data — raw MIX file data
+   * @param mixDb — optional hash-to-filename database
+   * @returns a parsed MixFileRuntime instance
+   * @throws Error if the data is not valid Westwood classic format
+   */
+  static parseWestwoodClassic(
+    name: string,
+    data: ArrayBuffer,
+    mixDb?: Map<string, string>,
+  ): MixFileRuntime {
+    if (!MixFileRuntime.isWestwoodClassicFormat(data)) {
+      throw new Error(
+        `MixFileRuntime.parseWestwoodClassic: "${name}" is not a valid Westwood classic MIX file. ` +
+        `Expected first uint16 == 0 and (second uint16 & 0x2) == 0 (not encrypted). ` +
+        `Use parse() for C&C format or parseEncrypted() for encrypted format.`,
+      )
+    }
+
+    const dv = new DataView(data)
+
+    // Read numFiles from offset 4 (after format marker + flags, 4 bytes total)
+    // OpenRA 对照: ParseHeader → s.Seek(4) → s.ReadUInt16()
+    const numFiles = dv.getUint16(4, true)
+
+    // Validate numFiles is in a reasonable range
+    if (numFiles > MAX_CNC_FILES) {
+      throw new Error(
+        `MixFileRuntime.parseWestwoodClassic: "${name}" numFiles=${numFiles} ` +
+        `exceeds maximum ${MAX_CNC_FILES}. The file may be corrupt or in an unsupported format.`,
+      )
+    }
+
+    // Read dataSize from offset 6 (uint32, informational — not used for data access)
+    // dv.getUint32(6, true) — total size of data blocks
+
+    // Minimum buffer size: 10 (header) + numFiles * 12 (entries)
+    const headerEnd = 10 + numFiles * PackageEntry.SIZE
+    if (data.byteLength < headerEnd) {
+      throw new Error(
+        `MixFileRuntime.parseWestwoodClassic: "${name}" buffer too small. ` +
+        `Expected at least ${headerEnd} bytes for ${numFiles} entries, ` +
+        `got ${data.byteLength} bytes.`,
+      )
+    }
+
+    // Parse all PackageEntry records starting at offset 10
+    const pkgEntries: PackageEntry[] = []
+    let entryOffset = 10
+    for (let i = 0; i < numFiles; i++) {
+      const { entry, nextOffset } = PackageEntry.fromDataView(dv, entryOffset)
+      pkgEntries.push(entry)
+      entryOffset = nextOffset
+    }
+
+    // dataStart is the byte offset at which raw data blocks begin
+    // OpenRA 对照: headerEnd = offset + 6 + numFiles * PackageEntry.Size
+    //   where offset = 4, so headerEnd = 10 + numFiles * 12
+    const dataStart = entryOffset // = 10 + numFiles * PackageEntry.SIZE
+
+    // Resolve filenames and build internal entry map (shared helper)
+    const entries = MixFileRuntime._buildEntryMap(pkgEntries, dataStart, mixDb)
+
+    return new MixFileRuntime(name, data, entries)
+  }
+
+  // -----------------------------------------------------------------------
   // Static — isCncFormat
   // -----------------------------------------------------------------------
 
@@ -446,20 +539,29 @@ export class MixFileRuntime implements IReadOnlyPackage {
   /**
    * Check if the data appears to be an encrypted RA/TS/RA2 MIX file.
    *
-   * OpenRA 对照: `var isEncrypted = (s.ReadUInt16() & 0x2) != 0`
+   * OpenRA 对照: MixFile constructor — `isEncrypted = (s.ReadUInt16() & 0x2) != 0`
    *
-   * Detects two encrypted format variants:
+   * The OpenRA C# constructor reads two sequential uint16 values:
+   *   1. `s.ReadUInt16()` at offset 0: C&C format check (firstUint16 == 0 means RA/TS/RA2)
+   *   2. `s.ReadUInt16()` at offset 2: encryption check from the SECOND uint16
+   *
+   * Detects three encrypted format variants:
    *
    * **OpenRA format** (matching C# MixFile.cs):
    * - First uint16 == 0 (RA/TS/RA2 format marker)
-   * - Second uint16 has bit 1 set (encrypted flag)
+   * - Second uint16 (at offset 2) has bit 1 set (encrypted flag)
    *
    * **Universal key format** (simpler, no RSA keyblock):
    * - First uint16 == 1 (bit 0 set = universal key)
    *
-   * NOTE: A first uint16 of 2 (bit 1 set = RSA key) is also an encrypted
-   * format, but it is not supported in Phase B. It is detected here for
-   * clear error messaging but parseEncrypted() will refuse it.
+   * **RSA key format**:
+   * - First uint16 == 2 (bit 1 set = RSA key)
+   *
+   * NOTE: Before the Ch23 Phase A bugfix, this method incorrectly read
+   * `getUint32(0, true)` and checked bit 1 of the combined 4-byte value,
+   * which tested bit 1 of the first uint16 instead of the second uint16.
+   * This caused all files with firstUint16=0 and secondUint16 having bit 1
+   * set (e.g., 0x0002, 0x0003) to be misdetected.
    *
    * @param data — raw file data to inspect
    * @returns true if the data appears to be an encrypted MIX file
@@ -470,12 +572,16 @@ export class MixFileRuntime implements IReadOnlyPackage {
     const dv = new DataView(data)
     const firstUint16 = dv.getUint16(0, true)
 
-    // OpenRA format: first uint16 == 0 with encrypted flag at bit 1 of uint32
-    // C# 对照: var flags = s.ReadUInt32(); (flags & 0x2) != 0
+    // OpenRA format: first uint16 == 0, check second uint16's bit 1
+    // C# 对照: s.ReadUInt16() reads first uint16 (C&C check)
+    //          then s.ReadUInt16() reads second uint16 → (value & 0x2) != 0
+    // NOTE: Previously used getUint32(0, true) which checked bit 1 of the
+    // combined 4-byte value, testing the wrong uint16. Fixed in Ch23 Phase A
+    // to read the second uint16 separately matching OpenRA's two-step read.
     if (firstUint16 === OPENRA_FORMAT_MARKER) {
       if (data.byteLength >= 4) {
-        const flags = dv.getUint32(0, true)
-        return (flags & OPENRA_ENCRYPTED_FLAG) !== 0
+        const secondUint16 = dv.getUint16(2, true)
+        return (secondUint16 & OPENRA_ENCRYPTED_FLAG) !== 0
       }
       return false
     }
@@ -487,6 +593,49 @@ export class MixFileRuntime implements IReadOnlyPackage {
     if (firstUint16 === RSA_KEY_FLAG) return true
 
     return false
+  }
+
+  /**
+   * Check if the data appears to be an unencrypted Westwood RA/TS/RA2 MIX file.
+   *
+   * OpenRA 对照: MixFile constructor — path for not C&C and not encrypted
+   *   (`!isCncMix && !isEncrypted` → `ParseHeader(s, 4, out dataStart)`)
+   *
+   * Detects the **Westwood classic** format: first uint16 == 0 (RA/TS/RA2
+   * format marker) and the second uint16 does NOT have bit 1 set
+   * (i.e., no Blowfish encryption). These files have plain (unencrypted)
+   * PackageEntry records at offset 10 with the raw data blocks immediately
+   * following.
+   *
+   * ## Binary layout (C#-verified):
+   * ```
+   * Offset  Size  Field
+   * 0       2     format marker (uint16 LE) — must be 0 for RA/TS/RA2
+   * 2       2     flags (uint16 LE) — bit 0: hasChecksum, bit 1: encrypted (must be 0)
+   * 4       2     numFiles (uint16 LE) — number of entries
+   * 6       4     dataSize (uint32 LE) — total size of data blocks (informational)
+   * 10      12×N  PackageEntry[] entries (12 bytes each)
+   * 10+12×N ...   Raw data blocks
+   * ```
+   *
+   * The `secondUint16 & 0x1` bit (hasChecksum) is informational — it
+   * indicates a checksum table follows the data blocks but does not affect
+   * header parsing.
+   *
+   * @param data — raw file data to inspect
+   * @returns true if the data appears to be an unencrypted Westwood RA MIX file
+   */
+  static isWestwoodClassicFormat(data: ArrayBuffer): boolean {
+    // Need at least 6 bytes: format marker (2) + flags (2) + numFiles (2) = 6
+    if (data.byteLength < 6) return false
+
+    const dv = new DataView(data)
+    const firstUint16 = dv.getUint16(0, true)
+    const secondUint16 = dv.getUint16(2, true)
+
+    // Must be RA/TS/RA2 format (first uint16 == 0) and NOT encrypted
+    return firstUint16 === OPENRA_FORMAT_MARKER
+      && (secondUint16 & OPENRA_ENCRYPTED_FLAG) === 0
   }
 
   /**
@@ -573,6 +722,86 @@ export class MixFileRuntime implements IReadOnlyPackage {
     throw new Error(
       `MixFileRuntime.parseEncrypted: unknown encrypted format for "${name}" ` +
       `(flags=0x${firstUint16.toString(16)}).`,
+    )
+  }
+
+  // -----------------------------------------------------------------------
+  // Static — parseAuto (Phase A: 3-way detection chain)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Auto-detect MIX format and parse with the correct strategy.
+   *
+   * OpenRA 对照: MixFile constructor — full 3-way detection chain
+   *   (C&C → encrypted → unencrypted Westwood)
+   *
+   * Implements the complete format detection and parsing pipeline:
+   *
+   * 1. **C&C format** (`isCncFormat`): unencrypted, first uint16 >= 1.
+   *    Routed to {@link MixFileRuntime.parse}.
+   *
+   * 2. **Encrypted format** (`isEncryptedFormat`): OpenRA/universal/RSA key.
+   *    Routed to {@link MixFileRuntime.parseEncrypted}. If `parseEncrypted`
+   *    throws (e.g., RSA keyblock is invalid, or no Blowfish key available),
+   *    falls through to step 3.
+   *
+   * 3. **Westwood classic** (`isWestwoodClassicFormat`): unencrypted RA/TS/RA2
+   *    format. Routed to {@link MixFileRuntime.parseWestwoodClassic}.
+   *
+   * 4. **Unrecognized**: throws a descriptive error with a hex dump of the
+   *    first 8 bytes for diagnostic purposes.
+   *
+   * This is the recommended entry point for new callers. The individual
+   * `parse()`, `parseEncrypted()`, and `parseWestwoodClassic()` methods
+   * remain available for callers that already know the format.
+   *
+   * @param name — package name (e.g. "allies.mix")
+   * @param data — raw MIX file data
+   * @param mixDb — optional hash-to-filename database
+   * @returns a parsed MixFileRuntime instance
+   * @throws Error if the data does not match any recognized MIX format
+   */
+  static parseAuto(
+    name: string,
+    data: ArrayBuffer,
+    mixDb?: Map<string, string>,
+  ): MixFileRuntime {
+    // Step 1: C&C format (first uint16 >= 1)
+    if (MixFileRuntime.isCncFormat(data)) {
+      return MixFileRuntime.parse(name, data, mixDb)
+    }
+
+    // Step 2: Encrypted format — with fallthrough on parse failure.
+    // Some CDN files may have the encrypted flag set spuriously; if
+    // parseEncrypted throws, we fall through to try Westwood classic.
+    if (MixFileRuntime.isEncryptedFormat(data)) {
+      try {
+        return MixFileRuntime.parseEncrypted(name, data, undefined, mixDb)
+      } catch (_encryptedErr) {
+        // Fall through to step 3 — try Westwood classic as a fallback.
+        // OpenRA 对照: the C# constructor's try/catch on the full block
+        // allows graceful degradation for edge-case format variants.
+      }
+    }
+
+    // Step 3: Westwood classic format (unencrypted RA/TS/RA2)
+    if (MixFileRuntime.isWestwoodClassicFormat(data)) {
+      return MixFileRuntime.parseWestwoodClassic(name, data, mixDb)
+    }
+
+    // Step 4: Unrecognized format — build diagnostic hex dump
+    const diagnosticLen = Math.min(8, data.byteLength)
+    const diagnosticBytes = new Uint8Array(data, 0, diagnosticLen)
+    const hexDump = Array.from(diagnosticBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join(' ')
+
+    throw new Error(
+      `MixFileRuntime.parseAuto: "${name}" is not a recognized MIX format. ` +
+      `First ${diagnosticLen} bytes: ${hexDump}. ` +
+      `Supported formats: C&C (first uint16 >= 1), ` +
+      `encrypted OpenRA/RA/TS/RA2 (first uint16 == 0/1/2), ` +
+      `unencrypted Westwood RA/TS/RA2 (first uint16 == 0, not encrypted).`,
     )
   }
 

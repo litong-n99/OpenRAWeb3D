@@ -720,15 +720,20 @@ function createEncryptedMixBuffer(
 
 /**
  * Build an OpenRA format (flags=0, encrypted) buffer for detection testing.
+ *
+ * OpenRA C# 对照: first uint16 == 0 (RA format marker), second uint16
+ * has bit 1 set (encrypted flag). This matches the C# constructor's:
+ *   var isCncMix = s.ReadUInt16() != 0;      // reads offset 0-1: 0x0000 → false
+ *   isEncrypted = (s.ReadUInt16() & 0x2) != 0; // reads offset 2-3: 0x0002 → true
+ *
+ * Before Ch23 Phase A bugfix, this test helper incorrectly placed the
+ * encrypted flag at firstUint16 (offset 0) instead of secondUint16 (offset 2).
  */
 function createOpenRAEncryptedBuffer(): ArrayBuffer {
   const buf = new ArrayBuffer(100)
   const dv = new DataView(buf)
-  // C# 对照: var flags = s.ReadUInt32(); (flags & 0x2) != 0
-  // The encrypted flag is checked at bit 1 of the LE uint32.
-  // This means bit 1 of byte 0 (the low byte of the first uint16).
-  dv.setUint16(0, 0x0002, true)    // first uint16: bit 1 = encrypted flag
-  dv.setUint16(2, 0x0000, true)    // reserved / sub-format
+  dv.setUint16(0, 0x0000, true)    // first uint16: 0 = RA/TS/RA2 format marker
+  dv.setUint16(2, 0x0002, true)    // second uint16: bit 1 = encrypted flag
   // Fill remaining with non-zero filler
   for (let i = 4; i < 100; i++) {
     dv.setUint8(i, 0x42)
@@ -996,7 +1001,6 @@ describe('MixFileRuntime.setDefaultEncryptedKey', () => {
 
 /** RSA public key (base64-encoded modulus from OpenRA). */
 const RSA_PUBLIC_KEY_B64 = 'AihRvNoIbTn85FZRYNZRcT+i6KpU+maCsEqr3Q5q+LDB5tH7Tz2qQ38V'
-const RSA_EXPONENT_UINT32 = 0x10001 // 65537
 
 /**
  * Decode base64 public key to BigInt modulus.
@@ -1178,5 +1182,503 @@ describe('MixFileRuntime.parseEncrypted — previously rejected formats (Phase C
     } catch (e: any) {
       expect(e.message).not.toMatch(/not supported in Phase B/i)
     }
+  })
+})
+
+// ===========================================================================
+// Chapter 23 Phase A: Westwood Classic Format Parsing
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Westwood classic MIX test helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a Westwood classic (unencrypted RA/TS/RA2) MIX ArrayBuffer.
+ *
+ * Binary layout (C#-verified from ParseHeader(s, 4, ...)):
+ * ```
+ * Offset  Size    Field
+ * 0       2       format marker (uint16 LE) = 0x0000
+ * 2       2       flags (uint16 LE) — bit 0: hasChecksum, bit 1: encrypted
+ * 4       2       numFiles (uint16 LE)
+ * 6       4       dataSize (uint32 LE) — total size of data blocks
+ * 10      12×N    PackageEntry[] entries (hash, offset, length as uint32)
+ * 10+12×N ...     Raw data blocks (concatenated, no padding)
+ * ```
+ *
+ * PackageEntry.offset is relative to dataStart (10 + numFiles * 12).
+ */
+function createWestwoodClassicMixBuffer(
+  files: FileSpec[],
+  flags: number = 0,
+): ArrayBuffer {
+  const numFiles = files.length
+  const entryTableSize = numFiles * 12
+  const dataStart = 10 + entryTableSize
+
+  let totalDataSize = 0
+  for (const file of files) {
+    totalDataSize += file.data.byteLength
+  }
+
+  const totalBufferSize = dataStart + totalDataSize
+  const buf = new ArrayBuffer(totalBufferSize)
+  const dv = new DataView(buf)
+
+  // Format marker (offset 0)
+  dv.setUint16(0, 0x0000, true)
+  // Flags (offset 2)
+  dv.setUint16(2, flags, true)
+  // numFiles (offset 4)
+  dv.setUint16(4, numFiles, true)
+  // dataSize (offset 6)
+  dv.setUint32(6, totalDataSize, true)
+
+  // Entry table (starting at offset 10)
+  let dataCursor = 0
+  let entryByteOffset = 10
+  for (const file of files) {
+    dv.setUint32(entryByteOffset, file.hash, true)
+    dv.setUint32(entryByteOffset + 4, dataCursor, true)
+    dv.setUint32(entryByteOffset + 8, file.data.byteLength, true)
+    entryByteOffset += 12
+    dataCursor += file.data.byteLength
+  }
+
+  // Raw data blocks
+  dataCursor = 0
+  for (const file of files) {
+    const dest = new Uint8Array(buf, dataStart + dataCursor, file.data.byteLength)
+    dest.set(file.data)
+    dataCursor += file.data.byteLength
+  }
+
+  return buf
+}
+
+// ---------------------------------------------------------------------------
+// Helper: create a buffer with specific first/second uint16
+// ---------------------------------------------------------------------------
+
+function createRaFormatBuffer(
+  firstUint16: number,
+  secondUint16: number,
+  extraBytes: number = 10,
+): ArrayBuffer {
+  const buf = new ArrayBuffer(4 + extraBytes)
+  const dv = new DataView(buf)
+  dv.setUint16(0, firstUint16, true)
+  dv.setUint16(2, secondUint16, true)
+  return buf
+}
+
+// ---------------------------------------------------------------------------
+// TODO-23.A.1: isEncryptedFormat fix verification
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.isEncryptedFormat — Ch23 Phase A bugfix', () => {
+  it('returns true for OpenRA format with secondUint16=2 (encrypted)', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0002)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(true)
+  })
+
+  it('returns true for OpenRA format with secondUint16=3 (encrypted + hasChecksum)', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0003)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(true)
+  })
+
+  it('returns false for OpenRA format with secondUint16=0 (no flags)', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0000)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(false)
+  })
+
+  it('returns false for OpenRA format with secondUint16=1 (hasChecksum only)', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0001)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(false)
+  })
+
+  it('returns false for OpenRA format buffer too small (only 2 bytes)', () => {
+    const buf = new ArrayBuffer(2)
+    const dv = new DataView(buf)
+    dv.setUint16(0, 0x0000, true)
+    // Not enough bytes to read secondUint16 at offset 2
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(false)
+  })
+
+  it('still returns true for universal key format (firstUint16=1)', () => {
+    const buf = createRaFormatBuffer(0x0001, 0x0000)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(true)
+  })
+
+  it('still returns true for RSA key format (firstUint16=2)', () => {
+    const buf = createRaFormatBuffer(0x0002, 0x0000)
+    expect(MixFileRuntime.isEncryptedFormat(buf)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TODO-23.A.2: isWestwoodClassicFormat detection
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.isWestwoodClassicFormat', () => {
+  it('returns true for firstUint16=0, secondUint16=0 (no flags)', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0000)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(true)
+  })
+
+  it('returns true for firstUint16=0, secondUint16=1 (hasChecksum, not encrypted)', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0001)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(true)
+  })
+
+  it('returns false for firstUint16=0, secondUint16=2 (encrypted)', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0002)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(false)
+  })
+
+  it('returns false for firstUint16=0, secondUint16=3 (encrypted + hasChecksum)', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0003)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(false)
+  })
+
+  it('returns false for C&C format (firstUint16 >= 1)', () => {
+    const buf = createRaFormatBuffer(5, 0x0000)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(false)
+  })
+
+  it('returns false for universal key format (firstUint16=1)', () => {
+    const buf = createRaFormatBuffer(1, 0x0000)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(false)
+  })
+
+  it('returns false for too-small buffer (2 bytes)', () => {
+    const buf = new ArrayBuffer(2)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(false)
+  })
+
+  it('returns false for empty buffer', () => {
+    const buf = new ArrayBuffer(0)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(false)
+  })
+
+  it('returns true for real Westwood classic MIX buffer with files', () => {
+    const files: FileSpec[] = [
+      { hash: 0x12345678, data: strToData('test data') },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+    expect(MixFileRuntime.isWestwoodClassicFormat(buf)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TODO-23.A.3: parseWestwoodClassic parser
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.parseWestwoodClassic', () => {
+  it('parses an empty MIX with 0 entries (valid edge case)', () => {
+    const buf = createWestwoodClassicMixBuffer([])
+    const mix = MixFileRuntime.parseWestwoodClassic('empty.mix', buf)
+
+    expect(mix.name).toBe('empty.mix')
+    expect(mix.contents.length).toBe(0)
+  })
+
+  it('parses a single-file Westwood classic MIX', () => {
+    const files: FileSpec[] = [
+      { hash: 0xAAAA1111, data: strToData('single file content') },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+    const mix = MixFileRuntime.parseWestwoodClassic('single.mix', buf)
+
+    expect(mix.name).toBe('single.mix')
+    expect(mix.contents.length).toBe(1)
+    expect(mix.contents[0]).toMatch(/^unresolved_0x[0-9A-F]{8}\.bin$/)
+  })
+
+  it('parses a multi-file Westwood classic MIX with 5 files', async () => {
+    const files: FileSpec[] = [
+      { hash: 0xBB000001, data: strToData('AAA') },
+      { hash: 0xBB000002, data: strToData('BBBBB') },
+      { hash: 0xBB000003, data: strToData('CC') },
+      { hash: 0xBB000004, data: strToData('DDDDDDDD') },
+      { hash: 0xBB000005, data: strToData('E') },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+    const mix = MixFileRuntime.parseWestwoodClassic('five.mix', buf)
+
+    expect(mix.contents.length).toBe(5)
+
+    // Verify all files are accessible
+    for (const name of mix.contents) {
+      const result = await mix.open(name)
+      expect(result).not.toBeNull()
+    }
+  })
+
+  it('resolves filenames via mixDb', () => {
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+      { hash: HASH_B, data: FILE_B_DATA },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+
+    const mixDb = new Map<string, string>()
+    mixDb.set(FILE_A_HASH_KEY, 'alpha.shp')
+    mixDb.set(FILE_B_HASH_KEY, 'bravo.shp')
+
+    const mix = MixFileRuntime.parseWestwoodClassic('resolved.mix', buf, mixDb)
+
+    expect(mix.contents).toContain('alpha.shp')
+    expect(mix.contents).toContain('bravo.shp')
+    expect(mix.contains('alpha.shp')).toBe(true)
+    expect(mix.contains('bravo.shp')).toBe(true)
+  })
+
+  it('returns correct data for each file', async () => {
+    const data1 = strToData('First file data')
+    const data2 = strToData('Second file data')
+    const data3 = strToData('Third file data')
+    const files: FileSpec[] = [
+      { hash: 0xCC000001, data: data1 },
+      { hash: 0xCC000002, data: data2 },
+      { hash: 0xCC000003, data: data3 },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+
+    const mixDb = new Map<string, string>()
+    mixDb.set('0xCC000001', 'one.dat')
+    mixDb.set('0xCC000002', 'two.dat')
+    mixDb.set('0xCC000003', 'three.dat')
+
+    const mix = MixFileRuntime.parseWestwoodClassic('data.mix', buf, mixDb)
+
+    const r1 = await mix.open('one.dat')
+    const r2 = await mix.open('two.dat')
+    const r3 = await mix.open('three.dat')
+    expect(new TextDecoder().decode(r1!)).toBe('First file data')
+    expect(new TextDecoder().decode(r2!)).toBe('Second file data')
+    expect(new TextDecoder().decode(r3!)).toBe('Third file data')
+  })
+
+  it('handles 100 entries with correct offset computation', async () => {
+    const files: FileSpec[] = Array.from({ length: 100 }, (_, i) => ({
+      hash: 0xDD000000 + i,
+      data: new Uint8Array([i, (i * 7) & 0xFF]),
+    }))
+    const buf = createWestwoodClassicMixBuffer(files)
+
+    const mix = MixFileRuntime.parseWestwoodClassic('hundred.mix', buf)
+    expect(mix.contents.length).toBe(100)
+
+    // Verify a sample of entries
+    const names = mix.contents
+    const data0 = await mix.open(names[0])
+    const data50 = await mix.open(names[50])
+    const data99 = await mix.open(names[99])
+
+    expect(data0).not.toBeNull()
+    expect(data50).not.toBeNull()
+    expect(data99).not.toBeNull()
+    expect(new Uint8Array(data0!)).toEqual(new Uint8Array([0, 0]))
+    expect(new Uint8Array(data99!)).toEqual(new Uint8Array([99, (99 * 7) & 0xFF]))
+  })
+
+  it('truncates data when entry size extends past buffer end', async () => {
+    const files: FileSpec[] = [
+      { hash: 0xEE000001, data: strToData('this data will be cut off at the end of the buffer') },
+    ]
+    const fullBuf = createWestwoodClassicMixBuffer(files)
+
+    // Cut off halfway through the data
+    const dataStart = 10 + files.length * 12
+    const truncatedSize = dataStart + 10 // only 10 bytes of data
+    const truncatedBuf = fullBuf.slice(0, truncatedSize)
+
+    const mix = MixFileRuntime.parseWestwoodClassic('trunc.mix', truncatedBuf)
+    const result = await mix.open(mix.contents[0])
+
+    expect(result).not.toBeNull()
+    expect(result!.byteLength).toBe(10)
+    expect(new TextDecoder().decode(result!)).toBe('this data ')
+  })
+
+  it('throws for C&C format (wrong format)', () => {
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createCncMixBuffer(files)
+    // C&C format has firstUint16 >= 1, not 0
+
+    expect(() => {
+      MixFileRuntime.parseWestwoodClassic('cnc.mix', buf)
+    }).toThrow(/not a valid Westwood classic MIX/i)
+  })
+
+  it('throws for encrypted format', () => {
+    const buf = createRaFormatBuffer(0x0000, 0x0002, 100)
+    // secondUint16 has bit 1 = encrypted
+
+    expect(() => {
+      MixFileRuntime.parseWestwoodClassic('enc.mix', buf)
+    }).toThrow(/not a valid Westwood classic MIX/i)
+  })
+
+  it('throws for too-small buffer (header incomplete)', () => {
+    const buf = createWestwoodClassicMixBuffer([
+      { hash: 0xFF000001, data: strToData('test') },
+    ])
+    // Truncate to just the header prefix (less than 10 + 12 bytes)
+    const truncatedBuf = buf.slice(0, 8)
+
+    expect(() => {
+      MixFileRuntime.parseWestwoodClassic('small.mix', truncatedBuf)
+    }).toThrow(/buffer too small/i)
+  })
+
+  it('includes the package name in error messages', () => {
+    const buf = createCncMixBuffer([{ hash: HASH_A, data: FILE_A_DATA }])
+
+    expect(() => {
+      MixFileRuntime.parseWestwoodClassic('my-westwood-file.mix', buf)
+    }).toThrow(/my-westwood-file\.mix/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TODO-23.A.4: parseAuto routing
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.parseAuto — 3-way detection chain', () => {
+  it('routes C&C format correctly', () => {
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createCncMixBuffer(files)
+
+    const mix = MixFileRuntime.parseAuto('cnc.mix', buf)
+
+    expect(mix.name).toBe('cnc.mix')
+    expect(mix.contents.length).toBe(1)
+  })
+
+  it('routes Westwood classic format correctly', () => {
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+
+    const mix = MixFileRuntime.parseAuto('westwood.mix', buf)
+
+    expect(mix.name).toBe('westwood.mix')
+    expect(mix.contents.length).toBe(1)
+  })
+
+  it('routes encrypted format correctly with a key', () => {
+    const files: FileSpec[] = [
+      { hash: 0x9999, data: ENC_FILE_A_DATA },
+    ]
+    const buf = createEncryptedMixBuffer(files, ENC_TEST_KEY)
+
+    MixFileRuntime.setDefaultEncryptedKey(ENC_TEST_KEY)
+    try {
+      const mix = MixFileRuntime.parseAuto('enc.mix', buf)
+      expect(mix.name).toBe('enc.mix')
+      expect(mix.contents.length).toBe(1)
+    } finally {
+      MixFileRuntime.setDefaultEncryptedKey(null)
+    }
+  })
+
+  it('routes Westwood classic with hasChecksum flag (secondUint16=1)', () => {
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files, 0x0001) // flags = hasChecksum
+
+    const mix = MixFileRuntime.parseAuto('checksum.mix', buf)
+
+    expect(mix.name).toBe('checksum.mix')
+    expect(mix.contents.length).toBe(1)
+  })
+
+  it('throws on unrecognized format with diagnostic hex dump', () => {
+    // With firstUint16=0: isCncFormat=false; isEncryptedFormat/isWestwoodClassicFormat
+    // cover all secondUint16 values (one always returns true).
+    // For a genuinely unrecognized format, use a buffer too small for any format
+    // check (4 bytes with firstUint16=0):
+    //   isCncFormat: false (firstUint16=0 < 1)
+    //   isEncryptedFormat: false (buffer < 6 bytes MINIMUM)
+    //   isWestwoodClassicFormat: false (buffer < 6 bytes MINIMUM)
+    //   → UNRECOGNIZED!
+
+    const tinyBuf = new ArrayBuffer(4)
+    const tdV = new DataView(tinyBuf)
+    tdV.setUint16(0, 0x0000, true)
+    tdV.setUint16(2, 0x0004, true)
+
+    expect(() => {
+      MixFileRuntime.parseAuto('unknown.bin', tinyBuf)
+    }).toThrow(/not a recognized MIX format/i)
+  })
+
+  it('diagnostic message includes hex dump of first bytes', () => {
+    const buf = new ArrayBuffer(4)
+    const dv = new DataView(buf)
+    dv.setUint16(0, 0x0000, true)
+    dv.setUint16(2, 0x0004, true)
+
+    expect(() => {
+      MixFileRuntime.parseAuto('hex.mix', buf)
+    }).toThrow(/00 00 04 00/)
+  })
+
+  it('encrypted fallthrough: when parseEncrypted fails, tries Westwood classic', () => {
+    // Use OpenRA format (firstUint16=0, secondUint16=2 = encrypted).
+    // Buffer is only 10 bytes — too small for the 80-byte RSA keyblock at offset 4.
+    // parseEncrypted throws RangeError → falls through.
+    // isWestwoodClassicFormat returns false (secondUint16 bit 1 set) → unrecognized.
+    //
+    // NOTE: Cannot use universal key (firstUint16=1) because 1 >= MIN_CNC_FILES,
+    // so isCncFormat returns true and parseAuto routes to parse() instead.
+    const buf = new ArrayBuffer(10)
+    const dv = new DataView(buf)
+    dv.setUint16(0, 0x0000, true)   // OpenRA format marker
+    dv.setUint16(2, 0x0002, true)   // encrypted flag (bit 1 set)
+
+    expect(() => {
+      MixFileRuntime.parseAuto('fallthrough.mix', buf)
+    }).toThrow(/not a recognized MIX format/i)
+  })
+
+  it('passes mixDb through to the underlying parser', () => {
+    const files: FileSpec[] = [
+      { hash: HASH_A, data: FILE_A_DATA },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+
+    const mixDb = new Map<string, string>()
+    mixDb.set(FILE_A_HASH_KEY, 'resolved.shp')
+
+    const mix = MixFileRuntime.parseAuto('withmixdb.mix', buf, mixDb)
+
+    expect(mix.contains('resolved.shp')).toBe(true)
+  })
+
+  it('returns correct data via parseAuto for Westwood classic', async () => {
+    const data = strToData('parseAuto test data')
+    const files: FileSpec[] = [
+      { hash: 0xABAB0001, data },
+    ]
+    const buf = createWestwoodClassicMixBuffer(files)
+
+    const mixDb = new Map<string, string>()
+    mixDb.set('0xABAB0001', 'autoroute.dat')
+
+    const mix = MixFileRuntime.parseAuto('autoroute.mix', buf, mixDb)
+    const result = await mix.open('autoroute.dat')
+
+    expect(result).not.toBeNull()
+    expect(new TextDecoder().decode(result!)).toBe('parseAuto test data')
   })
 })
