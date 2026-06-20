@@ -1,7 +1,7 @@
 /**
  * build-mods.ts — OpenRA mod data → web format build script
  *
- * 对应 TODO-22.E.1 / TODO-22.E.2 / TODO-22.E.3 / TODO-22.E.4
+ * 对应 TODO-22.E.1 / TODO-22.E.2 / TODO-22.E.3 / TODO-22.E.4 / TODO-27.A.2
  *
  * 将 OpenRA mod.yaml + rules/weapons/sequences YAML 转换为
  * public/mods/{id}/mod.json + rules/*.json + weapons/*.json
@@ -123,12 +123,17 @@ async function main() {
   if (!fs.existsSync(commonModJsonPath)) {
     fs.mkdirSync(commonModDir, { recursive: true })
 
-    // Scan the chrome/ directory to build ChromeLayout entries
-    const commonChromeDir = path.join(commonModDir, 'chrome')
+    // Scan the SOURCE chrome/ directory to build ChromeLayout entries.
+    // We use .yaml extensions to match the mod.yaml convention — all mods
+    // (including common) use consistent .yaml entries here. Phase B runtime
+    // (WidgetLoader/ChromeProvider) handles the .yaml → .json extension
+    // mapping when resolving layout paths at load time.
+    // See TODO-27.A.2, TODO-27.B.2.
+    const commonSrcChromeDir = path.join(OPENRA_MODS_DIR, 'common', 'chrome')
     const chromeLayoutEntries: string[] = []
-    if (fs.existsSync(commonChromeDir)) {
-      for (const file of fs.readdirSync(commonChromeDir)) {
-        if (file.endsWith('.json')) {
+    if (fs.existsSync(commonSrcChromeDir)) {
+      for (const file of fs.readdirSync(commonSrcChromeDir)) {
+        if (file.endsWith('.yaml')) {
           chromeLayoutEntries.push(`common|chrome/${file}`)
         }
       }

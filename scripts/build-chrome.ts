@@ -28,7 +28,14 @@ import { MiniYamlParser } from '../src/utils/miniyaml-to-json.ts'
 const OPENRA_MODS_DIR = path.resolve(import.meta.dirname, '..', 'OpenRA', 'mods')
 const PUBLIC_MODS_DIR = path.resolve(import.meta.dirname, '..', 'public', 'mods')
 
-/** Mod IDs mapping for mods with chrome assets. */
+/** Mod IDs mapping for mods with chrome assets.
+ *
+ * Note on modDir values:
+ * - 'ra' / 'common' / 'd2k' / 'ts': modDir matches modId (same directory name)
+ * - 'td': modDir='cnc' because Tiberian Dawn uses the 'cnc' directory in OpenRA's
+ *   source tree (matching OpenRA's internal naming convention where TD is the
+ *   "C&C" brand). The public-facing modId 'td' is used for output.
+ */
 const CHROME_MODS: Array<{ modId: string; modDir: string }> = [
   { modId: 'common', modDir: 'common' },
   { modId: 'ra', modDir: 'ra' },
@@ -36,6 +43,13 @@ const CHROME_MODS: Array<{ modId: string; modDir: string }> = [
   { modId: 'd2k', modDir: 'd2k' },
   { modId: 'ts', modDir: 'ts' },
 ]
+
+// ---------------------------------------------------------------------------
+// Module-level MiniYamlParser singleton — reused across all file conversions
+// to avoid per-file allocations. Chrome YAML files always use inheritance
+// resolution (^ overlay definitions like ^Sidebar, ^Dialog).
+// ---------------------------------------------------------------------------
+const chromeParser = new MiniYamlParser({ resolveInherits: true })
 
 // ---------------------------------------------------------------------------
 // Main
@@ -148,8 +162,7 @@ function convertChromeDirectory(srcDir: string, modId: string): number {
 
     try {
       const yamlContent = fs.readFileSync(srcPath, 'utf-8')
-      const parser = new MiniYamlParser({ resolveInherits: true })
-      const parsed = parser.parse(yamlContent)
+      const parsed = chromeParser.parse(yamlContent)
       fs.writeFileSync(outPath, JSON.stringify(parsed, null, 2), 'utf-8')
       converted++
     } catch (e) {
@@ -191,8 +204,7 @@ function convertTopLevelChromeYaml(srcPath: string, modId: string): boolean {
 
   try {
     const yamlContent = fs.readFileSync(srcPath, 'utf-8')
-    const parser = new MiniYamlParser({ resolveInherits: true })
-    const parsed = parser.parse(yamlContent)
+    const parsed = chromeParser.parse(yamlContent)
     fs.writeFileSync(outPath, JSON.stringify(parsed, null, 2), 'utf-8')
     console.log(`  [chrome.yaml] Wrote -> ${outPath}`)
     return true
@@ -212,20 +224,19 @@ function convertTopLevelChromeYaml(srcPath: string, modId: string): boolean {
  * Detect if this script is the main entry point (directly executed via tsx)
  * vs. being imported as a module by build-mods.ts.
  *
- * Uses process.argv[1] comparison: when tsx runs a script, argv[1] is the
- * script path. We compare it against import.meta.url (file:// URL).
+ * Uses path.resolve() for exact comparison: normalizes relative paths,
+ * Windows backslashes, and trailing separators before comparing.
+ * When tsx runs a script, process.argv[1] is the script path.
+ * import.meta.url provides the canonical file:// URL for this module.
  */
 function isMainModule(): boolean {
   const entryPoint = process.argv[1]
   if (!entryPoint) return false
 
-  // Normalize Windows backslashes to forward slashes
-  const normalizedEntry = entryPoint.replace(/\\/g, '/')
-
-  // import.meta.url is file:///path/to/script.ts
+  // import.meta.url is file:///absolute/path/to/script.ts (or file:///E:/... on Windows)
   const urlPath = import.meta.url.replace(/^file:\/\/\//, '').replace(/^file:\/\//, '')
 
-  return urlPath.endsWith(normalizedEntry) || normalizedEntry.endsWith(urlPath)
+  return path.resolve(urlPath) === path.resolve(entryPoint)
 }
 
 if (isMainModule()) {
