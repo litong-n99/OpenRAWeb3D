@@ -1,6 +1,6 @@
 # Ch25 Frozen Actor Flash 3D — Acceptance Test
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (Approved — R1 fixes applied)
 
 ## 对应模块
 - `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts` — FrozenActor.Flash(), _applyFlashTint(), _revertFlashTint(), Tick()

@@ -1,6 +1,6 @@
 # Ch25 Shroud Overlay 3D — Acceptance Test
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (Approved — R1 fixes applied)
 **创建日期**: 2026-06-20
 **对应模块**: `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.ts` (Ch25 Phase A)
 
