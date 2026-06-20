@@ -31,6 +31,8 @@ const OVERLAY_ID = 'content-installer-overlay'
 const PANEL_ID = 'content-installer-panel'
 const PACKAGE_LIST_ID = 'content-installer-package-list'
 const PROGRESS_CONTAINER_ID = 'content-installer-progress'
+const STATUS_TEXT_ID = 'content-installer-status'
+const PROGRESS_BAR_ID = 'content-installer-progress-bar'
 const BUTTON_BAR_ID = 'content-installer-button-bar'
 const INSTALL_ALL_BTN_ID = 'content-installer-install-all'
 const PLAY_BTN_ID = 'content-installer-play'
@@ -67,6 +69,10 @@ export class ContentInstallerUI {
   private static _modId: string | null = null
   /** Cached content manifest for auto-play detection. */
   private static _manifest: ModContentManifest | null = null
+  /** Status text element in the auto-progress view. */
+  private static _statusEl: HTMLElement | null = null
+  /** Progress bar element in the auto-progress view. */
+  private static _progressEl: HTMLProgressElement | null = null
 
   /** Reference to the service instance. */
   private static _service: ContentInstallerService | null = null
@@ -145,9 +151,9 @@ export class ContentInstallerUI {
     ContentInstallerUI._lastProgressTime = 0
     ContentInstallerUI._lastProgressBytes = 0
 
-    // Subscribe to progress
+    // Subscribe to simplified auto-progress handler (no buttons, no package list)
     ContentInstallerUI._unsubscribe = service.onProgress((progress) => {
-      ContentInstallerUI._handleProgress(progress)
+      ContentInstallerUI._handleAutoProgress(progress)
     })
 
     // Create backdrop
@@ -225,24 +231,49 @@ export class ContentInstallerUI {
     backdrop.appendChild(panel)
     document.body.appendChild(backdrop)
 
-    // Load manifest and render package list
+    // Load manifest
     const manifest = await service.getContentManifest(modId)
     ContentInstallerUI._manifest = manifest
-    if (manifest) {
-      ContentInstallerUI._renderPackageList(pkgList, manifest, modId)
+
+    // Remove unused UI sections — auto-install flow shows only progress
+    buttonBar.remove()
+    pkgList.remove()
+    storageSection.remove()
+    clearModSection.remove()
+    otherModsNotice.remove()
+
+    // Update description for auto-install
+    desc.textContent =
+      'Downloading game assets from OpenRA mirrors. ' +
+      'This only happens once — assets are cached for future visits.'
+    desc.style.color = '#aabbcc'
+
+    if (manifest && Object.keys(manifest.packages).length > 0) {
+      // Show progress container
+      progressContainer.style.display = ''
+      ContentInstallerUI._showAutoProgress()
+      // Auto-trigger install — no button click needed
+      try {
+        await service.installAllParallel(modId, 2)
+        // All installed — auto-play
+        ContentInstallerUI._showAutoPlayBanner()
+        setTimeout(() => {
+          const done = ContentInstallerUI._onComplete
+          ContentInstallerUI.hide()
+          done?.()
+        }, 2000)
+      } catch (err) {
+        if (ContentInstallerUI._statusEl) {
+          ContentInstallerUI._statusEl.textContent =
+            'Download failed. Please check your connection and refresh the page.'
+          ContentInstallerUI._statusEl.style.color = '#ff8888'
+        }
+      }
+    } else {
+      // No content installer for this mod — proceed directly
+      ContentInstallerUI.hide()
+      onComplete()
     }
-
-    // Render button bar
-    ContentInstallerUI._renderButtonBar(buttonBar, manifest)
-
-    // Render storage breakdown
-    await ContentInstallerUI._renderStorageBreakdown(storageSection, modId)
-
-    // Render per-mod clear buttons
-    await ContentInstallerUI._renderClearModButtons(clearModSection, modId, manifest)
-
-    // Detect other mods' content and show notice if applicable
-    await ContentInstallerUI._checkOtherModsContent(otherModsNotice, modId)
   }
 
   /**
@@ -291,6 +322,35 @@ export class ContentInstallerUI {
    * Show a brief "Starting game..." banner after installation completes.
    * Gives the user visual feedback before auto-transitioning to the game.
    */
+  /**
+   * Show the auto-progress view: a simple progress bar with status text.
+   * Used when auto-installing on first visit — no buttons, just progress.
+   */
+  private static _showAutoProgress(): void {
+    const container = document.getElementById(PROGRESS_CONTAINER_ID)
+    if (!container) return
+    container.style.display = ''
+
+    // Status text
+    const status = document.createElement('div')
+    status.id = STATUS_TEXT_ID
+    status.style.cssText =
+      'margin-bottom:12px;font-size:0.95rem;color:#aabbcc;text-align:center;'
+    status.textContent = 'Connecting to OpenRA mirrors...'
+    container.appendChild(status)
+    ContentInstallerUI._statusEl = status
+
+    // Progress bar
+    const bar = document.createElement('progress')
+    bar.id = PROGRESS_BAR_ID
+    bar.max = 100
+    bar.value = 0
+    bar.style.cssText =
+      'width:100%;height:20px;border-radius:8px;appearance:none;'
+    container.appendChild(bar)
+    ContentInstallerUI._progressEl = bar
+  }
+
   private static _showAutoPlayBanner(): void {
     const panel = document.getElementById(PANEL_ID)
     if (!panel) return
@@ -1056,6 +1116,24 @@ export class ContentInstallerUI {
    *
    * Updates the progress view based on the current installation state.
    */
+  /**
+   * Simplified progress handler for auto-install mode.
+   * Only updates the status text and progress bar — no buttons or package list.
+   */
+  private static _handleAutoProgress(progress: ContentInstallProgress): void {
+    if (!ContentInstallerUI._visible) return
+
+    // Update status text
+    if (ContentInstallerUI._statusEl) {
+      ContentInstallerUI._statusEl.textContent = progress.statusText
+    }
+
+    // Update progress bar
+    if (ContentInstallerUI._progressEl && progress.progressPercent >= 0) {
+      ContentInstallerUI._progressEl.value = progress.progressPercent
+    }
+  }
+
   private static _handleProgress(progress: ContentInstallProgress): void {
     if (!ContentInstallerUI._visible) return
 
