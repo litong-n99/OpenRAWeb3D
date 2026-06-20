@@ -350,11 +350,23 @@ export class FrozenActor {
    */
   private _flashModifiers: number = 0
 
+  /**
+   * Snapshot of the material's original emissive color captured on the
+   * first flash ON cycle. Used to restore emissive during OFF cycles
+   * so that multiplicative flash tint works correctly on repeat blinks.
+   *
+   * null when not flashing, or after flash expiry.
+   */
+  private _savedEmissive: { r: number; g: number; b: number } | null = null
+
   // -----------------------------------------------------------------------
   // Static defaults
   // -----------------------------------------------------------------------
 
   private static readonly _noRenderables: readonly IRenderable[] = []
+
+  /** Frozen black emissive constant (no per-frame allocation). */
+  private static readonly _BLACK_EMISSIVE = Object.freeze({ r: 0, g: 0, b: 0 })
 
   // -----------------------------------------------------------------------
   // Construction
@@ -716,6 +728,12 @@ export class FrozenActor {
       }
     }
 
+    // Reset saved emissive when flash fully expires so the next Flash()
+    // call captures a fresh original.
+    if (this._flashTicks === 0 && this._savedEmissive !== null) {
+      this._savedEmissive = null
+    }
+
     if (this.UpdateVisibilityNextTick) {
       this._updateVisibility()
     }
@@ -823,6 +841,7 @@ export class FrozenActor {
     arg: { r: number; g: number; b: number },
     alpha?: number,
   ): void {
+    this._savedEmissive = null
     this._flashTicks = 5
 
     if (alpha !== undefined) {
@@ -944,22 +963,33 @@ export class FrozenActor {
     const tint = this._flashTint
     const alpha = this._flashAlpha
     const isReplaceColor = this._flashModifiers === 1 // TintModifiers.ReplaceColor
+    const isInitialApply = this._savedEmissive === null
 
     for (const r of this.Renderables) {
       const mesh = r as unknown as Record<string, unknown>
       const material = mesh['material'] as Record<string, unknown> | undefined
       if (!material) continue
 
+      // Snapshot the original emissive on the first ON cycle so that
+      // subsequent OFF→ON cycles use the same base value. Without this,
+      // a prior _revertFlashTint set emissive to {0,0,0} and the second
+      // blink would multiply by zero, producing no visible flash.
+      if (isInitialApply) {
+        const existing = (material['emissiveColor'] as { r: number; g: number; b: number } | undefined)
+          ?? FrozenActor._BLACK_EMISSIVE
+        this._savedEmissive = { r: existing.r, g: existing.g, b: existing.b }
+      }
+
       if (isReplaceColor) {
         // ReplaceColor: set emissive directly to tint color
         material['emissiveColor'] = { r: tint.r, g: tint.g, b: tint.b }
       } else {
-        // Multiplicative tint: multiply existing emissive by tint
-        const existing = (material['emissiveColor'] as { r: number; g: number; b: number } | undefined) ?? { r: 0, g: 0, b: 0 }
+        // Multiplicative tint: multiply the SAVED original by tint (not
+        // the current value, which may have been zeroed by _revertFlashTint).
         material['emissiveColor'] = {
-          r: existing.r * tint.r,
-          g: existing.g * tint.g,
-          b: existing.b * tint.b,
+          r: this._savedEmissive!.r * tint.r,
+          g: this._savedEmissive!.g * tint.g,
+          b: this._savedEmissive!.b * tint.b,
         }
       }
 
@@ -985,9 +1015,18 @@ export class FrozenActor {
       const material = mesh['material'] as Record<string, unknown> | undefined
       if (!material) continue
 
-      // Revert to default: no emission, full alpha
-      material['emissiveColor'] = { r: 0, g: 0, b: 0 }
-      material['alpha'] = 1.0
+      // Restore original emissive (or black if none was captured).
+      // Using the saved original ensures subsequent ON cycles have a
+      // non-zero base for multiplicative tinting.
+      const restoreColor = this._savedEmissive ?? FrozenActor._BLACK_EMISSIVE
+      material['emissiveColor'] = { r: restoreColor.r, g: restoreColor.g, b: restoreColor.b }
+
+      // Only revert alpha if we actually modified it during apply.
+      // Unconditionally setting alpha=1 would corrupt a frozen actor's
+      // custom alpha when Flash(float3) (no alpha) was used.
+      if (this._flashAlpha !== null) {
+        material['alpha'] = 1.0
+      }
     }
   }
 

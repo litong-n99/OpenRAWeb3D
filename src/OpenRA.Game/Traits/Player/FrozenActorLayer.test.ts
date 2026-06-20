@@ -762,13 +762,12 @@ describe('FrozenActor', () => {
       })
       expect(material.alpha).toBe(1.0) // flashAlpha is null (float3 overload)
 
-      // Tick: 4→3 (odd) → revert
+      // Tick: 4→3 (odd) → revert (restores original emissive from _savedEmissive)
       fa.Tick()
-      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
-      expect(material.alpha).toBe(1.0)
+      expect(material.emissiveColor).toEqual({ r: 0.2, g: 0.4, b: 0.6 })
+      expect(material.alpha).toBe(1.0) // flashAlpha is null (float3 overload, not reverted)
 
-      // Tick: 3→2 (even) → apply again
-      material.emissiveColor = { r: 0.2, g: 0.4, b: 0.6 } // restore pre-apply state
+      // Tick: 3→2 (even) → apply again (_savedEmissive provides original base)
       fa.Tick()
       expect(material.emissiveColor).toEqual({
         r: 0.2 * 0.5,
@@ -792,10 +791,10 @@ describe('FrozenActor', () => {
       expect(material.emissiveColor).toEqual({ r: 1.0, g: 128 / 255, b: 0 })
       expect(material.alpha).toBe(0.5)
 
-      // Tick: 4→3 (odd) → revert
+      // Tick: 4→3 (odd) → revert (restores original emissive from _savedEmissive)
       fa.Tick()
-      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
-      expect(material.alpha).toBe(1.0)
+      expect(material.emissiveColor).toEqual({ r: 0.5, g: 0.5, b: 0.5 })
+      expect(material.alpha).toBe(1.0) // _flashAlpha !== null, so alpha is reverted
 
       // Tick: 3→2 (even) → apply again
       fa.Tick()
@@ -822,9 +821,10 @@ describe('FrozenActor', () => {
       fa.Tick() // still 0 → no-op
 
       expect(fa.isFlashing).toBe(false)
-      // After expiry, emissiveColor should be at default (black)
-      // Last Tick() at 1→0 did nothing, but the previous Tick() at 2→1 reverted
-      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+      // After expiry, emissiveColor should be restored to original.
+      // The final _revertFlashTint (at tick 1→0) restores _savedEmissive.
+      // alpha is unchanged because _flashAlpha is null (float3 overload).
+      expect(material.emissiveColor).toEqual({ r: 0.2, g: 0.2, b: 0.2 })
       expect(material.alpha).toBe(1.0)
     })
 
@@ -853,8 +853,8 @@ describe('FrozenActor', () => {
       fa.Renderables = [renderable]
       fa.Flash({ r: 0.5, g: 0.5, b: 0.5 }) // float3
 
-      fa.Tick() // 5 (odd) → revert
-      // _revertFlashTint sets emissiveColor even if it was missing
+      fa.Tick() // 5→4 (even) → apply _applyFlashTint (flashing ON)
+      // _applyFlashTint creates emissiveColor even if it was missing
       expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
     })
 
@@ -892,7 +892,7 @@ describe('FrozenActor', () => {
 
       // Tick: 4→3 (odd) → revert
       fa.Tick()
-      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+      expect(material.emissiveColor).toEqual({ r: 0.2, g: 0.4, b: 0.6 }) // restored from _savedEmissive
     })
   })
 
