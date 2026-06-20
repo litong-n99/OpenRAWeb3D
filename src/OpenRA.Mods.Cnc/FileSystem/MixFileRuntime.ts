@@ -16,6 +16,7 @@
 import type { IReadOnlyPackage, IReadOnlyFileSystem } from '../../OpenRA.Game/FileSystem/IPackage.js'
 import { PackageEntry, PackageHashType } from './PackageEntry.js'
 import { Blowfish } from '../FileFormats/Blowfish.js'
+import { BlowfishKeyProvider } from '../FileFormats/BlowfishKeyProvider.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1164,7 +1165,11 @@ export class MixFileRuntime implements IReadOnlyPackage {
     const keyblockSrc = new Uint8Array(data, OPENRA_KEYBLOCK_OFFSET, OPENRA_KEYBLOCK_SIZE)
 
     // 2. RSA-decrypt the Blowfish key
-    const blowfishKey = MixFileRuntime._rsaDecryptKey(keyblockSrc)
+    // Use BlowfishKeyProvider (exact C# port) instead of BigInt-based
+    // _rsaDecryptKey. The BigInt approach has subtle differences in
+    // modular exponentiation that produce wrong keys for some inputs
+    // (e.g., hires1.mix, lores1.mix).
+    const blowfishKey = new BlowfishKeyProvider().decryptKey(keyblockSrc)
 
     // 3. Create Blowfish cipher
     const fish = new Blowfish(blowfishKey)
@@ -1296,7 +1301,7 @@ export class MixFileRuntime implements IReadOnlyPackage {
 
     // Extract and decrypt the Blowfish key
     const keyblockSrc = new Uint8Array(data, 4, OPENRA_KEYBLOCK_SIZE)
-    const blowfishKey = MixFileRuntime._rsaDecryptKey(keyblockSrc)
+    const blowfishKey = new BlowfishKeyProvider().decryptKey(keyblockSrc)
     const fish = new Blowfish(blowfishKey)
 
     // Decrypt header — same layout as OpenRA format (header at offset 84)
