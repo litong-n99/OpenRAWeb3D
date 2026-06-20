@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map Loading &amp; Actor Spawning — Ch26 Phase A | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 340px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 600; transition: background 0.15s, color 0.15s; margin-top: 4px; }
+    .control-group button.action-btn { border: 1px solid #3399ff; background: #1a1a2e; color: #3399ff; }
+    .control-group button.action-btn:hover { background: #3399ff; color: #1a1a2e; }
+    .control-group button.highlight-btn { border: 1px solid #2ecc71; background: #1a1a2e; color: #2ecc71; }
+    .control-group button.highlight-btn:hover { background: #2ecc71; color: #1a1a2e; }
+    .control-group button.highlight-btn.active { background: #2ecc71; color: #1a1a2e; }
+    .control-group button.reset-btn { border: 1px solid #f39c12; background: #1a1a2e; color: #f39c12; }
+    .control-group button.reset-btn:hover { background: #f39c12; color: #1a1a2e; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; margin-top: 4px; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    .info-row .val.highlight { color: #3399ff; font-weight: 600; }
+    .info-row .val.player-red { color: #e74c3c; }
+    .info-row .val.player-blue { color: #3498db; }
+    .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .legend-dot.red { background: #e74c3c; box-shadow: 0 0 4px #e74c3c; }
+    .legend-dot.blue { background: #3498db; box-shadow: 0 0 4px #3498db; }
+    .legend-dot.terrain { background: #5a7a3a; box-shadow: 0 0 4px #5a7a3a; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Map Loading &amp; Actor Spawning — Ch26 Phase A 集成验证</h1>
+    <div class="subtitle">ID: ch26-integration/map-loading | 期望结果见 README.md | OpenRA 对照: Map.ts + TraitFactory.ts + World.ts</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C1. 场景控制</h3>
+        <button id="btn-highlight-p1" class="action-btn">高亮 Player 1 (Red) 单位</button>
+        <button id="btn-highlight-p2" class="action-btn">高亮 Player 2 (Blue) 单位</button>
+        <button id="btn-highlight-all" class="highlight-btn active">显示全部单位</button>
+        <button id="btn-reset" class="reset-btn">复位摄像机</button>
+      </div>
+
+      <div class="control-group">
+        <h3>C2. 地图元数据</h3>
+        <div class="info-row">
+          <span>地图名称:</span>
+          <span class="val" id="meta-name">Test Map (16x16)</span>
+        </div>
+        <div class="info-row">
+          <span>地图尺寸:</span>
+          <span class="val" id="meta-size">16 x 16 cells</span>
+        </div>
+        <div class="info-row">
+          <span>地形类型:</span>
+          <span class="val" id="meta-terrain">Clear (100%)</span>
+        </div>
+        <div class="info-row">
+          <span>玩家数量:</span>
+          <span class="val" id="meta-players">2</span>
+        </div>
+        <div class="info-row">
+          <span>Actor 总数:</span>
+          <span class="val highlight" id="meta-actors">6</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>C3. Player 1 (Red) — 单位列表</h3>
+        <div class="info-row">
+          <span><span class="legend-dot red"></span>P1-MCV:</span>
+          <span class="val player-red" id="stat-p1-mcv">—</span>
+        </div>
+        <div class="info-row">
+          <span><span class="legend-dot red"></span>P1-Infantry:</span>
+          <span class="val player-red" id="stat-p1-inf">—</span>
+        </div>
+        <div class="info-row">
+          <span><span class="legend-dot red"></span>P1-PowerPlant:</span>
+          <span class="val player-red" id="stat-p1-pp">—</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>C4. Player 2 (Blue) — 单位列表</h3>
+        <div class="info-row">
+          <span><span class="legend-dot blue"></span>P2-MCV:</span>
+          <span class="val player-blue" id="stat-p2-mcv">—</span>
+        </div>
+        <div class="info-row">
+          <span><span class="legend-dot blue"></span>P2-Infantry:</span>
+          <span class="val player-blue" id="stat-p2-inf">—</span>
+        </div>
+        <div class="info-row">
+          <span><span class="legend-dot blue"></span>P2-Barracks:</span>
+          <span class="val player-blue" id="stat-p2-bar">—</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>C5. 图例</h3>
+        <div class="info-row">
+          <span><span class="legend-dot terrain"></span> 绿色地形面:</span>
+          <span class="val">16x16 地图 (Clear 地形)</span>
+        </div>
+        <div class="info-row">
+          <span><span class="legend-dot red"></span> 红色方块:</span>
+          <span class="val">Player 1 单位 (MCV, Infantry, PowerPlant)</span>
+        </div>
+        <div class="info-row">
+          <span><span class="legend-dot blue"></span> 蓝色方块:</span>
+          <span class="val">Player 2 单位 (MCV, Infantry, Barracks)</span>
+        </div>
+        <div class="info-row">
+          <span><span class="legend-dot" style="background:#6d6d6d;box-shadow:0 0 4px #6d6d6d;"></span> 网格线:</span>
+          <span class="val">cell 边界参考线 (1 单位 = 1 cell)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
