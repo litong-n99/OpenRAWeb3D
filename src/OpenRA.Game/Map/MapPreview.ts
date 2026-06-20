@@ -278,6 +278,12 @@ export class MapPreview {
   /** 小地图是否正在生成中。OpenRA 对照: MapPreview.generatingMinimap */
   private _generatingMinimap: boolean
 
+  /** 已渲染的图集精灵引用。OpenRA 对照: private Sprite minimap */
+  private _minimapSprite: unknown = null
+
+  /** 标记预览数据为 PNG 原始字节（需要异步解码为 RGBA 像素）。 */
+  private _needsPngDecode = false
+
   // -------------------------------------------------------------------------
   // Package references
   // -------------------------------------------------------------------------
@@ -340,6 +346,8 @@ export class MapPreview {
     this.preview = null
     this.previewSize = null
     this._generatingMinimap = false
+    this._minimapSprite = null
+    this._needsPngDecode = false
     this._package = null
     this._parentPackage = null
     this._cache = cache
@@ -555,11 +563,9 @@ export class MapPreview {
         this.gridType = remoteData.map_grid_type
 
         // 解码出生点: [x1, y1, x2, y2, ...]
-        // 仅处理完整配对；跳过未配对末尾元素（与 C# 的整数除法一致）
         if (remoteData.spawnpoints && remoteData.spawnpoints.length >= 2) {
           const spawns: { X: number; Y: number }[] = []
-          const pairCount = (remoteData.spawnpoints.length / 2) | 0
-          for (let j = 0; j < pairCount * 2; j += 2) {
+          for (let j = 0; j + 1 < remoteData.spawnpoints.length; j += 2) {
             spawns.push({
               X: remoteData.spawnpoints[j],
               Y: remoteData.spawnpoints[j + 1],
@@ -569,7 +575,10 @@ export class MapPreview {
         }
 
         // 解码 base64 小地图图像
-        if (remoteData.minimap) {
+        // OpenRA 对照: if (cache.LoadPreviewImages && p.Contains("map.png"))
+        const shouldLoadPreview =
+          !this._cache || (this._cache as unknown as Record<string, unknown>).loadPreviewImages !== false
+        if (remoteData.minimap && shouldLoadPreview) {
           try {
             const decoded = this.base64ToUint8Array(remoteData.minimap)
             this.preview = decoded
@@ -577,8 +586,14 @@ export class MapPreview {
             const dims = parsePngDimensions(decoded)
             if (dims) {
               this.previewSize = dims
+              // 远程小地图是 PNG 编码的 — 标记为需要异步解码
+              // TODO: 在后续版本中使用 createImageBitmap + OffscreenCanvas 异步
+              // 解码 PNG 为 RGBA 像素数据，然后触发 cacheMinimap。
+              // 当前 runMinimapLoader 同步路径无法处理 PNG 压缩数据。
+              this._needsPngDecode = true
             }
-            if (this._cache?.cacheMinimap) {
+            // 仅当数据可直接渲染为非 PNG 原始像素时才触发缓存
+            if (!this._needsPngDecode && this._cache?.cacheMinimap) {
               this._cache.cacheMinimap(this)
             }
           } catch {
@@ -623,22 +638,24 @@ export class MapPreview {
   // -------------------------------------------------------------------------
 
   /**
-   * 获取小地图精灵。
+   * 获取小地图图集精灵。
    *
    * OpenRA 对照: MapPreview.GetMinimap()
    *
-   * 如果小地图尚未生成且地图可用，则请求 MapCache 异步缓存它。
+   * 返回已渲染到共享图集中的精灵引用。如果精灵尚未生成且地图可用，
+   * 则触发异步小地图生成（通过 MapCache.cacheMinimap()）。
    *
-   * @returns 如果已缓存则返回小地图精灵，否则返回 null
+   * 注意：此方法返回的是图集精灵（已打包），而非原始像素数据。
+   * 原始像素数据存储于 {@link preview} (Uint8Array) 中，
+   * 由 {@link runMinimapLoader} 通过 SheetBuilder.addSimple() 转换为精灵。
+   *
+   * @returns 如果已缓存则返回图集精灵，否则返回 null
    */
   getMinimap(): unknown | null {
-    // NOTE: 小地图精灵缓存需要完整的 Sprite/Sheet 基础设施。
-    // 在 Web 环境中，preview (Uint8Array) 通过 Canvas API 渲染为小地图。
-    // 返回 null 表示"尚未缓存"。
-    if (this.preview !== null) {
-      return this.preview
-    }
+    // 如果已有渲染好的图集精灵，直接返回
+    if (this._minimapSprite !== null) return this._minimapSprite
 
+    // 尚未渲染，触发小地图生成
     if (!this._generatingMinimap && this.status === MapStatus.Available) {
       this._generatingMinimap = true
       if (this._cache?.cacheMinimap) {
@@ -650,26 +667,20 @@ export class MapPreview {
   }
 
   /**
-   * 设置小地图精灵（供 MapCache 缓存回调使用）。
+   * 设置小地图图集精灵（供 MapCache 缓存回调使用）。
    *
    * OpenRA 对照: MapPreview.SetMinimap()
    *
-   * @param minimap -- 小地图精灵数据
-   */
-  /**
-   * 设置小地图精灵（供 MapCache 缓存回调使用）。
+   * 存储由 SheetBuilder.addSimple() 返回的图集精灵引用。
+   * 与 C# 版本的关键区别：C# 中 minimap 参数类型为 Sprite（已打包的图集引用），
+   * TypeScript 中使用 unknown 以保持与模拟/测试的兼容性。
    *
-   * OpenRA 对照: MapPreview.SetMinimap()
-   *
-   * @param minimap — 小地图精灵数据
+   * @param minimap — 图集精灵引用（由 SheetBuilder.addSimple() 返回）
    * @param size — 可选的小地图尺寸（如果调用方已知图像尺寸）
    */
   setMinimap(minimap: unknown, size?: { width: number; height: number }): void {
-    // NOTE: TypeScript 中，小地图存储为预览像素数据。
-    // 当完整的 Sprite 基础设施集成后，此方法将存储实际的 Sprite 引用。
-    if (minimap instanceof Uint8Array) {
-      this.preview = minimap
-    }
+    // 存储渲染后的图集精灵引用
+    this._minimapSprite = minimap
     if (size) {
       this.previewSize = size
     }
@@ -865,6 +876,8 @@ export class MapPreview {
     this._parentPackage = null
     this.preview = null
     this.previewSize = null
+    this._minimapSprite = null
+    this._needsPngDecode = false
   }
 
   /**

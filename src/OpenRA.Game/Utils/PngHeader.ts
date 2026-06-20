@@ -54,6 +54,7 @@ export function parsePngDimensions(
   if (ihdrLength !== 13) return null
 
   // 验证 "IHDR" ASCII 标签，偏移 12-15
+  // IHDR tag is always ASCII; String.fromCharCode is safe here
   const ihdrTag = String.fromCharCode(
     data[12],
     data[13],
@@ -63,12 +64,13 @@ export function parsePngDimensions(
   if (ihdrTag !== 'IHDR') return null
 
   // 宽度（大端序），偏移 16-19
+  // >>> 0 防止移位产生有符号 32 位负数（如 0xFFFFFFFF → -1）
   const width =
-    (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19]
+    ((data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19]) >>> 0
 
   // 高度（大端序），偏移 20-23
   const height =
-    (data[20] << 24) | (data[21] << 16) | (data[22] << 8) | data[23]
+    ((data[20] << 24) | (data[21] << 16) | (data[22] << 8) | data[23]) >>> 0
 
   return { width, height }
 }

@@ -835,13 +835,14 @@ describe('MapCache', () => {
     /**
      * Helper: configure cache for minimap loader testing.
      *
-     * Mocks addSimple on the sheetBuilder and overrides getMinimap() on each
-     * preview to return null (simulating "not yet cached" state) so the filter
-     * in runMinimapLoader passes.
+     * Mocks addSimple on the sheetBuilder. The fixed getMinimap() returns
+     * _minimapSprite (null by default) rather than raw preview pixel data,
+     * so the filter in runMinimapLoader correctly includes previews that
+     * have pixel data but not yet a cached atlas sprite.
      */
     function setupMinimapLoaderTest(
       cache: MapCache,
-      previews: MapPreview[],
+      _previews: MapPreview[],
       addSimpleImpl?: () => Uint8Array,
     ): {
       addSimpleSpy: ReturnType<typeof vi.fn>
@@ -857,12 +858,10 @@ describe('MapCache', () => {
       sheetBuilder.addSimple = addSimpleSpy
       sheetBuilder.current = { releaseBuffer: releaseBufferSpy }
 
-      // Override getMinimap() on each preview to return null, so the runMinimapLoader
-      // filter includes them. (By default getMinimap() returns preview, which is
-      // non-null raw pixel data, incorrectly making the filter skip the preview.)
-      for (const p of previews) {
-        p.getMinimap = () => null
-      }
+      // The fixed getMinimap() returns _minimapSprite (null by default)
+      // rather than raw preview pixel data, so previews with pixel data
+      // but no cached atlas sprite are correctly included by the filter.
+      // No override needed.
 
       return { addSimpleSpy, releaseBufferSpy }
     }
@@ -1066,6 +1065,43 @@ describe('MapCache', () => {
       expect((cache as any)._previewLoaderShutdown).toBe(true)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       expect((cache as any)._previewLoaderRunning).toBe(false)
+    })
+
+    it('skips previews flagged with _needsPngDecode', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      // Preview with PNG data that needs async decode -- should be skipped
+      const pngPreview = cache.get('uid-png-skip')
+      pngPreview.status = MapStatus.Available
+      pngPreview.preview = new Uint8Array(128 * 128 * 4)
+      pngPreview.previewSize = { width: 128, height: 128 }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(pngPreview as any)._needsPngDecode = true
+
+      // Normal preview that will trigger addSimple and cancel the loader
+      const normalPreview = cache.get('uid-normal')
+      normalPreview.status = MapStatus.Available
+      normalPreview.preview = new Uint8Array(16 * 16 * 4)
+      normalPreview.previewSize = { width: 16, height: 16 }
+
+      const { addSimpleSpy } = setupMinimapLoaderTest(
+        cache,
+        [pngPreview, normalPreview],
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(cache as any)._previewLoaderCancelled = true
+          return new Uint8Array(4)
+        },
+      )
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._generateMinimap.push(pngPreview, normalPreview)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (cache as any).runMinimapLoader()
+
+      // addSimple should be called exactly once (only for the normal preview;
+      // the _needsPngDecode preview is skipped by the continue statement)
+      expect(addSimpleSpy).toHaveBeenCalledTimes(1)
     })
   })
 

@@ -676,6 +676,75 @@ describe('completeRemoteSearch', () => {
     // Should have parsed the first pair
     expect(preview.spawnPoints.length).toBe(1)
   })
+
+  it('marks _needsPngDecode for PNG-encoded remote minimap data', () => {
+    // 创建一个 1x1 最小 PNG（base64 编码）
+    const pngBytes = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // signature
+      0, 0, 0, 13, // IHDR length = 13
+      0x49, 0x48, 0x44, 0x52, // "IHDR"
+      0, 0, 0, 1, // width = 1
+      0, 0, 0, 1, // height = 1
+      8, 2, 0, 0, 0, // bit depth, color type, etc.
+      0, 0, 0, 0, // CRC placeholder
+    ])
+    const base64Png = btoa(String.fromCharCode(...pngBytes))
+
+    const data: RemoteMapData = {
+      title: 'PNG Map',
+      author: 'Author',
+      categories: [],
+      players: 2,
+      bounds: { X: 0, Y: 0, Width: 64, Height: 64 },
+      spawnpoints: [],
+      map_grid_type: MapGridType.Rectangular,
+      minimap: base64Png,
+      downloading: true,
+      tileset: 'temperat',
+      rules: '',
+      players_block: '',
+      mapformat: 12,
+      game_mod: 'ra',
+    }
+
+    preview.completeRemoteSearch(data)
+
+    // Raw PNG bytes stored in preview
+    expect(preview.preview).not.toBeNull()
+    // Dimensions extracted from PNG header
+    expect(preview.previewSize).toEqual({ width: 1, height: 1 })
+    // Flagged for async decode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((preview as any)._needsPngDecode).toBe(true)
+  })
+
+  it('skips minimap loading when loadPreviewImages is false on cache', () => {
+    const cache = createMockCacheRef({ loadPreviewImages: false } as unknown as Partial<MapCacheRef>)
+    const p = new MapPreview(null, 'remote-uid-2', MapGridType.Rectangular, cache)
+    p.beginRemoteSearch()
+
+    const data: RemoteMapData = {
+      title: 'No Preview Map',
+      author: 'Author',
+      categories: [],
+      players: 2,
+      bounds: { X: 0, Y: 0, Width: 64, Height: 64 },
+      spawnpoints: [],
+      map_grid_type: MapGridType.Rectangular,
+      minimap: '',
+      downloading: true,
+      tileset: 'temperat',
+      rules: '',
+      players_block: '',
+      mapformat: 12,
+      game_mod: 'ra',
+    }
+
+    p.completeRemoteSearch(data)
+
+    // preview should remain null because loadPreviewImages is false
+    expect(p.preview).toBeNull()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -763,11 +832,20 @@ describe('minimap', () => {
   })
 
   describe('getMinimap', () => {
-    it('returns preview pixels when already cached', () => {
-      const pixels = new Uint8Array([255, 0, 0, 255])
-      preview.preview = pixels
+    it('returns minimap sprite when already cached via setMinimap', () => {
+      const sprite = { _type: 'mock-sprite' }
+      preview.setMinimap(sprite, { width: 32, height: 32 })
       const result = preview.getMinimap()
-      expect(result).toBe(pixels)
+      expect(result).toBe(sprite)
+    })
+
+    it('returns null (not preview) even when raw pixel data exists', () => {
+      // Raw pixel data (preview/ previewSize) is separate from the cached
+      // atlas sprite (_minimapSprite).  getMinimap() only returns the latter.
+      preview.preview = new Uint8Array([255, 0, 0, 255])
+      preview.previewSize = { width: 1, height: 1 }
+      const result = preview.getMinimap()
+      expect(result).toBeNull()
     })
 
     it('returns null and triggers cacheMinimap when not yet cached', () => {
@@ -813,29 +891,23 @@ describe('minimap', () => {
   })
 
   describe('setMinimap', () => {
-    it('stores Uint8Array as preview', () => {
-      const pixels = new Uint8Array([0, 128, 255, 255])
-      preview.setMinimap(pixels)
-      expect(preview.preview).toBe(pixels)
+    it('stores sprite reference and makes it retrievable via getMinimap', () => {
+      const sprite = { id: 'atlas-sprite' }
+      preview.setMinimap(sprite)
+      expect(preview.getMinimap()).toBe(sprite)
     })
 
     it('resets generatingMinimap flag', () => {
       preview.getMinimap() // triggers _generatingMinimap = true
-      preview.setMinimap(new Uint8Array(4))
+      preview.setMinimap({ id: 'sprite' })
 
-      // After setMinimap, subsequent getMinimap should trigger again
-      const cache = createMockCacheRef()
-      const p = new MapPreview(null, 'uid2', MapGridType.Rectangular, cache)
-      p.status = MapStatus.Available
-      p.setMinimap(new Uint8Array(4))
-
-      // Now getMinimap should return the stored preview
-      expect(p.getMinimap()).not.toBeNull()
+      // After setMinimap, getMinimap returns the stored sprite
+      expect(preview.getMinimap()).toEqual({ id: 'sprite' })
     })
 
-    it('ignores non-Uint8Array values', () => {
-      preview.setMinimap('not-a-uint8array')
-      expect(preview.preview).toBeNull()
+    it('stores any value (no instanceof guard — unlike old code)', () => {
+      preview.setMinimap('string-sprite-reference')
+      expect(preview.getMinimap()).toBe('string-sprite-reference')
     })
   })
 
@@ -958,23 +1030,24 @@ describe('minimap', () => {
       )
     })
 
-    it('setMinimap with size stores previewSize', () => {
-      const pixels = new Uint8Array([255, 0, 0, 255])
-      preview.setMinimap(pixels, { width: 128, height: 128 })
+    it('setMinimap with size stores previewSize and makes sprite retrievable', () => {
+      const sprite = { id: 'atlas-ref' }
+      preview.setMinimap(sprite, { width: 128, height: 128 })
       expect(preview.previewSize).toEqual({ width: 128, height: 128 })
-      expect(preview.preview).toBe(pixels)
+      // setMinimap stores the sprite in _minimapSprite, not in preview
+      expect(preview.getMinimap()).toBe(sprite)
     })
 
     it('setMinimap without size preserves existing previewSize', () => {
-      // First set size
-      preview.setMinimap(new Uint8Array(4), { width: 64, height: 64 })
+      // First call with size
+      preview.setMinimap({ id: 'first' }, { width: 64, height: 64 })
       expect(preview.previewSize).toEqual({ width: 64, height: 64 })
       // Then call without size
-      const newPixels = new Uint8Array([1, 2, 3, 4])
-      preview.setMinimap(newPixels)
+      const newSprite = { id: 'second' }
+      preview.setMinimap(newSprite)
       // Size should be preserved
       expect(preview.previewSize).toEqual({ width: 64, height: 64 })
-      expect(preview.preview).toBe(newPixels)
+      expect(preview.getMinimap()).toBe(newSprite)
     })
 
     it('previewSize reset when preview cleared via dispose', () => {
@@ -992,12 +1065,11 @@ describe('minimap', () => {
       expect(preview.previewSize).toEqual({ width: 200, height: 100 })
     })
 
-    it('setMinimap with non-Uint8Array does not change previewSize', () => {
+    it('setMinimap with size updates previewSize regardless of value type', () => {
       preview.previewSize = { width: 50, height: 50 }
-      preview.setMinimap('not-a-uint8array', { width: 99, height: 99 })
-      // Even though minimap was rejected, size parameter should still update
+      preview.setMinimap({ id: 'any-value' }, { width: 99, height: 99 })
+      // Size is always applied — no Uint8Array guard
       expect(preview.previewSize).toEqual({ width: 99, height: 99 })
-      expect(preview.preview).toBeNull()
     })
   })
 })
@@ -1154,6 +1226,21 @@ describe('lifecycle', () => {
 
     it('does not throw when package is null', () => {
       expect(() => preview.dispose()).not.toThrow()
+    })
+
+    it('clears _minimapSprite on dispose', () => {
+      preview.setMinimap({ id: 'atlas-sprite-ref' }, { width: 16, height: 16 })
+      expect(preview.getMinimap()).not.toBeNull()
+      preview.dispose()
+      expect(preview.getMinimap()).toBeNull()
+    })
+
+    it('resets _needsPngDecode on dispose', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(preview as any)._needsPngDecode = true
+      preview.dispose()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((preview as any)._needsPngDecode).toBe(false)
     })
   })
 

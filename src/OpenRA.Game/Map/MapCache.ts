@@ -666,6 +666,11 @@ export class MapCache implements Iterable<MapPreview> {
         // 如果已取消，尽早退出
         if (this._previewLoaderCancelled) break
 
+        // 跳过需要异步 PNG 解码的远程地图预览
+        // TODO: 后续使用 createImageBitmap + OffscreenCanvas 异步解码
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((p as any)._needsPngDecode === true) continue
+
         if (p.preview !== null && p.previewSize !== null) {
           // 验证像素数据长度与尺寸一致
           const expectedSize = p.previewSize.width * p.previewSize.height * 4
@@ -700,6 +705,11 @@ export class MapCache implements Iterable<MapPreview> {
       // Release the buffer by forcing changes to be written out to the texture,
       // allowing the buffer to be reclaimed by GC.
       // OpenRA 对照: Game.RunAfterTick(sheetBuilder.Current.ReleaseBuffer)
+      // NOTE: Per-batch releaseBuffer enables incremental memory reclamation:
+      // each batch's data is flushed to the GPU texture immediately after
+      // processing, allowing the CPU-side buffer to be reused by the next
+      // batch. This prevents unbounded memory growth when processing large
+      // numbers of minimaps.
       if (this._sheetBuilder.current) {
         this._sheetBuilder.current.releaseBuffer()
       }
@@ -845,11 +855,6 @@ export class MapCache implements Iterable<MapPreview> {
   // Dispose
   // -----------------------------------------------------------------------
 
-  /**
-   * 释放所有预览、目录跟踪器和图集构建器。
-   *
-   * OpenRA 对照: MapCache.Dispose()
-   */
   /**
    * 释放所有预览、目录跟踪器和图集构建器。
    *
