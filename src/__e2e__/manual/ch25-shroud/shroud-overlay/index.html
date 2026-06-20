@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch25 Shroud Overlay 3D — Acceptance Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #header {
+      padding: 12px 24px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      flex-shrink: 0;
+    }
+    #header h1 { margin: 0; font-size: 18px; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 2px; }
+    #main {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+    #canvas-panel {
+      flex: 1;
+      position: relative;
+      min-width: 0;
+    }
+    #canvas-panel canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #cell-inspector {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(22, 33, 62, 0.92);
+      color: #eee;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #0f3460;
+      font-size: 12px;
+      line-height: 1.6;
+      pointer-events: none;
+      user-select: none;
+    }
+    #cell-inspector .val { color: #aad; font-family: monospace; }
+    #right-panel {
+      width: 300px;
+      flex-shrink: 0;
+      background: #16213e;
+      border-left: 1px solid #0f3460;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel-section {
+      background: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      padding: 12px;
+    }
+    .panel-section h4 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #8f8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .panel-section label {
+      display: block;
+      font-size: 12px;
+      color: #a0a0b0;
+      margin-bottom: 4px;
+    }
+    .panel-section button {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      border-radius: 4px;
+      border: 1px solid #0f3460;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .panel-section button:hover { background: #0f3460; }
+    .panel-section button.active {
+      background: #0f3460;
+      border-color: #4a9;
+      color: #8f8;
+    }
+    .panel-section button.full-width { text-align: center; }
+    .mode-btn-row {
+      display: flex;
+      gap: 6px;
+    }
+    .mode-btn-row button { flex: 1; text-align: center; }
+    .panel-section input[type="range"] {
+      width: 100%;
+      margin: 4px 0;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 3px 0;
+    }
+    .stat-row .stat-label { color: #a0a0b0; }
+    .stat-row .stat-value { color: #aad; font-family: monospace; }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      padding: 3px 0;
+    }
+    .legend-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      border: 1px solid #0f3460;
+      flex-shrink: 0;
+    }
+    #info-bar {
+      padding: 6px 24px;
+      background: #0f0f1a;
+      font-size: 11px;
+      color: #666;
+      display: flex;
+      gap: 20px;
+      border-top: 1px solid #0f3460;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .value { color: #aaa; }
+    .kbd { font-size: 10px; color: #666; margin-left: 4px; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Ch25 Shroud Overlay 3D — Acceptance Test</h1>
+    <div class="subtitle">ID: ch25-shroud/shroud-overlay | 验证: 3D 迷雾覆盖层 Hidden/Explored/Visible 三态 + 边缘混合 + 视角交互</div>
+  </div>
+
+  <div id="main">
+    <!-- Left: 3D Canvas -->
+    <div id="canvas-panel">
+      <canvas id="renderCanvas"></canvas>
+      <div id="cell-inspector">
+        悬停单元格:<br>
+        坐标: <span class="val" id="insp-coord">-</span><br>
+        状态: <span class="val" id="insp-state">-</span>
+      </div>
+    </div>
+
+    <!-- Right: Controls & Info -->
+    <div id="right-panel">
+      <!-- Mode Selector -->
+      <div class="panel-section">
+        <h4>绘制模式</h4>
+        <div class="mode-btn-row">
+          <button id="btn-reveal" class="active" title="点击将格子设为 Visible (=2)">揭示 (=2)</button>
+          <button id="btn-explore" title="点击将格子设为 Explored (=1)">探索 (=1)</button>
+        </div>
+        <label style="margin-top:8px">影响半径: <span id="val-radius">1</span></label>
+        <input id="range-radius" type="range" min="1" max="4" value="1">
+      </div>
+
+      <!-- Preset Buttons -->
+      <div class="panel-section">
+        <h4>批量操作</h4>
+        <button id="btn-all-hidden" class="full-width">全部隐藏 (Reset)</button>
+        <button id="btn-all-explored" class="full-width">全部探索</button>
+        <button id="btn-all-visible" class="full-width">全部揭示</button>
+        <button id="btn-circular" class="full-width">圆形揭示 (三态同心圆)</button>
+      </div>
+
+      <!-- Statistics -->
+      <div class="panel-section">
+        <h4>状态统计</h4>
+        <div class="stat-row">
+          <span class="stat-label">Hidden (0):</span>
+          <span class="stat-value" id="stat-hidden">256</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Explored (1):</span>
+          <span class="stat-value" id="stat-explored">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Visible (2):</span>
+          <span class="stat-value" id="stat-visible">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">总计:</span>
+          <span class="stat-value" id="stat-total">256</span>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="panel-section">
+        <h4>颜色图例</h4>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: rgba(0,0,0,1);"></div>
+          <span>Hidden: rgba(0,0,0,1.0) 全黑</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: rgba(18,20,32,0.55);"></div>
+          <span>Explored: rgba(18,20,32,0.55)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background: repeating-conic-gradient(#2d5a1e 0 45deg, #357a20 45deg 90deg) 0 0 / 10px 10px;"></div>
+          <span>Visible: 透明 (地形可见)</span>
+        </div>
+      </div>
+
+      <!-- Expected Results Summary -->
+      <div class="panel-section">
+        <h4>期望结果 (概要)</h4>
+        <ul style="font-size:11px; line-height:1.7; padding-left:14px; color:#a0a0b0;">
+          <li>隐藏区域完全黑色不透明</li>
+          <li>探索区域半透明暗蓝灰色</li>
+          <li>可见区域完全透明见地形</li>
+          <li>状态边界有 4px 渐变混合</li>
+          <li>摄像机旋转时覆盖层紧贴地形</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Bar -->
+  <div id="info-bar">
+    <span>UA: <span class="value" id="info-ua">-</span></span>
+    <span>视口: <span class="value" id="info-viewport">-</span></span>
+    <span>引擎: <span class="value" id="info-engine">-</span></span>
+    <span>FPS: <span class="value" id="info-fps">-</span></span>
+    <span>时间: <span class="value" id="info-time">-</span></span>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

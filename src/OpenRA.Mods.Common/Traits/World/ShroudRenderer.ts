@@ -169,6 +169,28 @@ void main(void) {
  *
  * OpenRA 对照: ShroudRenderer's 12-direction sprite-selection logic
  * replaced by per-fragment neighbor sampling + smooth blending.
+ *
+ * ## UV ↔ World Coordinate Mapping (Babylon.js CreateGround)
+ *
+ * The shroud quad is a `MeshBuilder.CreateGround` plane in the XZ plane
+ * (Y is world up). UV coordinates map as follows:
+ *
+ *   U (horizontal texcoord) → X world axis → OpenRA "East"  direction
+ *   V (vertical texcoord)   → Z world axis → OpenRA "South" direction
+ *
+ * In the fragment shader:
+ *   - `cellCoord.x = vUV.x * uMapSize.x` = cell column (East/West)
+ *   - `cellCoord.y = vUV.y * uMapSize.y` = cell row    (South/North)
+ *
+ * Neighbor sampling using uTexelSize offsets:
+ *   - +U texel → neighbor to the East  (rawRight)
+ *   - -U texel → neighbor to the West  (rawLeft)
+ *   - +V texel → neighbor to the South (rawTop)
+ *   - -V texel → neighbor to the North (rawBottom)
+ *
+ * Edge blending directionality:
+ *   - fracPos.x: 0 = West edge, 1 = East edge of cell
+ *   - fracPos.y: 0 = North edge, 1 = South edge of cell
  */
 const SHROUD_FRAGMENT_SHADER = /* glsl */`
 precision highp float;
@@ -185,7 +207,8 @@ void main(void) {
   float rawCenter = texture2D(uVisibilityTexture, vUV).r;
   float centerVis = rawCenter * 127.5;
 
-  // Sample 8 neighbors
+  // Sample 8 neighbors (UV-space offsets → world directions):
+  //   +U = East, -U = West, +V = South, -V = North
   float rawTop    = texture2D(uVisibilityTexture, vUV + vec2(0.0, uTexelSize.y)).r;
   float rawBottom = texture2D(uVisibilityTexture, vUV + vec2(0.0, -uTexelSize.y)).r;
   float rawLeft   = texture2D(uVisibilityTexture, vUV + vec2(-uTexelSize.x, 0.0)).r;
@@ -408,6 +431,10 @@ export class ShroudRenderer extends Component implements IWorldLoaded, IRenderSh
   constructor(world: WorldStub, info: ShroudRendererInfo) {
     super()
     this._info = info
+    // NOTE: C# ShroudRenderer validates that ShroudVariants.Length ==
+    // FogVariants.Length in the constructor. This check is intentionally
+    // omitted here because the 3D shader-based pipeline does not use sprite
+    // variants at all (see TODO-12.DEFERRED.8).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this._map = (world as any).map as GameMap
 
@@ -433,8 +460,10 @@ export class ShroudRenderer extends Component implements IWorldLoaded, IRenderSh
       this._anyCellDirty = true
     }
 
-    // _getCellEdges is called from tests via `as any` cast — suppress TS6133
-    void (this._getCellEdges as unknown)
+    // _getCellEdges is tested directly via dynamic method access in
+    // ShroudRenderer.test.ts; the void reference suppresses TS6133
+    // (noUnusedLocals) while making the testing intent explicit.
+    void this._getCellEdges
 
     // Subscribe to render player changes by wrapping the world's callback.
     // Using != null handles both null and undefined — if the world has no
@@ -582,6 +611,12 @@ export class ShroudRenderer extends Component implements IWorldLoaded, IRenderSh
       Constants.TEXTURE_NEAREST_SAMPLINGMODE,
       Constants.TEXTURETYPE_UNSIGNED_BYTE,
     )
+    // NOTE: The visibility RawTexture uses the default CLAMP_TO_EDGE wrap
+    // mode (RawTexture does not expose wrapU/wrapV). At map borders, neighbor
+    // sampling reads the border texel itself rather than a sentinel "Hidden"
+    // value. This differs slightly from C# where out-of-bounds cells default
+    // to Hidden (0). The visual impact is limited to the outermost cell ring
+    // where map-edge cells blend against themselves instead of fading to black.
 
     // ---- 2. ShaderMaterial ----
     this._shroudMaterial = new ShaderMaterial(
@@ -621,6 +656,13 @@ export class ShroudRenderer extends Component implements IWorldLoaded, IRenderSh
     // Covers the entire map in world space (1 cell = 1 world unit).
     // Positioned at Y = 0.01 to sit just above the terrain surface, preventing
     // z-fighting with terrain geometry.
+    //
+    // MeshBuilder.CreateGround UV layout (XZ plane, Y=up):
+    //   - `width` parameter → X axis extent → U in UV space
+    //   - `height` parameter → Z axis extent → V in UV space
+    //   - UV (0,0) = world (0, 0, 0); UV (1,1) = world (mapWidth, 0, mapHeight)
+    //   - U increases → East (+X); V increases → South (+Z)
+    // This matches OpenRA's cell grid where cell X=East, cell Y=South.
     this._quadMesh = MeshBuilder.CreateGround(
       'shroudOverlay',
       {
