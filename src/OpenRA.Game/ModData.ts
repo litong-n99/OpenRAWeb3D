@@ -210,6 +210,13 @@ export class ModData {
    * 1. 验证依赖（如果提供了 availableMods）
    * 2. 加载 LoadScreen（如果配置了）
    *
+   * ADR-27.3: ChromeProvider 初始化不在此处进行。
+   * ChromeProvider 是一个静态全局单例，由 Game.loadMod() 在
+   * init() + loadRuleSet() 之后初始化。在此处初始化会导致:
+   * - FileSystem 可能在 init() 时尚未完全挂载 chrome 文件夹
+   * - ChromeProvider 生命周期独立于 ModData（跨 mod 切换持久化）
+   * - 错误隔离: ChromeProvider 初始化失败不应阻止 ModData.init()
+   *
    * 调用方职责:
    * - 在调用 init() 之前，调用方必须已通过 FileSystem.mount() 挂载
    *   manifest.mounts 中的所有路径。Game.loadMod() 会在构造 ModData

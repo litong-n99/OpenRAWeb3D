@@ -17,6 +17,7 @@ import { Manifest } from './Manifest.js'
 import { ModData } from './ModData.js'
 import { FileSystem } from './FileSystem/FileSystem.js'
 import { Folder } from './FileSystem/Folder.js'
+import { ChromeProvider } from './Graphics/ChromeProvider.js'
 import { GameWorldManager, WorldType } from './World.js'
 import type { MapStub } from './World.js'
 import type { WorldRendererStub } from './Traits/TraitsInterfaces.js'
@@ -567,7 +568,20 @@ export class Game {
     // 5. 加载 RuleSet
     await this.modData.loadRuleSet()
 
-    // 5.5. 内容安装检查 (CI-A.11)
+    // 6. Initialize ChromeProvider for Widget-based GUI skinning
+    //    (ADR-27.3: ChromeProvider is initialized in Game.ts, not ModData.init())
+    try {
+      await ChromeProvider.initialize(manifest, fileSystem)
+    } catch (e) {
+      console.warn(
+        `[Game] ChromeProvider initialization failed: ${
+          e instanceof Error ? e.message : String(e)
+        }`,
+      )
+      // Non-fatal: game continues with fallback DOM overlay for main menu
+    }
+
+    // 7. 内容安装检查 (CI-A.11)
     this._contentInstaller = new ContentInstallerService(fileSystem)
     const missingPackages = await this._contentInstaller.checkContent(modId)
 
@@ -619,13 +633,18 @@ export class Game {
     manifest: Manifest,
   ): void {
     // Collect path references for asset types that build-mods.ts converts
-    // from YAML to JSON. Other types (voices, notifications, music, cursors,
-    // chrome, etc.) are loaded from MIX archives by the Content Installer
-    // or parsed at runtime from their raw formats.
+    // from YAML to JSON. Chrome/chromeLayout/chromeMetrics provide UI skin
+    // definitions for the Widget system (ChromeProvider + WidgetLoader).
+    // Other types (voices, notifications, music, cursors, etc.) are loaded
+    // from MIX archives by the Content Installer or parsed at runtime from
+    // their raw formats.
     const pathLists = [
       manifest.rules,
       manifest.weapons,
       manifest.sequences,
+      manifest.chrome,
+      manifest.chromeLayout,
+      manifest.chromeMetrics,
     ]
 
     // pkgName → { filePath → URL }
@@ -2212,6 +2231,10 @@ export class Game {
     this.modData?.dispose()
     this.modData = null
 
+    // ChromeProvider is a static singleton — deinitialize before switching
+    // mods to ensure stale collection data doesn't leak into the new mod.
+    ChromeProvider.deinitialize()
+
     // Clean up content installer (hide UI if visible)
     ContentInstallerUI.hide()
     this._contentInstaller = null
@@ -2291,6 +2314,9 @@ export class Game {
     // 6. ModData + FileSystem
     this.modData?.dispose()
     this.modData = null
+
+    // 6.5. ChromeProvider（static singleton — clear skin collections）
+    ChromeProvider.deinitialize()
 
     // 7. Renderer（Engine + Scenes + Cameras + RTT）
     this.renderer?.dispose()
