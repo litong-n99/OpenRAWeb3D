@@ -559,9 +559,39 @@ export class ContentInstallerService {
         )
       }
 
-      // Phase 2: Download
+      // ----- Local content: check public/content/ before hitting CDN -----
+      // When ZIP files are placed in public/content/ (e.g. ra-quickinstall.zip),
+      // fetch them directly without going through the CDN proxy. This avoids
+      // all network issues (502, CORS, rate-limiting) during development.
+      let zipBuffer: ArrayBuffer | null = null
+      const localUrl = this._tryLocalContentUrl(mirrors)
+      if (localUrl) {
+        this._notifyListeners({
+          state: 'downloading',
+          packageId,
+          statusText: 'Loading from local content...',
+          progressPercent: 0,
+          bytesReceived: 0,
+          bytesTotal: -1,
+        })
+
+        const localResponse = await fetch(localUrl)
+        if (localResponse.ok) {
+          zipBuffer = await localResponse.arrayBuffer()
+          this._notifyListeners({
+            state: 'downloading',
+            packageId,
+            statusText: 'Loaded from local content',
+            progressPercent: 100,
+            bytesReceived: zipBuffer.byteLength,
+            bytesTotal: zipBuffer.byteLength,
+          })
+        }
+      }
+
+      // Phase 2: Download (skip if local file was loaded)
       // CI-B.7: Check online status before attempting download
-      if (!this.isOnline) {
+      if (!this.isOnline && !zipBuffer) {
         throw new Error(
           'Cannot download content while offline. ' +
           'Please connect to the internet to download required game assets.',
@@ -579,8 +609,8 @@ export class ContentInstallerService {
       })
 
       // ----- CI-B.8: Cache API warm — check browser cache first -----
-      let zipBuffer: ArrayBuffer | null = null
       const primaryUrl = mirrors[0]!
+      if (!zipBuffer) {
       const cachedData = await this._warmContentCache(
         primaryUrl,
         download.sha1,
@@ -663,6 +693,7 @@ export class ContentInstallerService {
           this._cacheContentUrl(mirrors[0]!, zipBuffer).catch(() => {})
         }
       }
+      } // if (!zipBuffer) — outer guard for cache-warm + download block
 
       // Phase 3: Verify (SHA1 already verified by download step)
       this._setState('verifying')
@@ -987,6 +1018,36 @@ export class ContentInstallerService {
    * @param url — The download URL to cache.
    * @param data — The downloaded content to store.
    */
+  /**
+   * Try to resolve a list of CDN mirror URLs to a local file in public/content/.
+   *
+   * Extracts the filename from each URL (e.g. "ra-quickinstall.zip") and
+   * checks if it exists at `/content/<filename>`. Returns the first match,
+   * or null if no local file is available.
+   *
+   * This enables offline development: place the ZIP files in public/content/
+   * and the content installer loads them directly without CDN access.
+   *
+   * @param urls — CDN mirror URLs to check for local equivalents.
+   * @returns A same-origin URL like "/content/ra-quickinstall.zip", or null.
+   */
+  private _tryLocalContentUrl(urls: string[]): string | null {
+    for (const url of urls) {
+      try {
+        const filename = url.split('/').pop()
+        if (filename && filename.endsWith('.zip')) {
+          // Return the local path — the caller will fetch() it to verify
+          // existence. We don't do a HEAD request here because we want the
+          // data anyway.
+          return `/content/${filename}`
+        }
+      } catch {
+        // URL parsing failed — skip this URL
+      }
+    }
+    return null
+  }
+
   private async _cacheContentUrl(
     url: string,
     data: ArrayBuffer,
