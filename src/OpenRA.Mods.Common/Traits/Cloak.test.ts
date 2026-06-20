@@ -1535,3 +1535,611 @@ describe('Cloak._detectionTypesOverlap', () => {
     expect(result).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Ch25 Phase C (TODO-25.C.2): Detection pulse visual feedback
+// ---------------------------------------------------------------------------
+
+describe('Ch25 Phase C — Detection pulse', () => {
+  /** Create a mock world with players for _isDetectedByAnyEnemy tests. */
+  function mockWorldWithPlayers(
+    players: Record<string, unknown>[],
+    detectors: ReturnType<typeof mockDetectorActor>[] = [],
+  ): Record<string, unknown> {
+    const actorsWithTrait = vi.fn().mockReturnValue(detectors)
+    return {
+      players,
+      actorsWithTrait,
+      addFrameEndTask: vi.fn(),
+      addEffect: vi.fn(),
+    }
+  }
+
+  /** Mock detector actor helper (same as P1-C.5 test section).
+   *
+   * NOTE: isAlliedWith returns true when (a) `isAllied` is true, OR
+   * (b) the viewer is the same player as the detector owner.
+   * This ensures a detector is always allied with its own player,
+   * which is required for `_isDetectedByAnyEnemy` to work correctly.
+   */
+  function mockDetectorActor(
+    ownerName: string,
+    centerPos: WPos,
+    detectionTypes: readonly DetectionType[],
+    rangeLength: number,
+    isAllied: boolean,
+  ) {
+    return {
+      actor: {
+        actorId: 100,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: {
+          playerName: ownerName,
+          isAlliedWith: (viewer: { playerName: string }) =>
+            isAllied || viewer.playerName === ownerName,
+        },
+        centerPosition: centerPos,
+      },
+      trait: {
+        info: { detectionTypes },
+        range: new WDist(rangeLength),
+      },
+    }
+  }
+
+  /** Create a mock mesh with material for emissive pulse tests. */
+  function mockMeshWithMaterial(initialEmissive = { r: 0, g: 0, b: 0 }) {
+    const material = { emissiveColor: { ...initialEmissive } }
+    return {
+      setEnabled: vi.fn(),
+      material,
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // _isDetectedByAnyEnemy
+  // -----------------------------------------------------------------------
+
+  describe('_isDetectedByAnyEnemy', () => {
+    it('returns true when enemy detector is in range', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+
+      const enemyPlayer = { playerName: 'Enemy' }
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+
+      const detector = mockDetectorActor(
+        'Enemy',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        false, // not allied with owner
+      )
+
+      const world = mockWorldWithPlayers([enemyPlayer], [detector])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      const result = (cloak as any)._isDetectedByAnyEnemy(self)
+      expect(result).toBe(true)
+    })
+
+    it('returns false when only owner has detectors (no enemies)', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: () => true,
+      }
+
+      const world = mockWorldWithPlayers([ownerPlayer], [])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      const result = (cloak as any)._isDetectedByAnyEnemy(self)
+      expect(result).toBe(false)
+    })
+
+    it('returns false when detector is allied (friendly detector)', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+
+      const allyPlayer = {
+        playerName: 'Ally',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner' || p.playerName === 'Ally',
+      }
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner' || p.playerName === 'Ally',
+      }
+
+      const detector = mockDetectorActor(
+        'Ally',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        true, // allied with owner
+      )
+
+      const world = mockWorldWithPlayers([allyPlayer], [detector])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      const result = (cloak as any)._isDetectedByAnyEnemy(self)
+      expect(result).toBe(false)
+    })
+
+    it('returns false when world has no players', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+
+      const world = { players: [] }
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: { playerName: 'Owner', isAlliedWith: () => false },
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+      }
+
+      const result = (cloak as any)._isDetectedByAnyEnemy(self)
+      expect(result).toBe(false)
+    })
+
+    it('handles world with players as Map', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+
+      const enemyPlayer = { playerName: 'Enemy' }
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+
+      const detector = mockDetectorActor(
+        'Enemy',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        false,
+      )
+
+      const playersMap = new Map<string, unknown>()
+      playersMap.set('Enemy', enemyPlayer)
+      const world = {
+        players: playersMap,
+        actorsWithTrait: vi.fn().mockReturnValue([detector]),
+        addFrameEndTask: vi.fn(),
+        addEffect: vi.fn(),
+      }
+
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      const result = (cloak as any)._isDetectedByAnyEnemy(self)
+      expect(result).toBe(true)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // _applyDetectionPulse
+  // -----------------------------------------------------------------------
+
+  describe('_applyDetectionPulse', () => {
+    it('sets emissiveColor to white on activation', () => {
+      const info = new CloakInfo()
+      const cloak = new Cloak(info)
+      const mesh = mockMeshWithMaterial()
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        getRenderables,
+      }
+
+      ;(cloak as any)._applyDetectionPulse(self, true)
+
+      expect(getRenderables).toHaveBeenCalled()
+      expect(mesh.material.emissiveColor).toEqual({ r: 0.8, g: 0.8, b: 0.8 })
+    })
+
+    it('reverts emissiveColor to black on deactivation', () => {
+      const info = new CloakInfo()
+      const cloak = new Cloak(info)
+      const mesh = mockMeshWithMaterial({ r: 0.8, g: 0.8, b: 0.8 })
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        getRenderables,
+      }
+
+      ;(cloak as any)._applyDetectionPulse(self, false)
+
+      expect(mesh.material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+    })
+
+    it('handles multiple meshes', () => {
+      const info = new CloakInfo()
+      const cloak = new Cloak(info)
+      const mesh1 = mockMeshWithMaterial()
+      const mesh2 = mockMeshWithMaterial()
+      const getRenderables = vi.fn().mockReturnValue([mesh1, mesh2])
+
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        getRenderables,
+      }
+
+      ;(cloak as any)._applyDetectionPulse(self, true)
+
+      expect(mesh1.material.emissiveColor).toEqual({ r: 0.8, g: 0.8, b: 0.8 })
+      expect(mesh2.material.emissiveColor).toEqual({ r: 0.8, g: 0.8, b: 0.8 })
+    })
+
+    it('handles mesh without material gracefully', () => {
+      const info = new CloakInfo()
+      const cloak = new Cloak(info)
+      const mesh = { setEnabled: vi.fn() } // no material
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        getRenderables,
+      }
+
+      expect(() => {
+        ;(cloak as any)._applyDetectionPulse(self, true)
+      }).not.toThrow()
+    })
+
+    it('handles actor without getRenderables gracefully', () => {
+      const info = new CloakInfo()
+      const cloak = new Cloak(info)
+
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+      }
+
+      expect(() => {
+        ;(cloak as any)._applyDetectionPulse(self, true)
+      }).not.toThrow()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // tick() detection pulse integration
+  // -----------------------------------------------------------------------
+
+  describe('tick detection pulse integration', () => {
+    it('triggers pulse when cloaked and detected for the first time', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+      // Start cloaked
+      cloak.wasCloaked = true
+      cloak.firstTick = false
+
+      const mesh = mockMeshWithMaterial()
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+      const enemyPlayer = { playerName: 'Enemy' }
+
+      const detector = mockDetectorActor(
+        'Enemy',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        false,
+      )
+
+      const world = mockWorldWithPlayers([enemyPlayer], [detector])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        getRenderables,
+        location: { x: 0, y: 0 },
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      expect(cloak.cloaked).toBe(true)
+      // First tick — should detect pulse
+      cloak.tick(self)
+
+      expect(mesh.material.emissiveColor).toEqual({ r: 0.8, g: 0.8, b: 0.8 })
+      expect((cloak as any)._detectionPulseTicks).toBeGreaterThan(0)
+    })
+
+    it('reverts pulse after 5 ticks', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+      cloak.wasCloaked = true
+      cloak.firstTick = false
+
+      const mesh = mockMeshWithMaterial()
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+      const enemyPlayer = { playerName: 'Enemy' }
+
+      const detector = mockDetectorActor(
+        'Enemy',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        false,
+      )
+
+      const world = mockWorldWithPlayers([enemyPlayer], [detector])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        getRenderables,
+        location: { x: 0, y: 0 },
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      // Tick 1: detection triggers pulse (ticks = 5)
+      cloak.tick(self)
+      expect((cloak as any)._detectionPulseTicks).toBe(5)
+
+      // Tick 2-5: count down
+      for (let i = 0; i < 4; i++) {
+        cloak.tick(self)
+      }
+      expect((cloak as any)._detectionPulseTicks).toBe(1)
+
+      // Tick 6: pulse expires (0 -> revert)
+      cloak.tick(self)
+      expect((cloak as any)._detectionPulseTicks).toBe(0)
+      // emissive is reverted on the tick that counts from 1 to 0
+      // but the revert happens when _detectionPulseTicks reaches 0 AFTER decrement
+      // Let's check: after 5 ticks from the trigger, the pulse should be done
+      // Trigger tick: sets to 5, applies emissive
+      // Next 4 ticks: 5->4, 4->3, 3->2, 2->1 (4 ticks)
+      // Next tick: 1->0, reaches 0, reverts
+      // Total: 6 ticks from trigger
+
+      // Actually the revert happened on the last tick. Let's verify emissive is back to black
+      // The mesh emissive should have been set to {r:0,g:0,b:0} on revert
+      expect(mesh.material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+    })
+
+    it('does not trigger pulse when not cloaked', () => {
+      const info = new CloakInfo({ initialDelay: 10, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+      // Not cloaked (remainingTime > 0)
+
+      const mesh = mockMeshWithMaterial()
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+      const enemyPlayer = { playerName: 'Enemy' }
+
+      const detector = mockDetectorActor(
+        'Enemy',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        false,
+      )
+
+      const world = mockWorldWithPlayers([enemyPlayer], [detector])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        getRenderables,
+        location: { x: 0, y: 0 },
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      expect(cloak.cloaked).toBe(false)
+      cloak.tick(self)
+
+      // Pulse should NOT fire — emissive stays default
+      expect(mesh.material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+      expect((cloak as any)._detectionPulseTicks).toBe(0)
+    })
+
+    it('resets pulse tick counter when re-detected during pulse', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+      cloak.wasCloaked = true
+      cloak.firstTick = false
+
+      const mesh = mockMeshWithMaterial()
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+      const enemyPlayer = { playerName: 'Enemy' }
+
+      const detector = mockDetectorActor(
+        'Enemy',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        false,
+      )
+
+      const world = mockWorldWithPlayers([enemyPlayer], [detector])
+      const makeSelf = () => ({
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        getRenderables,
+        location: { x: 0, y: 0 },
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      })
+
+      // First tick: trigger pulse (ticks = 5)
+      cloak.tick(makeSelf())
+      expect((cloak as any)._detectionPulseTicks).toBe(5)
+
+      // Simulate 3 ticks passing (ticks = 2)
+      cloak.tick(makeSelf()) // 4
+      cloak.tick(makeSelf()) // 3
+      cloak.tick(makeSelf()) // 2
+
+      // Now _wasDetected is true. If we become NOT detected for one tick,
+      // and then DETECTED again, the counter should reset to 5.
+
+      // Create a world without detectors (not detected)
+      const worldNoDetectors = mockWorldWithPlayers([enemyPlayer], [])
+      const selfNoDetect = {
+        ...makeSelf(),
+        world: worldNoDetectors,
+      }
+
+      // Tick: not detected — _wasDetected becomes false
+      cloak.tick(selfNoDetect)
+      expect((cloak as any)._wasDetected).toBe(false)
+
+      // Tick again with detectors: should re-trigger pulse (reset to 5)
+      cloak.tick(makeSelf())
+      expect((cloak as any)._detectionPulseTicks).toBe(5)
+      // emissive should be re-applied
+      expect(mesh.material.emissiveColor).toEqual({ r: 0.8, g: 0.8, b: 0.8 })
+    })
+
+    it('pulse does not trigger when trait is disabled', () => {
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+      cloak.wasCloaked = true
+      cloak.firstTick = false
+      // Disable trait
+      ;(cloak as unknown as { _enabled: boolean })._enabled = false
+
+      const mesh = mockMeshWithMaterial()
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+      const enemyPlayer = { playerName: 'Enemy' }
+
+      const detector = mockDetectorActor(
+        'Enemy',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        false,
+      )
+
+      const world = mockWorldWithPlayers([enemyPlayer], [detector])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        getRenderables,
+        location: { x: 0, y: 0 },
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      // isCloaked check: !isTraitDisabled && ... => false because disabled
+      expect(cloak.cloaked).toBe(false)
+      cloak.tick(self)
+
+      // Pulse should NOT fire
+      expect(mesh.material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+    })
+  })
+})

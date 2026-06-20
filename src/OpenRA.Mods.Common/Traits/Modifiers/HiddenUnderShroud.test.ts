@@ -608,4 +608,152 @@ describe('HiddenUnderShroud', () => {
       expect(result).toBeNull()
     })
   })
+
+  // -----------------------------------------------------------------------
+  // Ch25 Phase C (TODO-25.C.1): _setActorMeshVisibility mesh toggle
+  // -----------------------------------------------------------------------
+
+  describe('_setActorMeshVisibility — Ch25 Phase C', () => {
+    it('toggles setEnabled(false) on meshes via getRenderables()', () => {
+      const mesh1 = { setEnabled: vi.fn(), name: 'body' }
+      const mesh2 = { setEnabled: vi.fn(), name: 'turret' }
+      const getRenderables = vi.fn().mockReturnValue([mesh1, mesh2])
+
+      const actor = createMockActor()
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['getRenderables'] = getRenderables
+
+      const igActor = rawActor as unknown as IGameActor
+      ;(trait as any)._setActorMeshVisibility(igActor, false)
+
+      expect(getRenderables).toHaveBeenCalledTimes(1)
+      expect(mesh1.setEnabled).toHaveBeenCalledWith(false)
+      expect(mesh2.setEnabled).toHaveBeenCalledWith(false)
+    })
+
+    it('toggles setEnabled(true) on meshes via getRenderables()', () => {
+      const mesh1 = { setEnabled: vi.fn(), name: 'body' }
+      const getRenderables = vi.fn().mockReturnValue([mesh1])
+
+      const actor = createMockActor()
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['getRenderables'] = getRenderables
+
+      const igActor = rawActor as unknown as IGameActor
+      ;(trait as any)._setActorMeshVisibility(igActor, true)
+
+      expect(mesh1.setEnabled).toHaveBeenCalledWith(true)
+    })
+
+    it('handles meshes without setEnabled gracefully', () => {
+      // Mesh-like object without setEnabled method
+      const plainObj = { name: 'no-set-enabled' }
+      const getRenderables = vi.fn().mockReturnValue([plainObj])
+
+      const actor = createMockActor()
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['getRenderables'] = getRenderables
+
+      const igActor = rawActor as unknown as IGameActor
+      expect(() => {
+        ;(trait as any)._setActorMeshVisibility(igActor, false)
+      }).not.toThrow()
+    })
+
+    it('handles actors without getRenderables gracefully', () => {
+      const actor = createMockActor()
+      const igActor = actorWithTraitOrDefault(actor)
+
+      expect(() => {
+        ;(trait as any)._setActorMeshVisibility(igActor, false)
+      }).not.toThrow()
+    })
+
+    it('toggles meshes via traitsImplementing IRender path', () => {
+      const mesh = { setEnabled: vi.fn() }
+      const renderTrait = {
+        render: vi.fn().mockReturnValue([mesh]),
+      }
+      const traitsImpl = vi.fn((_name: string) => [renderTrait])
+
+      const actor = createMockActor()
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['traitsImplementing'] = traitsImpl
+
+      const igActor = rawActor as unknown as IGameActor
+      ;(trait as any)._setActorMeshVisibility(igActor, true)
+
+      expect(traitsImpl).toHaveBeenCalledWith('IRender')
+      expect(renderTrait.render).toHaveBeenCalledWith(null)
+      expect(mesh.setEnabled).toHaveBeenCalledWith(true)
+    })
+
+    it('skips traitsImplementing path when render returns no meshes with setEnabled', () => {
+      const plainObj = { notAMesh: true }
+      const renderTrait = {
+        render: vi.fn().mockReturnValue([plainObj]),
+      }
+      const traitsImpl = vi.fn((_name: string) => [renderTrait])
+
+      const actor = createMockActor()
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['traitsImplementing'] = traitsImpl
+
+      const igActor = rawActor as unknown as IGameActor
+      expect(() => {
+        ;(trait as any)._setActorMeshVisibility(igActor, false)
+      }).not.toThrow()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch25 Phase C (TODO-25.C.1): modifyRender mesh toggle integration
+  // -----------------------------------------------------------------------
+
+  describe('modifyRender — mesh toggle integration (Ch25 Phase C)', () => {
+    it('disables meshes when actor is hidden', () => {
+      const mesh = { setEnabled: vi.fn() }
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+      const shroud = createMockShroud({ isExplored: vi.fn().mockReturnValue(false) })
+      const viewer = createMockPlayer(3, shroud, PlayerRelationship.Enemy)
+      const actor = createMockActor({
+        world: { renderPlayer: playerAsStub(viewer) },
+        owner: null,
+      })
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['getRenderables'] = getRenderables
+
+      const igInfo = new HiddenUnderShroudInfo({ type: VisibilityType.CenterPosition })
+      const igTrait = new HiddenUnderShroud(igInfo)
+
+      const igActor = rawActor as unknown as IGameActor
+      const renderables = [makeRenderable(99)]
+      const result = igTrait.modifyRender(igActor, {} as any, renderables)
+
+      expect(result.length).toBe(0)
+      expect(getRenderables).toHaveBeenCalled()
+      expect(mesh.setEnabled).toHaveBeenCalledWith(false)
+    })
+
+    it('enables meshes when actor is visible', () => {
+      const mesh = { setEnabled: vi.fn() }
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+      const shroud = createMockShroud()
+      const owner = createMockPlayer(1, shroud, PlayerRelationship.Ally)
+      const viewer = createMockPlayer(3, shroud, PlayerRelationship.Ally)
+      const actor = createMockActor({
+        owner,
+        world: { renderPlayer: playerAsStub(viewer) },
+      })
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['getRenderables'] = getRenderables
+
+      const igActor = rawActor as unknown as IGameActor
+      const renderables = [makeRenderable(42)]
+      const result = trait.modifyRender(igActor, {} as any, renderables)
+
+      expect(result).toBe(renderables)
+      expect(mesh.setEnabled).toHaveBeenCalledWith(true)
+    })
+  })
 })

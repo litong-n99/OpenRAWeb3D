@@ -214,6 +214,73 @@ export class HiddenUnderShroud
   }
 
   // -------------------------------------------------------------------------
+  // _setActorMeshVisibility — 3D mesh toggle
+  // OpenRA 对照: N/A (new in 3D; OpenRA uses SpriteRenderable.IsVisible)
+  //
+  // When an actor is hidden under shroud/fog, this method toggles
+  // mesh.setEnabled(false) to leverage Babylon.js GPU culling.
+  // Uses duck-typing to avoid @babylonjs/core imports.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Toggle all meshes on the actor.
+   *
+   * When disabled, Babylon.js skips the mesh entirely (no draw call,
+   * no GPU culling). This is a belt-and-suspenders approach: the
+   * existing `modifyRender()` already hides renderables at the data
+   * level; mesh toggle adds GPU-level culling.
+   *
+   * Uses duck-typing (Record<string, unknown>) for mesh/material
+   * access — no @babylonjs/core import needed.
+   *
+   * @param self — the actor this trait is attached to
+   * @param enabled — true to enable meshes, false to disable
+   */
+  private _setActorMeshVisibility(self: IGameActor, enabled: boolean): void {
+    const actorAny = self as unknown as Record<string, unknown>
+
+    // Path 1: Try traitsImplementing('IRender') to get render traits
+    const traitsImpl = actorAny['traitsImplementing'] as
+      | ((name: string) => readonly Record<string, unknown>[])
+      | undefined
+    if (traitsImpl) {
+      // Try several common render interface names
+      for (const iface of ['IRender', 'IRenderable', 'Render']) {
+        const irTraits = traitsImpl(iface)
+        if (irTraits.length > 0) {
+          for (const trait of irTraits) {
+            const renderFn = trait['render'] as
+              | ((wr: unknown) => readonly Record<string, unknown>[])
+              | undefined
+            if (renderFn) {
+              const renderables = renderFn(null)
+              for (const r of renderables) {
+                const mesh = r as Record<string, unknown>
+                if (typeof mesh['setEnabled'] === 'function') {
+                  mesh['setEnabled'](enabled)
+                }
+              }
+            }
+          }
+          break // Found matching interface, stop trying others
+        }
+      }
+    }
+
+    // Path 2: Try top-level actor.getRenderables()
+    const getMeshes = actorAny['getRenderables'] as
+      | (() => readonly Record<string, unknown>[])
+      | undefined
+    if (getMeshes) {
+      for (const mesh of getMeshes()) {
+        if (typeof mesh['setEnabled'] === 'function') {
+          mesh['setEnabled'](enabled)
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // IRenderModifier.modifyRender (对应 OpenRA IRenderModifier.ModifyRender)
   // -------------------------------------------------------------------------
 
@@ -224,6 +291,11 @@ export class HiddenUnderShroud
    *
    * Returns the original renderables if the actor is visible to the render
    * player, or an empty array to hide the actor under unexplored shroud.
+   *
+   * Also toggles mesh.setEnabled() for 3D GPU-level culling — a
+   * belt-and-suspenders approach: data-level hiding + GPU-level culling.
+   *
+   * Ch25 Phase C (TODO-25.C.1): Added _setActorMeshVisibility toggle.
    *
    * @param self — the actor this trait is attached to
    * @param wr — the world renderer (unused)
@@ -239,8 +311,14 @@ export class HiddenUnderShroud
 
     const renderPlayer = this._getRenderPlayer(self)
 
-    if (!renderPlayer || this.isVisible(self, renderPlayer)) return r
+    if (!renderPlayer || this.isVisible(self, renderPlayer)) {
+      // Visible — ensure meshes are enabled
+      this._setActorMeshVisibility(self, true)
+      return r
+    }
 
+    // Not visible — disable meshes and return empty
+    this._setActorMeshVisibility(self, false)
     return HiddenUnderShroud._none
   }
 

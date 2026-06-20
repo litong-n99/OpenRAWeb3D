@@ -481,6 +481,26 @@ export class Cloak
    */
   cloakedToken: number = -1 // Actor.InvalidConditionToken = -1
 
+  /** Remaining ticks for the detection pulse effect.
+   *
+   * When a cloaked actor is detected by an enemy's DetectCloaked,
+   * a brief white emissive pulse is applied to the actor's meshes.
+   * This counter counts down from 5 to 0 each tick. When it reaches
+   * 0, the emissive is reverted.
+   *
+   * Ch25 Phase C (TODO-25.C.2)
+   */
+  private _detectionPulseTicks: number = 0
+
+  /** Whether the actor was detected on the previous tick.
+   *
+   * Used for edge detection: the pulse triggers on the leading edge
+   * (was not detected, now is detected).
+   *
+   * Ch25 Phase C (TODO-25.C.2)
+   */
+  private _wasDetected: boolean = false
+
   constructor(info: CloakInfo) {
     super(info)
     this.remainingTime = info.initialDelay
@@ -667,6 +687,26 @@ export class Cloak
 
       // Sound + SpriteEffect on uncloak transition (P1-C.4)
       this._doUncloakTransition(self)
+    }
+
+    // Ch25 Phase C (TODO-25.C.2): Detection pulse visual feedback
+    if (isCloaked && !this.isTraitDisabled) {
+      const isDetected = this._isDetectedByAnyEnemy(self)
+
+      if (isDetected && !this._wasDetected) {
+        // Leading edge: just became detected — start pulse
+        this._detectionPulseTicks = 5
+        this._applyDetectionPulse(self, true)
+      } else if (this._detectionPulseTicks > 0) {
+        // Pulse countdown: continue even if detection is lost mid-pulse
+        this._detectionPulseTicks--
+        if (this._detectionPulseTicks === 0) {
+          // Pulse expired — revert emissive
+          this._applyDetectionPulse(self, false)
+        }
+      }
+
+      this._wasDetected = isDetected
     }
 
     this.wasCloaked = isCloaked
@@ -1003,6 +1043,92 @@ export class Cloak
     }
 
     return false
+  }
+
+  // ---------------------------------------------------------------------------
+  // _isDetectedByAnyEnemy — check detection against ALL non-allied players
+  // Ch25 Phase C (TODO-25.C.2)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Check if any non-allied player can detect this cloaked actor.
+   *
+   * Used for triggering the detection pulse visual effect. Iterates
+   * all players in the world, skips self and allies, and checks
+   * if any enemy's DetectCloaked units can see this actor.
+   *
+   * @param self — the cloaked actor
+   * @returns true if any enemy detector can see this actor
+   */
+  private _isDetectedByAnyEnemy(self: IGameActor): boolean {
+    const world = self.world as Record<string, unknown> | undefined
+    if (!world) return false
+
+    // Get players from world — handle both array and Map
+    const playersRaw = world['players']
+    if (!playersRaw) return false
+    const playerList: PlayerStub[] = Array.isArray(playersRaw)
+      ? (playersRaw as PlayerStub[])
+      : (playersRaw instanceof Map)
+        ? [...(playersRaw as Map<unknown, PlayerStub>).values()]
+        : []
+
+    if (playerList.length === 0) return false
+
+    const owner = self.owner as IPlayerWithAllied | undefined
+
+    for (const player of playerList) {
+      // Skip self and allies
+      if (owner?.isAlliedWith?.(player)) continue
+
+      if (this._isDetectedByAllied(self, player)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  // ---------------------------------------------------------------------------
+  // _applyDetectionPulse — emissive pulse when detected
+  // Ch25 Phase C (TODO-25.C.2)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Apply or revert a white emissive pulse to the cloaked actor's meshes.
+   *
+   * The pulse makes the cloaked unit briefly "shimmer" white when
+   * detected by an enemy's DetectCloaked trait, providing visual
+   * feedback that the unit has been spotted.
+   *
+   * Uses duck-typing (Record<string, unknown>) for mesh/material
+   * access — no @babylonjs/core import needed.
+   *
+   * @param self — the actor this trait is attached to
+   * @param isActive — true to apply white pulse, false to revert
+   */
+  private _applyDetectionPulse(self: IGameActor, isActive: boolean): void {
+    const actorAny = self as unknown as Record<string, unknown>
+
+    // Try to get meshes via getRenderables()
+    const getMeshes = actorAny['getRenderables'] as
+      | (() => readonly Record<string, unknown>[])
+      | undefined
+    if (!getMeshes) return
+
+    for (const mesh of getMeshes()) {
+      const material = (mesh as Record<string, unknown>)['material'] as
+        | Record<string, unknown>
+        | undefined
+      if (!material) continue
+
+      if (isActive) {
+        // Apply white pulse
+        material['emissiveColor'] = { r: 0.8, g: 0.8, b: 0.8 }
+      } else {
+        // Revert to default (no emission)
+        material['emissiveColor'] = { r: 0, g: 0, b: 0 }
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
