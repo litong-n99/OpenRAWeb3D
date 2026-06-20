@@ -116,27 +116,38 @@ export class WidgetLoader {
    * @param layoutJson — 布局 JSON 对象 (顶层键为 Type@Id)
    */
   loadLayout(layoutJson: Record<string, WidgetDefinitionNode>): void {
-    for (const [key, node] of Object.entries(layoutJson)) {
+    for (const [origKey, node] of Object.entries(layoutJson)) {
       // OpenRA checks uniqueness by suffix (Id after '@'), not full Type@Id.
       // e.g., "Container@MENU" conflicts with "ScrollPanel@MENU".
       //
       // MiniYamlParser strips @Name from keys (e.g. "Container@MAINMENU" →
-      // key="Container", node.id="MAINMENU"). When the key has no @, use
-      // node.id as the suffix for uniqueness; otherwise multiple layout
-      // files each with their own Container would falsely collide.
-      const suffix = key.includes('@')
-        ? key.slice(key.indexOf('@') + 1)
-        : (typeof node['id'] === 'string' ? node['id'] : key)
+      // key="Container", node.id="MAINMENU"). When the key has no @ we must:
+      // 1. Use node.id as the uniqueness suffix (so multiple layout files'
+      //    Containers with different ids don't falsely collide).
+      // 2. Store under a synthetic key "Type@Id" so the Map key itself is
+      //    unique — otherwise the second file's Container silently overwrites
+      //    the first in _widgetDefinitions.
+      const hasAt = origKey.includes('@')
+      const nodeId = typeof node['id'] === 'string' ? node['id'] : undefined
+      const suffix = hasAt
+        ? origKey.slice(origKey.indexOf('@') + 1)
+        : (nodeId ?? origKey)
+      // Synthetic key "Type@Id" when MiniYamlParser stripped @Name.
+      // Only rewrite when node.id exists — otherwise keep original key
+      // so loadWidgetById("Container") still works for id-less widgets.
+      const mapKey = hasAt ? origKey
+        : (nodeId ? `${origKey}@${nodeId}` : origKey)
 
       for (const [existingKey, existingNode] of this._widgetDefinitions) {
+        const existingNodeId = typeof existingNode['id'] === 'string' ? existingNode['id'] : undefined
         const existingSuffix = existingKey.includes('@')
           ? existingKey.slice(existingKey.indexOf('@') + 1)
-          : (typeof existingNode['id'] === 'string' ? existingNode['id'] : existingKey)
+          : (existingNodeId ?? existingKey)
         if (existingSuffix === suffix) {
-          throw new Error(`Widget has duplicate Key '${key}'`)
+          throw new Error(`Widget has duplicate Key '${origKey}'`)
         }
       }
-      this._widgetDefinitions.set(key, node)
+      this._widgetDefinitions.set(mapKey, node)
     }
   }
 
