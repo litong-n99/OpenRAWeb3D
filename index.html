@@ -6,12 +6,35 @@
   <title>OpenRAWeb3D</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>
+    /* @font-face — OpenRA game fonts (TODO-27.D.4) */
+    @font-face {
+      font-family: 'OpenRA Sans';
+      src: url('/fonts/FreeSans.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'OpenRA Sans';
+      src: url('/fonts/FreeSansBold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'OpenRA Title';
+      src: url('/fonts/ZoodRangmah.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
     /* Reset & Base */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #1a1a2e;
       color: #e0e0e0;
-      font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'OpenRA Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
     }

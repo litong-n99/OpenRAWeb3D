@@ -113,7 +113,7 @@ async function main() {
       // 2. Transform to ModContentManifest
       const manifest = transformToManifest(parsed, contentModId, targetModId)
 
-      // 3. Write content.json
+      // 3. Write content.json to primary output (e.g., ra-content/)
       const outputDir = path.join(PUBLIC_MODS_DIR, contentModId)
       fs.mkdirSync(outputDir, { recursive: true })
       const outputPath = path.join(outputDir, 'content.json')
@@ -122,6 +122,27 @@ async function main() {
       const pkgCount = Object.keys(manifest.packages).length
       const dlCount = Object.keys(manifest.downloads).length
       console.log(`  -> Wrote ${outputPath} (${pkgCount} packages, ${dlCount} downloads)`)
+
+      // 4. Write a secondary copy to targetModId (e.g., ra/)
+      //    TODO-27.D.1: ContentInstallerService.getContentManifest(modId)
+      //    uses the {modId}-content directory, but other consumers may
+      //    look for content.json at the target mod's directory directly.
+      if (targetModId !== contentModId) {
+        const targetOutputDir = path.join(PUBLIC_MODS_DIR, targetModId)
+        fs.mkdirSync(targetOutputDir, { recursive: true })
+        const targetOutputPath = path.join(targetOutputDir, 'content.json')
+        // Clone the manifest and override modId to match the target mod
+        const targetManifest: ModContentManifest = {
+          ...manifest,
+          modId: targetModId,
+        }
+        fs.writeFileSync(
+          targetOutputPath,
+          JSON.stringify(targetManifest, null, 2),
+          'utf-8',
+        )
+        console.log(`  -> Also wrote ${targetOutputPath} (modId=${targetModId})`)
+      }
     } catch (e) {
       console.error(`  ERROR processing ${contentModId}:`, e instanceof Error ? e.message : String(e))
     }

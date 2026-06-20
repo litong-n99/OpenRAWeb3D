@@ -711,17 +711,75 @@ export class Game {
   }
 
   /**
-   * 内容安装完成后的回调 — 重新创建 OrderManager 并继续加载。
+   * 内容安装完成后的回调 — 重新水合文件、刷新子系统、继续加载。
    *
    * OpenRA 对照: 无直接对应（C# 中内容安装在启动前完成）
    *
    * 当用户通过 ContentInstallerUI 安装完所有必需内容包后调用。
-   * 重建 OrderManager 并启动 shellmap + 主菜单。
+   * 执行以下步骤后重建 OrderManager 并启动 shellmap + 主菜单：
+   *
+   * 1. Rehydrate MIX 文件: 将 ContentInstaller 提取的文件从 IndexedDB
+   *    加载到内存 FileSystem（填充 Content/ 路径）
+   * 2. 重新初始化 ChromeProvider: 重新加载 chrome 集合以获取现在可能
+   *    从 MIX 文件中可用的纹理资源
+   * 3. 刷新 MapCache: 重新扫描地图目录以获取可能新安装的地图
    */
-  private _onContentInstalled(): void {
+  private async _onContentInstalled(): Promise<void> {
     // MAJOR #5: guard against stale state (e.g. game disposed / mod switched
     // while the content installer UI was showing)
     if (this.state !== GameState.ContentInstall) return
+
+    const modId = this.currentModId
+    if (!modId || !this.modData) return
+
+    // 1. Rehydrate content files from IndexedDB → FileSystem
+    //    (TODO-27.D.3: Content-aware shellmap enablement)
+    if (this._contentInstaller) {
+      try {
+        await this._contentInstaller.rehydrateFiles(modId)
+      } catch (e) {
+        console.warn(
+          '[Game] Content rehydration after install failed:',
+          e instanceof Error ? e.message : String(e),
+        )
+        // Non-fatal: game can continue with static mod data folders
+      }
+    }
+
+    // 2. Re-initialize ChromeProvider with refreshed FileSystem
+    //    (MIX files may now contain chrome textures like chrome.png)
+    try {
+      ChromeProvider.deinitialize()
+      await ChromeProvider.initialize(
+        this.modData.manifest,
+        this.modData.modFiles,
+      )
+    } catch (e) {
+      console.warn(
+        '[Game] ChromeProvider re-init after content install failed:',
+        e instanceof Error ? e.message : String(e),
+      )
+      // Non-fatal: main menu falls back to DOM overlay
+    }
+
+    // 3. Refresh MapCache to pick up newly installed maps
+    //    (TODO-27.D.3: ModData doesn't implement ModDataStub directly,
+    //    so we create an adapter object satisfying the structural interface.)
+    try {
+      const modData = this.modData // capture for type narrowing in closure
+      const modDataStub = {
+        getOrCreate: <T,>(_type: unknown): T | undefined =>
+          modData.getOrCreate<T>(_type),
+        mapFolders: modData.manifest.mapFolders,
+      }
+      modData.mapCache.loadMaps(modDataStub)
+    } catch (e) {
+      console.warn(
+        '[Game] MapCache refresh after content install failed:',
+        e instanceof Error ? e.message : String(e),
+      )
+      // Non-fatal: shellmap falls back to static background
+    }
 
     this._continueAfterContentCheck()
 
