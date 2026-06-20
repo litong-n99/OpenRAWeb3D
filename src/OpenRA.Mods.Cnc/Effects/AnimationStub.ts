@@ -193,6 +193,14 @@ export class AnimationStub {
    */
   private readonly _uvArray: Float32Array = new Float32Array(8)
 
+  /** Pre-allocated Vector4 for _updateShaderUniform.
+   *
+   * PERF: Reused across all _updateShaderUniform calls to avoid per-frame
+   * allocation of Vector4 instances for setVector4('uFrameUV', ...).
+   * Created lazily on first _updateShaderUniform call.
+   */
+  private _frameUVVector4: Vector4 | null = null
+
   // -----------------------------------------------------------------------
   // Construction
   // -----------------------------------------------------------------------
@@ -362,6 +370,13 @@ export class AnimationStub {
 
     // Ensure material is assigned (Ch24 Phase A)
     this._ensureMaterial()
+    // NOTE: Always reassign material after _ensureMaterial() because:
+    // - If material was just created, _ensureMaterial() assigned it
+    // - If material already existed (created by renderUI()), the
+    //   newly-created _mesh would otherwise never get a material
+    if (this._shaderMaterial) {
+      this._mesh.material = this._shaderMaterial
+    }
 
     // Update world-space position
     this._mesh.position.x = pos.X
@@ -422,6 +437,13 @@ export class AnimationStub {
 
     // Assign material to UI mesh as well (Ch24 Phase A)
     this._ensureMaterial()
+    // NOTE: Always reassign material after _ensureMaterial() because:
+    // - If material was just created, _ensureMaterial() assigned it
+    // - If material already existed (created by render()), the
+    //   newly-created _uiMesh would otherwise never get a material
+    if (this._shaderMaterial) {
+      this._uiMesh.material = this._shaderMaterial
+    }
 
     // Position in screen space
     const sp = _screenPos as { x?: number; y?: number }
@@ -466,6 +488,9 @@ export class AnimationStub {
     // If we already created a fallback material, dispose it so a proper
     // ShaderMaterial can be created on next render.
     if (this._shaderMaterial) {
+      // Clear mesh references to the disposed material
+      if (this._mesh) this._mesh.material = null
+      if (this._uiMesh) this._uiMesh.material = null
       this._shaderMaterial.dispose()
       this._shaderMaterial = null
     }
@@ -660,6 +685,13 @@ export class AnimationStub {
    *
    * Only applies when the material is a ShaderMaterial (not the
    * magenta StandardMaterial fallback).
+   *
+   * When explicit frameUVs are available for the current frame, the
+   * uniform is set to that rect. Otherwise, the evenly-spaced strip
+   * fallback is computed — matching the vertex UVs set by _updateUVs().
+   * This ensures the shader uniform never desyncs from the mesh UV data.
+   *
+   * PERF: Reuses a pre-allocated Vector4 to avoid per-frame allocation.
    */
   private _updateShaderUniform(): void {
     if (!this._shaderMaterial) return
@@ -668,20 +700,37 @@ export class AnimationStub {
     // production (real Babylon.js) and test (mocked modules) environments.
     const mat = this._shaderMaterial as ShaderMaterial
     if (typeof mat.setVector4 !== 'function') return
-    if (!this._frameUVs || this._frame >= this._frameUVs.length) {
-      return
+
+    const frameCount = this._length
+    if (frameCount <= 0) return
+
+    let uMin: number, vMin: number, uMax: number, vMax: number
+
+    if (this._frameUVs && this._frame < this._frameUVs.length) {
+      // Explicit UV rect from Sheet/Sprite data
+      const rect = this._frameUVs[this._frame]
+      uMin = rect[0] ?? 0
+      vMin = rect[1] ?? 0
+      uMax = rect[2] ?? 1
+      vMax = rect[3] ?? 1
+    } else {
+      // Fallback: evenly-spaced horizontal strip (matches _updateUVs else branch)
+      const i = this._frame < frameCount ? this._frame : frameCount - 1
+      uMin = i / frameCount
+      uMax = (i + 1) / frameCount
+      vMin = 0
+      vMax = 1
     }
 
-    const rect = this._frameUVs[this._frame]
-    const uMin = rect[0] ?? 0
-    const vMin = rect[1] ?? 0
-    const uMax = rect[2] ?? 1
-    const vMax = rect[3] ?? 1
-
-    mat.setVector4(
-      'uFrameUV',
-      new Vector4(uMin, vMin, uMax, vMax),
-    )
+    // PERF: Reuse pre-allocated Vector4 to avoid per-frame allocation
+    if (!this._frameUVVector4) {
+      this._frameUVVector4 = new Vector4(0, 0, 1, 1)
+    }
+    this._frameUVVector4.x = uMin
+    this._frameUVVector4.y = vMin
+    this._frameUVVector4.z = uMax
+    this._frameUVVector4.w = vMax
+    mat.setVector4('uFrameUV', this._frameUVVector4)
   }
 
   /** Update UV coordinates on existing meshes to show the current frame.

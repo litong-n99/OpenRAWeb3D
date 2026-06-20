@@ -810,6 +810,48 @@ describe('AnimationStub', () => {
       anim.render(makePos(0, 0, 0), 'p')
       expect(anim.material).not.toBeNull()
     })
+
+    // MAJOR fix: renderUI first, then render — both meshes get material
+    it('assigns material to world mesh when UI mesh was created first', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      // renderUI first — creates UI mesh + material
+      anim.renderUI(null, { x: 0, y: 0 }, makePos(0, 0, 0), 1, 'p')
+      expect(anim.uiMesh).not.toBeNull()
+      expect(anim.material).not.toBeNull()
+      expect(anim.uiMesh!.material).not.toBeNull()
+
+      // render second — creates world mesh, should also get material
+      anim.render(makePos(100, 200, 0), 'p')
+      expect(anim.mesh).not.toBeNull()
+      expect(anim.mesh!.material).not.toBeNull()
+      expect(anim.mesh!.material).toBe(anim.material)
+    })
+
+    // Reverse: render first, then renderUI — UI mesh gets material
+    it('assigns material to UI mesh when world mesh was created first', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      // render first — creates world mesh + material
+      anim.render(makePos(100, 200, 0), 'p')
+      expect(anim.mesh).not.toBeNull()
+      expect(anim.material).not.toBeNull()
+      expect(anim.mesh!.material).not.toBeNull()
+
+      // renderUI second — creates UI mesh, should also get material
+      anim.renderUI(null, { x: 0, y: 0 }, makePos(0, 0, 0), 1, 'p')
+      expect(anim.uiMesh).not.toBeNull()
+      expect(anim.uiMesh!.material).not.toBeNull()
+      expect(anim.uiMesh!.material).toBe(anim.material)
+    })
   })
 
   // -----------------------------------------------------------------------
