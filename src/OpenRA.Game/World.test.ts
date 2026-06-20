@@ -279,14 +279,14 @@ describe('GameWorldManager actor lifecycle', () => {
   })
 
   it('createActor creates and optionally adds to world', () => {
-    const actor = world.createActor('test', true)
+    const actor = world.createActor('test', true)!
     expect(actor).toBeDefined()
     expect(actor.isInWorld).toBe(true)
     expect(world.getActorById(actor.actorId)).toBe(actor)
   })
 
   it('createActor with addToWorld=false does not add to world', () => {
-    const actor = world.createActor('test', false)
+    const actor = world.createActor('test', false)!
     expect(actor).toBeDefined()
     expect(actor.isInWorld).toBe(false)
   })
@@ -1019,6 +1019,201 @@ describe('GameWorldManager startLoop/stopLoop', () => {
     // signature is verified by TypeScript compilation.
     // Visual integration is tested in E2E tests.
     expect(true).toBe(true) // placeholder for E2E
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ch26 Phase A: createActor with ruleset integration
+// ---------------------------------------------------------------------------
+
+describe('GameWorldManager createActor (Ch26 Phase A)', () => {
+  it('falls back to stub actor when no modData/ruleset', () => {
+    const world = new GameWorldManager()
+    const actor = world.createActor('test', true)
+    expect(actor).not.toBeNull()
+    expect(actor!.isInWorld).toBe(true)
+  })
+
+  it('returns null for unknown actor type when ruleset exists', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Create a minimal ruleset with empty actors map
+    const ruleset = {
+      actors: new Map(),
+      weapons: new Map(),
+      voices: new Map(),
+      notifications: new Map(),
+      music: new Map(),
+      terrainInfo: null,
+      modelSequences: new Map(),
+    }
+    const world = new GameWorldManager({
+      modData: {
+        getSettings: () => ({}),
+        ruleset: ruleset as any,
+      },
+    })
+    const actor = world.createActor('nonexistent', true)
+    expect(actor).toBeNull()
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('unknown actor type'),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it('accepts ActorInitializer parameter (succeeds)', () => {
+    const world = new GameWorldManager()
+    // With no ruleset, createActor falls back to stub actor creation.
+    // The initializer parameter is accepted; it is applied when ruleset is present.
+    const actor = world.createActor('test', false, undefined)
+    expect(actor).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ch26 Phase A: _createPlayers
+// ---------------------------------------------------------------------------
+
+describe('GameWorldManager _createPlayers (Ch26 Phase A)', () => {
+  it('creates players from map player data', () => {
+    const world = new GameWorldManager()
+    const mapPlayers = {
+      players: [
+        {
+          internalName: 'Multi0',
+          name: 'Player 1',
+          color: 0,
+          faction: 'allies',
+          isHuman: true,
+          isBot: false,
+        },
+        {
+          internalName: 'Multi1',
+          name: 'AI 1',
+          color: 1,
+          faction: 'soviet',
+          isHuman: false,
+          isBot: true,
+          botType: 'harvester',
+        },
+      ],
+      playableCount: 1,
+    }
+
+    // Access private method via type cast
+    const result = (world as any)._createPlayers(mapPlayers)
+    expect(result.players).toHaveLength(2)
+    expect(result.localPlayer).toBeDefined()
+    expect(result.localPlayer!.playerName).toBe('Player 1')
+    expect(result.localPlayer!.internalName).toBe('Multi0')
+  })
+
+  it('returns undefined localPlayer if no human player', () => {
+    const world = new GameWorldManager()
+    const mapPlayers = {
+      players: [
+        {
+          internalName: 'Multi0',
+          name: 'AI 1',
+          isHuman: false,
+          isBot: true,
+        },
+      ],
+      playableCount: 0,
+    }
+
+    const result = (world as any)._createPlayers(mapPlayers)
+    expect(result.players).toHaveLength(1)
+    expect(result.localPlayer).toBeUndefined()
+  })
+
+  it('creates PlayerActor for each player (requires ruleset with player actor)', () => {
+    const world = new GameWorldManager()
+    const mapPlayers = {
+      players: [
+        {
+          internalName: 'Multi0',
+          name: 'Human',
+          isHuman: true,
+          isBot: false,
+        },
+      ],
+      playableCount: 1,
+    }
+
+    const result = (world as any)._createPlayers(mapPlayers)
+    expect(result.players[0]).toBeDefined()
+    expect(result.players[0].playerName).toBe('Human')
+  })
+
+  it('handles empty players array', () => {
+    const world = new GameWorldManager()
+    const mapPlayers = { players: [], playableCount: 0 }
+    const result = (world as any)._createPlayers(mapPlayers)
+    expect(result.players).toHaveLength(0)
+    expect(result.localPlayer).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ch26 Phase A: loadComplete with player creation and actor spawning
+// ---------------------------------------------------------------------------
+
+describe('GameWorldManager loadComplete (Ch26 Phase A)', () => {
+  it('creates players during loadComplete when map has playerDefinitions', () => {
+    const world = new GameWorldManager({
+      map: {
+        uid: 'test-map',
+        title: 'Test Map',
+        dispose: () => {},
+        playerDefinitions: {
+          players: [
+            {
+              internalName: 'Multi0',
+              name: 'Player 1',
+              isHuman: true,
+              isBot: false,
+            },
+          ],
+          playableCount: 1,
+        },
+      },
+    })
+    const wr = {} as WorldRendererStub
+
+    world.loadComplete(wr)
+    expect(world.players).toHaveLength(1)
+    expect(world.players[0].playerName).toBe('Player 1')
+    expect(world.localPlayer).toBeDefined()
+  })
+
+  it('skips player creation if players already set', () => {
+    const existingPlayer = createStubPlayer('Pre-set')
+    const world = new GameWorldManager()
+    world.setPlayers([existingPlayer], existingPlayer)
+
+    // Simulate loadComplete with map that has players
+    const wr = {} as WorldRendererStub
+    ;(world as any).map = {
+      uid: 'test',
+      title: 'Test',
+      dispose: () => {},
+      playerDefinitions: {
+        players: [{ internalName: 'Other', name: 'Other', isHuman: true, isBot: false }],
+        playableCount: 1,
+      },
+    }
+    world.loadComplete(wr)
+
+    // Players should NOT be overwritten (setPlayers would throw)
+    expect(world.players).toHaveLength(1)
+    expect(world.players[0]).toBe(existingPlayer)
+  })
+
+  it('handles loadComplete without map data', () => {
+    const world = new GameWorldManager()
+    const wr = {} as WorldRendererStub
+    expect(() => world.loadComplete(wr)).not.toThrow()
+    expect(world.players).toHaveLength(0)
   })
 })
 

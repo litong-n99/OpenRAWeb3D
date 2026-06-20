@@ -34,6 +34,7 @@ import type {
   INotifyAddedToWorld,
   INotifyRemovedFromWorld,
   INotifyActorDisposing,
+  INotifyCreated,
   IWorldLoaded,
   IPostWorldLoaded,
   INotifyGameLoading,
@@ -47,6 +48,12 @@ import type {
 } from './Traits/TraitsInterfaces.js'
 import type { IGameEffect, IGameEffectSync } from './Effects/IEffect.js'
 import { ShroudRenderer, ShroudRendererInfo } from '../OpenRA.Mods.Common/Traits/World/ShroudRenderer.js'
+import type { TraitFactory } from './Traits/TraitFactory.js'
+import type { ActorConfig } from './GameRules/ActorInfo.js'
+import { ActorInitializer, OwnerInit, type OwnerNameInit } from './Traits/ActorInitializer.js'
+import type { Ruleset } from './GameRules/Ruleset.js'
+import { parseActorEntry, type ActorEntry } from './Map/ActorEntryParser.js'
+import { SystemActors } from './GameRules/Ruleset.js'
 
 // ---------------------------------------------------------------------------
 // WorldType enum (对应 OpenRA WorldType)
@@ -81,13 +88,32 @@ export interface GameSettingsStub {
 }
 
 /**
- * ModData stub — provides settings access.
+ * ModData stub — provides settings, ruleset, and trait factory access.
  *
  * OpenRA 对照: OpenRA.Game/ModData.cs
 * Replace with full ModData when mod system is migrated.
+ *
+ * Extended in Ch26 Phase A to include ruleset and traitFactory for actor
+ * creation pipeline.
  */
 export interface ModDataStub {
   getSettings<T>(settingsType: new () => T): T
+
+  /** Loaded ruleset with actor configs.
+   *
+   * OpenRA 对照: ModData.DefaultRules
+   *
+   * Optional: when not yet loaded, createActor falls back to stub behavior.
+   */
+  readonly ruleset?: Ruleset | null
+
+  /** Trait factory registry for trait instantiation.
+   *
+   * OpenRA 对照: (implicit via ObjectCreator)
+   *
+   * Optional: when not yet registered, createActor uses default stub traits.
+   */
+  readonly traitFactory?: TraitFactory | null
 }
 
 /**
@@ -145,15 +171,88 @@ export interface OrderStub {
 }
 
 /**
- * Map stub — provides map metadata.
+ * Map stub — provides map metadata, player definitions, and actor entries.
  *
  * OpenRA 对照: OpenRA.Game/Map/Map.cs
 * Replace with full Map when map module is migrated.
+ *
+ * Extended in Ch26 Phase A for map loading pipeline.
  */
 export interface MapStub {
   readonly uid: string
   readonly title: string
+
+  /** Player definitions from the map (Ch26 Phase A).
+   *
+   * OpenRA 对照: Map.PlayerDefinitions
+   */
+  readonly playerDefinitions?: MapPlayersData | null
+
+  /** Raw actor entries from the map (Ch26 Phase A).
+   *
+   * OpenRA 对照: Map.Actors section
+   */
+  readonly actorEntries?: readonly ActorEntry[] | null
+
   dispose(): void
+}
+
+// ---------------------------------------------------------------------------
+// MapPlayersData — player definitions from map metadata (Ch26 Phase A)
+// OpenRA 对照: MapPlayers + Session.Client slots
+// ---------------------------------------------------------------------------
+
+/**
+ * Player slot definition from map metadata.
+ *
+ * OpenRA 对照: MapPlayers.PlayerInfo + Session.Client
+ *
+ * Describes one player slot: whether it's playable, its faction, color,
+ * spawn point, and AI configuration.
+ */
+export interface MapPlayerSlot {
+  /** Player internal name (e.g., "Multi0", "Neutral"). */
+  internalName: string
+
+  /** Display name for the player. */
+  name: string
+
+  /** Player color (palette index or RGBA). */
+  color?: number | { r: number; g: number; b: number; a: number }
+
+  /** Faction identifier (e.g., "allies", "soviet"). */
+  faction?: string
+
+  /** Whether this slot is playable by a human. */
+  isHuman: boolean
+
+  /** Whether this is a bot/AI player. */
+  isBot: boolean
+
+  /** Bot type (e.g., "harvester", "rush") — only for bot slots. */
+  botType?: string
+
+  /** Bot difficulty: Easy/Medium/Hard. */
+  botDifficulty?: string
+
+  /** Starting spawn point index. */
+  spawnPoint?: number
+
+  /** Team index (0 = no team). */
+  team?: number
+}
+
+/**
+ * Player definitions from map metadata.
+ *
+ * OpenRA 对照: Map.PlayerDefinitions (subset)
+ */
+export interface MapPlayersData {
+  /** Player slots defined by the map. */
+  readonly players: readonly MapPlayerSlot[]
+
+  /** Number of playable (human) slots. */
+  readonly playableCount: number
 }
 
 /**
@@ -295,8 +394,78 @@ class StubActor implements IGameActor {
   willDispose: boolean = false
   generation: number = 0
 
+  // -----------------------------------------------------------------------
+  // Trait storage (Ch26 Phase A — minimal local trait array)
+  // -----------------------------------------------------------------------
+
+  /** Locally stored trait components (also registered in TraitDictionary).
+   *
+   * OpenRA 对照: Actor.traits (implicit via World.TraitDict)
+   *
+   * This local array enables traitOrDefault and traitsImplementing lookups
+   * without requiring a World reference. Traits are added here during
+   * createActor pipeline and removed during dispose.
+   */
+  private _traits: Component[] = []
+
   constructor(actorId: number) {
     this.actorId = actorId
+  }
+
+  // -----------------------------------------------------------------------
+  // Trait access (Ch26 Phase A — delegates to local storage)
+  // -----------------------------------------------------------------------
+
+  /** @inheritdoc */
+  traitOrDefault = <T>(): T | null => {
+    return (this._traits.length > 0 ? this._traits[0] : null) as unknown as T | null
+  }
+
+  /** @inheritdoc */
+  traitsImplementing = <T extends Component = Component>(interfaceId?: string): T[] => {
+    if (!interfaceId) return [...this._traits] as unknown as T[]
+    // Filter traits whose constructor's static 'interfaces' array includes the requested interface
+    return this._traits.filter(t => {
+      const ctor = t.constructor as typeof Component & { interfaces?: string[] }
+      return ctor.interfaces?.includes(interfaceId) ?? false
+    }) as unknown as T[]
+  }
+
+  /** @inheritdoc */
+  render = (_wr: unknown): unknown[] => []
+
+  // -----------------------------------------------------------------------
+  // Trait management (Ch26 Phase A)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Add a trait to this actor's local storage.
+   *
+   * OpenRA 对照: N/A (C# uses World.TraitDict exclusively)
+   *
+   * @param trait — the trait component to store locally
+   */
+  _addTraitLocal(trait: Component): void {
+    this._traits.push(trait)
+  }
+
+  /**
+   * Remove a trait from this actor's local storage.
+   *
+   * @param trait — the trait component to remove
+   */
+  _removeTraitLocal(trait: Component): void {
+    const idx = this._traits.indexOf(trait)
+    if (idx !== -1) {
+      this._traits.splice(idx, 1)
+    }
+  }
+
+  /**
+   * Get all locally stored traits.
+   */
+  _getLocalTraits(): readonly Component[] {
+    return this._traits
   }
 
   get isIdle(): boolean {
@@ -357,16 +526,6 @@ class StubActor implements IGameActor {
     // Call currentActivity.TickOuter(this) when Activity system
     // is migrated.
   }
-
-  // -----------------------------------------------------------------------
-  // IWorldActor compatibility (P1-D.6)
-  // Optional methods added to IGameActor so that GameWorldManager
-  // can be cast to IWorld without a double "unknown" cast.
-  // -----------------------------------------------------------------------
-
-  traitOrDefault = <T>(): T | null => null
-  // traitsImplementing already defined on IGameActor as (interfaceId: string) => unknown[]
-  render = (_wr: unknown): unknown[] => []
 }
 
 // ---------------------------------------------------------------------------
@@ -1312,37 +1471,316 @@ export class GameWorldManager {
     return this._actors.get(actorId)
   }
 
+  // -----------------------------------------------------------------------
+  // Player creation from map metadata (Ch26 Phase A — _createPlayers)
+  // OpenRA 对照: World constructor: foreach ICreatePlayers trait.CreatePlayers()
+  // -----------------------------------------------------------------------
+
   /**
-   * Create a new actor (stub implementation).
+   * Create PlayerStub instances from map player data.
+   *
+   * OpenRA 对照: ICreatePlayers.CreatePlayers(World, MersenneTwister)
+   *
+   * This is the glue code that reads map player definitions and creates
+   * PlayerStub instances and their associated PlayerActors. In OpenRA,
+   * this is handled by traits implementing ICreatePlayers (e.g.,
+   * MultiplayerCreatePlayers, SingleplayerCreatePlayers).
+   *
+   * For Ch26 Phase A, we implement a simplified version:
+   * - Read player slots from map metadata
+   * - Create PlayerStub for each slot
+   * - Create PlayerActor via createActor('player', false) for each player
+   * - The 'player' ActorConfig includes traits like Shroud, PlayerResources
+   * - AI players get BotController trait; human players do not
+   *
+   * @param mapPlayers — player definitions from map metadata
+   * @returns the players array and local (human) player
+   */
+  private _createPlayers(mapPlayers: MapPlayersData): {
+    players: PlayerStub[]
+    localPlayer: PlayerStub | undefined
+  } {
+    const players: PlayerStub[] = []
+    let localPlayer: PlayerStub | undefined
+
+    for (const slot of mapPlayers.players) {
+      // Create PlayerStub with metadata from the map slot
+      const player: PlayerStub = {
+        playerName: slot.name,
+        internalName: slot.internalName,
+        color: slot.color,
+      }
+
+      players.push(player)
+
+      // Create PlayerActor (the 'player' actor type must exist in the ruleset)
+      const playerActor = this.createActor(SystemActors.Player, false)
+      if (playerActor) {
+        // Attach player actor reference to PlayerStub
+        ;(player as PlayerStub & { playerActor: IGameActor }).playerActor = playerActor
+
+        // Set the owner of the PlayerActor to this player
+        ;(playerActor as { owner?: PlayerStub }).owner = player
+
+        // Set world reference on player actor
+        ;(playerActor as { world?: WorldStub }).world = this as unknown as WorldStub
+      }
+
+      // Track the first human player as local player
+      if (slot.isHuman && !localPlayer) {
+        localPlayer = player
+      }
+    }
+
+    return { players, localPlayer }
+  }
+
+  // -----------------------------------------------------------------------
+  // Map actor spawning (Ch26 Phase A — _spawnMapActors)
+  // OpenRA 对照: World.LoadComplete — iterates Map.Actors, calls CreateActor
+  // -----------------------------------------------------------------------
+
+  /**
+   * Spawn all actors defined in the map data.
+   *
+   * OpenRA 对照: World.LoadComplete(WorldRenderer) — actor spawning section
+   *
+   * Called after _createPlayers() during loadComplete(). For each actor entry
+   * in the map:
+   * 1. Parse via ActorEntryParser (LocationInit, OwnerNameInit, FacingInit)
+   * 2. Resolve OwnerNameInit → PlayerStub (two-phase lookup)
+   * 3. Call createActor(type, true, initializer)
+   *
+   * ## Spawning order (ADR-26.4)
+   *
+   * WorldActor is created first (in constructor), then PlayerActors
+   * (from _createPlayers()), then map actors. Within map actors,
+   * actors with Building trait are created before actors with Mobile trait.
+   *
+   * @param mapActorEntries — raw actor entries from map JSON
+   */
+  private _spawnMapActors(
+    mapActorEntries: readonly ActorEntry[],
+  ): void {
+    // Separate buildings from mobile units for ordered spawning
+    const buildings: ActorEntry[] = []
+    const mobiles: ActorEntry[] = []
+    const others: ActorEntry[] = []
+
+    const ruleset = this.modData?.ruleset
+
+    for (const entry of mapActorEntries) {
+      if (!entry.type) {
+        console.warn('[GameWorldManager] _spawnMapActors: skipping entry with no type')
+        continue
+      }
+
+      // Check if this actor type exists in the ruleset
+      const actorName = entry.type.toLowerCase()
+      if (ruleset && !ruleset.actors.has(actorName)) {
+        console.warn(
+          `[GameWorldManager] _spawnMapActors: unknown actor type '${actorName}' — skipping.`,
+        )
+        continue
+      }
+
+      // Classify: check if the actor has a Building trait
+      const config = ruleset?.actors.get(actorName)
+      const hasBuilding = config?.hasTraitInfo('Building') ?? false
+      const hasMobile = config?.hasTraitInfo('Mobile') ?? false
+
+      if (hasBuilding) {
+        buildings.push(entry)
+      } else if (hasMobile) {
+        mobiles.push(entry)
+      } else {
+        others.push(entry)
+      }
+    }
+
+    // Spawn buildings first, then mobiles, then others (ADR-26.4)
+    for (const entry of [...buildings, ...mobiles, ...others]) {
+      this._spawnSingleMapActor(entry)
+    }
+  }
+
+  /**
+   * Spawn a single map actor from a raw entry.
+   *
+   * Parses the entry, resolves the owner, and calls createActor.
+   *
+   * @param entry — raw map actor entry
+   */
+  private _spawnSingleMapActor(
+    entry: ActorEntry,
+  ): void {
+    // Parse the entry into an ActorInitializer
+    let initializer: ActorInitializer
+    try {
+      initializer = parseActorEntry(entry)
+    } catch (e) {
+      console.warn(
+        `[GameWorldManager] _spawnSingleMapActor: failed to parse entry '${entry.type}': ` +
+        `${e instanceof Error ? e.message : String(e)} — skipping.`,
+      )
+      return
+    }
+
+    // Resolve OwnerNameInit → PlayerStub (two-phase lookup)
+    const ownerNameInit = initializer.getOrDefault<OwnerNameInit>('OwnerNameInit')
+    if (ownerNameInit) {
+      const ownerName = ownerNameInit.value
+      const ownerPlayer = this.players.find(
+        p => (p as PlayerStub & { internalName?: string }).internalName === ownerName,
+      )
+
+      if (ownerPlayer) {
+        // Create resolved OwnerInit and add alongside existing inits
+        const resolvedOwnerInit = new OwnerInit(ownerPlayer)
+        // Build a new initializer including the resolved owner
+        const existingInits = initializer.allInits()
+        initializer = new ActorInitializer([...existingInits, resolvedOwnerInit])
+      } else {
+        console.warn(
+          `[GameWorldManager] _spawnSingleMapActor: owner '${ownerName}' not found ` +
+          `for actor '${entry.type}' — actor will have no owner.`,
+        )
+      }
+    }
+
+    // Create the actor
+    const actorName = entry.type.toLowerCase()
+    this.createActor(actorName, true, initializer)
+  }
+
+  /**
+   * Create a new actor from its type name and optional initializer.
    *
    * OpenRA 对照: World.CreateActor(string, TypeDictionary) AND
    *             World.CreateActor(bool, string, TypeDictionary)
    *
-   * NOTE: This is a simplified stub. The full CreateActor involves:
-   * 1. Instantiating ActorInfo from YAML
-   * 2. Creating trait instances via the object creator
-   * 3. Calling Actor.Initialize(addToWorld) which attaches traits
-   *    to TraitDictionary and calls INotifyCreated.traits
-   * 4. Optionally calling Add() to add to world
+   * ## 7-step pipeline (Ch26 Phase A)
    *
-* Integrate with GameActor when Phase D is complete.
+   * 1. Look up ActorConfig from this.modData.ruleset.actors
+   *    → return null + warn if not found, throw if abstract
+   * 2. Create StubActor (or GameActor) instance with nextActorId
+   * 3. Iterate config.traitConfigs, call TraitFactory.create() for each,
+   *    attach to actor, register in TraitDictionary
+   * 4. Build cached trait refs on the actor (owner, info, etc.)
+   * 5. Call actor.initialize lifecycle (INotifyCreated, IObservesVariables,
+   *    ICreationActivity)
+   * 6. If initializer: resolve LocationInit (position), OwnerNameInit
+   *    (store for later resolution)
+   * 7. If addToWorld: call this.addActor(actor). Return actor.
    *
    * @param name — actor type name (e.g., "world", "e1")
    * @param addToWorld — whether to add to world immediately (default true)
-   * @returns the created actor stub
+   * @param initializer — optional ActorInitializer with spawn-time inits
+   * @returns the created actor, or null if actor type is not found
+   * @throws if actor type is abstract (template-only)
    */
-  createActor(_name: string, addToWorld: boolean = true): IGameActor {
-    // Create a stub actor — Phase D will replace with full GameActor
-    const actor = new StubActor(this.nextAID())
-
-    // NOTE: Full trait initialization from ActorInfo YAML goes here
-    // (Phase D + ActorConfig integration)
-
-    if (addToWorld) {
-      this.addActor(actor)
+  createActor(
+    name: string,
+    addToWorld: boolean = true,
+    initializer?: ActorInitializer,
+  ): IGameActor | null {
+    // ---- Step 1: Look up ActorConfig ----
+    const ruleset = this.modData?.ruleset
+    if (!ruleset) {
+      // Fallback: create a bare StubActor (pre-Phase A behavior)
+      const actor = new StubActor(this.nextAID())
+      if (addToWorld) {
+        this.addActor(actor)
+      }
+      return actor
     }
 
-    return actor
+    const actorName = name.toLowerCase()
+    const config: ActorConfig | undefined = ruleset.actors.get(actorName)
+
+    if (!config) {
+      console.warn(
+        `[GameWorldManager] createActor: unknown actor type '${actorName}' — ` +
+        `no ActorConfig found in ruleset.`,
+      )
+      return null
+    }
+
+    if (config.isAbstract) {
+      throw new Error(
+        `[GameWorldManager] createActor: cannot create instance of abstract ` +
+        `actor type '${actorName}'. Abstract actors (prefixed with '^') ` +
+        `are templates only.`,
+      )
+    }
+
+    // ---- Step 2: Create actor instance ----
+    const actor = new StubActor(this.nextAID())
+    actor.info = config // Set ActorInfoStub reference
+
+    // ---- Step 3: Create and attach traits ----
+    const traitFactory = this.modData?.traitFactory
+    if (traitFactory) {
+      const components = traitFactory.createAllTraits(
+        actor as unknown as IGameActor,
+        config.traitConfigs,
+        initializer,
+      )
+
+      for (const comp of components) {
+        // Attach trait to actor
+        comp.attach(actor as unknown as IGameActor)
+        // Register in TraitDictionary (global)
+        this.traitDict.addTrait(actor as unknown as IGameActor, comp)
+        // Store locally on actor for traitOrDefault/traitsImplementing
+        ;(actor as StubActor)._addTraitLocal(comp)
+      }
+
+      // ---- Step 4: Build cached trait refs ----
+      // Resolve owner from initializer if available
+      if (initializer) {
+        const ownerNameInit = initializer.getOrDefault<OwnerNameInit>('OwnerNameInit')
+        if (ownerNameInit) {
+          // Store owner name on actor for later resolution during _spawnMapActors
+          ;(actor as StubActor & { _ownerName?: string })._ownerName = ownerNameInit.value
+        }
+      }
+
+      // ---- Step 5: Call initialize lifecycle ----
+      // INotifyCreated
+      const createdTraits = this.traitDict.traitsImplementing<Component & INotifyCreated>(
+        actor as unknown as IGameActor,
+        'INotifyCreated',
+      )
+      for (const t of createdTraits) {
+        t.created(actor as unknown as IGameActor)
+      }
+
+      // IObservesVariables — initialize condition observers
+      // (stub: no condition system on StubActor yet)
+
+      // ICreationActivity
+      // (stub: no activity system on StubActor yet)
+    }
+
+    // ---- Step 6: Apply initializer inits ----
+    if (initializer) {
+      // LocationInit: set actor position (stub — real positioning needs OccupiesSpace trait)
+      // OwnerNameInit: already handled in Step 4 (stored for later resolution)
+
+      // FacingInit: stored on actor for trait consumption
+      const facingInit = initializer.getOrDefault<import('./Traits/ActorInitializer.js').FacingInit>('FacingInit')
+      if (facingInit) {
+        ;(actor as StubActor & { _facing?: number })._facing = facingInit.value
+      }
+    }
+
+    // ---- Step 7: Add to world if requested ----
+    if (addToWorld) {
+      this.addActor(actor as unknown as IGameActor)
+    }
+
+    return actor as unknown as IGameActor
   }
 
   // -----------------------------------------------------------------------
@@ -1597,10 +2035,29 @@ export class GameWorldManager {
    * @param wr — the world renderer
    */
   loadComplete(wr: WorldRendererStub): void {
-    // Initialize ScreenMap first (before anything else)
+    // ---- Step 1: Initialize ScreenMap first (before anything else) ----
     this.screenMap.worldLoaded(this, wr)
 
-    // Notify IWorldLoaded traits on WorldActor (skip ScreenMap — already done)
+    // ---- Step 2: Create players from map metadata (Ch26 Phase A) ----
+    const mapPlayers = this.map?.playerDefinitions
+    if (mapPlayers && this.players.length === 0) {
+      const { players, localPlayer } = this._createPlayers(mapPlayers)
+      if (localPlayer) {
+        this.setPlayers(players, localPlayer)
+      } else if (players.length > 0) {
+        // No human player found — set first player as local player for shellmap
+        this.setPlayers(players, players[0])
+      }
+    }
+
+    // ---- Step 3: Spawn map actors (Ch26 Phase A) ----
+    const mapActorEntries = this.map?.actorEntries
+    if (mapActorEntries && mapActorEntries.length > 0) {
+      this._spawnMapActors(mapActorEntries)
+    }
+
+    // ---- Step 4: Notify IWorldLoaded traits ----
+    // Notify WorldActor traits (skip ScreenMap — already done)
     const worldLoadedTraits = this.traitDict.traitsImplementing<IWorldLoaded & Component>(
       this.worldActor,
       'IWorldLoaded',
@@ -1625,7 +2082,7 @@ export class GameWorldManager {
       }
     }
 
-    // Set game info metadata
+    // ---- Step 5: Set game info metadata ----
     if (this.gameInfo) {
       this.gameInfo.startTimeUtc as Date
       // HACK: Readonly; will be properly mutable when GameInformation is migrated
