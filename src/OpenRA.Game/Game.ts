@@ -1170,22 +1170,49 @@ export class Game {
   // -----------------------------------------------------------------------
 
   /**
-   * 在 canvas 上方显示主菜单 DOM 覆盖层。
+   * 在 canvas 上方显示主菜单。
    *
    * OpenRA 对照: OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs
    *
-   * 使用纯 DOM 渲染（而非 Widget 系统），与 ModSelector 风格一致。
-   * 按钮功能为 stub — Skirmish/Settings 显示 "Coming Soon"，
-   * Exit 导航回 Mod 选择器 `/`。
+   * ADR-27.1 (取代 ADR-22.3): Widget 渲染是主动升级路径。
+   * DOM 覆盖层立即显示以提供即时反馈，随后异步尝试通过
+   * WidgetLoader 加载 common|chrome/mainmenu.json 的 widget 树。
+   * 加载成功后替换 DOM 覆盖层；失败则 DOM 覆盖层持续可见。
    *
-   * ADR-22.3: 主菜单使用 DOM overlay，不依赖 Widget 系统。
-   * 完整的 Widget 渲染（TODO-22.C.2 Widget）推迟到 ChromeProvider + WidgetLoader
-   * 集成完成之后，届时可替换此 DOM 实现。
+   * 按钮功能:
+   * - Skirmish → _openSkirmishSetup()
+   * - Multiplayer → disabled (Coming Soon)
+   * - Settings → _openSettingsPanel()
+   * - Exit → _exitToModSelector()
    */
   showMainMenu(): void {
     // 移除已有的主菜单（防止重复创建）
     this.hideMainMenu()
 
+    // 立即显示 DOM 覆盖层（同步，始终可用）
+    this._showMainMenuDomOverlay()
+
+    // 异步尝试升级到 Widget 菜单（ADR-27.1 主动升级路径）
+    // 成功: Widget 菜单替换 DOM 覆盖层
+    // 失败: DOM 覆盖层保持可见（静默降级）
+    this.showMainMenuWidget().catch((err) => {
+      console.warn(
+        '[Game] Widget-based main menu unavailable, DOM overlay remains:',
+        err instanceof Error ? err.message : String(err),
+      )
+    })
+  }
+
+  /**
+   * 显示纯 DOM 主菜单覆盖层（回退方案）。
+   *
+   * 使用纯 DOM 渲染（而非 Widget 系统），与 ModSelector 风格一致。
+   * 在 WidgetLoader 不可用或 chrome 文件缺失时作为降级方案。
+   *
+   * ADR-27.1: 当 Widget 路径失败时，此 DOM 实现是回退方案。
+   * ADR-22.3 (已取代): 原 DOM overlay 作为主路径的决定。
+   */
+  private _showMainMenuDomOverlay(): void {
     const overlay = document.createElement('div')
     overlay.id = 'main-menu-overlay'
     // 固定定位覆盖整个视口，z-index 低于加载遮罩
@@ -1286,7 +1313,7 @@ export class Game {
 
     // 版本信息（带 CSS pulse 动画）
     const version = document.createElement('p')
-    version.textContent = 'Prototype — Phase D'
+    version.textContent = 'Prototype — Phase C'
     version.style.cssText =
       'color:#555570;font-size:0.75rem;margin-top:1.5rem;' +
       'animation:menu-version-pulse 3s ease-in-out infinite;'
@@ -1339,12 +1366,11 @@ export class Game {
   }
 
   // -----------------------------------------------------------------------
-  // Widget-Based Main Menu (P1-D.8)
+  // Widget-Based Main Menu (Ch27 Phase C)
   //
-  // Parallel track to the DOM overlay approach. Uses the Widget system
-  // (Ch5 Widget.ts, ChromeProvider.ts, WidgetLoader.ts) to create a
-  // programmatic widget tree for the main menu. The DOM overlay remains
-  // functional — Widget conversion eventually replaces it.
+  // Uses WidgetLoader + ChromeProvider to load the main menu widget tree
+  // from common|chrome/mainmenu.json. Replaces the programmatic DOM overlay
+  // approach of Phases A-D. The DOM overlay remains as a fallback.
   //
   // OpenRA 对照: OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs
   // -----------------------------------------------------------------------
@@ -1359,191 +1385,208 @@ export class Game {
   private _mainMenuKeyHandler: ((e: KeyboardEvent) => void) | null = null
 
   /**
-   * Show a widget-based main menu using the Widget system.
+   * 通过 WidgetLoader 加载并显示 Widget 主菜单。
    *
    * OpenRA 对照: MainMenuLogic widget construction via ChromeProvider + WidgetLoader
    *
-   * Creates a programmatic ContainerWidget tree with buttons for Skirmish,
-   * Load, Settings, and Exit. Each button triggers the appropriate game
-   * state transition. Escape key returns to the mod selector.
+   * TODO-27.C.2: 从 manifest.chromeLayout 加载 common|chrome/mainmenu.json，
+   * 通过 WidgetLoader.loadUI('MAINMENU') 创建完整 widget 树。
    *
-   * Uses ContainerWidget as the rendering primitive — ContainerWidget.render()
-   * returns a `<div>` element via getOrCreateElement(). Button content is
-   * injected as direct DOM children of each container after renderOuter().
+   * TODO-27.C.3: 加载后通过 widget ID 查找按钮并连接 onClick 处理器。
    *
-   * This runs in parallel with the DOM overlay — callers choose which
-   * approach to use. Currently showMainMenu() uses DOM overlay;
-   * showMainMenuWidget() provides the Widget-based alternative.
+   * 策略:
+   * - 如果 manifest.chromeLayout 包含 mainmenu.yaml，
+   *   通过 WidgetLoader 加载完整 OpenRA widget 树
+   * - 隐藏子菜单（SINGLEPLAYER_MENU, EXTRAS_MENU 等），
+   *   仅显示主按钮层
+   * - 连接 SINGLEPLAYER_BUTTON → _openSkirmishSetup()
+   * - 连接 SETTINGS_BUTTON → _openSettingsPanel()
+   * - 连接 QUIT_BUTTON → _exitToModSelector()
+   * - MULTIPLAYER_BUTTON / EXTRAS_BUTTON / CONTENT_BUTTON 设为 disabled
+   * - 如果缺少 chrome 文件或加载失败，抛出异常
+   *   （showMainMenu 会回退到 DOM 覆盖层）
    *
-   * NOTE: This Widget-based menu runs in parallel with the DOM overlay approach.
-   * The DOM overlay (showMainMenu) is the stable default for Phase A-D.
-   * Once Widget-based menu proves stable through visual acceptance testing,
-   * showMainMenu() will be updated to call showMainMenuWidget() internally.
-   *
-   * P1-D.8: Initial implementation with programmatic ContainerWidget tree.
-   * Full YAML-based widget loading via ChromeProvider deferred until
-   * main menu YAML definitions are ported.
+   * @throws 如果 mod 未加载、FileSystem 不可用、或 WidgetLoader 加载失败
    */
-  showMainMenuWidget(): void {
-    // Remove previous instance if any
+  async showMainMenuWidget(): Promise<void> {
+    // 清理之前的 widget 实例（不影响 DOM 覆盖层）
     this.hideMainMenuWidget()
-    // Also hide the DOM overlay to avoid double-render
-    this.hideMainMenu()
 
-    // Dynamic import to avoid circular dependency at module load time
-    import('./Widgets/Widget.js').then(({ ContainerWidget }) => {
-      // If hideMainMenuWidget was called while async import was in flight, abort
-      if (this.state === GameState.Disposed) return
+    if (!this.modData || !this.currentModId) {
+      throw new Error('Cannot show widget menu: mod not loaded')
+    }
 
-      // ---- Build Widget tree ----
+    const manifest = this.modData.manifest
+    const fileSystem = this.modData.modFiles
 
-      const root = new ContainerWidget()
-      root.id = 'main-menu-widget-overlay'
-
-      // Menu card container
-      const card = new ContainerWidget()
-      card.id = 'main-menu-card'
-      root.addChild(card)
-
-      // Render widget tree to DOM
-      const rootEl = root.renderOuter()
-      rootEl.id = 'main-menu-widget-overlay'
-      rootEl.style.cssText =
-        'position:fixed;inset:0;display:flex;flex-direction:column;' +
-        'align-items:center;justify-content:center;z-index:99;'
-
-      // Style the card container (second child div, first is root)
-      const cardEl = rootEl.querySelector('[data-widget-id="main-menu-card"]') as HTMLElement
-      if (cardEl) {
-        cardEl.style.cssText =
-          'position:static;' +
-          'background:rgba(10,10,30,0.85);border:1px solid rgba(100,100,180,0.3);' +
-          'border-radius:12px;padding:3rem 4rem;min-width:360px;text-align:center;'
-      }
-
-      // ---- Add content to card ----
-      const contentEl = cardEl ?? rootEl
-
-      // Title
-      const titleEl = document.createElement('h1')
-      titleEl.textContent = 'OpenRAWeb3D'
-      titleEl.style.cssText =
-        'color:#f0f0f0;font-size:2rem;font-weight:700;margin:0 0 0.5rem 0;' +
-        'letter-spacing:-0.5px;'
-      contentEl.appendChild(titleEl)
-
-      // Subtitle
-      const subtitleEl = document.createElement('p')
-      subtitleEl.textContent = 'Web-based RTS Engine'
-      subtitleEl.style.cssText = 'color:#8888aa;font-size:0.9rem;margin:0 0 2rem 0;'
-      contentEl.appendChild(subtitleEl)
-
-      // Button factory
-      const appendButton = (
-        id: string,
-        text: string,
-        disabled: boolean,
-        onClick: () => void,
-      ): void => {
-        const btnEl = document.createElement('button')
-        btnEl.id = `widget-${id}`
-        btnEl.textContent = text
-        btnEl.disabled = disabled
-        btnEl.style.cssText =
-          'display:block;width:100%;padding:12px 20px;margin-bottom:12px;' +
-          'border:1px solid rgba(100,100,180,0.4);border-radius:6px;' +
-          'font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.15s ease;' +
-          (
-            disabled
-              ? 'background:rgba(40,40,60,0.5);color:#555570;cursor:not-allowed;'
-              : 'background:linear-gradient(135deg,#334488,#4466cc);color:#e0e0f0;'
-          )
-        if (!disabled) {
-          btnEl.addEventListener('mouseenter', () => {
-            btnEl.style.background = 'linear-gradient(135deg,#4466cc,#5577ee)'
-            btnEl.style.borderColor = 'rgba(120,140,220,0.6)'
-            btnEl.style.boxShadow = '0 0 8px rgba(100,140,220,0.3)'
-          })
-          btnEl.addEventListener('mouseleave', () => {
-            btnEl.style.background = 'linear-gradient(135deg,#334488,#4466cc)'
-            btnEl.style.borderColor = 'rgba(100,100,180,0.4)'
-            btnEl.style.boxShadow = 'none'
-          })
-          btnEl.addEventListener('click', (e) => {
-            e.stopPropagation()
-            onClick()
-          })
-        }
-        contentEl.appendChild(btnEl)
-      }
-
-      // Skirmish button
-      appendButton(
-        'btn-skirmish',
-        'Skirmish',
-        false,
-        () => this._openSkirmishSetup(),
+    // 检查 chromeLayout — 如果为空则 widget 树无法加载
+    if (!manifest.chromeLayout || manifest.chromeLayout.length === 0) {
+      throw new Error(
+        'Cannot show widget menu: manifest.chromeLayout is empty',
       )
+    }
 
-      // Load button
-      appendButton(
-        'btn-load',
-        'Load Game (Coming Soon)',
-        true,
-        () => this._showLoadGameComingSoon(),
-      )
+    // ---- 动态导入 widget 类型（避免循环依赖） ----
+    const [
+      wlMod,
+      wMod,
+      btnMod,
+      lblMod,
+      bgMod,
+      imgMod,
+      ddbMod,
+      lklMod,
+    ] = await Promise.all([
+      import('./Widgets/WidgetLoader.js'),
+      import('./Widgets/Widget.js'),
+      import('../OpenRA.Mods.Common/Widgets/ButtonWidget.js'),
+      import('../OpenRA.Mods.Common/Widgets/LabelWidget.js'),
+      import('../OpenRA.Mods.Common/Widgets/BackgroundWidget.js'),
+      import('../OpenRA.Mods.Common/Widgets/ImageWidget.js'),
+      import('../OpenRA.Mods.Common/Widgets/DropDownButtonWidget.js'),
+      import('../OpenRA.Mods.Common/Widgets/LogicKeyListenerWidget.js'),
+    ])
 
-      // Settings button
-      appendButton(
-        'btn-settings',
-        'Settings',
-        false,
-        () => this._openSettingsPanel(),
-      )
+    // 守卫: dispose 可能在 async import 期间被调用
+    if (this.state === GameState.Disposed) return
 
-      // Exit button
-      appendButton(
-        'btn-exit',
-        'Exit to Desktop',
-        false,
-        () => this._exitToModSelector(),
-      )
+    const { WidgetLoader: WL } = wlMod
+    const { ContainerWidget: CW } = wMod
+    const { ButtonWidget: BW } = btnMod
+    const { LabelWidget: LW } = lblMod
+    const { BackgroundWidget: BgW } = bgMod
+    const { ImageWidget: IW } = imgMod
+    const { DropDownButtonWidget: DDBW } = ddbMod
+    const { LogicKeyListenerWidget: LKLW } = lklMod
 
-      // Version info (with CSS pulse animation)
-      const versionEl = document.createElement('p')
-      versionEl.textContent = 'P1-D.8 — Widget-Based Main Menu'
-      versionEl.style.cssText =
-        'color:#555570;font-size:0.75rem;margin-top:1.5rem;margin-bottom:0;' +
-        'animation:menu-version-pulse 3s ease-in-out infinite;'
-      contentEl.appendChild(versionEl)
+    // ---- 创建 WidgetLoader 并注册类型 ----
+    const widgetLoader = new WL(this.modData.objectCreator)
 
-      // Inject pulse keyframes into document if not already present
-      if (!document.getElementById('menu-version-pulse-style')) {
-        const style = document.createElement('style')
-        style.id = 'menu-version-pulse-style'
-        style.textContent =
-          '@keyframes menu-version-pulse {' +
-          '0%, 100% { opacity: 0.4; }' +
-          '50% { opacity: 0.8; }' +
-          '}'
-        document.head.appendChild(style)
+    widgetLoader.registerWidget('Container', CW)
+    widgetLoader.registerWidget('Button', BW)
+    widgetLoader.registerWidget('Label', LW)
+    widgetLoader.registerWidget('Background', BgW)
+    widgetLoader.registerWidget('Image', IW)
+    widgetLoader.registerWidget('DropDownButton', DDBW)
+    widgetLoader.registerWidget('LogicKeyListener', LKLW)
+
+    // ---- 从 manifest.chromeLayout 加载布局定义 ----
+    await widgetLoader.loadFromManifest(manifest, fileSystem)
+
+    // ---- 加载 MAINMENU widget 树 ----
+    const args: import('./Widgets/Widget.js').WidgetArgs = {}
+    const root = widgetLoader.loadUI('MAINMENU', args)
+
+    // ---- 隐藏子菜单（Phase C 仅显示主按钮层） ----
+    this._hideSubMenusOnWidgetTree(root)
+
+    // ---- 连接按钮动作 ----
+    this._wireMainMenuButtonsOnWidgetTree(root)
+
+    // ---- 移除 DOM 覆盖层（widget 就绪） ----
+    const domOverlay = document.getElementById('main-menu-overlay')
+    if (domOverlay) domOverlay.remove()
+
+    // ---- 渲染 widget 树到 DOM ----
+    const rootEl = root.renderOuter()
+    rootEl.id = 'main-menu-widget-overlay'
+    rootEl.style.cssText =
+      'position:fixed;inset:0;display:flex;flex-direction:column;' +
+      'align-items:center;justify-content:center;z-index:99;'
+
+    document.body.appendChild(rootEl)
+    this._mainMenuWidgetRoot = root
+    this._mainMenuWidgetDomRoot = rootEl
+
+    // ---- 注册 Escape 键处理器 ----
+    this._mainMenuKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        this._exitToModSelector()
       }
+    }
+    window.addEventListener('keydown', this._mainMenuKeyHandler)
+  }
 
-      // Attach to document
-      document.body.appendChild(rootEl)
-      this._mainMenuWidgetRoot = root
-      this._mainMenuWidgetDomRoot = rootEl
+  /**
+   * 在加载的 widget 树中隐藏子菜单面板。
+   *
+   * OpenRA 对照: MainMenuLogic 中的 CloseMenu / OpenMenu 面板切换
+   *
+   * 隐藏包含 SINGLEPLAYER_MENU, EXTRAS_MENU, MAP_EDITOR_MENU,
+   * PERFORMANCE_INFO, UPDATE_NOTICE, PLAYER_PROFILE_CONTAINER 等子面板。
+   * MAIN_MENU 保持可见。
+   *
+   * @param root — 根 widget (MAINMENU Container)
+   */
+  private _hideSubMenusOnWidgetTree(
+    root: import('./Widgets/Widget.js').Widget,
+  ): void {
+    const subMenuIds = [
+      'SINGLEPLAYER_MENU',
+      'EXTRAS_MENU',
+      'MAP_EDITOR_MENU',
+      'PERFORMANCE_INFO',
+      'UPDATE_NOTICE',
+      'PLAYER_PROFILE_CONTAINER',
+    ]
 
-      // Register Escape key handler
-      this._mainMenuKeyHandler = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          this._exitToModSelector()
-        }
-      }
-      window.addEventListener('keydown', this._mainMenuKeyHandler)
-    }).catch((err) => {
-      console.warn('[Game] Failed to load Widget module for main menu:', err)
-    })
+    for (const id of subMenuIds) {
+      const w = root.getOrNull<import('./Widgets/Widget.js').Widget>(id)
+      if (w) w.visible = false
+    }
+  }
+
+  /**
+   * 在 widget 树中查找按钮并连接 onClick 处理器。
+   *
+   * OpenRA 对照: MainMenuLogic 中的按钮事件处理
+   *
+   * 连接的按钮:
+   * - SINGLEPLAYER_BUTTON → _openSkirmishSetup()
+   * - SETTINGS_BUTTON → _openSettingsPanel()
+   * - QUIT_BUTTON → _exitToModSelector()
+   * - MULTIPLAYER_BUTTON / EXTRAS_BUTTON / CONTENT_BUTTON → disabled
+   *
+   * @param root — 根 widget (MAINMENU Container)
+   */
+  private _wireMainMenuButtonsOnWidgetTree(
+    root: import('./Widgets/Widget.js').Widget,
+  ): void {
+    // 最小按钮属性接口（onClick + disabled）
+    type BtnProps = { onClick: () => void; disabled: boolean }
+
+    const asBtn = (
+      w: import('./Widgets/Widget.js').Widget | null,
+    ): BtnProps | null => w as unknown as BtnProps | null
+
+    const skirmishBtn = asBtn(root.getOrNull('SINGLEPLAYER_BUTTON'))
+    const multiplayerBtn = asBtn(root.getOrNull('MULTIPLAYER_BUTTON'))
+    const settingsBtn = asBtn(root.getOrNull('SETTINGS_BUTTON'))
+    const extrasBtn = asBtn(root.getOrNull('EXTRAS_BUTTON'))
+    const contentBtn = asBtn(root.getOrNull('CONTENT_BUTTON'))
+    const quitBtn = asBtn(root.getOrNull('QUIT_BUTTON'))
+
+    if (skirmishBtn) {
+      skirmishBtn.onClick = () => this._openSkirmishSetup()
+    }
+    if (multiplayerBtn) {
+      multiplayerBtn.disabled = false
+      multiplayerBtn.onClick = () => this._showLoadGameComingSoon()
+    }
+    if (settingsBtn) {
+      settingsBtn.onClick = () => this._openSettingsPanel()
+    }
+    if (extrasBtn) {
+      extrasBtn.disabled = false
+      extrasBtn.onClick = () => this._showLoadGameComingSoon()
+    }
+    if (contentBtn) {
+      contentBtn.disabled = false
+      contentBtn.onClick = () => this._showLoadGameComingSoon()
+    }
+    if (quitBtn) {
+      quitBtn.onClick = () => this._exitToModSelector()
+    }
   }
 
   /**

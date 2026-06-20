@@ -2247,7 +2247,7 @@ describe('Shellmap Phase 3 (P1-D.7)', () => {
 // P1-D.8 Phase D.8: Widget-Based Main Menu
 // ---------------------------------------------------------------------------
 
-describe('Widget-Based Main Menu (P1-D.8)', () => {
+describe('Widget-Based Main Menu (Ch27 Phase C)', () => {
   afterEach(() => {
     const existing = document.getElementById('main-menu-overlay')
     if (existing) existing.remove()
@@ -2255,78 +2255,67 @@ describe('Widget-Based Main Menu (P1-D.8)', () => {
     if (widgetRoot) widgetRoot.remove()
   })
 
-  describe('showMainMenuWidget()', () => {
-    it('creates widget-based menu in the DOM', async () => {
+  describe('showMainMenuWidget() — async WidgetLoader path', () => {
+    it('rejects when chromeLayout is empty (_test mod)', async () => {
       mockModJson(200)
       const canvas = createTestCanvas()
       const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-      game.showMainMenuWidget()
-
-      // Wait for the async import to resolve
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      const widgetRoot = document.getElementById('main-menu-widget-overlay')
-      expect(widgetRoot).not.toBeNull()
-
-      game.hideMainMenuWidget()
+      await expect(game.showMainMenuWidget()).rejects.toThrow(
+        'manifest.chromeLayout is empty',
+      )
     })
 
-    it('removes DOM overlay when widget menu is shown', async () => {
+    it('rejects when modData is null', async () => {
+      const game = new (Game as any)()
+      game.modData = null
+
+      await expect(game.showMainMenuWidget()).rejects.toThrow(
+        'mod not loaded',
+      )
+    })
+
+    it('showMainMenu falls back to DOM overlay on widget failure', async () => {
       mockModJson(200)
       const canvas = createTestCanvas()
       const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-      // Show DOM overlay first
       game.showMainMenu()
+
+      // DOM overlay should be visible immediately
       expect(document.getElementById('main-menu-overlay')).not.toBeNull()
 
-      // Show widget menu — should remove DOM overlay
-      game.showMainMenuWidget()
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Wait for async widget upgrade to complete (it will fail silently)
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
-      expect(document.getElementById('main-menu-overlay')).toBeNull()
+      // DOM overlay should still be present (fallback)
+      expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+      expect(document.getElementById('main-menu-overlay')!.textContent).toContain('Phase C')
 
-      game.hideMainMenuWidget()
+      game.hideMainMenu()
     })
 
-    it('creates menu buttons in widget tree', async () => {
+    it('DOM overlay buttons are correctly structured', async () => {
       mockModJson(200)
       const canvas = createTestCanvas()
       const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-      game.showMainMenuWidget()
-      await new Promise(resolve => setTimeout(resolve, 100))
+      game.showMainMenu()
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
-      const widgetRoot = document.getElementById('main-menu-widget-overlay')
-      expect(widgetRoot).not.toBeNull()
+      const overlay = document.getElementById('main-menu-overlay')
+      expect(overlay).not.toBeNull()
 
-      // Verify buttons exist
-      expect(document.getElementById('widget-btn-skirmish')).not.toBeNull()
-      expect(document.getElementById('widget-btn-exit')).not.toBeNull()
+      // Verify DOM overlay buttons exist
+      expect(document.getElementById('btn-skirmish')).not.toBeNull()
+      expect(document.getElementById('btn-exit')).not.toBeNull()
+      expect(overlay!.textContent).toContain('OpenRAWeb3D')
 
-      // Verify title is present
-      expect(widgetRoot!.textContent).toContain('OpenRAWeb3D')
-
-      game.hideMainMenuWidget()
+      game.hideMainMenu()
     })
   })
 
   describe('hideMainMenuWidget()', () => {
-    it('removes widget DOM from document', async () => {
-      mockModJson(200)
-      const canvas = createTestCanvas()
-      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
-
-      game.showMainMenuWidget()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      expect(document.getElementById('main-menu-widget-overlay')).not.toBeNull()
-
-      game.hideMainMenuWidget()
-      expect(document.getElementById('main-menu-widget-overlay')).toBeNull()
-    })
-
     it('is safe to call when no widget menu exists', async () => {
       mockModJson(200)
       const canvas = createTestCanvas()
@@ -2340,72 +2329,64 @@ describe('Widget-Based Main Menu (P1-D.8)', () => {
       const canvas = createTestCanvas()
       const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-      game.showMainMenuWidget()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      game.hideMainMenuWidget()
+      expect(() => game.hideMainMenuWidget()).not.toThrow()
       expect(() => game.hideMainMenuWidget()).not.toThrow()
     })
   })
 
   describe('hideMainMenu() integration', () => {
-    it('hideMainMenu also calls hideMainMenuWidget', async () => {
+    it('hideMainMenu cleans up DOM overlay and widget elements', async () => {
       mockModJson(200)
       const canvas = createTestCanvas()
       const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-      game.showMainMenuWidget()
-      await new Promise(resolve => setTimeout(resolve, 100))
+      game.showMainMenu()
+      expect(document.getElementById('main-menu-overlay')).not.toBeNull()
 
-      expect(document.getElementById('main-menu-widget-overlay')).not.toBeNull()
-
-      // Calling hideMainMenu should clean up both
       game.hideMainMenu()
-      expect(document.getElementById('main-menu-widget-overlay')).toBeNull()
       expect(document.getElementById('main-menu-overlay')).toBeNull()
+      expect(document.getElementById('main-menu-widget-overlay')).toBeNull()
     })
   })
 
   describe('Escape key handler', () => {
-    it('Escape key triggers exit to mod selector', async () => {
+    it('Exit button in DOM overlay triggers navigation to /', async () => {
       mockModJson(200)
       const canvas = createTestCanvas()
       const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
       const pushStateSpy = vi.spyOn(history, 'pushState')
 
-      game.showMainMenuWidget()
-      await new Promise(resolve => setTimeout(resolve, 100))
+      game.showMainMenu()
 
-      // Simulate Escape key
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-
-      expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
-
-      pushStateSpy.mockRestore()
-      game.hideMainMenuWidget()
-    })
-  })
-
-  describe('Exit button in widget menu', () => {
-    it('Exit button triggers navigation to /', async () => {
-      mockModJson(200)
-      const canvas = createTestCanvas()
-      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
-
-      const pushStateSpy = vi.spyOn(history, 'pushState')
-
-      game.showMainMenuWidget()
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      const exitBtn = document.getElementById('widget-btn-exit') as HTMLButtonElement
+      const exitBtn = document.getElementById('btn-exit') as HTMLButtonElement
       expect(exitBtn).not.toBeNull()
       exitBtn.click()
 
       expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
 
       pushStateSpy.mockRestore()
-      game.hideMainMenuWidget()
+    })
+  })
+
+  describe('Exit button', () => {
+    it('Exit button navigates to / via DOM overlay', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      const pushStateSpy = vi.spyOn(history, 'pushState')
+
+      game.showMainMenu()
+
+      const exitBtn = document.getElementById('btn-exit') as HTMLButtonElement
+      expect(exitBtn).not.toBeNull()
+      exitBtn.click()
+
+      expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
+      expect(game.state).toBe(GameState.Disposed)
+
+      pushStateSpy.mockRestore()
     })
   })
 })
@@ -3263,34 +3244,32 @@ describe('Ch26 Phase B — Skirmish Setup Cleanup', () => {
 })
 
 describe('Ch26 Phase B — Load Game button stays disabled (TODO-26.B.3)', () => {
-  it('Load Game button in widget menu is disabled', async () => {
+  it('Multiplayer button in DOM overlay is disabled with Coming Soon text', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-    game.showMainMenuWidget()
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    game.showMainMenu()
 
-    const loadBtn = document.getElementById('widget-btn-load') as HTMLButtonElement
-    expect(loadBtn).not.toBeNull()
-    expect(loadBtn.disabled).toBe(true)
-    expect(loadBtn.textContent).toContain('Coming Soon')
+    const mpBtn = document.getElementById('btn-multiplayer') as HTMLButtonElement
+    expect(mpBtn).not.toBeNull()
+    expect(mpBtn.disabled).toBe(true)
+    expect(mpBtn.textContent).toContain('Coming Soon')
 
-    game.hideMainMenuWidget()
+    game.hideMainMenu()
     game.dispose()
   })
 
-  it('Widget skirmish button opens setup modal, not coming soon', async () => {
+  it('Skirmish button in DOM overlay opens setup modal, not coming soon alert', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
 
-    game.showMainMenuWidget()
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    game.showMainMenu()
 
-    const skirmishBtn = document.getElementById('widget-btn-skirmish') as HTMLButtonElement
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
     expect(skirmishBtn).not.toBeNull()
     expect(skirmishBtn.disabled).toBe(false)
 
@@ -3300,7 +3279,6 @@ describe('Ch26 Phase B — Load Game button stays disabled (TODO-26.B.3)', () =>
     expect(alertSpy).not.toHaveBeenCalled()
 
     // Setup modal should exist
-    await new Promise((resolve) => setTimeout(resolve, 100))
     const setupOverlay = document.getElementById('skirmish-setup-overlay')
     expect(setupOverlay).not.toBeNull()
 
@@ -3443,25 +3421,22 @@ describe('Ch26 Phase D — Settings Panel (TODO-26.D.1)', () => {
     game.dispose()
   })
 
-  it('Widget menu Settings button opens settings panel', async () => {
+  it('Widget menu Settings button: not tested with empty chromeLayout (_test mod)', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-    game.showMainMenuWidget()
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    // Widget menu can't load without chromeLayout — verify it rejects
+    await expect(game.showMainMenuWidget()).rejects.toThrow('chromeLayout')
 
-    const settingsBtn = document.getElementById('widget-btn-settings') as HTMLButtonElement
+    // Fallback DOM overlay still works
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
     expect(settingsBtn).not.toBeNull()
     expect(settingsBtn.disabled).toBe(false)
 
     settingsBtn.click()
-
-    // Settings panel should be visible
     expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
-
-    // Widget menu should be hidden
-    expect(document.getElementById('main-menu-widget-overlay')).toBeNull()
 
     game.dispose()
   })
@@ -3658,15 +3633,16 @@ describe('Ch26 Phase D — Visual Polish (TODO-26.D.1)', () => {
     game.dispose()
   })
 
-  it('Widget menu buttons have border glow on hover', async () => {
+  it('Widget menu buttons: DOM overlay provides hover glow (fallback)', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-    game.showMainMenuWidget()
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    // Widget menu unavailable with _test mod (no chromeLayout)
+    // DOM overlay provides visual polish
+    game.showMainMenu()
 
-    const skirmishBtn = document.getElementById('widget-btn-skirmish') as HTMLButtonElement
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
 
     skirmishBtn.dispatchEvent(new MouseEvent('mouseenter'))
     expect(skirmishBtn.style.boxShadow).toContain('rgba(100,140,220')
@@ -3697,16 +3673,17 @@ describe('Ch26 Phase D — Visual Polish (TODO-26.D.1)', () => {
     game.dispose()
   })
 
-  it('Widget menu version text has pulse animation', async () => {
+  it('Widget menu version text: DOM overlay provides pulse animation (fallback)', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-    game.showMainMenuWidget()
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    game.showMainMenu()
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const widgetRoot = document.getElementById('main-menu-widget-overlay')!
-    const versionEl = widgetRoot.querySelector('p:last-child') as HTMLElement
+    const overlay = document.getElementById('main-menu-overlay')!
+    // The version text paragraph (p:last-child inside menu card) should have pulse animation
+    const versionEl = overlay.querySelector('p:last-of-type') as HTMLElement
     expect(versionEl.style.animation).toContain('menu-version-pulse')
 
     game.dispose()
@@ -4128,27 +4105,28 @@ describe('Ch26 Phase D — Main Menu Integration (TODO-26.D.2d)', () => {
     }
   })
 
-  it('all 4 buttons visible in Widget menu', async () => {
+  it('all 4 buttons visible in DOM overlay (widget fallback)', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
-    game.showMainMenuWidget()
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    game.showMainMenu()
 
-    const skirmishBtn = document.getElementById('widget-btn-skirmish') as HTMLButtonElement
-    const loadBtn = document.getElementById('widget-btn-load') as HTMLButtonElement
-    const settingsBtn = document.getElementById('widget-btn-settings') as HTMLButtonElement
-    const exitBtn = document.getElementById('widget-btn-exit') as HTMLButtonElement
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    const mpBtn = document.getElementById('btn-multiplayer') as HTMLButtonElement
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    const exitBtn = document.getElementById('btn-exit') as HTMLButtonElement
 
     expect(skirmishBtn).not.toBeNull()
-    expect(loadBtn).not.toBeNull()
+    expect(mpBtn).not.toBeNull()
     expect(settingsBtn).not.toBeNull()
     expect(exitBtn).not.toBeNull()
 
     // Skirmish and Exit should be enabled
     expect(skirmishBtn.disabled).toBe(false)
     expect(exitBtn.disabled).toBe(false)
+    // Multiplayer should be disabled (Coming Soon)
+    expect(mpBtn.disabled).toBe(true)
 
     game.dispose()
   })
@@ -4206,23 +4184,22 @@ describe('Ch26 Phase D — Main Menu Integration (TODO-26.D.2d)', () => {
     // Already disposed by _exitToModSelector
   })
 
-  it('Escape key triggers exit to mod selector in Widget menu', async () => {
+  it('Exit button in DOM overlay triggers navigation to / (widget fallback)', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
     const pushStateSpy = vi.spyOn(history, 'pushState')
 
-    game.showMainMenuWidget()
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    game.showMainMenu()
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    const exitBtn = document.getElementById('btn-exit') as HTMLButtonElement
+    exitBtn.click()
 
     expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
+    expect(game.state).toBe(GameState.Disposed)
 
     pushStateSpy.mockRestore()
-    game.hideMainMenuWidget()
-    game.dispose()
   })
 
   it('Load Game button remains disabled with "Coming Soon" text', async () => {
