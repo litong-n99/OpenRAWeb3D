@@ -294,4 +294,4 @@ cellSize = 0.8 world units
 
 | 审核状态 | 审核人 | 审核日期 | 审核结果 |
 |---------|--------|---------|---------|
-| PENDING | - | - | - |
+| APPROVED | KV | 2026-06-20 | R2 APPROVED — all 6 expectations verified |
