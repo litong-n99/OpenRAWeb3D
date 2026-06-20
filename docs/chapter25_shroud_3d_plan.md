@@ -112,7 +112,7 @@ The remaining gaps are **integration-level** rather than infrastructure:
 | Phase | Operations | Impl Lines | Test Lines | Status |
 |:---|:---:|:---:|:---:|:---|
 | A: ShroudRenderer | 2 | ~100 | -- | COMPLETE |
-| B: FrozenActor 3D | 2 | ~220 | -- | PLANNING |
+| B: FrozenActor 3D | 2 | ~220 | -- | COMPLETE |
 | C: Visibility + Tests | 3 | ~110 | ~350 | PLANNING |
 
 ---
@@ -153,9 +153,9 @@ The remaining gaps are **integration-level** rather than infrastructure:
 
 ### 3.2 Phase B: FrozenActor 3D Flash & Tint Rendering
 
-**Status**: PLANNING
+**Status**: COMPLETE
 **Complexity**: MEDIUM
-**Blocked by**: Phase A (ShroudRenderer must be rendering for fog state to be observable)
+**Blocked by**: Phase A (ShroudRenderer must be rendering for fog state to be observable) -- COMPLETED
 **Blocks**: Under-attack visual feedback for fogged units
 
 **Description**: The FrozenActor's `Flash()` method sets tint color and alpha values but doesn't propagate them to 3D mesh materials. Phase B implements the 3D tinting path (material color modulation) and completes the renderable snapshot capture pipeline for `FrozenUnderFog`.
@@ -166,7 +166,7 @@ The remaining gaps are **integration-level** rather than infrastructure:
 
 #### 3.2.1 3D Tint Rendering via Material Color Modulation
 
-- [ ] **TODO-25.B.1** `src/OpenRA.Mods.Common/Traits/Player/FrozenActorLayer.ts` (est. 100 lines) -- Implement 3D Flash() tinting for frozen actor meshes:
+- [x] **TODO-25.B.1** `src/OpenRA.Game/Traits/Player/FrozenActorLayer.ts` (est. 100 lines) -- Implement 3D Flash() tinting for frozen actor meshes:
   - **Current state**: `Flash()` sets `_flashTint`/`_flashAlpha`/`_flashMods` on the FrozenActor, and `_flashTicks` counts down each frame. The 3D rendering path is `TODO-12.DEFERRED.13`.
   - **Implementation**: Add a private `_applyFlashTint()` method called from `tick()` when `_flashTicks > 0`:
     1. Retrieve the FrozenActor's current mesh(es) from the renderable snapshot
@@ -181,7 +181,7 @@ The remaining gaps are **integration-level** rather than infrastructure:
 
 #### 3.2.2 Renderable Snapshot Capture on Fog Transition
 
-- [ ] **TODO-25.B.2** `src/OpenRA.Mods.Common/Traits/Modifiers/FrozenUnderFog.ts` (est. 120 lines) -- Capture actor renderables when transitioning to fogged state:
+- [x] **TODO-25.B.2** `src/OpenRA.Mods.Common/Traits/Modifiers/FrozenUnderFog.ts` (est. 120 lines) -- Capture actor renderables when transitioning to fogged state:
   - **Current behavior**: `FrozenUnderFog.tickRender()` detects when an actor transitions from visible to fogged (`!_isVisible && _wasVisible`), but the renderable capture logic is incomplete.
   - **Implementation**:
     1. **Capture moment**: When `_wasVisible` is true and `_isVisible` becomes false:

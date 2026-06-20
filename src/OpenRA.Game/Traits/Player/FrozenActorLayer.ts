@@ -697,10 +697,24 @@ export class FrozenActor {
    * Flash ticks are decremented each frame; when they reach zero the
    * flash effect ends.
    *
+   * On even-numbered remaining ticks, the flash tint is applied to
+   * captured renderables' materials (blink ON phase). On odd-numbered
+   * remaining ticks, the tint is reverted (blink OFF phase).
+   *
    * @returns void
    */
   Tick(): void {
-    if (this._flashTicks > 0) this._flashTicks--
+    if (this._flashTicks > 0) {
+      this._flashTicks--
+
+      if (this.isFlashing) {
+        // Even ticks — apply flash tint (blink ON)
+        this._applyFlashTint()
+      } else {
+        // Odd ticks or zero — revert flash tint (blink OFF)
+        this._revertFlashTint()
+      }
+    }
 
     if (this.UpdateVisibilityNextTick) {
       this._updateVisibility()
@@ -907,6 +921,74 @@ export class FrozenActor {
     }
 
     return renderables
+  }
+
+  // -----------------------------------------------------------------------
+  // Flash tinting (private)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Apply flash tint to captured renderables' materials.
+   *
+   * OpenRA 对照: FrozenActor.Render() flash overlay logic
+   *
+   * Uses duck-typing to access material properties on renderables
+   * without importing @babylonjs/core. Each renderable is treated as
+   * a generic object; if it has a `material` property with
+   * `emissiveColor` and `alpha`, those are mutated to show the flash.
+   *
+   * Called from Tick() on even-numbered remaining flash ticks
+   * (blink ON phase).
+   */
+  private _applyFlashTint(): void {
+    const tint = this._flashTint
+    const alpha = this._flashAlpha
+    const isReplaceColor = this._flashModifiers === 1 // TintModifiers.ReplaceColor
+
+    for (const r of this.Renderables) {
+      const mesh = r as unknown as Record<string, unknown>
+      const material = mesh['material'] as Record<string, unknown> | undefined
+      if (!material) continue
+
+      if (isReplaceColor) {
+        // ReplaceColor: set emissive directly to tint color
+        material['emissiveColor'] = { r: tint.r, g: tint.g, b: tint.b }
+      } else {
+        // Multiplicative tint: multiply existing emissive by tint
+        const existing = (material['emissiveColor'] as { r: number; g: number; b: number } | undefined) ?? { r: 0, g: 0, b: 0 }
+        material['emissiveColor'] = {
+          r: existing.r * tint.r,
+          g: existing.g * tint.g,
+          b: existing.b * tint.b,
+        }
+      }
+
+      if (alpha !== null) {
+        material['alpha'] = alpha
+      }
+    }
+  }
+
+  /**
+   * Revert flash tint on captured renderables' materials.
+   *
+   * OpenRA 对照: FrozenActor.Render() — flash expiry cleanup
+   *
+   * Resets material.emissiveColor to black (no emission) and
+   * material.alpha to 1.0 (fully opaque). Called from Tick() on
+   * odd-numbered remaining flash ticks (blink OFF phase) and when
+   * flash expires.
+   */
+  private _revertFlashTint(): void {
+    for (const r of this.Renderables) {
+      const mesh = r as unknown as Record<string, unknown>
+      const material = mesh['material'] as Record<string, unknown> | undefined
+      if (!material) continue
+
+      // Revert to default: no emission, full alpha
+      material['emissiveColor'] = { r: 0, g: 0, b: 0 }
+      material['alpha'] = 1.0
+    }
   }
 
   // -----------------------------------------------------------------------

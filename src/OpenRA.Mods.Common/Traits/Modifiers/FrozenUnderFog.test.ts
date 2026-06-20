@@ -961,6 +961,85 @@ describe('FrozenUnderFog.tickRender', () => {
 
     expect(mockFrozenActorInstances[0].NeedRenderables).toBe(false)
   })
+
+  it('removes live actor from ScreenMap on visible→fogged transition', () => {
+    const { players, world } = setupPlayersWorld(2)
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    ;(players[0].relationshipWith as ReturnType<typeof vi.fn>).mockImplementation((other: unknown) => {
+      if (other === players[1]) return PlayerRelationship.Enemy
+      return PlayerRelationship.Ally
+    })
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    const mockWr = {} as unknown as WorldRendererStub
+
+    // First tickRender: establish _prevIsVisible = state.isVisible (defaults to false
+    // since frozen.Visible defaults to true → isVisible = !frozen.Visible = false)
+    fuf.tickRender(mockWr, self)
+
+    // Set up live actor as visible to player[1]
+    const mockFrozenRef1 = createMockFrozenRef({ viewer: players[1], visible: false })
+    fuf.onVisibilityChanged(mockFrozenRef1 as any)
+
+    // Now state.isVisible = true (live actor visible)
+    // Second tickRender: establishes prev = true
+    fuf.tickRender(mockWr, self)
+
+    // Transition: live actor goes under fog (frozen.visible becomes true)
+    const mockFrozenRef2 = createMockFrozenRef({ viewer: players[1], visible: true })
+    fuf.onVisibilityChanged(mockFrozenRef2 as any)
+
+    // Third tickRender: detects transition true→false, removes live actor
+    const screenMap = world.screenMap as Record<string, unknown>
+    ;(screenMap.remove as ReturnType<typeof vi.fn>).mockClear()
+    fuf.tickRender(mockWr, self)
+
+    expect(screenMap.remove).toHaveBeenCalledWith(players[1], self)
+  })
+
+  it('removes frozen actor and re-adds live actor on fogged→visible transition', () => {
+    const { players, world } = setupPlayersWorld(2)
+    addFrozenLayerToPlayer(players[0])
+    addFrozenLayerToPlayer(players[1])
+    ;(players[0].relationshipWith as ReturnType<typeof vi.fn>).mockImplementation((other: unknown) => {
+      if (other === players[1]) return PlayerRelationship.Enemy
+      return PlayerRelationship.Ally
+    })
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    const mockWr = {} as unknown as WorldRendererStub
+
+    // Step 1: Set live actor as NOT visible (fogged)
+    const mockFrozenRef1 = createMockFrozenRef({ viewer: players[1], visible: true })
+    fuf.onVisibilityChanged(mockFrozenRef1 as any)
+    // Step 2: First tickRender → establishes prev = false
+    fuf.tickRender(mockWr, self)
+
+    // Step 3: Transition → live actor becomes visible again
+    const mockFrozenRef2 = createMockFrozenRef({ viewer: players[1], visible: false })
+    fuf.onVisibilityChanged(mockFrozenRef2 as any)
+
+    const screenMap = world.screenMap as Record<string, unknown>
+    ;(screenMap.remove as ReturnType<typeof vi.fn>).mockClear()
+    ;(screenMap.addOrUpdate as ReturnType<typeof vi.fn>).mockClear()
+
+    // Step 4: Second tickRender → detects transition false→true
+    fuf.tickRender(mockWr, self)
+
+    // Verify frozen actor was removed from ScreenMap
+    expect(screenMap.remove).toHaveBeenCalled()
+    // Verify live actor was re-added to ScreenMap
+    expect(screenMap.addOrUpdate).toHaveBeenCalledWith(players[1], self)
+  })
 })
 
 // ---------------------------------------------------------------------------

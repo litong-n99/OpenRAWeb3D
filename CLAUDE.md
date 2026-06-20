@@ -84,7 +84,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | Router + ModSelector + Game (Ch22) | ALL PHASES COMPLETE (Phase A: Router/ModSelector 51 tests; Phase B: Game/main.ts 81 tests; Phase C: Main Menu/Shellmap; Phase D: Editor Stub; Phase E: Build Pipeline 150+ assets). Plan: [chapter22_game_entry_migration_plan.md](docs/chapter22_game_entry_migration_plan.md) |
 | **Chapter 23: MIX File Runtime Parsing** | ALL PHASES COMPLETE (8/8, Phases A-C, ~850 lines) |
 | **Chapter 24: Animation & 3D Visual Effects** | ALL PHASES A-D COMPLETE (10/10, 100%) |
-| **Chapter 25: Shroud & Fog of War 3D** | PLANNING (design doc ready) |
+| **Chapter 25: Shroud & Fog of War 3D** | PHASES A-B COMPLETE (4/7 operations, Phase C remaining) |
 | **Chapter 26: Game World & Shellmap Integration** | PLANNING (design doc ready) |
 | **Content Installer Pipeline (ALL PHASES)** | COMPLETE (25/25 tasks, 100%), ~10,000 impl lines, 500+ tests |
 

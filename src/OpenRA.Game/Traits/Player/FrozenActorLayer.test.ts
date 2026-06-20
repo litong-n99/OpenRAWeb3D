@@ -739,6 +739,161 @@ describe('FrozenActor', () => {
       fa.Tick()
       expect(fa.UpdateVisibilityNextTick).toBe(false) // processed
     })
+
+    it('applies flash tint to renderable materials on even ticks', () => {
+      const material: Record<string, unknown> = {
+        emissiveColor: { r: 0, g: 0, b: 0 },
+        alpha: 1.0,
+      }
+      const renderable = { type: 'sprite', material }
+
+      fa.Renderables = [renderable]
+      // Set existing emissive so multiplicative tint has non-zero base
+      material.emissiveColor = { r: 0.2, g: 0.4, b: 0.6 }
+      fa.Flash({ r: 0.5, g: 0.25, b: 0.75 }) // float3 overload (multiplicative)
+
+      // After Flash(): _flashTicks=5. Tick: 5→4 (even) → apply
+      fa.Tick()
+      // Multiplicative: existing * tint
+      expect(material.emissiveColor).toEqual({
+        r: 0.2 * 0.5,
+        g: 0.4 * 0.25,
+        b: 0.6 * 0.75,
+      })
+      expect(material.alpha).toBe(1.0) // flashAlpha is null (float3 overload)
+
+      // Tick: 4→3 (odd) → revert
+      fa.Tick()
+      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+      expect(material.alpha).toBe(1.0)
+
+      // Tick: 3→2 (even) → apply again
+      material.emissiveColor = { r: 0.2, g: 0.4, b: 0.6 } // restore pre-apply state
+      fa.Tick()
+      expect(material.emissiveColor).toEqual({
+        r: 0.2 * 0.5,
+        g: 0.4 * 0.25,
+        b: 0.6 * 0.75,
+      })
+    })
+
+    it('applies ReplaceColor flash tint with alpha to materials', () => {
+      const material: Record<string, unknown> = {
+        emissiveColor: { r: 0.5, g: 0.5, b: 0.5 },
+        alpha: 1.0,
+      }
+      const renderable = { type: 'sprite', material }
+
+      fa.Renderables = [renderable]
+      fa.Flash({ r: 255, g: 128, b: 0 }, 0.5) // Color+alpha overload (ReplaceColor)
+
+      // After Flash(): _flashTicks=5. Tick: 5→4 (even) → apply
+      fa.Tick()
+      expect(material.emissiveColor).toEqual({ r: 1.0, g: 128 / 255, b: 0 })
+      expect(material.alpha).toBe(0.5)
+
+      // Tick: 4→3 (odd) → revert
+      fa.Tick()
+      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+      expect(material.alpha).toBe(1.0)
+
+      // Tick: 3→2 (even) → apply again
+      fa.Tick()
+      expect(material.emissiveColor).toEqual({ r: 1.0, g: 128 / 255, b: 0 })
+      expect(material.alpha).toBe(0.5)
+    })
+
+    it('reverts flash tint after flash expires', () => {
+      const material: Record<string, unknown> = {
+        emissiveColor: { r: 0.2, g: 0.2, b: 0.2 },
+        alpha: 1.0,
+      }
+      const renderable = { type: 'sprite', material }
+
+      fa.Renderables = [renderable]
+      fa.Flash({ r: 1.0, g: 0, b: 0 }) // float3
+
+      // Tick sequence after Flash(): start at _flashTicks=5
+      fa.Tick() // 5→4 (even) → apply tint
+      fa.Tick() // 4→3 (odd) → revert tint
+      fa.Tick() // 3→2 (even) → apply tint
+      fa.Tick() // 2→1 (odd) → revert tint
+      fa.Tick() // 1→0 → no-op (flashTicks=0, _flashTicks>0 is false)
+      fa.Tick() // still 0 → no-op
+
+      expect(fa.isFlashing).toBe(false)
+      // After expiry, emissiveColor should be at default (black)
+      // Last Tick() at 1→0 did nothing, but the previous Tick() at 2→1 reverted
+      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+      expect(material.alpha).toBe(1.0)
+    })
+
+    it('skips renderables without material property', () => {
+      const renderableWithoutMaterial = { type: 'decoration' } // no material
+      const renderableWithMaterial = {
+        type: 'sprite',
+        material: { emissiveColor: { r: 0, g: 0, b: 0 }, alpha: 1.0 },
+      }
+
+      fa.Renderables = [renderableWithoutMaterial, renderableWithMaterial]
+      fa.Flash({ r: 1.0, g: 0, b: 0 })
+
+      fa.Tick() // 5 (odd) → revert (harmless)
+      fa.Tick() // 4 (even) → apply
+
+      // renderableWithoutMaterial should not throw, not be modified
+      const mat = renderableWithMaterial.material as Record<string, unknown>
+      expect(mat.emissiveColor).toEqual({ r: 0, g: 0, b: 0 }) // 0 * tint = 0
+    })
+
+    it('handles material without emissiveColor gracefully', () => {
+      const material: Record<string, unknown> = { alpha: 0.8 } // no emissiveColor
+      const renderable = { type: 'sprite', material }
+
+      fa.Renderables = [renderable]
+      fa.Flash({ r: 0.5, g: 0.5, b: 0.5 }) // float3
+
+      fa.Tick() // 5 (odd) → revert
+      // _revertFlashTint sets emissiveColor even if it was missing
+      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+    })
+
+    it('revertFlashTint handles empty renderables gracefully', () => {
+      fa.Renderables = []
+      fa.Flash({ r: 1.0, g: 0, b: 0 })
+      // Should not throw
+      expect(() => {
+        for (let i = 0; i < 6; i++) fa.Tick()
+      }).not.toThrow()
+    })
+
+    it('multiplicative tint multiplies existing emissive by flash tint', () => {
+      const material: Record<string, unknown> = {
+        emissiveColor: { r: 0.2, g: 0.4, b: 0.6 },
+        alpha: 1.0,
+      }
+      const renderable = { type: 'sprite', material }
+
+      fa.Renderables = [renderable]
+      // Set existing emissive color (non-zero) before flash
+      material.emissiveColor = { r: 0.2, g: 0.4, b: 0.6 }
+
+      fa.Flash({ r: 0.5, g: 0.5, b: 1.0 }) // float3 (multiplicative)
+
+      // After Flash(): _flashTicks=5. Tick: 5→4 (even) → apply
+      fa.Tick()
+      // Multiplicative: existing * tint
+      expect(material.emissiveColor).toEqual({
+        r: 0.2 * 0.5,
+        g: 0.4 * 0.5,
+        b: 0.6 * 1.0,
+      })
+      expect(material.alpha).toBe(1.0) // flashAlpha is null
+
+      // Tick: 4→3 (odd) → revert
+      fa.Tick()
+      expect(material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
+    })
   })
 
   // -------------------------------------------------------------------------

@@ -173,6 +173,16 @@ export class FrozenUnderFog
   /** Whether created() has been called. */
   private _created: boolean = false
 
+  /**
+   * Previous visibility state per player, keyed by PlayerStub.
+   *
+   * Used in tickRender() to detect transitions between visible/fogged
+   * states so ScreenMap add/remove can be performed.
+   *
+   * OpenRA 对照: FrozenUnderFog.TickRender() — transition detection
+   */
+  private _prevIsVisible = new Map<PlayerStub, boolean>()
+
   // -------------------------------------------------------------------------
   // Static constants
   // -------------------------------------------------------------------------
@@ -404,10 +414,14 @@ export class FrozenUnderFog
    * actor's renderables, screen bounds, and mouse bounds. The _isRendering
    * guard ensures modifyRender returns the original renderables during capture.
    *
-   * When an actor transitions from visible to fogged, its current renderable
-   * output is captured and stored in the FrozenActor snapshot. When the actor
-   * becomes visible again, the live actor is shown and the frozen copy is
-   * hidden.
+   * Visibility transitions:
+   * - visible→fogged (_isVisible=false, wasVisible=true):
+   *   Remove live actor from ScreenMap, capture renderables for frozen copy.
+   * - fogged→visible (_isVisible=true, wasVisible=false):
+   *   Remove frozen actor from ScreenMap, re-add live actor to ScreenMap.
+   *
+   * The _prevIsVisible map tracks previous per-player visibility for
+   * transition detection.
    *
    * @param wr — the world renderer (used for capturing renderables)
    * @param self — the actor this trait is attached to
@@ -421,6 +435,32 @@ export class FrozenUnderFog
 
     for (const [player, state] of this._frozenStates) {
       const frozen = state.frozenActor
+      const prevVisible = this._prevIsVisible.get(player) ?? state.isVisible
+
+      // ------------------------------------------------------------------
+      // Detect visibility transitions
+      // ------------------------------------------------------------------
+
+      // Transition: live actor becomes hidden (goes under fog)
+      // frozen becomes visible → remove live actor from ScreenMap
+      if (!state.isVisible && prevVisible) {
+        this._removeLiveFromScreenMap(player, self)
+      }
+
+      // Transition: live actor becomes visible again (exits fog)
+      // frozen becomes hidden → remove frozen from ScreenMap, re-add live
+      if (state.isVisible && !prevVisible) {
+        this._removeFrozenFromScreenMap(player, frozen)
+        this._addLiveToScreenMap(player, self)
+      }
+
+      // Update previous visibility for next frame
+      this._prevIsVisible.set(player, state.isVisible)
+
+      // ------------------------------------------------------------------
+      // Renderable capture for frozen actors needing it
+      // ------------------------------------------------------------------
+
       if (!frozen.NeedRenderables) continue
 
       // Lazy-init: capture renderables from live actor once per frame
@@ -870,6 +910,100 @@ export class FrozenUnderFog
    */
   private _getOwner(self: IGameActor): PlayerStub | null {
     return ((self as unknown as Record<string, unknown>)['owner'] as PlayerStub | null) ?? null
+  }
+
+  // -------------------------------------------------------------------------
+  // ScreenMap transition helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Remove the live actor from ScreenMap for a given viewer.
+   *
+   * OpenRA 对照: ScreenMap.Remove(Player, Actor)
+   *
+   * Called when the actor transitions visible→fogged. The live actor
+   * should no longer participate in spatial queries for this viewer
+   * because the frozen copy handles rendering and hit-testing.
+   *
+   * @param viewer — the player whose ScreenMap to remove from
+   * @param self — the live actor to remove
+   */
+  private _removeLiveFromScreenMap(viewer: PlayerStub, self: IGameActor): void {
+    const world = this._getWorld(self)
+    if (!world) return
+
+    const screenMap = world['screenMap'] as Record<string, unknown> | undefined
+    const remove = screenMap?.['remove'] as
+      | ((viewer: PlayerStub, actor: IGameActor) => void)
+      | undefined
+    if (remove) {
+      remove(viewer, self)
+    }
+  }
+
+  /**
+   * Remove a frozen actor from ScreenMap for a given viewer.
+   *
+   * OpenRA 对照: ScreenMap.Remove(Player, FrozenActor)
+   *
+   * Called when the actor transitions fogged→visible. The frozen copy
+   * should be removed from spatial queries since the live actor is now
+   * visible and handles its own rendering.
+   *
+   * Tries the frozen actor's world first (via live actor reference),
+   * then falls back to the viewer's world (via playerActor).
+   *
+   * @param viewer — the player whose ScreenMap to remove from
+   * @param frozen — the frozen actor to remove
+   */
+  private _removeFrozenFromScreenMap(viewer: PlayerStub, frozen: FrozenActor): void {
+    // Try frozen actor's world first (via live actor)
+    let world: Record<string, unknown> | null = null
+    if (frozen.Actor) {
+      world = this._getWorld(frozen.Actor)
+    }
+
+    // Fallback: viewer's world (via playerActor)
+    if (!world) {
+      const viewerAny = viewer as unknown as Record<string, unknown>
+      const playerActor = viewerAny['playerActor'] as Record<string, unknown> | undefined
+      world = (playerActor?.['world'] as Record<string, unknown> | undefined) ?? null
+    }
+
+    if (!world) return
+
+    const screenMap = world['screenMap'] as Record<string, unknown> | undefined
+    const remove = screenMap?.['remove'] as
+      | ((viewer: PlayerStub, fa: FrozenActor) => void)
+      | undefined
+    if (remove) {
+      remove(viewer, frozen)
+    }
+  }
+
+  /**
+   * Re-add the live actor to ScreenMap for a given viewer.
+   *
+   * OpenRA 对照: ScreenMap.AddOrUpdate(Player, Actor)
+   *
+   * Called when the actor transitions fogged→visible. The live actor
+   * should be re-added to spatial queries so its renderables and
+   * hit-testing work correctly.
+   *
+   * @param viewer — the player whose ScreenMap to add to
+   * @param self — the live actor to re-add
+   */
+  private _addLiveToScreenMap(viewer: PlayerStub, self: IGameActor): void {
+    const world = this._getWorld(self)
+    if (!world) return
+
+    const screenMap = world['screenMap'] as Record<string, unknown> | undefined
+    const addOrUpdate = screenMap?.['addOrUpdate'] as
+      | ((viewer: PlayerStub, actor: IGameActor) => void)
+      | undefined
+    if (addOrUpdate) {
+      addOrUpdate(viewer, self)
+    }
   }
 }
 
