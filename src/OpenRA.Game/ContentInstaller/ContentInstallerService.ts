@@ -538,9 +538,14 @@ export class ContentInstallerService {
     try {
       // ----- Local content: check public/content/ before any network access -----
       let zipBuffer = await this._tryLoadLocalContent(download, packageId)
+      let primaryUrl = ''
+      if (zipBuffer) {
+        // Derive the URL that _tryLoadLocalContent used, for the
+        // IndexedDB record (rehydrateFiles needs it on page refresh)
+        primaryUrl = this._deriveLocalContentUrl(download) ?? ''
+      }
 
       // Phase 1+2: CDN download (skip entirely if local content was loaded)
-      let primaryUrl = ''
       if (!zipBuffer) {
       let mirrors: string[]
       if (download.mirrorList) {
@@ -991,6 +996,25 @@ export class ContentInstallerService {
    * @param data — The downloaded content to store.
    */
   /**
+   * Derive the local content URL from the download definition.
+   * Uses the same logic as _tryLoadLocalContent without actually fetching.
+   */
+  private _deriveLocalContentUrl(
+    download: import('./ContentInstallerTypes.js').ContentDownload,
+  ): string | null {
+    if (download.mirrorList) {
+      const name = download.mirrorList.split('/').pop() ?? ''
+      const zipName = name.replace(/-mirrors\.txt$/, '.zip')
+      if (zipName !== name) return `/content/${zipName}`
+    }
+    if (download.url) {
+      const name = download.url.split('/').pop()
+      if (name) return `/content/${name}`
+    }
+    return null
+  }
+
+  /**
    * Try to load a package from public/content/ instead of the CDN.
    *
    * Derives the expected filename from the mirror list URL or direct
@@ -1006,42 +1030,30 @@ export class ContentInstallerService {
     download: import('./ContentInstallerTypes.js').ContentDownload,
     packageId: string,
   ): Promise<ArrayBuffer | null> {
-    const candidates: string[] = []
+    const url = this._deriveLocalContentUrl(download)
+    if (!url) return null
 
-    // Derive from mirror list URL: "...ra-quickinstall-mirrors.txt" → "ra-quickinstall.zip"
-    if (download.mirrorList) {
-      const name = download.mirrorList.split('/').pop() ?? ''
-      const zipName = name.replace(/-mirrors\.txt$/, '.zip')
-      if (zipName !== name) candidates.push(`/content/${zipName}`)
-    }
-    if (download.url) {
-      const name = download.url.split('/').pop()
-      if (name) candidates.push(`/content/${name}`)
-    }
+    try {
+      const res = await fetch(url)
+      if (!res.ok) return null
 
-    for (const url of candidates) {
-      try {
-        const res = await fetch(url)
-        if (!res.ok) continue
+      this._notifyListeners({
+        state: 'downloading', packageId,
+        statusText: 'Loading from local content...',
+        progressPercent: 0, bytesReceived: 0, bytesTotal: -1,
+      })
 
-        this._notifyListeners({
-          state: 'downloading', packageId,
-          statusText: 'Loading from local content...',
-          progressPercent: 0, bytesReceived: 0, bytesTotal: -1,
-        })
+      const buffer = await res.arrayBuffer()
 
-        const buffer = await res.arrayBuffer()
+      this._notifyListeners({
+        state: 'downloading', packageId,
+        statusText: 'Loaded from local content',
+        progressPercent: 100,
+        bytesReceived: buffer.byteLength, bytesTotal: buffer.byteLength,
+      })
 
-        this._notifyListeners({
-          state: 'downloading', packageId,
-          statusText: 'Loaded from local content',
-          progressPercent: 100,
-          bytesReceived: buffer.byteLength, bytesTotal: buffer.byteLength,
-        })
-
-        return buffer
-      } catch { /* file not found or fetch error — try next candidate */ }
-    }
+      return buffer
+    } catch { /* file not found or fetch error */ }
     return null
   }
 
