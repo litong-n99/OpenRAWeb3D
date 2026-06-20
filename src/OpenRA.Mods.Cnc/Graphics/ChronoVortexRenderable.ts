@@ -68,6 +68,7 @@ export class ChronoVortexShaderMaterial {
     const shaderName = `chronoVortex_${name}`
 
     // Register custom shaders in Effect.ShadersStore
+    // TODO-Ch24.C: Shader should be registered once and reused across vortex instances
     Effect.ShadersStore[`${shaderName}VertexShader`] = `
       precision highp float;
       attribute vec3 position;
@@ -297,6 +298,14 @@ export class ChronoVortexRenderable {
   /** Elapsed time tracker for shader animation. */
   private _elapsedTime: number = 0
 
+  /** Whether tick-based timing is active (Phase C).
+   *
+   * When true, render3D() skips the frame-based 1/60 time increment,
+   * avoiding time drift-and-snap conflict between tickUpdate() and render3D().
+   * Reset to false on dispose() so reused instances behave correctly.
+   */
+  private _usingTickUpdate: boolean = false
+
   /** Rendering group ID for the billboard mesh.
    *
    * Phase C: defaults to RenderGroup.Actor (1) for the effects layer.
@@ -446,8 +455,12 @@ export class ChronoVortexRenderable {
     // Position at world-space coordinates (not screen pixels)
     this._billboard.position.set(this.pos.X, this.pos.Y, this.pos.Z)
 
-    // Update shader uniforms (backward-compatible frame-based time)
-    this._elapsedTime += 1 / 60 // assume ~60fps per render call when tickUpdate() not used
+    // Update shader uniforms
+    // NOTE: When tickUpdate() is active, skip frame-based time increment
+    // to avoid time drift-and-snap conflict (MAJOR fix, Round 2)
+    if (!this._usingTickUpdate) {
+      this._elapsedTime += 1 / 60 // assume ~60fps per render call
+    }
     this._shaderMaterial!.setTime(this._elapsedTime)
     this._shaderMaterial!.setProgress(this._frame / 47) // frame-based progress
   }
@@ -467,6 +480,7 @@ export class ChronoVortexRenderable {
    * @param tickCount — cumulative game tick count
    */
   tickUpdate(tickCount: number): void {
+    this._usingTickUpdate = true
     this._elapsedTime = tickCount * 0.04 // 40ms per game tick at 25 ticks/s
     if (this._shaderMaterial) {
       this._shaderMaterial.setTime(this._elapsedTime)
@@ -486,6 +500,7 @@ export class ChronoVortexRenderable {
    * @param wr — the world renderer
    */
   renderDebugGeometry(wr: IChronoVortexWorldRenderer): void {
+    // TODO-24.C.2: Implement debug geometry rendering for vortex bounds visualization
     const screenPos = wr.screen3DPxPosition(this.pos)
     void screenPos
   }
@@ -556,5 +571,6 @@ export class ChronoVortexRenderable {
       this._shaderMaterial.dispose()
       this._shaderMaterial = null
     }
+    this._usingTickUpdate = false
   }
 }

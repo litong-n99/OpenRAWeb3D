@@ -454,6 +454,37 @@ describe('ChronoVortexRenderable', () => {
     expect(renderable.shaderMaterial).toBeNull()
   })
 
+  it('render3D should NOT increment time when tickUpdate is active (Round 2 regression)', () => {
+    const renderer = makeRenderer()
+    const pos = new WPos(100, 200, 0)
+    const scene = makeMockScene()
+    const renderable = new ChronoVortexRenderable(renderer, pos, 0, scene)
+    const wr = makeWorldRenderer()
+
+    // First render: creates billboard + shader material
+    renderable.render(wr)
+
+    const sm = renderable.shaderMaterial!
+    const setFloatSpy = sm.material.setFloat as ReturnType<typeof vi.fn>
+
+    // Activate tick-based timing
+    renderable.tickUpdate(10) // _elapsedTime = 10 * 0.04 = 0.4
+
+    // Clear spy history
+    setFloatSpy.mockClear()
+
+    // Call render twice — time should stay at 0.4, NOT increment by 1/60 each time
+    renderable.render(wr)
+    expect(setFloatSpy).toHaveBeenCalledWith('u_time', 0.4)
+
+    setFloatSpy.mockClear()
+    renderable.render(wr)
+    expect(setFloatSpy).toHaveBeenCalledWith('u_time', 0.4)
+
+    // Confirm elapsedTime was NOT incremented by 1/60
+    expect(sm.time).toBe(0.4)
+  })
+
   it('should update progress uniform on each render in 3D mode', () => {
     const renderer = makeRenderer()
     const pos = new WPos(100, 200, 0)
