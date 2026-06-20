@@ -541,9 +541,12 @@ function setupScene(): {
     new Vector3(0, y, GRID_WORLD_H),
     new Vector3(0, y, 0),
   ])
+  // Each line's colors array must have one Color4 per vertex.
+  // frameLines[0] has 5 vertices → provide 5 copies of the same color.
+  const frameColor = new Color4(0.5, 0.7, 0.5, 0.8)
   const frameMesh = MeshBuilder.CreateLineSystem(
     'frameLines',
-    { lines: frameLines, colors: [[new Color4(0.5, 0.7, 0.5, 0.8)]] },
+    { lines: frameLines, colors: [[frameColor, frameColor, frameColor, frameColor, frameColor]] },
     scene,
   )
 
