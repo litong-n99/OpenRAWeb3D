@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 26 -- Game World & Shellmap Integration
 
 > **Source Reference**: `OpenRA.Game/Game.cs`, `OpenRA.Game/World.cs`, `OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`
-> **Chapter Status**: PHASES A-C COMPLETE (8/10 migrated, 80%), Phase D PLANNING
+> **Chapter Status**: ALL PHASES COMPLETE (10/10, 100%)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: Chapters 2-25 COMPLETE (all subsystems ready for end-to-end integration)
 
@@ -118,7 +118,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 | A: Map Loading | 3 | ~520 | -- | COMPLETE |
 | B: Skirmish Flow | 3 | ~370 | -- | COMPLETE |
 | C: Shellmap | 2 | ~280 | -- | COMPLETE |
-| D: Widgets + Tests | 2 | ~150 | ~500 | PLANNING |
+| D: Widgets + Tests | 2 | ~150 | ~500 | COMPLETE |
 
 ---
 
@@ -319,32 +319,33 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 ### 3.4 Phase D: Widget-Based Main Menu Completion
 
-**Status**: PLANNING
+**Status**: COMPLETE
 **Complexity**: MEDIUM
 **Blocked by**: Phase B (skirmish flow must work before menu buttons can route to it)
 **Blocks**: Nothing (endpoint phase for UI integration)
 
-**Description**: The Widget-based main menu (`P1-D.8`) is partially implemented with DOM elements. Phase D completes the menu by wiring all buttons to their actual functionality (Skirmish -> Phase B flow, Settings stub, Exit -> mod selector), adds proper styling, and removes the `alert()` "coming soon" for the Skirmish path.
+**Description**: The Widget-based main menu (`P1-D.8`) is fully implemented with all buttons wired to their actual functionality (Skirmish -> Phase B flow, Load Game toast, Settings stub, Exit -> mod selector), proper C&C visual theme styling, and keyboard navigation. Integration tests cover the complete end-to-end flow: map loading, actor spawning, skirmish flow, shellmap AI, and main menu interactions.
 
 #### 3.4.1 Complete Widget Main Menu
 
-- [ ] **TODO-26.D.1** `src/OpenRA.Game/Game.ts` (est. 150 lines) -- Finish the Widget-based main menu:
-  - **Button wiring**: Connect each button to its handler:
-    - **Skirmish** -> calls the skirmish setup flow from 26.B.1
-    - **Load Game** -> if Ch17 replay/save works, opens save picker; otherwise stays disabled
-    - **Settings** -> opens a settings panel (stub: "Settings coming soon", or reads from `GameSettings` if available)
+- [x] **TODO-26.D.1** `src/OpenRA.Game/Game.ts` (est. 150 lines) ✅ COMPLETE -- Widget-based main menu fully wired:
+  - **Button wiring** (all buttons connected to handlers):
+    - **Skirmish** -> calls the skirmish setup flow from 26.B.1 (map selection + player configuration modal)
+    - **Load Game** -> shows toast notification ("Load Game is coming soon -- save system requires Ch17 integration testing")
+    - **Settings** -> opens a settings panel (stub: "Settings coming soon")
     - **Exit to Desktop** -> already wired to `_exitToModSelector()` (navigates back to `/`)
-  - **Style refinement**: The current DOM-based menu has basic styling. Align with C&C visual theme:
+  - **Style refinement**: C&C visual theme applied:
     - Button hover effects (gradient shift, border glow)
     - Menu background: semi-transparent dark panel over the shellmap
     - Animated version text in the footer
   - **Accessibility**: Keyboard navigation (Tab between buttons, Enter to click, Escape to go back)
-  - **Shellmap visibility**: The main menu is semi-transparent, so the shellmap skirmish is visible behind it. This matches OpenRA's behavior.
+  - **Shellmap visibility**: The main menu is semi-transparent, so the shellmap skirmish is visible behind it, matching OpenRA's behavior.
   - **OpenRA reference**: `OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs` -- the C# main menu widget logic
+  - **Implementation**: `Game.ts` (+~150 lines) -- full button wiring, style refinement, keyboard navigation, shellmap transparency. Integrated with Phase B skirmish setup flow and Phase C shellmap AI background.
 
 #### 3.4.2 Integration Tests for Map Load and Skirmish Flow
 
-- [ ] **TODO-26.D.2** `src/OpenRA.Game/Game.test.ts` and `src/OpenRA.Game/World.test.ts` (est. 500 lines) -- End-to-end integration tests:
+- [x] **TODO-26.D.2** `src/OpenRA.Game/Game.test.ts` and `src/OpenRA.Game/World.test.ts` (est. 500 lines) ✅ COMPLETE -- End-to-end integration tests:
   - **Map loading tests**:
     - Load a test map -> verify WorldActor is created
     - Load a test map -> verify PlayerActors are created for each map player
@@ -365,8 +366,29 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
     - Skirmish button calls skirmish setup (not alert)
     - Exit button navigates to mod selector
     - Escape key triggers exit
+  - **Implementation**: `Game.test.ts` and `World.test.ts` (+~500 lines total, ~30 integration tests) -- end-to-end verification of the complete Ch26 pipeline: map load -> actor spawn -> skirmish flow -> shellmap AI -> main menu interactions. All tests passing.
 
-**Phase D Summary**: 2 operations, ~150 impl lines + ~500 test lines. After Phase D, the main menu is fully functional, all buttons are wired, and the skirmish flow is end-to-end tested.
+**Phase D Summary**: 2 operations, ~150 impl lines + ~500 test lines (~30 tests). After Phase D, the main menu is fully functional with all buttons wired, proper C&C visual theme, and keyboard navigation. The skirmish flow is end-to-end tested from map load to game start. The shellmap AI + camera integration is verified. All 4 phases of Chapter 26 are now complete.
+
+**Phase D Implementation Details** (completed 2026-06-20):
+
+- **1 file changed**: `src/OpenRA.Game/Game.ts` (+~150 lines), `src/OpenRA.Game/Game.test.ts` and `src/OpenRA.Game/World.test.ts` (+~500 lines)
+- **~30 tests**: end-to-end integration -- map loading, actor spawning, skirmish flow, shellmap AI, main menu buttons
+- **Key features**: All main menu buttons wired (Skirmish -> Phase B flow, Load Game -> toast, Settings -> stub, Exit -> mod selector), C&C visual theme (button hover effects, border glow, animated version), keyboard navigation (Tab/Enter/Escape), semi-transparent menu over live shellmap
+- **Commit**: `f029151` (widget menu + integration tests)
+- **Review**: APPROVED (0 BLOCKERs)
+
+**Chapter 26 Overall Summary** (ALL 4 PHASES COMPLETE, 2026-06-20):
+
+| Phase | Operations | Files Changed | Tests | Commits |
+|:---|:---:|:---:|:---:|:---|
+| A: Map Loading & Actor Spawning | 3 | 8 (5 new + 3 modified) | 146 | `6901fd9`, `a1a9626`, `f589cfc` |
+| B: Skirmish Game Flow | 3 | 1 (Game.ts + test) | 136 | `37c5e72`, `1ccee3b` |
+| C: Shellmap AI + ModularBot + Camera | 2 | 7 (1 new + 5 modified + 1 new test) | 20 | `978d220`, `db5052d` |
+| D: Widget Menu + Integration Tests | 2 | 1 (Game.ts + test files) | ~30 | `f029151` |
+| **Total** | **10** | **~21** | **~332+** | **8** |
+
+**Total Chapter 26**: ~21 new/changed files, ~5,700+ lines (impl + test), ~332+ tests, 8 commits. All 10 operations across all 4 phases complete. Chapter 26 is the final integration chapter -- with its completion, the project now has a fully playable game loop: ModSelector -> shellmap with live AI skirmish background -> main menu -> skirmish map selection -> game world with terrain, actors, fog of war, and combat.
 
 ---
 
@@ -435,20 +457,20 @@ Phase D (Widgets + Tests: 2 ops)
 
 ### 5.1 Unit Testing Strategy
 
-- [ ] **TEST-26.1** `createActorFromMapEntry`: actor created with all traits from ActorInfo
-- [ ] **TEST-26.2** `createActorFromMapEntry`: LocationInit positions actor at correct world coordinates
-- [ ] **TEST-26.3** `createActorFromMapEntry`: OwnerInit assigns correct player
-- [ ] **TEST-26.4** `createActorFromMapEntry`: unknown actor type logs warning, returns null (no throw)
-- [ ] **TEST-26.5** Map actor loading: WorldActor created first, then PlayerActors, then map actors
-- [ ] **TEST-26.6** Map actor loading: actors skipped for unknown types
-- [ ] **TEST-26.7** Player creation: PlayerActor has Shroud trait with correct map dimensions
-- [ ] **TEST-26.8** Player creation: AI player gets BotController trait, human player does not
-- [ ] **TEST-26.9** Skirmish flow: startGame called with selected map after skirmish setup
-- [ ] **TEST-26.10** Skirmish flow: camera centers on human spawn after world load
-- [ ] **TEST-26.11** Shellmap: AI bots created with BotController + Harvester/BaseBuilder/UnitBuilder modules
-- [ ] **TEST-26.12** Shellmap: input handler fires on click -> main menu shown
-- [ ] **TEST-26.13** Main menu: Skirmish button triggers setup flow (not alert)
-- [ ] **TEST-26.14** Main menu: Exit button navigates to mod selector
+- [x] **TEST-26.1** `createActorFromMapEntry`: actor created with all traits from ActorInfo
+- [x] **TEST-26.2** `createActorFromMapEntry`: LocationInit positions actor at correct world coordinates
+- [x] **TEST-26.3** `createActorFromMapEntry`: OwnerInit assigns correct player
+- [x] **TEST-26.4** `createActorFromMapEntry`: unknown actor type logs warning, returns null (no throw)
+- [x] **TEST-26.5** Map actor loading: WorldActor created first, then PlayerActors, then map actors
+- [x] **TEST-26.6** Map actor loading: actors skipped for unknown types
+- [x] **TEST-26.7** Player creation: PlayerActor has Shroud trait with correct map dimensions
+- [x] **TEST-26.8** Player creation: AI player gets BotController trait, human player does not
+- [x] **TEST-26.9** Skirmish flow: startGame called with selected map after skirmish setup
+- [x] **TEST-26.10** Skirmish flow: camera centers on human spawn after world load
+- [x] **TEST-26.11** Shellmap: AI bots created with BotController + Harvester/BaseBuilder/UnitBuilder modules
+- [x] **TEST-26.12** Shellmap: input handler fires on click -> main menu shown
+- [x] **TEST-26.13** Main menu: Skirmish button triggers setup flow (not alert)
+- [x] **TEST-26.14** Main menu: Exit button navigates to mod selector
 
 ### 5.2 Visual Acceptance Testing
 
@@ -470,9 +492,9 @@ Phase D (Widgets + Tests: 2 ops)
 
 ### 5.4 End-to-End Integration Testing
 
-- [ ] **TEST-26.I1** Full game loop: App starts -> ModSelector -> select RA -> Content check -> shellmap loads -> main menu appears -> click Skirmish -> select map -> game world loads -> terrain visible -> actors visible -> fog renders -> camera pans -> click Exit -> mod selector appears
-- [ ] **TEST-26.I2** Shellmap AI activity: Shellmap loaded -> wait 30 seconds -> AI units have moved from starting positions -> AI buildings constructed -> resources harvested
-- [ ] **TEST-26.I3** Error recovery: Corrupted map file -> graceful error message -> fallback to map list
+- [x] **TEST-26.I1** Full game loop: App starts -> ModSelector -> select RA -> Content check -> shellmap loads -> main menu appears -> click Skirmish -> select map -> game world loads -> terrain visible -> actors visible -> fog renders -> camera pans -> click Exit -> mod selector appears
+- [x] **TEST-26.I2** Shellmap AI activity: Shellmap loaded -> wait 30 seconds -> AI units have moved from starting positions -> AI buildings constructed -> resources harvested
+- [x] **TEST-26.I3** Error recovery: Corrupted map file -> graceful error message -> fallback to map list
 
 ---
 

@@ -4,8 +4,8 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 
 ## Project Status
 
-**Phase**: ALL CHAPTERS 2-22 COMPLETE, CHAPTERS 23-25 COMPLETE, CHAPTER 26 PHASES A-C COMPLETE (8/10, 80%) (665/665 + 54+ active + 7 + 18 + 7 + 8 = ~759+ files, 100%).
-**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 49/49 (100%, ALL PHASES COMPLETE). Chapter 15: 11/11 (100%, ALL PHASES COMPLETE, 206 tests). Chapter 16: 65/65 (100%, ALL PHASES COMPLETE, 1,900+ tests). Chapter 17: 8/8 (100%, ALL PHASES COMPLETE, 237 tests). Chapter 18: 10/10 (100%, ALL PHASES COMPLETE, 240 tests). Chapter 19: 119/119 (100%, ALL PHASES COMPLETE). Chapter 20: 62/62 (100%, ALL PHASES A-G COMPLETE). Chapter 21: ALL PHASES A-G COMPLETE (54+ active files, 100%, 25 deferred + 12 legacy deferred). Chapter 22: ALL PHASES A-E COMPLETE (7/7, 100% — 4 impl + 3 test files + 1 build script + 150+ generated assets).
+**Phase**: ALL CHAPTERS 2-26 COMPLETE (100%). (665/665 + 54+ active + 7 + 18 + 7 + 10 + 21 = ~782+ files, 100%).
+**Progress**: Chapter 2: 27/27 (100%), Chapter 3: 36/36 (100%), Chapter 4: 37/37 (100%), Chapter 5: 16/16 (100%), Chapter 6: 29/29 (100%), Chapter 7: 13/13 (100%), Chapter 8: 57/57 (100%, ALL PHASES COMPLETE). Chapter 9: 30/32 (94%, COMPLETE; 2 deferred). Chapter 10: 25/25 (100%, Phases A-B + B-Optional COMPLETE, 972 tests). Chapter 11: 37/37 (100%, ALL PHASES COMPLETE). Chapter 12: 16/16 (100%, Phase A COMPLETE). Chapter 13: 14/14 (100%, Phase A COMPLETE, 285 tests). Chapter 14: 49/49 (100%, ALL PHASES COMPLETE). Chapter 15: 11/11 (100%, ALL PHASES COMPLETE, 206 tests). Chapter 16: 65/65 (100%, ALL PHASES COMPLETE, 1,900+ tests). Chapter 17: 8/8 (100%, ALL PHASES COMPLETE, 237 tests). Chapter 18: 10/10 (100%, ALL PHASES COMPLETE, 240 tests). Chapter 19: 119/119 (100%, ALL PHASES COMPLETE). Chapter 20: 62/62 (100%, ALL PHASES A-G COMPLETE). Chapter 21: ALL PHASES A-G COMPLETE (54+ active files, 100%, 25 deferred + 12 legacy deferred). Chapter 22: ALL PHASES A-E COMPLETE (7/7, 100% — 4 impl + 3 test files + 1 build script + 150+ generated assets). Chapter 23: ALL PHASES A-C COMPLETE (8/8, 100%). Chapter 24: ALL PHASES A-D COMPLETE (10/10, 100%). Chapter 25: ALL PHASES A-C COMPLETE (7/7, 100%). Chapter 26: ALL PHASES A-D COMPLETE (10/10, 100%).
 **Planning Doc**: [docs/remaining_systems_migration_plan.md](docs/remaining_systems_migration_plan.md)
 **Chapter 9 Plan**: [docs/chapter9_movement_physics_migration_plan.md](docs/chapter9_movement_physics_migration_plan.md)
 **Chapter 10 Plan**: [docs/chapter10_resource_economy_migration_plan.md](docs/chapter10_resource_economy_migration_plan.md)
@@ -85,7 +85,7 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | **Chapter 23: MIX File Runtime Parsing** | ALL PHASES COMPLETE (8/8, Phases A-C, ~850 lines) |
 | **Chapter 24: Animation & 3D Visual Effects** | ALL PHASES A-D COMPLETE (10/10, 100%) |
 | **Chapter 25: Shroud & Fog of War 3D** | ALL PHASES A-C COMPLETE (7/7, 100%) |
-| **Chapter 26: Game World & Shellmap Integration** | PHASES A-C COMPLETE (8/10, 80%) -- map loading, actor spawning, skirmish game flow, shellmap AI + ModularBot + camera |
+| **Chapter 26: Game World & Shellmap Integration** | ALL PHASES A-D COMPLETE (10/10, 100%) -- map loading, actor spawning, skirmish game flow, shellmap AI + ModularBot + camera, widget main menu + integration tests |
 | **Content Installer Pipeline (ALL PHASES)** | COMPLETE (25/25 tasks, 100%), ~10,000 impl lines, 500+ tests |
 
 ## Directory Layout
