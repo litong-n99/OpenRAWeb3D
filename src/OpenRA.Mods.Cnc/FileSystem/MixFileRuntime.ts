@@ -1191,6 +1191,13 @@ export class MixFileRuntime implements IReadOnlyPackage {
     }
 
     if (!blowfishKey || !pkgEntries) {
+      // DIAGNOSTIC: log the full keyblock for debugging RSA decryption
+      const keyblockHex = Array.from(keyblockSrc)
+        .map(b => b.toString(16).padStart(2, '0')).join(' ')
+      console.warn(
+        `MixFileRuntime: RSA decrypt failed for "${name}". ` +
+        `Full 80-byte keyblock:\n  ${keyblockHex.slice(0, 120)}\n  ${keyblockHex.slice(120, 240)}`,
+      )
       throw new Error(
         `MixFileRuntime._parseEncryptedOpenRA: all RSA decryption methods ` +
         `failed for "${name}". The RSA key may be incorrect for this file.`,
