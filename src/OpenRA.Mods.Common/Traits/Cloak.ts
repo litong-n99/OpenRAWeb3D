@@ -679,6 +679,12 @@ export class Cloak
       // Sound + SpriteEffect on cloak transition (P1-C.4)
       this._doCloakTransition(self)
     } else if (!isCloaked && this.wasCloaked) {
+      // Ch25 Phase C: Clean up detection pulse on uncloak
+      if (this._detectionPulseTicks > 0) {
+        this._detectionPulseTicks = 0
+        this._applyDetectionPulse(self, false)
+      }
+
       // Just became uncloaked — revoke condition
       if (this.cloakedToken !== -1) {
         self.revokeCondition?.(this.cloakedToken)

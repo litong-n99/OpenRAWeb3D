@@ -1724,6 +1724,46 @@ describe('Ch25 Phase C — Detection pulse', () => {
       expect(result).toBe(false)
     })
 
+    it('skips owner when owner has their own detector', () => {
+      // Owner has a DetectCloaked unit that could detect themselves,
+      // but since owner is allied with themselves, the check should skip.
+      const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
+      const cloak = new Cloak(info)
+
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+
+      // The owner has their own detector at zero range
+      const ownDetector = mockDetectorActor(
+        'Owner',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        true, // allied with owner
+      )
+
+      const world = mockWorldWithPlayers([ownerPlayer], [ownDetector])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      // Even though owner has a matching detector at zero range,
+      // it should be skipped because the owner is allied with themselves.
+      const result = (cloak as any)._isDetectedByAnyEnemy(self)
+      expect(result).toBe(false)
+    })
+
     it('handles world with players as Map', () => {
       const info = new CloakInfo({ initialDelay: 0, detectionTypes: ['Cloak'] })
       const cloak = new Cloak(info)
@@ -2091,6 +2131,77 @@ describe('Ch25 Phase C — Detection pulse', () => {
       expect((cloak as any)._detectionPulseTicks).toBe(5)
       // emissive should be re-applied
       expect(mesh.material.emissiveColor).toEqual({ r: 0.8, g: 0.8, b: 0.8 })
+    })
+
+    it('pulse cleanup when actor uncloaks mid-pulse', () => {
+      const info = new CloakInfo({
+        initialDelay: 0,
+        cloakDelay: 30,
+        detectionTypes: ['Cloak'],
+        uncloakOn: UncloakType.Damage,
+      })
+      const cloak = new Cloak(info)
+      cloak.wasCloaked = true
+      cloak.firstTick = false
+
+      const mesh = mockMeshWithMaterial()
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const ownerPlayer = {
+        playerName: 'Owner',
+        isAlliedWith: (p: { playerName: string }) => p.playerName === 'Owner',
+      }
+      const enemyPlayer = { playerName: 'Enemy' }
+
+      const detector = mockDetectorActor(
+        'Enemy',
+        new WPos(5000, 3000, 0),
+        [{ name: 'Cloak' }],
+        5120,
+        false,
+      )
+
+      const world = mockWorldWithPlayers([enemyPlayer], [detector])
+      const self = {
+        actorId: 1,
+        isInWorld: true,
+        isDead: false,
+        disposed: false,
+        owner: ownerPlayer,
+        centerPosition: new WPos(5000, 3000, 0),
+        world,
+        getRenderables,
+        location: { x: 0, y: 0 },
+        grantCondition: vi.fn().mockReturnValue(42),
+        revokeCondition: vi.fn().mockReturnValue(-1),
+        traitsImplementing: vi.fn().mockReturnValue([]),
+      }
+
+      // Tick 1: cloaked, detected — pulse starts (ticks = 5)
+      cloak.tick(self)
+      expect((cloak as any)._detectionPulseTicks).toBe(5)
+      expect(mesh.material.emissiveColor).toEqual({ r: 0.8, g: 0.8, b: 0.8 })
+
+      // Tick 2: pulse countdown (4), still cloaked
+      cloak.tick(self)
+      expect((cloak as any)._detectionPulseTicks).toBe(4)
+
+      // Now force uncloak via damage while pulse is still active
+      const attackInfo = new AttackInfo(
+        new Damage(10),
+        self,
+        8, 1,
+      )
+      cloak.damaged(self, attackInfo)
+      // Damage sets remainingTime to cloakDelay (30), making cloaked = false
+
+      // Tick 3: processes uncloak transition (wasCloaked=true, isCloaked=false)
+      // The uncloak transition block should clean up the pulse
+      cloak.tick(self)
+      expect(cloak.cloaked).toBe(false)
+      // Pulse should be cleaned up: ticks reset to 0, emissive reverted
+      expect((cloak as any)._detectionPulseTicks).toBe(0)
+      expect(mesh.material.emissiveColor).toEqual({ r: 0, g: 0, b: 0 })
     })
 
     it('pulse does not trigger when trait is disabled', () => {

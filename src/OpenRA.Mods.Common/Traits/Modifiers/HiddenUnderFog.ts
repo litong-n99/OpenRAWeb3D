@@ -61,7 +61,7 @@ export class HiddenUnderFog extends HiddenUnderShroud {
    * does not emit code for `declare` — the base class property is used at
    * runtime.
    */
-  declare protected readonly info: HiddenUnderFogInfo
+  declare public readonly info: HiddenUnderFogInfo
 
   // -------------------------------------------------------------------------
   // Constructor (对应 OpenRA HiddenUnderFog constructor)

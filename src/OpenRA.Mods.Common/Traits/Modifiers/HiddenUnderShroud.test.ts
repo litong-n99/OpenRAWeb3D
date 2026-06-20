@@ -544,9 +544,9 @@ describe('HiddenUnderShroud', () => {
         type: VisibilityType.GroundPosition,
       })
       const t = new HiddenUnderShroud(customInfo)
-      expect((t as any).info).toBe(customInfo)
-      expect((t as any).info.alwaysVisibleRelationships).toBe(PlayerRelationship.Neutral)
-      expect((t as any).info.type).toBe(VisibilityType.GroundPosition)
+      expect(t.info).toBe(customInfo)
+      expect(t.info.alwaysVisibleRelationships).toBe(PlayerRelationship.Neutral)
+      expect(t.info.type).toBe(VisibilityType.GroundPosition)
     })
   })
 
@@ -704,6 +704,27 @@ describe('HiddenUnderShroud', () => {
         ;(trait as any)._setActorMeshVisibility(igActor, false)
       }).not.toThrow()
     })
+
+    it('falls back to Path 2 when traitsImplementing returns empty array', () => {
+      // Path 1: traitsImplementing returns [] for all interfaces → no toggle
+      const traitsImpl = vi.fn((_name: string) => [])
+      // Path 2: getRenderables has a mesh with setEnabled
+      const mesh = { setEnabled: vi.fn() }
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+
+      const actor = createMockActor()
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['traitsImplementing'] = traitsImpl
+      rawActor['getRenderables'] = getRenderables
+
+      const igActor = rawActor as unknown as IGameActor
+      ;(trait as any)._setActorMeshVisibility(igActor, true)
+
+      // Path 1 tried but found nothing, Path 2 should be used as fallback
+      expect(traitsImpl).toHaveBeenCalledWith('IRender')
+      expect(getRenderables).toHaveBeenCalled()
+      expect(mesh.setEnabled).toHaveBeenCalledWith(true)
+    })
   })
 
   // -----------------------------------------------------------------------
@@ -754,6 +775,75 @@ describe('HiddenUnderShroud', () => {
 
       expect(result).toBe(renderables)
       expect(mesh.setEnabled).toHaveBeenCalledWith(true)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch25 Phase C: State-change guard (MAJOR-1 fix)
+  // -----------------------------------------------------------------------
+
+  describe('modifyRender — state-change guard (Ch25 Phase C)', () => {
+    it('modifyScreenBounds passes through unchanged after modifyRender hides actor', () => {
+      // Verify that modifyScreenBounds is a pure pass-through even after
+      // modifyRender has toggled mesh visibility.
+      const mesh = { setEnabled: vi.fn() }
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+      const shroud = createMockShroud({ isExplored: vi.fn().mockReturnValue(false) })
+      const viewer = createMockPlayer(3, shroud, PlayerRelationship.Enemy)
+      const actor = createMockActor({
+        world: { renderPlayer: playerAsStub(viewer) },
+        owner: null,
+      })
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['getRenderables'] = getRenderables
+
+      const igInfo = new HiddenUnderShroudInfo({ type: VisibilityType.CenterPosition })
+      const igTrait = new HiddenUnderShroud(igInfo)
+      const igActor = rawActor as unknown as IGameActor
+
+      // First, call modifyRender to hide the actor (toggles mesh and _lastMeshEnabled)
+      const renderables = [makeRenderable(99)]
+      const modResult = igTrait.modifyRender(igActor, {} as any, renderables)
+      expect(modResult.length).toBe(0)
+      expect(mesh.setEnabled).toHaveBeenCalledWith(false)
+
+      // Then call modifyScreenBounds — must still pass through unchanged
+      const bounds = [{ x: 10, y: 20, width: 50, height: 60 }]
+      const boundsResult = igTrait.modifyScreenBounds(igActor, {} as any, bounds)
+      expect(boundsResult).toBe(bounds)
+    })
+
+    it('skips mesh toggle when visibility has not changed (second frame)', () => {
+      // On frame 1, actor is visible → mesh enabled
+      // On frame 2, actor is still visible → mesh toggle should be skipped
+      const mesh = { setEnabled: vi.fn() }
+      const getRenderables = vi.fn().mockReturnValue([mesh])
+      const shroud = createMockShroud()
+      const owner = createMockPlayer(1, shroud, PlayerRelationship.Ally)
+      const viewer = createMockPlayer(3, shroud, PlayerRelationship.Ally)
+      const actor = createMockActor({
+        owner,
+        world: { renderPlayer: playerAsStub(viewer) },
+      })
+      const rawActor = actor as unknown as Record<string, unknown>
+      rawActor['getRenderables'] = getRenderables
+
+      const igActor = rawActor as unknown as IGameActor
+      const renderables = [makeRenderable(42)]
+
+      // Frame 1: first call enables mesh
+      const result1 = trait.modifyRender(igActor, {} as any, renderables)
+      expect(result1).toBe(renderables)
+      const enableCallsFrame1 = mesh.setEnabled.mock.calls.filter(
+        (c: boolean[]) => c[0] === true
+      ).length
+      expect(enableCallsFrame1).toBeGreaterThan(0)
+
+      // Frame 2: visibility unchanged — should NOT call setEnabled again
+      mesh.setEnabled.mockClear()
+      const result2 = trait.modifyRender(igActor, {} as any, renderables)
+      expect(result2).toBe(renderables)
+      expect(mesh.setEnabled).not.toHaveBeenCalled()
     })
   })
 })

@@ -116,7 +116,18 @@ export class HiddenUnderShroud
   private static readonly _none: readonly IRenderable[] = []
 
   /** Trait configuration. */
-  protected readonly info: HiddenUnderShroudInfo
+  public readonly info: HiddenUnderShroudInfo
+
+  // -----------------------------------------------------------------------
+  // Ch25 Phase C: State-change guard for mesh visibility toggle
+  // -----------------------------------------------------------------------
+
+  /**
+   * Last known mesh visibility state.
+   * null means unknown (first frame), boolean tracks the last toggle.
+   * Used to avoid per-frame no-op setEnabled() calls.
+   */
+  private _lastMeshEnabled: boolean | null = null
 
   // -------------------------------------------------------------------------
   // Constructor (对应 OpenRA HiddenUnderShroud constructor)
@@ -238,6 +249,7 @@ export class HiddenUnderShroud
    */
   private _setActorMeshVisibility(self: IGameActor, enabled: boolean): void {
     const actorAny = self as unknown as Record<string, unknown>
+    let toggled = false
 
     // Path 1: Try traitsImplementing('IRender') to get render traits
     const traitsImpl = actorAny['traitsImplementing'] as
@@ -258,6 +270,7 @@ export class HiddenUnderShroud
                 const mesh = r as Record<string, unknown>
                 if (typeof mesh['setEnabled'] === 'function') {
                   mesh['setEnabled'](enabled)
+                  toggled = true
                 }
               }
             }
@@ -267,14 +280,16 @@ export class HiddenUnderShroud
       }
     }
 
-    // Path 2: Try top-level actor.getRenderables()
-    const getMeshes = actorAny['getRenderables'] as
-      | (() => readonly Record<string, unknown>[])
-      | undefined
-    if (getMeshes) {
-      for (const mesh of getMeshes()) {
-        if (typeof mesh['setEnabled'] === 'function') {
-          mesh['setEnabled'](enabled)
+    // Path 2: Only fallback if Path 1 found nothing — avoids double-toggle
+    if (!toggled) {
+      const getMeshes = actorAny['getRenderables'] as
+        | (() => readonly Record<string, unknown>[])
+        | undefined
+      if (getMeshes) {
+        for (const mesh of getMeshes()) {
+          if (typeof mesh['setEnabled'] === 'function') {
+            mesh['setEnabled'](enabled)
+          }
         }
       }
     }
@@ -310,16 +325,15 @@ export class HiddenUnderShroud
     void wr // unused
 
     const renderPlayer = this._getRenderPlayer(self)
+    const visible = !renderPlayer || this.isVisible(self, renderPlayer)
 
-    if (!renderPlayer || this.isVisible(self, renderPlayer)) {
-      // Visible — ensure meshes are enabled
-      this._setActorMeshVisibility(self, true)
-      return r
+    // Only toggle mesh visibility on state change (avoids per-frame no-op)
+    if (visible !== this._lastMeshEnabled) {
+      this._setActorMeshVisibility(self, visible)
+      this._lastMeshEnabled = visible
     }
 
-    // Not visible — disable meshes and return empty
-    this._setActorMeshVisibility(self, false)
-    return HiddenUnderShroud._none
+    return visible ? r : HiddenUnderShroud._none
   }
 
   // -------------------------------------------------------------------------
