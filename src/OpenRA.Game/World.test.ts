@@ -163,8 +163,13 @@ describe('GameWorldManager construction', () => {
     expect(dict.traitsImplementing(world.worldActor, 'IActorMap').length).toBe(1)
     expect(dict.traitsImplementing(world.worldActor, 'ISelection').length).toBe(1)
     expect(dict.traitsImplementing(world.worldActor, 'IControlGroups').length).toBe(1)
-    // ScreenMap also implements IWorldLoaded
-    expect(dict.traitsImplementing(world.worldActor, 'IWorldLoaded').length).toBe(1)
+    // ScreenMap AND ShroudRenderer both implement IWorldLoaded (Ch25 Phase A)
+    expect(dict.traitsImplementing(world.worldActor, 'IWorldLoaded').length).toBe(2)
+    // ShroudRenderer also implements these interfaces
+    expect(dict.traitsImplementing(world.worldActor, 'IRenderShroud').length).toBe(1)
+    expect(dict.traitsImplementing(world.worldActor, 'ITickRender').length).toBe(1)
+    expect(dict.traitsImplementing(world.worldActor, 'INotifyActorDisposing').length).toBe(1)
+    expect(dict.traitsImplementing(world.worldActor, 'component').length).toBe(5)
   })
 })
 

@@ -23,11 +23,13 @@ import {
 import type { Scene } from '@babylonjs/core'
 import { PPos, MPos } from '../../../OpenRA.Game/MPos'
 import { CPos } from '../../../OpenRA.Game/CPos'
+import { Component } from '../../../OpenRA.Game/Traits/TraitsInterfaces'
 import type {
   IWorldLoaded,
   IRenderShroud,
   INotifyActorDisposing,
   IGameActor,
+  ITickRender,
   WorldRendererStub,
   WorldStub,
 } from '../../../OpenRA.Game/Traits/TraitsInterfaces'
@@ -309,14 +311,26 @@ void main(void) {
  * - Only dirty cells update the texture (not full upload)
  * - No per-cell sprite allocation
  */
-export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActorDisposing {
+export class ShroudRenderer extends Component implements IWorldLoaded, IRenderShroud, ITickRender, INotifyActorDisposing {
+
+  /** Trait interface keys for TraitDictionary registration.
+   *
+   * OpenRA 对照: N/A (C# uses reflection; TS needs explicit interface list)
+   */
+  static readonly interfaces = [
+    'IWorldLoaded',
+    'IRenderShroud',
+    'ITickRender',
+    'INotifyActorDisposing',
+    'component',
+  ]
   // -------------------------------------------------------------------------
   // Configuration
   // -------------------------------------------------------------------------
 
   /** Configuration for this renderer (stored for future deferred features). */
   private readonly _info: ShroudRendererInfo
-  private readonly _map: GameMap
+  private _map: GameMap
 
   // -------------------------------------------------------------------------
   // Shroud reference
@@ -336,7 +350,7 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
   private _anyCellDirty: boolean = true
 
   /** Per-cell dirty flags (Uint8Array for performance). */
-  private readonly _cellsDirty: Uint8Array
+  private _cellsDirty: Uint8Array
 
   // -------------------------------------------------------------------------
   // Babylon.js resources
@@ -359,11 +373,11 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
   // -------------------------------------------------------------------------
 
   /** Cached visibility values per cell (0=Hidden, 1=Explored, 2=Visible). */
-  private readonly _visibilityData: Uint8Array
+  private _visibilityData: Uint8Array
 
   /** Map dimensions for array indexing. */
-  private readonly _mapWidth: number
-  private readonly _mapHeight: number
+  private _mapWidth: number
+  private _mapHeight: number
 
   // -------------------------------------------------------------------------
   // Neighbor visibility buffer (pre-allocated, reused)
@@ -377,11 +391,7 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
    */
   private readonly _neighbors: CellVisibility[] = new Array(8)
 
-  // -------------------------------------------------------------------------
-  // Disposed flag
-  // -------------------------------------------------------------------------
-
-  private _disposed: boolean = false
+  // NOTE: _disposed flag is inherited from Component (protected _disposed).
 
   // -------------------------------------------------------------------------
   // Construction
@@ -396,20 +406,32 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
    * @param info — renderer configuration
    */
   constructor(world: WorldStub, info: ShroudRendererInfo) {
+    super()
     this._info = info
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this._map = (world as any).map as GameMap
 
-    this._mapWidth = this._map.mapSize.width
-    this._mapHeight = this._map.mapSize.height
+    // Gracefully handle worlds without a map (e.g., test stubs): defer
+    // dimension initialization to worldLoaded(). If the map exists here,
+    // allocate arrays immediately (standard codepath).
+    if (this._map && this._map.mapSize) {
+      this._mapWidth = this._map.mapSize.width
+      this._mapHeight = this._map.mapSize.height
+    } else {
+      // Map will be resolved in worldLoaded() — use sentinel values.
+      this._mapWidth = 0
+      this._mapHeight = 0
+    }
     const cellCount = this._mapWidth * this._mapHeight
 
     this._cellsDirty = new Uint8Array(cellCount)
     this._visibilityData = new Uint8Array(cellCount)
 
     // Initialize all cells as dirty (will be resolved on first render)
-    this._cellsDirty.fill(1)
-    this._anyCellDirty = true
+    if (cellCount > 0) {
+      this._cellsDirty.fill(1)
+      this._anyCellDirty = true
+    }
 
     // _getCellEdges is called from tests via `as any` cast — suppress TS6133
     void (this._getCellEdges as unknown)
@@ -450,6 +472,23 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
   worldLoaded(w: WorldStub, _wr: WorldRendererStub): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const worldAny = w as any
+
+    // Deferred map initialization: if the constructor received a world
+    // without a map (test stubs), resolve it now from the loaded world.
+    if (this._mapWidth === 0 && this._mapHeight === 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const wMap = worldAny.map as GameMap | undefined
+      if (wMap && wMap.mapSize) {
+        this._map = wMap
+        this._mapWidth = wMap.mapSize.width
+        this._mapHeight = wMap.mapSize.height
+        const cellCount = this._mapWidth * this._mapHeight
+        this._cellsDirty = new Uint8Array(cellCount)
+        this._visibilityData = new Uint8Array(cellCount)
+        this._cellsDirty.fill(1)
+        this._anyCellDirty = true
+      }
+    }
 
     // Set default visibility based on world type
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -568,6 +607,13 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
     this._shroudMaterial.setTexture('uVisibilityTexture', this._visibilityTexture)
     this._shroudMaterial.setVector2('uMapSize', { x: this._mapWidth, y: this._mapHeight })
     this._shroudMaterial.setVector2('uTexelSize', { x: 1 / this._mapWidth, y: 1 / this._mapHeight })
+    // NOTE: Texel center alignment — the ground-plane mesh from CreateGround
+    // produces evenly-spaced UV coordinates proportional to world positions
+    // (UV = x / mapWidth, z / mapHeight). Each cell of the visibility texture
+    // is sampled at its center via the fragment shader's cellCoord =
+    // vUV * uMapSize. With TEXTURE_NEAREST_SAMPLINGMODE, the GPU samples the
+    // nearest texel center, so cell i maps to texel i without offset issues.
+    // Non-square maps (mapWidth !== mapHeight) are supported via uTexelSize.
     this._shroudMaterial.backFaceCulling = false
     this._shroudMaterial.disableDepthWrite = true
 
@@ -924,6 +970,11 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
       return
     }
 
+    // Guard: if map was deferred and never resolved, render is a no-op
+    if (!this._map || !this._map.projectedCells) {
+      return
+    }
+
     // Update visibility texture
     this._updateShroudTexture(this._map.projectedCells)
 
@@ -933,6 +984,61 @@ export class ShroudRenderer implements IWorldLoaded, IRenderShroud, INotifyActor
     // architecture, the Scene.render() call handles all mesh rendering.
     // If the quad mesh and material are set up, they will be rendered
     // automatically.
+  }
+
+  // -------------------------------------------------------------------------
+  // ITickRender
+  // -------------------------------------------------------------------------
+
+  /**
+   * Per-frame render tick — delegates to renderShroud for visibility updates.
+   *
+   * OpenRA 对照: ITickRender.TickRender(WorldRenderer, Actor)
+   *
+   * Called every render frame by GameWorldManager.tickRender() via the
+   * TraitDictionary. This ensures the visibility texture is updated each
+   * frame so that shroud changes (from Shroud.addOnShroudChanged) are
+   * flushed to the GPU before Babylon.js renders the next frame.
+   *
+   * If the WorldRenderer also calls renderShroud() via IRenderShroud,
+   * the second call is a no-op (all cells already marked clean).
+   *
+   * @param wr — the world renderer
+   * @param _actor — the actor this trait is attached to
+   */
+  tickRender(wr: WorldRendererStub, _actor: IGameActor): void {
+    if (this._disposed) {
+      return
+    }
+    this.renderShroud(wr)
+  }
+
+  // -------------------------------------------------------------------------
+  // Debugging
+  // -------------------------------------------------------------------------
+
+  /**
+   * Diagnostic summary of the current shroud renderer state.
+   *
+   * Returns a plain object suitable for console.table() or test assertions.
+   * Useful for debugging why the shroud overlay doesn't render at runtime.
+   *
+   * @returns diagnostic object with current state snapshot
+   */
+  logDiagnostics(): Record<string, unknown> {
+    const dirtyCount = this._cellsDirty.reduce((sum, v) => sum + v, 0)
+    return {
+      shroudAttached: this._shroud !== null,
+      cellVisibilitySet: this._cellVisibility !== null,
+      anyCellDirty: this._anyCellDirty,
+      dirtyCellCount: dirtyCount,
+      hasVisibilityTexture: this._visibilityTexture !== null,
+      hasShroudMaterial: this._shroudMaterial !== null,
+      hasQuadMesh: this._quadMesh !== null,
+      hasScene: this._scene !== null,
+      mapSize: { w: this._mapWidth, h: this._mapHeight },
+      disposed: this._disposed,
+    }
   }
 
   // -------------------------------------------------------------------------

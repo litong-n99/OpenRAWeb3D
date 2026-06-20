@@ -46,6 +46,7 @@ import type {
   ActorInfoStub,
 } from './Traits/TraitsInterfaces.js'
 import type { IGameEffect, IGameEffectSync } from './Effects/IEffect.js'
+import { ShroudRenderer, ShroudRendererInfo } from '../OpenRA.Mods.Common/Traits/World/ShroudRenderer.js'
 
 // ---------------------------------------------------------------------------
 // WorldType enum (对应 OpenRA WorldType)
@@ -1210,6 +1211,15 @@ export class GameWorldManager {
     const controlGroups = new StubControlGroupsComponent()
     controlGroups.attach(wa)
     this.traitDict.addTrait(wa, controlGroups)
+
+    // ShroudRenderer — 3D fog-of-war overlay (Ch25 Phase A)
+    // Maps visibility per cell and renders as a translucent ground-plane
+    // with edge-blended shader. Registered via TraitDictionary so that
+    // IWorldLoaded, ITickRender, and INotifyActorDisposing hooks fire.
+    const shroudInfo = new ShroudRendererInfo()
+    const shroudRenderer = new ShroudRenderer(this as unknown as WorldStub, shroudInfo)
+    shroudRenderer.attach(wa)
+    this.traitDict.addTrait(wa, shroudRenderer)
 
     // Mark as in-world and add to actors map (WorldActor is always in the world)
     // OpenRA: CreateActor(worldActorType, []) calls World.Add(this) via

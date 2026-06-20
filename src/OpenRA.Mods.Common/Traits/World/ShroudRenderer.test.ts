@@ -1092,4 +1092,222 @@ describe('ShroudRenderer', () => {
       expect(captured.shaderMaterial!.options!.uniforms).toContain('uTexelSize')
     })
   })
+
+  // -------------------------------------------------------------------------
+  // logDiagnostics (Ch25 Phase A)
+  // -------------------------------------------------------------------------
+
+  describe('logDiagnostics', () => {
+    it('returns shroud not attached when worldLoaded has not been called', () => {
+      const diag = renderer.logDiagnostics()
+      expect(diag.shroudAttached).toBe(false)
+      expect(diag.hasVisibilityTexture).toBe(false)
+      expect(diag.hasShroudMaterial).toBe(false)
+      expect(diag.hasQuadMesh).toBe(false)
+    })
+
+    it('returns cellVisibilitySet=false before worldLoaded', () => {
+      const diag = renderer.logDiagnostics()
+      expect(diag.cellVisibilitySet).toBe(false)
+    })
+
+    it('returns anyCellDirty=true from construction', () => {
+      const diag = renderer.logDiagnostics()
+      expect(diag.anyCellDirty).toBe(true)
+    })
+
+    it('returns dirtyCellCount > 0 from construction', () => {
+      const diag = renderer.logDiagnostics()
+      expect(diag.dirtyCellCount).toBeGreaterThan(0)
+    })
+
+    it('returns map dimensions matching the test map', () => {
+      const diag = renderer.logDiagnostics()
+      expect(diag.mapSize).toEqual({ w: 8, h: 8 })
+    })
+
+    it('returns disposed=false before disposal', () => {
+      const diag = renderer.logDiagnostics()
+      expect(diag.disposed).toBe(false)
+    })
+
+    it('returns hasScene=false before worldLoaded', () => {
+      const diag = renderer.logDiagnostics()
+      expect(diag.hasScene).toBe(false)
+    })
+
+    it('reports GPU resources after worldLoaded', () => {
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+      const diag = renderer.logDiagnostics()
+      expect(diag.hasVisibilityTexture).toBe(true)
+      expect(diag.hasShroudMaterial).toBe(true)
+      expect(diag.hasQuadMesh).toBe(true)
+      expect(diag.hasScene).toBe(true)
+    })
+
+    it('reports shroud attached after render player change', () => {
+      const { player } = setupShroudActor()
+      world.renderPlayer = player
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+      const diag = renderer.logDiagnostics()
+      expect(diag.shroudAttached).toBe(true)
+      expect(diag.cellVisibilitySet).toBe(true)
+    })
+
+    it('reports disposed=true after disposing called', () => {
+      const mockActor = createMockActor()
+      renderer.disposing(mockActor)
+      const diag = renderer.logDiagnostics()
+      expect(diag.disposed).toBe(true)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // tickRender (Ch25 Phase A)
+  // -------------------------------------------------------------------------
+
+  describe('tickRender', () => {
+    it('delegates to renderShroud', () => {
+      const wr = createMockWorldRenderer()
+      const mockActor = createMockActor()
+      // Before worldLoaded, renderShroud is a no-op (no map.projectedCells
+      // in test mock), but tickRender should not crash
+      expect(() => renderer.tickRender(wr as any, mockActor)).not.toThrow()
+    })
+
+    it('no-ops when disposed', () => {
+      const mockActor = createMockActor()
+      renderer.disposing(mockActor)
+      const wr = createMockWorldRenderer()
+      // Should not throw when called after disposal
+      expect(() => renderer.tickRender(wr as any, mockActor)).not.toThrow()
+    })
+
+    it('tickRender with proper map updates dirty cells', () => {
+      const wr = createMockWorldRenderer()
+      const mockActor = createMockActor()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      renderer.worldLoaded(world as any, wr as any)
+
+      // All cells start dirty; after tickRender they should be clean
+      expect(renderer.anyCellDirty).toBe(true)
+      renderer.tickRender(wr as any, mockActor)
+      expect(renderer.anyCellDirty).toBe(false)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Non-square map support (Ch25 Phase A, TODO-25.A.2)
+  // -------------------------------------------------------------------------
+
+  describe('non-square maps', () => {
+    it('handles mapWidth !== mapHeight', () => {
+      const nonSquareMap = createTestMap(10, 8)
+      const nonSquareWorld = createMockWorld(nonSquareMap)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sr = new ShroudRenderer(nonSquareWorld as any, info)
+      const diag = sr.logDiagnostics()
+      expect(diag.mapSize).toEqual({ w: 10, h: 8 })
+    })
+
+    it('10x8 map creates correct visibility texture dimensions', () => {
+      const nonSquareMap = createTestMap(10, 8)
+      const nonSquareWorld = createMockWorld(nonSquareMap)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sr = new ShroudRenderer(nonSquareWorld as any, info)
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sr.worldLoaded(nonSquareWorld as any, wr as any)
+
+      expect(captured.rawTexture!.width).toBe(10)
+      expect(captured.rawTexture!.height).toBe(8)
+    })
+
+    it('10x8 map creates correctly sized ground plane', () => {
+      const nonSquareMap = createTestMap(10, 8)
+      const nonSquareWorld = createMockWorld(nonSquareMap)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sr = new ShroudRenderer(nonSquareWorld as any, info)
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sr.worldLoaded(nonSquareWorld as any, wr as any)
+
+      expect(captured.createGround!.options.width).toBe(10)
+      expect(captured.createGround!.options.height).toBe(8)
+    })
+
+    it('10x8 map sets uTexelSize correctly', () => {
+      const nonSquareMap = createTestMap(10, 8)
+      const nonSquareWorld = createMockWorld(nonSquareMap)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sr = new ShroudRenderer(nonSquareWorld as any, info)
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sr.worldLoaded(nonSquareWorld as any, wr as any)
+
+      expect(mockSetVector2).toHaveBeenCalledWith('uTexelSize', { x: 1 / 10, y: 1 / 8 })
+    })
+
+    it('1x1 map (minimum dimensions) does not crash', () => {
+      const tinyMap = createTestMap(1, 1)
+      const tinyWorld = createMockWorld(tinyMap)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sr = new ShroudRenderer(tinyWorld as any, info)
+      const diag = sr.logDiagnostics()
+      expect(diag.mapSize).toEqual({ w: 1, h: 1 })
+      expect(diag.dirtyCellCount).toBe(1)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // static interfaces (Ch25 Phase A)
+  // -------------------------------------------------------------------------
+
+  describe('static interfaces', () => {
+    it('has the required interface keys', () => {
+      const ifaces = (ShroudRenderer as unknown as { interfaces: readonly string[] }).interfaces
+      expect(ifaces).toBeDefined()
+      expect(ifaces).toContain('IWorldLoaded')
+      expect(ifaces).toContain('IRenderShroud')
+      expect(ifaces).toContain('ITickRender')
+      expect(ifaces).toContain('INotifyActorDisposing')
+      expect(ifaces).toContain('component')
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Deferred map initialization (constructor without map)
+  // -------------------------------------------------------------------------
+
+  describe('deferred map initialization', () => {
+    it('constructor handles world without map gracefully', () => {
+      const worldNoMap = { renderPlayer: null, renderPlayerChanged: null, type: 'Regular' }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sr = new ShroudRenderer(worldNoMap as any, info)
+      const diag = sr.logDiagnostics()
+      expect(diag.mapSize).toEqual({ w: 0, h: 0 })
+      expect(diag.dirtyCellCount).toBe(0)
+    })
+
+    it('worldLoaded resolves map from world when deferred', () => {
+      const deferredMap = createTestMap(12, 12)
+      const worldNoMap = { renderPlayer: null, renderPlayerChanged: null, type: 'Regular' }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sr = new ShroudRenderer(worldNoMap as any, info)
+
+      // Now provide map via worldLoaded
+      const worldWithMap = { ...worldNoMap, map: deferredMap }
+      const wr = createMockWorldRenderer()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sr.worldLoaded(worldWithMap as any, wr as any)
+
+      const diag = sr.logDiagnostics()
+      expect(diag.mapSize).toEqual({ w: 12, h: 12 })
+      expect(diag.dirtyCellCount).toBe(144)
+    })
+  })
 })
