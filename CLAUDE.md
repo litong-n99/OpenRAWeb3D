@@ -329,6 +329,7 @@ docs/
   rendering_migration_plan.md                 ← Chapter 2 rendering plan with TODO checklist
   actor_system_migration_plan.md              ← Chapter 3 actor system plan with TODO checklist
   map_system_migration_plan.md                ← Chapter 4 map & terrain system plan with TODO checklist (37/37, 100%)
+  chapter4_deferred_items_implementation_plan.md ← Chapter 4 deferred items plan: HTTP client + minimap rendering (2 TODO items)
   ui_system_migration_plan.md                 ← Chapter 5 UI system & resource management plan (16 files, 5 phases)
   migration_progress.md                       ← Overall progress tracker with dependency graph
 ```
@@ -582,6 +583,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/actor_system_migration_plan.md](docs/actor_system_migration_plan.md) | Chapter 3 actor system migration plan with TODO checklist (36 total: 17 Phase A primitives + 14 core + 5 support; 61 TODO items) |
 | [docs/openra_migration.agent.final.converted.md](docs/openra_migration.agent.final.converted.md) | Comprehensive OpenRA architecture analysis (~199KB) covering rendering, actor system, networking, resources |
 | [docs/map_system_migration_plan.md](docs/map_system_migration_plan.md) | Chapter 4 map & terrain system migration plan with TODO checklist (37 files, 9 phases A-I, 100% complete) |
+| [docs/chapter4_deferred_items_implementation_plan.md](docs/chapter4_deferred_items_implementation_plan.md) | Chapter 4 deferred items implementation plan: HTTP client (TODO-4.E.3) + minimap rendering (TODO-4.E.4), 2 phases, ~1,245 lines est. |
 | [docs/ui_system_migration_plan.md](docs/ui_system_migration_plan.md) | Chapter 5 UI system & resource management migration plan (16 files, 5 phases A-E, 100% complete) |
 | [docs/network_sync_migration_plan.md](docs/network_sync_migration_plan.md) | Network sync & game logic migration plan (29 files, 5 phases A-E, 100% complete) |
 | [docs/input_camera_audio_effects_migration_plan.md](docs/input_camera_audio_effects_migration_plan.md) | Chapter 7 input, camera, audio & effects migration plan (13 files, 7 phases A-G, ALL PHASES COMPLETE) |
