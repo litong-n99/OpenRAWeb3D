@@ -266,13 +266,21 @@ export class WidgetLoader {
     widget.initialize(args)
 
     // Step 6: Load children recursively
-    const children = node['Children'] as Record<
-      string,
-      WidgetDefinitionNode
-    > | undefined
+    const children = node['Children'] as
+      | Record<string, WidgetDefinitionNode | WidgetDefinitionNode[]>
+      | undefined
     if (children) {
       for (const [childKey, childNode] of Object.entries(children)) {
-        this.loadWidget(args, widget, childKey, childNode)
+        // OpenRA YAML allows array syntax for multiple widgets of the same
+        // type (e.g. "Button": [{id:"A"},{id:"B"}]). Each array element is
+        // a separate widget instance of type childKey.
+        if (Array.isArray(childNode)) {
+          for (const item of childNode) {
+            this.loadWidget(args, widget, childKey, item)
+          }
+        } else {
+          this.loadWidget(args, widget, childKey, childNode)
+        }
       }
     }
 
