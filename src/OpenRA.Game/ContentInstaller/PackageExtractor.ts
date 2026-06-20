@@ -203,15 +203,32 @@ export class PackageExtractor {
     try {
       if (format === 'mix') {
         // Try encrypted format first (RA/TS/RA2 with Blowfish/RSA),
-        // then fall back to unencrypted C&C format.
+        // then fall back to unencrypted C&C format,
+        // then fall back to Westwood classic format.
         if (MixFileRuntime.isEncryptedFormat(data)) {
           try {
             pkg = MixFileRuntime.parseEncrypted(destPath, data, undefined, mixDb)
-          } catch (err) {
+          } catch (encryptedErr) {
             console.warn(
               `PackageExtractor: encrypted MIX parse failed for "${destPath}": ` +
-              `${err instanceof Error ? err.message : String(err)}`,
+              `${encryptedErr instanceof Error ? encryptedErr.message : String(encryptedErr)}`,
             )
+            // Fallthrough: try Westwood classic as a fallback.
+            // Some CDN files (e.g., scores.mix) have the encrypted flag set
+            // spuriously (secondUint16 bit 1) but are actually unencrypted
+            // Westwood classic format.
+            if (MixFileRuntime.isWestwoodClassicFormat(data)) {
+              try {
+                pkg = MixFileRuntime.parseWestwoodClassic(destPath, data, mixDb)
+                console.warn(
+                  `PackageExtractor: "${destPath}" fell through from encrypted ` +
+                  `to Westwood classic MIX parse`,
+                )
+              } catch (_fallbackErr) {
+                // Both parseEncrypted and parseWestwoodClassic failed;
+                // pkg stays null and we continue to the next format check.
+              }
+            }
           }
         }
         if (!pkg && MixFileRuntime.isCncFormat(data)) {
@@ -224,7 +241,17 @@ export class PackageExtractor {
             )
           }
         }
-        if (!pkg && !MixFileRuntime.isEncryptedFormat(data) && !MixFileRuntime.isCncFormat(data)) {
+        if (!pkg && MixFileRuntime.isWestwoodClassicFormat(data)) {
+          try {
+            pkg = MixFileRuntime.parseWestwoodClassic(destPath, data, mixDb)
+          } catch (err) {
+            console.warn(
+              `PackageExtractor: Westwood classic MIX parse failed for "${destPath}": ` +
+              `${err instanceof Error ? err.message : String(err)}`,
+            )
+          }
+        }
+        if (!pkg && !MixFileRuntime.isEncryptedFormat(data) && !MixFileRuntime.isCncFormat(data) && !MixFileRuntime.isWestwoodClassicFormat(data)) {
           // Not a recognized MIX format — log diagnostic info
           const dv = new DataView(data)
           const first = dv.getUint16(0, true)
@@ -234,6 +261,21 @@ export class PackageExtractor {
             `(firstUint16=0x${first.toString(16).padStart(4, '0')}, ` +
             `secondUint16=0x${second.toString(16).padStart(4, '0')}, size=${data.byteLength})`,
           )
+        }
+
+        // Enrich the mix database from the MIX's own local database entry.
+        // This logs the enrichment count for diagnostic purposes.
+        // NOTE: PackageExtractor receives mixDb as a parameter (not a shared
+        // cache), so cross-pollination between extractions is limited.
+        // The MixLoader handles cross-pollination via its own setMixDb() mechanism.
+        if (pkg instanceof MixFileRuntime) {
+          const enrichedDb = MixFileRuntime.buildMixDb(data, pkg.getEntries(), mixDb)
+          if (enrichedDb.size > 0) {
+            console.log(
+              `PackageExtractor: enriched ${enrichedDb.size} filenames ` +
+              `from "${destPath}" local database`,
+            )
+          }
         }
       } else if (format === 'pak') {
         pkg = _pakLoader.tryParsePackage(destPath, data)

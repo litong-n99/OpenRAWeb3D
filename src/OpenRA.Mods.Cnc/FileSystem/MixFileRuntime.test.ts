@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { zipSync } from 'fflate'
 import { MixFileRuntime } from './MixFileRuntime.js'
 import { Blowfish } from '../FileFormats/Blowfish.js'
 
@@ -2326,5 +2327,349 @@ describe('MixLoader — Phase B integration (parseAuto + buildMixDb)', () => {
 
     const result = loader.tryParsePackage('bad.mix', tinyBuf)
     expect(result).toBeNull()
+  })
+})
+
+// ===========================================================================
+// Chapter 23 Phase C: Integration tests
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// buildMixDb cross-pollination (Ch23 Phase C)
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.buildMixDb — cross-pollination (Ch23 Phase C)', () => {
+  it('enriched db from one parse resolves filenames in a second parse', () => {
+    const filename1 = 'pollinate1.shp'
+    const filename2 = 'pollinate2.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+    const hash2 = PackageEntry.hashFilename(filename2, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('first file') },
+      { hash: hash2, data: strToData('second file') },
+    ]
+
+    // Create MIX with local db containing both filenames
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename1, filename2])
+
+    // First parse: C&C format without mixDb (all unresolved)
+    const mix1 = MixFileRuntime.parse('first.mix', buf)
+    expect(mix1.contents.every(n => n.startsWith('unresolved_'))).toBe(true)
+
+    // Build enrichment db from the first parse
+    const enrichedDb = MixFileRuntime.buildMixDb(buf, mix1.getEntries())
+    expect(enrichedDb.size).toBeGreaterThanOrEqual(2)
+
+    // Second parse: use the enriched db → filenames should resolve
+    const mix2 = MixFileRuntime.parse('second.mix', buf, enrichedDb)
+    expect(mix2.contains(filename1)).toBe(true)
+    expect(mix2.contains(filename2)).toBe(true)
+
+    // Verify data is correct
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    const hex2 = '0x' + hash2.toString(16).toUpperCase().padStart(8, '0')
+    expect(enrichedDb.get(hex1)).toBe(filename1)
+    expect(enrichedDb.get(hex2)).toBe(filename2)
+  })
+
+  it('enriched db cross-pollinates between C&C and Westwood classic formats', () => {
+    const filename1 = 'crossFormat.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+
+    const actualFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('cross data') },
+    ]
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, [filename1])
+
+    // Parse as C&C, build enrichment
+    const mix1 = MixFileRuntime.parse('cnc.mix', buf)
+    const enrichedDb = MixFileRuntime.buildMixDb(buf, mix1.getEntries())
+
+    // Now create a Westwood classic MIX with the same hash
+    const wwFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('westwood cross data') },
+    ]
+    const wwBuf = createWestwoodClassicMixBuffer(wwFiles)
+
+    // Parse Westwood classic using the enriched db from C&C parse
+    const mix2 = MixFileRuntime.parseWestwoodClassic('ww.mix', wwBuf, enrichedDb)
+    expect(mix2.contains(filename1)).toBe(true)
+  })
+
+  it('enriched db resolves filenames when used as mixDb for parseAuto', () => {
+    const filenames = ['auto1.shp', 'auto2.shp', 'auto3.shp']
+    const actualFiles: FileSpec[] = filenames.map((name) => ({
+      hash: PackageEntry.hashFilename(name, PackageHashType.Classic),
+      data: strToData(`content of ${name}`),
+    }))
+
+    const { buf } = createCncMixWithLocalDb(actualFiles, filenames)
+
+    // Parse via parseAuto without mixDb (unresolved)
+    const mix1 = MixFileRuntime.parseAuto('auto.mix', buf)
+    expect(mix1.contents.every(n => n.startsWith('unresolved_'))).toBe(true)
+
+    // Build enrichment
+    const enrichedDb = MixFileRuntime.buildMixDb(buf, mix1.getEntries())
+    expect(enrichedDb.size).toBeGreaterThanOrEqual(3)
+
+    // Parse again with enriched db via parseAuto
+    const mix2 = MixFileRuntime.parseAuto('auto2.mix', buf, enrichedDb)
+    for (const name of filenames) {
+      expect(mix2.contains(name)).toBe(true)
+    }
+  })
+
+  it('buildMixDb enrichment accumulates across multiple MIX files', () => {
+    // MIX 1: contains unit1.shp
+    const name1 = 'unit1.shp'
+    const hash1 = PackageEntry.hashFilename(name1, PackageHashType.Classic)
+    const files1: FileSpec[] = [{ hash: hash1, data: strToData('unit1') }]
+    const { buf: buf1 } = createCncMixWithLocalDb(files1, [name1])
+    const mix1 = MixFileRuntime.parse('mix1.mix', buf1)
+    const db1 = MixFileRuntime.buildMixDb(buf1, mix1.getEntries())
+
+    // MIX 2: contains unit2.shp
+    const name2 = 'unit2.shp'
+    const hash2 = PackageEntry.hashFilename(name2, PackageHashType.Classic)
+    const files2: FileSpec[] = [{ hash: hash2, data: strToData('unit2') }]
+    const { buf: buf2 } = createCncMixWithLocalDb(files2, [name2])
+    const mix2 = MixFileRuntime.parse('mix2.mix', buf2)
+    const db2 = MixFileRuntime.buildMixDb(buf2, mix2.getEntries())
+
+    // Merge the two databases
+    const mergedDb = new Map(db1)
+    for (const [key, value] of db2) {
+      mergedDb.set(key, value)
+    }
+
+    // Now parse a MIX that has both entries
+    const combinedFiles: FileSpec[] = [
+      { hash: hash1, data: strToData('unit1 again') },
+      { hash: hash2, data: strToData('unit2 again') },
+    ]
+    const combinedBuf = createCncMixBuffer(combinedFiles)
+    const mixed = MixFileRuntime.parse('combined.mix', combinedBuf, mergedDb)
+
+    expect(mixed.contains(name1)).toBe(true)
+    expect(mixed.contains(name2)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseAuto + buildMixDb enrichment (Ch23 Phase C)
+// ---------------------------------------------------------------------------
+
+describe('MixFileRuntime.parseAuto — buildMixDb enrichment (Ch23 Phase C)', () => {
+  it('parseAuto + buildMixDb resolves all filenames from local database', async () => {
+    const filenames = ['sprite1.shp', 'sound1.aud', 'terrain.tem']
+    const actualFiles: FileSpec[] = filenames.map((name) => ({
+      hash: PackageEntry.hashFilename(name, PackageHashType.Classic),
+      data: strToData(`data for ${name}`),
+    }))
+
+    // Use Westwood classic format for this test
+    const { buf } = createWestwoodClassicWithLocalDb(actualFiles, filenames)
+
+    // parseAuto detects Westwood classic format
+    const mix = MixFileRuntime.parseAuto('enriched.mix', buf)
+
+    // Build enrichment from the same MIX
+    const enrichedDb = MixFileRuntime.buildMixDb(buf, mix.getEntries())
+    expect(enrichedDb.size).toBeGreaterThanOrEqual(3)
+
+    // Parse again with enrichment
+    const mix2 = MixFileRuntime.parseAuto('enriched2.mix', buf, enrichedDb)
+    for (const name of filenames) {
+      expect(mix2.contains(name)).toBe(true)
+    }
+
+    // Verify data integrity for all files
+    for (const name of filenames) {
+      const data = await mix2.open(name)
+      expect(data).not.toBeNull()
+      expect(new TextDecoder().decode(data!)).toBe(`data for ${name}`)
+    }
+  })
+
+  it('parseAuto handles all three formats and enrichment is format-agnostic', () => {
+    // C&C format
+    const name1 = 'cncFile.shp'
+    const hash1 = PackageEntry.hashFilename(name1, PackageHashType.Classic)
+    const cncFiles: FileSpec[] = [{ hash: hash1, data: strToData('cnc') }]
+    const { buf: cncBuf } = createCncMixWithLocalDb(cncFiles, [name1])
+
+    // Westwood classic format
+    const name2 = 'wwFile.shp'
+    const hash2 = PackageEntry.hashFilename(name2, PackageHashType.Classic)
+    const wwFiles: FileSpec[] = [{ hash: hash2, data: strToData('ww') }]
+    const { buf: wwBuf } = createWestwoodClassicWithLocalDb(wwFiles, [name2])
+
+    // Parse both via parseAuto
+    const cncMix = MixFileRuntime.parseAuto('cnc.mix', cncBuf)
+    const wwMix = MixFileRuntime.parseAuto('ww.mix', wwBuf)
+
+    // Build enrichment from each
+    const db1 = MixFileRuntime.buildMixDb(cncBuf, cncMix.getEntries())
+    const db2 = MixFileRuntime.buildMixDb(wwBuf, wwMix.getEntries())
+
+    // Both databases resolve their respective filenames
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    const hex2 = '0x' + hash2.toString(16).toUpperCase().padStart(8, '0')
+    expect(db1.get(hex1)).toBe(name1)
+    expect(db2.get(hex2)).toBe(name2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// End-to-end: PackageExtractor integration (Ch23 Phase C)
+// ---------------------------------------------------------------------------
+
+import { PackageExtractor } from '../../OpenRA.Game/ContentInstaller/PackageExtractor.js'
+
+describe('MixFileRuntime + PackageExtractor — end-to-end (Ch23 Phase C)', () => {
+  it('Westwood classic MIX extracted via PackageExtractor preserves content', async () => {
+    // Create Westwood classic MIX with known content
+    const expectedContent = 'Hello from Westwood classic MIX!'
+    const fileData = strToData(expectedContent)
+    const fileHash = 0xEE000001
+
+    const files: FileSpec[] = [
+      { hash: fileHash, data: fileData },
+    ]
+    const mixBuf = createWestwoodClassicMixBuffer(files)
+
+    // Put it in a ZIP
+    const zipData = zipSync({ 'test.mix': new Uint8Array(mixBuf) })
+    const extractMap = { 'extracted/test.mix': 'test.mix' }
+
+    // Provide a mixDb so the hash resolves to a readable filename
+    const mixDb = new Map<string, string>()
+    mixDb.set('0xEE000001', 'readme.txt')
+
+    const extractor = new PackageExtractor()
+    const result = await extractor.extract(
+      zipData.buffer as ArrayBuffer,
+      extractMap,
+      mixDb,
+    )
+
+    // Verify the inner file exists with correct content
+    const key = 'extracted/test.mix/readme.txt'
+    expect(result.has(key)).toBe(true)
+    const extractedData = result.get(key)!
+    expect(new TextDecoder().decode(extractedData)).toBe(expectedContent)
+  })
+
+  it('C&C MIX extracted via PackageExtractor preserves content', async () => {
+    const expectedContent = 'C&C MIX test content'
+    const fileData = strToData(expectedContent)
+    const fileHash = 0xCC000042
+
+    const files: FileSpec[] = [
+      { hash: fileHash, data: fileData },
+    ]
+    const mixBuf = createCncMixBuffer(files)
+
+    const zipData = zipSync({ 'cnc.mix': new Uint8Array(mixBuf) })
+    const extractMap = { 'extracted/cnc.mix': 'cnc.mix' }
+
+    const mixDb = new Map<string, string>()
+    mixDb.set('0xCC000042', 'content.dat')
+
+    const extractor = new PackageExtractor()
+    const result = await extractor.extract(
+      zipData.buffer as ArrayBuffer,
+      extractMap,
+      mixDb,
+    )
+
+    const key = 'extracted/cnc.mix/content.dat'
+    expect(result.has(key)).toBe(true)
+    const extractedData = result.get(key)!
+    expect(new TextDecoder().decode(extractedData)).toBe(expectedContent)
+  })
+
+  it('multiple MIX files in ZIP all extract correctly', async () => {
+    const content1 = 'File from C&C MIX'
+    const content2 = 'File from Westwood MIX'
+    const hash1 = 0xDEAD0001
+    const hash2 = 0xBEEF0002
+
+    const cncMix = createCncMixBuffer([
+      { hash: hash1, data: strToData(content1) },
+    ])
+    const wwMix = createWestwoodClassicMixBuffer([
+      { hash: hash2, data: strToData(content2) },
+    ])
+
+    const zipData = zipSync({
+      'first.mix': new Uint8Array(cncMix),
+      'second.mix': new Uint8Array(wwMix),
+    })
+    const extractMap = {
+      'out/first.mix': 'first.mix',
+      'out/second.mix': 'second.mix',
+    }
+
+    const mixDb = new Map<string, string>()
+    mixDb.set('0xDEAD0001', 'first.dat')
+    mixDb.set('0xBEEF0002', 'second.dat')
+
+    const extractor = new PackageExtractor()
+    const result = await extractor.extract(
+      zipData.buffer as ArrayBuffer,
+      extractMap,
+      mixDb,
+    )
+
+    expect(result.size).toBe(2)
+    expect(result.has('out/first.mix/first.dat')).toBe(true)
+    expect(result.has('out/second.mix/second.dat')).toBe(true)
+
+    const data1 = new TextDecoder().decode(result.get('out/first.mix/first.dat')!)
+    const data2 = new TextDecoder().decode(result.get('out/second.mix/second.dat')!)
+    expect(data1).toBe(content1)
+    expect(data2).toBe(content2)
+  })
+
+  it('Westwood classic MIX with mixDb resolves filenames in PackageExtractor', async () => {
+    const filename1 = 'hero.shp'
+    const filename2 = 'villain.shp'
+    const hash1 = PackageEntry.hashFilename(filename1, PackageHashType.Classic)
+    const hash2 = PackageEntry.hashFilename(filename2, PackageHashType.Classic)
+
+    const files: FileSpec[] = [
+      { hash: hash1, data: strToData('hero content') },
+      { hash: hash2, data: strToData('villain content') },
+    ]
+    const mixBuf = createWestwoodClassicMixBuffer(files)
+
+    const zipData = zipSync({ 'battle.mix': new Uint8Array(mixBuf) })
+    const extractMap = { 'Content/battle.mix': 'battle.mix' }
+
+    const mixDb = new Map<string, string>()
+    const hex1 = '0x' + hash1.toString(16).toUpperCase().padStart(8, '0')
+    const hex2 = '0x' + hash2.toString(16).toUpperCase().padStart(8, '0')
+    mixDb.set(hex1, filename1)
+    mixDb.set(hex2, filename2)
+
+    const extractor = new PackageExtractor()
+    const result = await extractor.extract(
+      zipData.buffer as ArrayBuffer,
+      extractMap,
+      mixDb,
+    )
+
+    expect(result.size).toBe(2)
+    expect(result.has('Content/battle.mix/hero.shp')).toBe(true)
+    expect(result.has('Content/battle.mix/villain.shp')).toBe(true)
+
+    const heroData = new TextDecoder().decode(result.get('Content/battle.mix/hero.shp')!)
+    const villainData = new TextDecoder().decode(result.get('Content/battle.mix/villain.shp')!)
+    expect(heroData).toBe('hero content')
+    expect(villainData).toBe('villain content')
   })
 })
