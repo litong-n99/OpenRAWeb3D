@@ -1186,6 +1186,10 @@ export class Game {
    * - Exit → _exitToModSelector()
    */
   showMainMenu(): void {
+    // MAJOR #4 fix: state guard — prevent showing main menu after disposed
+    // or while game is playing (e.g. startGame() was already called)
+    if (this.state === GameState.Disposed || this.state === GameState.Playing) return
+
     // 移除已有的主菜单（防止重复创建）
     this.hideMainMenu()
 
@@ -1450,6 +1454,10 @@ export class Game {
     // 守卫: dispose 可能在 async import 期间被调用
     if (this.state === GameState.Disposed) return
 
+    // MAJOR #3 fix: state guard — prevent widget rendering after game starts
+    // (e.g. startGame() called while async imports were in-flight)
+    if (this.state === GameState.Playing) return
+
     const { WidgetLoader: WL } = wlMod
     const { ContainerWidget: CW } = wMod
     const { ButtonWidget: BW } = btnMod
@@ -1488,6 +1496,19 @@ export class Game {
     if (domOverlay) domOverlay.remove()
 
     // ---- 渲染 widget 树到 DOM ----
+    // MAJOR #3 fix: state guard — game may have started while
+    // showMainMenuWidget was awaiting async imports/loads.
+    // Cast through GameState to bypass TS narrowing after the earlier guard
+    // (the type CAN change during async gaps).
+    // Use explicit annotation to prevent TS narrowing from earlier guards
+    // (this.state CAN change during async gaps like dynamic imports).
+    const s = this.state as GameState
+    if (s === GameState.Playing || s === GameState.Disposed) {
+      // Clean up the widget tree we just created (it was never attached to DOM)
+      root.dispose()
+      return
+    }
+
     const rootEl = root.renderOuter()
     rootEl.id = 'main-menu-widget-overlay'
     rootEl.style.cssText =
@@ -2151,10 +2172,11 @@ export class Game {
     }
 
     // Set up simple lobby info: 1 human + 1 AI
-    this.skirmishLobbyInfo = {
-      slots: [
-        { playerName: 'You', faction: 'allies', team: 0, isHuman: true, botDifficulty: undefined },
-        { playerName: 'AI 1', faction: 'soviet', team: 1, isHuman: false, botDifficulty: 'medium' },
+    this.lobbyInfo = {
+      mapUid: 'test-map',
+      players: [
+        { slotIndex: 0, playerType: 'Human' },
+        { slotIndex: 1, playerType: 'AI', botDifficulty: 'Medium' },
       ],
     }
 

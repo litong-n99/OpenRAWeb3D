@@ -176,6 +176,14 @@ export class WidgetLoader {
         return this.loadWidget(args, null, key, node)
       }
     }
+    // BLOCKER #1 fix: MiniYamlParser strips @Name from keys and stores it as
+    // node.id. Check the 'id' property on each node as a secondary match.
+    for (const [key, node] of this._widgetDefinitions) {
+      const nodeId = (node as Record<string, unknown>)['id']
+      if (typeof nodeId === 'string' && nodeId === name) {
+        return this.loadWidget(args, null, key, node)
+      }
+    }
     throw new Error(`Cannot find widget with Id '${name}'`)
   }
 
@@ -203,10 +211,20 @@ export class WidgetLoader {
       parent.addChild(widget)
     }
 
-    // Step 3: Set Id from @ suffix
+    // Step 3: Set Id from @ suffix, or from node's 'id' property
+    // BLOCKER #1 fix: MiniYamlParser may strip @Name from keys and store
+    // it as node.id (e.g. key="Container", node={id:"MAINMENU"}).
+    // Priority: node's explicit 'Id' property > @ suffix > node's 'id' property
     const atIndex = key.indexOf('@')
     if (atIndex >= 0) {
       widget.id = key.slice(atIndex + 1)
+    } else {
+      // Key has no @ suffix — check node's 'id' property (not 'Id' which is
+      // handled separately by _setWidgetProperty for runtime override)
+      const nodeId = (node as Record<string, unknown>)['id']
+      if (typeof nodeId === 'string') {
+        widget.id = nodeId
+      }
     }
 
     // Step 4: Inject properties (skip Children and Logic)
