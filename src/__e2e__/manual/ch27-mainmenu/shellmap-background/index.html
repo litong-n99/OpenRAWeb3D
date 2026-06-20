@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch27 Main Menu - Shellmap 背景 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+
+    #main-area { display: flex; flex: 1; min-height: 0; }
+
+    /* --- Sandbox — contains both canvas (shellmap) and menu overlay --- */
+    #sandbox { flex: 1; position: relative; background: #0d0d1a; /* Shellmap fallback: Color4(0.05, 0.05, 0.1, 1.0) */ overflow: hidden; min-width: 0; }
+    #sandbox canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; outline: none !important; touch-action: none; transition: opacity 0.5s ease; z-index: 0; }
+    #sandbox canvas.hidden { opacity: 0; pointer-events: none; }
+    #sandbox canvas.visible { opacity: 1; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #e94560; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; z-index: 1; }
+    #sandbox-bg-label { position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 10px; color: #888; z-index: 10; pointer-events: none; }
+    #sandbox-mode-label { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.7); padding: 4px 10px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 10px; color: #aad; z-index: 10; pointer-events: none; transition: color 0.3s; }
+
+    /* --- Menu overlay (simulated main menu card) --- */
+    #menu-overlay {
+      position: absolute; z-index: 5;
+      pointer-events: auto;
+      transition: opacity 0.5s ease, background 0.5s ease;
+    }
+    #menu-overlay.hidden { opacity: 0; pointer-events: none; }
+    #menu-card {
+      text-align: center;
+      padding: 2rem 3rem; min-width: 300px;
+      border-radius: 12px;
+      border: 1px solid rgba(100,100,180,0.3);
+      transition: background 0.5s ease, border-color 0.5s ease;
+    }
+    #menu-card h1 {
+      color: #f0f0f0; font-size: 1.8rem; font-weight: 700;
+      margin-bottom: 0.5rem; letter-spacing: -0.5px;
+    }
+    #menu-card p.subtitle {
+      color: #8888aa; font-size: 0.85rem; margin-bottom: 1.5rem;
+    }
+    #menu-card .mock-btn {
+      display: block; width: 100%; padding: 10px 18px; margin-bottom: 10px;
+      border: 1px solid rgba(100,100,180,0.35); border-radius: 6px;
+      font-size: 0.9rem; font-weight: 600;
+      background: linear-gradient(135deg, #334488, #4466cc);
+      color: #e0e0f0; cursor: pointer;
+    }
+    #menu-card .mock-btn.disabled {
+      background: rgba(40,40,60,0.5); color: #555570; cursor: not-allowed;
+    }
+    #menu-card p.version {
+      color: #555570; font-size: 0.7rem; margin-top: 1rem;
+    }
+
+    /* --- Panel --- */
+    #panel { width: 360px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #panel h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-section { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .panel-section ol { margin: 4px 0; padding-left: 18px; font-size: 11px; line-height: 1.7; }
+    .panel-section li { margin: 2px 0; }
+    .metric { color: #aad; font-family: 'Consolas', monospace; font-size: 11px; }
+    .check-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+    .check-indicator { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; transition: background 0.2s; }
+    .check-indicator.pass { background: #4caf50; }
+    .check-indicator.fail { background: #e94560; }
+    .check-indicator.pending { background: #cc8800; }
+
+    /* --- Color swatch --- */
+    .swatch-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 11px; }
+    .swatch { width: 28px; height: 14px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.12); flex-shrink: 0; }
+    .swatch-val { font-family: 'Consolas', monospace; color: #aad; font-size: 10px; }
+
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s, border-color 0.15s; }
+    button:hover { background: #0f3460; }
+    button.primary { border-color: #4466cc; color: #88aaff; }
+    button.primary:hover { background: #4466cc; color: #fff; }
+    button.danger { border-color: #e94560; color: #e94560; }
+    button.danger:hover { background: #e94560; color: #fff; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    input[type="range"] { width: 100%; accent-color: #4466cc; margin-top: 4px; }
+    .range-row { display: flex; justify-content: space-between; align-items: center; }
+    .range-val { font-family: 'Consolas', monospace; font-size: 11px; color: #aad; }
+
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', monospace; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Ch27 Main Menu - Shellmap 背景渲染</h1>
+    <div class="subtitle">ID: ch27-mainmenu/shellmap-background | Shellmap 3D 场景 + 菜单覆盖层 + 回退背景色 (ADR-27.1)</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+      <div id="sandbox-bg-label">bg: <span id="bg-color-info">#0d0d1a (fallback)</span></div>
+      <div id="sandbox-mode-label">状态: <span id="mode-label">fallback</span></div>
+      <!-- Menu overlay sits on top of canvas, centered -->
+      <div id="menu-overlay">
+        <div id="menu-card">
+          <h1>OpenRAWeb3D</h1>
+          <p class="subtitle">Web-based RTS Engine</p>
+          <div class="mock-btn">Skirmish</div>
+          <div class="mock-btn disabled">Multiplayer (Coming Soon)</div>
+          <div class="mock-btn">Settings</div>
+          <div class="mock-btn">Exit to Desktop</div>
+          <p class="version">Prototype — Phase E</p>
+        </div>
+      </div>
+    </div>
+    <div id="panel">
+      <div class="panel-section">
+        <h3>B. 期望结果</h3>
+        <ol>
+          <li>Shellmap 激活时：3D 场景在覆盖层后方渲染，FPS 稳定在 <span class="metric">>= 30</span></li>
+          <li>无 Shellmap 时：纯色背景 <span class="metric">#0d0d1a</span> (Color4: 0.05, 0.05, 0.1, 1.0)</li>
+          <li>菜单覆盖层半透明：<span class="metric">rgba(10,10,30,0.75)</span>，shellmap 可见</li>
+          <li>状态切换过渡：<span class="metric">500ms</span> opacity fade，无闪烁</li>
+          <li>Canvas z-index < 覆盖层 z-index，始终正确分层</li>
+        </ol>
+      </div>
+      <div class="panel-section">
+        <h3>C. 交互控件</h3>
+        <button class="primary" id="btn-toggle-shellmap">▶ 启动 Shellmap</button>
+        <button id="btn-toggle-overlay" class="danger">⊗ 隐藏菜单覆盖层</button>
+        <button id="btn-test-transition">↻ 测试背景过渡（快速切换）</button>
+        <div class="range-row">
+          <label style="font-size:11px;">覆盖层透明度</label>
+          <span class="range-val" id="opacity-val">0.75</span>
+        </div>
+        <input type="range" id="slider-opacity" min="0.1" max="0.95" step="0.05" value="0.75">
+        <div class="range-row" style="margin-top:6px;">
+          <label style="font-size:11px;">Shellmap 场景 clearColor alpha</label>
+          <span class="range-val" id="clearcolor-val">1.00</span>
+        </div>
+        <input type="range" id="slider-clearcolor" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="panel-section">
+        <h3>自动检查</h3>
+        <div class="check-row"><span class="check-indicator" id="chk-canvas-exists"></span> Canvas 存在且尺寸正确</div>
+        <div class="check-row"><span class="check-indicator" id="chk-shellmap-rendering"></span> Shellmap 场景正在渲染 (FPS >= 30)</div>
+        <div class="check-row"><span class="check-indicator" id="chk-fallback-color"></span> 回退背景色 = #0d0d1a (精确匹配)</div>
+        <div class="check-row"><span class="check-indicator" id="chk-overlay-opacity"></span> 覆盖层透明度 = 0.75</div>
+        <div class="check-row"><span class="check-indicator" id="chk-z-order"></span> Canvas z-index < 覆盖层 z-index</div>
+        <div class="check-row"><span class="check-indicator" id="chk-transition"></span> 过渡动画存在 (transition: opacity 0.5s)</div>
+      </div>
+      <div class="panel-section">
+        <h3>颜色信息</h3>
+        <div class="swatch-row"><span class="swatch" style="background:#0d0d1a"></span> 回退背景 <span class="swatch-val">#0d0d1a rgb(13,13,26)</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:rgba(10,10,30,0.75)"></span> 菜单卡片 <span class="swatch-val">rgba(10,10,30,0.75)</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:linear-gradient(135deg,#334488,#4466cc)"></span> 按钮常态 <span class="swatch-val">#334488 → #4466cc</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:rgba(13,17,23,0.95)"></span> Canvas clearColor <span class="swatch-val">Color4(0.05,0.05,0.1,1.0)</span></div>
+      </div>
+      <div class="panel-section">
+        <h3>场景信息</h3>
+        <div style="font-size:10px;font-family:'Consolas',monospace;color:#888;line-height:1.7;">
+          <div>Mesh 数量: <span id="info-mesh-count">0</span></div>
+          <div>三角面数: <span id="info-tri-count">0</span></div>
+          <div>Draw calls: <span id="info-draw-calls">0</span></div>
+          <div>Shellmap 状态: <span id="info-shellmap-state">off</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span class="val" id="info-ua">-</span></span>
+    <span>视口: <span class="val" id="info-viewport">-</span></span>
+    <span>引擎: <span class="val" id="info-engine">-</span></span>
+    <span>FPS: <span class="val" id="info-fps">-</span></span>
+    <span>时间: <span class="val" id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
