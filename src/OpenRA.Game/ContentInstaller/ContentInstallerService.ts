@@ -1088,6 +1088,23 @@ export class ContentInstallerService {
     url: string,
     expectedSha1: string,
   ): Promise<ArrayBuffer | null> {
+    // Local content (/content/*) is always available — just fetch it.
+    // No need for Cache API since the files are on disk in public/content/.
+    if (url.startsWith('/content/')) {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) return null
+        const data = await res.arrayBuffer()
+        if (expectedSha1) {
+          const ok = await Sha1Verifier.verify(data, expectedSha1)
+          if (!ok) return null
+        }
+        return data
+      } catch {
+        return null
+      }
+    }
+
     try {
       if (typeof caches === 'undefined') return null
       const cache = await caches.open('openra-content-v1')
@@ -1096,11 +1113,9 @@ export class ContentInstallerService {
 
       const data = await cachedResponse.arrayBuffer()
 
-      // Verify SHA1 if expected
       if (expectedSha1) {
         const ok = await Sha1Verifier.verify(data, expectedSha1)
         if (!ok) {
-          // Cached data is stale — delete it
           await cache.delete(url)
           return null
         }
