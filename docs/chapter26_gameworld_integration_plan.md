@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 26 -- Game World & Shellmap Integration
 
 > **Source Reference**: `OpenRA.Game/Game.cs`, `OpenRA.Game/World.cs`, `OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`
-> **Chapter Status**: PLANNING (0/10 migrated)
+> **Chapter Status**: PHASE A COMPLETE (3/10 migrated, 30%), Phases B-D PLANNING
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: Chapters 2-25 COMPLETE (all subsystems ready for end-to-end integration)
 
@@ -115,7 +115,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 | Phase | Operations | Impl Lines | Test Lines | Status |
 |:---|:---:|:---:|:---:|:---|
-| A: Map Loading | 3 | ~520 | -- | PLANNING |
+| A: Map Loading | 3 | ~520 | -- | COMPLETE |
 | B: Skirmish Flow | 3 | ~370 | -- | PLANNING |
 | C: Shellmap | 2 | ~280 | -- | PLANNING |
 | D: Widgets + Tests | 2 | ~150 | ~500 | PLANNING |
@@ -126,7 +126,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 ### 3.1 Phase A: Map Loading & Actor Spawning Pipeline
 
-**Status**: PLANNING
+**Status**: COMPLETE
 **Complexity**: HIGH
 **Blocked by**: Chapter 23 (MIX files accessible for actor asset loading)
 **Blocks**: Phase B (skirmish needs working actor spawning), Phase C (shellmap needs actors)
@@ -140,7 +140,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 #### 3.1.1 Implement `createActorFromMapEntry`
 
-- [ ] **TODO-26.A.1** `src/OpenRA.Game/World.ts` (est. 250 lines) -- Full actor creation from `ActorInfo` + initializers:
+- [x] **TODO-26.A.1** `src/OpenRA.Game/World.ts` (est. 250 lines) ✅ COMPLETE -- Full actor creation from `ActorInfo` + initializers:
   - **Replace `createActor(name, addToWorld)` stub**: The current method creates a `StubActor`. Replace with real `GameActor` construction:
     1. Look up `ActorInfo` by name from `modData.ruleset.actors`
     2. Create `GameActor(info, world)` (calls `TransformNode` constructor, registers in `TraitDictionary`)
@@ -163,7 +163,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 #### 3.1.2 Implement Map Actor Loading Pipeline
 
-- [ ] **TODO-26.A.2** `src/OpenRA.Game/World.ts` (est. 150 lines) -- Load and spawn all actors defined in the map:
+- [x] **TODO-26.A.2** `src/OpenRA.Game/World.ts` (est. 150 lines) ✅ COMPLETE -- Load and spawn all actors defined in the map:
   - **Map data format**: The `Map` object (Ch4) has an `actors` field containing an array of `{ type: string, location: CPos, owner: string, ... }` entries from the `.oramap` binary.
   - **Loading sequence** (in `loadComplete(wr)` or a new `_spawnMapActors()` method):
     1. **WorldActor** (always created first): `createActor('world', false)` with no owner. The WorldActor hosts world-level traits (ShroudRenderer, ScreenMap, etc.).
@@ -180,7 +180,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 #### 3.1.3 Player Creation from Map Metadata
 
-- [ ] **TODO-26.A.3** `src/OpenRA.Game/World.ts` (est. 120 lines) -- Create Player instances from map player data:
+- [x] **TODO-26.A.3** `src/OpenRA.Game/World.ts` (est. 120 lines) ✅ COMPLETE -- Create Player instances from map player data:
   - **Player properties**: Name, color, faction, team, spawn location, allies/enemies
   - **PlayerActor**: Each player gets a `PlayerActor` that hosts player-level traits (`Shroud`, `PlayerResources`, `ProductionQueue`, `BotModules`)
   - **Shroud initialization**: Each player's `Shroud` trait is initialized with the map dimensions and starting exploration state (cells near the spawn point are explored)
@@ -188,6 +188,17 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
   - **Reference**: The existing `Player` type (Ch3) and `MapPlayers` (Ch4 Phase E) provide the data structures. This operation is glue code connecting them.
 
 **Phase A Summary**: 3 operations, ~520 lines TS. After Phase A, a loaded map spawns all defined actors at their correct world positions with proper traits and player assignments.
+
+**Phase A Implementation Details** (completed 2026-06-20):
+
+- **8 files changed**: 5 new files + 3 modified files
+  - **New**: `src/OpenRA.Game/Traits/TraitFactory.ts` (trait constructor registry, ~120 lines), `src/OpenRA.Game/Map/ActorEntryParser.ts` (map entry -> ActorInit[] parser, ~150 lines), `src/OpenRA.Game/ActorInitializer.ts` (ActorInit type definitions + resolver, ~200 lines)
+  - **New test files**: `TraitFactory.test.ts` (19 tests), `ActorEntryParser.test.ts` (19 tests), `ActorInitializer.test.ts` (28 tests)
+  - **Modified**: `World.ts` (createActorFromMapEntry + map loading pipeline + player creation, +~520 lines), `World.test.ts` (80 new tests covering actor creation + map loading + player setup), `ModData.ts` (TraitFactory integration, +~30 lines)
+- **146 total tests**: 80 World tests, 28 ActorInitializer tests, 19 TraitFactory tests, 19 ActorEntryParser tests
+- **5 acceptance test criteria** at `/test/ch26-integration/map-loading/`
+- **Commits**: `6901fd9` (initial implementation), `a1a9626` (review fixes R1), `f589cfc` (e2e fixes)
+- **Review**: R1 NEEDS FIXES (1 BLOCKER, 5 MAJOR, 3 MINOR) -> R2 APPROVED
 
 ---
 
