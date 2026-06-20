@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch25 Frozen Actor Flash 3D — Acceptance Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #header {
+      padding: 12px 24px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      flex-shrink: 0;
+    }
+    #header h1 { margin: 0; font-size: 18px; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 2px; }
+    #main {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+    #canvas-panel {
+      flex: 1;
+      position: relative;
+      min-width: 0;
+    }
+    #canvas-panel canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      touch-action: none;
+    }
+    #right-panel {
+      width: 340px;
+      flex-shrink: 0;
+      background: #16213e;
+      border-left: 1px solid #0f3460;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .panel-section {
+      background: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      padding: 12px;
+    }
+    .panel-section h4 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #8f8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .panel-section button {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      border-radius: 4px;
+      border: 1px solid #0f3460;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .panel-section button:hover { background: #0f3460; }
+    .panel-section button.btn-replace { border-color: #e74c3c; color: #e74c3c; }
+    .panel-section button.btn-replace:hover { background: #e74c3c; color: #fff; }
+    .panel-section button.btn-mult { border-color: #3498db; color: #3498db; }
+    .panel-section button.btn-mult:hover { background: #3498db; color: #fff; }
+    .panel-section button.btn-all { border-color: #f39c12; color: #f39c12; }
+    .panel-section button.btn-all:hover { background: #f39c12; color: #fff; }
+    .flash-state {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      background: #0f0f1a;
+      font-size: 12px;
+      font-family: 'Consolas', monospace;
+      margin-bottom: 4px;
+    }
+    .flash-state .actor-label { font-weight: 600; min-width: 60px; }
+    .flash-state .tick-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .flash-state .tick-badge.on { background: #2ecc71; color: #000; }
+    .flash-state .tick-badge.off { background: #e74c3c; color: #fff; }
+    .flash-state .tick-badge.expired { background: #555; color: #aaa; }
+    .flash-state .color-preview {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid #444;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 2px 0;
+    }
+    .stat-row .stat-label { color: #a0a0b0; }
+    .stat-row .stat-value { color: #aad; font-family: monospace; font-size: 11px; }
+    .expected-summary {
+      font-size: 11px;
+      line-height: 1.7;
+      padding-left: 14px;
+      color: #a0a0b0;
+    }
+    .expected-summary li { margin-bottom: 2px; }
+    #info-bar {
+      padding: 6px 24px;
+      background: #0f0f1a;
+      font-size: 11px;
+      color: #666;
+      display: flex;
+      gap: 20px;
+      border-top: 1px solid #0f3460;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    #info-bar span { white-space: nowrap; }
+    #info-bar .value { color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Ch25 Frozen Actor Flash 3D — Acceptance Test</h1>
+    <div class="subtitle">ID: ch25-shroud/frozen-actor-flash | 验证: FrozenActor.Flash() emissiveColor + alpha 开关闪烁 (ReplaceColor / Multiplicative)</div>
+  </div>
+
+  <div id="main">
+    <!-- Left: 3D Canvas -->
+    <div id="canvas-panel">
+      <canvas id="renderCanvas"></canvas>
+    </div>
+
+    <!-- Right: Controls & Status -->
+    <div id="right-panel">
+      <!-- Flash Trigger Buttons -->
+      <div class="panel-section">
+        <h4>Flash 触发 (每网格一个按钮)</h4>
+        <button class="btn-replace" id="btn-flash-red">Flash Red (ReplaceColor) — 网状物 #1</button>
+        <button class="btn-mult" id="btn-flash-blue">Flash Blue (Multiplicative) — 网状物 #2</button>
+        <button class="btn-mult" id="btn-flash-green">Flash Green (Multiplicative) — 网状物 #3</button>
+        <button class="btn-all" id="btn-flash-all">Flash All (全部触发)</button>
+      </div>
+
+      <!-- Flash State Per Mesh -->
+      <div class="panel-section">
+        <h4>实时 Flash 状态</h4>
+        <div id="flash-state-1" class="flash-state">
+          <span class="actor-label">#1 (Red 基础)</span>
+          <span class="tick-badge expired" id="badge-1">EXPIRED</span>
+          <span style="font-size:10px;color:#888">tick=<span id="tick-1">0</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">emissive:</span>
+          <span class="stat-value"><span class="color-preview" id="swatch-1" style="background:rgb(77,26,26)"></span><span id="emissive-1">(0.30, 0.10, 0.10)</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">alpha:</span>
+          <span class="stat-value" id="alpha-1">1.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">mode:</span>
+          <span class="stat-value" id="mode-1">—</span>
+        </div>
+
+        <div id="flash-state-2" class="flash-state" style="margin-top:8px">
+          <span class="actor-label">#2 (Blue 基础)</span>
+          <span class="tick-badge expired" id="badge-2">EXPIRED</span>
+          <span style="font-size:10px;color:#888">tick=<span id="tick-2">0</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">emissive:</span>
+          <span class="stat-value"><span class="color-preview" id="swatch-2" style="background:rgb(26,26,77)"></span><span id="emissive-2">(0.10, 0.10, 0.30)</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">alpha:</span>
+          <span class="stat-value" id="alpha-2">1.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">mode:</span>
+          <span class="stat-value" id="mode-2">—</span>
+        </div>
+
+        <div id="flash-state-3" class="flash-state" style="margin-top:8px">
+          <span class="actor-label">#3 (Green 基础)</span>
+          <span class="tick-badge expired" id="badge-3">EXPIRED</span>
+          <span style="font-size:10px;color:#888">tick=<span id="tick-3">0</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">emissive:</span>
+          <span class="stat-value"><span class="color-preview" id="swatch-3" style="background:rgb(26,77,26)"></span><span id="emissive-3">(0.10, 0.30, 0.10)</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">alpha:</span>
+          <span class="stat-value" id="alpha-3">1.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">mode:</span>
+          <span class="stat-value" id="mode-3">—</span>
+        </div>
+      </div>
+
+      <!-- Flash Timing Info -->
+      <div class="panel-section">
+        <h4>Flash 计时</h4>
+        <div class="stat-row">
+          <span class="stat-label">全局 Tick 计数:</span>
+          <span class="stat-value" id="global-tick">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Tick 间隔:</span>
+          <span class="stat-value">1000ms (便于肉眼观察)</span>
+        </div>
+      </div>
+
+      <!-- Expected Results Summary -->
+      <div class="panel-section">
+        <h4>期望结果 (概要)</h4>
+        <ul class="expected-summary">
+          <li>ReplaceColor: emissive 直接替换为红色, alpha=0.7</li>
+          <li>Multiplicative: emissive = 原始值 * tint 分量相乘</li>
+          <li>闪烁模式: 5 tick 内 2 次 ON 周期 (even ticks ON)</li>
+          <li>到期后 emissiveColor 和 alpha 精确恢复</li>
+          <li>新 Flash 替换旧 Flash, 从当前 emissive 捕获新基准</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Bar -->
+  <div id="info-bar">
+    <span>UA: <span class="value" id="info-ua">-</span></span>
+    <span>视口: <span class="value" id="info-viewport">-</span></span>
+    <span>引擎: <span class="value" id="info-engine">-</span></span>
+    <span>FPS: <span class="value" id="info-fps">-</span></span>
+    <span>时间: <span class="value" id="info-time">-</span></span>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

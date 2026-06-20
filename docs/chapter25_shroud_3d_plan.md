@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 25 -- Shroud & Fog of War 3D Completion
 
 > **Source Reference**: `OpenRA.Mods.Common/Traits/World/ShroudRenderer.cs` + FrozenActor system
-> **Chapter Status**: Phase A COMPLETE (2/7 migrated)
+> **Chapter Status**: Phases A+B COMPLETE (4/7 migrated)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: Chapters 2-22 COMPLETE, Chapter 24 (AnimationStub for Flash effects)
 
@@ -196,7 +196,7 @@ The remaining gaps are **integration-level** rather than infrastructure:
   - **Frame reference**: Each `render()` call returns current renderables. The capture must happen in the same frame as the visibility transition (in `tickRender()`).
   - OpenRA reference: `FrozenUnderFog.TickRender(WorldRenderer)` -- captures `ActorBounds` and `IRenderable[]`
 
-**Phase B Summary**: 2 operations, ~220 lines TS. After Phase B, frozen actors under fog flash with color tints when damaged, and their visual snapshots are correctly captured when they transition out of visibility.
+**Phase B Summary**: 2 operations, ~461 lines TS (+84 FrozenActorLayer.ts, +142 FrozenUnderFog.ts, +155 FrozenActorLayer.test.ts, +79 FrozenUnderFog.test.ts). After Phase B, FrozenActor.Flash() applies tint to material.emissiveColor/alpha with correct blink alternation (even ticks ON, odd ticks OFF), ReplaceColor and Multiplicative tint modes, saved original emissive restoration on expiry, and ScreenMap add/remove transitions for both visibility directions. Review: R1 NEEDS FIXES (2 MAJOR), R2 APPROVED (all fixed). Acceptance test page at `/test/ch25-shroud/frozen-actor-flash/`. Commits: `50a6676` (impl), `a5f8de2` (review fixes), follow-up (e2e + docs).
 
 ---
 
@@ -304,11 +304,11 @@ Phase C (Visibility traits + tests: 3 ops)
 - [x] **TEST-25.1** ShroudRenderer: ground-plane mesh exists in scene after `worldLoaded()`
 - [x] **TEST-25.2** ShroudRenderer: visibility texture receives correct data for all-hidden initial state
 - [x] **TEST-25.3** ShroudRenderer: dirty cell tracking marks only changed cells
-- [ ] **TEST-25.4** FrozenActor.Flash(): material.emissiveColor is set to flash tint color
-- [ ] **TEST-25.5** FrozenActor.Flash(): material.alpha is set to flash alpha
-- [ ] **TEST-25.6** FrozenActor.Flash(): on expiry, material reverts to original state
-- [ ] **TEST-25.7** FrozenUnderFog: renderable snapshot captured when actor enters fog
-- [ ] **TEST-25.8** FrozenUnderFog: snapshot includes all IRender traits' renderables
+- [x] **TEST-25.4** FrozenActor.Flash(): material.emissiveColor is set to flash tint color
+- [x] **TEST-25.5** FrozenActor.Flash(): material.alpha is set to flash alpha
+- [x] **TEST-25.6** FrozenActor.Flash(): on expiry, material reverts to original state
+- [x] **TEST-25.7** FrozenUnderFog: renderable snapshot captured when actor enters fog
+- [x] **TEST-25.8** FrozenUnderFog: snapshot includes all IRender traits' renderables
 - [ ] **TEST-25.9** HiddenUnderFog: mesh.setEnabled(false) when under fog
 - [ ] **TEST-25.10** DetectCloaked: emissive pulse applied when cloaked unit is detected
 
@@ -317,7 +317,7 @@ Phase C (Visibility traits + tests: 3 ops)
 | System | Test Page Path | Purpose |
 |--------|-----------|---------|
 | Shroud overlay 3D | `/test/ch25-shroud/shroud-overlay/` | Verify shroud renders as dark overlay with smooth edge blending at fog boundaries | **CREATED** (Ch25 Phase A) |
-| Frozen actor flash | `/test/ch25-shroud/frozen-actor-flash/` | Verify frozen actor meshes flash with color tint on damage |
+| Frozen actor flash | `/test/ch25-shroud/frozen-actor-flash/` | Verify frozen actor meshes flash with color tint on damage | **CREATED** (Ch25 Phase B) |
 | Actor visibility toggle | `/test/ch25-shroud/actor-visibility/` | Verify actors appear/disappear as they enter/leave fog |
 
 ### 5.3 Test File Estimates
@@ -325,7 +325,7 @@ Phase C (Visibility traits + tests: 3 ops)
 | Phase | Test Files | Estimated New Tests | Estimated Test Lines |
 |:---|:---:|:---:|:---:|
 | A: ShroudRenderer tests | 1 | ~8 | ~120 |
-| B: FrozenActor tests | 1 | ~8 | ~120 |
+| B: FrozenActor tests | 1 | ~8 | ~120 | **DONE** (7+2=9 new tests) |
 | C: Visibility + integration | 2 | ~8 | ~110 |
 | **Total** | **2** | **~24** | **~350** |
 
