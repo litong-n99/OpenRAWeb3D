@@ -124,9 +124,19 @@ async function main() {
       console.log(`  -> Wrote ${outputPath} (${pkgCount} packages, ${dlCount} downloads)`)
 
       // 4. Write a secondary copy to targetModId (e.g., ra/)
-      //    TODO-27.D.1: ContentInstallerService.getContentManifest(modId)
-      //    uses the {modId}-content directory, but other consumers may
-      //    look for content.json at the target mod's directory directly.
+      //
+      //    Dual output rationale:
+      //    - Primary location: public/mods/{contentModId}/content.json
+      //      Used by ContentInstallerService.getContentManifest(modId),
+      //      which looks up the {modId}-content directory at runtime.
+      //    - Secondary location: public/mods/{targetModId}/content.json
+      //      Provides a convenience alias so that code expecting content
+      //      directly at the game mod path (e.g., mods/ra/content.json)
+      //      can resolve without constructing the "-content" suffix.
+      //      The modId field is overridden to match targetModId, keeping
+      //      the manifest self-consistent regardless of read path.
+      //    - Duplication is harmless: both files are ~tens of KB, and the
+      //      build script runs offline before deployment.
       if (targetModId !== contentModId) {
         const targetOutputDir = path.join(PUBLIC_MODS_DIR, targetModId)
         fs.mkdirSync(targetOutputDir, { recursive: true })

@@ -604,7 +604,15 @@ export class Game {
       )
       this.state = GameState.ContentInstall
       ContentInstallerUI.show(this._contentInstaller, modId, () => {
-        this._onContentInstalled()
+        // _onContentInstalled() returns Promise<void> but the callback is typed
+        // () => void. Add .catch() to prevent unhandled rejections since
+        // ContentInstallerUI invokes the callback synchronously (without await).
+        this._onContentInstalled().catch((err) => {
+          console.warn(
+            '[Game] Unhandled error in content installed callback:',
+            err instanceof Error ? err.message : String(err),
+          )
+        })
       })
       return // Don't create OrderManager yet — wait for content installation
     }
@@ -748,8 +756,9 @@ export class Game {
 
     // 2. Re-initialize ChromeProvider with refreshed FileSystem
     //    (MIX files may now contain chrome textures like chrome.png)
+    //    NOTE: ChromeProvider.initialize() internally calls deinitialize(),
+    //    so an explicit deinitialize() call here is unnecessary.
     try {
-      ChromeProvider.deinitialize()
       await ChromeProvider.initialize(
         this.modData.manifest,
         this.modData.modFiles,
@@ -763,8 +772,11 @@ export class Game {
     }
 
     // 3. Refresh MapCache to pick up newly installed maps
-    //    (TODO-27.D.3: ModData doesn't implement ModDataStub directly,
-    //    so we create an adapter object satisfying the structural interface.)
+    //    TODO-27.D.3: MapCache.loadMaps() expects a ModDataStub with
+    //    { getOrCreate<T>(type), mapFolders }. Since ModData's full interface
+    //    differs (it has additional members), we construct an adapter literal
+    //    that satisfies the structural subset required by loadMaps().
+    //    This avoids a brittle interface extraction or widening ModData itself.
     try {
       const modData = this.modData // capture for type narrowing in closure
       const modDataStub = {
@@ -791,6 +803,10 @@ export class Game {
       // Fallback to static background
       this.setShellmapFallback()
       this.showMainMenu()
+    }).catch(() => {
+      // Swallow any rejection from the .catch() handler body (showMainMenu()
+      // may throw asynchronously if e.g. WidgetLoader initialization fails).
+      // The DOM fallback overlay from setShellmapFallback() is already visible.
     })
   }
 

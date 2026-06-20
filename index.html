@@ -246,6 +246,21 @@
       <span id="loading-text">Loading...</span>
     </div>
   </div>
+  <script>
+    // Ensure custom fonts are loaded before showing any UI text.
+    // font-display:swap means fallback fonts are shown immediately, but
+    // layout shifts can still occur. document.fonts.ready resolves when
+    // all @font-face fonts have finished loading (or failed).
+    // We attach a class to <html> so CSS can gate font-dependent styling.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        document.documentElement.classList.add('fonts-loaded')
+      })
+    } else {
+      // Fallback for browsers without Font Loading API
+      document.documentElement.classList.add('fonts-loaded')
+    }
+  </script>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
