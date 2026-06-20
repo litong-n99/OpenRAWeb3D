@@ -1,11 +1,12 @@
 # OpenRAWeb3D Main Menu GUI Fix Plan: Chapter 27
 
 > **Source Reference**: OpenRA Red Alert main menu (`OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`) + chrome YAML definitions (`OpenRA/mods/common/chrome/mainmenu.yaml`, etc.)
-> **Chapter Status**: Phases A-D COMPLETE (13/15 tasks, 87%); Phase E PLANNING
+> **Chapter Status**: 🎉 ALL PHASES COMPLETE (15/15 tasks, 100%)
 > **Phase A Commits**: `58995dd` (feat: chrome asset pipeline), `152890b` (fix: review findings)
 > **Phase B Commits**: `1bacfc5` (feat: ChromeProvider + FileSystem wiring), `cbb2de9` (fix: review findings)
 > **Phase C Commits**: `8ea60b1` (feat: Widget-based main menu activation), `e0a40a4` (fix: review findings BLOCKERs #1,#2 + MAJORs #3,#4), `3748c28` (fix: acceptance test review findings)
 > **Phase D Commits**: `f339795` (feat: Ch27 Phase D Shellmap Asset Enablement), `17c8376` (fix: Phase D review findings MAJOR #1-#2, MINOR #1-#4)
+> **Phase E Commits**: `e2768d1` (fix: shellmap-background test page 3 MINOR fixes), `61a4f42` (fix: Game.mainmenu.test.ts 1 BLOCKER + 3 MAJOR + 4 MINOR fixes), `4a7b579` (feat: Game.mainmenu.test.ts 47 integration tests)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: ALL Chapters 2-26 COMPLETE (782+ files, 100%). Post-migration completion plan ALL PHASES A-E COMPLETE (52/52, 100%).
 
@@ -362,16 +363,24 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
 
 ### 3.5 Phase E: Integration Testing and Visual Polish
 
-**Status**: PLANNING
+**Status**: COMPLETE (2026-06-20)
 **Complexity**: MEDIUM
 **Blocked by**: Phase C (widget menu must work), Phase D (shellmap must work)
 **Blocks**: Nothing (final validation phase)
+**Commits**: `e2768d1` (fix: shellmap-background test page 3 MINOR fixes), `61a4f42` (fix: Game.mainmenu.test.ts 1 BLOCKER + 3 MAJOR + 4 MINOR fixes), `4a7b579` (feat: Game.mainmenu.test.ts 47 integration tests)
 
-**Description**: Creates manual acceptance test pages and integration tests to validate the end-to-end main menu flow. Covers widget rendering, button interactions, shellmap background, and fallback paths.
+**Description**: Created 3 manual acceptance test pages and 47 integration tests to validate the end-to-end main menu flow. Covers widget rendering, button interactions, shellmap background, and fallback paths. Acceptance test pages created under `src/__e2e__/manual/ch27-mainmenu/`.
+
+**Implementation summary**:
+- 3 acceptance test pages: widget-menu-rendering, button-interaction, shellmap-background (each with index.html + main.ts + README.md)
+- 47 integration tests in Game.mainmenu.test.ts covering: showMainMenuWidget Widget tree loading, button onClick handlers, Escape key handler, hideMainMenu cleanup, DOM overlay fallback on Widget failure, double-invoke protection
+- BLOCKER fix (`61a4f42`): Core test for showMainMenuWidget Widget tree loading was not testing the correct path
+- MAJOR fixes: test assertions for button onClick callbacks, Escape key registration/unregistration, hideMainMenu cleanup verification
+- MINOR fixes: JSDoc in test file, test naming conventions, DOM overlay fallback test edge cases, double-invoke test coverage
 
 #### TODO Items
 
-- [ ] **TODO-27.E.1** `src/__e2e__/manual/ch27-mainmenu/` (NEW, est. 200 lines across 3 test pages) -- Acceptance tests:
+- [x] **TODO-27.E.1** `src/__e2e__/manual/ch27-mainmenu/` (NEW, 3 test pages) -- Acceptance tests:
   - **Test case 1: widget-rendering** -- Verify Widget-based main menu renders with correct chrome styling:
     - Background panel uses 9-slice border-image from chrome.png (or CSS fallback)
     - Title text renders with ZoodRangmah font (or verifiable fallback)
@@ -390,7 +399,7 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
     - Fallback to solid background works when no shellmap maps available
   - Each test page: `index.html` + `main.ts` + `README.md`
 
-- [ ] **TODO-27.E.2** `src/OpenRA.Game/__tests__/Game.mainmenu.test.ts` (NEW or EXTEND, est. 150 lines) -- Integration tests:
+- [x] **TODO-27.E.2** `src/OpenRA.Game/__tests__/Game.mainmenu.test.ts` (NEW, 47 tests) -- Integration tests:
   - Test `showMainMenu()` calls `showMainMenuWidget()` (not raw DOM)
   - Test `showMainMenuWidget()` loads widget tree from ChromeProvider
   - Test button onClick handlers trigger correct Game methods
@@ -399,42 +408,43 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
   - Test fallback to DOM overlay when Widget loading fails (mock ChromeProvider error)
   - Test double-invoke protection (calling showMainMenu twice doesn't create duplicate menus)
 
-**Phase E Verification**:
-- All 3 acceptance test pages pass manual visual verification
-- All integration tests pass (`npm test -- src/OpenRA.Game/__tests__/Game.mainmenu.test.ts`)
-- `npx tsc --noEmit` passes (no type errors from new code)
+**Phase E Verification** (all verified 2026-06-20):
+- [x] All 3 acceptance test pages pass manual visual verification
+- [x] All 47 integration tests pass (`npm test -- src/OpenRA.Game/__tests__/Game.mainmenu.test.ts`)
+- [x] `npx tsc --noEmit` passes (no type errors from new code)
+- [x] All existing unit tests pass (`npm test`)
 
 ---
 
 ## 4. Dependency Graph
 
 ```
-Phase A (Chrome Asset Pipeline)
+Phase A (Chrome Asset Pipeline) [x]
   │
-  ├── 27.A.1 build-chrome.ts (NEW)
-  ├── 27.A.2 build-mods.ts integration
-  └── 27.A.3 chrome JSON verification
-  │
-  ▼
-Phase B (ChromeProvider + FileSystem Wiring)
-  │
-  ├── 27.B.1 _mountModDataFolders extension
-  ├── 27.B.2 ChromeProvider.initialize() call
-  └── 27.B.3 ModData.ts (optional integration point)
+  ├── 27.A.1 build-chrome.ts (NEW) [x]
+  ├── 27.A.2 build-mods.ts integration [x]
+  └── 27.A.3 chrome JSON verification [x]
   │
   ▼
-Phase C (Widget-Based Main Menu Activation) ◄── Phase B
+Phase B (ChromeProvider + FileSystem Wiring) [x]
   │
-  ├── 27.C.1 showMainMenu() → showMainMenuWidget()
-  ├── 27.C.2 showMainMenuWidget() → WidgetLoader.load()
-  └── 27.C.3 Button action wiring
+  ├── 27.B.1 _mountModDataFolders extension [x]
+  ├── 27.B.2 ChromeProvider.initialize() call [x]
+  └── 27.B.3 ModData.ts (optional integration point) [x]
   │
-  ├────────────────────────────────────────────────┐
-  ▼                                                ▼
-Phase D (Shellmap Asset Enablement) ◄── COMPLETE (2026-06-20)
-  │                                                │
-  ├── 27.D.1 build-content.ts extension [x]        ├── 27.E.1 Acceptance test pages
-  ├── 27.D.2 content.json verification [x]         └── 27.E.2 Integration tests
+  ▼
+Phase C (Widget-Based Main Menu Activation) [x]
+  │
+  ├── 27.C.1 showMainMenu() → showMainMenuWidget() [x]
+  ├── 27.C.2 showMainMenuWidget() → WidgetLoader.load() [x]
+  └── 27.C.3 Button action wiring [x]
+  │
+  ├──────────────────────────────────────┐
+  ▼                                      ▼
+Phase D (Shellmap Asset Enablement) [x]  Phase E (Integration Testing) [x]
+  │                                      │
+  ├── 27.D.1 build-content.ts extension [x]  ├── 27.E.1 Acceptance test pages [x]
+  ├── 27.D.2 content.json verification [x]   └── 27.E.2 Integration tests [x]
   ├── 27.D.3 loadShellMap content-aware [x]
   └── 27.D.4 Game font loading [x]
 ```
@@ -443,9 +453,9 @@ Phase D (Shellmap Asset Enablement) ◄── COMPLETE (2026-06-20)
 - Phase A -> Phase B -> Phase C (strict linear dependency)
 - Phase C -> Phase D AND Phase E (parallel after Phase C)
 - Phase D is content/asset work (build-time + runtime)
-- Phase E is test work (can start once Phase C is functional)
+- Phase E is test work (started after Phase C + D, now COMPLETE)
 
-**Recommended execution order**: A.1 -> A.2 -> A.3 -> B.1 -> B.2 -> B.3 -> C.1 -> C.2 -> C.3 -> D.1 + D.4 (parallel) -> D.2 + D.3 (parallel) -> E.1 + E.2 (parallel)
+**Execution order** (ALL COMPLETE): A.1 -> A.2 -> A.3 -> B.1 -> B.2 -> B.3 -> C.1 -> C.2 -> C.3 -> D.1 + D.4 (parallel) -> D.2 + D.3 (parallel) -> E.1 + E.2 (parallel)
 
 ---
 
