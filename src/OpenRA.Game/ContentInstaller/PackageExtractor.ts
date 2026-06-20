@@ -209,36 +209,36 @@ export class PackageExtractor {
           try {
             pkg = MixFileRuntime.parseEncrypted(destPath, data, undefined, mixDb)
           } catch (encryptedErr) {
-            console.warn(
-              `PackageExtractor: encrypted MIX parse failed for "${destPath}": ` +
-              `${encryptedErr instanceof Error ? encryptedErr.message : String(encryptedErr)}`,
-            )
             // Fallthrough: try Westwood classic as BLIND fallback, but ONLY
             // for OpenRA format (firstUint16 === 0). Some files (e.g.,
-            // hires1.mix, lores1.mix) have the encrypted flag set spuriously
-            // (secondUint16 bit 1) but contain plaintext Westwood classic
-            // headers. We distinguish OpenRA-format from universal-key/RSA
-            // format (firstUint16=1 or 2) which cannot be Westwood classic.
+            // scores.mix) have the encrypted flag set spuriously (secondUint16
+            // bit 1) but contain plaintext Westwood classic headers.
+            // Universal-key (0x0001) and RSA-key (0x0002) formats cannot be
+            // Westwood classic.
             const firstUint16 = new DataView(data).getUint16(0, true)
             if (firstUint16 === 0) {
               try {
                 const fallbackPkg = MixFileRuntime.parseWestwoodClassic(destPath, data, mixDb, true)
-                // Only accept the blind fallback result if it actually
-                // contains files. Empty packages indicate a garbage parse
-                // (e.g., 10-byte fake MIX with numFiles=0).
                 if (fallbackPkg.contents.length > 0) {
                   pkg = fallbackPkg
                   console.warn(
                     `PackageExtractor: "${destPath}" fell through from encrypted ` +
-                    `to Westwood classic MIX parse`,
+                    `to Westwood classic MIX parse (spurious encrypted flag suspected)`,
                   )
                 } else {
                   fallbackPkg.dispose()
                 }
               } catch (_fallbackErr) {
-                // Both parseEncrypted and parseWestwoodClassic failed;
-                // pkg stays null and we continue to the next format check.
+                // Both paths failed — genuine encrypted file with wrong key,
+                // or corrupt data. Single concise warning; the generic
+                // "could not parse" at line ~301 covers the raw-bytes outcome.
               }
+            }
+            if (!pkg) {
+              console.warn(
+                `PackageExtractor: "${destPath}" encrypted MIX parse failed: ` +
+                `${encryptedErr instanceof Error ? encryptedErr.message : String(encryptedErr)}`,
+              )
             }
           }
         }
@@ -297,11 +297,16 @@ export class PackageExtractor {
       }
 
       if (!pkg) {
-        // Loader couldn't parse the data — treat as raw bytes pass-through
-        console.warn(
-          `PackageExtractor: could not parse "${destPath}" as ${format}, ` +
-          `passing through as raw bytes`,
-        )
+        // Loader couldn't parse the data — treat as raw bytes pass-through.
+        // For MIX format, a more specific warning was already logged by the
+        // encrypted/C&C/classic catch blocks above; silence the redundant
+        // generic message to avoid double-warning noise.
+        if (format !== 'mix') {
+          console.warn(
+            `PackageExtractor: could not parse "${destPath}" as ${format}, ` +
+            `passing through as raw bytes`,
+          )
+        }
         const result = new Map<string, ArrayBuffer>()
         result.set(destPath, data.slice(0) as ArrayBuffer)
         return result
