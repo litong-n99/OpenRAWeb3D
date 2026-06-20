@@ -230,6 +230,9 @@ export class Game {
   /** Skirmish setup modal DOM root element (for cleanup on dispose). */
   private _skirmishSetupDomRoot: HTMLElement | null = null
 
+  /** Active toast notification elements (cleaned up on dispose). */
+  private _activeToasts: HTMLElement[] = []
+
   /**
    * 延迟动作队列 — 下一逻辑 tick 执行的一次性回调。
    *
@@ -836,6 +839,22 @@ export class Game {
   }
 
   /**
+   * Type guard: check whether a MapCache-like object is iterable.
+   *
+   * Real MapCache implements Iterable<MapPreview>; stub or empty MapCache
+   * may not. This helper deduplicates the Symbol.iterator check used at
+   * multiple call sites.
+   *
+   * @param mapCache — the modData.mapCache reference (unknown type)
+   * @returns true if the object has a function-valued Symbol.iterator
+   */
+  private _isMapCacheIterable(mapCache: unknown): boolean {
+    return typeof (
+      (mapCache as { [Symbol.iterator]?: unknown })[Symbol.iterator]
+    ) === 'function'
+  }
+
+  /**
    * 从地图缓存中选择一个 shellmap 标记的地图。
    *
    * OpenRA 对照: LoadShellMap 中的隐式选择逻辑 + MapCache 迭代
@@ -854,8 +873,7 @@ export class Game {
     const mapCache = this.modData.mapCache
     if (!mapCache) return null
 
-    // Guard: MapCache must be iterable (real MapCache implements Iterable<MapPreview>)
-    if (typeof (mapCache as unknown as { [Symbol.iterator]?: unknown })[Symbol.iterator] !== 'function') {
+    if (!this._isMapCacheIterable(mapCache)) {
       return null
     }
 
@@ -891,7 +909,7 @@ export class Game {
     if (!this.modData) return null
 
     const mapCache = this.modData.mapCache
-    if (typeof (mapCache as unknown as { [Symbol.iterator]?: unknown })[Symbol.iterator] !== 'function') {
+    if (!this._isMapCacheIterable(mapCache)) {
       return null
     }
     for (const preview of mapCache as Iterable<{ uid: string; status?: number; title?: string }>) {
@@ -1519,6 +1537,7 @@ export class Game {
       })
       startBtn.addEventListener('click', (e) => {
         e.stopPropagation()
+        if (!selectedUid) return
         this._startSkirmish(selectedUid)
       })
       card.appendChild(startBtn)
@@ -1581,14 +1600,7 @@ export class Game {
     const mapCache = this.modData.mapCache
     if (!mapCache) return []
 
-    // Must be iterable (real MapCache implements Iterable<MapPreview>)
-    if (
-      typeof (
-        (mapCache as unknown as { [Symbol.iterator]?: unknown })[
-          Symbol.iterator
-        ]
-      ) !== 'function'
-    ) {
+    if (!this._isMapCacheIterable(mapCache)) {
       return []
     }
 
@@ -1653,9 +1665,7 @@ export class Game {
     let previewTitle = mapUid
     let spawnCount = 2 // Default: human + 1 AI
 
-    if (mapCache && typeof (
-      (mapCache as unknown as { [Symbol.iterator]?: unknown })[Symbol.iterator]
-    ) === 'function') {
+    if (mapCache && this._isMapCacheIterable(mapCache)) {
       for (const preview of mapCache as Iterable<{
         uid: string
         title?: string
@@ -1712,9 +1722,12 @@ export class Game {
    * Attempt to center the camera on the skirmish world after it loads.
    *
    * Uses WorldRenderer.viewport.centerOn if available, otherwise skips
-   * gracefully. The camera is centered on the world origin (0,0) as a
-   * best-effort starting position, equivalent to centering on the map
-   * center for most maps.
+   * gracefully.
+   *
+   * TODO-26.B.2: Center on human player spawn position once map provides it.
+   * Currently defaults to world origin (0,0) — works for symmetric maps,
+   * incorrect for asymmetric. Requires: world.localPlayer.spawnPosition or
+   * map.playerSlots[0].spawnPoint from Phase A map loading.
    */
   private _centerSkirmishCamera(): void {
     if (!this._worldRenderer) return
@@ -1723,7 +1736,9 @@ export class Game {
     const vp = viewport as unknown as { centerOn?: (pos: { x: number; y: number }) => void }
     if (vp && typeof vp.centerOn === 'function') {
       try {
-        vp.centerOn({ x: 0, y: 0 })
+        // TODO-26.B.2: Use human spawn position; fallback to origin for now
+        const worldCenter = { x: 0, y: 0 }
+        vp.centerOn(worldCenter)
       } catch {
         // Skip gracefully — camera centering is best-effort
       }
@@ -1731,7 +1746,7 @@ export class Game {
   }
 
   // -----------------------------------------------------------------------
-  // Load Game Coming Soon notification (TODO-26.B.3)
+  // Load Game Coming Soon notification
   //
   // Shows a styled in-game DOM notification instead of alert().
   // The notification auto-dismisses after 3 seconds.
@@ -1742,11 +1757,8 @@ export class Game {
   /**
    * Show a styled "Load Game is coming soon" notification.
    *
-   * TODO-26.B.3: Replace alert() with a styled auto-dismiss notification.
-   *
-   * Creates a temporary DOM toast at the center of the viewport that
-   * fades out and self-removes after 3 seconds. Multiple calls queue
-   * independently (previous notifications are not cleared).
+   * NOTE: Uses a DOM toast element instead of alert(). The toast auto-dismisses
+   * after 3 seconds with a fade-out CSS transition, then self-removes from the DOM.
    *
    * ADR-26.2: Load Game is deferred to a future release. The button
    * remains disabled with "(Coming Soon)" text.
@@ -1766,6 +1778,7 @@ export class Game {
     toast.style.whiteSpace = 'pre-line'
 
     document.body.appendChild(toast)
+    this._activeToasts.push(toast)
 
     // Auto-dismiss after 3 seconds with fade-out
     setTimeout(() => {
@@ -1774,6 +1787,9 @@ export class Game {
         if (toast.parentNode) {
           toast.remove()
         }
+        // Remove from tracked array
+        const idx = this._activeToasts.indexOf(toast)
+        if (idx >= 0) this._activeToasts.splice(idx, 1)
       }, 400) // Wait for CSS transition to finish
     }, 3000)
   }
@@ -1868,9 +1884,14 @@ export class Game {
   dispose(): void {
     this.state = GameState.Disposed
 
-    // 0. 清理内容安装器 UI + 主菜单 DOM（防止残留在 DOM 中）
+    // 0. 清理内容安装器 UI + toast 通知 + 主菜单 DOM（防止残留在 DOM 中）
     ContentInstallerUI.hide()
     this._contentInstaller = null
+    // Clear any active toast notifications
+    for (const toast of this._activeToasts) {
+      if (toast.parentNode) toast.remove()
+    }
+    this._activeToasts = []
     this.hideMainMenu()
 
     // 1. World
