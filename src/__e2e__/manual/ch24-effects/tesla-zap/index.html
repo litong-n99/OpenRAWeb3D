@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeslaZap - 3D Lightning Polish | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 320px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .control-group input[type="range"] { width: 100%; accent-color: #e94560; }
+    .control-group .range-value { font-size: 11px; color: #888; float: right; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; border: 1px solid #e94560; background: #1a1a2e; color: #e94560; font-size: 13px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 4px; }
+    .control-group button:hover { background: #e94560; color: #fff; }
+    .control-group button.active { background: #e94560; color: #fff; }
+    .control-group button.secondary { border-color: #f39c12; color: #f39c12; }
+    .control-group button.secondary:hover { background: #f39c12; color: #fff; }
+    .control-group button.danger { border-color: #e74c3c; color: #e74c3c; }
+    .control-group button.danger:hover { background: #e74c3c; color: #fff; }
+    .control-group button.success { border-color: #2ecc71; color: #2ecc71; }
+    .control-group button.success:hover { background: #2ecc71; color: #fff; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+    .toggle-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #e94560; cursor: pointer; }
+    .toggle-row label { color: #ccc; font-size: 13px; cursor: pointer; margin: 0; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; margin-top: 4px; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #ccc; margin-top: 6px; }
+    .legend-swatch { width: 16px; height: 3px; border-radius: 1px; flex-shrink: 0; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. TeslaZap - 3D Lightning Polish (LinesMesh + ShaderMaterial)</h1>
+    <div class="subtitle">ID: ch24-effects/tesla-zap | Ch24 Phase B Lightning Polish | OpenRA 对照: TeslaZapRenderable (OpenRA.Mods.Cnc/Graphics)</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C1. Zap 控制</h3>
+        <button id="btn-rebuild" class="success">&#9889; Rebuild Zaps</button>
+        <div class="toggle-row">
+          <input type="checkbox" id="toggle-jitter" checked>
+          <label for="toggle-jitter">启用 Jitter 动画</label>
+        </div>
+        <label style="margin-top:8px;">Jitter 强度: <span class="range-value" id="intensity-val">1.0x</span></label>
+        <input type="range" id="intensity-slider" min="0.1" max="3" step="0.1" value="1">
+        <div class="info-row"><span>Tick 计数:</span><span class="val" id="state-tick">0</span></div>
+        <div class="info-row"><span>Seed:</span><span class="val" id="state-seed">42</span></div>
+        <button id="btn-dispose" class="danger" style="margin-top:8px;">&#128465; Dispose (Cleanup)</button>
+        <button id="btn-recreate" class="secondary" style="margin-top:4px;">&#8635; Recreate Builder</button>
+      </div>
+      <div class="control-group">
+        <h3>C2. Mesh 状态</h3>
+        <div class="info-row"><span>Mesh 数量:</span><span class="val" id="state-mesh-count">0</span></div>
+        <div class="info-row"><span>Bright 顶点数:</span><span class="val" id="state-bright-verts">0</span></div>
+        <div class="info-row"><span>Dim 顶点数:</span><span class="val" id="state-dim-verts">0</span></div>
+        <div class="info-row"><span>renderingGroupId:</span><span class="val" id="state-rendergroup">-</span></div>
+        <div class="info-row"><span>Builder 状态:</span><span class="val" id="state-builder">active</span></div>
+      </div>
+      <div class="control-group">
+        <h3>C3. 颜色图例</h3>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#33CCFF;box-shadow:0 0 6px #33CCFF;"></div>
+          Bright Zap — 亮青色 #33CCFF (emissive, intensity=1.5)
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#1A4DCC;box-shadow:0 0 4px #1A4DCC;"></div>
+          Dim Zap — 暗蓝色 #1A4DCC (emissive, intensity=0.6)
+        </div>
+        <div class="legend-item" style="margin-top:10px; font-size:11px; color:#888;">
+          &#9432; Bright=粗主干闪电, Dim=细分支闪电. 均为自发光材质，无光照依赖。
+        </div>
+      </div>
+      <div class="control-group">
+        <h3>C4. 路径定义</h3>
+        <label>Bright 路径: (-4,0,0)→(-2,0.8,0)→(0,-0.5,0)→(2,0.6,0)→(4,0,0)</label>
+        <label>Dim 路径: (-1,0,0)→(0,-1.2,0)→(1,-0.3,0)→(2,-0.8,0)</label>
+        <div class="info-row"><span>路径数:</span><span class="val">2 (1 bright + 1 dim)</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
