@@ -265,8 +265,37 @@ export class ContentInstallerUI {
       } catch (err) {
         if (ContentInstallerUI._statusEl) {
           ContentInstallerUI._statusEl.textContent =
-            'Download failed. Please check your connection and refresh the page.'
+            'Download failed — the OpenRA CDN may be unreachable.'
           ContentInstallerUI._statusEl.style.color = '#ff8888'
+        }
+        if (ContentInstallerUI._progressEl) {
+          ContentInstallerUI._progressEl.style.display = 'none'
+        }
+
+        // Show a "Play Anyway" button so the user can skip content download
+        // and proceed to the game (without game assets: sprites, sounds, etc.)
+        const panel = document.getElementById(PANEL_ID)
+        if (panel) {
+          const skipBtn = document.createElement('button')
+          skipBtn.textContent = 'Play Anyway (no game assets)'
+          skipBtn.style.cssText =
+            'display:block;margin:16px auto 0;padding:10px 24px;' +
+            'border:1px solid rgba(200,140,100,0.5);border-radius:6px;' +
+            'background:linear-gradient(135deg,#885533,#cc7744);' +
+            'color:#ffe0d0;font-size:0.9rem;font-weight:700;cursor:pointer;' +
+            'transition:all 0.15s ease;'
+          skipBtn.addEventListener('mouseenter', () => {
+            skipBtn.style.background = 'linear-gradient(135deg,#aa6644,#dd8855)'
+          })
+          skipBtn.addEventListener('mouseleave', () => {
+            skipBtn.style.background = 'linear-gradient(135deg,#885533,#cc7744)'
+          })
+          skipBtn.addEventListener('click', () => {
+            const done = ContentInstallerUI._onComplete
+            ContentInstallerUI.hide()
+            done?.()
+          })
+          panel.appendChild(skipBtn)
         }
       }
     } else {
