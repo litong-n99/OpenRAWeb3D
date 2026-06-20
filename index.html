@@ -29,6 +29,17 @@
       font-display: swap;
     }
 
+    /* ---- ChromeMetrics CSS fallback ---- */
+    /* ChromeMetrics.get() probes CSS custom properties as a fallback when
+       no metrics YAML has been loaded. These defaults keep the Widget
+       system functional during development without MIX assets. */
+    :root {
+      --DefaultCursor: default;
+      --ButtonDepth: 2px;
+      --FontSize: 14px;
+      --Color: #e0e0e0;
+    }
+
     /* Reset & Base */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
