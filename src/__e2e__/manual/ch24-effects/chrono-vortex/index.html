@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChronoVortex - 3D Spiral Billboard | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 320px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .control-group input[type="range"] { width: 100%; accent-color: #00ccff; }
+    .control-group .range-value { font-size: 11px; color: #888; float: right; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; border: 1px solid #00ccff; background: #1a1a2e; color: #00ccff; font-size: 13px; cursor: pointer; font-weight: 600; transition: background 0.15s; margin-top: 4px; }
+    .control-group button:hover { background: #00ccff; color: #1a1a2e; }
+    .control-group button.active { background: #00ccff; color: #1a1a2e; }
+    .control-group button.secondary { border-color: #f39c12; color: #f39c12; }
+    .control-group button.secondary:hover { background: #f39c12; color: #fff; }
+    .control-group button.danger { border-color: #e74c3c; color: #e74c3c; }
+    .control-group button.danger:hover { background: #e74c3c; color: #fff; }
+    .control-group select { width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 13px; cursor: pointer; }
+    .progress-bar { width: 100%; height: 8px; background: #0d1117; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+    .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #00ccff, #8844ff); border-radius: 4px; transition: width 0.1s linear; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; margin-top: 4px; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    .info-row .val.highlight { color: #00ccff; font-weight: 600; }
+    .toggle-row { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+    .toggle-row .switch { position: relative; width: 40px; height: 20px; }
+    .toggle-row .switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-row .switch .slider { position: absolute; cursor: pointer; inset: 0; background: #333; border-radius: 20px; transition: 0.2s; }
+    .toggle-row .switch .slider::before { content: ''; position: absolute; height: 16px; width: 16px; left: 2px; bottom: 2px; background: #888; border-radius: 50%; transition: 0.2s; }
+    .toggle-row .switch input:checked + .slider { background: #00ccff; }
+    .toggle-row .switch input:checked + .slider::before { background: #fff; transform: translateX(20px); }
+    .toggle-row .toggle-label { font-size: 12px; color: #a0a0b0; }
+    .color-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; border: 1px solid #555; vertical-align: middle; margin-right: 4px; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. ChronoVortexRenderable - 3D Spiral Billboard + ShaderMaterial</h1>
+    <div class="subtitle">ID: ch24-effects/chrono-vortex | Ch24 Phase C Vortex Polish | OpenRA 对照: ChronoVortexRenderable.cs</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C1. 动画控制</h3>
+        <label>模拟速度: <span class="range-value" id="speed-val">1.0x</span></label>
+        <input type="range" id="speed-slider" min="0.1" max="5" step="0.1" value="1">
+        <label>每帧进 tick 数: <span class="range-value" id="tpf-val">1</span></label>
+        <input type="range" id="tpf-slider" min="1" max="60" step="1" value="1">
+        <button id="btn-play">&#9654; 播放</button>
+        <button id="btn-pause" class="secondary">&#9208; 暂停</button>
+      </div>
+      <div class="control-group">
+        <h3>C2. 生命周期 (Frame 0-47)</h3>
+        <label>Frame 帧: <span class="range-value" id="frame-val">0</span></label>
+        <input type="range" id="frame-slider" min="0" max="47" step="1" value="0">
+        <div class="progress-bar"><div class="fill" id="progress-fill" style="width:0%;"></div></div>
+        <div class="info-row"><span>Progress:</span><span class="val" id="state-progress">0.00</span></div>
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="toggle-autoadvance">
+            <span class="slider"></span>
+          </label>
+          <span class="toggle-label">自动循环 (0&#8594;47&#8594;0)</span>
+        </div>
+        <label>循环间隔 (tick): <span class="range-value" id="ai-val">25</span></label>
+        <input type="range" id="auto-interval-slider" min="5" max="120" step="1" value="25">
+      </div>
+      <div class="control-group">
+        <h3>C3. 涡旋状态</h3>
+        <div class="info-row"><span>累计 Tick:</span><span class="val" id="state-tick">0</span></div>
+        <div class="info-row"><span>时间 (秒):</span><span class="val" id="state-time">0.00</span></div>
+        <div class="info-row"><span>renderingGroupId:</span><span class="val highlight" id="state-rendergroup">-</span></div>
+        <div class="info-row"><span>BillboardMode:</span><span class="val" id="state-bbmode">-</span></div>
+        <div class="info-row"><span>Material:</span><span class="val" id="state-material">-</span></div>
+        <div class="info-row"><span>Billboard 位置:</span><span class="val" id="state-position">-</span></div>
+        <div class="info-row"><span>Alpha Blending:</span><span class="val" id="state-alpha">-</span></div>
+        <div class="info-row"><span>BackFace Culling:</span><span class="val" id="state-culling">-</span></div>
+      </div>
+      <div class="control-group">
+        <h3>C4. 涡旋颜色</h3>
+        <label><span class="color-swatch" id="color-swatch" style="background:#33ccff;"></span>色调:</label>
+        <select id="color-preset">
+          <option value="cyan" selected>青色 Cyan (#33CCFF) — 默认时空涡旋</option>
+          <option value="purple">紫色 Purple (#CC44FF) — 到达点风格</option>
+          <option value="orange">橙色 Orange (#FF8833) — 攻击效果</option>
+          <option value="green">绿色 Green (#33FF88) — 治疗/修复</option>
+          <option value="red">红色 Red (#FF3344) — 危险/自毁</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <h3>C5. 管理操作</h3>
+        <button id="btn-dispose" class="danger">&#128465; Dispose (销毁)</button>
+        <button id="btn-recreate" style="border-color:#2ecc71;color:#2ecc71;">&#8635; Recreate (重建)</button>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
