@@ -365,6 +365,15 @@ export class OrderManager {
       }
     }
 
+    // Ensure the local client is always registered, even when the lobby
+    // info hasn't been fully populated yet (single-player / skirmish test
+    // map fallback).  Without this, receiveOrders() would throw "Received
+    // packet from disconnected client" when EchoConnection delivers the
+    // local client's own orders.
+    if (!this._pendingOrders.has(this.connection.localClientId)) {
+      this._pendingOrders.set(this.connection.localClientId, [])
+    }
+
     // Generate sync reports only if there are other players to compare against
     // NOTE: Phase B will use this when SyncReport is migrated
     this.__generateSyncReport =

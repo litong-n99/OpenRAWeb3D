@@ -238,6 +238,32 @@ describe('OrderManager lifecycle', () => {
     ).toThrow()
     om.dispose()
   })
+
+  it('startGame registers local client when lobby has no clients (single-player fallback)', () => {
+    // Bug fix: createDefaultLobbyInfo() creates empty clients array.
+    // In single-player (EchoConnection), startGame() must still register
+    // the local client so that receiveOrders() doesn't throw
+    // "Received packet from disconnected client".
+    const conn = mockConnection() // localClientId = 1
+    const om = new OrderManager(conn, () => 0, 0)
+    // Simulate default lobby info with NO clients (as created by createDefaultLobbyInfo)
+    // om.lobbyInfo already has empty clients from the constructor
+
+    om.startGame()
+
+    // Local client (ID=1) should be registered even though lobby had no clients
+    const packet = new OrderPacket([Order.chat('test')])
+    expect(() =>
+      om.receiveOrders(1, { frame: 1, orders: packet }),
+    ).not.toThrow()
+
+    // But a truly unknown client should still throw
+    expect(() =>
+      om.receiveOrders(999, { frame: 1, orders: packet }),
+    ).toThrow(/Received packet from disconnected client/)
+
+    om.dispose()
+  })
 })
 
 // ---------------------------------------------------------------------------
