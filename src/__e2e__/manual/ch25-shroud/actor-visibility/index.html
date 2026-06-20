@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actor Visibility Toggle 3D — Fog/Shroud Mesh Visibility | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+    #sandbox { flex: 1; position: relative; background: #0d1117; min-width: 0; }
+    #sandbox canvas { display: block; width: 100%; height: 100%; outline: none !important; touch-action: none; }
+    #sandbox .overlay-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #f44; font-size: 16px; background: rgba(0,0,0,0.7); pointer-events: none; }
+    #controls { width: 340px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    #controls h3 { font-size: 14px; font-weight: 600; color: #ccc; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .control-group { background: #1a1a2e; border-radius: 6px; padding: 12px; border: 1px solid #0f3460; }
+    .control-group label { display: block; font-size: 12px; color: #a0a0b0; margin-bottom: 4px; }
+    .control-group button { width: 100%; padding: 8px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 600; transition: background 0.15s, color 0.15s; margin-top: 4px; }
+    .control-group button.toggle-btn { border: 1px solid #3399ff; background: #1a1a2e; color: #3399ff; }
+    .control-group button.toggle-btn:hover { background: #3399ff; color: #1a1a2e; }
+    .control-group button.toggle-btn.active { background: #3399ff; color: #1a1a2e; }
+    .control-group button.pulse-btn { border: 1px solid #2ecc71; background: #1a1a2e; color: #2ecc71; }
+    .control-group button.pulse-btn:hover { background: #2ecc71; color: #1a1a2e; }
+    .control-group button.pulse-btn.active { background: #2ecc71; color: #1a1a2e; }
+    .control-group button.reset-btn { border: 1px solid #f39c12; background: #1a1a2e; color: #f39c12; }
+    .control-group button.reset-btn:hover { background: #f39c12; color: #1a1a2e; }
+    .info-row { font-size: 11px; color: #888; display: flex; justify-content: space-between; margin-top: 4px; }
+    .info-row .val { color: #ccc; font-family: 'Consolas', 'Fira Code', monospace; }
+    .info-row .val.highlight { color: #3399ff; font-weight: 600; }
+    .info-row .val.danger { color: #e74c3c; }
+    .info-row .val.success { color: #2ecc71; }
+    .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .status-indicator.on { background: #2ecc71; box-shadow: 0 0 4px #2ecc71; }
+    .status-indicator.off { background: #555; }
+    .status-indicator.pulse { background: #fff; box-shadow: 0 0 8px #fff; }
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', 'Fira Code', monospace; }
+    #info-bar .label { color: #555; }
+    #info-bar .val { color: #888; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Actor Visibility Toggle 3D — Fog/Shroud mesh.setEnabled() 验证</h1>
+    <div class="subtitle">ID: ch25-shroud/actor-visibility | 期望结果见 README.md | OpenRA 对照: HiddenUnderShroud.cs + Cloak.ts</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div class="overlay-error" id="gpu-error" style="display:none;">WebGL 不可用 — 无法初始化 Babylon.js 引擎</div>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <h3>C1. Visibility Controls</h3>
+        <button id="btn-toggle-b" class="toggle-btn">Toggle Actor B Visibility (模拟雾过渡)</button>
+        <button id="btn-pulse-c" class="pulse-btn">Trigger Detection Pulse on Actor C (模拟 DetectCloaked)</button>
+        <button id="btn-reset" class="reset-btn">Reset All</button>
+      </div>
+
+      <div class="control-group">
+        <h3>C2. Actor Status</h3>
+        <div class="info-row">
+          <span><span class="status-indicator on" id="ind-a"></span>Actor A (Red):</span>
+          <span class="val" id="stat-a">Always visible — no fog interaction</span>
+        </div>
+        <div class="info-row">
+          <span><span class="status-indicator on" id="ind-b"></span>Actor B (Blue):</span>
+          <span class="val highlight" id="stat-b">Visible (setEnabled=true)</span>
+        </div>
+        <div class="info-row">
+          <span><span class="status-indicator on" id="ind-c"></span>Actor C (Green):</span>
+          <span class="val success" id="stat-c">Cloaked — visible, idle</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>C3. Mesh Emissive Values</h3>
+        <div class="info-row">
+          <span>Actor C emissiveColor:</span>
+          <span class="val" id="emissive-val">(0.00, 0.00, 0.00)</span>
+        </div>
+        <div class="info-row">
+          <span>Detection ticks remaining:</span>
+          <span class="val" id="pulse-ticks">0</span>
+        </div>
+        <div class="info-row">
+          <span>Total pulses triggered:</span>
+          <span class="val" id="pulse-count">0</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>C4. Legend</h3>
+        <div class="info-row">
+          <span><span class="status-indicator on"></span> Red box:</span>
+          <span class="val">Actor A — unaffected by fog</span>
+        </div>
+        <div class="info-row">
+          <span><span class="status-indicator on"></span> Blue box:</span>
+          <span class="val">Actor B — fog togglable</span>
+        </div>
+        <div class="info-row">
+          <span><span class="status-indicator on"></span> Green box:</span>
+          <span class="val">Actor C — cloaked, detection pulse</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span class="label">UA:</span> <span class="val" id="info-ua">-</span>
+    <span class="label">视口:</span> <span class="val" id="info-viewport">-</span>
+    <span class="label">引擎:</span> <span class="val" id="info-engine">-</span>
+    <span class="label">FPS:</span> <span class="val" id="info-fps">-</span>
+    <span class="label">时间:</span> <span class="val" id="info-time">-</span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

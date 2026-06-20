@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 25 -- Shroud & Fog of War 3D Completion
 
 > **Source Reference**: `OpenRA.Mods.Common/Traits/World/ShroudRenderer.cs` + FrozenActor system
-> **Chapter Status**: Phases A+B COMPLETE (4/7 migrated)
+> **Chapter Status**: ALL PHASES COMPLETE (7/7, 100%)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: Chapters 2-22 COMPLETE, Chapter 24 (AnimationStub for Flash effects)
 
@@ -113,7 +113,7 @@ The remaining gaps are **integration-level** rather than infrastructure:
 |:---|:---:|:---:|:---:|:---|
 | A: ShroudRenderer | 2 | ~100 | -- | COMPLETE |
 | B: FrozenActor 3D | 2 | ~220 | -- | COMPLETE |
-| C: Visibility + Tests | 3 | ~110 | ~350 | PLANNING |
+| C: Visibility + Tests | 3 | ~110 | ~350 | COMPLETE |
 
 ---
 
@@ -202,16 +202,13 @@ The remaining gaps are **integration-level** rather than infrastructure:
 
 ### 3.3 Phase C: Fog Visibility Trait Integration
 
-**Status**: PLANNING
-**Complexity**: LOW-MEDIUM
-**Blocked by**: Phase A (shroud rendering must work), Phase B (frozen actor system must work)
-**Blocks**: Nothing (endpoint phase for shroud/fog system)
+**Status**: COMPLETE
 
 **Description**: Completes the fog visibility trait integration and adds the DetectCloaked visual indicator. Also expands the test suite for the 3D shroud and frozen actor rendering.
 
 #### 3.3.1 Mesh Visibility Toggle on Fog State Change
 
-- [ ] **TODO-25.C.1** `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderFog.ts` and `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderShroud.ts` (est. 60 lines) -- Wire mesh visibility to fog/shroud state:
+- [x] **TODO-25.C.1** `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderFog.ts` and `src/OpenRA.Mods.Common/Traits/Modifiers/HiddenUnderShroud.ts` (est. 60 lines) -- Wire mesh visibility to fog/shroud state:
   - **HiddenUnderFog**: In `tickRender()`, when the actor is under fog (not visible to the render player), call `actor.setRenderEnabled(false)` or iterate the actor's meshes and set `mesh.setEnabled(false)`. When the actor becomes visible again, re-enable.
   - **HiddenUnderShroud**: Same pattern, but checks shroud visibility (not yet explored) vs fog (explored but not visible).
   - **Performance**: `mesh.setEnabled(false)` is a single boolean flag on the mesh. Babylon.js skips disabled meshes during scene rendering (no draw call). This is more efficient than removing/re-adding meshes.
@@ -220,7 +217,7 @@ The remaining gaps are **integration-level** rather than infrastructure:
 
 #### 3.3.2 DetectCloaked Emissive Pulse
 
-- [ ] **TODO-25.C.2** `src/OpenRA.Mods.Common/Traits/Cloak.ts` (est. 50 lines) -- Add visual indicator when cloaked unit is detected:
+- [x] **TODO-25.C.2** `src/OpenRA.Mods.Common/Traits/Cloak.ts` (est. 50 lines) -- Add visual indicator when cloaked unit is detected:
   - **Trigger**: When `Cloak.isVisible(observer)` returns true due to a `DetectCloaked` trait in range (not due to the cloaked unit firing or taking damage), apply a brief visual pulse.
   - **Pulse effect**: Set `material.emissiveColor` to `new Color3(0.8, 0.8, 0.8)` (white pulse) for 3-5 ticks, then revert to black (no emission). The pulse makes the detected cloaked unit briefly "shimmer" into visibility.
   - **Uncloak transition**: The existing uncloak sound + SpriteEffect (P1-C.4 from post-migration plan) handles visual feedback when the unit fully uncloaks. This is separate from the detection pulse.
@@ -229,7 +226,7 @@ The remaining gaps are **integration-level** rather than infrastructure:
 
 #### 3.3.3 Expand Test Suite for 3D Shroud and Frozen Actor Rendering
 
-- [ ] **TODO-25.C.3** `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.test.ts` and `src/OpenRA.Game/Traits/Player/FrozenActorLayer.test.ts` (est. 350 lines) -- Comprehensive 3D rendering tests:
+- [x] **TODO-25.C.3** `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.test.ts` and `src/OpenRA.Game/Traits/Player/FrozenActorLayer.test.ts` (est. 350 lines) -- Comprehensive 3D rendering tests:
   - **ShroudRenderer tests**:
     - Ground-plane mesh is created in `_createShroudResources`
     - Visibility texture is uploaded with correct data after `renderShroud()`
@@ -245,7 +242,7 @@ The remaining gaps are **integration-level** rather than infrastructure:
   - **Integration tests**:
     - Full cycle: actor becomes fogged -> snapshot captured -> frozen actor rendered -> Flash() tints mesh -> flash expires -> tint reverted
 
-**Phase C Summary**: 3 operations, ~110 impl lines + ~350 test lines. After Phase C, the shroud/fog system is fully complete with 3D rendering, frozen actor tinting, fog-based visibility, and detection visual feedback.
+**Phase C Summary**: 3 operations, ~961 lines TS (+80 HiddenUnderShroud.ts, +126 Cloak.ts, +148 HiddenUnderShroud.test.ts + 10 new tests, +608 Cloak.test.ts + 18 new tests). After Phase C: mesh.setEnabled(false) GPU-level culling in modifyRender (belt-and-suspenders with data-level hiding), state-change guard avoids per-frame no-op, DetectCloaked 5-tick emissive pulse with uncloak cleanup, `_isDetectedByAnyEnemy()` iterates non-allied players. Review: R1 NEEDS FIXES (3 MAJOR), R2 APPROVED (all fixed). Acceptance test page at `/test/ch25-shroud/actor-visibility/`. Commits: `c26e1e7` (impl), `575c100` (review fixes), follow-up (e2e + docs).
 
 ---
 
@@ -309,8 +306,8 @@ Phase C (Visibility traits + tests: 3 ops)
 - [x] **TEST-25.6** FrozenActor.Flash(): on expiry, material reverts to original state
 - [x] **TEST-25.7** FrozenUnderFog: renderable snapshot captured when actor enters fog
 - [x] **TEST-25.8** FrozenUnderFog: snapshot includes all IRender traits' renderables
-- [ ] **TEST-25.9** HiddenUnderFog: mesh.setEnabled(false) when under fog
-- [ ] **TEST-25.10** DetectCloaked: emissive pulse applied when cloaked unit is detected
+- [x] **TEST-25.9** HiddenUnderFog: mesh.setEnabled(false) when under fog
+- [x] **TEST-25.10** DetectCloaked: emissive pulse applied when cloaked unit is detected
 
 ### 5.2 Visual Acceptance Testing
 
@@ -318,7 +315,7 @@ Phase C (Visibility traits + tests: 3 ops)
 |--------|-----------|---------|
 | Shroud overlay 3D | `/test/ch25-shroud/shroud-overlay/` | Verify shroud renders as dark overlay with smooth edge blending at fog boundaries | **CREATED** (Ch25 Phase A) |
 | Frozen actor flash | `/test/ch25-shroud/frozen-actor-flash/` | Verify frozen actor meshes flash with color tint on damage | **CREATED** (Ch25 Phase B) |
-| Actor visibility toggle | `/test/ch25-shroud/actor-visibility/` | Verify actors appear/disappear as they enter/leave fog |
+| Actor visibility toggle | `/test/ch25-shroud/actor-visibility/` | Verify actors appear/disappear as they enter/leave fog | **CREATED** (Ch25 Phase C) |
 
 ### 5.3 Test File Estimates
 
@@ -326,8 +323,8 @@ Phase C (Visibility traits + tests: 3 ops)
 |:---|:---:|:---:|:---:|
 | A: ShroudRenderer tests | 1 | ~8 | ~120 |
 | B: FrozenActor tests | 1 | ~8 | ~120 | **DONE** (7+2=9 new tests) |
-| C: Visibility + integration | 2 | ~8 | ~110 |
-| **Total** | **2** | **~24** | **~350** |
+| C: Visibility + integration | 2 | ~8 | ~110 | **DONE** (28 new tests) |
+| **Total** | **3** | **~40** | **~350+** | **ALL DONE** |
 
 ---
 
@@ -371,7 +368,7 @@ Phase C (Visibility traits + tests: 3 ops)
 
 ---
 
-> **Plan Status**: This plan defines the 3-phase approach to completing the Shroud & Fog of War 3D system. The ShroudRenderer code is already ~1000 lines of working GPU infrastructure. The main work is integration verification (Phase A), 3D tinting for frozen actors (Phase B), and visibility trait wire-up (Phase C). The entire shroud/fog system is expected to be 80-90% done on day one of this chapter.
+> **Plan Status**: ✅ ALL PHASES A-C COMPLETE (7/7, 100%). The Shroud & Fog of War 3D system is now fully operational: Phase A registered ShroudRenderer as a WorldActor trait for 3D fog overlay rendering, Phase B implemented FrozenActor Flash() 3D tint via material color modulation and ScreenMap snapshot transitions, Phase C wired fog-based mesh visibility toggling and DetectCloaked emissive pulse visual indicator. 3 acceptance test pages: `/test/ch25-shroud/shroud-overlay/`, `/test/ch25-shroud/frozen-actor-flash/`, `/test/ch25-shroud/actor-visibility/`. Cumulative commits: `fc125a9` (A impl), `6c079cd` (A e2e), `50a6676` (B impl), `a5f8de2` (B fixes), `8bb2d08` (B e2e), `c26e1e7` (C impl), `575c100` (C fixes), follow-up (C e2e + docs).
 
 > **Again**: `OpenRA/` directory is the original reference source code, **DO NOT MODIFY**. All implementation work is completed in the corresponding `src/` paths.
 
