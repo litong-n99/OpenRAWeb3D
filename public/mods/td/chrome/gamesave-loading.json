@@ -1,0 +1,80 @@
+{
+  "Container": {
+    "id": "GAMESAVE_LOADING_SCREEN",
+    "Logic": "GameSaveLoadingLogic",
+    "Width": "WINDOW_WIDTH",
+    "Height": "WINDOW_HEIGHT",
+    "Children": {
+      "LogicKeyListener": {
+        "id": "CANCEL_HANDLER"
+      },
+      "Image": [
+        {
+          "id": "NOD",
+          "X": "WINDOW_WIDTH / 2 - 384",
+          "Y": "(WINDOW_HEIGHT - 256) / 2",
+          "ImageCollection": "logos",
+          "ImageName": "nod-load"
+        },
+        {
+          "id": "GDI",
+          "X": "WINDOW_WIDTH / 2 + 128",
+          "Y": "(WINDOW_HEIGHT - 256) / 2",
+          "ImageCollection": "logos",
+          "ImageName": "gdi-load"
+        },
+        {
+          "id": "EVA",
+          "X": "WINDOW_WIDTH - 128 - 43",
+          "Y": "43",
+          "Width": "128",
+          "Height": "64",
+          "ImageCollection": "logos",
+          "ImageName": "eva"
+        }
+      ],
+      "Label": [
+        {
+          "id": "VERSION_LABEL",
+          "Logic": "VersionLabelLogic",
+          "X": "WINDOW_WIDTH - 128 - 43",
+          "Y": "116",
+          "Width": "128",
+          "Align": "Center",
+          "Shadow": "true"
+        },
+        {
+          "id": "TITLE",
+          "Width": "WINDOW_WIDTH",
+          "Y": "3 * WINDOW_HEIGHT / 4 - 29",
+          "Height": "25",
+          "Font": "Bold",
+          "Align": "Center",
+          "Text": "label-gamesave-loading-screen-title"
+        },
+        {
+          "id": "DESC",
+          "Width": "WINDOW_WIDTH",
+          "Y": "3 * WINDOW_HEIGHT / 4 + 19",
+          "Height": "25",
+          "Font": "Regular",
+          "Align": "Center",
+          "Text": "label-gamesave-loading-screen-desc"
+        }
+      ],
+      "Background": {
+        "id": "BORDER",
+        "Width": "WINDOW_WIDTH",
+        "Height": "WINDOW_HEIGHT",
+        "Background": "shellmapborder"
+      },
+      "ProgressBar": {
+        "id": "PROGRESS",
+        "X": "(WINDOW_WIDTH - 500) / 2",
+        "Y": "3 * WINDOW_HEIGHT / 4",
+        "Width": "500",
+        "Height": "20"
+      }
+    }
+  }
+}

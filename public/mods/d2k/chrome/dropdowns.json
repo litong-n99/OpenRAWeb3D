@@ -1,0 +1,266 @@
+{
+  "ScrollPanel": [
+    {
+      "id": "LABEL_DROPDOWN_TEMPLATE",
+      "Width": "DROPDOWN_WIDTH",
+      "Children": {
+        "ScrollItem": [
+          {
+            "id": "HEADER",
+            "Background": "scrollheader",
+            "Width": "PARENT_WIDTH - 27",
+            "Height": "13",
+            "X": "2",
+            "Y": "0",
+            "Visible": "false",
+            "Children": {
+              "Label": {
+                "id": "LABEL",
+                "Font": "TinyBold",
+                "Width": "PARENT_WIDTH",
+                "Height": "13",
+                "Align": "Center"
+              }
+            }
+          },
+          {
+            "id": "TEMPLATE",
+            "Width": "PARENT_WIDTH - 27",
+            "Height": "25",
+            "X": "2",
+            "Y": "0",
+            "Visible": "false",
+            "Children": {
+              "Label": {
+                "id": "LABEL",
+                "X": "10",
+                "Width": "PARENT_WIDTH - 20",
+                "Height": "25"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "LABEL_DROPDOWN_WITH_TOOLTIP_TEMPLATE",
+      "Width": "DROPDOWN_WIDTH",
+      "Children": {
+        "ScrollItem": [
+          {
+            "id": "HEADER",
+            "Background": "scrollheader",
+            "Width": "PARENT_WIDTH - 27",
+            "Height": "13",
+            "X": "2",
+            "Y": "0",
+            "Visible": "false",
+            "Children": {
+              "Label": {
+                "id": "LABEL",
+                "Font": "TinyBold",
+                "Width": "PARENT_WIDTH",
+                "Height": "13",
+                "Align": "Center"
+              }
+            }
+          },
+          {
+            "id": "TEMPLATE",
+            "Width": "PARENT_WIDTH - 27",
+            "Height": "25",
+            "X": "2",
+            "Y": "0",
+            "TooltipContainer": "TOOLTIP_CONTAINER",
+            "TooltipTemplate": "BUTTON_TOOLTIP",
+            "Visible": "false",
+            "Children": {
+              "Label": {
+                "id": "LABEL",
+                "X": "10",
+                "Width": "PARENT_WIDTH - 20",
+                "Height": "25"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "PLAYERACTION_DROPDOWN_TEMPLATE",
+      "Width": "DROPDOWN_WIDTH",
+      "Children": {
+        "ScrollItem": {
+          "id": "TEMPLATE",
+          "Width": "PARENT_WIDTH - 27",
+          "Height": "25",
+          "X": "2",
+          "Y": "0",
+          "Visible": "false",
+          "Children": {
+            "Label": {
+              "id": "LABEL",
+              "X": "10",
+              "Width": "PARENT_WIDTH - 20",
+              "Height": "25",
+              "Align": "Left"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "TEAM_DROPDOWN_TEMPLATE",
+      "Width": "DROPDOWN_WIDTH",
+      "Children": {
+        "ScrollItem": {
+          "id": "TEMPLATE",
+          "Width": "PARENT_WIDTH - 27",
+          "Height": "25",
+          "X": "2",
+          "Y": "0",
+          "Visible": "false",
+          "Children": {
+            "Label": {
+              "id": "LABEL",
+              "X": "0",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Align": "Center"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "SPAWN_DROPDOWN_TEMPLATE",
+      "Width": "DROPDOWN_WIDTH",
+      "Children": {
+        "ScrollItem": {
+          "id": "TEMPLATE",
+          "Width": "PARENT_WIDTH - 27",
+          "Height": "25",
+          "X": "2",
+          "Y": "0",
+          "Visible": "false",
+          "Children": {
+            "Label": {
+              "id": "LABEL",
+              "X": "0",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Align": "Center"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "SPECTATOR_DROPDOWN_TEMPLATE",
+      "Width": "DROPDOWN_WIDTH",
+      "Children": {
+        "ScrollItem": [
+          {
+            "id": "HEADER",
+            "Background": "scrollheader",
+            "Width": "PARENT_WIDTH - 27",
+            "Height": "13",
+            "X": "2",
+            "Y": "0",
+            "Visible": "false",
+            "Children": {
+              "Label": {
+                "id": "LABEL",
+                "Font": "TinyBold",
+                "Width": "PARENT_WIDTH",
+                "Height": "10",
+                "Align": "Center"
+              }
+            }
+          },
+          {
+            "id": "TEMPLATE",
+            "Width": "PARENT_WIDTH - 27",
+            "Height": "25",
+            "X": "2",
+            "Y": "0",
+            "Visible": "false",
+            "EnableChildMouseOver": "true",
+            "Children": {
+              "Image": {
+                "id": "FLAG",
+                "Width": "23",
+                "Height": "23",
+                "X": "4",
+                "Y": "2"
+              },
+              "LabelWithTooltip": {
+                "id": "LABEL",
+                "X": "34",
+                "Width": "PARENT_WIDTH - 36",
+                "Height": "25",
+                "Shadow": "True",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "TooltipTemplate": "SIMPLE_TOOLTIP"
+              },
+              "Label": {
+                "id": "NOFLAG_LABEL",
+                "X": "5",
+                "Width": "PARENT_WIDTH - 7",
+                "Height": "25",
+                "Shadow": "True"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "NEWS_PANEL",
+      "Width": "400",
+      "Height": "265",
+      "TopBottomSpacing": "15",
+      "ItemSpacing": "5",
+      "Children": {
+        "Container": {
+          "id": "NEWS_ITEM_TEMPLATE",
+          "X": "10",
+          "Width": "PARENT_WIDTH - 40",
+          "Height": "40",
+          "Children": {
+            "Label": [
+              {
+                "id": "TITLE",
+                "Width": "PARENT_WIDTH",
+                "Height": "15",
+                "Align": "Center",
+                "Font": "Bold"
+              },
+              {
+                "id": "AUTHOR_DATETIME",
+                "Y": "20",
+                "Width": "PARENT_WIDTH",
+                "Height": "15",
+                "Align": "Center",
+                "Font": "TinyBold"
+              },
+              {
+                "id": "CONTENT",
+                "Y": "40",
+                "Width": "PARENT_WIDTH"
+              }
+            ]
+          }
+        },
+        "Label": {
+          "id": "NEWS_STATUS",
+          "X": "80",
+          "Width": "PARENT_WIDTH - 80 - 80 - 24",
+          "Height": "PARENT_HEIGHT",
+          "Align": "Center",
+          "VAlign": "Middle"
+        }
+      }
+    }
+  ]
+}

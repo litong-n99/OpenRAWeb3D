@@ -1,0 +1,291 @@
+{
+  "Container": {
+    "id": "MUSIC_PANEL",
+    "Logic": "MusicPlayerLogic",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+    "Width": "410",
+    "Height": "435",
+    "Children": {
+      "LogicTicker": {
+        "id": "SONG_WATCHER"
+      },
+      "Label": [
+        {
+          "id": "TITLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Y": "0 - 34",
+          "Font": "BigBold",
+          "Contrast": "true",
+          "Align": "Center",
+          "Text": "label-music-title-panel-title"
+        },
+        {
+          "id": "MUTE_LABEL",
+          "X": "100",
+          "Y": "PARENT_HEIGHT - 60 - 3",
+          "Width": "300",
+          "Height": "20",
+          "Font": "Small"
+        }
+      ],
+      "Background": {
+        "id": "bg",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "Background": "panel-black",
+        "Children": {
+          "ScrollPanel": {
+            "id": "MUSIC_LIST",
+            "X": "15",
+            "Y": "30",
+            "Width": "PARENT_WIDTH - 30",
+            "Height": "PARENT_HEIGHT - 125",
+            "Children": {
+              "ScrollItem": {
+                "id": "MUSIC_TEMPLATE",
+                "Width": "PARENT_WIDTH - 27",
+                "Height": "25",
+                "X": "2",
+                "Y": "0",
+                "Visible": "false",
+                "EnableChildMouseOver": "True",
+                "Children": {
+                  "LabelWithTooltip": {
+                    "id": "TITLE",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH - 50",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP"
+                  },
+                  "Label": {
+                    "id": "LENGTH",
+                    "Width": "50",
+                    "X": "PARENT_WIDTH - 60",
+                    "Align": "Right",
+                    "Height": "25"
+                  }
+                }
+              }
+            }
+          },
+          "Container": [
+            {
+              "id": "LABEL_CONTAINER",
+              "X": "25",
+              "Y": "4",
+              "Width": "PARENT_WIDTH - 30",
+              "Children": {
+                "Label": [
+                  {
+                    "id": "TITLE",
+                    "Width": "100",
+                    "Height": "25",
+                    "Text": "label-container-title",
+                    "Align": "Center",
+                    "Font": "Bold"
+                  },
+                  {
+                    "id": "TYPE",
+                    "X": "PARENT_WIDTH - 85",
+                    "Height": "25",
+                    "Width": "50",
+                    "Text": "label-music-controls-length",
+                    "Align": "Right",
+                    "Font": "Bold"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "BUTTONS",
+              "X": "15",
+              "Y": "PARENT_HEIGHT - HEIGHT - 40",
+              "Width": "PARENT_WIDTH - 30",
+              "Children": {
+                "Button": [
+                  {
+                    "id": "BUTTON_PREV",
+                    "Width": "26",
+                    "Height": "26",
+                    "IgnoreChildMouseOver": "true",
+                    "Children": {
+                      "Image": {
+                        "id": "IMAGE_PREV",
+                        "X": "5",
+                        "Y": "5",
+                        "Width": "16",
+                        "Height": "16",
+                        "ImageCollection": "music",
+                        "ImageName": "prev"
+                      }
+                    }
+                  },
+                  {
+                    "id": "BUTTON_PLAY",
+                    "X": "35",
+                    "Width": "26",
+                    "Height": "26",
+                    "IgnoreChildMouseOver": "true",
+                    "Children": {
+                      "Image": {
+                        "id": "IMAGE_PLAY",
+                        "X": "5",
+                        "Y": "5",
+                        "Width": "16",
+                        "Height": "16",
+                        "ImageCollection": "music",
+                        "ImageName": "play"
+                      }
+                    }
+                  },
+                  {
+                    "id": "BUTTON_PAUSE",
+                    "Visible": "false",
+                    "X": "35",
+                    "Width": "26",
+                    "Height": "26",
+                    "IgnoreChildMouseOver": "true",
+                    "Children": {
+                      "Image": {
+                        "id": "IMAGE_PAUSE",
+                        "X": "5",
+                        "Y": "5",
+                        "Width": "16",
+                        "Height": "16",
+                        "ImageCollection": "music",
+                        "ImageName": "pause"
+                      }
+                    }
+                  },
+                  {
+                    "id": "BUTTON_STOP",
+                    "X": "70",
+                    "Width": "26",
+                    "Height": "26",
+                    "IgnoreChildMouseOver": "true",
+                    "Children": {
+                      "Image": {
+                        "id": "IMAGE_STOP",
+                        "X": "5",
+                        "Y": "5",
+                        "Width": "16",
+                        "Height": "16",
+                        "ImageCollection": "music",
+                        "ImageName": "stop"
+                      }
+                    }
+                  },
+                  {
+                    "id": "BUTTON_NEXT",
+                    "X": "105",
+                    "Width": "26",
+                    "Height": "26",
+                    "IgnoreChildMouseOver": "true",
+                    "Children": {
+                      "Image": {
+                        "id": "IMAGE_NEXT",
+                        "X": "5",
+                        "Y": "5",
+                        "Width": "16",
+                        "Height": "16",
+                        "ImageCollection": "music",
+                        "ImageName": "next"
+                      }
+                    }
+                  }
+                ],
+                "ExponentialSlider": {
+                  "id": "MUSIC_SLIDER",
+                  "X": "PARENT_WIDTH - WIDTH",
+                  "Y": "3",
+                  "Width": "PARENT_WIDTH - 145",
+                  "Height": "20",
+                  "Ticks": "7"
+                }
+              }
+            },
+            {
+              "id": "NO_MUSIC_LABEL",
+              "X": "15",
+              "Y": "(PARENT_HEIGHT - HEIGHT - 60) / 2",
+              "Width": "PARENT_WIDTH - 30",
+              "Height": "75",
+              "Visible": "false",
+              "Children": {
+                "Label": [
+                  {
+                    "id": "TITLE",
+                    "Width": "PARENT_WIDTH - 24",
+                    "Height": "25",
+                    "Font": "Bold",
+                    "Align": "Center",
+                    "Text": "label-no-music-title"
+                  },
+                  {
+                    "id": "DESCA",
+                    "Y": "20",
+                    "Width": "PARENT_WIDTH - 24",
+                    "Height": "25",
+                    "Align": "Center",
+                    "Text": "label-no-music-desc-a"
+                  },
+                  {
+                    "id": "DESCB",
+                    "Y": "40",
+                    "Width": "PARENT_WIDTH - 24",
+                    "Height": "25",
+                    "Align": "Center",
+                    "Text": "label-no-music-desc-b"
+                  }
+                ]
+              }
+            }
+          ],
+          "Label": {
+            "id": "TIME_LABEL",
+            "X": "(PARENT_WIDTH - WIDTH) / 2",
+            "Y": "PARENT_HEIGHT - HEIGHT - 60 - 3",
+            "Width": "140",
+            "Height": "25",
+            "Align": "Center"
+          },
+          "Checkbox": [
+            {
+              "id": "SHUFFLE",
+              "X": "15",
+              "Y": "PARENT_HEIGHT - HEIGHT - 60",
+              "Width": "85",
+              "Height": "20",
+              "Font": "Regular",
+              "Text": "checkbox-music-controls-shuffle"
+            },
+            {
+              "id": "REPEAT",
+              "X": "PARENT_WIDTH - 15 - WIDTH",
+              "Y": "PARENT_HEIGHT - HEIGHT - 60",
+              "Width": "70",
+              "Height": "20",
+              "Font": "Regular",
+              "Text": "checkbox-music-controls-loop"
+            }
+          ]
+        }
+      },
+      "Button": {
+        "id": "BACK_BUTTON",
+        "Key": "escape",
+        "X": "0",
+        "Y": "PARENT_HEIGHT - 1",
+        "Width": "140",
+        "Height": "35",
+        "Text": "button-back"
+      },
+      "TooltipContainer": {
+        "id": "TOOLTIP_CONTAINER"
+      }
+    }
+  }
+}

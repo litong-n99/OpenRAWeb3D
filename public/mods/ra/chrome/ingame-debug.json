@@ -1,0 +1,466 @@
+{
+  "Container": {
+    "id": "DEBUG_PANEL",
+    "Logic": "DebugMenuLogic",
+    "Width": "PARENT_WIDTH",
+    "Height": "PARENT_HEIGHT",
+    "Children": {
+      "ScrollPanel": {
+        "id": "DEBUG_SCROLLPANEL",
+        "X": "20",
+        "Y": "20",
+        "Width": "PARENT_WIDTH - 40",
+        "Height": "395",
+        "ItemSpacing": "10",
+        "Children": {
+          "Background": [
+            {
+              "id": "DEBUG_OPTIONS_HEADER",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 24 - 10",
+              "Height": "13",
+              "Background": "separator",
+              "ClickThrough": "True",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "PARENT_HEIGHT",
+                  "Font": "TinyBold",
+                  "Align": "Center",
+                  "Text": "label-debug-panel-title"
+                }
+              }
+            },
+            {
+              "id": "SELECTION_HEADER",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 24 - 10",
+              "Height": "13",
+              "Background": "separator",
+              "ClickThrough": "True",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "PARENT_HEIGHT",
+                  "Font": "TinyBold",
+                  "Align": "Center",
+                  "Text": "label-debug-panel-selection-title"
+                }
+              }
+            },
+            {
+              "id": "VISUALIZATIONS_HEADER",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 24 - 10",
+              "Height": "13",
+              "Background": "separator",
+              "ClickThrough": "True",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "PARENT_HEIGHT",
+                  "Font": "TinyBold",
+                  "Align": "Center",
+                  "Text": "label-debug-panel-visualizations-title"
+                }
+              }
+            }
+          ],
+          "Container": [
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "20",
+              "Children": {
+                "Checkbox": [
+                  {
+                    "id": "INSTANT_BUILD",
+                    "X": "45",
+                    "Width": "200",
+                    "Height": "20",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-instant-build",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "UNLIMITED_POWER",
+                    "X": "290",
+                    "Width": "200",
+                    "Height": "20",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-unlimited-power",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "20",
+              "Children": {
+                "Checkbox": [
+                  {
+                    "id": "ENABLE_TECH",
+                    "X": "45",
+                    "Width": "200",
+                    "Height": "20",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-enable-tech",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "INSTANT_CHARGE",
+                    "X": "290",
+                    "Width": "200",
+                    "Height": "20",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-instant-charge",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "20",
+              "Children": {
+                "Checkbox": [
+                  {
+                    "id": "BUILD_ANYWHERE",
+                    "X": "45",
+                    "Width": "200",
+                    "Height": "20",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-build-anywhere",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "DISABLE_VISIBILITY_CHECKS",
+                    "X": "290",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-disable-visibility-checks",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "30",
+              "Children": {
+                "Button": [
+                  {
+                    "id": "GIVE_CASH",
+                    "X": "15",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-give-cash",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "GIVE_CASH_ALL",
+                    "X": "177",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-give-cash-all",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "GROW_RESOURCES",
+                    "X": "339",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-grow-resources",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "30",
+              "Children": {
+                "Button": [
+                  {
+                    "id": "GIVE_EXPLORATION",
+                    "X": "15",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-clear-shroud",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "RESET_EXPLORATION",
+                    "X": "177",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-reset-shroud",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "POWER_OUTAGE",
+                    "X": "339",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-power-outage",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "30",
+              "Children": {
+                "Button": {
+                  "id": "PLAYER_EXPERIENCE",
+                  "X": "15",
+                  "Width": "151",
+                  "Height": "30",
+                  "Font": "Bold",
+                  "Text": "button-debug-panel-player-experience",
+                  "TooltipTemplate": "BUTTON_TOOLTIP",
+                  "TooltipContainer": "TOOLTIP_CONTAINER"
+                }
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "30",
+              "Children": {
+                "Button": [
+                  {
+                    "id": "HEAL_SELECTED",
+                    "X": "15",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-heal-selected",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "DISPOSE_SELECTED",
+                    "X": "177",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-dispose-selected",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "KILL_SELECTED",
+                    "X": "339",
+                    "Width": "151",
+                    "Height": "30",
+                    "Font": "Bold",
+                    "Text": "button-debug-panel-kill-selected",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "30",
+              "Children": {
+                "Button": {
+                  "id": "LEVEL_UP",
+                  "X": "15",
+                  "Width": "151",
+                  "Height": "30",
+                  "Font": "Bold",
+                  "Text": "button-debug-panel-level-up",
+                  "TooltipTemplate": "BUTTON_TOOLTIP",
+                  "TooltipContainer": "TOOLTIP_CONTAINER"
+                }
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "20",
+              "Children": {
+                "Checkbox": [
+                  {
+                    "id": "SHOW_UNIT_PATHS",
+                    "X": "45",
+                    "Width": "200",
+                    "Height": "20",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-unit-paths",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "SHOW_COMBATOVERLAY",
+                    "X": "290",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-combatoverlay",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "20",
+              "Children": {
+                "Checkbox": [
+                  {
+                    "id": "SHOW_CUSTOMTERRAIN_OVERLAY",
+                    "X": "45",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-customterrain-overlay",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "SHOW_GEOMETRY",
+                    "X": "290",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-geometry",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "20",
+              "Children": {
+                "Checkbox": [
+                  {
+                    "id": "SHOW_ACTOR_TAGS",
+                    "X": "45",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-actor-tags",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "SHOW_TERRAIN_OVERLAY",
+                    "X": "290",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-terrain-overlay",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "20",
+              "Children": {
+                "Checkbox": [
+                  {
+                    "id": "SHOW_CELLTRIGGER_OVERLAY",
+                    "X": "45",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-celltrigger-overlay",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "SHOW_ACTORMAP_OVERLAY",
+                    "X": "290",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-actormap-overlay",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "20",
+              "Children": {
+                "Checkbox": [
+                  {
+                    "id": "SHOW_HPF_OVERLAY",
+                    "X": "45",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-hpf-overlay",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  },
+                  {
+                    "id": "SHOW_SCREENMAP",
+                    "X": "290",
+                    "Height": "20",
+                    "Width": "200",
+                    "Font": "Regular",
+                    "Text": "checkbox-debug-panel-show-screenmap",
+                    "TooltipTemplate": "BUTTON_TOOLTIP",
+                    "TooltipContainer": "TOOLTIP_CONTAINER"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "SPACER",
+              "Width": "PARENT_WIDTH - 17",
+              "Height": "1"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

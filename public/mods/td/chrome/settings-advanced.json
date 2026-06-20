@@ -1,0 +1,325 @@
+{
+  "Container": {
+    "id": "ADVANCED_PANEL",
+    "Logic": "AdvancedSettingsLogic",
+    "Width": "PARENT_WIDTH",
+    "Height": "PARENT_HEIGHT",
+    "Children": {
+      "ScrollPanel": {
+        "id": "SETTINGS_SCROLLPANEL",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "CollapseHiddenChildren": "True",
+        "TopBottomSpacing": "5",
+        "ItemSpacing": "10",
+        "Children": {
+          "Background": [
+            {
+              "id": "NETWORK_SECTION_HEADER",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 24 - 10",
+              "Height": "13",
+              "Background": "separator",
+              "ClickThrough": "True",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "PARENT_HEIGHT",
+                  "Font": "TinyBold",
+                  "Align": "Center",
+                  "Text": "label-network-section-header"
+                }
+              }
+            },
+            {
+              "id": "DEBUG_SECTION_HEADER",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 24 - 10",
+              "Height": "13",
+              "Background": "separator",
+              "ClickThrough": "True",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "PARENT_HEIGHT",
+                  "Font": "TinyBold",
+                  "Align": "Center",
+                  "Text": "label-debug-section-header"
+                }
+              }
+            }
+          ],
+          "Container": [
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "20",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "NAT_DISCOVERY_CONTAINER",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "NAT_DISCOVERY",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-nat-discovery-container"
+                      }
+                    }
+                  },
+                  {
+                    "id": "FETCH_NEWS_CHECKBOX_CONTAINER",
+                    "X": "PARENT_WIDTH / 2 + 10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "FETCH_NEWS_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-fetch-news-container"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "20",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "PERFGRAPH_CHECKBOX_CONTAINER",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "PERFGRAPH_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-perfgraph-container"
+                      }
+                    }
+                  },
+                  {
+                    "id": "CHECK_VERSION_CHECKBOX_CONTAINER",
+                    "X": "PARENT_WIDTH / 2 + 10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "CHECK_VERSION_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-check-version-container"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "50",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "PERFTEXT_CHECKBOX_CONTAINER",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "PERFTEXT_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-perftext-container"
+                      }
+                    }
+                  },
+                  {
+                    "id": "SENDSYSINFO_CHECKBOX_CONTAINER",
+                    "X": "PARENT_WIDTH / 2 + 10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "SENDSYSINFO_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-sendsysinfo-container"
+                      },
+                      "Label": {
+                        "id": "SENDSYSINFO_DESC",
+                        "Y": "30",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "30",
+                        "Font": "Tiny",
+                        "WordWrap": "True",
+                        "Text": "label-sendsysinfo-checkbox-container-desc"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "SPACER"
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "40",
+              "Children": {
+                "Container": {
+                  "id": "DEBUG_HIDDEN_CONTAINER",
+                  "X": "10",
+                  "Width": "PARENT_WIDTH - 10",
+                  "Children": {
+                    "Label": [
+                      {
+                        "id": "A",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Text": "label-debug-hidden-container-a",
+                        "Align": "Center"
+                      },
+                      {
+                        "id": "B",
+                        "Y": "20",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Text": "label-debug-hidden-container-b",
+                        "Align": "Center"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "20",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "BOTDEBUG_CHECKBOX_CONTAINER",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "BOTDEBUG_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-botdebug-container"
+                      }
+                    }
+                  },
+                  {
+                    "id": "CHECKBOTSYNC_CHECKBOX_CONTAINER",
+                    "X": "PARENT_WIDTH / 2 + 10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "CHECKBOTSYNC_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-checkbotsync-container"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "20",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "LUADEBUG_CHECKBOX_CONTAINER",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "LUADEBUG_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-luadebug-container"
+                      }
+                    }
+                  },
+                  {
+                    "id": "CHECKUNSYNCED_CHECKBOX_CONTAINER",
+                    "X": "PARENT_WIDTH / 2 + 10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "CHECKUNSYNCED_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-checkunsynced-container"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "20",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "REPLAY_COMMANDS_CHECKBOX_CONTAINER",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "REPLAY_COMMANDS_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-replay-commands-container"
+                      }
+                    }
+                  },
+                  {
+                    "id": "PERFLOGGING_CHECKBOX_CONTAINER",
+                    "X": "PARENT_WIDTH / 2 + 10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "Checkbox": {
+                        "id": "PERFLOGGING_CHECKBOX",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "checkbox-perflogging-container"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

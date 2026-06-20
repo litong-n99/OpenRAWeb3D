@@ -1,0 +1,80 @@
+{
+  "Container": {
+    "id": "CREDITS_PANEL",
+    "Logic": "CreditsLogic",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+    "Width": "410",
+    "Height": "435",
+    "Children": {
+      "Label": {
+        "id": "CREDITS_TITLE",
+        "Width": "PARENT_WIDTH",
+        "Height": "25",
+        "Y": "0 - 34",
+        "Font": "BigBold",
+        "Contrast": "true",
+        "Align": "Center",
+        "Text": "label-credits-title"
+      },
+      "Background": {
+        "id": "bg",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "Background": "panel-black",
+        "Children": {
+          "Container": {
+            "id": "TAB_CONTAINER",
+            "Visible": "False",
+            "X": "15",
+            "Y": "15",
+            "Width": "PARENT_WIDTH - 30",
+            "Height": "34",
+            "Children": {
+              "Button": [
+                {
+                  "id": "MOD_TAB",
+                  "Width": "140",
+                  "Height": "35"
+                },
+                {
+                  "id": "ENGINE_TAB",
+                  "X": "150",
+                  "Width": "140",
+                  "Height": "35",
+                  "Text": "label-openra"
+                }
+              ]
+            }
+          },
+          "ScrollPanel": {
+            "id": "CREDITS_DISPLAY",
+            "X": "15",
+            "Y": "15",
+            "Width": "PARENT_WIDTH - 30",
+            "Height": "PARENT_HEIGHT - 30",
+            "TopBottomSpacing": "8",
+            "Children": {
+              "Label": {
+                "id": "CREDITS_TEMPLATE",
+                "X": "8",
+                "Width": "PARENT_WIDTH - 24 - 2 * 8",
+                "Height": "16",
+                "VAlign": "Top",
+                "WordWrap": "true"
+              }
+            }
+          }
+        }
+      },
+      "Button": {
+        "id": "BACK_BUTTON",
+        "Y": "PARENT_HEIGHT - 1",
+        "Width": "140",
+        "Height": "35",
+        "Text": "button-back",
+        "Key": "escape"
+      }
+    }
+  }
+}

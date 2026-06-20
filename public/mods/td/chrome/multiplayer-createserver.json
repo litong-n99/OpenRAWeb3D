@@ -1,0 +1,325 @@
+{
+  "Container": {
+    "id": "MULTIPLAYER_CREATESERVER_PANEL",
+    "Logic": "ServerCreationLogic",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "(WINDOW_HEIGHT - HEIGHT - 15) / 2",
+    "Width": "530",
+    "Height": "275",
+    "Children": {
+      "Label": {
+        "id": "TITLE",
+        "Width": "PARENT_WIDTH",
+        "Height": "25",
+        "Y": "0 - 34",
+        "Font": "BigBold",
+        "Contrast": "true",
+        "Align": "Center",
+        "Text": "label-multiplayer-createserver-panel-title"
+      },
+      "Background": {
+        "id": "bg",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "Background": "panel-black",
+        "Children": {
+          "Label": [
+            {
+              "id": "SERVER_NAME_LABEL",
+              "Y": "14",
+              "Width": "105",
+              "Height": "25",
+              "Align": "Right",
+              "Text": "label-bg-server-name"
+            },
+            {
+              "id": "PASSWORD_LABEL",
+              "Y": "49",
+              "Width": "105",
+              "Height": "25",
+              "Align": "Right",
+              "Text": "label-bg-password"
+            },
+            {
+              "id": "AFTER_PASSWORD_LABEL",
+              "X": "265",
+              "Y": "49",
+              "Width": "105",
+              "Height": "25",
+              "Align": "Left",
+              "Text": "label-bg-after-password"
+            },
+            {
+              "id": "LISTEN_PORT_LABEL",
+              "Y": "84",
+              "Width": "105",
+              "Height": "25",
+              "Align": "Right",
+              "Text": "label-bg-listen-port"
+            },
+            {
+              "id": "NOTICES_HEADER_A",
+              "X": "15",
+              "Y": "125",
+              "Height": "25",
+              "Align": "Left",
+              "Font": "Bold"
+            },
+            {
+              "id": "NOTICES_HEADER_B",
+              "X": "15",
+              "Y": "125",
+              "Height": "25",
+              "Align": "Left",
+              "Font": "Bold"
+            },
+            {
+              "id": "NOTICES_HEADER_C",
+              "X": "15",
+              "Y": "125",
+              "Height": "25",
+              "Align": "Left",
+              "Font": "Bold"
+            }
+          ],
+          "TextField": [
+            {
+              "id": "SERVER_NAME",
+              "X": "110",
+              "Y": "15",
+              "Width": "215",
+              "MaxLength": "50",
+              "Height": "25",
+              "Text": "My OpenRA Server"
+            },
+            {
+              "id": "LISTEN_PORT",
+              "X": "110",
+              "Y": "85",
+              "Width": "50",
+              "Height": "25",
+              "MaxLength": "5",
+              "Text": "1234",
+              "Type": "Integer"
+            }
+          ],
+          "PasswordField": {
+            "id": "PASSWORD",
+            "X": "110",
+            "Y": "50",
+            "Width": "145",
+            "MaxLength": "20",
+            "Height": "25"
+          },
+          "Checkbox": {
+            "id": "ADVERTISE_CHECKBOX",
+            "X": "180",
+            "Y": "87",
+            "Width": "150",
+            "Height": "20",
+            "Font": "Regular",
+            "Text": "checkbox-bg-advertise"
+          },
+          "Container": [
+            {
+              "id": "NOTICES_LAN",
+              "X": "20",
+              "Y": "145",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT",
+              "Children": {
+                "Label": [
+                  {
+                    "id": "ADVERTISING",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-lan-advertising"
+                  },
+                  {
+                    "id": "FIREWALL",
+                    "Y": "12",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-lan-firewall"
+                  },
+                  {
+                    "id": "PORTFORWARD_A",
+                    "Y": "24",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-lan-portforward-a"
+                  },
+                  {
+                    "id": "PORTFORWARD_B",
+                    "X": "7",
+                    "Y": "36",
+                    "Width": "295",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-lan-portforward-b"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "NOTICES_NO_UPNP",
+              "X": "20",
+              "Y": "145",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT",
+              "Children": {
+                "Label": [
+                  {
+                    "id": "ADVERTISING",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-no-upnp-advertising"
+                  },
+                  {
+                    "id": "FIREWALL",
+                    "Y": "12",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-no-upnp-firewall"
+                  },
+                  {
+                    "id": "PORTFORWARD_A",
+                    "Y": "24",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-no-upnp-portforward-a"
+                  },
+                  {
+                    "id": "PORTFORWARD_B",
+                    "X": "7",
+                    "Y": "36",
+                    "Width": "295",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-no-upnp-portforward-b"
+                  },
+                  {
+                    "id": "SETTINGS_A",
+                    "Y": "48",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-no-upnp-settings-a"
+                  },
+                  {
+                    "id": "SETTINGS_B",
+                    "X": "7",
+                    "Y": "60",
+                    "Width": "295",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-no-upnp-settings-b"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "NOTICES_UPNP",
+              "X": "20",
+              "Y": "145",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT",
+              "Children": {
+                "Label": [
+                  {
+                    "id": "ADVERTISING",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-upnp-advertising"
+                  },
+                  {
+                    "id": "FIREWALL",
+                    "Y": "12",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-upnp-firewall"
+                  },
+                  {
+                    "id": "PORTFORWARD_A",
+                    "Y": "24",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-upnp-portforward-a"
+                  },
+                  {
+                    "id": "SETTINGS_A",
+                    "Y": "36",
+                    "Width": "305",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left",
+                    "Text": "label-notices-upnp-settings-a"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "MAP_PREVIEW_ROOT",
+              "X": "PARENT_WIDTH - 189",
+              "Y": "15",
+              "Width": "174",
+              "Height": "250"
+            }
+          ]
+        }
+      },
+      "Button": [
+        {
+          "id": "BACK_BUTTON",
+          "Key": "return",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-back"
+        },
+        {
+          "id": "MAP_BUTTON",
+          "X": "PARENT_WIDTH - WIDTH - 150",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-multiplayer-createserver-panel-change-map"
+        },
+        {
+          "id": "CREATE_BUTTON",
+          "Key": "return",
+          "X": "PARENT_WIDTH - WIDTH",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-multiplayer-createserver-panel-create"
+        }
+      ],
+      "TooltipContainer": {
+        "id": "TOOLTIP_CONTAINER"
+      }
+    }
+  }
+}

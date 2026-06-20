@@ -1,0 +1,1707 @@
+{
+  "Background": [
+    {
+      "id": "NEW_MAP_BG",
+      "Logic": "NewMapLogic",
+      "X": "(WINDOW_WIDTH - WIDTH) / 2",
+      "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+      "Width": "300",
+      "Height": "185",
+      "Children": {
+        "Label": [
+          {
+            "id": "LABEL_TITLE",
+            "X": "0",
+            "Y": "21",
+            "Width": "300",
+            "Height": "25",
+            "Text": "label-new-map-bg-title",
+            "Align": "Center",
+            "Font": "Bold"
+          },
+          {
+            "id": "TILESET_LABEL",
+            "X": "20",
+            "Y": "60",
+            "Width": "95",
+            "Height": "25",
+            "Align": "Right",
+            "Text": "label-new-map-bg-tileset"
+          },
+          {
+            "id": "WIDTH_LABEL",
+            "X": "20",
+            "Y": "95",
+            "Width": "95",
+            "Height": "25",
+            "Align": "Right",
+            "Text": "label-new-map-bg-width"
+          },
+          {
+            "id": "HEIGHT_LABEL",
+            "X": "130",
+            "Y": "95",
+            "Width": "95",
+            "Height": "25",
+            "Align": "Right",
+            "Text": "label-new-map-bg-height"
+          }
+        ],
+        "DropDownButton": {
+          "id": "TILESET",
+          "X": "120",
+          "Y": "60",
+          "Width": "160",
+          "Height": "25"
+        },
+        "TextField": [
+          {
+            "id": "WIDTH",
+            "X": "120",
+            "Y": "95",
+            "Width": "50",
+            "MaxLength": "3",
+            "Height": "25",
+            "Text": {
+              "Type": "Integer",
+              "__value": "128"
+            }
+          },
+          {
+            "id": "HEIGHT",
+            "X": "230",
+            "Y": "95",
+            "Width": "50",
+            "MaxLength": "3",
+            "Height": "25",
+            "Text": "128",
+            "Type": "Integer"
+          }
+        ],
+        "Button": [
+          {
+            "id": "CREATE_BUTTON",
+            "X": "30",
+            "Y": "PARENT_HEIGHT - 45",
+            "Width": "120",
+            "Height": "25",
+            "Text": "button-new-map-bg-create",
+            "Font": "Bold",
+            "Key": "return"
+          },
+          {
+            "id": "CANCEL_BUTTON",
+            "X": "160",
+            "Y": "PARENT_HEIGHT - 45",
+            "Width": "120",
+            "Height": "25",
+            "Text": "button-cancel",
+            "Font": "Bold",
+            "Key": "escape"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SAVE_MAP_PANEL",
+      "Logic": "SaveMapLogic",
+      "X": "(WINDOW_WIDTH - WIDTH) / 2",
+      "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+      "Width": "350",
+      "Height": "300",
+      "Children": {
+        "Label": [
+          {
+            "id": "LABEL_TITLE",
+            "X": "(PARENT_WIDTH - WIDTH) / 2",
+            "Y": "21",
+            "Width": "250",
+            "Height": "25",
+            "Text": "label-save-map-panel-heading",
+            "Align": "Center",
+            "Font": "Bold"
+          },
+          {
+            "id": "TITLE_LABEL",
+            "X": "10",
+            "Y": "60",
+            "Width": "95",
+            "Height": "25",
+            "Align": "Right",
+            "Text": "label-save-map-panel-title"
+          },
+          {
+            "id": "AUTHOR_LABEL",
+            "X": "10",
+            "Y": "95",
+            "Width": "95",
+            "Height": "25",
+            "Align": "Right",
+            "Text": "label-save-map-panel-author"
+          },
+          {
+            "id": "VISIBILITY_LABEL",
+            "X": "10",
+            "Y": "130",
+            "Width": "95",
+            "Height": "25",
+            "Align": "Right",
+            "Text": "label-save-map-panel-visibility"
+          },
+          {
+            "id": "DIRECTORY_LABEL",
+            "X": "10",
+            "Y": "165",
+            "Width": "95",
+            "Height": "25",
+            "Align": "Right",
+            "Text": "label-save-map-panel-directory"
+          },
+          {
+            "id": "FILENAME_LABEL",
+            "X": "10",
+            "Y": "200",
+            "Width": "95",
+            "Height": "25",
+            "Align": "Right",
+            "Text": "label-save-map-panel-filename"
+          }
+        ],
+        "TextField": [
+          {
+            "id": "TITLE",
+            "X": "110",
+            "Y": "60",
+            "Width": "220",
+            "MaxLength": "50",
+            "Height": "25"
+          },
+          {
+            "id": "AUTHOR",
+            "X": "110",
+            "Y": "95",
+            "Width": "220",
+            "MaxLength": "50",
+            "Height": "25"
+          },
+          {
+            "id": "FILENAME",
+            "X": "110",
+            "Y": "200",
+            "Width": "105",
+            "Height": "25",
+            "Type": "Filename"
+          }
+        ],
+        "DropDownButton": [
+          {
+            "id": "VISIBILITY_DROPDOWN",
+            "X": "110",
+            "Y": "130",
+            "Width": "220",
+            "Height": "25",
+            "Text": "dropdownbutton-save-map-panel-visibility-dropdown"
+          },
+          {
+            "id": "DIRECTORY_DROPDOWN",
+            "X": "110",
+            "Y": "165",
+            "Width": "220",
+            "Height": "25"
+          },
+          {
+            "id": "TYPE_DROPDOWN",
+            "X": "220",
+            "Y": "200",
+            "Width": "110",
+            "Height": "25"
+          }
+        ],
+        "Button": [
+          {
+            "id": "SAVE_BUTTON",
+            "X": "80",
+            "Y": "PARENT_HEIGHT - 45",
+            "Width": "120",
+            "Height": "25",
+            "Text": "button-save-map-panel",
+            "Font": "Bold"
+          },
+          {
+            "id": "BACK_BUTTON",
+            "X": "210",
+            "Y": "PARENT_HEIGHT - 45",
+            "Width": "120",
+            "Height": "25",
+            "Text": "button-cancel",
+            "Font": "Bold",
+            "Key": "escape"
+          }
+        ]
+      }
+    },
+    {
+      "id": "MARKER_TOOL_PANEL",
+      "X": "10",
+      "Y": "35",
+      "Width": "PARENT_WIDTH - 20",
+      "Height": "WINDOW_HEIGHT - 490",
+      "Background": "scrollpanel-bg",
+      "Visible": "false",
+      "Logic": "MapMarkerTilesLogic",
+      "Children": {
+        "ScrollPanel": {
+          "id": "TILE_COLOR_PANEL",
+          "X": "6",
+          "Y": "6",
+          "Width": "PARENT_WIDTH - 19",
+          "Height": "31",
+          "TopBottomSpacing": "1",
+          "ItemSpacing": "1",
+          "ScrollBar": "Hidden",
+          "ScrollbarWidth": "0",
+          "ContentHeight": "31",
+          "Children": {
+            "ScrollItem": [
+              {
+                "id": "TILE_COLOR_TEMPLATE",
+                "Visible": "false",
+                "Height": "29",
+                "Width": "29",
+                "IgnoreChildMouseOver": "true",
+                "Children": {
+                  "ColorBlock": {
+                    "id": "TILE_PREVIEW",
+                    "X": "2",
+                    "Y": "2",
+                    "Width": "26",
+                    "Height": "26"
+                  }
+                }
+              },
+              {
+                "id": "TILE_ICON_TEMPLATE",
+                "Visible": "false",
+                "Height": "29",
+                "Width": "29",
+                "IgnoreChildMouseOver": "true",
+                "Children": {
+                  "Image": {
+                    "id": "TILE_ERASE",
+                    "X": "6",
+                    "Y": "6",
+                    "Width": "26",
+                    "Height": "26",
+                    "ImageCollection": "editor",
+                    "ImageName": "erase"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "Button": [
+          {
+            "id": "CLEAR_CURRENT_BUTTON",
+            "X": "6",
+            "Y": "42",
+            "Width": "100",
+            "Height": "25",
+            "Text": "button-marker-tiles-clear-current",
+            "Font": "Bold"
+          },
+          {
+            "id": "CLEAR_ALL_BUTTON",
+            "X": "111",
+            "Y": "42",
+            "Width": "75",
+            "Height": "25",
+            "Text": "button-marker-tiles-clear-all",
+            "Font": "Bold"
+          }
+        ],
+        "Label": [
+          {
+            "id": "ALPHA_LABEL",
+            "X": "6",
+            "Y": "72",
+            "Width": "265",
+            "Height": "25",
+            "Align": "Left",
+            "Text": "label-marker-alpha"
+          },
+          {
+            "id": "ALPHA_VALUE",
+            "X": "260",
+            "Y": "72",
+            "Width": "30",
+            "Height": "25",
+            "Align": "Left"
+          },
+          {
+            "id": "MODE_LABEL",
+            "X": "6",
+            "Y": "102",
+            "Width": "260",
+            "Height": "25",
+            "Align": "Left",
+            "Text": "label-marker-mirror-mode"
+          },
+          {
+            "id": "NUM_SIDES_LABEL",
+            "X": "6",
+            "Y": "132",
+            "Width": "256",
+            "Height": "25",
+            "Align": "Left",
+            "Text": "label-marker-layer-num-sides"
+          },
+          {
+            "id": "ROTATE_NUM_SIDES_VALUE",
+            "X": "260",
+            "Y": "132",
+            "Width": "30",
+            "Height": "25",
+            "Align": "Left",
+            "Visible": "false"
+          },
+          {
+            "id": "AXIS_ANGLE_LABEL",
+            "X": "6",
+            "Y": "162",
+            "Width": "256",
+            "Height": "25",
+            "Align": "Left",
+            "Text": "label-marker-axis-angle",
+            "Visible": "false"
+          },
+          {
+            "id": "AXIS_ANGLE_VALUE",
+            "X": "260",
+            "Y": "162",
+            "Width": "30",
+            "Height": "25",
+            "Align": "Left",
+            "Visible": "false"
+          }
+        ],
+        "Slider": [
+          {
+            "id": "ALPHA_SLIDER",
+            "X": "130",
+            "Y": "72",
+            "Width": "128",
+            "Height": "25"
+          },
+          {
+            "id": "ROTATE_NUM_SIDES_SLIDER",
+            "X": "130",
+            "Y": "132",
+            "Width": "128",
+            "Height": "25",
+            "Visible": "false"
+          },
+          {
+            "id": "AXIS_ANGLE_SLIDER",
+            "X": "130",
+            "Y": "162",
+            "Width": "128",
+            "Height": "25",
+            "Visible": "false"
+          }
+        ],
+        "DropDownButton": [
+          {
+            "id": "MODE_DROPDOWN",
+            "X": "129",
+            "Y": "102",
+            "Width": "157",
+            "Height": "25"
+          },
+          {
+            "id": "FLIP_NUM_SIDES_DROPDOWN",
+            "X": "129",
+            "Y": "132",
+            "Width": "157",
+            "Height": "25"
+          }
+        ]
+      }
+    }
+  ],
+  "ScrollPanel": [
+    {
+      "id": "MAP_SAVE_VISIBILITY_PANEL",
+      "TopBottomSpacing": "5",
+      "ItemSpacing": "5",
+      "Width": "220",
+      "Height": "55",
+      "Children": {
+        "Checkbox": {
+          "id": "VISIBILITY_TEMPLATE",
+          "X": "5",
+          "Width": "PARENT_WIDTH - 29",
+          "Height": "20",
+          "Font": "Regular"
+        }
+      }
+    },
+    {
+      "id": "CATEGORY_FILTER_PANEL",
+      "Width": "240",
+      "TopBottomSpacing": "5",
+      "ItemSpacing": "5",
+      "Children": {
+        "Container": {
+          "id": "SELECT_CATEGORIES_BUTTONS",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Children": {
+            "Button": [
+              {
+                "id": "SELECT_ALL",
+                "X": "10",
+                "Y": "0 - 5",
+                "Width": "93",
+                "Height": "25",
+                "Text": "button-select-categories-buttons-all",
+                "Font": "Bold"
+              },
+              {
+                "id": "SELECT_NONE",
+                "X": "10 + 93 + 10",
+                "Y": "0 - 5",
+                "Width": "93",
+                "Height": "25",
+                "Text": "button-select-categories-buttons-none",
+                "Font": "Bold"
+              }
+            ]
+          }
+        },
+        "Checkbox": {
+          "id": "CATEGORY_TEMPLATE",
+          "X": "5",
+          "Width": "PARENT_WIDTH - 29",
+          "Height": "20",
+          "Visible": "false"
+        }
+      }
+    },
+    {
+      "id": "OVERLAY_PANEL",
+      "Width": "140",
+      "Height": "80",
+      "ItemSpacing": "5",
+      "TopBottomSpacing": "0",
+      "Children": {
+        "Checkbox": {
+          "id": "CATEGORY_TEMPLATE",
+          "X": "5",
+          "Y": "5",
+          "Width": "PARENT_WIDTH - 29",
+          "Height": "20",
+          "Visible": "false"
+        }
+      }
+    },
+    {
+      "id": "MAP_GENERATOR_TOOL_PANEL",
+      "X": "9",
+      "Y": "35",
+      "Width": "290",
+      "Height": "WINDOW_HEIGHT - 490",
+      "Visible": "false",
+      "ScrollBar": "Hidden",
+      "ScrollbarWidth": "0",
+      "Logic": "MapGeneratorToolLogic",
+      "Children": {
+        "Button": [
+          {
+            "id": "GENERATE_BUTTON",
+            "X": "5",
+            "Y": "5",
+            "Width": "95",
+            "Height": "25",
+            "Text": "button-map-generator-generate",
+            "Font": "Bold"
+          },
+          {
+            "id": "GENERATE_RANDOM_BUTTON",
+            "X": "105",
+            "Y": "5",
+            "Width": "180",
+            "Height": "25",
+            "Text": "button-map-generator-generate-random",
+            "Font": "Bold"
+          }
+        ],
+        "ScrollPanel": {
+          "id": "SETTINGS_PANEL",
+          "X": "0",
+          "Y": "35",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT - 35",
+          "Children": {
+            "Container": [
+              {
+                "id": "CHECKBOX_TEMPLATE",
+                "X": "5",
+                "Width": "PARENT_WIDTH - 35",
+                "Height": "30",
+                "Children": {
+                  "Checkbox": {
+                    "id": "CHECKBOX",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "25"
+                  }
+                }
+              },
+              {
+                "id": "TEXT_TEMPLATE",
+                "X": "5",
+                "Width": "PARENT_WIDTH - 35",
+                "Height": "50",
+                "Children": {
+                  "LabelForInput": {
+                    "id": "LABEL",
+                    "Y": "0",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "20",
+                    "For": "INPUT"
+                  },
+                  "TextField": {
+                    "id": "INPUT",
+                    "Y": "20",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "25"
+                  }
+                }
+              },
+              {
+                "id": "DROPDOWN_TEMPLATE",
+                "X": "5",
+                "Width": "PARENT_WIDTH - 35",
+                "Height": "50",
+                "Children": {
+                  "LabelForInput": {
+                    "id": "LABEL",
+                    "Y": "0",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "20",
+                    "For": "DROPDOWN"
+                  },
+                  "DropDownButton": {
+                    "id": "DROPDOWN",
+                    "Y": "20",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "25",
+                    "PanelRoot": "EDITOR_WORLD_ROOT"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "TILING_PATH_TOOL_PANEL",
+      "X": "10",
+      "Y": "35",
+      "Width": "PARENT_WIDTH - 20",
+      "Height": "WINDOW_HEIGHT - 490",
+      "TopBottomSpacing": "5",
+      "ItemSpacing": "5",
+      "Background": "scrollpanel-bg",
+      "Visible": "false",
+      "Logic": "TilingPathToolLogic",
+      "Children": {
+        "Container": [
+          {
+            "id": "START_TYPE",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "50",
+            "Children": {
+              "LabelForInput": {
+                "id": "LABEL",
+                "Y": "0",
+                "Width": "PARENT_WIDTH",
+                "Height": "20",
+                "Text": "label-tiling-path-type-start",
+                "For": "DROPDOWN"
+              },
+              "DropDownButton": {
+                "id": "DROPDOWN",
+                "Y": "20",
+                "Width": "PARENT_WIDTH",
+                "Height": "25"
+              }
+            }
+          },
+          {
+            "id": "INNER_TYPE",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "50",
+            "Children": {
+              "LabelForInput": {
+                "id": "LABEL",
+                "Y": "0",
+                "Width": "PARENT_WIDTH",
+                "Height": "20",
+                "Text": "label-tiling-path-type-inner",
+                "For": "DROPDOWN"
+              },
+              "DropDownButton": {
+                "id": "DROPDOWN",
+                "Y": "20",
+                "Width": "PARENT_WIDTH",
+                "Height": "25"
+              }
+            }
+          },
+          {
+            "id": "END_TYPE",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "50",
+            "Children": {
+              "LabelForInput": {
+                "id": "LABEL",
+                "Y": "0",
+                "Width": "PARENT_WIDTH",
+                "Height": "20",
+                "Text": "label-tiling-path-type-end",
+                "For": "DROPDOWN"
+              },
+              "DropDownButton": {
+                "id": "DROPDOWN",
+                "Y": "20",
+                "Width": "PARENT_WIDTH",
+                "Height": "25"
+              }
+            }
+          },
+          {
+            "id": "DEVIATION",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "50",
+            "Children": {
+              "LabelForInput": {
+                "id": "LABEL",
+                "Y": "0",
+                "Width": "PARENT_WIDTH",
+                "Height": "20",
+                "Text": "label-tiling-path-deviation",
+                "For": "SLIDER"
+              },
+              "Slider": {
+                "id": "SLIDER",
+                "Y": "20",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "MinimumValue": "0",
+                "MaximumValue": "10",
+                "Ticks": "11"
+              }
+            }
+          }
+        ],
+        "Checkbox": [
+          {
+            "id": "ALLOW_END_DEVIATION",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "25",
+            "Text": "checkbox-tiling-path-allow-end-deviation"
+          },
+          {
+            "id": "CLOSED_LOOPS",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "25",
+            "Text": "checkbox-tiling-path-closed-loops"
+          }
+        ],
+        "Button": [
+          {
+            "id": "REVERSE",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "25",
+            "Text": "button-tiling-path-reverse"
+          },
+          {
+            "id": "RESET",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "25",
+            "Text": "button-tiling-path-reset"
+          },
+          {
+            "id": "RANDOMIZE",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "25",
+            "Text": "button-tiling-path-randomize"
+          },
+          {
+            "id": "PAINT",
+            "X": "5",
+            "Width": "PARENT_WIDTH - 35",
+            "Height": "25",
+            "Text": "button-tiling-path-paint"
+          }
+        ]
+      }
+    }
+  ],
+  "Container": [
+    {
+      "id": "EDITOR_ROOT",
+      "Logic": "LoadMapEditorLogic",
+      "Children": {
+        "LogicKeyListener": [
+          {
+            "id": "GLOBAL_KEYHANDLER",
+            "Logic": {
+              "StopMusicKey": "StopMusic",
+              "PauseMusicKey": "PauseMusic",
+              "PrevMusicKey": "PrevMusic",
+              "NextMusicKey": "NextMusic",
+              "TakeScreenshotKey": "TakeScreenshot",
+              "MuteAudioKey": "ToggleMute",
+              "QuickSaveKey": "EditorQuickSave",
+              "DisableUIKey": "DisableUserInterface",
+              "DisableAllUIKey": "DisableAllUserInterface",
+              "__value": "MusicHotkeyLogic, ScreenshotHotkeyLogic, MuteHotkeyLogic, EditorQuickSaveHotkeyLogic, DisableUIKeyLogic, DisableAllUIKeyLogic"
+            }
+          },
+          {
+            "id": "WORLD_KEYHANDLER",
+            "Logic": {
+              "ResetZoomKey": "ResetZoom",
+              "__value": "ResetZoomHotkeyLogic"
+            }
+          }
+        ],
+        "Container": [
+          {
+            "id": "WORLD_ROOT"
+          },
+          {
+            "id": "MENU_ROOT"
+          }
+        ],
+        "TooltipContainer": {
+          "id": "TOOLTIP_CONTAINER"
+        }
+      }
+    },
+    {
+      "id": "EDITOR_WORLD_ROOT",
+      "Logic": {
+        "ToggleGridOverlayKey": "EditorToggleGridOverlay",
+        "ToggleBuildableOverlayKey": "EditorToggleBuildableOverlay",
+        "ToggleMarkerOverlayKey": "EditorToggleMarkerOverlay",
+        "__value": "LoadIngamePerfLogic, MapEditorLogic, ActorEditLogic, MapOverlaysLogic, MapEditorSelectionLogic"
+      },
+      "Children": {
+        "LogicKeyListener": {
+          "id": "OVERLAY_KEYHANDLER"
+        },
+        "Container": [
+          {
+            "id": "PERF_ROOT"
+          },
+          {
+            "id": "TILE_WIDGETS",
+            "X": "WINDOW_WIDTH - 320",
+            "Y": "354",
+            "Width": "310",
+            "Height": "WINDOW_HEIGHT - 458",
+            "Logic": "TileSelectorLogic",
+            "Children": {
+              "Label": [
+                {
+                  "id": "SEARCH_LABEL",
+                  "Y": "12",
+                  "Width": "55",
+                  "Height": "25",
+                  "Text": "label-tiles-bg-search",
+                  "Align": "Right",
+                  "Font": "TinyBold"
+                },
+                {
+                  "id": "CATEGORIES_LABEL",
+                  "Y": "36",
+                  "Width": "55",
+                  "Height": "25",
+                  "Text": "label-bg-filter",
+                  "Align": "Right",
+                  "Font": "TinyBold"
+                }
+              ],
+              "TextField": {
+                "id": "SEARCH_TEXTFIELD",
+                "X": "60",
+                "Y": "10",
+                "Width": "PARENT_WIDTH - 70",
+                "Height": "25"
+              },
+              "DropDownButton": {
+                "id": "CATEGORIES_DROPDOWN",
+                "X": "60",
+                "Y": "34",
+                "Width": "PARENT_WIDTH - 70",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              "ScrollPanel": {
+                "id": "TILETEMPLATE_LIST",
+                "X": "10",
+                "Y": "58",
+                "Width": "PARENT_WIDTH - 20",
+                "Height": "PARENT_HEIGHT - 55",
+                "TopBottomSpacing": "4",
+                "ItemSpacing": "4",
+                "Children": {
+                  "ScrollItem": {
+                    "id": "TILEPREVIEW_TEMPLATE",
+                    "Visible": "false",
+                    "Width": "(PARENT_WIDTH - 24) / 2 - 6",
+                    "Height": "PARENT_WIDTH / 2",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "Children": {
+                      "TerrainTemplatePreview": {
+                        "id": "TILE_PREVIEW",
+                        "X": "4",
+                        "Y": "4"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "LAYER_WIDGETS",
+            "X": "WINDOW_WIDTH - 320",
+            "Y": "354",
+            "Width": "310",
+            "Height": "WINDOW_HEIGHT - 458",
+            "Visible": "false",
+            "Logic": "LayerSelectorLogic",
+            "Children": {
+              "ScrollPanel": {
+                "id": "LAYERTEMPLATE_LIST",
+                "X": "10",
+                "Y": "10",
+                "Width": "PARENT_WIDTH - 20",
+                "Height": "PARENT_HEIGHT - 7",
+                "TopBottomSpacing": "4",
+                "ItemSpacing": "4",
+                "Children": {
+                  "ScrollItem": {
+                    "id": "LAYERPREVIEW_TEMPLATE",
+                    "Visible": "false",
+                    "Width": "(PARENT_WIDTH - 24) / 2 - 6",
+                    "Height": "PARENT_WIDTH / 2",
+                    "IgnoreChildMouseOver": "true",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "Children": {
+                      "ResourcePreview": {
+                        "id": "LAYER_PREVIEW",
+                        "X": "4",
+                        "Y": "4"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "ACTOR_WIDGETS",
+            "X": "WINDOW_WIDTH - 320",
+            "Y": "354",
+            "Width": "310",
+            "Height": "WINDOW_HEIGHT - 458",
+            "Visible": "false",
+            "Logic": "ActorSelectorLogic",
+            "Children": {
+              "Label": [
+                {
+                  "id": "SEARCH_LABEL",
+                  "Y": "12",
+                  "Width": "55",
+                  "Height": "25",
+                  "Text": "label-actors-bg-search",
+                  "Align": "Right",
+                  "Font": "TinyBold"
+                },
+                {
+                  "id": "CATEGORIES_LABEL",
+                  "Y": "36",
+                  "Width": "55",
+                  "Height": "25",
+                  "Text": "label-bg-filter",
+                  "Align": "Right",
+                  "Font": "TinyBold"
+                },
+                {
+                  "id": "OWNERS_LABEL",
+                  "Y": "60",
+                  "Width": "55",
+                  "Height": "25",
+                  "Text": "label-actor-bg-owner",
+                  "Align": "Right",
+                  "Font": "TinyBold"
+                }
+              ],
+              "TextField": {
+                "id": "SEARCH_TEXTFIELD",
+                "X": "60",
+                "Y": "10",
+                "Width": "PARENT_WIDTH - 70",
+                "Height": "25"
+              },
+              "DropDownButton": [
+                {
+                  "id": "CATEGORIES_DROPDOWN",
+                  "X": "60",
+                  "Y": "34",
+                  "Width": "PARENT_WIDTH - 70",
+                  "Height": "25",
+                  "Font": "Bold"
+                },
+                {
+                  "id": "OWNERS_DROPDOWN",
+                  "X": "60",
+                  "Y": "58",
+                  "Width": "PARENT_WIDTH - 70",
+                  "Height": "25",
+                  "Font": "Bold"
+                }
+              ],
+              "ScrollPanel": {
+                "id": "ACTORTEMPLATE_LIST",
+                "X": "10",
+                "Y": "82",
+                "Width": "PARENT_WIDTH - 20",
+                "Height": "PARENT_HEIGHT - 79",
+                "TopBottomSpacing": "4",
+                "ItemSpacing": "4",
+                "Children": {
+                  "ScrollItem": {
+                    "id": "ACTORPREVIEW_TEMPLATE",
+                    "Visible": "false",
+                    "Width": "(PARENT_WIDTH - 24) / 2 - 6",
+                    "Height": "PARENT_WIDTH / 2",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP",
+                    "IgnoreChildMouseOver": "true",
+                    "Children": {
+                      "ActorPreview": {
+                        "id": "ACTOR_PREVIEW",
+                        "X": "4",
+                        "Y": "4"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "TOOLS_WIDGETS",
+            "X": "WINDOW_WIDTH - 320",
+            "Y": "354",
+            "Width": "310",
+            "Height": "WINDOW_HEIGHT - 458",
+            "Visible": "false",
+            "Logic": "MapToolsLogic",
+            "Children": {
+              "Label": {
+                "id": "TOOLS_LABEL",
+                "Y": "12",
+                "Width": "55",
+                "Height": "25",
+                "Text": "label-tool-bg-category",
+                "Align": "Right",
+                "Font": "TinyBold"
+              },
+              "DropDownButton": {
+                "id": "TOOLS_DROPDOWN",
+                "X": "60",
+                "Y": "10",
+                "Width": "PARENT_WIDTH - 70",
+                "Height": "25",
+                "Font": "Bold"
+              }
+            }
+          },
+          {
+            "id": "HISTORY_WIDGETS",
+            "X": "WINDOW_WIDTH - 320",
+            "Y": "354",
+            "Width": "310",
+            "Height": "WINDOW_HEIGHT - 458",
+            "Logic": "HistoryLogLogic",
+            "Visible": "false",
+            "Children": {
+              "ScrollPanel": {
+                "id": "HISTORY_LIST",
+                "X": "10",
+                "Y": "10",
+                "Width": "PARENT_WIDTH - 20",
+                "Height": "PARENT_HEIGHT - 7",
+                "CollapseHiddenChildren": "True",
+                "TopBottomSpacing": "4",
+                "ItemSpacing": "4",
+                "Children": {
+                  "ScrollItem": {
+                    "id": "HISTORY_TEMPLATE",
+                    "X": "4",
+                    "Visible": "false",
+                    "Width": "PARENT_WIDTH - 31",
+                    "Height": "25",
+                    "IgnoreChildMouseOver": "true",
+                    "TextColor": "ffffff",
+                    "TextColorDisabled": "8f8f8f",
+                    "Children": {
+                      "Label": {
+                        "id": "TITLE",
+                        "X": "5",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "25",
+                        "Align": "Left"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "SELECT_WIDGETS",
+            "X": "WINDOW_WIDTH - 320",
+            "Y": "354",
+            "Width": "310",
+            "Height": "WINDOW_HEIGHT - 458",
+            "Visible": "false",
+            "Children": {
+              "Background": [
+                {
+                  "id": "AREA_EDIT_PANEL",
+                  "X": "10",
+                  "Y": "10",
+                  "Width": "PARENT_WIDTH - 20",
+                  "Height": "PARENT_HEIGHT - 7",
+                  "Background": "scrollpanel-bg",
+                  "Children": {
+                    "Label": [
+                      {
+                        "id": "AREA_EDIT_TITLE",
+                        "Y": "16",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "24",
+                        "Align": "Center",
+                        "Font": "Bold",
+                        "Text": "label-area-selection"
+                      },
+                      {
+                        "id": "AREA_FILTERS_LABEL",
+                        "X": "5",
+                        "Y": "45",
+                        "Width": "150",
+                        "Height": "25",
+                        "Font": "Bold",
+                        "Align": "Left",
+                        "Text": "label-selection-filters"
+                      },
+                      {
+                        "id": "AREA_INFO_TITLE",
+                        "Y": "139",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "24",
+                        "Align": "Center",
+                        "Font": "Bold",
+                        "Text": "label-area-info"
+                      },
+                      {
+                        "id": "DIAGONAL_LABEL",
+                        "X": "5",
+                        "Y": "171",
+                        "Width": "120",
+                        "Height": "20",
+                        "Font": "Bold",
+                        "Align": "Left",
+                        "Text": "label-selected-area-diagonal"
+                      },
+                      {
+                        "id": "RESOURCE_LABEL",
+                        "X": "5",
+                        "Y": "193",
+                        "Width": "120",
+                        "Height": "25",
+                        "Font": "Bold",
+                        "Align": "Left",
+                        "Text": "label-selected-area-resources"
+                      },
+                      {
+                        "id": "DIAGONAL_COUNTER_LABEL",
+                        "X": "140",
+                        "Y": "170",
+                        "Width": "55",
+                        "Height": "22",
+                        "Align": "Left"
+                      },
+                      {
+                        "id": "RESOURCES_COUNTER_LABEL",
+                        "X": "140",
+                        "Y": "195",
+                        "Width": "55",
+                        "Height": "22",
+                        "Align": "Left"
+                      }
+                    ],
+                    "Checkbox": [
+                      {
+                        "id": "COPY_FILTER_TERRAIN_CHECKBOX",
+                        "X": "5",
+                        "Y": "70",
+                        "Width": "PARENT_WIDTH - 29",
+                        "Height": "20",
+                        "Text": "label-filter-terrain"
+                      },
+                      {
+                        "id": "COPY_FILTER_RESOURCES_CHECKBOX",
+                        "X": "5",
+                        "Y": "95",
+                        "Width": "PARENT_WIDTH - 29",
+                        "Height": "20",
+                        "Text": "label-filter-resources"
+                      },
+                      {
+                        "id": "COPY_FILTER_ACTORS_CHECKBOX",
+                        "X": "5",
+                        "Y": "120",
+                        "Width": "PARENT_WIDTH - 29",
+                        "Height": "20",
+                        "Text": "label-filter-actors"
+                      }
+                    ],
+                    "Button": [
+                      {
+                        "id": "SELECTION_DELETE_BUTTON",
+                        "X": "5",
+                        "Y": "222",
+                        "Width": "75",
+                        "Height": "25",
+                        "Text": "button-delete-area.label",
+                        "Font": "Bold",
+                        "Key": "EditorDeleteSelection",
+                        "TooltipTemplate": "BUTTON_TOOLTIP",
+                        "TooltipText": "button-delete-area.tooltip",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      },
+                      {
+                        "id": "SELECTION_CANCEL_BUTTON",
+                        "X": "208",
+                        "Y": "222",
+                        "Width": "75",
+                        "Height": "25",
+                        "Text": "button-cancel",
+                        "Font": "Bold",
+                        "Key": "escape"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "ACTOR_EDIT_PANEL",
+                  "X": "10",
+                  "Y": "10",
+                  "Width": "PARENT_WIDTH - 20",
+                  "Height": "PARENT_HEIGHT - 7",
+                  "Background": "scrollpanel-bg",
+                  "Children": {
+                    "Label": [
+                      {
+                        "id": "ACTOR_TYPE_LABEL",
+                        "Y": "16",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "24",
+                        "Align": "Center",
+                        "Font": "Bold"
+                      },
+                      {
+                        "id": "ACTOR_ID_LABEL",
+                        "Y": "45",
+                        "Width": "55",
+                        "Height": "25",
+                        "Text": "label-actor-edit-panel-id",
+                        "Align": "Right"
+                      },
+                      {
+                        "id": "ACTOR_ID_ERROR_LABEL",
+                        "X": "69",
+                        "Y": "71",
+                        "Width": "213",
+                        "Height": "25",
+                        "Font": "TinyBold",
+                        "TextColor": "FF0000"
+                      }
+                    ],
+                    "TextField": {
+                      "id": "ACTOR_ID",
+                      "X": "69",
+                      "Y": "45",
+                      "Width": "213",
+                      "Height": "25"
+                    },
+                    "Container": [
+                      {
+                        "id": "ACTOR_INIT_CONTAINER",
+                        "Y": "73",
+                        "Width": "PARENT_WIDTH",
+                        "Children": {
+                          "Container": [
+                            {
+                              "id": "CHECKBOX_OPTION_TEMPLATE",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "22",
+                              "Children": {
+                                "Checkbox": {
+                                  "id": "OPTION",
+                                  "X": "60",
+                                  "Y": "1",
+                                  "Width": "PARENT_WIDTH - 100",
+                                  "Height": "20"
+                                }
+                              }
+                            },
+                            {
+                              "id": "SLIDER_OPTION_TEMPLATE",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "22",
+                              "Children": {
+                                "Label": {
+                                  "id": "LABEL",
+                                  "Y": "1",
+                                  "Width": "55",
+                                  "Height": "16",
+                                  "Align": "Right"
+                                },
+                                "Slider": {
+                                  "id": "OPTION",
+                                  "X": "60",
+                                  "Y": "1",
+                                  "Width": "170",
+                                  "Height": "20"
+                                },
+                                "TextField": {
+                                  "id": "VALUE",
+                                  "X": "232",
+                                  "Y": "1",
+                                  "Width": "50",
+                                  "Height": "20",
+                                  "Type": "Integer"
+                                }
+                              }
+                            },
+                            {
+                              "id": "DROPDOWN_OPTION_TEMPLATE",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "27",
+                              "Children": {
+                                "Label": {
+                                  "id": "LABEL",
+                                  "Y": "2",
+                                  "Width": "55",
+                                  "Height": "24",
+                                  "Align": "Right"
+                                },
+                                "DropDownButton": {
+                                  "id": "OPTION",
+                                  "X": "69",
+                                  "Y": "1",
+                                  "Width": "213",
+                                  "Height": "25",
+                                  "Font": "Bold"
+                                }
+                              }
+                            },
+                            {
+                              "id": "TEXTFIELD_OPTION_TEMPLATE",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "27",
+                              "Children": {
+                                "Label": {
+                                  "id": "LABEL",
+                                  "Y": "1",
+                                  "Width": "55",
+                                  "Height": "25",
+                                  "Align": "Right"
+                                },
+                                "TextField": {
+                                  "id": "OPTION",
+                                  "X": "69",
+                                  "Y": "1",
+                                  "Width": "213",
+                                  "Height": "25"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "BUTTON_CONTAINER",
+                        "Y": "75",
+                        "Children": {
+                          "Button": [
+                            {
+                              "id": "DELETE_BUTTON",
+                              "X": "5",
+                              "Width": "75",
+                              "Height": "25",
+                              "Text": "button-delete-actor.label",
+                              "Font": "Bold",
+                              "Key": "EditorDeleteSelection",
+                              "TooltipTemplate": "BUTTON_TOOLTIP",
+                              "TooltipText": "button-delete-actor.tooltip",
+                              "TooltipContainer": "TOOLTIP_CONTAINER"
+                            },
+                            {
+                              "id": "CANCEL_BUTTON",
+                              "X": "127",
+                              "Width": "75",
+                              "Height": "25",
+                              "Text": "button-cancel",
+                              "Font": "Bold",
+                              "Key": "escape"
+                            },
+                            {
+                              "id": "OK_BUTTON",
+                              "X": "208",
+                              "Width": "75",
+                              "Height": "25",
+                              "Text": "button-container-ok",
+                              "Font": "Bold",
+                              "Key": "return"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "MAP_EDITOR_TAB_CONTAINER",
+            "Logic": "MapEditorTabsLogic",
+            "X": "WINDOW_WIDTH - 311",
+            "Y": "339",
+            "Width": "292",
+            "Height": "25",
+            "Children": {
+              "Button": [
+                {
+                  "id": "SELECT_TAB",
+                  "X": "0",
+                  "Width": "49",
+                  "Height": "25",
+                  "Key": "EditorSelectTab",
+                  "TooltipTemplate": "BUTTON_TOOLTIP",
+                  "TooltipText": "button-map-editor-tab-container-select-tooltip",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "Children": {
+                    "Image": {
+                      "id": "ICON",
+                      "X": "20",
+                      "Y": "5",
+                      "ImageCollection": "editor",
+                      "ImageName": "select"
+                    }
+                  }
+                },
+                {
+                  "id": "TILES_TAB",
+                  "X": "49",
+                  "Width": "49",
+                  "Height": "25",
+                  "Key": "EditorTilesTab",
+                  "TooltipTemplate": "BUTTON_TOOLTIP",
+                  "TooltipText": "button-map-editor-tab-container-tiles-tooltip",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "Children": {
+                    "Image": {
+                      "id": "ICON",
+                      "X": "17",
+                      "Y": "5",
+                      "ImageCollection": "editor",
+                      "ImageName": "tiles"
+                    }
+                  }
+                },
+                {
+                  "id": "OVERLAYS_TAB",
+                  "X": "98",
+                  "Width": "49",
+                  "Height": "25",
+                  "Key": "EditorOverlaysTab",
+                  "TooltipTemplate": "BUTTON_TOOLTIP",
+                  "TooltipText": "button-map-editor-tab-container-overlays-tooltip",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "Children": {
+                    "Image": {
+                      "id": "ICON",
+                      "X": "17",
+                      "Y": "5",
+                      "ImageCollection": "editor",
+                      "ImageName": "overlays"
+                    }
+                  }
+                },
+                {
+                  "id": "ACTORS_TAB",
+                  "X": "147",
+                  "Width": "48",
+                  "Height": "25",
+                  "Key": "EditorActorsTab",
+                  "TooltipTemplate": "BUTTON_TOOLTIP",
+                  "TooltipText": "button-map-editor-tab-container-actors-tooltip",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "Children": {
+                    "Image": {
+                      "id": "ICON",
+                      "X": "16",
+                      "Y": "5",
+                      "ImageCollection": "editor",
+                      "ImageName": "actors"
+                    }
+                  }
+                },
+                {
+                  "id": "TOOLS_TAB",
+                  "X": "195",
+                  "Width": "48",
+                  "Height": "25",
+                  "Key": "EditorToolsTab",
+                  "TooltipTemplate": "BUTTON_TOOLTIP",
+                  "TooltipText": "button-map-editor-tab-container-tools-tooltip",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "Children": {
+                    "Image": {
+                      "id": "ICON",
+                      "X": "16",
+                      "Y": "5",
+                      "ImageCollection": "editor",
+                      "ImageName": "tools"
+                    }
+                  }
+                },
+                {
+                  "id": "HISTORY_TAB",
+                  "X": "243",
+                  "Width": "49",
+                  "Height": "25",
+                  "Key": "EditorHistoryTab",
+                  "TooltipTemplate": "BUTTON_TOOLTIP",
+                  "TooltipText": "button-map-editor-tab-container-history-tooltip",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "Children": {
+                    "Image": {
+                      "id": "ICON",
+                      "X": "17",
+                      "Y": "5",
+                      "ImageCollection": "editor",
+                      "ImageName": "history"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "EditorViewportController": {
+          "id": "MAP_EDITOR",
+          "Width": "WINDOW_WIDTH",
+          "Height": "WINDOW_HEIGHT",
+          "TooltipContainer": "TOOLTIP_CONTAINER",
+          "TooltipTemplate": "SIMPLE_TOOLTIP"
+        },
+        "ViewportController": {
+          "Width": "WINDOW_WIDTH",
+          "Height": "WINDOW_HEIGHT",
+          "IgnoreMouseOver": "True",
+          "ZoomInKey": "ZoomIn",
+          "ZoomOutKey": "ZoomOut",
+          "ScrollUpKey": "MapScrollUp",
+          "ScrollDownKey": "MapScrollDown",
+          "ScrollLeftKey": "MapScrollLeft",
+          "ScrollRightKey": "MapScrollRight",
+          "JumpToTopEdgeKey": "MapJumpToTopEdge",
+          "JumpToBottomEdgeKey": "MapJumpToBottomEdge",
+          "JumpToLeftEdgeKey": "MapJumpToLeftEdge",
+          "JumpToRightEdgeKey": "MapJumpToRightEdge",
+          "BookmarkSaveKeyPrefix": "MapBookmarkSave",
+          "BookmarkRestoreKeyPrefix": "MapBookmarkRestore",
+          "BookmarkKeyCount": "4"
+        },
+        "Background": [
+          {
+            "id": "RADAR_BG",
+            "X": "WINDOW_WIDTH - 325",
+            "Y": "5",
+            "Width": "320",
+            "Height": "320",
+            "Children": {
+              "Radar": {
+                "id": "INGAME_RADAR",
+                "X": "10",
+                "Y": "10",
+                "Width": "PARENT_WIDTH - 19",
+                "Height": "PARENT_HEIGHT - 19"
+              }
+            }
+          },
+          {
+            "id": "TOOLS_BG",
+            "X": "WINDOW_WIDTH - 320",
+            "Y": "330",
+            "Width": "310",
+            "Height": "WINDOW_HEIGHT - 422"
+          }
+        ],
+        "MenuButton": {
+          "id": "OPTIONS_BUTTON",
+          "Logic": "MenuButtonsChromeLogic",
+          "MenuContainer": "INGAME_MENU",
+          "HideIngameUI": "true",
+          "Pause": "true",
+          "Width": "60",
+          "Height": "25",
+          "Text": "button-editor-world-root-options.label",
+          "TooltipText": "button-editor-world-root-options.tooltip",
+          "TooltipContainer": "TOOLTIP_CONTAINER",
+          "Font": "Bold",
+          "Key": "escape"
+        },
+        "Button": [
+          {
+            "id": "COPY_BUTTON",
+            "X": "60",
+            "Width": "50",
+            "Height": "25",
+            "Key": "EditorCopy",
+            "TooltipTemplate": "BUTTON_TOOLTIP",
+            "TooltipText": "button-editor-world-root-copy-tooltip",
+            "TooltipContainer": "TOOLTIP_CONTAINER",
+            "Children": {
+              "Image": {
+                "id": "ICON",
+                "X": "17",
+                "Y": "5",
+                "ImageCollection": "editor",
+                "ImageName": "copy"
+              }
+            }
+          },
+          {
+            "id": "PASTE_BUTTON",
+            "X": "110",
+            "Width": "50",
+            "Height": "25",
+            "Key": "EditorPaste",
+            "TooltipTemplate": "BUTTON_TOOLTIP",
+            "TooltipText": "button-editor-world-root-paste-tooltip",
+            "TooltipContainer": "TOOLTIP_CONTAINER",
+            "Children": {
+              "Image": {
+                "id": "ICON",
+                "X": "17",
+                "Y": "4",
+                "ImageCollection": "editor",
+                "ImageName": "paste"
+              }
+            }
+          },
+          {
+            "id": "UNDO_BUTTON",
+            "X": "160",
+            "Width": "50",
+            "Height": "25",
+            "Key": "EditorUndo",
+            "TooltipTemplate": "BUTTON_TOOLTIP",
+            "TooltipText": "button-editor-world-root-undo-tooltip",
+            "TooltipContainer": "TOOLTIP_CONTAINER",
+            "Children": {
+              "Image": {
+                "id": "ICON",
+                "X": "17",
+                "Y": "4",
+                "ImageCollection": "editor",
+                "ImageName": "undo"
+              }
+            }
+          },
+          {
+            "id": "REDO_BUTTON",
+            "X": "210",
+            "Width": "50",
+            "Height": "25",
+            "Key": "EditorRedo",
+            "TooltipTemplate": "BUTTON_TOOLTIP",
+            "TooltipText": "button-editor-world-root-redo-tooltip",
+            "TooltipContainer": "TOOLTIP_CONTAINER",
+            "Children": {
+              "Image": {
+                "id": "ICON",
+                "X": "17",
+                "Y": "4",
+                "ImageCollection": "editor",
+                "ImageName": "redo"
+              }
+            }
+          }
+        ],
+        "DropDownButton": {
+          "id": "OVERLAY_BUTTON",
+          "X": "260",
+          "Width": "140",
+          "Height": "25",
+          "Text": "dropdownbutton-editor-world-root-overlay-button",
+          "Font": "Bold"
+        },
+        "Label": [
+          {
+            "id": "COORDINATE_LABEL",
+            "X": "410",
+            "Width": "100",
+            "Height": "25",
+            "Align": "Left",
+            "Font": "Bold",
+            "Contrast": "true"
+          },
+          {
+            "id": "CASH_LABEL",
+            "X": "515",
+            "Width": "100",
+            "Height": "25",
+            "Align": "Left",
+            "Font": "Bold",
+            "Contrast": "true"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "Container": [
+    {
+      "id": "CHAT_LINE_TEMPLATE",
+      "Width": "PARENT_WIDTH",
+      "Height": "16",
+      "Children": {
+        "Label": [
+          {
+            "id": "TIME",
+            "X": "5",
+            "Width": "37",
+            "Height": "16",
+            "Shadow": "True"
+          },
+          {
+            "id": "PREFIX",
+            "X": "5",
+            "Height": "16",
+            "Shadow": "True"
+          },
+          {
+            "id": "TEXT",
+            "X": "5",
+            "Height": "16",
+            "WordWrap": "True",
+            "Shadow": "True"
+          }
+        ],
+        "ClientTooltipRegion": {
+          "id": "PROFILE_TOOLTIP",
+          "Visible": "false",
+          "TooltipContainer": "TOOLTIP_CONTAINER",
+          "Template": "ANONYMOUS_PLAYER_TOOLTIP"
+        }
+      }
+    },
+    {
+      "id": "SYSTEM_LINE_TEMPLATE",
+      "Width": "PARENT_WIDTH",
+      "Height": "16",
+      "Children": {
+        "Label": [
+          {
+            "id": "TIME",
+            "X": "5",
+            "Width": "37",
+            "Height": "16",
+            "Shadow": "True"
+          },
+          {
+            "id": "PREFIX",
+            "X": "5",
+            "Height": "16",
+            "Shadow": "True",
+            "TextColor": "FFFF00"
+          },
+          {
+            "id": "TEXT",
+            "X": "5",
+            "Height": "16",
+            "WordWrap": "True",
+            "Shadow": "True",
+            "TextColor": "FFFF00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "TRANSIENT_LINE_TEMPLATE",
+      "Width": "PARENT_WIDTH",
+      "Height": "16",
+      "Children": {
+        "Label": [
+          {
+            "id": "TIME",
+            "X": "5",
+            "Width": "37",
+            "Height": "16",
+            "Shadow": "True"
+          },
+          {
+            "id": "TEXT",
+            "X": "5",
+            "Height": "16",
+            "WordWrap": "True",
+            "Shadow": "True",
+            "TextColor": "AFEEEE"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,788 @@
+{
+  "Background": [
+    {
+      "id": "SIMPLE_TOOLTIP",
+      "Logic": "SimpleTooltipLogic",
+      "Background": "panel-black",
+      "Height": "27",
+      "Children": {
+        "Container": {
+          "id": "LINE_HEIGHT",
+          "Y": "2",
+          "Height": "19"
+        },
+        "Label": {
+          "id": "LABEL",
+          "X": "5",
+          "Y": "0 - 1",
+          "Height": "23",
+          "Font": "Bold"
+        }
+      }
+    },
+    {
+      "id": "SIMPLE_TOOLTIP_FACTIONSUFFIX",
+      "Logic": "SimpleTooltipLogic, AddFactionSuffixLogic",
+      "Background": "panel-black",
+      "Height": "27",
+      "Children": {
+        "Container": {
+          "id": "LINE_HEIGHT",
+          "Y": "2",
+          "Height": "19"
+        },
+        "Label": {
+          "id": "LABEL",
+          "X": "5",
+          "Y": "0 - 1",
+          "Height": "23",
+          "Font": "Bold"
+        }
+      }
+    },
+    {
+      "id": "BUTTON_TOOLTIP",
+      "Logic": "ButtonTooltipLogic",
+      "Background": "panel-black",
+      "Height": "26",
+      "Children": {
+        "Label": [
+          {
+            "id": "LABEL",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "HOTKEY",
+            "Y": "1",
+            "Visible": "false",
+            "TextColor": "FFFF00",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "DESC",
+            "X": "5",
+            "Y": "26",
+            "Height": "12",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BUTTON_TOOLTIP_FACTIONSUFFIX",
+      "Logic": "ButtonTooltipLogic, AddFactionSuffixLogic",
+      "Background": "panel-black",
+      "Height": "26",
+      "Children": {
+        "Label": [
+          {
+            "id": "LABEL",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "HOTKEY",
+            "Y": "1",
+            "Visible": "false",
+            "TextColor": "FFFF00",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "DESC",
+            "X": "5",
+            "Y": "26",
+            "Height": "12",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BUTTON_WITH_DESC_HIGHLIGHT_TOOLTIP",
+      "Logic": "ButtonTooltipLogic",
+      "Background": "panel-black",
+      "Height": "26",
+      "Children": {
+        "Label": [
+          {
+            "id": "LABEL",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "HOTKEY",
+            "Y": "1",
+            "Visible": "false",
+            "TextColor": "FFFF00",
+            "Height": "23",
+            "Font": "Bold"
+          }
+        ],
+        "LabelWithHighlight": {
+          "id": "DESC",
+          "X": "5",
+          "Y": "26",
+          "Height": "12",
+          "Font": "TinyBold",
+          "VAlign": "Top"
+        }
+      }
+    },
+    {
+      "id": "BUTTON_WITH_DESC_HIGHLIGHT_TOOLTIP_FACTIONSUFFIX",
+      "Logic": "ButtonTooltipLogic, AddFactionSuffixLogic",
+      "Background": "panel-black",
+      "Height": "26",
+      "Children": {
+        "Label": [
+          {
+            "id": "LABEL",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "HOTKEY",
+            "Y": "1",
+            "Visible": "false",
+            "TextColor": "FFFF00",
+            "Height": "23",
+            "Font": "Bold"
+          }
+        ],
+        "LabelWithHighlight": {
+          "id": "DESC",
+          "X": "5",
+          "Y": "26",
+          "Height": "12",
+          "Font": "TinyBold",
+          "VAlign": "Top"
+        }
+      }
+    },
+    {
+      "id": "WORLD_TOOLTIP",
+      "Logic": "WorldTooltipLogic",
+      "Background": "panel-black",
+      "Children": {
+        "Container": [
+          {
+            "id": "SINGLE_HEIGHT",
+            "Height": "26"
+          },
+          {
+            "id": "DOUBLE_HEIGHT",
+            "Height": "45"
+          }
+        ],
+        "Label": [
+          {
+            "id": "LABEL",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "OWNER",
+            "X": "42",
+            "Y": "20",
+            "Height": "23",
+            "Font": "Bold",
+            "Shadow": "True"
+          },
+          {
+            "id": "EXTRA",
+            "X": "5",
+            "Y": "47",
+            "Height": "5",
+            "Font": "Bold"
+          }
+        ],
+        "Image": {
+          "id": "FLAG",
+          "X": "5",
+          "Y": "24",
+          "Width": "32",
+          "Height": "16"
+        }
+      }
+    },
+    {
+      "id": "WORLD_TOOLTIP_FACTIONSUFFIX",
+      "Logic": "WorldTooltipLogic, AddFactionSuffixLogic",
+      "Background": "panel-black",
+      "Children": {
+        "Container": [
+          {
+            "id": "SINGLE_HEIGHT",
+            "Height": "26"
+          },
+          {
+            "id": "DOUBLE_HEIGHT",
+            "Height": "45"
+          }
+        ],
+        "Label": [
+          {
+            "id": "LABEL",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "OWNER",
+            "X": "42",
+            "Y": "20",
+            "Height": "23",
+            "Font": "Bold",
+            "Shadow": "True"
+          },
+          {
+            "id": "EXTRA",
+            "X": "5",
+            "Y": "49",
+            "Height": "5",
+            "Font": "Bold"
+          }
+        ],
+        "Image": {
+          "id": "FLAG",
+          "X": "5",
+          "Y": "24",
+          "Width": "32",
+          "Height": "16"
+        }
+      }
+    },
+    {
+      "id": "PRODUCTION_TOOLTIP",
+      "Logic": "ProductionTooltipLogic",
+      "Background": "panel-black",
+      "Width": "200",
+      "Height": "65",
+      "Children": {
+        "Label": [
+          {
+            "id": "NAME",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "HOTKEY",
+            "Y": "1",
+            "Visible": "false",
+            "Height": "23",
+            "TextColor": "FFFF00",
+            "Font": "Bold"
+          },
+          {
+            "id": "REQUIRES",
+            "X": "5",
+            "Y": "20",
+            "Height": "15",
+            "Font": "TinyBold"
+          },
+          {
+            "id": "DESC",
+            "X": "5",
+            "Y": "20",
+            "Height": "5",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          },
+          {
+            "id": "COST",
+            "Y": "1",
+            "Height": "24",
+            "Font": "Bold"
+          },
+          {
+            "id": "TIME",
+            "Y": "20",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "POWER",
+            "Y": "40",
+            "Height": "23",
+            "Font": "Bold"
+          }
+        ],
+        "Image": [
+          {
+            "id": "COST_ICON",
+            "X": "3",
+            "Y": "5",
+            "Width": "16",
+            "Height": "16",
+            "ImageCollection": "sidebar-bits",
+            "ImageName": "production-tooltip-cost"
+          },
+          {
+            "id": "TIME_ICON",
+            "X": "3",
+            "Y": "24",
+            "Width": "16",
+            "Height": "16",
+            "ImageCollection": "sidebar-bits",
+            "ImageName": "production-tooltip-time"
+          },
+          {
+            "id": "POWER_ICON",
+            "Y": "44",
+            "Width": "16",
+            "Height": "16",
+            "ImageCollection": "sidebar-bits",
+            "ImageName": "production-tooltip-power"
+          }
+        ]
+      }
+    },
+    {
+      "id": "PRODUCTION_TOOLTIP_FACTIONSUFFIX",
+      "Logic": "ProductionTooltipLogic, AddFactionSuffixLogic",
+      "Background": "panel-black",
+      "Width": "200",
+      "Height": "65",
+      "Children": {
+        "Label": [
+          {
+            "id": "NAME",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "HOTKEY",
+            "Y": "1",
+            "Visible": "false",
+            "Height": "23",
+            "TextColor": "FFFF00",
+            "Font": "Bold"
+          },
+          {
+            "id": "REQUIRES",
+            "X": "5",
+            "Y": "20",
+            "Height": "15",
+            "Font": "TinyBold"
+          },
+          {
+            "id": "DESC",
+            "X": "5",
+            "Y": "20",
+            "Height": "5",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          },
+          {
+            "id": "COST",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "TIME",
+            "Y": "20",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "POWER",
+            "Y": "40",
+            "Height": "23",
+            "Font": "Bold"
+          }
+        ],
+        "Image": [
+          {
+            "id": "COST_ICON",
+            "Y": "5",
+            "Width": "16",
+            "Height": "16",
+            "ImageCollection": "sidebar-bits",
+            "ImageName": "production-tooltip-cost"
+          },
+          {
+            "id": "TIME_ICON",
+            "X": "3",
+            "Y": "24",
+            "Width": "16",
+            "Height": "16",
+            "ImageCollection": "sidebar-bits",
+            "ImageName": "production-tooltip-time"
+          },
+          {
+            "id": "POWER_ICON",
+            "Y": "44",
+            "Width": "16",
+            "Height": "16",
+            "ImageCollection": "sidebar-bits",
+            "ImageName": "production-tooltip-power"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SUPPORT_POWER_TOOLTIP",
+      "Logic": "SupportPowerTooltipLogic",
+      "Background": "panel-black",
+      "Width": "200",
+      "Height": "27",
+      "Children": {
+        "Label": [
+          {
+            "id": "NAME",
+            "X": "5",
+            "Height": "20",
+            "Font": "Bold"
+          },
+          {
+            "id": "HOTKEY",
+            "Visible": "false",
+            "Height": "20",
+            "TextColor": "FFFF00",
+            "Font": "Bold"
+          },
+          {
+            "id": "TIME",
+            "Y": "6",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          },
+          {
+            "id": "DESC",
+            "X": "5",
+            "Y": "20",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SUPPORT_POWER_TOOLTIP_FACTIONSUFFIX",
+      "Logic": "SupportPowerTooltipLogic, AddFactionSuffixLogic",
+      "Background": "panel-black",
+      "Width": "200",
+      "Height": "27",
+      "Children": {
+        "Label": [
+          {
+            "id": "NAME",
+            "X": "5",
+            "Y": "2",
+            "Height": "20",
+            "Font": "Bold"
+          },
+          {
+            "id": "HOTKEY",
+            "Y": "2",
+            "Visible": "false",
+            "Height": "20",
+            "TextColor": "FFFF00",
+            "Font": "Bold"
+          },
+          {
+            "id": "TIME",
+            "Y": "8",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          },
+          {
+            "id": "DESC",
+            "X": "5",
+            "Y": "22",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ARMY_TOOLTIP",
+      "Logic": "ArmyTooltipLogic",
+      "Background": "panel-black",
+      "Width": "200",
+      "Height": "65",
+      "Children": {
+        "Label": [
+          {
+            "id": "NAME",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "DESC",
+            "X": "5",
+            "Y": "20",
+            "Height": "5",
+            "Font": "TinyBold",
+            "VAlign": "Top"
+          }
+        ]
+      }
+    },
+    {
+      "id": "SPAWN_TOOLTIP",
+      "Logic": "SpawnSelectorTooltipLogic",
+      "Background": "panel-black",
+      "Width": "5",
+      "Children": {
+        "Container": [
+          {
+            "id": "SINGLE_HEIGHT",
+            "Height": "26"
+          },
+          {
+            "id": "DOUBLE_HEIGHT",
+            "Height": "40"
+          }
+        ],
+        "Label": [
+          {
+            "id": "LABEL",
+            "X": "5",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          },
+          {
+            "id": "TEAM",
+            "Y": "22",
+            "Height": "15",
+            "Font": "TinyBold",
+            "Align": "center"
+          }
+        ],
+        "Image": {
+          "id": "FLAG",
+          "X": "5",
+          "Y": "5",
+          "Width": "32",
+          "Height": "16"
+        }
+      }
+    },
+    {
+      "id": "LATENCY_TOOLTIP",
+      "Logic": "LatencyTooltipLogic",
+      "Background": "panel-black",
+      "Height": "26",
+      "Width": "5",
+      "Children": {
+        "Label": [
+          {
+            "id": "LATENCY_PREFIX",
+            "X": "5",
+            "Y": "1",
+            "Width": "200",
+            "Height": "23",
+            "Font": "Bold",
+            "Text": "label-latency-tooltip-prefix"
+          },
+          {
+            "id": "LATENCY",
+            "Y": "1",
+            "Height": "23",
+            "Font": "Bold"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BOT_TOOLTIP",
+      "Logic": "BotTooltipLogic",
+      "Background": "panel-black",
+      "Height": "30",
+      "Width": "300",
+      "Children": {
+        "Label": {
+          "id": "NAME",
+          "X": "5",
+          "Y": "2",
+          "Text": "label-bot-player-tooltip-name",
+          "Width": "290",
+          "Height": "24",
+          "Font": "Bold"
+        }
+      }
+    },
+    {
+      "id": "ANONYMOUS_PLAYER_TOOLTIP",
+      "Logic": "AnonymousProfileTooltipLogic",
+      "Background": "panel-black",
+      "Height": "30",
+      "Width": "300",
+      "Children": {
+        "Label": [
+          {
+            "id": "NAME",
+            "X": "5",
+            "Y": "2",
+            "Text": "label-anonymous-player-tooltip-name",
+            "Width": "290",
+            "Height": "23",
+            "Font": "MediumBold"
+          },
+          {
+            "id": "LOCATION",
+            "X": "5",
+            "Y": "25",
+            "Height": "12",
+            "Visible": "False",
+            "Font": "TinyBold"
+          },
+          {
+            "id": "IP",
+            "X": "5",
+            "Y": "25",
+            "Height": "12",
+            "Visible": "False",
+            "Font": "TinyBold"
+          }
+        ],
+        "Container": {
+          "id": "GAME_ADMIN",
+          "X": "5",
+          "Y": "25",
+          "Height": "12",
+          "Visible": "False",
+          "Children": {
+            "Image": {
+              "id": "ICON",
+              "X": "1",
+              "Y": "4",
+              "Width": "7",
+              "Height": "5",
+              "ImageCollection": "lobby-bits",
+              "ImageName": "admin"
+            },
+            "Label": {
+              "id": "LABEL",
+              "X": "10",
+              "Width": "200",
+              "Height": "12",
+              "Text": "label-game-admin",
+              "Font": "TinyBold"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "Container": {
+    "id": "REGISTERED_PLAYER_TOOLTIP",
+    "Logic": "RegisteredProfileTooltipLogic",
+    "Width": "270",
+    "Height": "137",
+    "Children": {
+      "Background": [
+        {
+          "id": "HEADER",
+          "Width": "PARENT_WIDTH",
+          "Background": "panel-black",
+          "Children": {
+            "Container": [
+              {
+                "id": "PROFILE_HEADER",
+                "Width": "PARENT_WIDTH",
+                "Height": "42",
+                "Children": {
+                  "Label": [
+                    {
+                      "id": "PROFILE_NAME",
+                      "X": "5",
+                      "Y": "2",
+                      "Width": "PARENT_WIDTH - 20",
+                      "Height": "23",
+                      "Font": "MediumBold"
+                    },
+                    {
+                      "id": "PROFILE_RANK",
+                      "X": "5",
+                      "Y": "24",
+                      "Width": "PARENT_WIDTH - 20",
+                      "Height": "12",
+                      "Font": "TinyBold"
+                    }
+                  ],
+                  "Container": {
+                    "id": "GAME_ADMIN",
+                    "X": "5",
+                    "Y": "36",
+                    "Width": "PARENT_WIDTH - 20",
+                    "Height": "12",
+                    "Visible": "False",
+                    "Children": {
+                      "Image": {
+                        "id": "ICON",
+                        "X": "1",
+                        "Y": "5",
+                        "Width": "7",
+                        "Height": "5",
+                        "ImageCollection": "lobby-bits",
+                        "ImageName": "admin"
+                      },
+                      "Label": {
+                        "id": "LABEL",
+                        "X": "10",
+                        "Y": "1",
+                        "Width": "200",
+                        "Height": "12",
+                        "Text": "label-game-admin",
+                        "Font": "TinyBold"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "MESSAGE_HEADER",
+                "Height": "26",
+                "Width": "PARENT_WIDTH",
+                "Children": {
+                  "Label": {
+                    "id": "MESSAGE",
+                    "Y": "1",
+                    "X": "5",
+                    "Width": "PARENT_WIDTH - 20",
+                    "Height": "23",
+                    "Font": "Bold"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "BADGES_CONTAINER",
+          "Width": "PARENT_WIDTH",
+          "Y": "-1",
+          "Visible": "false",
+          "Background": "panel-black"
+        }
+      ]
+    }
+  }
+}

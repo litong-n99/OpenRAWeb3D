@@ -1,0 +1,135 @@
+{
+  "Container": {
+    "id": "LOBBY_OPTIONS_BIN",
+    "Width": "PARENT_WIDTH",
+    "Height": "PARENT_HEIGHT",
+    "Children": {
+      "Label": {
+        "id": "TITLE",
+        "Y": "0 - 24",
+        "Width": "PARENT_WIDTH",
+        "Height": "25",
+        "Font": "Bold",
+        "Align": "Center",
+        "Text": "label-lobby-options-bin-title"
+      },
+      "ScrollPanel": {
+        "Logic": "LobbyOptionsLogic",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "Children": {
+          "Container": {
+            "id": "LOBBY_OPTIONS",
+            "Y": "10",
+            "Width": "PARENT_WIDTH - 24",
+            "Children": {
+              "Container": [
+                {
+                  "id": "CHECKBOX_ROW_TEMPLATE",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "30",
+                  "Children": {
+                    "Checkbox": [
+                      {
+                        "id": "A",
+                        "X": "10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Visible": "False",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      },
+                      {
+                        "id": "B",
+                        "X": "PARENT_WIDTH / 3 + 10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Visible": "False",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      },
+                      {
+                        "id": "C",
+                        "X": "(PARENT_WIDTH / 3) * 2 + 10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Visible": "False",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "DROPDOWN_ROW_TEMPLATE",
+                  "Height": "60",
+                  "Width": "PARENT_WIDTH",
+                  "Children": {
+                    "LabelForInput": [
+                      {
+                        "id": "A_DESC",
+                        "X": "10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Height": "20",
+                        "Visible": "False",
+                        "For": "A"
+                      },
+                      {
+                        "id": "B_DESC",
+                        "X": "PARENT_WIDTH / 3 + 10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Height": "20",
+                        "Visible": "False",
+                        "For": "B"
+                      },
+                      {
+                        "id": "C_DESC",
+                        "X": "(PARENT_WIDTH / 3) * 2 + 10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Height": "20",
+                        "Visible": "False",
+                        "For": "C"
+                      }
+                    ],
+                    "DropDownButton": [
+                      {
+                        "id": "A",
+                        "X": "10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Y": "25",
+                        "Height": "25",
+                        "Font": "Regular",
+                        "Visible": "False",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      },
+                      {
+                        "id": "B",
+                        "X": "PARENT_WIDTH / 3 + 10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Y": "25",
+                        "Height": "25",
+                        "Font": "Regular",
+                        "Visible": "False",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      },
+                      {
+                        "id": "C",
+                        "X": "(PARENT_WIDTH / 3) * 2 + 10",
+                        "Width": "PARENT_WIDTH / 3 - 20",
+                        "Y": "25",
+                        "Height": "25",
+                        "Font": "Regular",
+                        "Visible": "False",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

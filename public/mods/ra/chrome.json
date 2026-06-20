@@ -1,0 +1,887 @@
+{
+  "^Sidebar": {
+    "Image": "sidebar.png"
+  },
+  "^Dialog": {
+    "Image": "dialog.png"
+  },
+  "^Glyphs": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png"
+  },
+  "^LoadScreen": {
+    "Image": "loadscreen.png",
+    "Image2x": "loadscreen-2x.png",
+    "Image3x": "loadscreen-3x.png"
+  },
+  "sidebar-allies": {
+    "Image": "sidebar.png",
+    "Regions": {
+      "radar": "290, 67, 222, 222",
+      "background-top": "0, 185, 238, 262",
+      "background-moneybin": "0, 85, 238, 28",
+      "background-iconbg": "12, 227, 190, 47",
+      "background-iconrow": "0, 116, 238, 47",
+      "background-bottom": "0, 166, 238, 8",
+      "background-supportoverlay": "12, 324, 64, 48"
+    }
+  },
+  "sidebar-button-allies": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 281, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-allies-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 252, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-allies-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 281, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-allies-highlighted": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 339, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-allies-highlighted-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 310, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-allies-highlighted-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 339, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-allies-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 484, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-allies-highlighted-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 484, 5, 5, 18, 18, 5, 5"
+  },
+  "command-button-allies": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 281, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-allies-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 252, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-allies-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 281, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-allies-highlighted": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 339, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-allies-highlighted-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 310, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-allies-highlighted-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 339, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-allies-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 281, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-allies-highlighted-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 339, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "sidebar-soviet": {
+    "Image": "sidebar.png",
+    "Regions": {
+      "radar": "290, 290, 222, 222",
+      "background-top": "0, 185, 238, 262",
+      "background-moneybin": "0, 54, 238, 28",
+      "background-iconbg": "12, 275, 190, 47",
+      "background-iconrow": "0, 116, 238, 47",
+      "background-bottom": "0, 166, 238, 8",
+      "background-supportoverlay": "77, 324, 64, 48"
+    }
+  },
+  "sidebar-button-soviet": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 165, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-soviet-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 136, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-soviet-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 165, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-soviet-highlighted": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 223, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-soviet-highlighted-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 194, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-soviet-highlighted-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 223, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-soviet-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 484, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-soviet-highlighted-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 484, 5, 5, 18, 18, 5, 5"
+  },
+  "command-button-soviet": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 165, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-soviet-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 136, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-soviet-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 165, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-soviet-highlighted": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 223, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-soviet-highlighted-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 194, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-soviet-highlighted-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 223, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-soviet-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 165, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "command-button-soviet-highlighted-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 223, 3, 3, 22, 22, 3, 3",
+    "PanelSides": "Center"
+  },
+  "sidebar-bits": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "production-tooltip-time": "136, 51, 16, 16",
+      "production-tooltip-power": "102, 51, 16, 16",
+      "production-tooltip-cost": "68, 51, 16, 16",
+      "indicator-muted": "221, 17, 26, 24"
+    }
+  },
+  "commandbar": {
+    "Image": "sidebar.png",
+    "Regions": {
+      "background": "0, 0, 434, 44"
+    }
+  },
+  "production-icons": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "building": "0, 68, 16, 16",
+      "building-disabled": "0, 85, 16, 16",
+      "building-alert": "0, 102, 16, 16",
+      "defense": "17, 68, 16, 16",
+      "defense-disabled": "17, 85, 16, 16",
+      "defense-alert": "17, 102, 16, 16",
+      "infantry": "34, 68, 16, 16",
+      "infantry-disabled": "34, 85, 16, 16",
+      "infantry-alert": "34, 102, 16, 16",
+      "vehicle": "51, 68, 16, 16",
+      "vehicle-disabled": "51, 85, 16, 16",
+      "vehicle-alert": "51, 102, 16, 16",
+      "aircraft": "68, 68, 16, 16",
+      "aircraft-disabled": "68, 85, 16, 16",
+      "aircraft-alert": "68, 102, 16, 16",
+      "ship": "187, 68, 16, 16",
+      "ship-disabled": "187, 85, 16, 16",
+      "ship-alert": "187, 102, 16, 16"
+    }
+  },
+  "order-icons": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "repair": "136, 68, 16, 16",
+      "repair-disabled": "136, 85, 16, 16",
+      "repair-active": "136, 102, 16, 16",
+      "sell": "119, 68, 16, 16",
+      "sell-disabled": "119, 85, 16, 16",
+      "sell-active": "119, 102, 16, 16",
+      "options": "102, 68, 16, 16",
+      "options-disabled": "102, 85, 16, 16",
+      "options-active": "102, 102, 16, 16",
+      "beacon": "153, 68, 16, 16",
+      "beacon-disabled": "153, 85, 16, 16",
+      "beacon-active": "153, 102, 16, 16",
+      "power": "170, 68, 16, 16",
+      "power-disabled": "170, 85, 16, 16",
+      "power-active": "170, 102, 16, 16",
+      "stats": "204, 68, 16, 16",
+      "stats-disabled": "204, 85, 16, 16",
+      "stats-active": "204, 102, 16, 16"
+    }
+  },
+  "power-icons": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "power-normal": "102, 51, 16, 16",
+      "power-critical": "119, 51, 16, 16"
+    }
+  },
+  "cash-icons": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "cash-normal": "68, 51, 16, 16",
+      "cash-critical": "85, 51, 16, 16"
+    }
+  },
+  "stance-icons": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "attack-anything": "0, 119, 16, 16",
+      "attack-anything-disabled": "0, 136, 16, 16",
+      "defend": "17, 119, 16, 16",
+      "defend-disabled": "17, 136, 16, 16",
+      "return-fire": "34, 119, 16, 16",
+      "return-fire-disabled": "34, 136, 16, 16",
+      "hold-fire": "51, 119, 16, 16",
+      "hold-fire-disabled": "51, 136, 16, 16"
+    }
+  },
+  "stance-icons-highlighted": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "attack-anything": "0, 153, 16, 16",
+      "attack-anything-disabled": "0, 136, 16, 16",
+      "defend": "17, 153, 16, 16",
+      "defend-disabled": "17, 136, 16, 16",
+      "return-fire": "34, 153, 16, 16",
+      "return-fire-disabled": "34, 136, 16, 16",
+      "hold-fire": "51, 153, 16, 16",
+      "hold-fire-disabled": "51, 136, 16, 16"
+    }
+  },
+  "command-icons": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "attack-move": "0, 207, 24, 24",
+      "attack-move-disabled": "0, 232, 24, 24",
+      "force-move": "25, 207, 24, 24",
+      "force-move-disabled": "25, 232, 24, 24",
+      "force-attack": "50, 207, 24, 24",
+      "force-attack-disabled": "50, 232, 24, 24",
+      "guard": "75, 207, 24, 24",
+      "guard-disabled": "75, 232, 24, 24",
+      "deploy": "100, 207, 24, 24",
+      "deploy-disabled": "100, 232, 24, 24",
+      "scatter": "125, 207, 24, 24",
+      "scatter-disabled": "125, 232, 24, 24",
+      "stop": "150, 207, 24, 24",
+      "stop-disabled": "150, 232, 24, 24",
+      "queue-orders": "175, 207, 24, 24",
+      "queue-orders-disabled": "175, 232, 24, 24"
+    }
+  },
+  "command-icons-highlighted": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "attack-move": "0, 207, 24, 24",
+      "attack-move-disabled": "0, 232, 24, 24",
+      "force-move": "25, 207, 24, 24",
+      "force-move-disabled": "25, 232, 24, 24",
+      "force-attack": "50, 207, 24, 24",
+      "force-attack-disabled": "50, 232, 24, 24",
+      "guard": "75, 207, 24, 24",
+      "guard-disabled": "75, 232, 24, 24",
+      "deploy": "100, 207, 24, 24",
+      "deploy-disabled": "100, 232, 24, 24",
+      "scatter": "125, 207, 24, 24",
+      "scatter-disabled": "125, 232, 24, 24",
+      "stop": "150, 207, 24, 24",
+      "stop-disabled": "150, 232, 24, 24",
+      "queue-orders": "175, 207, 24, 24",
+      "queue-orders-disabled": "175, 232, 24, 24"
+    }
+  },
+  "sidebar-observer": {
+    "Image": "sidebar.png",
+    "Regions": {
+      "background": "0, 185, 238, 287",
+      "replay-bottom": "0, 472, 238, 40",
+      "observer-bottom": "0, 176, 238, 8"
+    }
+  },
+  "sidebar-button-observershroud": null,
+  "sidebar-button-observershroud-pressed": null,
+  "sidebar-button-observershroud-hover": null,
+  "sidebar-button-observer": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 397, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-observer-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 368, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-observer-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 397, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-observer-highlighted": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 455, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-observer-highlighted-hover": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 426, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-observer-highlighted-pressed": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 455, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-observer-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 484, 5, 5, 18, 18, 5, 5"
+  },
+  "sidebar-button-observer-highlighted-disabled": {
+    "Image": "sidebar.png",
+    "PanelRegion": "260, 484, 5, 5, 18, 18, 5, 5"
+  },
+  "observer-scrollpanel-button": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "observer-scrollpanel-button-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "observer-scrollpanel-button-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "897, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "observer-scrollpanel-button-disabled": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 385, 2, 2, 122, 122, 2, 2"
+  },
+  "observer-scrollheader": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 385, 2, 2, 122, 122, 2, 2"
+  },
+  "observer-scrollheader-highlighted": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 385, 2, 2, 122, 122, 2, 2"
+  },
+  "observer-scrollitem": null,
+  "observer-scrollitem-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "observer-scrollitem-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "observer-scrollitem-highlighted": {
+    "Image": "dialog.png",
+    "PanelRegion": "897, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "dialog": {
+    "Image": "dialog.png",
+    "Regions": {
+      "background": "1, 1, 480, 480",
+      "border-r": "492, 1, 9, 190",
+      "border-l": "483, 1, 9, 190",
+      "border-b": "1, 492, 189, 9",
+      "border-t": "1, 483, 189, 9",
+      "corner-tl": "192, 483, 9, 9",
+      "corner-tr": "201, 483, 9, 9",
+      "corner-bl": "192, 492, 9, 9",
+      "corner-br": "201, 492, 9, 9"
+    }
+  },
+  "dialog2": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "dialog3": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "dialog4": {
+    "Image": "dialog.png",
+    "PanelRegion": "512, 387, 6, 6, 52, 52, 6, 6"
+  },
+  "dialog5": {
+    "Image": "dialog.png",
+    "PanelRegion": "580, 388, 0, 0, 62, 62, 0, 0",
+    "PanelSides": "Center"
+  },
+  "lobby-bits": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "spawn-claimed": "68, 119, 22, 22",
+      "spawn-unclaimed": "91, 119, 22, 22",
+      "spawn-disabled": "114, 119, 22, 22",
+      "admin": "170, 0, 6, 5",
+      "bot": "170, 51, 16, 16",
+      "colorpicker": "68, 119, 22, 22",
+      "huepicker": "136, 0, 7, 15",
+      "kick": "153, 0, 11, 11",
+      "protected": "0, 17, 12, 13",
+      "protected-disabled": "17, 17, 12, 13",
+      "authentication": "34, 17, 12, 13",
+      "authentication-disabled": "51, 17, 12, 13",
+      "admin-registered": "0, 51, 16, 16",
+      "admin-anonymous": "34, 51, 16, 16",
+      "player-registered": "17, 51, 16, 16",
+      "player-anonymous": "51, 51, 16, 16"
+    }
+  },
+  "reload-icon": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "enabled": "0, 34, 16, 16",
+      "disabled-0": "17, 34, 16, 16",
+      "disabled-1": "34, 34, 16, 16",
+      "disabled-2": "51, 34, 16, 16",
+      "disabled-3": "68, 34, 16, 16",
+      "disabled-4": "85, 34, 16, 16",
+      "disabled-5": "102, 34, 16, 16",
+      "disabled-6": "119, 34, 16, 16",
+      "disabled-7": "136, 34, 16, 16",
+      "disabled-8": "153, 34, 16, 16",
+      "disabled-9": "170, 34, 16, 16",
+      "disabled-10": "187, 34, 16, 16",
+      "disabled-11": "204, 34, 16, 16"
+    }
+  },
+  "strategic": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "unowned": "68, 119, 22, 22",
+      "critical_unowned": "137, 119, 22, 22",
+      "enemy_owned": "160, 119, 22, 22",
+      "player_owned": "160, 142, 22, 22"
+    }
+  },
+  "flags": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "england": "226, 49, 30, 15",
+      "germany": "226, 65, 30, 15",
+      "france": "226, 81, 30, 15",
+      "spain": "226, 97, 30, 15",
+      "turkey": "226, 113, 30, 15",
+      "greece": "226, 129, 30, 15",
+      "ukraine": "226, 145, 30, 15",
+      "russia": "226, 161, 30, 15",
+      "allies": "226, 177, 30, 15",
+      "soviet": "226, 193, 30, 15",
+      "RandomSoviet": "226, 209, 30, 15",
+      "RandomAllies": "226, 225, 30, 15",
+      "Random": "226, 241, 30, 15",
+      "spectator": "226, 241, 30, 15"
+    }
+  },
+  "music": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "pause": "0, 0, 16, 16",
+      "stop": "17, 0, 16, 16",
+      "play": "34, 0, 16, 16",
+      "next": "51, 0, 16, 16",
+      "prev": "68, 0, 16, 16",
+      "fastforward": "85, 0, 16, 16"
+    }
+  },
+  "progressbar-bg": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "progressbar-thumb": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "button": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "button-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "button-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "button-disabled": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "button-highlighted": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "button-highlighted-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "button-highlighted-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "897, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "button-highlighted-disabled": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "newsbutton": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "newsbutton-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "newsbutton-highlighted": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "newsbutton-highlighted-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "newsbutton-highlighted-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "newsbutton-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "textfield": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "textfield-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "textfield-disabled": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "textfield-focused": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollpanel-bg": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollpanel-button": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollpanel-button-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollpanel-button-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollpanel-button-disabled": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "slider": {
+    "Image": "dialog.png",
+    "Regions": {
+      "tick": "513, 2, 2, 4"
+    }
+  },
+  "slider-track": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "slider-thumb": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "slider-thumb-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "slider-thumb-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "slider-thumb-disabled": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "checkmark-tick": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "checked": "187, 0, 16, 16",
+      "checked-pressed": "204, 0, 16, 16",
+      "unchecked": "0, 0, 0, 0",
+      "unchecked-pressed": "204, 0, 16, 16"
+    }
+  },
+  "checkmark-tick-highlighted": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "checked": "187, 0, 16, 16",
+      "checked-pressed": "204, 0, 16, 16",
+      "unchecked": "0, 0, 0, 0",
+      "unchecked-pressed": "204, 0, 16, 16"
+    }
+  },
+  "checkmark-cross": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "checked": "221, 0, 16, 16",
+      "checked-pressed": "238, 0, 16, 16",
+      "unchecked": "0, 0, 0, 0",
+      "unchecked-pressed": "238, 0, 16, 16"
+    }
+  },
+  "checkmark-cross-highlighted": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "checked": "221, 0, 16, 16",
+      "checked-pressed": "238, 0, 16, 16",
+      "unchecked": "0, 0, 0, 0",
+      "unchecked-pressed": "238, 0, 16, 16"
+    }
+  },
+  "checkmark-mute": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "unchecked": "0, 170, 16, 16",
+      "unchecked-pressed": "17, 170, 16, 16",
+      "checked": "17, 170, 16, 16",
+      "checked-pressed": "0, 170, 16, 16"
+    }
+  },
+  "checkmark-mute-highlighted": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "unchecked": "0, 170, 16, 16",
+      "unchecked-pressed": "17, 170, 16, 16",
+      "checked": "17, 170, 16, 16",
+      "checked-pressed": "0, 170, 16, 16"
+    }
+  },
+  "checkbox-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-disabled": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-highlighted": {
+    "Image": "dialog.png",
+    "PanelRegion": "897, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-highlighted-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "897, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-highlighted-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "897, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-highlighted-disabled": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 257, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-toggle": null,
+  "checkbox-toggle-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-toggle-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-toggle-highlighted": null,
+  "checkbox-toggle-highlighted-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "769, 129, 2, 2, 122, 122, 2, 2"
+  },
+  "checkbox-toggle-highlighted-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "897, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollitem": null,
+  "scrollitem-hover": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollitem-pressed": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollitem-highlighted": {
+    "Image": "dialog.png",
+    "PanelRegion": "641, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollitem-nohover": null,
+  "scrollitem-nohover-highlighted": null,
+  "scrollheader": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "scrollheader-highlighted": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "logos": {
+    "Image": "loadscreen.png",
+    "Image2x": "loadscreen-2x.png",
+    "Image3x": "loadscreen-3x.png",
+    "Regions": {
+      "logo": "0, 0, 256, 256"
+    }
+  },
+  "loadscreen-stripe": {
+    "Image": "loadscreen.png",
+    "Image2x": "loadscreen-2x.png",
+    "Image3x": "loadscreen-3x.png",
+    "PanelRegion": "258, 0, 0, 0, 253, 256, 0, 0",
+    "PanelSides": "Center"
+  },
+  "mainmenu-border": {
+    "Image": "dialog.png",
+    "PanelRegion": "650, 389, 39, 39, 38, 38, 39, 39",
+    "PanelSides": "Edges"
+  },
+  "scrollpanel-decorations": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "down": "68, 17, 16, 16",
+      "down-disabled": "85, 17, 16, 16",
+      "up": "102, 17, 16, 16",
+      "up-disabled": "119, 17, 16, 16",
+      "right": "136, 17, 16, 16",
+      "right-disabled": "153, 17, 16, 16",
+      "left": "170, 17, 16, 16",
+      "left-disabled": "187, 17, 16, 16"
+    }
+  },
+  "dropdown-decorations": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "marker": "68, 17, 16, 16",
+      "marker-disabled": "85, 17, 16, 16"
+    }
+  },
+  "dropdown-separators": {
+    "Image": "dialog.png",
+    "Regions": {
+      "separator": "513, 2, 1, 19",
+      "separator-hover": "513, 130, 1, 19",
+      "separator-pressed": "766, 2, 1, 19",
+      "separator-disabled": "513, 258, 1, 19",
+      "observer-separator": "769, 258, 1, 19"
+    }
+  },
+  "separator": {
+    "Image": "dialog.png",
+    "PanelRegion": "513, 1, 2, 2, 122, 122, 2, 2"
+  },
+  "editor": {
+    "Image": "glyphs.png",
+    "Image2x": "glyphs-2x.png",
+    "Image3x": "glyphs-3x.png",
+    "Regions": {
+      "select": "34, 187, 16, 16",
+      "tiles": "0, 187, 16, 16",
+      "overlays": "17, 187, 16, 16",
+      "actors": "34, 68, 16, 16",
+      "tools": "136, 68, 16, 16",
+      "history": "136, 51, 16, 16",
+      "erase": "50, 187, 16, 16",
+      "copy": "67, 187, 16, 16",
+      "paste": "84, 187, 16, 16",
+      "undo": "101, 187, 16, 16",
+      "redo": "118, 187, 16, 16"
+    }
+  }
+}

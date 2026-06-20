@@ -1,0 +1,341 @@
+{
+  "Container": {
+    "id": "MAP_PREVIEW",
+    "Logic": "MapPreviewLogic",
+    "Width": "PARENT_WIDTH",
+    "Height": "PARENT_HEIGHT",
+    "Children": {
+      "Container": [
+        {
+          "id": "MAP_LARGE",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Background": {
+              "id": "MAP_BG",
+              "Width": "PARENT_WIDTH",
+              "Height": "174",
+              "Background": "dialog3",
+              "Children": {
+                "MapPreview": {
+                  "id": "MAP_PREVIEW",
+                  "X": "1",
+                  "Y": "1",
+                  "Width": "PARENT_WIDTH - 2",
+                  "Height": "PARENT_HEIGHT - 2",
+                  "TooltipContainer": "TOOLTIP_CONTAINER"
+                }
+              }
+            },
+            "LabelWithTooltip": {
+              "id": "MAP_TITLE",
+              "Y": "173",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Bold",
+              "Align": "Center",
+              "TooltipContainer": "TOOLTIP_CONTAINER",
+              "TooltipTemplate": "SIMPLE_TOOLTIP"
+            }
+          }
+        },
+        {
+          "id": "MAP_SMALL",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Background": {
+              "id": "MAP_BG",
+              "Width": "PARENT_WIDTH",
+              "Height": "142",
+              "Background": "dialog3",
+              "Children": {
+                "MapPreview": {
+                  "id": "MAP_PREVIEW",
+                  "X": "1",
+                  "Y": "1",
+                  "Width": "PARENT_WIDTH - 2",
+                  "Height": "PARENT_HEIGHT - 2",
+                  "TooltipContainer": "TOOLTIP_CONTAINER"
+                }
+              }
+            },
+            "LabelWithTooltip": {
+              "id": "MAP_TITLE",
+              "Y": "143",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Bold",
+              "Align": "Center",
+              "TooltipContainer": "TOOLTIP_CONTAINER",
+              "TooltipTemplate": "SIMPLE_TOOLTIP"
+            }
+          }
+        },
+        {
+          "id": "MAP_AVAILABLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Label": [
+              {
+                "id": "MAP_TYPE",
+                "Y": "188",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center",
+                "IgnoreMouseOver": "true"
+              },
+              {
+                "id": "MAP_AUTHOR",
+                "Y": "201",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center"
+              }
+            ]
+          }
+        },
+        {
+          "id": "MAP_INCOMPATIBLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Label": [
+              {
+                "id": "MAP_STATUS_A",
+                "Y": "188",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center",
+                "Text": "label-map-incompatible-status-a",
+                "IgnoreMouseOver": "true"
+              },
+              {
+                "id": "MAP_STATUS_B",
+                "Y": "201",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center",
+                "Text": "label-map-incompatible-status-b"
+              }
+            ]
+          }
+        },
+        {
+          "id": "MAP_VALIDATING",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Label": {
+              "id": "MAP_STATUS_VALIDATING",
+              "Y": "174",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Tiny",
+              "Align": "Center",
+              "Text": "label-map-validating-status",
+              "IgnoreMouseOver": "true"
+            },
+            "ProgressBar": {
+              "id": "MAP_VALIDATING_BAR",
+              "Y": "194",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Indeterminate": "True"
+            }
+          }
+        },
+        {
+          "id": "MAP_GENERATING",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Label": {
+              "id": "MAP_STATUS_GENERATING",
+              "Y": "174",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Tiny",
+              "Align": "Center",
+              "Text": "label-map-generating-status",
+              "IgnoreMouseOver": "true"
+            },
+            "ProgressBar": {
+              "id": "MAP_GENERATING_BAR",
+              "Y": "194",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Indeterminate": "True"
+            }
+          }
+        },
+        {
+          "id": "MAP_DOWNLOAD_AVAILABLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Label": [
+              {
+                "id": "MAP_TYPE",
+                "Y": "158",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center",
+                "IgnoreMouseOver": "true"
+              },
+              {
+                "id": "MAP_AUTHOR",
+                "Y": "171",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center"
+              }
+            ],
+            "Button": {
+              "id": "MAP_INSTALL",
+              "Y": "194",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Bold",
+              "Text": "button-map-download-available-install"
+            }
+          }
+        },
+        {
+          "id": "MAP_UPDATE_DOWNLOAD_AVAILABLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Button": {
+              "id": "MAP_INSTALL",
+              "Y": "166",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Bold",
+              "Text": "button-map-update-download-available-install"
+            }
+          }
+        },
+        {
+          "id": "MAP_UNAVAILABLE",
+          "Width": "PARENT_WIDTH",
+          "Children": {
+            "Label": [
+              {
+                "id": "a",
+                "Y": "158",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center",
+                "Text": "label-map-unavailable-a"
+              },
+              {
+                "id": "b",
+                "Y": "171",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center",
+                "Text": "label-map-unavailable-b"
+              }
+            ]
+          }
+        },
+        {
+          "id": "MAP_DOWNLOADING",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Label": {
+              "id": "MAP_STATUS_DOWNLOADING",
+              "Y": "158",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Tiny",
+              "Align": "Center"
+            },
+            "ProgressBar": {
+              "id": "MAP_PROGRESSBAR",
+              "Y": "194",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Indeterminate": "True"
+            }
+          }
+        },
+        {
+          "id": "MAP_UPDATE_AVAILABLE",
+          "Width": "PARENT_WIDTH",
+          "Children": {
+            "Label": [
+              {
+                "id": "a",
+                "Y": "158",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center",
+                "Text": "label-map-update-available-a"
+              },
+              {
+                "id": "b",
+                "Y": "171",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center",
+                "Text": "label-map-update-available-b"
+              }
+            ]
+          }
+        }
+      ],
+      "Button": [
+        {
+          "id": "MAP_UPDATE",
+          "Y": "195",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Font": "Bold",
+          "Text": "button-map-preview-update"
+        },
+        {
+          "id": "MAP_RETRY",
+          "Y": "194",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Font": "Bold"
+        }
+      ],
+      "Label": [
+        {
+          "id": "MAP_SEARCHING",
+          "Y": "158",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Font": "Tiny",
+          "Align": "Center",
+          "Text": "label-map-preview-searching",
+          "IgnoreMouseOver": "true"
+        },
+        {
+          "id": "MAP_ERROR",
+          "Y": "158",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Font": "Tiny",
+          "Align": "Center",
+          "Text": "label-map-preview-error"
+        }
+      ]
+    }
+  }
+}

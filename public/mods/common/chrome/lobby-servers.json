@@ -1,0 +1,294 @@
+{
+  "Container": {
+    "id": "LOBBY_SERVERS_BIN",
+    "Logic": "ServerListLogic",
+    "Width": "PARENT_WIDTH",
+    "Height": "PARENT_HEIGHT",
+    "Children": {
+      "Container": [
+        {
+          "id": "LABEL_CONTAINER",
+          "Y": "0 - 24",
+          "Width": "PARENT_WIDTH",
+          "Children": {
+            "Label": [
+              {
+                "id": "NAME",
+                "X": "5",
+                "Width": "347",
+                "Height": "25",
+                "Text": "label-container-server",
+                "Align": "Center",
+                "Font": "Bold"
+              },
+              {
+                "id": "PLAYERS",
+                "X": "382",
+                "Width": "85",
+                "Height": "25",
+                "Text": "label-container-players",
+                "Font": "Bold"
+              },
+              {
+                "id": "LOCATION",
+                "X": "472",
+                "Width": "110",
+                "Height": "25",
+                "Text": "label-container-location",
+                "Font": "Bold"
+              },
+              {
+                "id": "STATUS",
+                "X": "587",
+                "Width": "50",
+                "Height": "25",
+                "Text": "label-container-status",
+                "Font": "Bold"
+              }
+            ]
+          }
+        },
+        {
+          "id": "SELECTED_SERVER",
+          "X": "PARENT_WIDTH + 11",
+          "Width": "174",
+          "Height": "280",
+          "Children": {
+            "Background": {
+              "id": "MAP_BG",
+              "Width": "PARENT_WIDTH",
+              "Height": "174",
+              "Background": "dialog3",
+              "Children": {
+                "MapPreview": {
+                  "id": "SELECTED_MAP_PREVIEW",
+                  "X": "1",
+                  "Y": "1",
+                  "Width": "PARENT_WIDTH - 2",
+                  "Height": "PARENT_HEIGHT - 2",
+                  "TooltipContainer": "TOOLTIP_CONTAINER"
+                }
+              }
+            },
+            "LabelWithTooltip": {
+              "id": "SELECTED_MAP",
+              "Y": "173",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Bold",
+              "Align": "Center",
+              "TooltipContainer": "TOOLTIP_CONTAINER",
+              "TooltipTemplate": "SIMPLE_TOOLTIP"
+            },
+            "Label": [
+              {
+                "id": "SELECTED_IP",
+                "Y": "188",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center"
+              },
+              {
+                "id": "SELECTED_STATUS",
+                "Y": "204",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center"
+              },
+              {
+                "id": "SELECTED_MOD_VERSION",
+                "Y": "217",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center"
+              },
+              {
+                "id": "SELECTED_PLAYERS",
+                "Y": "230",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center"
+              }
+            ]
+          }
+        }
+      ],
+      "LogicTicker": {
+        "id": "NOTICE_WATCHER"
+      },
+      "Background": {
+        "id": "NOTICE_CONTAINER",
+        "Width": "PARENT_WIDTH",
+        "Height": "20",
+        "Background": "dialog2",
+        "Children": {
+          "Label": [
+            {
+              "id": "OUTDATED_VERSION_LABEL",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 10",
+              "Height": "20",
+              "Align": "Center",
+              "Text": "label-notice-container-outdated-version",
+              "Font": "TinyBold"
+            },
+            {
+              "id": "UNKNOWN_VERSION_LABEL",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 10",
+              "Height": "20",
+              "Align": "Center",
+              "Text": "label-notice-container-unknown-version",
+              "Font": "TinyBold"
+            },
+            {
+              "id": "PLAYTEST_AVAILABLE_LABEL",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 10",
+              "Height": "20",
+              "Align": "Center",
+              "Text": "label-notice-container-playtest-available",
+              "Font": "TinyBold"
+            }
+          ]
+        }
+      },
+      "ScrollPanel": {
+        "id": "SERVER_LIST",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "Children": {
+          "ScrollItem": [
+            {
+              "id": "HEADER_TEMPLATE",
+              "X": "2",
+              "Width": "PARENT_WIDTH - 27",
+              "Height": "20",
+              "Background": "scrollheader",
+              "Visible": "false",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Font": "TinyBold",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "20",
+                  "Align": "Center"
+                }
+              }
+            },
+            {
+              "id": "SERVER_TEMPLATE",
+              "X": "2",
+              "Width": "PARENT_WIDTH - 27",
+              "Height": "25",
+              "EnableChildMouseOver": "True",
+              "Children": {
+                "LabelWithTooltip": [
+                  {
+                    "id": "TITLE",
+                    "X": "5",
+                    "Width": "337",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP"
+                  },
+                  {
+                    "id": "PLAYERS",
+                    "X": "382",
+                    "Width": "85",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP"
+                  }
+                ],
+                "Image": [
+                  {
+                    "id": "PASSWORD_PROTECTED",
+                    "X": "364",
+                    "Y": "6",
+                    "Width": "12",
+                    "Height": "13",
+                    "ImageCollection": "lobby-bits",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP",
+                    "TooltipText": "image-lobby-servers-bin-password-protected-tooltip"
+                  },
+                  {
+                    "id": "REQUIRES_AUTHENTICATION",
+                    "X": "364",
+                    "Y": "6",
+                    "Width": "12",
+                    "Height": "13",
+                    "ImageCollection": "lobby-bits",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP",
+                    "TooltipText": "image-lobby-servers-bin-requires-authentication-tooltip"
+                  }
+                ],
+                "Label": [
+                  {
+                    "id": "LOCATION",
+                    "X": "472",
+                    "Width": "110",
+                    "Height": "25"
+                  },
+                  {
+                    "id": "STATUS",
+                    "X": "587",
+                    "Width": "50",
+                    "Height": "25"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "Label": {
+        "id": "PROGRESS_LABEL",
+        "Y": "(PARENT_HEIGHT - HEIGHT) / 2",
+        "Width": "PARENT_WIDTH",
+        "Height": "25",
+        "Font": "Bold",
+        "Align": "Center",
+        "Visible": "false"
+      },
+      "DropDownButton": {
+        "id": "FILTERS_DROPDOWNBUTTON",
+        "Y": "PARENT_HEIGHT + 5",
+        "Width": "154",
+        "Height": "25",
+        "Text": "dropdownbutton-lobby-servers-bin-filters",
+        "Font": "Bold"
+      },
+      "Button": {
+        "id": "RELOAD_BUTTON",
+        "X": "159",
+        "Y": "PARENT_HEIGHT + 5",
+        "Width": "26",
+        "Height": "25",
+        "Children": {
+          "Image": {
+            "id": "IMAGE_RELOAD",
+            "X": "5",
+            "Y": "5",
+            "Width": "16",
+            "Height": "16",
+            "ImageCollection": "reload-icon",
+            "ImageName": "enabled",
+            "IgnoreMouseOver": "True",
+            "Children": {
+              "LogicTicker": {
+                "id": "ANIMATION"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

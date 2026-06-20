@@ -1,0 +1,214 @@
+{
+  "Container": {
+    "id": "GAME_INFO_PANEL",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+    "Width": "580",
+    "Height": "500",
+    "Logic": "GameInfoLogic",
+    "Visible": "False",
+    "Children": {
+      "Background": {
+        "id": "BACKGROUND",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT"
+      },
+      "Label": {
+        "id": "TITLE",
+        "Y": "21",
+        "Width": "PARENT_WIDTH",
+        "Height": "25",
+        "Align": "Center",
+        "Font": "Bold"
+      },
+      "Container": [
+        {
+          "id": "TAB_CONTAINER_2",
+          "X": "(PARENT_WIDTH - WIDTH) / 2",
+          "Width": "280",
+          "Height": "25",
+          "Visible": "False",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON1",
+                "Y": "50",
+                "Width": "140",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON2",
+                "X": "140",
+                "Y": "50",
+                "Width": "140",
+                "Height": "25",
+                "Font": "Bold"
+              }
+            ]
+          }
+        },
+        {
+          "id": "TAB_CONTAINER_3",
+          "X": "(PARENT_WIDTH - WIDTH) / 2",
+          "Width": "360",
+          "Height": "25",
+          "Visible": "False",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON1",
+                "Y": "50",
+                "Width": "120",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON2",
+                "X": "120",
+                "Y": "50",
+                "Width": "120",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON3",
+                "X": "240",
+                "Y": "50",
+                "Width": "120",
+                "Height": "25",
+                "Font": "Bold"
+              }
+            ]
+          }
+        },
+        {
+          "id": "TAB_CONTAINER_4",
+          "X": "(PARENT_WIDTH - WIDTH) / 2",
+          "Width": "480",
+          "Height": "25",
+          "Visible": "False",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON1",
+                "Y": "50",
+                "Width": "120",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON2",
+                "X": "120",
+                "Y": "50",
+                "Width": "120",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON3",
+                "X": "240",
+                "Y": "50",
+                "Width": "120",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON4",
+                "X": "360",
+                "Y": "50",
+                "Width": "120",
+                "Height": "25",
+                "Font": "Bold"
+              }
+            ]
+          }
+        },
+        {
+          "id": "TAB_CONTAINER_5",
+          "X": "(PARENT_WIDTH - WIDTH) / 2",
+          "Width": "480",
+          "Height": "25",
+          "Visible": "False",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON1",
+                "Y": "50",
+                "Width": "96",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON2",
+                "X": "96",
+                "Y": "50",
+                "Width": "96",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON3",
+                "X": "192",
+                "Y": "50",
+                "Width": "96",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON4",
+                "X": "288",
+                "Y": "50",
+                "Width": "96",
+                "Height": "25",
+                "Font": "Bold"
+              },
+              {
+                "id": "BUTTON5",
+                "X": "384",
+                "Y": "50",
+                "Width": "96",
+                "Height": "25",
+                "Font": "Bold"
+              }
+            ]
+          }
+        },
+        {
+          "id": "STATS_PANEL",
+          "Y": "65"
+        },
+        {
+          "id": "MAP_PANEL",
+          "Y": "65",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT"
+        },
+        {
+          "id": "OBJECTIVES_PANEL",
+          "Y": "65",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT"
+        },
+        {
+          "id": "DEBUG_PANEL",
+          "Y": "65",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT"
+        },
+        {
+          "id": "CHAT_PANEL",
+          "Y": "65",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT"
+        },
+        {
+          "id": "LOBBY_OPTIONS_PANEL",
+          "Y": "65",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT"
+        }
+      ]
+    }
+  }
+}

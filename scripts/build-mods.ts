@@ -17,6 +17,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { MiniYamlParser } from '../src/utils/miniyaml-to-json.ts'
+import { convertChromeForMod } from './build-chrome.ts'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -86,10 +87,20 @@ async function main() {
       fs.writeFileSync(modJsonPath, JSON.stringify(modJson, null, 2), 'utf-8')
       console.log(`  -> Wrote ${modJsonPath}`)
 
-      // 4. Convert rules/weapons YAML to JSON
+      // 4. Convert rules/weapons/sequences YAML to JSON
       await convertYamlAssets(modId, modDef, modDir)
 
-      // 5. Collect index entry
+      // 5. Convert chrome YAML to JSON (TODO-27.A.2)
+      try {
+        const chromeCount = convertChromeForMod(modDef.dir, modId)
+        if (chromeCount > 0) {
+          console.log(`  [chrome] Converted ${chromeCount} chrome file(s) for ${modId}`)
+        }
+      } catch (e) {
+        console.warn(`  [chrome] Chrome conversion warning for ${modId}: ${e instanceof Error ? e.message : String(e)}`)
+      }
+
+      // 6. Collect index entry
       indexEntries.push({
         id: modId,
         title: modDef.title,
@@ -106,7 +117,59 @@ async function main() {
     }
   }
 
-  // 6. Generate _index.json
+  // 7. Generate common mod.json if not created by a mod's mod.yaml (TODO-27.A.2)
+  const commonModDir = path.join(PUBLIC_MODS_DIR, 'common')
+  const commonModJsonPath = path.join(commonModDir, 'mod.json')
+  if (!fs.existsSync(commonModJsonPath)) {
+    fs.mkdirSync(commonModDir, { recursive: true })
+
+    // Scan the chrome/ directory to build ChromeLayout entries
+    const commonChromeDir = path.join(commonModDir, 'chrome')
+    const chromeLayoutEntries: string[] = []
+    if (fs.existsSync(commonChromeDir)) {
+      for (const file of fs.readdirSync(commonChromeDir)) {
+        if (file.endsWith('.json')) {
+          chromeLayoutEntries.push(`common|chrome/${file}`)
+        }
+      }
+    }
+
+    const commonManifest: Record<string, unknown> = {
+      Metadata: {
+        Title: 'Common',
+        Version: 'release-20250308',
+        Hidden: true,
+      },
+      RequiresMods: [],
+      FileSystem: {
+        common: 'folder',
+      },
+      Rules: [],
+      Weapons: [],
+      Sequences: [],
+      ModelSequences: [],
+      Cursors: [],
+      Chrome: [],
+      ChromeLayout: chromeLayoutEntries,
+      ChromeMetrics: ['common|metrics.yaml'],
+      Missions: [],
+      Hotkeys: [],
+      Voices: [],
+      Notifications: [],
+      Music: [],
+      FluentMessages: [],
+      TileSets: [],
+      ServerTraits: [],
+      PackageFormats: [],
+      MapFolders: {},
+    }
+
+    fs.writeFileSync(commonModJsonPath, JSON.stringify(commonManifest, null, 2), 'utf-8')
+    console.log(`\n[build-mods] -> Generated common mod.json: ${commonModJsonPath}`)
+    console.log(`  ChromeLayout entries: ${chromeLayoutEntries.length}`)
+  }
+
+  // 8. Generate _index.json
   const indexJson = { mods: indexEntries }
   const indexPath = path.join(PUBLIC_MODS_DIR, '_index.json')
   fs.writeFileSync(indexPath, JSON.stringify(indexJson, null, 2), 'utf-8')

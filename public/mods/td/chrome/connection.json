@@ -1,0 +1,244 @@
+{
+  "Container": [
+    {
+      "id": "CONNECTING_PANEL",
+      "Logic": "ConnectionLogic",
+      "X": "(WINDOW_WIDTH - WIDTH) / 2",
+      "Y": "(WINDOW_HEIGHT - 90) / 2",
+      "Width": "370",
+      "Height": "125",
+      "Children": {
+        "Label": {
+          "id": "CONNECTING_TITLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Y": "0 - 34",
+          "Font": "BigBold",
+          "Contrast": "true",
+          "Align": "Center",
+          "Text": "label-connecting-panel-title"
+        },
+        "Background": {
+          "id": "bg",
+          "Width": "370",
+          "Height": "90",
+          "Background": "panel-black",
+          "Children": {
+            "Label": {
+              "id": "CONNECTING_DESC",
+              "Y": "(PARENT_HEIGHT - HEIGHT) / 2",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Text": "label-bg-connecting-desc",
+              "Font": "Bold",
+              "Align": "Center"
+            }
+          }
+        },
+        "Button": {
+          "id": "ABORT_BUTTON",
+          "Key": "escape",
+          "Y": "89",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-connecting-panel-abort"
+        }
+      }
+    },
+    {
+      "id": "CONNECTIONFAILED_PANEL",
+      "Logic": "ConnectionFailedLogic",
+      "X": "(WINDOW_WIDTH - WIDTH) / 2",
+      "Y": "(WINDOW_HEIGHT - 90) / 2",
+      "Width": "370",
+      "Height": "129",
+      "Children": {
+        "LogicTicker": {
+          "id": "CONNECTION_FAILED_TICKER"
+        },
+        "Label": {
+          "id": "TITLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Y": "0 - 34",
+          "Font": "BigBold",
+          "Contrast": "true",
+          "Align": "Center"
+        },
+        "Background": {
+          "id": "CONNECTION_BACKGROUND",
+          "Width": "370",
+          "Height": "85",
+          "Background": "panel-black",
+          "Children": {
+            "Label": [
+              {
+                "id": "CONNECTING_DESC",
+                "Y": "16",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Text": "label-connection-background-connecting-desc",
+                "Font": "Bold",
+                "Align": "Center"
+              },
+              {
+                "id": "CONNECTION_ERROR",
+                "Y": "41",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Align": "Center",
+                "Font": "Bold"
+              },
+              {
+                "id": "PASSWORD_LABEL",
+                "X": "40",
+                "Y": "80",
+                "Width": "95",
+                "Height": "25",
+                "Align": "Right",
+                "Text": "label-connection-background-password",
+                "Font": "Bold"
+              }
+            ],
+            "PasswordField": {
+              "id": "PASSWORD",
+              "X": "140",
+              "Y": "80",
+              "Width": "155",
+              "MaxLength": "20",
+              "Height": "25"
+            }
+          }
+        },
+        "Button": [
+          {
+            "id": "ABORT_BUTTON",
+            "Key": "escape",
+            "Y": "84",
+            "Width": "140",
+            "Height": "35",
+            "Text": "button-connectionfailed-panel-abort"
+          },
+          {
+            "id": "QUIT_BUTTON",
+            "Key": "escape",
+            "Y": "84",
+            "Width": "140",
+            "Height": "35",
+            "Text": "button-quit"
+          },
+          {
+            "id": "RETRY_BUTTON",
+            "Key": "return",
+            "X": "230",
+            "Y": "84",
+            "Width": "140",
+            "Height": "35",
+            "Text": "button-retry"
+          }
+        ]
+      }
+    },
+    {
+      "id": "CONNECTION_SWITCHMOD_PANEL",
+      "Logic": "ConnectionSwitchModLogic",
+      "X": "(WINDOW_WIDTH - WIDTH) / 2",
+      "Y": "(WINDOW_HEIGHT - 90) / 2",
+      "Width": "370",
+      "Height": "134",
+      "Children": {
+        "Label": {
+          "id": "TITLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Y": "0 - 34",
+          "Font": "BigBold",
+          "Contrast": "true",
+          "Align": "Center",
+          "Text": "label-connection-switchmod-panel-title"
+        },
+        "Background": {
+          "id": "CONNECTION_BACKGROUND",
+          "Width": "370",
+          "Height": "120",
+          "Background": "panel-black",
+          "Children": {
+            "Label": [
+              {
+                "id": "DESC",
+                "Y": "16",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Text": "label-connection-background-desc",
+                "Font": "Bold",
+                "Align": "Center"
+              },
+              {
+                "id": "DESC2",
+                "Y": "81",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Text": "label-connection-background-desc2",
+                "Font": "Bold",
+                "Align": "Center"
+              }
+            ],
+            "Container": {
+              "id": "MOD_CONTAINER",
+              "X": "0",
+              "Y": "42",
+              "Width": "PARENT_WIDTH",
+              "Children": {
+                "RGBASprite": {
+                  "id": "MOD_ICON",
+                  "Y": "4",
+                  "Width": "32",
+                  "Height": "32"
+                },
+                "Label": [
+                  {
+                    "id": "MOD_TITLE",
+                    "X": "37",
+                    "Y": "1",
+                    "Width": "PARENT_WIDTH - 37",
+                    "Height": "25",
+                    "Font": "Bold",
+                    "Align": "Left"
+                  },
+                  {
+                    "id": "MOD_VERSION",
+                    "X": "37",
+                    "Y": "16",
+                    "Width": "PARENT_WIDTH - 37",
+                    "Height": "25",
+                    "Font": "Tiny",
+                    "Align": "Left"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Button": [
+          {
+            "id": "ABORT_BUTTON",
+            "Key": "escape",
+            "Y": "119",
+            "Width": "140",
+            "Height": "35",
+            "Text": "button-connection-switchmod-panel-abort"
+          },
+          {
+            "id": "SWITCH_BUTTON",
+            "Key": "return",
+            "X": "230",
+            "Y": "119",
+            "Width": "140",
+            "Height": "35",
+            "Text": "button-connection-switchmod-panel-switch"
+          }
+        ]
+      }
+    }
+  ]
+}

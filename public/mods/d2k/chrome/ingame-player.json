@@ -1,0 +1,932 @@
+{
+  "Container": {
+    "id": "PLAYER_WIDGETS",
+    "Logic": "LoadIngameChatLogic",
+    "Children": {
+      "Container": [
+        {
+          "id": "CHAT_ROOT"
+        },
+        {
+          "id": "SUPPORT_POWERS",
+          "Logic": "SupportPowerBinLogic",
+          "X": "10",
+          "Y": "10",
+          "Children": {
+            "SupportPowers": {
+              "id": "SUPPORT_PALETTE",
+              "IconSize": "60, 48",
+              "IconSpriteOffset": "-1, -1",
+              "TooltipContainer": "TOOLTIP_CONTAINER",
+              "ReadyText": "supportpowers-support-powers-palette.ready",
+              "HoldText": "supportpowers-support-powers-palette.hold",
+              "HotkeyPrefix": "SupportPower",
+              "HotkeyCount": "6"
+            }
+          }
+        },
+        {
+          "id": "COMMAND_BAR",
+          "Logic": "CommandBarLogic",
+          "X": "24",
+          "Y": "WINDOW_HEIGHT - HEIGHT - 9",
+          "Width": "275",
+          "Height": "41",
+          "Children": {
+            "LogicKeyListener": {
+              "id": "MODIFIER_OVERRIDES"
+            },
+            "Button": [
+              {
+                "id": "ATTACK_MOVE",
+                "Width": "34",
+                "Height": "41",
+                "VisualHeight": "0",
+                "Background": "command-button",
+                "Key": "AttackMove",
+                "DisableKeySound": "true",
+                "TooltipText": "button-command-bar-attack-move.tooltip",
+                "TooltipDesc": "button-command-bar-attack-move.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "TooltipTemplate": "BUTTON_WITH_DESC_HIGHLIGHT_TOOLTIP",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "4",
+                    "Y": "8",
+                    "ImageCollection": "command-icons",
+                    "ImageName": "attack-move"
+                  }
+                }
+              },
+              {
+                "id": "FORCE_MOVE",
+                "X": "35",
+                "Width": "34",
+                "Height": "41",
+                "VisualHeight": "0",
+                "Background": "command-button",
+                "DisableKeySound": "true",
+                "TooltipText": "button-command-bar-force-move.tooltip",
+                "TooltipDesc": "button-command-bar-force-move.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "TooltipTemplate": "BUTTON_WITH_DESC_HIGHLIGHT_TOOLTIP",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "4",
+                    "Y": "8",
+                    "ImageCollection": "command-icons",
+                    "ImageName": "force-move"
+                  }
+                }
+              },
+              {
+                "id": "FORCE_ATTACK",
+                "X": "70",
+                "Width": "34",
+                "Height": "41",
+                "VisualHeight": "0",
+                "Background": "command-button",
+                "DisableKeySound": "true",
+                "TooltipText": "button-command-bar-force-attack.tooltip",
+                "TooltipDesc": "button-command-bar-force-attack.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "TooltipTemplate": "BUTTON_WITH_DESC_HIGHLIGHT_TOOLTIP",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "4",
+                    "Y": "8",
+                    "ImageCollection": "command-icons",
+                    "ImageName": "force-attack"
+                  }
+                }
+              },
+              {
+                "id": "GUARD",
+                "X": "105",
+                "Width": "34",
+                "Height": "41",
+                "VisualHeight": "0",
+                "Background": "command-button",
+                "Key": "Guard",
+                "DisableKeySound": "true",
+                "TooltipText": "button-command-bar-guard.tooltip",
+                "TooltipDesc": "button-command-bar-guard.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "4",
+                    "Y": "8",
+                    "ImageCollection": "command-icons",
+                    "ImageName": "guard"
+                  }
+                }
+              },
+              {
+                "id": "DEPLOY",
+                "X": "140",
+                "Width": "34",
+                "Height": "41",
+                "VisualHeight": "0",
+                "Background": "command-button",
+                "Key": "Deploy",
+                "DisableKeyRepeat": "true",
+                "DisableKeySound": "true",
+                "TooltipText": "button-command-bar-deploy.tooltip",
+                "TooltipDesc": "button-command-bar-deploy.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "4",
+                    "Y": "8",
+                    "ImageCollection": "command-icons",
+                    "ImageName": "deploy"
+                  }
+                }
+              },
+              {
+                "id": "SCATTER",
+                "X": "175",
+                "Width": "34",
+                "Height": "41",
+                "VisualHeight": "0",
+                "Background": "command-button",
+                "Key": "Scatter",
+                "DisableKeyRepeat": "true",
+                "DisableKeySound": "true",
+                "TooltipText": "button-command-bar-scatter.tooltip",
+                "TooltipDesc": "button-command-bar-scatter.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "4",
+                    "Y": "8",
+                    "ImageCollection": "command-icons",
+                    "ImageName": "scatter"
+                  }
+                }
+              },
+              {
+                "id": "STOP",
+                "X": "210",
+                "Width": "34",
+                "Height": "41",
+                "VisualHeight": "0",
+                "Background": "command-button",
+                "Key": "Stop",
+                "DisableKeyRepeat": "true",
+                "DisableKeySound": "true",
+                "TooltipText": "button-command-bar-stop.tooltip",
+                "TooltipDesc": "button-command-bar-stop.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "4",
+                    "Y": "8",
+                    "ImageCollection": "command-icons",
+                    "ImageName": "stop"
+                  }
+                }
+              },
+              {
+                "id": "QUEUE_ORDERS",
+                "X": "245",
+                "Width": "34",
+                "Height": "41",
+                "VisualHeight": "0",
+                "Background": "command-button",
+                "DisableKeySound": "true",
+                "TooltipText": "button-command-bar-queue-orders.tooltip",
+                "TooltipDesc": "button-command-bar-queue-orders.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "TooltipTemplate": "BUTTON_WITH_DESC_HIGHLIGHT_TOOLTIP",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "4",
+                    "Y": "8",
+                    "ImageCollection": "command-icons",
+                    "ImageName": "queue-orders"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "STANCE_BAR",
+          "Logic": "StanceSelectorLogic",
+          "X": "316",
+          "Y": "WINDOW_HEIGHT - HEIGHT - 11",
+          "Width": "138",
+          "Height": "26",
+          "Children": {
+            "Button": [
+              {
+                "id": "STANCE_ATTACKANYTHING",
+                "Width": "29",
+                "Height": "26",
+                "VisualHeight": "0",
+                "Background": null,
+                "Key": "StanceAttackAnything",
+                "DisableKeyRepeat": "true",
+                "DisableKeySound": "true",
+                "TooltipText": "button-stance-bar-attackanything.tooltip",
+                "TooltipDesc": "button-stance-bar-attackanything.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "6",
+                    "Y": "5",
+                    "ImageCollection": "stance-icons",
+                    "ImageName": "attack-anything"
+                  }
+                }
+              },
+              {
+                "id": "STANCE_DEFEND",
+                "X": "29",
+                "Width": "29",
+                "Height": "26",
+                "VisualHeight": "0",
+                "Background": null,
+                "Key": "StanceDefend",
+                "DisableKeyRepeat": "true",
+                "DisableKeySound": "true",
+                "TooltipText": "button-stance-bar-defend.tooltip",
+                "TooltipDesc": "button-stance-bar-defend.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "6",
+                    "Y": "5",
+                    "ImageCollection": "stance-icons",
+                    "ImageName": "defend"
+                  }
+                }
+              },
+              {
+                "id": "STANCE_RETURNFIRE",
+                "X": "58",
+                "Width": "29",
+                "Height": "26",
+                "VisualHeight": "0",
+                "Background": null,
+                "Key": "StanceReturnFire",
+                "DisableKeyRepeat": "true",
+                "DisableKeySound": "true",
+                "TooltipText": "button-stance-bar-returnfire.tooltip",
+                "TooltipDesc": "button-stance-bar-returnfire.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "6",
+                    "Y": "5",
+                    "ImageCollection": "stance-icons",
+                    "ImageName": "return-fire"
+                  }
+                }
+              },
+              {
+                "id": "STANCE_HOLDFIRE",
+                "X": "87",
+                "Width": "29",
+                "Height": "26",
+                "VisualHeight": "0",
+                "Background": null,
+                "Key": "StanceHoldFire",
+                "DisableKeyRepeat": "true",
+                "DisableKeySound": "true",
+                "TooltipText": "button-stance-bar-holdfire.tooltip",
+                "TooltipDesc": "button-stance-bar-holdfire.tooltipdesc",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "Children": {
+                  "Image": {
+                    "id": "ICON",
+                    "X": "6",
+                    "Y": "5",
+                    "ImageCollection": "stance-icons",
+                    "ImageName": "hold-fire"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "MUTE_INDICATOR",
+          "Logic": "MuteIndicatorLogic",
+          "X": "WINDOW_WIDTH - WIDTH - 231",
+          "Y": "5",
+          "Width": "200",
+          "Height": "25",
+          "Children": {
+            "Image": {
+              "id": "ICON",
+              "X": "PARENT_WIDTH - WIDTH",
+              "Y": "1",
+              "Width": "24",
+              "Height": "24",
+              "ImageCollection": "sidebar-bits",
+              "ImageName": "indicator-muted"
+            },
+            "Label": {
+              "id": "LABEL",
+              "Width": "PARENT_WIDTH - 30",
+              "Height": "25",
+              "Align": "Right",
+              "Text": "label-mute-indicator",
+              "Contrast": "true"
+            }
+          }
+        },
+        {
+          "id": "SIDEBAR_PRODUCTION",
+          "Logic": "ClassicProductionLogic",
+          "X": "WINDOW_WIDTH - 226",
+          "Y": "279",
+          "Width": "226",
+          "Height": "250",
+          "Children": {
+            "Container": [
+              {
+                "id": "PALETTE_BACKGROUND",
+                "Children": {
+                  "Image": [
+                    {
+                      "id": "ROW_TEMPLATE",
+                      "Width": "226",
+                      "Height": "48",
+                      "ClickThrough": "false",
+                      "ImageCollection": "sidebar",
+                      "ImageName": "background-iconrow"
+                    },
+                    {
+                      "id": "BOTTOM_CAP",
+                      "Width": "250",
+                      "Height": "13",
+                      "ClickThrough": "false",
+                      "ImageCollection": "sidebar",
+                      "ImageName": "background-bottom",
+                      "Children": {
+                        "Container": {
+                          "id": "PURCHASE_PANEL",
+                          "Logic": "PurchaseWidgetLogic",
+                          "Children": {
+                            "Button": {
+                              "id": "PURCHASE_BUTTON",
+                              "X": "PARENT_LEFT + 65",
+                              "Y": "PARENT_TOP + 1",
+                              "Width": "125",
+                              "Height": "29",
+                              "Font": "Bold",
+                              "Background": "button-purchase",
+                              "TooltipText": "purchase-panel-button-tooltip",
+                              "TooltipContainer": "TOOLTIP_CONTAINER"
+                            },
+                            "Label": {
+                              "id": "DELIVERY_IN",
+                              "X": "PARENT_TOP + 80",
+                              "Y": "PARENT_LEFT + 3",
+                              "TextColor": "FFD091",
+                              "Width": "100",
+                              "Height": "22",
+                              "Align": "Center",
+                              "Font": "Bold",
+                              "Text": "purchase-panel-label-delivery"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "PRODUCTION_TYPES",
+                "X": "6",
+                "Y": "2",
+                "Width": "25",
+                "Height": "274",
+                "Children": {
+                  "ProductionTypeButton": [
+                    {
+                      "id": "BUILDING",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-building-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "ProductionGroup": "Building",
+                      "Key": "ProductionTypeBuilding",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "production-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "INFANTRY",
+                      "Y": "62",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-infantry-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "ProductionGroup": "Infantry",
+                      "Key": "ProductionTypeInfantry",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "production-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "VEHICLE",
+                      "Y": "93",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-vehicle-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "ProductionGroup": "Vehicle",
+                      "Key": "ProductionTypeVehicle",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "production-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "TANKS",
+                      "Y": "124",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-tanks-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "ProductionGroup": "Armor",
+                      "Key": "ProductionTypeTank",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "production-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "AIRCRAFT",
+                      "Y": "155",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-aircraft-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "ProductionGroup": "Aircraft",
+                      "Key": "ProductionTypeAircraft",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "production-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "STARPORT",
+                      "Y": "186",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-starport-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "ProductionGroup": "Starport",
+                      "Key": "ProductionTypeMerchant",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "production-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "UPGRADE",
+                      "Y": "31",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-upgrade-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "ProductionGroup": "Upgrade",
+                      "Key": "ProductionTypeUpgrade",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "production-icons"
+                        }
+                      }
+                    }
+                  ],
+                  "Button": [
+                    {
+                      "id": "SCROLL_UP_BUTTON",
+                      "Y": "217",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-scroll-up-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "scrollpanel-decorations",
+                          "ImageName": "up"
+                        }
+                      }
+                    },
+                    {
+                      "id": "SCROLL_DOWN_BUTTON",
+                      "Y": "248",
+                      "Width": "25",
+                      "Height": "25",
+                      "VisualHeight": "0",
+                      "Background": "sidebar-button",
+                      "TooltipText": "button-production-types-scroll-down-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "5",
+                          "Y": "5",
+                          "ImageCollection": "scrollpanel-decorations",
+                          "ImageName": "down"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "LogicTicker": {
+              "id": "PRODUCTION_TICKER"
+            },
+            "ProductionPalette": {
+              "id": "PRODUCTION_PALETTE",
+              "X": "39",
+              "Y": "1",
+              "TooltipContainer": "TOOLTIP_CONTAINER",
+              "ReadyText": "productionpalette-sidebar-production-palette.ready",
+              "HoldText": "productionpalette-sidebar-production-palette.hold",
+              "IconSize": "58, 48",
+              "IconMargin": "2, 0",
+              "IconSpriteOffset": "0, 0",
+              "MinimumRows": "5",
+              "MaximumRows": "6",
+              "HotkeyPrefix": "Production",
+              "HotkeyCount": "24",
+              "SelectProductionBuildingHotkey": "SelectProductionBuilding",
+              "ClickSound": "TabClick"
+            }
+          }
+        },
+        {
+          "id": "HPF_ROOT",
+          "Logic": "LoadIngameHierarchicalPathFinderOverlayLogic",
+          "X": "WINDOW_WIDTH - WIDTH - 231",
+          "Y": "40",
+          "Width": "175"
+        }
+      ],
+      "LogicKeyListener": {
+        "id": "PLAYER_KEYHANDLER",
+        "Logic": {
+          "RemoveFromControlGroupKey": "RemoveFromControlGroup",
+          "__value": "RemoveFromControlGroupHotkeyLogic"
+        }
+      },
+      "ControlGroups": {
+        "id": "CONTROLGROUPS",
+        "SelectGroupKeyPrefix": "ControlGroupSelect",
+        "CreateGroupKeyPrefix": "ControlGroupCreate",
+        "AddToGroupKeyPrefix": "ControlGroupAddTo",
+        "CombineWithGroupKeyPrefix": "ControlGroupCombineWith",
+        "JumpToGroupKeyPrefix": "ControlGroupJumpTo"
+      },
+      "LogicTicker": {
+        "id": "SIDEBAR_TICKER"
+      },
+      "Image": [
+        {
+          "id": "COMMAND_BAR_BACKGROUND",
+          "X": "0",
+          "Y": "WINDOW_HEIGHT - HEIGHT",
+          "Width": "451",
+          "Height": "43",
+          "ImageCollection": "commandbar",
+          "ImageName": "background",
+          "ClickThrough": "False"
+        },
+        {
+          "id": "SIDEBAR_BACKGROUND_TOP",
+          "X": "WINDOW_WIDTH - 226",
+          "Y": "0",
+          "Width": "226",
+          "Height": "295",
+          "ImageCollection": "sidebar",
+          "ImageName": "background-top",
+          "ClickThrough": "false",
+          "Children": {
+            "Container": [
+              {
+                "id": "TOP_BUTTONS",
+                "Logic": "MenuButtonsChromeLogic",
+                "X": "16",
+                "Y": "236",
+                "Children": {
+                  "Button": [
+                    {
+                      "id": "REPAIR_BUTTON",
+                      "Logic": "RepairOrderButtonLogic",
+                      "X": "29",
+                      "Width": "34",
+                      "Height": "35",
+                      "Background": null,
+                      "Key": "Repair",
+                      "TooltipText": "button-top-buttons-repair-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "VisualHeight": "0",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "0",
+                          "Y": "0",
+                          "ImageCollection": "order-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "SELL_BUTTON",
+                      "Logic": "SellOrderButtonLogic",
+                      "X": "54",
+                      "Width": "34",
+                      "Height": "35",
+                      "Background": null,
+                      "Key": "Sell",
+                      "TooltipText": "button-top-buttons-sell-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "VisualHeight": "0",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "0",
+                          "Y": "0",
+                          "ImageCollection": "order-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "BEACON_BUTTON",
+                      "Logic": "BeaconOrderButtonLogic",
+                      "X": "108",
+                      "Width": "36",
+                      "Height": "35",
+                      "Background": null,
+                      "Key": "PlaceBeacon",
+                      "TooltipText": "button-top-buttons-beacon-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "VisualHeight": "0",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "0",
+                          "Y": "0",
+                          "ImageCollection": "order-icons"
+                        }
+                      }
+                    },
+                    {
+                      "id": "POWER_BUTTON",
+                      "Logic": "PowerdownOrderButtonLogic",
+                      "X": "133",
+                      "Width": "36",
+                      "Height": "35",
+                      "Background": null,
+                      "Key": "PowerDown",
+                      "TooltipText": "button-top-buttons-power-tooltip",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "VisualHeight": "0",
+                      "Children": {
+                        "Image": {
+                          "id": "ICON",
+                          "X": "0",
+                          "Y": "0",
+                          "ImageCollection": "order-icons"
+                        }
+                      }
+                    }
+                  ],
+                  "MenuButton": {
+                    "id": "OPTIONS_BUTTON",
+                    "Key": "escape",
+                    "X": "78",
+                    "Y": "1",
+                    "Width": "40",
+                    "Height": "38",
+                    "Background": null,
+                    "TooltipText": "button-top-buttons-options-tooltip",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "DisableWorldSounds": "true",
+                    "VisualHeight": "0",
+                    "Children": {
+                      "Image": {
+                        "id": "ICON",
+                        "X": "0",
+                        "Y": "0",
+                        "ImageCollection": "order-icons",
+                        "ImageName": "options"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "RADAR",
+                "Logic": "IngameRadarDisplayLogic",
+                "Children": {
+                  "LogicTicker": {
+                    "id": "RADAR_TICKER"
+                  },
+                  "Image": {
+                    "id": "INSIGNIA",
+                    "Logic": "AddFactionSuffixLogic",
+                    "X": "63",
+                    "Y": "88",
+                    "ImageCollection": "radar",
+                    "ImageName": "insignia"
+                  },
+                  "ColorBlock": {
+                    "id": "RADAR_FADETOBLACK",
+                    "X": "12",
+                    "Y": "34",
+                    "Width": "202",
+                    "Height": "202"
+                  },
+                  "Radar": {
+                    "id": "RADAR_MINIMAP",
+                    "WorldInteractionController": "INTERACTION_CONTROLLER",
+                    "X": "12",
+                    "Y": "34",
+                    "Width": "202",
+                    "Height": "202",
+                    "SoundUp": "RadarUp",
+                    "SoundDown": "RadarDown",
+                    "Children": null
+                  },
+                  "VideoPlayer": {
+                    "id": "PLAYER",
+                    "X": "12",
+                    "Y": "32",
+                    "Width": "202",
+                    "Height": "202",
+                    "Skippable": "false"
+                  },
+                  "Container": {
+                    "id": "MINIMAP_OVERLAY",
+                    "X": "12",
+                    "Y": "34",
+                    "Children": {
+                      "Image": [
+                        {
+                          "id": "TOPLEFT",
+                          "ImageCollection": "minimap-overlay",
+                          "ImageName": "top-left"
+                        },
+                        {
+                          "id": "TOP",
+                          "X": "30",
+                          "ImageCollection": "minimap-overlay",
+                          "ImageName": "top"
+                        },
+                        {
+                          "id": "TOPRIGHT",
+                          "X": "195",
+                          "ImageCollection": "minimap-overlay",
+                          "ImageName": "top-right"
+                        },
+                        {
+                          "id": "LEFT",
+                          "Y": "94",
+                          "ImageCollection": "minimap-overlay",
+                          "ImageName": "left"
+                        },
+                        {
+                          "id": "RIGHT",
+                          "X": "197",
+                          "Y": "94",
+                          "ImageCollection": "minimap-overlay",
+                          "ImageName": "right"
+                        },
+                        {
+                          "id": "BOTTOMLEFT",
+                          "Y": "195",
+                          "ImageCollection": "minimap-overlay",
+                          "ImageName": "bottom-left"
+                        },
+                        {
+                          "id": "BOTTOMRIGHT",
+                          "X": "195",
+                          "Y": "195",
+                          "ImageCollection": "minimap-overlay",
+                          "ImageName": "bottom-right"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ],
+            "Label": {
+              "id": "GAME_TIMER",
+              "Logic": "GameTimerLogic",
+              "X": "10",
+              "Y": "4",
+              "Width": "PARENT_WIDTH",
+              "Height": "22",
+              "Align": "Center",
+              "Font": "TinyBold"
+            },
+            "LabelWithTooltip": [
+              {
+                "id": "CASH",
+                "Logic": "IngameCashCounterLogic",
+                "X": "29",
+                "Y": "4",
+                "Width": "50",
+                "Height": "22",
+                "Font": "Bold",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "TooltipTemplate": "SIMPLE_TOOLTIP"
+              },
+              {
+                "id": "POWER",
+                "Logic": "IngamePowerCounterLogic",
+                "X": "PARENT_WIDTH - WIDTH - 30",
+                "Y": "4",
+                "Width": "50",
+                "Height": "22",
+                "Align": "Right",
+                "Font": "Bold",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "TooltipTemplate": "SIMPLE_TOOLTIP",
+                "Children": {
+                  "Image": {
+                    "id": "POWER_ICON",
+                    "X": "PARENT_WIDTH + 0",
+                    "Y": "3",
+                    "ImageCollection": "power-icons",
+                    "ImageName": "power-normal"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

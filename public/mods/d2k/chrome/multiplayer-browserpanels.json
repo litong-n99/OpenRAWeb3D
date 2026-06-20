@@ -1,0 +1,123 @@
+{
+  "ScrollPanel": [
+    {
+      "id": "MULTIPLAYER_CLIENT_LIST",
+      "Width": "PARENT_WIDTH",
+      "Height": "159",
+      "IgnoreChildMouseOver": "true",
+      "Children": {
+        "ScrollItem": [
+          {
+            "id": "HEADER",
+            "Background": "scrollheader",
+            "Width": "PARENT_WIDTH - 27",
+            "Height": "13",
+            "X": "2",
+            "Y": "0",
+            "Visible": "false",
+            "Children": {
+              "Label": {
+                "id": "LABEL",
+                "Font": "TinyBold",
+                "Width": "PARENT_WIDTH",
+                "Height": "13",
+                "Align": "Center"
+              }
+            }
+          },
+          {
+            "id": "TEMPLATE",
+            "Width": "PARENT_WIDTH - 27",
+            "Height": "25",
+            "X": "2",
+            "Y": "0",
+            "Visible": "false",
+            "Children": {
+              "Image": {
+                "id": "FLAG",
+                "X": "4",
+                "Y": "2",
+                "Width": "32",
+                "Height": "16",
+                "Visible": "False"
+              },
+              "Label": [
+                {
+                  "id": "LABEL",
+                  "X": "35",
+                  "Width": "PARENT_WIDTH - 45",
+                  "Height": "25",
+                  "Shadow": "True"
+                },
+                {
+                  "id": "NOFLAG_LABEL",
+                  "X": "5",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "25"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "MULTIPLAYER_FILTER_PANEL",
+      "Width": "158",
+      "Height": "130",
+      "Children": {
+        "Checkbox": [
+          {
+            "id": "WAITING_FOR_PLAYERS",
+            "X": "5",
+            "Y": "5",
+            "Width": "PARENT_WIDTH - 29",
+            "Height": "20",
+            "Text": "checkbox-multiplayer-filter-panel-waiting-for-players",
+            "TextColor": "32CD32",
+            "Font": "Regular"
+          },
+          {
+            "id": "EMPTY",
+            "X": "5",
+            "Y": "30",
+            "Width": "PARENT_WIDTH - 29",
+            "Height": "20",
+            "Text": "checkbox-multiplayer-filter-panel-empty",
+            "Font": "Regular"
+          },
+          {
+            "id": "PASSWORD_PROTECTED",
+            "X": "5",
+            "Y": "55",
+            "Width": "PARENT_WIDTH - 29",
+            "Height": "20",
+            "Text": "checkbox-multiplayer-filter-panel-password-protected",
+            "TextColor": "FF0000",
+            "Font": "Regular"
+          },
+          {
+            "id": "ALREADY_STARTED",
+            "X": "5",
+            "Y": "80",
+            "Width": "PARENT_WIDTH - 29",
+            "Height": "20",
+            "Text": "checkbox-multiplayer-filter-panel-already-started",
+            "TextColor": "FFA500",
+            "Font": "Regular"
+          },
+          {
+            "id": "INCOMPATIBLE_VERSION",
+            "X": "5",
+            "Y": "105",
+            "Width": "PARENT_WIDTH - 29",
+            "Height": "20",
+            "Text": "checkbox-multiplayer-filter-panel-incompatible-version",
+            "TextColor": "BEBEBE",
+            "Font": "Regular"
+          }
+        ]
+      }
+    }
+  ]
+}

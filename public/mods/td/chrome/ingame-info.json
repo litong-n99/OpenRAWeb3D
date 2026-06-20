@@ -1,0 +1,181 @@
+{
+  "Container": {
+    "id": "GAME_INFO_PANEL",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+    "Width": "570",
+    "Height": "435",
+    "Logic": "GameInfoLogic",
+    "Visible": "False",
+    "Children": {
+      "Label": {
+        "id": "TITLE",
+        "Width": "PARENT_WIDTH",
+        "Height": "25",
+        "Y": "0 - 34",
+        "Text": "label-game-info-panel-title",
+        "Align": "Center",
+        "Font": "BigBold",
+        "Contrast": "true"
+      },
+      "Container": [
+        {
+          "id": "TAB_CONTAINER_2",
+          "X": "0 - 140 + 1",
+          "Visible": "False",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON1",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON2",
+                "Y": "45",
+                "Width": "140",
+                "Height": "35"
+              }
+            ]
+          }
+        },
+        {
+          "id": "TAB_CONTAINER_3",
+          "X": "0 - 140 + 1",
+          "Visible": "False",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON1",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON2",
+                "Y": "45",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON3",
+                "Y": "90",
+                "Width": "140",
+                "Height": "35"
+              }
+            ]
+          }
+        },
+        {
+          "id": "TAB_CONTAINER_4",
+          "X": "0 - 140 + 1",
+          "Visible": "False",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON1",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON2",
+                "Y": "45",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON3",
+                "Y": "90",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON4",
+                "Y": "135",
+                "Width": "140",
+                "Height": "35"
+              }
+            ]
+          }
+        },
+        {
+          "id": "TAB_CONTAINER_5",
+          "X": "0 - 140 + 1",
+          "Visible": "False",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON1",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON2",
+                "Y": "45",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON3",
+                "Y": "90",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON4",
+                "Y": "135",
+                "Width": "140",
+                "Height": "35"
+              },
+              {
+                "id": "BUTTON5",
+                "Y": "180",
+                "Width": "140",
+                "Height": "35"
+              }
+            ]
+          }
+        }
+      ],
+      "Background": {
+        "id": "BACKGROUND",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "Background": "panel-black",
+        "Children": {
+          "Container": [
+            {
+              "id": "STATS_PANEL",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT"
+            },
+            {
+              "id": "MAP_PANEL",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT"
+            },
+            {
+              "id": "OBJECTIVES_PANEL",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT"
+            },
+            {
+              "id": "DEBUG_PANEL",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT"
+            },
+            {
+              "id": "CHAT_PANEL",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT"
+            },
+            {
+              "id": "LOBBY_OPTIONS_PANEL",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

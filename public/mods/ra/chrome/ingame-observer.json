@@ -1,0 +1,1499 @@
+{
+  "Container": {
+    "id": "OBSERVER_WIDGETS",
+    "Logic": "LoadIngameChatLogic",
+    "Children": {
+      "Container": [
+        {
+          "id": "CHAT_ROOT"
+        },
+        {
+          "id": "MUTE_INDICATOR",
+          "Logic": "MuteIndicatorLogic",
+          "X": "WINDOW_WIDTH - WIDTH - 260",
+          "Y": "10",
+          "Width": "200",
+          "Height": "25",
+          "Children": {
+            "Image": {
+              "id": "ICON",
+              "X": "PARENT_WIDTH - WIDTH",
+              "Y": "1",
+              "Width": "24",
+              "Height": "24",
+              "ImageCollection": "sidebar-bits",
+              "ImageName": "indicator-muted"
+            },
+            "Label": {
+              "id": "LABEL",
+              "Width": "PARENT_WIDTH - 30",
+              "Height": "25",
+              "Align": "Right",
+              "Text": "label-mute-indicator",
+              "Contrast": "true"
+            }
+          }
+        },
+        {
+          "id": "INGAME_OBSERVERSTATS_BG",
+          "Logic": {
+            "StatisticsNoneKey": "StatisticsNone",
+            "StatisticsBasicKey": "StatisticsBasic",
+            "StatisticsEconomyKey": "StatisticsEconomy",
+            "StatisticsProductionKey": "StatisticsProduction",
+            "StatisticsSupportPowersKey": "StatisticsSupportPowers",
+            "StatisticsCombatKey": "StatisticsCombat",
+            "StatisticsArmyKey": "StatisticsArmy",
+            "StatisticsGraphKey": "StatisticsGraph",
+            "StatisticsArmyGraphKey": "StatisticsArmyGraph",
+            "StatsDropDownPanelTemplate": "SPECTATOR_LABEL_DROPDOWN_TEMPLATE",
+            "__value": "ObserverStatsLogic"
+          },
+          "X": "5",
+          "Y": "5",
+          "Width": "760",
+          "Height": "240",
+          "Children": {
+            "DropDownButton": {
+              "id": "STATS_DROPDOWN",
+              "X": "0",
+              "Y": "0",
+              "Width": "185",
+              "Height": "25",
+              "Font": "Bold",
+              "Background": "observer-scrollpanel-button",
+              "SeparatorImage": "observer-separator",
+              "Children": {
+                "LogicKeyListener": {
+                  "id": "STATS_DROPDOWN_KEYHANDLER"
+                }
+              }
+            },
+            "Container": [
+              {
+                "id": "GRAPH_BG",
+                "Y": "30",
+                "X": "0",
+                "Width": "PARENT_WIDTH",
+                "Height": "24",
+                "Children": {
+                  "Container": [
+                    {
+                      "id": "BASIC_STATS_HEADERS",
+                      "X": "0",
+                      "Y": "0",
+                      "Width": "705",
+                      "Height": "PARENT_HEIGHT",
+                      "Children": {
+                        "ColorBlock": {
+                          "id": "HEADER_COLOR",
+                          "X": "0",
+                          "Y": "0",
+                          "Color": "00000090",
+                          "Width": "PARENT_WIDTH - 200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "GradientColorBlock": {
+                          "id": "HEADER_GRADIENT",
+                          "X": "PARENT_WIDTH - 200",
+                          "Y": "0",
+                          "TopLeftColor": "00000090",
+                          "BottomLeftColor": "00000090",
+                          "Width": "200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "Label": [
+                          {
+                            "id": "PLAYER_HEADER",
+                            "X": "40",
+                            "Y": "0",
+                            "Width": "120",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-player-header",
+                            "Align": "Left",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "CASH_HEADER",
+                            "X": "160",
+                            "Y": "0",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-cash-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "POWER_HEADER",
+                            "X": "240",
+                            "Y": "0",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-power-header",
+                            "Align": "Center",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "KILLS_HEADER",
+                            "X": "320",
+                            "Y": "0",
+                            "Width": "40",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-kills-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "DEATHS_HEADER",
+                            "X": "360",
+                            "Y": "0",
+                            "Width": "60",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-deaths-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "ASSETS_DESTROYED_HEADER",
+                            "X": "420",
+                            "Y": "0",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-assets-destroyed-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "ASSETS_LOST_HEADER",
+                            "X": "500",
+                            "Y": "0",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-assets-lost-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "EXPERIENCE_HEADER",
+                            "X": "580",
+                            "Y": "0",
+                            "Width": "60",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-experience-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "ACTIONS_MIN_HEADER",
+                            "X": "640",
+                            "Y": "0",
+                            "Width": "60",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-basic-stats-actions-min-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "ECONOMY_STATS_HEADERS",
+                      "X": "0",
+                      "Y": "0",
+                      "Width": "735",
+                      "Height": "PARENT_HEIGHT",
+                      "Children": {
+                        "ColorBlock": {
+                          "id": "HEADER_COLOR",
+                          "X": "0",
+                          "Y": "0",
+                          "Color": "00000090",
+                          "Width": "PARENT_WIDTH - 200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "GradientColorBlock": {
+                          "id": "HEADER_GRADIENT",
+                          "X": "PARENT_WIDTH - 200",
+                          "Y": "0",
+                          "TopLeftColor": "00000090",
+                          "BottomLeftColor": "00000090",
+                          "Width": "200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "Label": [
+                          {
+                            "id": "PLAYER_HEADER",
+                            "X": "40",
+                            "Width": "120",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-economy-stats-player-header",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "CASH_HEADER",
+                            "X": "160",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-economy-stats-cash-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "INCOME_HEADER",
+                            "X": "240",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-economy-stats-income-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "ASSETS_HEADER",
+                            "X": "320",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-economy-stats-assets-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "EARNED_HEADER",
+                            "X": "400",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-economy-stats-earned-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "SPENT_HEADER",
+                            "X": "480",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-economy-stats-spent-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "HARVESTERS_HEADER",
+                            "X": "560",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-economy-stats-harvesters-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "DERRICKS_HEADER",
+                            "X": "650",
+                            "Width": "80",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-economy-stats-derricks-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "PRODUCTION_STATS_HEADERS",
+                      "X": "0",
+                      "Y": "0",
+                      "Width": "400",
+                      "Height": "PARENT_HEIGHT",
+                      "Children": {
+                        "ColorBlock": {
+                          "id": "HEADER_COLOR",
+                          "X": "0",
+                          "Y": "0",
+                          "Color": "00000090",
+                          "Width": "PARENT_WIDTH - 200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "GradientColorBlock": {
+                          "id": "HEADER_GRADIENT",
+                          "X": "PARENT_WIDTH - 200",
+                          "Y": "0",
+                          "TopLeftColor": "00000090",
+                          "BottomLeftColor": "00000090",
+                          "Width": "200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "Label": [
+                          {
+                            "id": "PLAYER_HEADER",
+                            "X": "40",
+                            "Y": "0",
+                            "Width": "120",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-production-stats-player-header",
+                            "Align": "Left",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "PRODUCTION_HEADER",
+                            "X": "160",
+                            "Y": "0",
+                            "Width": "100",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-production-stats-header",
+                            "Shadow": "True"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "SUPPORT_POWERS_HEADERS",
+                      "X": "0",
+                      "Y": "0",
+                      "Width": "400",
+                      "Height": "PARENT_HEIGHT",
+                      "Children": {
+                        "ColorBlock": {
+                          "id": "HEADER_COLOR",
+                          "X": "0",
+                          "Y": "0",
+                          "Color": "00000090",
+                          "Width": "PARENT_WIDTH - 200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "GradientColorBlock": {
+                          "id": "HEADER_GRADIENT",
+                          "X": "PARENT_WIDTH - 200",
+                          "Y": "0",
+                          "TopLeftColor": "00000090",
+                          "BottomLeftColor": "00000090",
+                          "Width": "200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "Label": [
+                          {
+                            "id": "PLAYER_HEADER",
+                            "X": "40",
+                            "Y": "0",
+                            "Width": "120",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-support-powers-player-header",
+                            "Align": "Left",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "SUPPORT_POWERS_HEADER",
+                            "X": "160",
+                            "Y": "0",
+                            "Width": "200",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-support-powers-header",
+                            "Shadow": "True"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "ARMY_HEADERS",
+                      "X": "0",
+                      "Y": "0",
+                      "Width": "400",
+                      "Height": "PARENT_HEIGHT",
+                      "Children": {
+                        "ColorBlock": {
+                          "id": "HEADER_COLOR",
+                          "X": "0",
+                          "Y": "0",
+                          "Color": "00000090",
+                          "Width": "PARENT_WIDTH - 200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "GradientColorBlock": {
+                          "id": "HEADER_GRADIENT",
+                          "X": "PARENT_WIDTH - 200",
+                          "Y": "0",
+                          "TopLeftColor": "00000090",
+                          "BottomLeftColor": "00000090",
+                          "Width": "200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "Label": [
+                          {
+                            "id": "PLAYER_HEADER",
+                            "X": "40",
+                            "Y": "0",
+                            "Width": "120",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-army-player-header",
+                            "Align": "Left",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "ARMY_HEADER",
+                            "X": "160",
+                            "Y": "0",
+                            "Width": "100",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-army-header",
+                            "Shadow": "True"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "id": "COMBAT_STATS_HEADERS",
+                      "X": "0",
+                      "Y": "0",
+                      "Width": "760",
+                      "Height": "PARENT_HEIGHT",
+                      "Children": {
+                        "ColorBlock": {
+                          "id": "HEADER_COLOR",
+                          "X": "0",
+                          "Y": "0",
+                          "Color": "00000090",
+                          "Width": "PARENT_WIDTH - 200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "GradientColorBlock": {
+                          "id": "HEADER_GRADIENT",
+                          "X": "PARENT_WIDTH - 200",
+                          "Y": "0",
+                          "TopLeftColor": "00000090",
+                          "BottomLeftColor": "00000090",
+                          "Width": "200",
+                          "Height": "PARENT_HEIGHT"
+                        },
+                        "Label": [
+                          {
+                            "id": "PLAYER_HEADER",
+                            "X": "40",
+                            "Y": "0",
+                            "Width": "120",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-player-header",
+                            "Align": "Left",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "ASSETS_DESTROYED_HEADER",
+                            "X": "160",
+                            "Y": "0",
+                            "Width": "75",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-assets-destroyed-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "ASSETS_LOST_HEADER",
+                            "X": "235",
+                            "Y": "0",
+                            "Width": "75",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-assets-lost-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "UNITS_KILLED_HEADER",
+                            "X": "310",
+                            "Y": "0",
+                            "Width": "75",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-units-killed-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "UNITS_DEAD_HEADER",
+                            "X": "385",
+                            "Y": "0",
+                            "Width": "75",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-units-dead-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "BUILDINGS_KILLED_HEADER",
+                            "X": "460",
+                            "Y": "0",
+                            "Width": "75",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-buildings-killed-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "BUILDINGS_DEAD_HEADER",
+                            "X": "535",
+                            "Y": "0",
+                            "Width": "75",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-buildings-dead-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "ARMY_VALUE_HEADER",
+                            "X": "610",
+                            "Y": "0",
+                            "Width": "90",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-army-value-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          },
+                          {
+                            "id": "VISION_HEADER",
+                            "X": "700",
+                            "Y": "0",
+                            "Width": "60",
+                            "Height": "PARENT_HEIGHT",
+                            "Font": "Bold",
+                            "Text": "label-combat-stats-vision-header",
+                            "Align": "Right",
+                            "Shadow": "True"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "INCOME_GRAPH_CONTAINER",
+                "X": "0",
+                "Y": "30",
+                "Width": "PARENT_WIDTH",
+                "Height": "PARENT_HEIGHT",
+                "Visible": "False",
+                "Children": {
+                  "ColorBlock": {
+                    "id": "GRAPH_BACKGROUND",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "PARENT_HEIGHT",
+                    "Color": "00000090"
+                  },
+                  "ScrollableLineGraph": {
+                    "id": "INCOME_GRAPH",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "PARENT_WIDTH - 5",
+                    "Height": "PARENT_HEIGHT",
+                    "ValueFormat": "${0}",
+                    "YAxisValueFormat": "${0:F0}",
+                    "XAxisSize": "40",
+                    "XAxisTicksPerLabel": "2",
+                    "XAxisLabel": "Game Minute",
+                    "YAxisLabel": "Earnings",
+                    "LabelFont": "TinyBold",
+                    "AxisFont": "TinyBold",
+                    "ScrollbarBackground": "observer-scrollpanel-button-pressed",
+                    "ScrollbarButton": "observer-scrollpanel-button"
+                  }
+                }
+              },
+              {
+                "id": "ARMY_VALUE_GRAPH_CONTAINER",
+                "X": "0",
+                "Y": "30",
+                "Width": "PARENT_WIDTH",
+                "Height": "PARENT_HEIGHT",
+                "Visible": "False",
+                "Children": {
+                  "ColorBlock": {
+                    "id": "GRAPH_BACKGROUND",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "PARENT_HEIGHT",
+                    "Color": "00000090"
+                  },
+                  "ScrollableLineGraph": {
+                    "id": "ARMY_VALUE_GRAPH",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "PARENT_WIDTH - 5",
+                    "Height": "PARENT_HEIGHT",
+                    "ValueFormat": "${0}",
+                    "YAxisValueFormat": "${0:F0}",
+                    "XAxisSize": "40",
+                    "XAxisTicksPerLabel": "2",
+                    "XAxisLabel": "Game Minute",
+                    "YAxisLabel": "Army Value",
+                    "LabelFont": "TinyBold",
+                    "AxisFont": "TinyBold",
+                    "ScrollbarBackground": "observer-scrollpanel-button-pressed",
+                    "ScrollbarButton": "observer-scrollpanel-button"
+                  }
+                }
+              }
+            ],
+            "ScrollPanel": {
+              "id": "PLAYER_STATS_PANEL",
+              "X": "0",
+              "Y": "54",
+              "Width": "PARENT_WIDTH",
+              "Height": "240",
+              "TopBottomSpacing": "0",
+              "BorderWidth": "0",
+              "Background": null,
+              "ScrollBarBackground": "observer-scrollpanel-button",
+              "Button": "observer-scrollpanel-button",
+              "ScrollbarWidth": "24",
+              "ScrollBar": "Hidden",
+              "Children": {
+                "ScrollItem": [
+                  {
+                    "id": "TEAM_TEMPLATE",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "650",
+                    "Height": "24",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "TEAM_COLOR",
+                        "X": "0",
+                        "Y": "0",
+                        "Color": "00000090",
+                        "Width": "PARENT_WIDTH - 200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "GradientColorBlock": {
+                        "id": "TEAM_GRADIENT",
+                        "X": "PARENT_WIDTH - 200",
+                        "Y": "0",
+                        "TopLeftColor": "00000090",
+                        "BottomLeftColor": "00000090",
+                        "Width": "200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "Label": {
+                        "id": "TEAM",
+                        "X": "10",
+                        "Y": "0",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "Bold",
+                        "Shadow": "True"
+                      }
+                    }
+                  },
+                  {
+                    "id": "BASIC_PLAYER_TEMPLATE",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "705",
+                    "Height": "24",
+                    "Background": "scrollitem-nohover",
+                    "EnableChildMouseOver": "true",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "PLAYER_COLOR",
+                        "X": "0",
+                        "Y": "0",
+                        "Width": "PARENT_WIDTH - 200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "GradientColorBlock": {
+                        "id": "PLAYER_GRADIENT",
+                        "X": "PARENT_WIDTH - 200",
+                        "Y": "0",
+                        "Width": "200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "Image": {
+                        "id": "FLAG",
+                        "X": "5",
+                        "Y": "4",
+                        "Width": "35",
+                        "Height": "PARENT_HEIGHT - 4",
+                        "ImageName": "random",
+                        "ImageCollection": "flags"
+                      },
+                      "LabelWithTooltip": {
+                        "id": "PLAYER",
+                        "X": "40",
+                        "Y": "0",
+                        "Width": "120",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "Bold",
+                        "Shadow": "True",
+                        "TooltipContainer": "TOOLTIP_CONTAINER",
+                        "TooltipTemplate": "SIMPLE_TOOLTIP"
+                      },
+                      "Label": [
+                        {
+                          "id": "CASH",
+                          "X": "160",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "POWER",
+                          "X": "240",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Center",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "KILLS",
+                          "X": "320",
+                          "Y": "0",
+                          "Width": "40",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "DEATHS",
+                          "X": "360",
+                          "Y": "0",
+                          "Width": "60",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "ASSETS_DESTROYED",
+                          "X": "420",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "ASSETS_LOST",
+                          "X": "500",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "EXPERIENCE",
+                          "X": "580",
+                          "Y": "0",
+                          "Width": "60",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "ACTIONS_MIN",
+                          "X": "640",
+                          "Y": "0",
+                          "Width": "60",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "ECONOMY_PLAYER_TEMPLATE",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "735",
+                    "Height": "24",
+                    "Background": "scrollitem-nohover",
+                    "EnableChildMouseOver": "true",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "PLAYER_COLOR",
+                        "X": "0",
+                        "Y": "0",
+                        "Width": "PARENT_WIDTH - 200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "GradientColorBlock": {
+                        "id": "PLAYER_GRADIENT",
+                        "X": "PARENT_WIDTH - 200",
+                        "Y": "0",
+                        "Width": "200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "Image": {
+                        "id": "FLAG",
+                        "X": "5",
+                        "Y": "4",
+                        "Width": "35",
+                        "Height": "PARENT_HEIGHT - 4",
+                        "ImageName": "random",
+                        "ImageCollection": "flags"
+                      },
+                      "LabelWithTooltip": {
+                        "id": "PLAYER",
+                        "X": "40",
+                        "Y": "0",
+                        "Width": "120",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "Bold",
+                        "Shadow": "True",
+                        "TooltipContainer": "TOOLTIP_CONTAINER",
+                        "TooltipTemplate": "SIMPLE_TOOLTIP"
+                      },
+                      "Label": [
+                        {
+                          "id": "CASH",
+                          "X": "160",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "INCOME",
+                          "X": "240",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "ASSETS",
+                          "X": "320",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "EARNED",
+                          "X": "400",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "SPENT",
+                          "X": "480",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "HARVESTERS",
+                          "X": "560",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "DERRICKS",
+                          "X": "650",
+                          "Y": "0",
+                          "Width": "80",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "PRODUCTION_PLAYER_TEMPLATE",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "400",
+                    "Height": "24",
+                    "Background": "scrollitem-nohover",
+                    "EnableChildMouseOver": "true",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "PLAYER_COLOR",
+                        "X": "0",
+                        "Y": "0",
+                        "Width": "PARENT_WIDTH - 200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "GradientColorBlock": {
+                        "id": "PLAYER_GRADIENT",
+                        "X": "PARENT_WIDTH - 200",
+                        "Y": "0",
+                        "Width": "200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "Image": {
+                        "id": "FLAG",
+                        "X": "5",
+                        "Y": "4",
+                        "Width": "35",
+                        "Height": "PARENT_HEIGHT - 4",
+                        "ImageName": "random",
+                        "ImageCollection": "flags"
+                      },
+                      "LabelWithTooltip": {
+                        "id": "PLAYER",
+                        "X": "40",
+                        "Y": "0",
+                        "Width": "120",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "Bold",
+                        "Shadow": "True",
+                        "TooltipContainer": "TOOLTIP_CONTAINER",
+                        "TooltipTemplate": "SIMPLE_TOOLTIP"
+                      },
+                      "ObserverProductionIcons": {
+                        "id": "PRODUCTION_ICONS",
+                        "X": "160",
+                        "Y": "0",
+                        "Width": "0",
+                        "Height": "PARENT_HEIGHT",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      }
+                    }
+                  },
+                  {
+                    "id": "SUPPORT_POWERS_PLAYER_TEMPLATE",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "400",
+                    "Height": "24",
+                    "Background": "scrollitem-nohover",
+                    "EnableChildMouseOver": "true",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "PLAYER_COLOR",
+                        "X": "0",
+                        "Y": "0",
+                        "Width": "PARENT_WIDTH - 200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "GradientColorBlock": {
+                        "id": "PLAYER_GRADIENT",
+                        "X": "PARENT_WIDTH - 200",
+                        "Y": "0",
+                        "Width": "200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "Image": {
+                        "id": "FLAG",
+                        "X": "5",
+                        "Y": "4",
+                        "Width": "35",
+                        "Height": "PARENT_HEIGHT - 4",
+                        "ImageName": "random",
+                        "ImageCollection": "flags"
+                      },
+                      "LabelWithTooltip": {
+                        "id": "PLAYER",
+                        "X": "40",
+                        "Y": "0",
+                        "Width": "120",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "Bold",
+                        "Shadow": "True",
+                        "TooltipContainer": "TOOLTIP_CONTAINER",
+                        "TooltipTemplate": "SIMPLE_TOOLTIP"
+                      },
+                      "ObserverSupportPowerIcons": {
+                        "id": "SUPPORT_POWER_ICONS",
+                        "X": "160",
+                        "Y": "0",
+                        "Width": "0",
+                        "Height": "PARENT_HEIGHT",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      }
+                    }
+                  },
+                  {
+                    "id": "ARMY_PLAYER_TEMPLATE",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "400",
+                    "Height": "24",
+                    "Background": "scrollitem-nohover",
+                    "EnableChildMouseOver": "true",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "PLAYER_COLOR",
+                        "X": "0",
+                        "Y": "0",
+                        "Width": "PARENT_WIDTH - 200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "GradientColorBlock": {
+                        "id": "PLAYER_GRADIENT",
+                        "X": "PARENT_WIDTH - 200",
+                        "Y": "0",
+                        "Width": "200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "Image": {
+                        "id": "FLAG",
+                        "X": "5",
+                        "Y": "4",
+                        "Width": "35",
+                        "Height": "PARENT_HEIGHT - 4",
+                        "ImageName": "random",
+                        "ImageCollection": "flags"
+                      },
+                      "LabelWithTooltip": {
+                        "id": "PLAYER",
+                        "X": "40",
+                        "Y": "0",
+                        "Width": "120",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "Bold",
+                        "Shadow": "True",
+                        "TooltipContainer": "TOOLTIP_CONTAINER",
+                        "TooltipTemplate": "SIMPLE_TOOLTIP"
+                      },
+                      "ObserverArmyIcons": {
+                        "id": "ARMY_ICONS",
+                        "X": "160",
+                        "Y": "0",
+                        "Width": "0",
+                        "Height": "PARENT_HEIGHT",
+                        "TooltipContainer": "TOOLTIP_CONTAINER"
+                      }
+                    }
+                  },
+                  {
+                    "id": "COMBAT_PLAYER_TEMPLATE",
+                    "X": "0",
+                    "Y": "0",
+                    "Width": "760",
+                    "Height": "24",
+                    "Background": "scrollitem-nohover",
+                    "EnableChildMouseOver": "true",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "PLAYER_COLOR",
+                        "X": "0",
+                        "Y": "0",
+                        "Width": "PARENT_WIDTH - 200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "GradientColorBlock": {
+                        "id": "PLAYER_GRADIENT",
+                        "X": "PARENT_WIDTH - 200",
+                        "Y": "0",
+                        "Width": "200",
+                        "Height": "PARENT_HEIGHT"
+                      },
+                      "Image": {
+                        "id": "FLAG",
+                        "X": "5",
+                        "Y": "4",
+                        "Width": "35",
+                        "Height": "PARENT_HEIGHT - 4",
+                        "ImageName": "random",
+                        "ImageCollection": "flags"
+                      },
+                      "LabelWithTooltip": {
+                        "id": "PLAYER",
+                        "X": "40",
+                        "Y": "0",
+                        "Width": "120",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "Bold",
+                        "Shadow": "True",
+                        "TooltipContainer": "TOOLTIP_CONTAINER",
+                        "TooltipTemplate": "SIMPLE_TOOLTIP"
+                      },
+                      "Label": [
+                        {
+                          "id": "ASSETS_DESTROYED",
+                          "X": "160",
+                          "Y": "0",
+                          "Width": "75",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "ASSETS_LOST",
+                          "X": "235",
+                          "Y": "0",
+                          "Width": "75",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "UNITS_KILLED",
+                          "X": "310",
+                          "Y": "0",
+                          "Width": "75",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "UNITS_DEAD",
+                          "X": "385",
+                          "Y": "0",
+                          "Width": "75",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "BUILDINGS_KILLED",
+                          "X": "460",
+                          "Y": "0",
+                          "Width": "75",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "BUILDINGS_DEAD",
+                          "X": "535",
+                          "Y": "0",
+                          "Width": "75",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "ARMY_VALUE",
+                          "X": "610",
+                          "Y": "0",
+                          "Width": "90",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        },
+                        {
+                          "id": "VISION",
+                          "X": "700",
+                          "Y": "0",
+                          "Width": "60",
+                          "Height": "PARENT_HEIGHT",
+                          "Align": "Right",
+                          "Shadow": "True"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "HPF_ROOT",
+          "Logic": "LoadIngameHierarchicalPathFinderOverlayLogic",
+          "X": "WINDOW_WIDTH - WIDTH - 255",
+          "Y": "40",
+          "Width": "175"
+        }
+      ],
+      "Image": [
+        {
+          "id": "SIDEBAR_BACKGROUND_TOP",
+          "X": "WINDOW_WIDTH - 250",
+          "Y": "10",
+          "Width": "238",
+          "Height": "287",
+          "ImageCollection": "sidebar-observer",
+          "ImageName": "background",
+          "ClickThrough": "false",
+          "Children": {
+            "Background": {
+              "id": "GAME_TIMER_BLOCK",
+              "Logic": "GameTimerLogic",
+              "X": "26",
+              "Y": "10",
+              "Width": "120",
+              "Height": "22",
+              "Background": "sidebar-button-observer",
+              "Children": {
+                "LabelWithTooltip": {
+                  "id": "GAME_TIMER",
+                  "Y": "0 - 1",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "PARENT_HEIGHT",
+                  "Align": "Center",
+                  "Font": "TinyBold",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "TooltipTemplate": "SIMPLE_TOOLTIP"
+                }
+              }
+            },
+            "Container": [
+              {
+                "id": "TOP_BUTTONS",
+                "Logic": "MenuButtonsChromeLogic",
+                "X": "9",
+                "Y": "7",
+                "Children": {
+                  "LogicKeyListener": {
+                    "id": "OBSERVER_KEY_LISTENER"
+                  },
+                  "MenuButton": {
+                    "id": "OPTIONS_BUTTON",
+                    "Key": "escape",
+                    "X": "192",
+                    "Width": "28",
+                    "Height": "28",
+                    "Background": "sidebar-button-observer",
+                    "TooltipText": "button-top-buttons-options-tooltip",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "DisableWorldSounds": "true",
+                    "VisualHeight": "0",
+                    "Children": {
+                      "Image": {
+                        "id": "ICON",
+                        "X": "6",
+                        "Y": "6",
+                        "ImageCollection": "order-icons",
+                        "ImageName": "options"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "RADAR",
+                "Children": {
+                  "ColorBlock": {
+                    "X": "8",
+                    "Y": "40",
+                    "Width": "222",
+                    "Height": "222",
+                    "Color": "000000"
+                  },
+                  "Radar": {
+                    "id": "INGAME_RADAR",
+                    "WorldInteractionController": "INTERACTION_CONTROLLER",
+                    "X": "9",
+                    "Y": "41",
+                    "Width": "220",
+                    "Height": "220"
+                  },
+                  "VideoPlayer": {
+                    "id": "PLAYER",
+                    "X": "9",
+                    "Y": "41",
+                    "Width": "220",
+                    "Height": "220",
+                    "Skippable": "false"
+                  }
+                }
+              }
+            ],
+            "DropDownButton": {
+              "id": "SHROUD_SELECTOR",
+              "Logic": {
+                "CombinedViewKey": "ObserverCombinedView",
+                "WorldViewKey": "ObserverWorldView",
+                "__value": "ObserverShroudSelectorLogic"
+              },
+              "X": "6",
+              "Y": "262",
+              "Width": "226",
+              "Height": "25",
+              "Font": "Bold",
+              "VisualHeight": "0",
+              "Background": "sidebar-button-observershroud",
+              "SeparatorImage": "observer-separator",
+              "Children": {
+                "LogicKeyListener": {
+                  "id": "SHROUD_KEYHANDLER"
+                },
+                "Image": {
+                  "id": "FLAG",
+                  "X": "4",
+                  "Y": "6",
+                  "Width": "32",
+                  "Height": "16"
+                },
+                "LabelWithTooltip": {
+                  "id": "LABEL",
+                  "X": "40",
+                  "Width": "PARENT_WIDTH - 42 - 16",
+                  "Height": "25",
+                  "Shadow": "True",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "TooltipTemplate": "SIMPLE_TOOLTIP"
+                },
+                "Label": {
+                  "id": "NOFLAG_LABEL",
+                  "X": "5",
+                  "Width": "PARENT_WIDTH - 7 - 16",
+                  "Height": "25",
+                  "Shadow": "True"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "SIDEBAR_BACKGROUND_BOTTOM",
+          "X": "WINDOW_WIDTH - 250",
+          "Y": "297",
+          "Width": "238",
+          "Height": "8",
+          "ImageCollection": "sidebar-observer",
+          "ImageName": "observer-bottom"
+        },
+        {
+          "id": "REPLAY_PLAYER",
+          "Logic": "ReplayControlBarLogic",
+          "X": "WINDOW_WIDTH - 250",
+          "Y": "297",
+          "Width": "238",
+          "Height": "40",
+          "Visible": "false",
+          "ImageCollection": "sidebar-observer",
+          "ImageName": "replay-bottom",
+          "ClickThrough": "false",
+          "Children": {
+            "Button": [
+              {
+                "id": "BUTTON_PAUSE",
+                "X": "9",
+                "Y": "5",
+                "Width": "28",
+                "Height": "28",
+                "Background": "sidebar-button-observer",
+                "Key": "Pause",
+                "TooltipText": "button-replay-pause-tooltip",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "VisualHeight": "0",
+                "Children": {
+                  "Image": {
+                    "id": "IMAGE_PAUSE",
+                    "X": "6",
+                    "Y": "6",
+                    "ImageCollection": "music",
+                    "ImageName": "pause"
+                  }
+                }
+              },
+              {
+                "id": "BUTTON_PLAY",
+                "X": "9",
+                "Y": "5",
+                "Width": "28",
+                "Height": "28",
+                "Background": "sidebar-button-observer",
+                "Key": "Pause",
+                "TooltipText": "button-replay-play-tooltip",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "VisualHeight": "0",
+                "Children": {
+                  "Image": {
+                    "id": "IMAGE_PLAY",
+                    "X": "6",
+                    "Y": "6",
+                    "ImageCollection": "music",
+                    "ImageName": "play"
+                  }
+                }
+              },
+              {
+                "id": "BUTTON_SLOW",
+                "X": "49",
+                "Y": "8",
+                "Width": "42",
+                "Height": "22",
+                "Background": "sidebar-button-observer",
+                "Key": "ReplaySpeedSlow",
+                "TooltipText": "button-replay-slow.tooltip",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "VisualHeight": "0",
+                "Text": "button-replay-slow.label",
+                "Font": "TinyBold"
+              },
+              {
+                "id": "BUTTON_REGULAR",
+                "X": "95",
+                "Y": "8",
+                "Width": "42",
+                "Height": "22",
+                "Background": "sidebar-button-observer",
+                "Key": "ReplaySpeedRegular",
+                "TooltipText": "button-replay-regular.tooltip",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "VisualHeight": "0",
+                "Text": "button-replay-regular.label",
+                "Font": "TinyBold"
+              },
+              {
+                "id": "BUTTON_FAST",
+                "X": "141",
+                "Y": "8",
+                "Width": "42",
+                "Height": "22",
+                "Background": "sidebar-button-observer",
+                "Key": "ReplaySpeedFast",
+                "TooltipText": "button-replay-fast.tooltip",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "VisualHeight": "0",
+                "Text": "button-replay-fast.label",
+                "Font": "TinyBold"
+              },
+              {
+                "id": "BUTTON_MAXIMUM",
+                "X": "187",
+                "Y": "8",
+                "Width": "42",
+                "Height": "22",
+                "Background": "sidebar-button-observer",
+                "Key": "ReplaySpeedMax",
+                "TooltipText": "button-replay-maximum.tooltip",
+                "TooltipContainer": "TOOLTIP_CONTAINER",
+                "VisualHeight": "0",
+                "Text": "button-replay-maximum.label",
+                "Font": "TinyBold"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

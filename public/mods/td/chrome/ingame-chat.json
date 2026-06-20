@@ -1,0 +1,98 @@
+{
+  "Container": {
+    "id": "CHAT_PANEL",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "WINDOW_HEIGHT - HEIGHT - 56",
+    "Width": "550",
+    "Height": "194",
+    "Logic": {
+      "OpenTeamChatKey": "OpenTeamChat",
+      "OpenGeneralChatKey": "OpenGeneralChat",
+      "Templates": {
+        "Chat": "CHAT_LINE_TEMPLATE",
+        "System": "SYSTEM_LINE_TEMPLATE",
+        "Mission": "CHAT_LINE_TEMPLATE"
+      },
+      "__value": "IngameChatLogic"
+    },
+    "Children": {
+      "LogicKeyListener": {
+        "id": "OPEN_CHAT_KEY_LISTENER"
+      },
+      "Container": [
+        {
+          "id": "CHAT_OVERLAY",
+          "Width": "PARENT_WIDTH - 24",
+          "Height": "PARENT_HEIGHT - 30",
+          "Visible": "false",
+          "Children": {
+            "TextNotificationsDisplay": {
+              "id": "CHAT_DISPLAY",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT",
+              "DisplayDurationMs": "10000",
+              "BottomSpacing": "3"
+            }
+          }
+        },
+        {
+          "id": "CHAT_CHROME",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "WorldButton": {
+              "id": "CHAT_MODE",
+              "Logic": "AddFactionSuffixLogic",
+              "Y": "PARENT_HEIGHT - HEIGHT",
+              "Width": "50",
+              "Height": "25",
+              "Text": "button-chat-chrome-mode.label",
+              "Font": "Bold",
+              "Key": "ToggleChatMode",
+              "TooltipText": "button-chat-chrome-mode.tooltip",
+              "TooltipTemplate": "BUTTON_TOOLTIP_FACTIONSUFFIX",
+              "TooltipContainer": "TOOLTIP_CONTAINER"
+            },
+            "TextField": {
+              "id": "CHAT_TEXTFIELD",
+              "Logic": "AddFactionSuffixLogic",
+              "X": "55",
+              "Y": "PARENT_HEIGHT - HEIGHT",
+              "Width": "466",
+              "Height": "25"
+            },
+            "Button": {
+              "id": "CHAT_CLOSE",
+              "Logic": "AddFactionSuffixLogic",
+              "X": "526",
+              "Y": "PARENT_HEIGHT - HEIGHT",
+              "Width": "24",
+              "Height": "25",
+              "Children": {
+                "Image": {
+                  "ImageCollection": "lobby-bits",
+                  "ImageName": "kick",
+                  "X": "6",
+                  "Y": "8"
+                }
+              }
+            },
+            "LogicKeyListener": {
+              "id": "KEY_LISTENER"
+            },
+            "ScrollPanel": {
+              "id": "CHAT_SCROLLPANEL",
+              "Logic": "AddFactionSuffixLogic",
+              "Y": "PARENT_HEIGHT - HEIGHT - 30",
+              "Width": "550",
+              "Height": "164",
+              "TopBottomSpacing": "3",
+              "ItemSpacing": "4",
+              "Align": "Bottom"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

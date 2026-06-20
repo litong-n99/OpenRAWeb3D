@@ -1,0 +1,416 @@
+{
+  "Background": {
+    "id": "LOAD_GAME_BROWSER_PANEL",
+    "Logic": "LoadGameBrowserLogic",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+    "Width": "900",
+    "Height": "600",
+    "Children": {
+      "Label": {
+        "id": "TITLE",
+        "Y": "16",
+        "Width": "PARENT_WIDTH",
+        "Height": "25",
+        "Text": "label-load-game-browser-panel-title",
+        "Align": "Center",
+        "Font": "Bold"
+      },
+      "Container": [
+        {
+          "id": "FILTER_AND_MANAGE_CONTAINER",
+          "X": "21",
+          "Y": "37",
+          "Width": "264",
+          "Height": "PARENT_HEIGHT - 75",
+          "Children": {
+            "Label": {
+              "id": "FILTERS_TITLE",
+              "Y": "6",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Bold",
+              "Align": "Center",
+              "Text": "label-filters-title"
+            },
+            "Background": {
+              "id": "FILTERS",
+              "Y": "30",
+              "Width": "PARENT_WIDTH",
+              "Height": "231",
+              "Background": "dialog3",
+              "Children": {
+                "Label": [
+                  {
+                    "id": "FLT_NAME_DESC",
+                    "X": "0",
+                    "Y": "8",
+                    "Width": "80",
+                    "Height": "25",
+                    "Text": "label-filters-flt-name-desc",
+                    "Align": "Right"
+                  },
+                  {
+                    "id": "FLT_TYPE_DESC",
+                    "X": "0",
+                    "Y": "38",
+                    "Width": "80",
+                    "Height": "25",
+                    "Text": "label-filters-flt-gametype-desc",
+                    "Align": "Right"
+                  },
+                  {
+                    "id": "FLT_DATE_DESC",
+                    "X": "0",
+                    "Y": "68",
+                    "Width": "80",
+                    "Height": "25",
+                    "Text": "label-filters-flt-date-desc",
+                    "Align": "Right"
+                  },
+                  {
+                    "id": "FLT_DURATION_DESC",
+                    "X": "0",
+                    "Y": "98",
+                    "Width": "80",
+                    "Height": "25",
+                    "Text": "label-filters-flt-duration-desc",
+                    "Align": "Right"
+                  },
+                  {
+                    "id": "FLT_MAPNAME_DESC",
+                    "X": "0",
+                    "Y": "128",
+                    "Width": "80",
+                    "Height": "25",
+                    "Text": "label-filters-flt-mapname-desc",
+                    "Align": "Right"
+                  },
+                  {
+                    "id": "FLT_FACTION_DESC",
+                    "X": "0",
+                    "Y": "158",
+                    "Width": "80",
+                    "Height": "25",
+                    "Text": "label-filters-flt-faction-desc",
+                    "Align": "Right"
+                  }
+                ],
+                "TextField": {
+                  "id": "FLT_NAME_INPUT",
+                  "X": "85",
+                  "Y": "8",
+                  "Width": "PARENT_WIDTH - 93",
+                  "Height": "25"
+                },
+                "DropDownButton": [
+                  {
+                    "id": "FLT_TYPE_DROPDOWNBUTTON",
+                    "X": "85",
+                    "Y": "38",
+                    "Width": "PARENT_WIDTH - 93",
+                    "Height": "25",
+                    "Text": "dropdownbutton-filters-any"
+                  },
+                  {
+                    "id": "FLT_DATE_DROPDOWNBUTTON",
+                    "X": "85",
+                    "Y": "68",
+                    "Width": "PARENT_WIDTH - 93",
+                    "Height": "25",
+                    "Text": "dropdownbutton-filters-any"
+                  },
+                  {
+                    "id": "FLT_DURATION_DROPDOWNBUTTON",
+                    "X": "85",
+                    "Y": "98",
+                    "Width": "PARENT_WIDTH - 93",
+                    "Height": "25",
+                    "Text": "dropdownbutton-filters-any"
+                  },
+                  {
+                    "id": "FLT_MAPNAME_DROPDOWNBUTTON",
+                    "X": "85",
+                    "Y": "128",
+                    "Width": "PARENT_WIDTH - 93",
+                    "Height": "25",
+                    "Text": "dropdownbutton-filters-any"
+                  },
+                  {
+                    "id": "FLT_FACTION_DROPDOWNBUTTON",
+                    "X": "85",
+                    "Y": "158",
+                    "Width": "PARENT_WIDTH - 93",
+                    "Height": "25",
+                    "Text": "dropdownbutton-filters-any"
+                  }
+                ],
+                "Button": {
+                  "id": "FLT_RESET_BUTTON",
+                  "X": "85",
+                  "Y": "198",
+                  "Width": "PARENT_WIDTH - 93",
+                  "Height": "25",
+                  "Text": "button-filters-flt-reset",
+                  "Font": "Bold"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "SAVE_LIST_CONTAINER",
+          "X": "296",
+          "Y": "37",
+          "Width": "399",
+          "Height": "PARENT_HEIGHT - 37 - 55",
+          "Children": {
+            "Label": {
+              "id": "SAVE_LIST_LABEL",
+              "Y": "6",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Text": "label-load-game-browser-panel-choose-save",
+              "Align": "Center",
+              "Font": "Bold"
+            },
+            "ScrollPanel": {
+              "id": "GAME_LIST",
+              "X": "0",
+              "Y": "30",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT - 30",
+              "CollapseHiddenChildren": "True",
+              "Children": {
+                "ScrollItem": [
+                  {
+                    "id": "DATE_HEADER",
+                    "Background": "scrollheader",
+                    "Width": "PARENT_WIDTH - 27",
+                    "Height": "13",
+                    "X": "2",
+                    "Y": "0",
+                    "Visible": "false",
+                    "Children": {
+                      "Label": {
+                        "id": "LABEL",
+                        "Font": "TinyBold",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "13",
+                        "Align": "Center"
+                      }
+                    }
+                  },
+                  {
+                    "id": "GAME_TEMPLATE",
+                    "Width": "PARENT_WIDTH - 27",
+                    "Height": "25",
+                    "X": "2",
+                    "Visible": "false",
+                    "EnableChildMouseOver": "True",
+                    "Children": {
+                      "LabelWithTooltip": {
+                        "id": "TITLE",
+                        "X": "10",
+                        "Width": "PARENT_WIDTH - 10",
+                        "Height": "25",
+                        "TooltipContainer": "LOAD_GAME_TITLE_TOOLTIP_CONTAINER",
+                        "TooltipTemplate": "SIMPLE_TOOLTIP"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "MAP_PREVIEW_ROOT",
+          "X": "PARENT_WIDTH - WIDTH - 20",
+          "Y": "67",
+          "Width": "174",
+          "Height": "250"
+        },
+        {
+          "id": "SAVE_INFO",
+          "X": "PARENT_WIDTH - WIDTH - 20",
+          "Y": "320",
+          "Width": "174",
+          "Height": "PARENT_HEIGHT - 320 - 45",
+          "Children": {
+            "Label": [
+              {
+                "id": "INCOMPATIBLE_TITLE_LABEL",
+                "Y": "-64",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Bold",
+                "Align": "Center",
+                "Text": "label-load-game-browser-panel-incompatible-title"
+              },
+              {
+                "id": "INCOMPATIBLE_LABEL_A",
+                "Y": "-49",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center",
+                "Text": "label-load-game-browser-panel-incompatible-a"
+              },
+              {
+                "id": "INCOMPATIBLE_LABEL_B",
+                "Y": "-36",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center",
+                "Text": "label-load-game-browser-panel-incompatible-b"
+              },
+              {
+                "id": "SAVEGAME_INFO_DATE",
+                "X": "5",
+                "Y": "-32",
+                "Width": "PARENT_WIDTH",
+                "Height": "16",
+                "Font": "TinyBold",
+                "Align": "Left",
+                "Visible": "False"
+              },
+              {
+                "id": "SAVEGAME_INFO_DURATION",
+                "X": "5",
+                "Y": "-16",
+                "Width": "PARENT_WIDTH",
+                "Height": "16",
+                "Font": "TinyBold",
+                "Align": "Left",
+                "Visible": "False"
+              }
+            ],
+            "ScrollPanel": {
+              "id": "PLAYER_LIST",
+              "Y": "3",
+              "Width": "PARENT_WIDTH",
+              "Height": "PARENT_HEIGHT - 13",
+              "IgnoreChildMouseOver": "true",
+              "Children": {
+                "ScrollItem": [
+                  {
+                    "id": "HEADER",
+                    "Background": "scrollheader",
+                    "Width": "PARENT_WIDTH - 27",
+                    "Height": "13",
+                    "X": "2",
+                    "Y": "0",
+                    "Visible": "false",
+                    "Children": {
+                      "Label": {
+                        "id": "LABEL",
+                        "Font": "TinyBold",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "13",
+                        "Align": "Center"
+                      }
+                    }
+                  },
+                  {
+                    "id": "TEMPLATE",
+                    "Width": "PARENT_WIDTH - 27",
+                    "Height": "25",
+                    "X": "2",
+                    "Y": "0",
+                    "Visible": "false",
+                    "Children": {
+                      "Image": {
+                        "id": "FLAG",
+                        "X": "4",
+                        "Y": "6",
+                        "Width": "32",
+                        "Height": "16"
+                      },
+                      "Label": {
+                        "id": "LABEL",
+                        "X": "40",
+                        "Width": "PARENT_WIDTH - 50",
+                        "Height": "25",
+                        "Shadow": "True"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "Checkbox": {
+        "id": "FILTERS_TOGGLE",
+        "X": "20",
+        "Y": "PARENT_HEIGHT - 43",
+        "Width": "120",
+        "Height": "20",
+        "Text": "checkbox-load-game-filters",
+        "Font": "Regular"
+      },
+      "Button": [
+        {
+          "id": "DELETE_ALL_BUTTON",
+          "X": "150",
+          "Y": "PARENT_HEIGHT - 45",
+          "Width": "100",
+          "Height": "25",
+          "Text": "button-management-mng-delall",
+          "Font": "Bold"
+        },
+        {
+          "id": "DELETE_BUTTON",
+          "Key": "Delete",
+          "X": "260",
+          "Y": "PARENT_HEIGHT - 45",
+          "Width": "100",
+          "Height": "25",
+          "Text": "button-management-mng-delsel",
+          "Font": "Bold"
+        },
+        {
+          "id": "RENAME_BUTTON",
+          "Key": "F2",
+          "X": "370",
+          "Y": "PARENT_HEIGHT - 45",
+          "Width": "100",
+          "Height": "25",
+          "Text": "button-management-mng-rensel",
+          "Font": "Bold"
+        },
+        {
+          "id": "LOAD_BUTTON",
+          "Key": "return",
+          "X": "PARENT_WIDTH - 140 - 130",
+          "Y": "PARENT_HEIGHT - 45",
+          "Width": "120",
+          "Height": "25",
+          "Text": "button-load-game-browser-panel-load",
+          "Font": "Bold"
+        },
+        {
+          "id": "CANCEL_BUTTON",
+          "Key": "escape",
+          "X": "PARENT_WIDTH - 140",
+          "Y": "PARENT_HEIGHT - 45",
+          "Width": "120",
+          "Height": "25",
+          "Text": "button-back",
+          "Font": "Bold"
+        }
+      ],
+      "TooltipContainer": [
+        {
+          "id": "TOOLTIP_CONTAINER"
+        },
+        {
+          "id": "LOAD_GAME_TITLE_TOOLTIP_CONTAINER"
+        }
+      ]
+    }
+  }
+}

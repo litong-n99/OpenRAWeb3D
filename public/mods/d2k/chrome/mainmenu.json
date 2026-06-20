@@ -1,0 +1,384 @@
+{
+  "Container": {
+    "id": "MAINMENU",
+    "Logic": "MainMenuLogic",
+    "Children": {
+      "LogicKeyListener": {
+        "id": "GLOBAL_KEYHANDLER",
+        "Logic": {
+          "StopMusicKey": "StopMusic",
+          "PauseMusicKey": "PauseMusic",
+          "PrevMusicKey": "PrevMusic",
+          "NextMusicKey": "NextMusic",
+          "TakeScreenshotKey": "TakeScreenshot",
+          "MuteAudioKey": "ToggleMute",
+          "__value": "MusicHotkeyLogic, ScreenshotHotkeyLogic, MuteHotkeyLogic"
+        }
+      },
+      "Label": {
+        "id": "VERSION_LABEL",
+        "Logic": "VersionLabelLogic",
+        "X": "WINDOW_WIDTH - 10",
+        "Y": "WINDOW_HEIGHT - 19",
+        "Align": "Right",
+        "Font": "Regular",
+        "Shadow": "True"
+      },
+      "Container": [
+        {
+          "id": "MENUS",
+          "X": "13 + (WINDOW_WIDTH - 522) / 4 - WIDTH / 2",
+          "Y": "WINDOW_HEIGHT / 2 - HEIGHT / 2",
+          "Width": "200",
+          "Height": "320",
+          "Children": {
+            "Background": [
+              {
+                "id": "MAIN_MENU",
+                "Width": "PARENT_WIDTH",
+                "Height": "PARENT_HEIGHT",
+                "Children": {
+                  "Label": {
+                    "id": "MAINMENU_LABEL_TITLE",
+                    "X": "0",
+                    "Y": "21",
+                    "Width": "200",
+                    "Height": "30",
+                    "Text": "label-main-menu-title",
+                    "Align": "Center",
+                    "Font": "Bold"
+                  },
+                  "Button": [
+                    {
+                      "id": "SINGLEPLAYER_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "60",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "label-singleplayer-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "MULTIPLAYER_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "100",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "label-multiplayer-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "SETTINGS_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "140",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-settings-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "EXTRAS_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "180",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-extras-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "CONTENT_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "220",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-main-menu-content",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "QUIT_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "260",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-quit",
+                      "Font": "Bold"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "SINGLEPLAYER_MENU",
+                "Width": "PARENT_WIDTH",
+                "Height": "PARENT_HEIGHT",
+                "Children": {
+                  "Label": {
+                    "id": "SINGLEPLAYER_MENU_TITLE",
+                    "X": "0",
+                    "Y": "21",
+                    "Width": "200",
+                    "Height": "30",
+                    "Text": "label-singleplayer-title",
+                    "Align": "Center",
+                    "Font": "Bold"
+                  },
+                  "Button": [
+                    {
+                      "id": "SKIRMISH_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "60",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-singleplayer-menu-skirmish",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "MISSIONS_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "100",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "label-missions-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "LOAD_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "140",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-singleplayer-menu-load",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "ENCYCLOPEDIA_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "180",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "label-mentat-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "BACK_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Key": "escape",
+                      "Y": "260",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-back",
+                      "Font": "Bold"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "EXTRAS_MENU",
+                "Width": "PARENT_WIDTH",
+                "Height": "PARENT_HEIGHT",
+                "Children": {
+                  "Label": {
+                    "id": "EXTRAS_MENU_TITLE",
+                    "X": "0",
+                    "Y": "21",
+                    "Width": "200",
+                    "Height": "30",
+                    "Text": "button-extras-title",
+                    "Align": "Center",
+                    "Font": "Bold"
+                  },
+                  "Button": [
+                    {
+                      "id": "REPLAYS_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "60",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-extras-menu-replays",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "MUSIC_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "100",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "label-music-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "MAP_EDITOR_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "140",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "label-map-editor-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "ASSETBROWSER_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "180",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-extras-menu-assetbrowser",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "CREDITS_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "220",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "label-credits-title",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "BACK_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Key": "escape",
+                      "Y": "260",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-back",
+                      "Font": "Bold"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "MAP_EDITOR_MENU",
+                "Width": "PARENT_WIDTH",
+                "Height": "PARENT_HEIGHT",
+                "Children": {
+                  "Label": {
+                    "id": "MAP_EDITOR_MENU_TITLE",
+                    "X": "0",
+                    "Y": "21",
+                    "Width": "200",
+                    "Height": "30",
+                    "Text": "label-map-editor-title",
+                    "Align": "Center",
+                    "Font": "Bold"
+                  },
+                  "Button": [
+                    {
+                      "id": "NEW_MAP_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "60",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-map-editor-new-map",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "LOAD_MAP_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Y": "100",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-map-editor-load-map",
+                      "Font": "Bold"
+                    },
+                    {
+                      "id": "BACK_BUTTON",
+                      "X": "PARENT_WIDTH / 2 - WIDTH / 2",
+                      "Key": "escape",
+                      "Y": "260",
+                      "Width": "140",
+                      "Height": "30",
+                      "Text": "button-back",
+                      "Font": "Bold"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "UPDATE_NOTICE",
+          "X": "(WINDOW_WIDTH - WIDTH) / 2",
+          "Y": "96",
+          "Width": "128",
+          "Children": {
+            "Label": [
+              {
+                "id": "A",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Align": "Center",
+                "Shadow": "true",
+                "Text": "label-update-notice-a"
+              },
+              {
+                "id": "B",
+                "Y": "20",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Align": "Center",
+                "Shadow": "true",
+                "Text": "label-update-notice-b"
+              }
+            ]
+          }
+        },
+        {
+          "id": "PERFORMANCE_INFO",
+          "Logic": "PerfDebugLogic",
+          "Children": {
+            "Label": {
+              "id": "PERF_TEXT",
+              "X": "30",
+              "Y": "WINDOW_HEIGHT - 69",
+              "Width": "170",
+              "Height": "40",
+              "Contrast": "true"
+            },
+            "Background": {
+              "id": "GRAPH_BG",
+              "ClickThrough": "true",
+              "Background": "dialog4",
+              "X": "WINDOW_WIDTH - 240",
+              "Y": "WINDOW_HEIGHT - 240",
+              "Width": "210",
+              "Height": "210",
+              "Children": {
+                "PerfGraph": {
+                  "id": "GRAPH",
+                  "X": "5",
+                  "Y": "5",
+                  "Width": "200",
+                  "Height": "200"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "PLAYER_PROFILE_CONTAINER",
+          "Logic": "LoadLocalPlayerProfileLogic",
+          "X": "5",
+          "Y": "5"
+        }
+      ],
+      "Background": {
+        "id": "NEWS_BG",
+        "X": "(WINDOW_WIDTH - WIDTH) / 2",
+        "Y": "35",
+        "Width": "430",
+        "Height": "55",
+        "Children": {
+          "DropDownButton": {
+            "id": "NEWS_BUTTON",
+            "X": "15",
+            "Y": "15",
+            "Width": "400",
+            "Height": "25",
+            "Text": "dropdownbutton-news-bg-button",
+            "Font": "Bold"
+          }
+        }
+      }
+    }
+  }
+}

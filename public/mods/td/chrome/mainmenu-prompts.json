@@ -1,0 +1,673 @@
+{
+  "Container": [
+    {
+      "id": "MAINMENU_INTRODUCTION_PROMPT",
+      "Logic": "IntroductionPromptLogic",
+      "X": "(WINDOW_WIDTH - WIDTH) / 2",
+      "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+      "Width": "700",
+      "Height": "461",
+      "Children": {
+        "Label": {
+          "id": "PROMPT_TITLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Y": "0 - 37",
+          "Font": "BigBold",
+          "Contrast": "true",
+          "Align": "Center",
+          "Text": "label-mainmenu-introduction-prompt-title"
+        },
+        "Background": {
+          "id": "bg",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Background": "panel-black",
+          "Children": {
+            "Label": [
+              {
+                "id": "DESC_A",
+                "Width": "PARENT_WIDTH",
+                "Y": "15",
+                "Height": "16",
+                "Font": "Regular",
+                "Align": "Center",
+                "Text": "label-bg-desc-a"
+              },
+              {
+                "id": "DESC_B",
+                "Width": "PARENT_WIDTH",
+                "Y": "33",
+                "Height": "16",
+                "Font": "Regular",
+                "Align": "Center",
+                "Text": "label-bg-desc-b"
+              }
+            ],
+            "ScrollPanel": {
+              "id": "SETTINGS_SCROLLPANEL",
+              "X": "15",
+              "Y": "60",
+              "Width": "PARENT_WIDTH - 30",
+              "Height": "PARENT_HEIGHT - 75",
+              "CollapseHiddenChildren": "True",
+              "TopBottomSpacing": "5",
+              "ItemSpacing": "10",
+              "ScrollBar": "Hidden",
+              "Children": {
+                "Background": [
+                  {
+                    "id": "PROFILE_SECTION_HEADER",
+                    "X": "5",
+                    "Width": "PARENT_WIDTH - 10",
+                    "Height": "13",
+                    "Background": "separator",
+                    "ClickThrough": "True",
+                    "Children": {
+                      "Label": {
+                        "id": "LABEL",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "TinyBold",
+                        "Align": "Center",
+                        "Text": "label-profile-section-header"
+                      }
+                    }
+                  },
+                  {
+                    "id": "INPUT_SECTION_HEADER",
+                    "X": "5",
+                    "Width": "PARENT_WIDTH - 10",
+                    "Height": "13",
+                    "Background": "separator",
+                    "ClickThrough": "True",
+                    "Children": {
+                      "Label": {
+                        "id": "LABEL",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "TinyBold",
+                        "Align": "Center",
+                        "Text": "label-input-section-header"
+                      }
+                    }
+                  },
+                  {
+                    "id": "DISPLAY_SECTION_HEADER",
+                    "X": "5",
+                    "Width": "PARENT_WIDTH - 10",
+                    "Height": "13",
+                    "Background": "separator",
+                    "ClickThrough": "True",
+                    "Children": {
+                      "Label": {
+                        "id": "LABEL",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "PARENT_HEIGHT",
+                        "Font": "TinyBold",
+                        "Align": "Center",
+                        "Text": "label-display-section-header"
+                      }
+                    }
+                  }
+                ],
+                "Container": [
+                  {
+                    "id": "ROW",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "50",
+                    "Children": {
+                      "Container": [
+                        {
+                          "id": "PLAYER_CONTAINER",
+                          "X": "10",
+                          "Width": "PARENT_WIDTH / 2 - 20",
+                          "Children": {
+                            "Label": {
+                              "id": "PLAYER",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "20",
+                              "Text": "label-player-container"
+                            },
+                            "TextField": {
+                              "id": "PLAYERNAME",
+                              "Y": "25",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "25",
+                              "MaxLength": "16",
+                              "Text": "Name"
+                            }
+                          }
+                        },
+                        {
+                          "id": "PLAYERCOLOR_CONTAINER",
+                          "X": "PARENT_WIDTH / 2 + 10",
+                          "Width": "PARENT_WIDTH / 2 - 20",
+                          "Children": {
+                            "Label": {
+                              "id": "COLOR",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "20",
+                              "Text": "label-playercolor-container-color"
+                            },
+                            "DropDownButton": {
+                              "id": "PLAYERCOLOR",
+                              "Y": "25",
+                              "Width": "75",
+                              "Height": "25",
+                              "IgnoreChildMouseOver": "true",
+                              "PanelAlign": "Right",
+                              "Children": {
+                                "ColorBlock": {
+                                  "id": "COLORBLOCK",
+                                  "X": "5",
+                                  "Y": "6",
+                                  "Width": "PARENT_WIDTH - 35",
+                                  "Height": "PARENT_HEIGHT - 12"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "SPACER"
+                  },
+                  {
+                    "id": "ROW",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "50",
+                    "Children": {
+                      "Container": [
+                        {
+                          "id": "MOUSE_CONTROL_CONTAINER",
+                          "X": "10",
+                          "Width": "PARENT_WIDTH / 2 - 20",
+                          "Children": {
+                            "Label": {
+                              "id": "MOUSE_CONTROL_LABEL",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "20",
+                              "Font": "Regular",
+                              "Text": "label-mouse-control-container"
+                            },
+                            "DropDownButton": {
+                              "id": "MOUSE_CONTROL_DROPDOWN",
+                              "Y": "25",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "25",
+                              "Font": "Regular"
+                            }
+                          }
+                        },
+                        {
+                          "id": "MOUSE_CONTROL_DESC_CLASSIC",
+                          "X": "PARENT_WIDTH / 2 + 10",
+                          "Width": "PARENT_WIDTH / 2 - 20",
+                          "Children": {
+                            "LabelWithHighlight": [
+                              {
+                                "id": "DESC_SELECTION",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-selection"
+                              },
+                              {
+                                "id": "DESC_COMMANDS",
+                                "Y": "17",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-commands"
+                              },
+                              {
+                                "id": "DESC_ORDERS",
+                                "Y": "34",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-orders"
+                              },
+                              {
+                                "id": "DESC_BUILDINGS",
+                                "Y": "51",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-buildings"
+                              },
+                              {
+                                "id": "DESC_SUPPORT",
+                                "Y": "68",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-support"
+                              },
+                              {
+                                "id": "DESC_ZOOM",
+                                "Y": "85",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-zoom"
+                              },
+                              {
+                                "id": "DESC_ZOOM_MODIFIER",
+                                "Y": "85",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-zoom-modifier"
+                              },
+                              {
+                                "id": "DESC_SCROLL_RIGHT",
+                                "Y": "102",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-scroll-right"
+                              },
+                              {
+                                "id": "DESC_SCROLL_MIDDLE",
+                                "Y": "102",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-classic-scroll-middle"
+                              }
+                            ],
+                            "Label": {
+                              "id": "DESC_EDGESCROLL",
+                              "X": "9",
+                              "Y": "118",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "16",
+                              "Font": "Small",
+                              "Text": "label-mouse-control-desc-classic-edgescroll"
+                            }
+                          }
+                        },
+                        {
+                          "id": "MOUSE_CONTROL_DESC_OTHERRTS",
+                          "X": "PARENT_WIDTH / 2 + 10",
+                          "Width": "PARENT_WIDTH / 2 - 20",
+                          "Children": {
+                            "LabelWithHighlight": [
+                              {
+                                "id": "DESC_SELECTION",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-selection"
+                              },
+                              {
+                                "id": "DESC_COMMANDS",
+                                "Y": "17",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-commands"
+                              },
+                              {
+                                "id": "DESC_ORDERS",
+                                "Y": "34",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-orders"
+                              },
+                              {
+                                "id": "DESC_BUILDINGS",
+                                "Y": "51",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-buildings"
+                              },
+                              {
+                                "id": "DESC_SUPPORT",
+                                "Y": "68",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-support"
+                              },
+                              {
+                                "id": "DESC_ZOOM",
+                                "Y": "85",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-zoom"
+                              },
+                              {
+                                "id": "DESC_ZOOM_MODIFIER",
+                                "Y": "85",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-zoom-modifier"
+                              },
+                              {
+                                "id": "DESC_SCROLL_RIGHT",
+                                "Y": "102",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-scroll-right"
+                              },
+                              {
+                                "id": "DESC_SCROLL_MIDDLE",
+                                "Y": "102",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-otherrts-scroll-middle"
+                              }
+                            ],
+                            "Label": {
+                              "id": "DESC_EDGESCROLL",
+                              "X": "9",
+                              "Y": "118",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "16",
+                              "Font": "Small",
+                              "Text": "label-mouse-control-desc-otherrts-edgescroll"
+                            }
+                          }
+                        },
+                        {
+                          "id": "MOUSE_CONTROL_DESC_MODERN",
+                          "X": "PARENT_WIDTH / 2 + 10",
+                          "Width": "PARENT_WIDTH / 2 - 20",
+                          "Children": {
+                            "LabelWithHighlight": [
+                              {
+                                "id": "DESC_SELECTION",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-selection"
+                              },
+                              {
+                                "id": "DESC_COMMANDS",
+                                "Y": "17",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-commands"
+                              },
+                              {
+                                "id": "DESC_ORDERS",
+                                "Y": "34",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-orders"
+                              },
+                              {
+                                "id": "DESC_BUILDINGS",
+                                "Y": "51",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-buildings"
+                              },
+                              {
+                                "id": "DESC_SUPPORT",
+                                "Y": "68",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-support"
+                              },
+                              {
+                                "id": "DESC_ZOOM",
+                                "Y": "85",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-zoom"
+                              },
+                              {
+                                "id": "DESC_ZOOM_MODIFIER",
+                                "Y": "85",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-zoom-modifier"
+                              },
+                              {
+                                "id": "DESC_SCROLL_RIGHT",
+                                "Y": "102",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-scroll-right"
+                              },
+                              {
+                                "id": "DESC_SCROLL_MIDDLE",
+                                "Y": "102",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "16",
+                                "Font": "Small",
+                                "Text": "label-mouse-control-desc-modern-scroll-middle"
+                              }
+                            ],
+                            "Label": {
+                              "id": "DESC_EDGESCROLL",
+                              "X": "9",
+                              "Y": "118",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "16",
+                              "Font": "Small",
+                              "Text": "label-mouse-control-desc-modern-edgescroll"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "ROW",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "20",
+                    "Children": {
+                      "Container": {
+                        "id": "EDGESCROLL_CHECKBOX_CONTAINER",
+                        "X": "10",
+                        "Width": "PARENT_WIDTH / 2 - 20",
+                        "Children": {
+                          "Checkbox": {
+                            "id": "EDGESCROLL_CHECKBOX",
+                            "Width": "PARENT_WIDTH",
+                            "Height": "20",
+                            "Font": "Regular",
+                            "Text": "checkbox-edgescroll-container"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "SPACER",
+                    "Height": "46"
+                  },
+                  {
+                    "id": "ROW",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "50",
+                    "Children": {
+                      "Container": [
+                        {
+                          "id": "BATTLEFIELD_CAMERA_DROPDOWN_CONTAINER",
+                          "X": "10",
+                          "Width": "PARENT_WIDTH / 2 - 20",
+                          "Children": {
+                            "Label": {
+                              "id": "BATTLEFIELD_CAMERA",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "20",
+                              "Text": "label-battlefield-camera-dropdown"
+                            },
+                            "DropDownButton": {
+                              "id": "BATTLEFIELD_CAMERA_DROPDOWN",
+                              "Y": "25",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "25",
+                              "Font": "Regular"
+                            }
+                          }
+                        },
+                        {
+                          "id": "UI_SCALE_DROPDOWN_CONTAINER",
+                          "X": "PARENT_WIDTH / 2 + 10",
+                          "Width": "PARENT_WIDTH / 2 - 20",
+                          "Children": {
+                            "Label": {
+                              "id": "UI_SCALE",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "20",
+                              "Text": "label-ui-scale-dropdown"
+                            },
+                            "DropDownButton": {
+                              "id": "UI_SCALE_DROPDOWN",
+                              "Y": "25",
+                              "Width": "PARENT_WIDTH",
+                              "Height": "25",
+                              "Font": "Regular"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "ROW",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "20",
+                    "Children": {
+                      "Container": {
+                        "id": "CURSORDOUBLE_CHECKBOX_CONTAINER",
+                        "X": "PARENT_WIDTH / 2 + 10",
+                        "Width": "PARENT_WIDTH / 2 - 20",
+                        "Children": {
+                          "Checkbox": {
+                            "id": "CURSORDOUBLE_CHECKBOX",
+                            "Width": "PARENT_WIDTH",
+                            "Height": "20",
+                            "Font": "Regular",
+                            "Text": "checkbox-cursordouble-container"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Button": {
+          "id": "CONTINUE_BUTTON",
+          "X": "PARENT_WIDTH - WIDTH",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-continue",
+          "Font": "Bold",
+          "Key": "return"
+        }
+      }
+    },
+    {
+      "id": "MAINMENU_SYSTEM_INFO_PROMPT",
+      "Logic": "SystemInfoPromptLogic",
+      "X": "(WINDOW_WIDTH - WIDTH) / 2",
+      "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+      "Width": "600",
+      "Height": "350",
+      "Children": {
+        "Label": {
+          "id": "PROMPT_TITLE",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Y": "0 - 37",
+          "Font": "BigBold",
+          "Contrast": "true",
+          "Align": "Center",
+          "Text": "label-mainmenu-system-info-prompt-title"
+        },
+        "Background": {
+          "id": "bg",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Background": "panel-black",
+          "Children": {
+            "Label": [
+              {
+                "id": "PROMPT_TEXT_A",
+                "X": "15",
+                "Y": "15",
+                "Width": "PARENT_WIDTH - 30",
+                "Height": "16",
+                "Align": "Center",
+                "Text": "label-bg-prompt-text-a"
+              },
+              {
+                "id": "PROMPT_TEXT_B",
+                "X": "15",
+                "Y": "33",
+                "Width": "PARENT_WIDTH - 30",
+                "Height": "16",
+                "Align": "Center",
+                "Text": "label-bg-prompt-text-b"
+              }
+            ],
+            "ScrollPanel": {
+              "id": "SYSINFO_DATA",
+              "X": "15",
+              "Y": "63",
+              "Width": "PARENT_WIDTH - 30",
+              "TopBottomSpacing": "4",
+              "ItemSpacing": "4",
+              "Height": "240",
+              "Children": {
+                "Label": {
+                  "id": "DATA_TEMPLATE",
+                  "X": "8",
+                  "Height": "13",
+                  "VAlign": "Top",
+                  "Font": "Small"
+                }
+              }
+            },
+            "Checkbox": {
+              "id": "SYSINFO_CHECKBOX",
+              "X": "390",
+              "Y": "313",
+              "Width": "190",
+              "Height": "20",
+              "Font": "Regular",
+              "Text": "checkbox-bg-sysinfo"
+            }
+          }
+        },
+        "Button": {
+          "id": "CONTINUE_BUTTON",
+          "X": "PARENT_WIDTH - WIDTH",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-continue",
+          "Font": "Bold",
+          "Key": "return"
+        }
+      }
+    }
+  ]
+}

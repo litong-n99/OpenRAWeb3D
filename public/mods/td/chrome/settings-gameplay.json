@@ -1,0 +1,199 @@
+{
+  "Container": {
+    "id": "GAMEPLAY_PANEL",
+    "Logic": "GameplaySettingsLogic",
+    "Width": "PARENT_WIDTH",
+    "Height": "PARENT_HEIGHT",
+    "Children": {
+      "ScrollPanel": {
+        "id": "SETTINGS_SCROLLPANEL",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "CollapseHiddenChildren": "True",
+        "TopBottomSpacing": "5",
+        "ItemSpacing": "10",
+        "Children": {
+          "Background": [
+            {
+              "id": "PROFILE_SECTION_HEADER",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 24 - 10",
+              "Height": "13",
+              "Background": "separator",
+              "ClickThrough": "True",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "PARENT_HEIGHT",
+                  "Font": "TinyBold",
+                  "Align": "Center",
+                  "Text": "label-profile-section-header"
+                }
+              }
+            },
+            {
+              "id": "GAMEPLAY_SECTION_HEADER",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 24 - 10",
+              "Height": "13",
+              "Background": "separator",
+              "ClickThrough": "True",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "PARENT_HEIGHT",
+                  "Font": "TinyBold",
+                  "Align": "Center",
+                  "Text": "label-gameplay-section-header"
+                }
+              }
+            }
+          ],
+          "Container": [
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "50",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "PLAYER_CONTAINER",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "LabelForInput": {
+                        "id": "PLAYER",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Text": "label-player-container",
+                        "For": "PLAYERNAME"
+                      },
+                      "TextField": {
+                        "id": "PLAYERNAME",
+                        "Y": "25",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "25",
+                        "MaxLength": "16",
+                        "Text": "Name"
+                      }
+                    }
+                  },
+                  {
+                    "id": "PLAYERCOLOR_CONTAINER",
+                    "X": "PARENT_WIDTH / 2 + 10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "LabelForInput": {
+                        "id": "COLOR",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Text": "label-playercolor-container-color",
+                        "For": "PLAYERCOLOR"
+                      },
+                      "DropDownButton": {
+                        "id": "PLAYERCOLOR",
+                        "Y": "25",
+                        "Width": "75",
+                        "Height": "25",
+                        "IgnoreChildMouseOver": "true",
+                        "PanelAlign": "Right",
+                        "Children": {
+                          "ColorBlock": {
+                            "id": "COLORBLOCK",
+                            "X": "5",
+                            "Y": "6",
+                            "Width": "PARENT_WIDTH - 35",
+                            "Height": "PARENT_HEIGHT - 12"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "SPACER"
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "50",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "AUTO_SAVE_INTERVAL_CONTAINER",
+                    "X": "10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "LabelForInput": {
+                        "id": "AUTO_SAVE_INTERVAL_DROP_DOWN_LABEL",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "label-auto-save-interval",
+                        "For": "AUTO_SAVE_INTERVAL_DROP_DOWN"
+                      },
+                      "DropDownButton": {
+                        "id": "AUTO_SAVE_INTERVAL_DROP_DOWN",
+                        "Y": "25",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "25",
+                        "Font": "Regular"
+                      }
+                    }
+                  },
+                  {
+                    "id": "AUTO_SAVE_NO_CONTAINER",
+                    "X": "PARENT_WIDTH / 2 + 10",
+                    "Width": "PARENT_WIDTH / 2 - 20",
+                    "Children": {
+                      "LabelForInput": {
+                        "id": "AUTO_SAVE_FILE_NUMBER_DROP_DOWN_LABEL",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "20",
+                        "Font": "Regular",
+                        "Text": "label-auto-save-max-file-number",
+                        "For": "AUTO_SAVE_FILE_NUMBER_DROP_DOWN"
+                      },
+                      "DropDownButton": {
+                        "id": "AUTO_SAVE_FILE_NUMBER_DROP_DOWN",
+                        "Y": "25",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "25",
+                        "Font": "Regular"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "ROW",
+              "Width": "PARENT_WIDTH - 24",
+              "Height": "20",
+              "Children": {
+                "Container": {
+                  "id": "HIDE_REPLAY_CHAT_CHECKBOX_CONTAINER",
+                  "X": "10",
+                  "Width": "PARENT_WIDTH / 2 - 10",
+                  "Children": {
+                    "Checkbox": {
+                      "id": "HIDE_REPLAY_CHAT_CHECKBOX",
+                      "Width": "PARENT_WIDTH",
+                      "Height": "20",
+                      "Font": "Regular",
+                      "Text": "checkbox-hide-replay-chat-container"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

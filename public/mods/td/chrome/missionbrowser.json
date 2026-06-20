@@ -1,0 +1,386 @@
+{
+  "Container": {
+    "id": "MISSIONBROWSER_PANEL",
+    "Logic": "MissionBrowserLogic",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+    "Width": "716",
+    "Height": "435",
+    "Children": {
+      "Label": {
+        "id": "MISSIONBROWSER_TITLE",
+        "Y": "0 - 34",
+        "Width": "PARENT_WIDTH",
+        "Height": "25",
+        "Text": "label-missions-title",
+        "Align": "Center",
+        "Contrast": "true",
+        "Font": "BigBold"
+      },
+      "Background": [
+        {
+          "id": "BG",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Background": "panel-black",
+          "Children": {
+            "ScrollPanel": {
+              "id": "MISSION_LIST",
+              "X": "15",
+              "Y": "15",
+              "Width": "313",
+              "Height": "PARENT_HEIGHT - 30",
+              "Children": {
+                "ScrollItem": [
+                  {
+                    "id": "HEADER",
+                    "Background": "scrollheader",
+                    "Width": "PARENT_WIDTH - 27",
+                    "Height": "13",
+                    "X": "2",
+                    "Visible": "false",
+                    "Children": {
+                      "Label": {
+                        "id": "LABEL",
+                        "Font": "TinyBold",
+                        "Width": "PARENT_WIDTH",
+                        "Height": "13",
+                        "Align": "Center"
+                      }
+                    }
+                  },
+                  {
+                    "id": "TEMPLATE",
+                    "Width": "PARENT_WIDTH - 27",
+                    "Height": "25",
+                    "X": "2",
+                    "Visible": "False",
+                    "EnableChildMouseOver": "True",
+                    "Children": {
+                      "LabelWithTooltip": {
+                        "id": "TITLE",
+                        "X": "10",
+                        "Width": "PARENT_WIDTH - 20",
+                        "Height": "25",
+                        "TooltipContainer": "TOOLTIP_CONTAINER",
+                        "TooltipTemplate": "SIMPLE_TOOLTIP"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "Container": {
+              "id": "MISSION_INFO",
+              "X": "339",
+              "Y": "15",
+              "Width": "362",
+              "Height": "PARENT_HEIGHT - 30",
+              "Children": {
+                "Background": {
+                  "id": "MISSION_BG",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "202",
+                  "Background": "panel-black",
+                  "Children": {
+                    "MapPreview": {
+                      "id": "MISSION_PREVIEW",
+                      "X": "1",
+                      "Y": "1",
+                      "Width": "PARENT_WIDTH - 2",
+                      "Height": "PARENT_HEIGHT - 2",
+                      "IgnoreMouseOver": "True",
+                      "IgnoreMouseInput": "True",
+                      "ShowSpawnPoints": "False"
+                    }
+                  }
+                },
+                "Container": [
+                  {
+                    "id": "MISSION_MINIFIED_OPTIONS",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "PARENT_HEIGHT",
+                    "Visible": "False",
+                    "Children": {
+                      "LabelForInput": [
+                        {
+                          "id": "DIFFICULTY_DESC",
+                          "Y": "PARENT_HEIGHT - HEIGHT",
+                          "Width": "56",
+                          "Height": "25",
+                          "Align": "Right",
+                          "Text": "dropdown-missionbrowser-difficulty.label",
+                          "For": "DIFFICULTY"
+                        },
+                        {
+                          "id": "GAMESPEED_DESC",
+                          "X": "PARENT_WIDTH - WIDTH - 125",
+                          "Y": "PARENT_HEIGHT - HEIGHT",
+                          "Width": "120",
+                          "Height": "25",
+                          "Align": "Right",
+                          "Text": "dropdown-missionbrowser-gamespeed",
+                          "For": "GAMESPEED"
+                        }
+                      ],
+                      "DropDownButton": [
+                        {
+                          "id": "DIFFICULTY",
+                          "X": "61",
+                          "Y": "PARENT_HEIGHT - HEIGHT",
+                          "Width": "120",
+                          "Height": "25",
+                          "Font": "Regular",
+                          "Text": "label-missionbrowser-normal-difficulty",
+                          "TooltipText": "dropdown-missionbrowser-difficulty.description",
+                          "PanelRoot": "MISSION_DROPDOWN_PANEL_ROOT",
+                          "TooltipContainer": "TOOLTIP_CONTAINER"
+                        },
+                        {
+                          "id": "GAMESPEED",
+                          "X": "PARENT_WIDTH - WIDTH",
+                          "Y": "PARENT_HEIGHT - HEIGHT",
+                          "Width": "120",
+                          "Height": "25",
+                          "Font": "Regular",
+                          "PanelRoot": "MISSION_DROPDOWN_PANEL_ROOT",
+                          "TooltipContainer": "TOOLTIP_CONTAINER"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "MISSION_TABS",
+                    "Width": "PARENT_WIDTH",
+                    "Y": "PARENT_HEIGHT - 32",
+                    "Children": {
+                      "Button": [
+                        {
+                          "id": "MISSIONINFO_TAB",
+                          "Width": "178",
+                          "Height": "32",
+                          "Font": "Bold",
+                          "Text": "button-missionbrowser-panel-mission-info"
+                        },
+                        {
+                          "id": "OPTIONS_TAB",
+                          "X": "184",
+                          "Width": "178",
+                          "Height": "32",
+                          "Font": "Bold",
+                          "Text": "button-missionbrowser-panel-mission-options"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "MISSION_DETAIL",
+                    "Y": "213",
+                    "Width": "PARENT_WIDTH",
+                    "Height": "PARENT_HEIGHT - 244",
+                    "Children": {
+                      "ScrollPanel": [
+                        {
+                          "id": "MISSION_DESCRIPTION_PANEL",
+                          "Height": "PARENT_HEIGHT",
+                          "Width": "PARENT_WIDTH",
+                          "TopBottomSpacing": "5",
+                          "Children": {
+                            "Label": {
+                              "id": "MISSION_DESCRIPTION",
+                              "X": "4",
+                              "Width": "PARENT_WIDTH - 32",
+                              "VAlign": "Top",
+                              "Font": "Small"
+                            }
+                          }
+                        },
+                        {
+                          "id": "MISSION_OPTIONS",
+                          "Height": "PARENT_HEIGHT",
+                          "Width": "PARENT_WIDTH",
+                          "TopBottomSpacing": "5",
+                          "Children": {
+                            "Container": [
+                              {
+                                "id": "CHECKBOX_ROW_TEMPLATE",
+                                "Width": "PARENT_WIDTH",
+                                "Height": "30",
+                                "Children": {
+                                  "Checkbox": [
+                                    {
+                                      "id": "A",
+                                      "X": "10",
+                                      "Width": "PARENT_WIDTH / 2 - 25",
+                                      "Height": "20",
+                                      "Visible": "False",
+                                      "TooltipContainer": "TOOLTIP_CONTAINER"
+                                    },
+                                    {
+                                      "id": "B",
+                                      "X": "PARENT_WIDTH / 2 + 5",
+                                      "Width": "PARENT_WIDTH / 2 - 25",
+                                      "Height": "20",
+                                      "Visible": "False",
+                                      "TooltipContainer": "TOOLTIP_CONTAINER"
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "id": "DROPDOWN_ROW_TEMPLATE",
+                                "Height": "60",
+                                "Width": "PARENT_WIDTH",
+                                "Children": {
+                                  "LabelForInput": [
+                                    {
+                                      "id": "A_DESC",
+                                      "X": "10",
+                                      "Width": "PARENT_WIDTH / 2 - 35",
+                                      "Height": "20",
+                                      "Visible": "False",
+                                      "For": "A"
+                                    },
+                                    {
+                                      "id": "B_DESC",
+                                      "X": "PARENT_WIDTH / 2 + 5",
+                                      "Width": "PARENT_WIDTH / 2 - 35",
+                                      "Height": "20",
+                                      "Visible": "False",
+                                      "For": "B"
+                                    }
+                                  ],
+                                  "DropDownButton": [
+                                    {
+                                      "id": "A",
+                                      "X": "10",
+                                      "Width": "PARENT_WIDTH / 2 - 35",
+                                      "Y": "25",
+                                      "Height": "25",
+                                      "Visible": "False",
+                                      "PanelRoot": "MISSION_DROPDOWN_PANEL_ROOT",
+                                      "TooltipContainer": "TOOLTIP_CONTAINER"
+                                    },
+                                    {
+                                      "id": "B",
+                                      "X": "PARENT_WIDTH / 2 + 5",
+                                      "Width": "PARENT_WIDTH / 2 - 35",
+                                      "Y": "25",
+                                      "Height": "25",
+                                      "Visible": "False",
+                                      "PanelRoot": "MISSION_DROPDOWN_PANEL_ROOT",
+                                      "TooltipContainer": "TOOLTIP_CONTAINER"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "MISSION_BIN",
+          "X": "15",
+          "Y": "15",
+          "Width": "686",
+          "Height": "405",
+          "Background": "panel-black",
+          "Children": {
+            "VideoPlayer": {
+              "id": "MISSION_VIDEO",
+              "X": "1",
+              "Y": "1",
+              "Width": "684",
+              "Height": "402"
+            }
+          }
+        }
+      ],
+      "Button": [
+        {
+          "id": "BACK_BUTTON",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-back",
+          "Font": "Bold",
+          "Key": "escape"
+        },
+        {
+          "id": "START_BRIEFING_VIDEO_BUTTON",
+          "X": "PARENT_WIDTH - 290",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-missionbrowser-panel-start-briefing-video",
+          "Font": "Bold"
+        },
+        {
+          "id": "STOP_BRIEFING_VIDEO_BUTTON",
+          "X": "PARENT_WIDTH - 290",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-missionbrowser-panel-stop-briefing-video",
+          "Font": "Bold"
+        },
+        {
+          "id": "START_INFO_VIDEO_BUTTON",
+          "X": "PARENT_WIDTH - 440",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-missionbrowser-panel-start-info-video",
+          "Font": "Bold"
+        },
+        {
+          "id": "STOP_INFO_VIDEO_BUTTON",
+          "X": "PARENT_WIDTH - 440",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-missionbrowser-panel-stop-info-video",
+          "Font": "Bold"
+        },
+        {
+          "id": "STARTGAME_BUTTON",
+          "X": "PARENT_WIDTH - 140",
+          "Y": "PARENT_HEIGHT - 1",
+          "Width": "140",
+          "Height": "35",
+          "Text": "button-missionbrowser-panel-play",
+          "Font": "Bold"
+        }
+      ],
+      "Container": {
+        "id": "MISSION_DROPDOWN_PANEL_ROOT"
+      },
+      "TooltipContainer": {
+        "id": "TOOLTIP_CONTAINER"
+      }
+    }
+  },
+  "Background": {
+    "id": "FULLSCREEN_PLAYER",
+    "Width": "WINDOW_WIDTH",
+    "Height": "WINDOW_HEIGHT",
+    "Background": "panel-allblack",
+    "Visible": "False",
+    "Children": {
+      "VideoPlayer": {
+        "id": "PLAYER",
+        "X": "0",
+        "Y": "0",
+        "Width": "WINDOW_WIDTH",
+        "Height": "WINDOW_HEIGHT"
+      }
+    }
+  }
+}

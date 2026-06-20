@@ -1,0 +1,721 @@
+{
+  "Container": {
+    "id": "LOBBY_PLAYER_BIN",
+    "Width": "PARENT_WIDTH",
+    "Height": "PARENT_HEIGHT",
+    "Children": {
+      "Container": {
+        "id": "LABEL_CONTAINER",
+        "X": "5",
+        "Y": "0 - 26",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "Children": {
+          "Label": [
+            {
+              "id": "LABEL_LOBBY_NAME",
+              "Width": "180",
+              "Height": "25",
+              "Text": "label-lobby-players-name",
+              "Align": "Center",
+              "Font": "Bold"
+            },
+            {
+              "id": "LABEL_LOBBY_COLOR",
+              "X": "190",
+              "Width": "70",
+              "Height": "25",
+              "Text": "label-lobby-players-color",
+              "Align": "Center",
+              "Font": "Bold"
+            },
+            {
+              "id": "LABEL_LOBBY_FACTION",
+              "X": "270",
+              "Width": "140",
+              "Height": "25",
+              "Text": "label-lobby-players-faction",
+              "Align": "Center",
+              "Font": "Bold"
+            },
+            {
+              "id": "LABEL_LOBBY_TEAM",
+              "X": "420",
+              "Width": "48",
+              "Height": "25",
+              "Text": "label-lobby-players-team",
+              "Align": "Center",
+              "Font": "Bold"
+            },
+            {
+              "id": "LABEL_LOBBY_HANDICAP",
+              "X": "478",
+              "Width": "72",
+              "Height": "25",
+              "Text": "label-lobby-players-handicap",
+              "Align": "Center",
+              "Font": "Bold"
+            },
+            {
+              "id": "LABEL_LOBBY_SPAWN",
+              "X": "560",
+              "Width": "48",
+              "Height": "25",
+              "Text": "label-lobby-players-spawn",
+              "Align": "Center",
+              "Font": "Bold"
+            },
+            {
+              "id": "LABEL_LOBBY_STATUS",
+              "X": "617",
+              "Width": "20 + 24",
+              "Height": "25",
+              "Text": "label-lobby-players-ready",
+              "Align": "Left",
+              "Font": "Bold"
+            }
+          ]
+        }
+      },
+      "ScrollPanel": {
+        "id": "LOBBY_PLAYERS",
+        "Width": "PARENT_WIDTH",
+        "Height": "PARENT_HEIGHT",
+        "TopBottomSpacing": "5",
+        "ItemSpacing": "5",
+        "Children": {
+          "Container": [
+            {
+              "id": "TEMPLATE_EDITABLE_PLAYER",
+              "X": "5",
+              "Width": "475",
+              "Height": "25",
+              "Visible": "false",
+              "Children": {
+                "Container": {
+                  "id": "LATENCY",
+                  "Y": "6",
+                  "Width": "11",
+                  "Height": "14",
+                  "Visible": "false",
+                  "Children": {
+                    "ColorBlock": {
+                      "id": "LATENCY_COLOR",
+                      "X": "2",
+                      "Y": "2",
+                      "Width": "PARENT_WIDTH - 4",
+                      "Height": "PARENT_HEIGHT - 4"
+                    }
+                  }
+                },
+                "ClientTooltipRegion": {
+                  "id": "LATENCY_REGION",
+                  "Width": "11",
+                  "Height": "25",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "Template": "LATENCY_TOOLTIP"
+                },
+                "TextField": {
+                  "id": "NAME",
+                  "X": "15",
+                  "Width": "165",
+                  "Height": "25",
+                  "Text": "Name",
+                  "LeftMargin": "24",
+                  "MaxLength": "16",
+                  "Visible": "false",
+                  "Children": {
+                    "Image": {
+                      "id": "PROFILE",
+                      "ImageCollection": "lobby-bits",
+                      "X": "3",
+                      "Y": "3",
+                      "Visible": "false"
+                    },
+                    "ClientTooltipRegion": {
+                      "id": "PROFILE_TOOLTIP",
+                      "X": "3",
+                      "Y": "3",
+                      "Width": "16",
+                      "Height": "16",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "Template": "ANONYMOUS_PLAYER_TOOLTIP"
+                    }
+                  }
+                },
+                "DropDownButton": [
+                  {
+                    "id": "SLOT_OPTIONS",
+                    "X": "15",
+                    "Width": "165",
+                    "Height": "25",
+                    "Text": "label-lobby-players-name",
+                    "Font": "Regular",
+                    "Visible": "false"
+                  },
+                  {
+                    "id": "COLOR",
+                    "X": "190",
+                    "Width": "70",
+                    "Height": "25",
+                    "IgnoreChildMouseOver": "true",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "COLORBLOCK",
+                        "X": "5",
+                        "Y": "6",
+                        "Width": "PARENT_WIDTH - 35",
+                        "Height": "PARENT_HEIGHT - 12"
+                      }
+                    }
+                  },
+                  {
+                    "id": "FACTION",
+                    "X": "270",
+                    "Width": "140",
+                    "Height": "25",
+                    "IgnoreChildMouseOver": "true",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "PanelRoot": "FACTION_DROPDOWN_PANEL_ROOT",
+                    "Children": {
+                      "Image": {
+                        "id": "FACTIONFLAG",
+                        "X": "4",
+                        "Y": "2",
+                        "Width": "23",
+                        "Height": "23"
+                      },
+                      "Label": {
+                        "id": "FACTIONNAME",
+                        "X": "34",
+                        "Width": "80",
+                        "Height": "25",
+                        "Text": "label-lobby-players-faction"
+                      }
+                    }
+                  },
+                  {
+                    "id": "TEAM_DROPDOWN",
+                    "X": "420",
+                    "Width": "48",
+                    "Height": "25",
+                    "Text": "label-lobby-players-team"
+                  },
+                  {
+                    "id": "HANDICAP_DROPDOWN",
+                    "X": "478",
+                    "Width": "72",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipText": "dropdownbutton-lobby-players-handicap-tooltip"
+                  },
+                  {
+                    "id": "SPAWN_DROPDOWN",
+                    "X": "560",
+                    "Width": "48",
+                    "Height": "25",
+                    "Text": "label-lobby-players-spawn"
+                  }
+                ],
+                "Checkbox": {
+                  "id": "STATUS_CHECKBOX",
+                  "X": "617",
+                  "Y": "2",
+                  "Width": "20",
+                  "Height": "20",
+                  "Visible": "false"
+                },
+                "Image": {
+                  "id": "STATUS_IMAGE",
+                  "X": "619",
+                  "Y": "4",
+                  "Width": "20",
+                  "Height": "20",
+                  "ImageCollection": "checkmark-tick",
+                  "ImageName": "checked",
+                  "Visible": "false"
+                }
+              }
+            },
+            {
+              "id": "TEMPLATE_NONEDITABLE_PLAYER",
+              "X": "5",
+              "Width": "475",
+              "Height": "25",
+              "Visible": "false",
+              "Children": {
+                "Container": [
+                  {
+                    "id": "LATENCY",
+                    "Y": "6",
+                    "Width": "11",
+                    "Height": "14",
+                    "Visible": "false",
+                    "Children": {
+                      "ColorBlock": {
+                        "id": "LATENCY_COLOR",
+                        "X": "2",
+                        "Y": "2",
+                        "Width": "PARENT_WIDTH - 4",
+                        "Height": "PARENT_HEIGHT - 4"
+                      }
+                    }
+                  },
+                  {
+                    "id": "FACTION",
+                    "X": "270",
+                    "Width": "170",
+                    "Height": "25",
+                    "Children": {
+                      "Image": {
+                        "id": "FACTIONFLAG",
+                        "X": "4",
+                        "Y": "2",
+                        "Width": "23",
+                        "Height": "23"
+                      },
+                      "Label": {
+                        "id": "FACTIONNAME",
+                        "X": "34",
+                        "Width": "80",
+                        "Height": "25",
+                        "Text": "label-lobby-players-faction"
+                      }
+                    }
+                  }
+                ],
+                "ClientTooltipRegion": [
+                  {
+                    "id": "LATENCY_REGION",
+                    "Width": "11",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "Template": "LATENCY_TOOLTIP"
+                  },
+                  {
+                    "id": "PROFILE_TOOLTIP",
+                    "X": "18",
+                    "Y": "3",
+                    "Width": "16",
+                    "Height": "16",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "Template": "ANONYMOUS_PLAYER_TOOLTIP"
+                  }
+                ],
+                "Image": [
+                  {
+                    "id": "PROFILE",
+                    "ImageCollection": "lobby-bits",
+                    "X": "18",
+                    "Y": "3",
+                    "Visible": "false"
+                  },
+                  {
+                    "id": "STATUS_IMAGE",
+                    "X": "619",
+                    "Y": "4",
+                    "Width": "20",
+                    "Height": "20",
+                    "ImageCollection": "checkmark-tick",
+                    "ImageName": "checked",
+                    "Visible": "false"
+                  }
+                ],
+                "Label": [
+                  {
+                    "id": "NAME",
+                    "X": "39",
+                    "Width": "146",
+                    "Height": "25",
+                    "Text": "label-lobby-players-name"
+                  },
+                  {
+                    "id": "TEAM",
+                    "X": "410",
+                    "Width": "43",
+                    "Height": "25",
+                    "Align": "Center",
+                    "Text": "label-lobby-players-team"
+                  },
+                  {
+                    "id": "HANDICAP",
+                    "X": "478",
+                    "Width": "47",
+                    "Height": "25",
+                    "Align": "Center"
+                  },
+                  {
+                    "id": "SPAWN",
+                    "X": "560",
+                    "Width": "23",
+                    "Height": "25",
+                    "Align": "Center"
+                  }
+                ],
+                "DropDownButton": [
+                  {
+                    "id": "PLAYER_ACTION",
+                    "X": "15",
+                    "Width": "165",
+                    "Height": "25",
+                    "Font": "Regular",
+                    "Visible": "false",
+                    "Align": "Left",
+                    "LeftMargin": "24",
+                    "Children": {
+                      "Image": {
+                        "id": "PROFILE",
+                        "ImageCollection": "lobby-bits",
+                        "X": "3",
+                        "Y": "3",
+                        "Visible": "false"
+                      },
+                      "ClientTooltipRegion": {
+                        "id": "PROFILE_TOOLTIP",
+                        "X": "3",
+                        "Y": "3",
+                        "Width": "16",
+                        "Height": "16",
+                        "TooltipContainer": "TOOLTIP_CONTAINER",
+                        "Template": "ANONYMOUS_PLAYER_TOOLTIP"
+                      }
+                    }
+                  },
+                  {
+                    "id": "TEAM_DROPDOWN",
+                    "X": "420",
+                    "Width": "48",
+                    "Height": "25",
+                    "Visible": "false"
+                  },
+                  {
+                    "id": "HANDICAP_DROPDOWN",
+                    "X": "478",
+                    "Width": "72",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipText": "dropdownbutton-lobby-players-handicap-tooltip"
+                  },
+                  {
+                    "id": "SPAWN_DROPDOWN",
+                    "X": "560",
+                    "Width": "48",
+                    "Height": "25",
+                    "Visible": "false"
+                  }
+                ],
+                "ColorBlock": {
+                  "id": "COLORBLOCK",
+                  "X": "195",
+                  "Y": "6",
+                  "Width": "35",
+                  "Height": "13"
+                }
+              }
+            },
+            {
+              "id": "TEMPLATE_EMPTY",
+              "X": "5",
+              "Width": "475",
+              "Height": "25",
+              "Visible": "false",
+              "Children": {
+                "Label": {
+                  "id": "NAME",
+                  "X": "20",
+                  "Width": "165",
+                  "Height": "25",
+                  "Text": "label-lobby-players-name"
+                },
+                "DropDownButton": {
+                  "id": "SLOT_OPTIONS",
+                  "X": "15",
+                  "Width": "165",
+                  "Height": "25",
+                  "Text": "label-lobby-players-name",
+                  "Visible": "false"
+                },
+                "Button": {
+                  "id": "JOIN",
+                  "X": "190",
+                  "Width": "418",
+                  "Height": "25",
+                  "Text": "button-lobby-players-join"
+                }
+              }
+            },
+            {
+              "id": "TEMPLATE_EDITABLE_SPECTATOR",
+              "X": "5",
+              "Width": "475",
+              "Height": "25",
+              "Visible": "false",
+              "Children": {
+                "Container": {
+                  "id": "LATENCY",
+                  "Y": "6",
+                  "Width": "11",
+                  "Height": "14",
+                  "Visible": "false",
+                  "Children": {
+                    "ColorBlock": {
+                      "id": "LATENCY_COLOR",
+                      "X": "2",
+                      "Y": "2",
+                      "Width": "PARENT_WIDTH - 4",
+                      "Height": "PARENT_HEIGHT - 4"
+                    }
+                  }
+                },
+                "ClientTooltipRegion": {
+                  "id": "LATENCY_REGION",
+                  "Width": "11",
+                  "Height": "25",
+                  "TooltipContainer": "TOOLTIP_CONTAINER",
+                  "Template": "LATENCY_TOOLTIP"
+                },
+                "TextField": {
+                  "id": "NAME",
+                  "X": "15",
+                  "Width": "165",
+                  "Height": "25",
+                  "Text": "Name",
+                  "LeftMargin": "24",
+                  "MaxLength": "16",
+                  "Children": {
+                    "Image": {
+                      "id": "PROFILE",
+                      "ImageCollection": "lobby-bits",
+                      "X": "3",
+                      "Y": "3",
+                      "Visible": "false"
+                    },
+                    "ClientTooltipRegion": {
+                      "id": "PROFILE_TOOLTIP",
+                      "X": "3",
+                      "Y": "3",
+                      "Width": "16",
+                      "Height": "16",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "Template": "ANONYMOUS_PLAYER_TOOLTIP"
+                    }
+                  }
+                },
+                "Label": {
+                  "id": "SPECTATOR",
+                  "X": "190",
+                  "Width": "418",
+                  "Height": "25",
+                  "Text": "label-lobby-players-spectator",
+                  "Align": "Center",
+                  "Font": "Bold"
+                },
+                "Checkbox": {
+                  "id": "STATUS_CHECKBOX",
+                  "X": "617",
+                  "Y": "2",
+                  "Width": "20",
+                  "Height": "20",
+                  "Visible": "false"
+                },
+                "Image": {
+                  "id": "STATUS_IMAGE",
+                  "X": "619",
+                  "Y": "4",
+                  "Width": "20",
+                  "Height": "20",
+                  "ImageCollection": "checkmark-tick",
+                  "ImageName": "checked",
+                  "Visible": "false"
+                }
+              }
+            },
+            {
+              "id": "TEMPLATE_NONEDITABLE_SPECTATOR",
+              "X": "5",
+              "Width": "475",
+              "Height": "25",
+              "Visible": "false",
+              "Children": {
+                "Container": {
+                  "id": "LATENCY",
+                  "Y": "6",
+                  "Width": "11",
+                  "Height": "14",
+                  "Visible": "false",
+                  "Children": {
+                    "ColorBlock": {
+                      "id": "LATENCY_COLOR",
+                      "X": "2",
+                      "Y": "2",
+                      "Width": "PARENT_WIDTH - 4",
+                      "Height": "PARENT_HEIGHT - 4"
+                    }
+                  }
+                },
+                "ClientTooltipRegion": [
+                  {
+                    "id": "LATENCY_REGION",
+                    "Width": "11",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "Template": "LATENCY_TOOLTIP"
+                  },
+                  {
+                    "id": "PROFILE_TOOLTIP",
+                    "X": "18",
+                    "Y": "3",
+                    "Width": "16",
+                    "Height": "16",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "Template": "ANONYMOUS_PLAYER_TOOLTIP"
+                  }
+                ],
+                "Image": [
+                  {
+                    "id": "PROFILE",
+                    "ImageCollection": "lobby-bits",
+                    "X": "18",
+                    "Y": "3",
+                    "Visible": "false"
+                  },
+                  {
+                    "id": "STATUS_IMAGE",
+                    "X": "619",
+                    "Y": "4",
+                    "Width": "20",
+                    "Height": "20",
+                    "ImageCollection": "checkmark-tick",
+                    "ImageName": "checked",
+                    "Visible": "false"
+                  }
+                ],
+                "Label": [
+                  {
+                    "id": "NAME",
+                    "X": "39",
+                    "Width": "160",
+                    "Height": "25",
+                    "Text": "label-lobby-players-name"
+                  },
+                  {
+                    "id": "SPECTATOR",
+                    "X": "190",
+                    "Width": "418",
+                    "Height": "25",
+                    "Text": "label-lobby-players-spectator",
+                    "Align": "Center",
+                    "Font": "Bold"
+                  }
+                ],
+                "DropDownButton": {
+                  "id": "PLAYER_ACTION",
+                  "X": "15",
+                  "Width": "165",
+                  "Height": "25",
+                  "Font": "Regular",
+                  "Visible": "false",
+                  "Align": "Left",
+                  "LeftMargin": "24",
+                  "Children": {
+                    "Image": {
+                      "id": "PROFILE",
+                      "ImageCollection": "lobby-bits",
+                      "X": "3",
+                      "Y": "3",
+                      "Visible": "false"
+                    },
+                    "ClientTooltipRegion": {
+                      "id": "PROFILE_TOOLTIP",
+                      "X": "3",
+                      "Y": "3",
+                      "Width": "16",
+                      "Height": "16",
+                      "TooltipContainer": "TOOLTIP_CONTAINER",
+                      "Template": "ANONYMOUS_PLAYER_TOOLTIP"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "id": "TEMPLATE_NEW_SPECTATOR",
+              "X": "5",
+              "Width": "475",
+              "Height": "25",
+              "Visible": "false",
+              "Children": {
+                "Checkbox": {
+                  "id": "TOGGLE_SPECTATORS",
+                  "X": "15",
+                  "Width": "165",
+                  "Height": "20",
+                  "Text": "checkbox-lobby-players-new-spectator-toggle",
+                  "Font": "Regular"
+                },
+                "Button": {
+                  "id": "SPECTATE",
+                  "X": "190",
+                  "Width": "418",
+                  "Height": "25",
+                  "Text": "button-lobby-players-spectate",
+                  "Font": "Regular"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "ScrollPanel": {
+    "id": "FACTION_DROPDOWN_TEMPLATE",
+    "Width": "DROPDOWN_WIDTH",
+    "Children": {
+      "ScrollItem": [
+        {
+          "id": "HEADER",
+          "Background": "scrollheader",
+          "Width": "PARENT_WIDTH - 27",
+          "Height": "13",
+          "X": "2",
+          "Y": "0",
+          "Visible": "false",
+          "Children": {
+            "Label": {
+              "id": "LABEL",
+              "Font": "TinyBold",
+              "Width": "PARENT_WIDTH",
+              "Height": "13",
+              "Align": "Center"
+            }
+          }
+        },
+        {
+          "id": "TEMPLATE",
+          "Width": "PARENT_WIDTH - 27",
+          "Height": "25",
+          "X": "2",
+          "Y": "0",
+          "Visible": "false",
+          "TooltipContainer": "TOOLTIP_CONTAINER",
+          "Children": {
+            "Image": {
+              "id": "FLAG",
+              "X": "2",
+              "Y": "2",
+              "Width": "30",
+              "Height": "15"
+            },
+            "Label": {
+              "id": "LABEL",
+              "X": "30",
+              "Width": "80",
+              "Height": "25"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

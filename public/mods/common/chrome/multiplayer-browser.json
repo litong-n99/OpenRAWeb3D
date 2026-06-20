@@ -1,0 +1,374 @@
+{
+  "Background": {
+    "id": "MULTIPLAYER_PANEL",
+    "Logic": "MultiplayerLogic",
+    "X": "(WINDOW_WIDTH - WIDTH) / 2",
+    "Y": "(WINDOW_HEIGHT - HEIGHT) / 2",
+    "Width": "900",
+    "Height": "600",
+    "Children": {
+      "Label": [
+        {
+          "id": "TITLE",
+          "Y": "16",
+          "Width": "PARENT_WIDTH",
+          "Height": "25",
+          "Text": "label-multiplayer-title",
+          "Align": "Center",
+          "Font": "Bold"
+        },
+        {
+          "id": "PROGRESS_LABEL",
+          "X": "20",
+          "Y": "67 + (PARENT_HEIGHT - 119 - HEIGHT) / 2",
+          "Width": "675",
+          "Height": "25",
+          "Font": "Bold",
+          "Align": "Center",
+          "Visible": "false"
+        },
+        {
+          "id": "PLAYER_COUNT",
+          "X": "254",
+          "Y": "PARENT_HEIGHT - HEIGHT - 20",
+          "Width": "190",
+          "Height": "25",
+          "Align": "Center",
+          "Font": "Bold"
+        }
+      ],
+      "Container": [
+        {
+          "id": "LABEL_CONTAINER",
+          "X": "20",
+          "Y": "43",
+          "Width": "PARENT_WIDTH",
+          "Height": "PARENT_HEIGHT",
+          "Children": {
+            "Label": [
+              {
+                "id": "NAME",
+                "X": "5",
+                "Width": "347",
+                "Height": "25",
+                "Text": "label-container-server",
+                "Align": "Center",
+                "Font": "Bold"
+              },
+              {
+                "id": "PLAYERS",
+                "X": "382",
+                "Width": "85",
+                "Height": "25",
+                "Text": "label-container-players",
+                "Font": "Bold"
+              },
+              {
+                "id": "LOCATION",
+                "X": "472",
+                "Width": "110",
+                "Height": "25",
+                "Text": "label-container-location",
+                "Font": "Bold"
+              },
+              {
+                "id": "STATUS",
+                "X": "587",
+                "Width": "50",
+                "Height": "25",
+                "Text": "label-container-status",
+                "Font": "Bold"
+              }
+            ]
+          }
+        },
+        {
+          "id": "SELECTED_SERVER",
+          "X": "PARENT_WIDTH - WIDTH - 20",
+          "Y": "67",
+          "Width": "174",
+          "Height": "280",
+          "Children": {
+            "Background": {
+              "id": "MAP_BG",
+              "Width": "PARENT_WIDTH",
+              "Height": "174",
+              "Background": "dialog3",
+              "Children": {
+                "MapPreview": {
+                  "id": "SELECTED_MAP_PREVIEW",
+                  "X": "1",
+                  "Y": "1",
+                  "Width": "PARENT_WIDTH - 2",
+                  "Height": "PARENT_HEIGHT - 2",
+                  "TooltipContainer": "TOOLTIP_CONTAINER"
+                }
+              }
+            },
+            "LabelWithTooltip": {
+              "id": "SELECTED_MAP",
+              "Y": "173",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Font": "Bold",
+              "Align": "Center",
+              "TooltipContainer": "TOOLTIP_CONTAINER",
+              "TooltipTemplate": "SIMPLE_TOOLTIP"
+            },
+            "Label": [
+              {
+                "id": "SELECTED_IP",
+                "Y": "188",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center"
+              },
+              {
+                "id": "SELECTED_STATUS",
+                "Y": "204",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center"
+              },
+              {
+                "id": "SELECTED_MOD_VERSION",
+                "Y": "217",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "Tiny",
+                "Align": "Center"
+              },
+              {
+                "id": "SELECTED_PLAYERS",
+                "Y": "230",
+                "Width": "PARENT_WIDTH",
+                "Height": "25",
+                "Font": "TinyBold",
+                "Align": "Center"
+              }
+            ],
+            "Container": {
+              "id": "CLIENT_LIST_CONTAINER",
+              "Y": "240",
+              "Width": "PARENT_WIDTH",
+              "Height": "166"
+            },
+            "Button": {
+              "id": "JOIN_BUTTON",
+              "Key": "return",
+              "Y": "255",
+              "Width": "PARENT_WIDTH",
+              "Height": "25",
+              "Text": "button-selected-server-join",
+              "Font": "Bold"
+            }
+          }
+        }
+      ],
+      "LogicTicker": {
+        "id": "NOTICE_WATCHER"
+      },
+      "Background": {
+        "id": "NOTICE_CONTAINER",
+        "X": "20",
+        "Y": "67",
+        "Width": "675",
+        "Height": "20",
+        "Background": "dialog2",
+        "Children": {
+          "Label": [
+            {
+              "id": "OUTDATED_VERSION_LABEL",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 10",
+              "Height": "20",
+              "Align": "Center",
+              "Text": "label-notice-container-outdated-version",
+              "Font": "TinyBold"
+            },
+            {
+              "id": "UNKNOWN_VERSION_LABEL",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 10",
+              "Height": "20",
+              "Align": "Center",
+              "Text": "label-notice-container-unknown-version",
+              "Font": "TinyBold"
+            },
+            {
+              "id": "PLAYTEST_AVAILABLE_LABEL",
+              "X": "5",
+              "Width": "PARENT_WIDTH - 10",
+              "Height": "20",
+              "Align": "Center",
+              "Text": "label-notice-container-playtest-available",
+              "Font": "TinyBold"
+            }
+          ]
+        }
+      },
+      "ScrollPanel": {
+        "id": "SERVER_LIST",
+        "X": "20",
+        "Y": "67",
+        "Width": "675",
+        "Height": "PARENT_HEIGHT - 122",
+        "TopBottomSpacing": "2",
+        "Children": {
+          "ScrollItem": [
+            {
+              "id": "HEADER_TEMPLATE",
+              "X": "2",
+              "Width": "PARENT_WIDTH - 27",
+              "Height": "20",
+              "Background": "scrollheader",
+              "Visible": "false",
+              "Children": {
+                "Label": {
+                  "id": "LABEL",
+                  "Font": "TinyBold",
+                  "Width": "PARENT_WIDTH",
+                  "Height": "20",
+                  "Align": "Center"
+                }
+              }
+            },
+            {
+              "id": "SERVER_TEMPLATE",
+              "X": "2",
+              "Width": "PARENT_WIDTH - 27",
+              "Height": "25",
+              "EnableChildMouseOver": "True",
+              "Children": {
+                "LabelWithTooltip": [
+                  {
+                    "id": "TITLE",
+                    "X": "5",
+                    "Width": "337",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP"
+                  },
+                  {
+                    "id": "PLAYERS",
+                    "X": "382",
+                    "Width": "85",
+                    "Height": "25",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP"
+                  }
+                ],
+                "Image": [
+                  {
+                    "id": "PASSWORD_PROTECTED",
+                    "X": "364",
+                    "Y": "6",
+                    "Width": "12",
+                    "Height": "13",
+                    "ImageCollection": "lobby-bits",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP",
+                    "TooltipText": "image-multiplayer-panel-password-protected-tooltip"
+                  },
+                  {
+                    "id": "REQUIRES_AUTHENTICATION",
+                    "X": "364",
+                    "Y": "6",
+                    "Width": "12",
+                    "Height": "13",
+                    "ImageCollection": "lobby-bits",
+                    "TooltipContainer": "TOOLTIP_CONTAINER",
+                    "TooltipTemplate": "SIMPLE_TOOLTIP",
+                    "TooltipText": "image-multiplayer-panel-requires-authentication-tooltip"
+                  }
+                ],
+                "Label": [
+                  {
+                    "id": "LOCATION",
+                    "X": "472",
+                    "Width": "110",
+                    "Height": "25"
+                  },
+                  {
+                    "id": "STATUS",
+                    "X": "587",
+                    "Width": "50",
+                    "Height": "25"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "DropDownButton": {
+        "id": "FILTERS_DROPDOWNBUTTON",
+        "X": "20",
+        "Y": "PARENT_HEIGHT - HEIGHT - 20",
+        "Width": "158",
+        "Height": "25",
+        "Text": "dropdownbutton-multiplayer-panel-filters",
+        "Font": "Bold"
+      },
+      "Button": [
+        {
+          "id": "RELOAD_BUTTON",
+          "X": "182",
+          "Y": "PARENT_HEIGHT - HEIGHT - 20",
+          "Width": "26",
+          "Height": "25",
+          "Children": {
+            "Image": {
+              "id": "IMAGE_RELOAD",
+              "X": "5",
+              "Y": "5",
+              "Width": "16",
+              "Height": "16",
+              "ImageCollection": "reload-icon",
+              "ImageName": "enabled",
+              "IgnoreMouseOver": "True",
+              "Children": {
+                "LogicTicker": {
+                  "id": "ANIMATION"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "DIRECTCONNECT_BUTTON",
+          "X": "490",
+          "Y": "PARENT_HEIGHT - HEIGHT - 20",
+          "Width": "100",
+          "Height": "25",
+          "Text": "button-multiplayer-panel-directconnect",
+          "Font": "Bold"
+        },
+        {
+          "id": "CREATE_BUTTON",
+          "X": "595",
+          "Y": "PARENT_HEIGHT - HEIGHT - 20",
+          "Width": "100",
+          "Height": "25",
+          "Text": "button-multiplayer-panel-create",
+          "Font": "Bold"
+        },
+        {
+          "id": "BACK_BUTTON",
+          "Key": "escape",
+          "X": "PARENT_WIDTH - WIDTH - 20",
+          "Y": "PARENT_HEIGHT - HEIGHT - 20",
+          "Width": "174",
+          "Height": "25",
+          "Text": "button-back",
+          "Font": "Bold"
+        }
+      ],
+      "TooltipContainer": {
+        "id": "TOOLTIP_CONTAINER"
+      }
+    }
+  }
+}
