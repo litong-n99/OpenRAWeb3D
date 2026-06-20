@@ -153,6 +153,9 @@ export class MapCache implements Iterable<MapPreview> {
   /** Manifest 引用。 */
   private readonly _manifest: ManifestStub
 
+  /** 模组文件系统（可选——未提供时使用模拟包作为回退）。 */
+  private readonly _modFiles: IReadOnlyPackage | undefined
+
   /** 追踪异步小地图加载器 promise 以在 dispose 时正确等待。 */
   private _previewLoaderPromise: Promise<void> | null = null
 
@@ -169,10 +172,12 @@ export class MapCache implements Iterable<MapPreview> {
    * OpenRA 对照: MapCache(Manifest, FS)
    *
    * @param manifest — 模组清单
-   * @param _modFiles — 模组文件系统 (TODO-4.E.7: 完整的文件系统实现)
+   * @param modFiles — 模组文件系统（可选）。提供时用于通过真实文件系统访问
+   *   地图目录和包；未提供时回退到空模拟包（向后兼容）。
    */
-  constructor(manifest: ManifestStub, _modFiles?: unknown) {
+  constructor(manifest: ManifestStub, modFiles?: IReadOnlyPackage) {
     this._manifest = manifest
+    this._modFiles = modFiles
     this._sheetBuilder = new SheetBuilder(
       SheetType.BGRA,
       manifest.rendererConstants.mapPreviewSheetSize,
@@ -243,8 +248,11 @@ export class MapCache implements Iterable<MapPreview> {
     // 不支持地图的实用程序模组
     if (this._manifest.mapFolders.size === 0) return
 
-    // NOTE: modData.getOrCreate<T>() expects a constructor. MapGridTypeConst is a const object.
-    // We pass a dummy constructor and rely on the fallback. TODO-4.E.9: Full ModData implementation.
+    // NOTE: modData.getOrCreate<T>() expects a constructor parameter. In OpenRA,
+    // this resolves MapGrid.Type from the mod-global MapGrid instance. Our
+    // ModDataStub.getOrCreate() may return undefined when the module is not
+    // registered, so we fall back to Rectangular (the most common grid type).
+    // Full ModData implementation would instantiate MapGrid based on YAML config.
     const gridType = modData.getOrCreate(class DummyGridType {} as unknown as new () => MapGridType) ?? MapGridTypeConst.Rectangular
 
     // 使用引用此缓存的工厂重新初始化预览
@@ -259,8 +267,8 @@ export class MapCache implements Iterable<MapPreview> {
       const resolvedName = optional ? name.slice(1) : name
 
       try {
-        // 创建模拟包 (TODO-4.E.7: 实际文件系统访问)
-        const package_ = this.createMockPackage(resolvedName)
+        // 打开包：优先使用真实文件系统，未提供时回退到空模拟包
+        const package_ = this._modFiles?.openPackage(resolvedName) ?? this.createMockPackage(resolvedName)
         this._mapLocations.set(package_, classification)
         this._mapDirectoryTrackers.push(
           new MapDirectoryTracker(package_, classification),
@@ -298,7 +306,10 @@ export class MapCache implements Iterable<MapPreview> {
   }
 
   /**
-   * 创建模拟包以进行测试 (TODO-4.E.7)。
+   * 创建回退用的空模拟包。
+   *
+   * 当 modFiles 未提供或 openPackage() 返回 null 时使用。
+   * 保持向后兼容性——测试和未配置模组文件系统的环境可以继续运行。
    */
   private createMockPackage(name: string): IReadOnlyPackage {
     return {
@@ -375,16 +386,16 @@ export class MapCache implements Iterable<MapPreview> {
    *
    * OpenRA 对照: Map.ComputeUID()
    *
+   * 委托给 MapPreview.computeUid()，它使用 djb2 哈希算法对包名和内容
+   * 进行哈希。OpenRA 原始实现使用 SHA1 对 map.yaml/map.bin 内容进行哈希，
+   * 但在浏览器中不需要完整的加密哈希——跨设备/安装的一致性哈希就足够了。
+   *
    * @param _package_ — 地图包
    * @returns 计算出的 UID
    */
   private computeUid(_package_: IReadOnlyPackage): string {
-    // TODO-4.E.2: 在完整的 MapPreview 实现中，使用实际的 UID 计算
-    // 目前，返回基于包名称的确定性哈希 UID
-    const hash = _package_.name.split('').reduce((h, c) => {
-      return ((h << 5) - h + c.charCodeAt(0)) | 0
-    }, 0)
-    return `uid-${_package_.name}-${Math.abs(hash).toString(16)}`
+    // 委托给 MapPreview.computeUid 以获得一致的实现
+    return MapPreview.computeUid(_package_)
   }
 
   // -----------------------------------------------------------------------
@@ -409,17 +420,20 @@ export class MapCache implements Iterable<MapPreview> {
       const optional = name.startsWith('~')
       const resolvedName = optional ? name.slice(1) : name
 
-      // 创建模拟可写包 (TODO-4.E.7)
-      const pkg: IReadWritePackage = {
-        name: resolvedName,
-        contents: [],
-        contains: () => false,
-        open: async () => null,
-        openPackage: () => null,
-        update: () => {},
-        delete: () => {},
-        dispose: () => {},
-      }
+      // 打开包：优先使用真实文件系统；回退到空模拟可写包
+      // NOTE: 真实文件系统返回的包需要转换为 IReadWritePackage；
+      // 对于不支持写入的只读包，我们回退到模拟包
+      const pkg: IReadWritePackage =
+        (this._modFiles?.openPackage(resolvedName) as IReadWritePackage | null) ?? {
+          name: resolvedName,
+          contents: [],
+          contains: () => false,
+          open: async () => null,
+          openPackage: () => null,
+          update: () => {},
+          delete: () => {},
+          dispose: () => {},
+        }
       yield pkg
     }
   }
@@ -509,7 +523,6 @@ export class MapCache implements Iterable<MapPreview> {
         }
       } catch (e) {
         Log.write('mapcache', LogLevel.WARN, `Remote map query failed: ${String(e)}`)
-        // TODO-4.E.5: 在日志系统迁移后替换为 Log.Write
       }
 
       // 将此批次中仍处于 Searching 状态的任何地图标记为失败

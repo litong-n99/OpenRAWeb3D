@@ -10,7 +10,10 @@
  * - C# IDisposable → dispose() 方法
  * - C# 文件变更事件回调 → Map<string, ChangeCallback[]> 事件注册系统
  *
- * TODO-4.E.1: 实现目录内容比较和自动操作排队。
+ * 目录比较已通过 pollOnce() 实现——使用 add/delete/update 检测进行
+ * 基于轮询的快照比较。isMapFile() 过滤确保仅处理 .oramap 和无扩展名
+ * 目录式地图。浏览器中没有原生 FileSystemWatcher，因此基于轮询的
+ * 模型是正确的方法。
  */
 
 import type { IReadOnlyPackage } from '../FileSystem/IReadOnlyPackage.js'

@@ -14,6 +14,7 @@ import {
   type ModDataStub,
 } from './MapCache.js'
 import { MapPreview, MapStatus, MapClassification } from './MapPreview.js'
+import type { IReadOnlyPackage } from '../FileSystem/IReadOnlyPackage.js'
 import type { MersenneTwisterStub } from '../Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
@@ -225,9 +226,9 @@ describe('MapCache', () => {
   })
 
   describe('computeUid determinism', () => {
-    it('generates same UID for same package name', () => {
+    it('generates same UID for same package name and contents', () => {
       const cache = new MapCache(createMockManifest())
-      const pkg = { name: '/maps/test.oramap', contents: [], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
+      const pkg: IReadOnlyPackage = { name: '/maps/test.oramap', contents: ['map.yaml', 'map.bin'], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
 
       // @ts-expect-error — accessing private method
       const uid1 = cache.computeUid(pkg)
@@ -235,13 +236,27 @@ describe('MapCache', () => {
       const uid2 = cache.computeUid(pkg)
 
       expect(uid1).toBe(uid2)
-      expect(uid1).toContain('/maps/test.oramap')
+      // Delegates to MapPreview.computeUid which returns djb2 hex hash
+      expect(uid1).toMatch(/^[0-9a-f]+$/)
     })
 
     it('generates different UIDs for different package names', () => {
       const cache = new MapCache(createMockManifest())
-      const pkg1 = { name: '/maps/a.oramap', contents: [], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
-      const pkg2 = { name: '/maps/b.oramap', contents: [], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
+      const pkg1: IReadOnlyPackage = { name: '/maps/a.oramap', contents: [], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
+      const pkg2: IReadOnlyPackage = { name: '/maps/b.oramap', contents: [], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
+
+      // @ts-expect-error — accessing private method
+      const uid1 = cache.computeUid(pkg1)
+      // @ts-expect-error — accessing private method
+      const uid2 = cache.computeUid(pkg2)
+
+      expect(uid1).not.toBe(uid2)
+    })
+
+    it('generates different UIDs for same name but different contents', () => {
+      const cache = new MapCache(createMockManifest())
+      const pkg1: IReadOnlyPackage = { name: '/maps/same.oramap', contents: ['map.yaml'], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
+      const pkg2: IReadOnlyPackage = { name: '/maps/same.oramap', contents: ['map.bin'], contains: () => false, open: async () => null, openPackage: () => null, dispose: () => {} }
 
       // @ts-expect-error — accessing private method
       const uid1 = cache.computeUid(pkg1)
@@ -457,9 +472,114 @@ describe('MapCache', () => {
   describe('constructor with modFiles', () => {
     it('accepts optional modFiles parameter', () => {
       const manifest = createMockManifest()
-      const modFiles = { root: '/mods/ra' }
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: ['maps/system', 'maps/user'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => null,
+        dispose: () => {},
+      }
       const cache = new MapCache(manifest, modFiles)
       expect(cache).toBeDefined()
+    })
+
+    it('uses modFiles.openPackage when loading maps', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      const openPackageSpy = vi.fn().mockReturnValue(null)
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: [],
+        contains: () => false,
+        open: async () => null,
+        openPackage: openPackageSpy,
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+      const modData = createMockModData()
+      cache.loadMaps(modData)
+
+      expect(openPackageSpy).toHaveBeenCalledWith('maps/system')
+    })
+
+    it('falls back to mock package when modFiles.openPackage returns null', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: [],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => null,
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+      const modData = createMockModData()
+
+      // Should not throw when openPackage returns null
+      expect(() => cache.loadMaps(modData)).not.toThrow()
+      expect(cache.mapLocations.size).toBe(1)
+    })
+
+    it('handles modFiles.openPackage throwing', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: [],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => { throw new Error('Not found') },
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+      const modData = createMockModData()
+
+      // Should throw for non-optional folder
+      expect(() => cache.loadMaps(modData)).toThrow('Not found')
+    })
+
+    it('continues past optional folder when modFiles.openPackage throws', () => {
+      const mapFolders = new Map([
+        ['~maps/optional', 'System'],
+        ['maps/required', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      let callCount = 0
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: [],
+        contains: () => false,
+        open: async () => null,
+        openPackage: (name) => {
+          callCount++
+          if (name === 'maps/optional') throw new Error('Optional folder not found')
+          return null // Return null for required, which creates mock
+        },
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+      const modData = createMockModData()
+      cache.loadMaps(modData)
+
+      // Both folders should have been attempted
+      expect(callCount).toBe(2)
+      expect(cache.mapLocations.size).toBe(1) // Only required folder
     })
   })
 })

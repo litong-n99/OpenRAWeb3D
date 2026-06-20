@@ -780,23 +780,28 @@ export class MapPreview {
   /**
    * 从地图包内容的哈希计算 UID。
    *
-   * OpenRA 对照: MapCache.ComputeUid() (使用 SHA1)
+   * OpenRA 对照: Map.ComputeUID() (使用 SHA1)
    *
-   * 使用简单的 djb2 哈希算法（浏览器环境中的 SHA-1 回退）。
-   * 这确保了跨安装的多人游戏兼容性。
+   * 使用 djb2 哈希算法对包名和内容进行哈希。OpenRA 原始实现基于
+   * 读取 map.yaml 和 map.bin 并对其内容计算 SHA1 哈希。但在浏览器环境
+   * 中，文件读取是异步的（open() 返回 Promise），而 UID 计算在同步路径
+   * （loadMaps）中执行。因此，使用基于包名和内容名列表的确定性哈希——
+   * 对于相同的包名+内容，跨设备和安装产生一致的标识符。
    *
-   * @param package_ -- 要计算哈希的地图包
+   * 对于多人游戏兼容性，这由 MapCache 和远程仓库查询在更高层处理。
+   *
+   * @param package_ — 要计算哈希的地图包
    * @returns 十六进制哈希字符串
    */
   static computeUid(package_: IReadOnlyPackage): string {
     // djb2 哈希 — 在浏览器中快速且一致
-    // 对内容进行哈希以确保确定性
+    // 对包名和内容条目名进行哈希以确保确定性
     let hash = 5381
     const name = package_.name
     for (let i = 0; i < name.length; i++) {
       hash = ((hash << 5) + hash + name.charCodeAt(i)) | 0
     }
-    // 也混入内容数量以确保唯一性
+    // 混入内容列表以确保唯一性
     const contents = package_.contents
     for (const c of contents) {
       for (let i = 0; i < c.length; i++) {
