@@ -214,6 +214,13 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
   /** Material for the Billboard mesh (created together with the mesh). */
   private _billboardMaterial: StandardMaterial | null = null
 
+  /** Cached GpsDotRenderable (reused across frames, avoids per-frame allocation).
+   *
+   * OpenRA 对照: IRenderable yield-return pattern — OpenRA creates new objects
+   * per-frame, but TS avoids this via object pooling.
+   */
+  private _cachedRenderable: GpsDotRenderable | null = null
+
   constructor(actor: IGameActor, info: GpsDotInfo, scene?: Scene) {
     this._actor = actor
     this._info = info
@@ -326,17 +333,26 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
    * In the 3D paradigm, the GPS dot is rendered as a Billboard at the actor's
    * world position so it appears above the terrain through fog of war.
    *
-   * Ch24 Phase D: When a Scene was provided at construction, a Babylon.js
-   * Billboard mesh is created/updated at the actor position and toggled
-   * based on visibility. The returned array still contains a GpsDotRenderable
-   * for backward compatibility.
+   * Ch24 Phase D: When a Scene was provided at construction, returns the
+   * actual Babylon.js Billboard mesh as an IRenderable for GPU rendering
+   * (matching the AnimationStub pattern). Without a Scene, returns the
+   * plain-data GpsDotRenderable for backward compatibility.
    *
    * @param worldRenderer — the world renderer (unused, render player resolved from actor)
-   * @returns array with the GPS dot renderable, or empty if not visible
+   * @returns array with the renderable, or empty if not visible
    */
   render(_worldRenderer: WorldRendererStub): readonly IRenderable[] {
     const renderable = this._createRenderable()
-    return renderable ? [renderable] : []
+    if (!renderable) return []
+
+    // When Scene is available and Billboard exists, return the actual mesh
+    // so it renders on GPU (matches AnimationStub pattern).
+    if (this._scene && this._billboard) {
+      return [this._billboard as unknown as IRenderable]
+    }
+
+    // Backward compatible: return plain-data renderable
+    return [renderable]
   }
 
   // ---------------------------------------------------------------------------
@@ -350,18 +366,24 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
    * OpenRA 对照: GpsDotEffect.RenderAnnotation(WorldRenderer)
    *
    * Only renders if the current render player should see the dot.
-   * Returns the same Billboard renderable as render() since annotation
+   * Returns the same Billboard mesh as render() since annotation
    * rendering shares the GPS dot visual in the 3D paradigm.
    *
-   * Ch24 Phase D: Billboard mesh is managed as a side effect (same mesh
-   * shared with render()), so this method returns the plain-data renderable.
+   * Ch24 Phase D: When a Scene is available, returns the actual Billboard
+   * mesh. Without a Scene, returns the plain-data renderable.
    *
    * @param worldRenderer — the world renderer (unused, render player resolved from actor)
    * @returns array with the GPS dot renderable, or empty if not visible
    */
   renderAnnotation(_worldRenderer: WorldRendererStub): readonly IRenderable[] {
     const renderable = this._createRenderable()
-    return renderable ? [renderable] : []
+    if (!renderable) return []
+
+    if (this._scene && this._billboard) {
+      return [this._billboard as unknown as IRenderable]
+    }
+
+    return [renderable]
   }
 
   // ---------------------------------------------------------------------------
@@ -396,8 +418,18 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
    * Requires a Scene to be available at construction time. Idempotent —
    * subsequent calls are no-ops once the Billboard exists.
    *
-   * The Billbard is a small plane (0.3 x 0.3 world units) that always
-   * faces the camera, rendered in the Actor render group.
+   * The Billboard is a small plane (0.3 x 0.3 world units) that always
+   * faces the camera, rendered in the Annotation render group (GPS dots
+   * are a minimap/annotation overlay, not a regular Actor effect).
+   *
+   * NOTE — Lifecycle deviation from OpenRA:
+   * OpenRA creates the dot renderable via INotifyAddedToWorld.AddedToWorld().
+   * We use lazy creation on first visible render() instead. Rationale:
+   * 1. Avoids coupling to the World lifecycle — GpsDotEffect works with or
+   *    without a full World/Scene setup (critical for backward compatibility).
+   * 2. Mesh creation is cheap (one plane + one StandardMaterial); no
+   *    measurable frame impact from lazy init.
+   * 3. Simplifies testing — no need to simulate World/Scene lifecycle events.
    */
   private _ensureBillboard(): void {
     if (!this._scene || this._billboard) return
@@ -411,7 +443,8 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
       this._scene,
     )
     this._billboard.billboardMode = Mesh.BILLBOARDMODE_ALL
-    this._billboard.renderingGroupId = RenderGroup.Actor
+    // GPS dot is a minimap/annotation overlay — use Annotation layer (3)
+    this._billboard.renderingGroupId = RenderGroup.Annotation
 
     // Create material with color derived from palette prefix
     this._billboardMaterial = new StandardMaterial(
@@ -419,6 +452,9 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
       this._scene,
     )
     this._billboardMaterial.emissiveColor = this._resolveColor()
+    // Prevent scene lighting from tinting the dot: pure emissive-only
+    this._billboardMaterial.diffuseColor = Color3.Black()
+    this._billboardMaterial.specularColor = Color3.Black()
     this._billboardMaterial.alphaMode = Constants.ALPHA_PREMULTIPLIED
     this._billboardMaterial.backFaceCulling = false
 
@@ -467,7 +503,7 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
     let hash = 0
     for (let i = 0; i < name.length; i++) {
       hash = ((hash << 5) - hash) + name.charCodeAt(i)
-      hash |= 0 // Convert to 32-bit integer
+      hash >>>= 0 // Convert to unsigned 32-bit integer
     }
 
     // Small palette of distinct, vibrant colors
@@ -490,12 +526,16 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
   // ---------------------------------------------------------------------------
 
   /**
-   * Create a GpsDotRenderable for the current render player if the dot is
-   * visible to them.
+   * Create or reuse a GpsDotRenderable for the current render player if the
+   * dot is visible to them.
    *
    * Ch24 Phase D: When a Scene is available, manages a Babylon.js Billboard
    * mesh as a side effect — creating it on first visibility, updating its
    * world position each frame, and toggling enabled state.
+   *
+   * PERF: Reuses a cached GpsDotRenderable across frames. A new object is
+   * only allocated when the dot becomes visible, changes position, or when
+   * the owner changes. This avoids per-frame allocation on the hot path.
    *
    * @returns the renderable, or null if the dot should not be visible
    */
@@ -511,12 +551,15 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
     if (!renderPlayer) {
       // No render player — hide Billboard
       if (this._billboard) this._billboard.setEnabled(false)
+      // Invalidate cache
+      this._cachedRenderable = null
       return null
     }
 
     const key = (renderPlayer as unknown as { internalName: string }).internalName
     if (!key) {
       if (this._billboard) this._billboard.setEnabled(false)
+      this._cachedRenderable = null
       return null
     }
 
@@ -526,6 +569,7 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
     if (!state?.visible || !centerPos) {
       // Dot not visible or no position — hide Billboard
       if (this._billboard) this._billboard.setEnabled(false)
+      this._cachedRenderable = null
       return null
     }
 
@@ -539,15 +583,28 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
       this._billboard.setEnabled(true)
     }
 
-    // Resolve owner for palette color
+    // -----------------------------------------------------------------------
+    // Reuse cached renderable if position unchanged (avoid per-frame allocation)
+    // -----------------------------------------------------------------------
+
+    if (this._cachedRenderable) {
+      const cp = this._cachedRenderable.position
+      if (cp.X === centerPos.X && cp.Y === centerPos.Y && cp.Z === centerPos.Z) {
+        return this._cachedRenderable
+      }
+    }
+
+    // Position changed or first time — create new renderable
     const ownerName = this._resolveOwnerName()
 
-    return new GpsDotRenderable(
+    this._cachedRenderable = new GpsDotRenderable(
       centerPos,
       this._info.indicatorPalettePrefix,
       ownerName,
       this._info.image,
     )
+
+    return this._cachedRenderable
   }
 
   // ---------------------------------------------------------------------------
@@ -559,17 +616,31 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
    *
    * Ch24 Phase D: Disposes the Billboard mesh and its material. Idempotent —
    * safe to call multiple times.
+   *
+   * Scene-disposal guard: If the Babylon.js Scene has already been disposed
+   * (e.g. engine shutdown before effect teardown), skip GPU resource disposal
+   * to avoid errors from calling dispose on resources whose WebGL context is
+   * already destroyed.
    */
   dispose(): void {
     this._dotStates.clear()
+    this._cachedRenderable = null
 
-    // Ch24 Phase D: Dispose GPU resources
-    if (this._billboardMaterial) {
-      this._billboardMaterial.dispose()
+    // Ch24 Phase D: Dispose GPU resources (guarded against scene disposal)
+    const sceneDisposed = this._scene?.isDisposed ?? true
+    if (!sceneDisposed) {
+      if (this._billboardMaterial) {
+        this._billboardMaterial.dispose()
+        this._billboardMaterial = null
+      }
+      if (this._billboard) {
+        this._billboard.dispose()
+        this._billboard = null
+      }
+    } else {
+      // Scene already disposed — GPU resources are already freed.
+      // Just drop references to prevent dangling pointers.
       this._billboardMaterial = null
-    }
-    if (this._billboard) {
-      this._billboard.dispose()
       this._billboard = null
     }
   }

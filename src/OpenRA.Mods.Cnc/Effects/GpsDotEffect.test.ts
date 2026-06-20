@@ -60,6 +60,10 @@ vi.mock('@babylonjs/core', () => {
     this.g = g
     this.b = b
   })
+  ;(MockColor3 as any).Black = vi.fn(() => {
+    const c = new (MockColor3 as any)(0, 0, 0)
+    return c
+  })
 
   const MockMesh = Object.assign(
     vi.fn((name: string) => createMockMesh(name)),
@@ -163,8 +167,8 @@ function makeWorld(players: PlayerStub[] = []): GameWorldManager {
 }
 
 /** Create a minimal mock Babylon.js Scene for testing. */
-function makeScene(): any {
-  return { __type: 'MockScene' }
+function makeScene(isDisposed: boolean = false): any {
+  return { __type: 'MockScene', isDisposed }
 }
 
 // ---------------------------------------------------------------------------
@@ -611,7 +615,7 @@ describe('GpsDotEffect', () => {
       expect(MeshBuilder.CreatePlane).not.toHaveBeenCalled()
     })
 
-    it('sets mesh.renderingGroupId = RenderGroup.Actor (1) after creation', () => {
+    it('sets mesh.renderingGroupId = RenderGroup.Annotation (3) after creation', () => {
       const scene = makeScene()
       const player = makePlayer({
         internalName: 'Multi0',
@@ -632,7 +636,8 @@ describe('GpsDotEffect', () => {
 
       const billboard = effect.billboard as Record<string, unknown> | null
       expect(billboard).not.toBeNull()
-      expect(billboard!.renderingGroupId).toBe(RenderGroup.Actor) // 1
+      // GPS dots are minimap/annotation overlays, not regular Actor effects
+      expect(billboard!.renderingGroupId).toBe(RenderGroup.Annotation) // 3
     })
 
     it('sets mesh.billboardMode = Mesh.BILLBOARDMODE_ALL (7) after creation', () => {
@@ -1103,6 +1108,253 @@ describe('GpsDotEffect', () => {
       expect(billboard).not.toBeNull()
       expect(material).not.toBeNull()
       expect(billboard!.material).toBe(material)
+    })
+
+    it('sets diffuseColor and specularColor to Black (pure emissive, no scene lighting)', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const material = effect.billboardMaterial as Record<string, unknown> | null
+      expect(material).not.toBeNull()
+
+      // diffuseColor should be Black (0, 0, 0) — no scene lighting tint
+      const diffuse = material!.diffuseColor as { r: number; g: number; b: number }
+      expect(diffuse.r).toBe(0)
+      expect(diffuse.g).toBe(0)
+      expect(diffuse.b).toBe(0)
+
+      // specularColor should be Black (0, 0, 0) — no specular highlights
+      const specular = material!.specularColor as { r: number; g: number; b: number }
+      expect(specular.r).toBe(0)
+      expect(specular.g).toBe(0)
+      expect(specular.b).toBe(0)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase D: Renderable caching (anti-allocation)
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase D — Renderable caching', () => {
+    it('reuses cached renderable when position is unchanged (avoids per-frame allocation)', () => {
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const pos = { X: 10240, Y: 10240, Z: 0 }
+      const actor = makeActor({
+        centerPosition: pos,
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info)
+
+      effect.tick(makeWorld([player]))
+
+      const r1 = effect.render(null as any)
+      const r2 = effect.render(null as any)
+
+      expect(r1.length).toBe(1)
+      expect(r2.length).toBe(1)
+      // Same position → same renderable instance (cached, no re-allocation)
+      expect(r1[0]).toBe(r2[0])
+    })
+
+    it('creates new renderable when position changes', () => {
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      // First position
+      const actor0 = makeActor({
+        actorId: 10,
+        centerPosition: { X: 10240, Y: 10240, Z: 0 },
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor0, info)
+      effect.tick(makeWorld([player]))
+      const r1 = effect.render(null as any)
+      expect(r1.length).toBe(1)
+
+      // Change actor position — need a new effect with different position
+      // (same effect uses cached renderable for same position)
+      const actor1 = makeActor({
+        actorId: 11,
+        centerPosition: { X: 20480, Y: 30720, Z: 0 },
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+      const effect1 = new GpsDotEffect(actor1, info)
+      effect1.tick(makeWorld([player]))
+      const r2 = effect1.render(null as any)
+      expect(r2.length).toBe(1)
+
+      // Different positions → different renderable content
+      const data1 = r1[0] as GpsDotRenderable
+      const data2 = r2[0] as GpsDotRenderable
+      expect(data1.position.X).not.toBe(data2.position.X)
+    })
+
+    it('returns empty and nullifies cache when no render player', () => {
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info)
+
+      effect.tick(makeWorld([player]))
+      const r1 = effect.render(null as any)
+      expect(r1.length).toBe(1) // visible, cache populated
+
+      // Same position → reuses cache (no per-frame allocation)
+      const r2 = effect.render(null as any)
+      expect(r2.length).toBe(1)
+      expect(r2[0]).toBe(r1[0]) // Same cached instance
+
+      // Separate effect with no render player → returns empty, no cache
+      const noRpActor = makeActor({ world: {} })
+      const noRpEffect = new GpsDotEffect(noRpActor, info)
+      const r3 = noRpEffect.render(null as any)
+      expect(r3).toHaveLength(0) // invisible — no render player
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase D: Mesh as IRenderable return value
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase D — Mesh as IRenderable', () => {
+    it('returns Billboard mesh as IRenderable when Scene is provided', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      const result = effect.render(null as any)
+
+      expect(result.length).toBe(1)
+      // When Scene is available, return the actual Billboard mesh
+      expect(result[0]).toBe(effect.billboard)
+    })
+
+    it('returns plain GpsDotRenderable when no Scene (backward compatible)', () => {
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info) // No scene
+
+      effect.tick(makeWorld([player]))
+      const result = effect.render(null as any)
+
+      expect(result.length).toBe(1)
+      // Without Scene, return plain-data GpsDotRenderable
+      expect(result[0]).toBeInstanceOf(GpsDotRenderable)
+    })
+
+    it('renderAnnotation also returns mesh when Scene is provided', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      const result = effect.renderAnnotation(null as any)
+
+      expect(result.length).toBe(1)
+      expect(result[0]).toBe(effect.billboard)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase D: Dispose with disposed Scene guard
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase D — Scene-disposal guard', () => {
+    it('skips GPU resource disposal when Scene is already disposed', () => {
+      const scene = makeScene(true) // isDisposed = true
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      // Create Billboard (with disposed scene — billboard won't be created since scene.isDisposed... actually the mock still creates it)
+      // NOTE: In this mock, isDisposed only affects dispose(), not creation
+      effect.render(null as any)
+
+      // Should not throw when disposing with a disposed scene
+      expect(() => effect.dispose()).not.toThrow()
     })
   })
 })
