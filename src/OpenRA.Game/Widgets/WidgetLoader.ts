@@ -115,28 +115,33 @@ export class WidgetLoader {
    *
    * @param layoutJson — 布局 JSON 对象 (顶层键为 Type@Id)
    */
-  loadLayout(layoutJson: Record<string, WidgetDefinitionNode>): void {
+  loadLayout(layoutJson: Record<string, WidgetDefinitionNode>, sourcePath?: string): void {
+    // Counter for disambiguating id-less nodes from the same source file.
+    // Only used as a last-resort fallback when neither @ suffix nor node.id exists.
+    let anonymousCounter = 0
+
     for (const [origKey, node] of Object.entries(layoutJson)) {
-      // OpenRA checks uniqueness by suffix (Id after '@'), not full Type@Id.
-      // e.g., "Container@MENU" conflicts with "ScrollPanel@MENU".
-      //
-      // MiniYamlParser strips @Name from keys (e.g. "Container@MAINMENU" →
-      // key="Container", node.id="MAINMENU"). When the key has no @ we must:
-      // 1. Use node.id as the uniqueness suffix (so multiple layout files'
-      //    Containers with different ids don't falsely collide).
-      // 2. Store under a synthetic key "Type@Id" so the Map key itself is
-      //    unique — otherwise the second file's Container silently overwrites
-      //    the first in _widgetDefinitions.
       const hasAt = origKey.includes('@')
       const nodeId = typeof node['id'] === 'string' ? node['id'] : undefined
-      const suffix = hasAt
+      let suffix = hasAt
         ? origKey.slice(origKey.indexOf('@') + 1)
         : (nodeId ?? origKey)
-      // Synthetic key "Type@Id" when MiniYamlParser stripped @Name.
-      // Only rewrite when node.id exists — otherwise keep original key
-      // so loadWidgetById("Container") still works for id-less widgets.
+
+      // When neither @ nor node.id exists, generate an internal disambiguation
+      // suffix. Prefix with __anon__ so loadWidget can distinguish auto-generated
+      // suffixes from real @Name suffixes and skip setting widget.id.
+      let isAnonymous = false
+      if (!hasAt && !nodeId) {
+        isAnonymous = true
+        if (sourcePath) {
+          suffix = `__anon__${origKey}_${sourcePath.replace(/[/:@]/g, '_')}`
+        } else {
+          suffix = `__anon__${origKey}_${++anonymousCounter}`
+        }
+      }
+
       const mapKey = hasAt ? origKey
-        : (nodeId ? `${origKey}@${nodeId}` : origKey)
+        : (nodeId ? `${origKey}@${nodeId}` : `${origKey}@${suffix}`)
 
       for (const [existingKey, existingNode] of this._widgetDefinitions) {
         const existingNodeId = typeof existingNode['id'] === 'string' ? existingNode['id'] : undefined
@@ -170,7 +175,7 @@ export class WidgetLoader {
       }
       const text = new TextDecoder().decode(data)
       const json = JSON.parse(text) as Record<string, WidgetDefinitionNode>
-      this.loadLayout(json)
+      this.loadLayout(json, file)
     }
   }
 
@@ -236,7 +241,12 @@ export class WidgetLoader {
     // Priority: node's explicit 'Id' property > @ suffix > node's 'id' property
     const atIndex = key.indexOf('@')
     if (atIndex >= 0) {
-      widget.id = key.slice(atIndex + 1)
+      const suffixId = key.slice(atIndex + 1)
+      // Auto-generated disambiguation suffixes (prefixed with __anon__) are
+      // internal to WidgetLoader — do NOT set them as the visible widget id.
+      if (!suffixId.startsWith('__anon__')) {
+        widget.id = suffixId
+      }
     } else {
       // Key has no @ suffix — check node's 'id' property (not 'Id' which is
       // handled separately by _setWidgetProperty for runtime override)
@@ -297,12 +307,11 @@ export class WidgetLoader {
    * @returns 实例化的 widget
    */
   loadWidgetById(args: WidgetArgs, parent: Widget | null, id: string): Widget {
-    // Direct lookup first (key may match exactly)
+    // Direct lookup first (key may match exactly, or be synthetic "Type@Id")
     let node = this._widgetDefinitions.get(id)
     let lookupKey = id
 
-    // Fallback: MiniYamlParser strips @Name from keys, so search by node.id.
-    // e.g., "Container@MAINMENU" → key="Container", node.id="MAINMENU"
+    // Fallback 1: search by node.id (MiniYamlParser @Name artifact)
     if (!node) {
       for (const [key, def] of this._widgetDefinitions) {
         const nodeId = (def as Record<string, unknown>)['id']
@@ -313,6 +322,19 @@ export class WidgetLoader {
         }
       }
     }
+
+    // Fallback 2: id is a bare type name (e.g. "Container"). Match stored
+    // keys that start with "Type@" (synthetic keys for id-less nodes).
+    if (!node && !id.includes('@')) {
+      for (const [key, def] of this._widgetDefinitions) {
+        if (key.startsWith(id + '@')) {
+          node = def
+          lookupKey = key
+          break
+        }
+      }
+    }
+
     if (!node) {
       throw new Error(`Cannot find widget with Id '${id}'`)
     }
