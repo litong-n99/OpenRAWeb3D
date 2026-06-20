@@ -274,12 +274,23 @@ export class WidgetLoader {
         // OpenRA YAML allows array syntax for multiple widgets of the same
         // type (e.g. "Button": [{id:"A"},{id:"B"}]). Each array element is
         // a separate widget instance of type childKey.
-        if (Array.isArray(childNode)) {
-          for (const item of childNode) {
-            this.loadWidget(args, widget, childKey, item)
+        //
+        // Wrap in try/catch so a single unregistered widget type (e.g.
+        // PerfGraph inside a hidden PERFORMANCE_INFO container) doesn't
+        // prevent the rest of the widget tree from loading.
+        try {
+          if (Array.isArray(childNode)) {
+            for (const item of childNode) {
+              this.loadWidget(args, widget, childKey, item)
+            }
+          } else {
+            this.loadWidget(args, widget, childKey, childNode)
           }
-        } else {
-          this.loadWidget(args, widget, childKey, childNode)
+        } catch (err) {
+          console.warn(
+            `[WidgetLoader] Failed to load child '${childKey}' in '${widget.id || key}':`,
+            err instanceof Error ? err.message : String(err),
+          )
         }
       }
     }
