@@ -1,8 +1,10 @@
 # OpenRAWeb3D Main Menu GUI Fix Plan: Chapter 27
 
 > **Source Reference**: OpenRA Red Alert main menu (`OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`) + chrome YAML definitions (`OpenRA/mods/common/chrome/mainmenu.yaml`, etc.)
-> **Chapter Status**: Phases A-B COMPLETE (6/15 tasks, 40%); Phases C-E PLANNING
+> **Chapter Status**: Phases A-C COMPLETE (9/15 tasks, 60%); Phases D-E PLANNING
 > **Phase A Commits**: `58995dd` (feat: chrome asset pipeline), `152890b` (fix: review findings)
+> **Phase B Commits**: `1bacfc5` (feat: ChromeProvider + FileSystem wiring), `cbb2de9` (fix: review findings)
+> **Phase C Commits**: `8ea60b1` (feat: Widget-based main menu activation), `e0a40a4` (fix: review findings BLOCKERs #1,#2 + MAJORs #3,#4), `3748c28` (fix: acceptance test review findings)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: ALL Chapters 2-26 COMPLETE (782+ files, 100%). Post-migration completion plan ALL PHASES A-E COMPLETE (52/52, 100%).
 
@@ -238,29 +240,40 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
 
 ### 3.3 Phase C: Widget-Based Main Menu Activation
 
-**Status**: PLANNING
+**Status**: COMPLETE (2026-06-20)
 **Complexity**: MEDIUM
 **Blocked by**: Phase B (ChromeProvider must be initialized)
 **Blocks**: Phase E (acceptance tests validate the widget menu)
+**Commits**: `8ea60b1` (feat: Widget-based main menu activation), `e0a40a4` (fix: review findings BLOCKERs #1,#2 + MAJORs #3,#4), `3748c28` (fix: acceptance test review findings)
 
 **Description**: Connects `showMainMenu()` to the Widget-based rendering path. Currently, `showMainMenu()` creates a raw DOM overlay while `showMainMenuWidget()` creates a programmatic Widget tree (also DOM-based but using the Widget system). Phase C replaces the programmatic tree in `showMainMenuWidget()` with YAML-loaded widget tree from `ChromeProvider` + `WidgetLoader`, and wires `showMainMenu()` to call it.
 
+**Implementation summary**:
+- `Game.ts:showMainMenu()` changed to call `showMainMenuWidget()` instead of creating raw DOM, with DOM fallback on error
+- `Game.ts:showMainMenuWidget()` replaced the programmatic `new ContainerWidget()` tree with `WidgetLoader.loadWidgetTree()` from ChromeProvider-loaded chrome JSON
+- 7 widget types registered (Container, Button, Label, Background, Image, DropDownButton, LogicKeyListener)
+- Button onClick handlers wired: Skirmish (`_openSkirmishSetup`), Settings (`_openSettingsPanel`), Exit (`_exitToModSelector`)
+- WidgetLoader.loadUI() extended to support `node.id` matching (MiniYamlParser @Name compatibility)
+- Acceptance test pages: 3 test cases under `src/__e2e__/manual/ch27-mainmenu/` (widget-menu-rendering, button-interaction, dom-fallback)
+- BLOCKER fixes (`e0a40a4`): remove default empty loadUI() call in showMainMenuWidget(); fix WidgetLoader.loadUI() node.id matching
+- MAJOR fixes (`e0a40a4`): register LogicKeyListenerWidget in ObjectCreator; fix escape key handler
+
 #### TODO Items
 
-- [ ] **TODO-27.C.1** `src/OpenRA.Game/Game.ts:showMainMenu()` (MODIFY, est. 80 lines) -- Wire to Widget path:
+- [x] **TODO-27.C.1** `src/OpenRA.Game/Game.ts:showMainMenu()` (MODIFY, est. 80 lines -> actual implementation) -- Wire to Widget path:
   - Change `showMainMenu()` to call `showMainMenuWidget()` instead of creating raw DOM
   - Keep the DOM overlay as fallback (catch errors from showMainMenuWidget, fall back to DOM)
   - Pass modId and manifest to showMainMenuWidget for WidgetLoader context
   - Remove the pulse keyframe injection (handled by Widget CSS or ChromeProvider)
 
-- [ ] **TODO-27.C.2** `src/OpenRA.Game/Game.ts:showMainMenuWidget()` (MODIFY, est. 60 lines) -- Load from YAML/JSON:
+- [x] **TODO-27.C.2** `src/OpenRA.Game/Game.ts:showMainMenuWidget()` (MODIFY, est. 60 lines -> actual implementation) -- Load from YAML/JSON:
   - Replace programmatic `new ContainerWidget()` tree with `WidgetLoader.load()` from chrome JSON
   - Load `mainmenu.json` from ChromeProvider: `WidgetLoader.loadWidgetTree(manifest, chromeJson)`
   - The main menu widget tree is defined in `common|chrome/mainmenu.json` (loaded via ChromeProvider)
   - Keep the existing button onClick handlers for Skirmish, Settings, Exit
   - Assert that widget types referenced in the YAML are registered in `ObjectCreator`
 
-- [ ] **TODO-27.C.3** `src/OpenRA.Game/Game.ts` (MODIFY, est. 50 lines) -- Wire button actions:
+- [x] **TODO-27.C.3** `src/OpenRA.Game/Game.ts` (MODIFY, est. 50 lines -> actual implementation) -- Wire button actions:
   - After WidgetLoader creates the widget tree, find buttons by ID:
     - `btn_skirmish` -> `_openSkirmishSetup()`
     - `btn_multiplayer` -> disabled (Coming Soon)
@@ -270,12 +283,15 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
   - Attach `onClick` callbacks via `ButtonWidget.onClick` property
   - Register Escape key handler (existing logic in showMainMenuWidget)
 
-**Phase C Verification**:
-- Click "Play" in mod selector -> Widget-based main menu appears (not raw DOM overlay)
-- Main menu has correct RA theme chrome styling (9-slice panels, metal texture)
-- Skirmish, Settings, Exit buttons work (trigger correct game state transitions)
-- DOM overlay fallback works if Widget loading fails
-- Escape key returns to mod selector
+**Phase C Verification** (all verified 2026-06-20):
+- [x] Click "Play" in mod selector -> Widget-based main menu appears (not raw DOM overlay)
+- [x] Main menu has correct RA theme chrome styling (9-slice panels, metal texture)
+- [x] Skirmish, Settings, Exit buttons work (trigger correct game state transitions)
+- [x] DOM overlay fallback works if Widget loading fails
+- [x] Escape key returns to mod selector
+- [x] All existing unit tests pass (`npm test`)
+- [x] `npx tsc --noEmit` passes (zero type errors)
+- [x] 3 acceptance test pages created and reviewed (widget-menu-rendering, button-interaction, dom-fallback)
 
 ---
 
