@@ -894,6 +894,18 @@ export class MixFileRuntime implements IReadOnlyPackage {
     const blockCount = Math.ceil(headerSize / 8)
     const headerByteLength = blockCount * 8
 
+    // Validate: headerByteLength must not exceed the file's remaining bytes.
+    // Matches OpenRA format guard — garbage numFiles can produce an absurd
+    // headerByteLength that exceeds the underlying buffer.
+    if (headerByteLength > data.byteLength - UNIVERSAL_KEY_HEADER_OFFSET) {
+      throw new Error(
+        `Decrypted header size ${headerByteLength} exceeds file bounds ` +
+        `(file size: ${data.byteLength}, offset: ${UNIVERSAL_KEY_HEADER_OFFSET}). ` +
+        `numFiles=${numFiles} decoded from decrypted header. ` +
+        `The Blowfish key is likely incorrect.`,
+      )
+    }
+
     // Read all header blocks (copy to aligned buffer for Uint32Array)
     const encryptedHeaderSrc = new Uint8Array(data, UNIVERSAL_KEY_HEADER_OFFSET, headerByteLength)
     const headerBuf = new ArrayBuffer(headerByteLength)
@@ -1150,28 +1162,8 @@ export class MixFileRuntime implements IReadOnlyPackage {
     // 1. Extract RSA-encrypted Blowfish keyblock at offset 4
     const keyblockSrc = new Uint8Array(data, OPENRA_KEYBLOCK_OFFSET, OPENRA_KEYBLOCK_SIZE)
 
-    // DIAGNOSTIC: log keyblock prefix and flags before RSA decryption
-    {
-      const keyblockHex = Array.from(keyblockSrc.slice(0, 16))
-        .map(b => b.toString(16).padStart(2, '0')).join(' ')
-      const flagsDv = new DataView(data)
-      console.log(
-        `MixFileRuntime: "${name}" keyblock first 16 bytes: ${keyblockHex}... ` +
-        `(flags=0x${flagsDv.getUint16(0, true).toString(16)}, subFlags=0x${flagsDv.getUint16(2, true).toString(16)})`,
-      )
-    }
-
     // 2. RSA-decrypt the Blowfish key
     const blowfishKey = MixFileRuntime._rsaDecryptKey(keyblockSrc)
-
-    // DIAGNOSTIC: log derived Blowfish key prefix
-    {
-      const keyHex = Array.from(blowfishKey.slice(0, 8))
-        .map(b => b.toString(16).padStart(2, '0')).join(' ')
-      console.log(
-        `MixFileRuntime: "${name}" derived Blowfish key first 8 bytes: ${keyHex}...`,
-      )
-    }
 
     // 3. Create Blowfish cipher
     const fish = new Blowfish(blowfishKey)
@@ -1235,6 +1227,20 @@ export class MixFileRuntime implements IReadOnlyPackage {
     // 13 = 6 (header prefix) + 7 (rounding up before integer division)
     const blockCount = Math.floor((13 + numFiles * PackageEntry.SIZE) / 8)
     const headerByteLength = blockCount * 8
+
+    // Validate: headerByteLength must not exceed the file's remaining bytes.
+    // A garbage numFiles (e.g., from a wrong Blowfish key) can pass the [1,65535]
+    // range check above but produce a headerByteLength larger than the file.
+    // Without this guard, new Uint8Array(data, offset, headerByteLength) throws
+    // "Invalid typed array length" (e.g., hires1.mix, lores1.mix).
+    if (headerByteLength > data.byteLength - OPENRA_HEADER_OFFSET) {
+      throw new Error(
+        `Decrypted header size ${headerByteLength} exceeds file bounds ` +
+        `(file size: ${data.byteLength}, offset: ${OPENRA_HEADER_OFFSET}). ` +
+        `numFiles=${numFiles} decoded from decrypted header. ` +
+        `The Blowfish key derived from RSA decryption is likely incorrect.`,
+      )
+    }
 
     // Read all header blocks
     const encryptedHeaderSrc = new Uint8Array(data, OPENRA_HEADER_OFFSET, headerByteLength)
