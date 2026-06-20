@@ -213,22 +213,32 @@ export class PackageExtractor {
               `PackageExtractor: encrypted MIX parse failed for "${destPath}": ` +
               `${encryptedErr instanceof Error ? encryptedErr.message : String(encryptedErr)}`,
             )
-            // Fallthrough: try Westwood classic as BLIND fallback.
-            // Some CDN files (e.g., scores.mix, hires1.mix) have the encrypted
-            // flag set spuriously (secondUint16 bit 1) but are actually
-            // unencrypted Westwood classic format. Since parseEncrypted already
-            // failed, we skip the isWestwoodClassicFormat guard and try
-            // parseWestwoodClassic unconditionally — the guard would reject
-            // these files because of the spurious encrypted flag bit.
-            try {
-              pkg = MixFileRuntime.parseWestwoodClassic(destPath, data, mixDb)
-              console.warn(
-                `PackageExtractor: "${destPath}" fell through from encrypted ` +
-                `to Westwood classic MIX parse`,
-              )
-            } catch (_fallbackErr) {
-              // Both parseEncrypted and parseWestwoodClassic failed;
-              // pkg stays null and we continue to the next format check.
+            // Fallthrough: try Westwood classic as BLIND fallback, but ONLY
+            // for OpenRA format (firstUint16 === 0). Some files (e.g.,
+            // hires1.mix, lores1.mix) have the encrypted flag set spuriously
+            // (secondUint16 bit 1) but contain plaintext Westwood classic
+            // headers. We distinguish OpenRA-format from universal-key/RSA
+            // format (firstUint16=1 or 2) which cannot be Westwood classic.
+            const firstUint16 = new DataView(data).getUint16(0, true)
+            if (firstUint16 === 0) {
+              try {
+                const fallbackPkg = MixFileRuntime.parseWestwoodClassic(destPath, data, mixDb, true)
+                // Only accept the blind fallback result if it actually
+                // contains files. Empty packages indicate a garbage parse
+                // (e.g., 10-byte fake MIX with numFiles=0).
+                if (fallbackPkg.contents.length > 0) {
+                  pkg = fallbackPkg
+                  console.warn(
+                    `PackageExtractor: "${destPath}" fell through from encrypted ` +
+                    `to Westwood classic MIX parse`,
+                  )
+                } else {
+                  fallbackPkg.dispose()
+                }
+              } catch (_fallbackErr) {
+                // Both parseEncrypted and parseWestwoodClassic failed;
+                // pkg stays null and we continue to the next format check.
+              }
             }
           }
         }

@@ -437,8 +437,9 @@ export class MixFileRuntime implements IReadOnlyPackage {
     name: string,
     data: ArrayBuffer,
     mixDb?: Map<string, string>,
+    skipFormatValidation?: boolean,
   ): MixFileRuntime {
-    if (!MixFileRuntime.isWestwoodClassicFormat(data)) {
+    if (!skipFormatValidation && !MixFileRuntime.isWestwoodClassicFormat(data)) {
       throw new Error(
         `MixFileRuntime.parseWestwoodClassic: "${name}" is not a valid Westwood classic MIX file. ` +
         `Expected first uint16 == 0 and (second uint16 & 0x2) == 0 (not encrypted). ` +
