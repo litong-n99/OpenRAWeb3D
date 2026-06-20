@@ -143,6 +143,19 @@ export class BaseBuilderBotModule
     IBotRequestPauseUnitProduction,
     IBotSuggestRefineryProduction
 {
+  /** Interfaces implemented by this trait for TraitDictionary lookups.
+   *
+   * OpenRA 对照: N/A (C# uses reflection to find implemented interfaces)
+   */
+  static readonly interfaces: string[] = [
+    'IBotTick',
+    'IBotRespondToAttack',
+    'IBotPositionsUpdated',
+    'IBotRequestPauseUnitProduction',
+    'IBotSuggestRefineryProduction',
+    'component',
+  ]
+
   // -----------------------------------------------------------------------
   // Core references
   // -----------------------------------------------------------------------

@@ -121,6 +121,16 @@ export class HarvesterBotModule
   extends ConditionalTrait<HarvesterBotModuleInfo>
   implements IBotTick, IBotRespondToAttack
 {
+  /** Interfaces implemented by this trait for TraitDictionary lookups.
+   *
+   * OpenRA 对照: N/A (C# uses reflection to find implemented interfaces)
+   */
+  static readonly interfaces: string[] = [
+    'IBotTick',
+    'IBotRespondToAttack',
+    'component',
+  ]
+
   private readonly _world: WorldLike
   private readonly _player: PlayerLike
   private readonly _harvesters = new Map<number, HarvesterWrapper>()

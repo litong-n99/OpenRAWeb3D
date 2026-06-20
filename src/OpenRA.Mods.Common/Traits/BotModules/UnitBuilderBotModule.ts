@@ -78,6 +78,17 @@ export class UnitBuilderBotModule
   extends ConditionalTrait<UnitBuilderBotModuleInfo>
   implements IBotTick, IBotNotifyIdleBaseUnits, IBotRequestUnitProduction
 {
+  /** Interfaces implemented by this trait for TraitDictionary lookups.
+   *
+   * OpenRA 对照: N/A (C# uses reflection to find implemented interfaces)
+   */
+  static readonly interfaces: string[] = [
+    'IBotTick',
+    'IBotNotifyIdleBaseUnits',
+    'IBotRequestUnitProduction',
+    'component',
+  ]
+
   // -----------------------------------------------------------------------
   // Core references
   // -----------------------------------------------------------------------

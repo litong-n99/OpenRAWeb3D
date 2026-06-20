@@ -251,6 +251,15 @@ export class Game {
    */
   private _contentInstaller: ContentInstallerService | null = null
 
+  /** Shellmap camera observer reference — stored for cleanup on dispose/switchMod.
+   *
+   * OpenRA 对照: N/A (C# uses event handler pattern with auto-unsubscription)
+   *
+   * Set by setupShellmapCamera() when a valid viewport with centerOnActors
+   * is available. Removed in dispose() and switchMod() to prevent leaks.
+   */
+  private _shellmapCameraObserver: import('@babylonjs/core').Observer<import('@babylonjs/core').Scene> | null = null
+
   // -----------------------------------------------------------------------
   // Accessors
   // -----------------------------------------------------------------------
@@ -970,8 +979,14 @@ export class Game {
       return
     }
 
-    // Register per-frame cinematic camera update
-    this._worldRenderer.scene.onBeforeRenderObservable.add(() => {
+    // Remove any previous observer (in case setupShellmapCamera is called again)
+    if (this._shellmapCameraObserver) {
+      this._worldRenderer.scene.onBeforeRenderObservable.remove(this._shellmapCameraObserver)
+      this._shellmapCameraObserver = null
+    }
+
+    // Register per-frame cinematic camera update — store observer for cleanup
+    const onBeforeRender = () => {
       switchTimer++
       if (switchTimer >= SWITCH_INTERVAL) {
         switchTimer = 0
@@ -982,7 +997,8 @@ export class Game {
           vp.centerOnActors!([randomActor])
         }
       }
-    })
+    }
+    this._shellmapCameraObserver = this._worldRenderer.scene.onBeforeRenderObservable.add(onBeforeRender)
   }
 
   /**
@@ -1031,10 +1047,10 @@ export class Game {
       }
 
       // Set world reference on the PlayerActor (needed by ModularBot.activate)
-      ;(playerActor as unknown as Record<string, unknown>).world = world as unknown as Record<string, unknown>
+      ;(playerActor as unknown as { world: unknown }).world = world
 
       // Set owner reference on the PlayerActor (will be updated when player is registered)
-      ;(playerActor as unknown as Record<string, unknown>).owner = null
+      ;(playerActor as unknown as { owner: unknown }).owner = null
 
       // ---- Step 2: Build PlayerStub with AI metadata ----
       const aiPlayer = {
@@ -1048,7 +1064,7 @@ export class Game {
       }
 
       // Set the player as owner of the PlayerActor
-      ;(playerActor as unknown as Record<string, unknown>).owner = aiPlayer
+      ;(playerActor as unknown as { owner: unknown }).owner = aiPlayer
 
       // ---- Step 3: Create and attach ModularBot ----
       const botInfo: ModularBotInfo = {
@@ -1905,6 +1921,12 @@ export class Game {
     this._world?.dispose()
     this._world = null
 
+    // Remove shellmap camera observer before WorldRenderer disposal
+    if (this._shellmapCameraObserver) {
+      this._worldRenderer?.scene?.onBeforeRenderObservable?.remove(this._shellmapCameraObserver)
+      this._shellmapCameraObserver = null
+    }
+
     // WorldRenderer 包含 GPU 资源（pipeline、post-process、textures），
     // 必须显式 dispose 再清除引用，否则泄漏 GPU 内存。
     this._worldRenderer?.dispose()
@@ -1971,6 +1993,12 @@ export class Game {
     // 1. World
     this._world?.dispose()
     this._world = null
+
+    // Remove shellmap camera observer before WorldRenderer disposal
+    if (this._shellmapCameraObserver) {
+      this._worldRenderer?.scene?.onBeforeRenderObservable?.remove(this._shellmapCameraObserver)
+      this._shellmapCameraObserver = null
+    }
 
     // 2. WorldRenderer — dispose GPU resources (pipeline, post-process, textures)
     //    before clearing reference, matching switchMod() behavior

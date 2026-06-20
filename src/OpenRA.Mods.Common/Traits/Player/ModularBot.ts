@@ -101,11 +101,15 @@ export interface ModularBotInfo extends IBotInfo {
  * The world reference is obtained from the PlayerActor's `.world` property,
  * which is set during World._createPlayers(). The world provides:
  * - type: used for shellmap rate-limiting check (ADR-26.3)
+ * - isReplay: guards activate() to skip AI in replay mode
+ * - isLoadingGameSave: guards tick()/damaged() to skip AI during save loading
  * - traitDict: used for discovering BotModule traits on PlayerActor
  * - issueOrder(order): used for issuing queued orders
  */
 interface ModularBotWorld {
   readonly type: string
+  readonly isReplay: boolean
+  readonly isLoadingGameSave: boolean
   readonly traitDict: TraitDictionary
   issueOrder(order: Order): void
 }
@@ -250,6 +254,9 @@ export class ModularBot extends Component implements ITick, IBot, INotifyDamage 
    * @param p — the player this bot controls
    */
   activate(p: PlayerStub): void {
+    // Reset shellmap tick counter on re-activation
+    this._shellmapTickCounter = 0
+
     // Get reference to the PlayerActor from the player
     // OpenRA: p.PlayerActor
     const playerActor = (p as PlayerStub & { playerActor?: IGameActor }).playerActor
@@ -265,6 +272,9 @@ export class ModularBot extends Component implements ITick, IBot, INotifyDamage 
       return
     }
     this._world = actorWorld as unknown as ModularBotWorld
+
+    // OpenRA: if (p.World.IsReplay) return — skip AI bot in replay mode
+    if (this._world.isReplay) return
 
     this.isEnabled = true
     this._player = p
@@ -313,6 +323,9 @@ export class ModularBot extends Component implements ITick, IBot, INotifyDamage 
    */
   tick(actor: IGameActor): void {
     if (!this.isEnabled || !this._world) return
+
+    // OpenRA: if (self.World.IsLoadingGameSave) return — skip AI during save loading
+    if (this._world.isLoadingGameSave) return
 
     // ---- Phase 1: Dispatch to IBotTick modules (rate-limited for shellmap) ----
     const isShellmap = this._world.type === 'Shellmap'
@@ -394,7 +407,7 @@ export class ModularBot extends Component implements ITick, IBot, INotifyDamage 
    * @param attackInfo — information about the attack
    */
   damaged(actor: IGameActor, attackInfo: AttackInfo): void {
-    if (!this.isEnabled) return
+    if (!this.isEnabled || !this._world || this._world.isLoadingGameSave) return
 
     // OpenRA: foreach (var t in attackResponseModules)
     //   if (t.IsTraitEnabled()) t.RespondToAttack(this, self, e)
