@@ -234,6 +234,9 @@ export class Game {
   /** Active toast notification elements (cleaned up on dispose). */
   private _activeToasts: HTMLElement[] = []
 
+  /** Settings panel DOM root element (for cleanup on dispose). */
+  private _settingsPanelDomRoot: HTMLElement | null = null
+
   /**
    * 延迟动作队列 — 下一逻辑 tick 执行的一次性回调。
    *
@@ -1200,8 +1203,8 @@ export class Game {
       {
         id: 'btn-settings',
         text: 'Settings',
-        disabled: true,
-        onClick: () => {}, // Disabled button — callback never invoked
+        disabled: false,
+        onClick: () => this._openSettingsPanel(),
       },
       {
         id: 'btn-exit',
@@ -1230,10 +1233,12 @@ export class Game {
         btn.addEventListener('mouseenter', () => {
           btn.style.background = 'linear-gradient(135deg,#4466cc,#5577ee)'
           btn.style.borderColor = 'rgba(120,140,220,0.6)'
+          btn.style.boxShadow = '0 0 8px rgba(100,140,220,0.3)'
         })
         btn.addEventListener('mouseleave', () => {
           btn.style.background = 'linear-gradient(135deg,#334488,#4466cc)'
           btn.style.borderColor = 'rgba(100,100,180,0.4)'
+          btn.style.boxShadow = 'none'
         })
         btn.addEventListener('click', (e) => {
           e.stopPropagation()
@@ -1243,12 +1248,33 @@ export class Game {
       menu.appendChild(btn)
     }
 
-    // 版本信息
+    // 版本信息（带 CSS pulse 动画）
     const version = document.createElement('p')
-    version.textContent = 'Prototype — Phase C'
+    version.textContent = 'Prototype — Phase D'
     version.style.cssText =
-      'color:#555570;font-size:0.75rem;margin-top:1.5rem;'
+      'color:#555570;font-size:0.75rem;margin-top:1.5rem;' +
+      'animation:menu-version-pulse 3s ease-in-out infinite;'
     menu.appendChild(version)
+
+    // Inject pulse keyframes + focus-visible styles into document if not already present
+    if (!document.getElementById('menu-version-pulse-style')) {
+      const style = document.createElement('style')
+      style.id = 'menu-version-pulse-style'
+      style.textContent =
+        '@keyframes menu-version-pulse {' +
+        '0%, 100% { opacity: 0.4; }' +
+        '50% { opacity: 0.8; }' +
+        '}' +
+        '#main-menu-overlay button:focus-visible,' +
+        '#main-menu-widget-overlay button:focus-visible,' +
+        '#skirmish-setup-overlay button:focus-visible,' +
+        '#settings-panel-overlay button:focus-visible,' +
+        '#settings-panel-overlay input:focus-visible {' +
+        'outline:2px solid rgba(120,140,220,0.8);' +
+        'outline-offset:2px;' +
+        '}'
+      document.head.appendChild(style)
+    }
 
     overlay.appendChild(menu)
     document.body.appendChild(overlay)
@@ -1272,6 +1298,8 @@ export class Game {
     this.hideMainMenuWidget()
     // Also close skirmish setup modal
     this._closeSkirmishSetup()
+    // Also close settings panel
+    this._closeSettingsPanel()
   }
 
   // -----------------------------------------------------------------------
@@ -1398,10 +1426,12 @@ export class Game {
           btnEl.addEventListener('mouseenter', () => {
             btnEl.style.background = 'linear-gradient(135deg,#4466cc,#5577ee)'
             btnEl.style.borderColor = 'rgba(120,140,220,0.6)'
+            btnEl.style.boxShadow = '0 0 8px rgba(100,140,220,0.3)'
           })
           btnEl.addEventListener('mouseleave', () => {
             btnEl.style.background = 'linear-gradient(135deg,#334488,#4466cc)'
             btnEl.style.borderColor = 'rgba(100,100,180,0.4)'
+            btnEl.style.boxShadow = 'none'
           })
           btnEl.addEventListener('click', (e) => {
             e.stopPropagation()
@@ -1431,8 +1461,8 @@ export class Game {
       appendButton(
         'btn-settings',
         'Settings',
-        true,
-        () => {},
+        false,
+        () => this._openSettingsPanel(),
       )
 
       // Exit button
@@ -1443,12 +1473,25 @@ export class Game {
         () => this._exitToModSelector(),
       )
 
-      // Version info
+      // Version info (with CSS pulse animation)
       const versionEl = document.createElement('p')
       versionEl.textContent = 'P1-D.8 — Widget-Based Main Menu'
       versionEl.style.cssText =
-        'color:#555570;font-size:0.75rem;margin-top:1.5rem;margin-bottom:0;'
+        'color:#555570;font-size:0.75rem;margin-top:1.5rem;margin-bottom:0;' +
+        'animation:menu-version-pulse 3s ease-in-out infinite;'
       contentEl.appendChild(versionEl)
+
+      // Inject pulse keyframes into document if not already present
+      if (!document.getElementById('menu-version-pulse-style')) {
+        const style = document.createElement('style')
+        style.id = 'menu-version-pulse-style'
+        style.textContent =
+          '@keyframes menu-version-pulse {' +
+          '0%, 100% { opacity: 0.4; }' +
+          '50% { opacity: 0.8; }' +
+          '}'
+        document.head.appendChild(style)
+      }
 
       // Attach to document
       document.body.appendChild(rootEl)
@@ -1670,6 +1713,170 @@ export class Game {
     if (this._skirmishSetupDomRoot) {
       this._skirmishSetupDomRoot.remove()
       this._skirmishSetupDomRoot = null
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Settings Panel (TODO-26.D.1)
+  //
+  // Shows a basic settings overlay panel. Stub approach: "Settings coming soon"
+  // styled panel with a non-functional Audio Volume slider and Back button.
+  //
+  // OpenRA 对照: OpenRA.Mods.Common/Widgets/Logic/SettingsLogic.cs (stub)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Open the settings panel — shows a modal overlay with stub settings.
+   *
+   * TODO-26.D.1: Full settings panel with functional audio/video/input
+   * settings. Currently shows a placeholder with a non-functional slider.
+   *
+   * Accessibility: Escape key closes the panel. Focus is trapped within the
+   * panel (Tab cycles between available controls).
+   */
+  private _openSettingsPanel(): void {
+    // Hide main menu (DOM + widget)
+    this.hideMainMenu()
+    // Remove previous settings panel if any
+    this._closeSettingsPanel()
+
+    // --- Build overlay ---
+    const overlay = document.createElement('div')
+    overlay.id = 'settings-panel-overlay'
+    overlay.setAttribute('role', 'dialog')
+    overlay.setAttribute('aria-label', 'Settings')
+    overlay.style.cssText =
+      'position:fixed;inset:0;display:flex;flex-direction:column;' +
+      'align-items:center;justify-content:center;z-index:99;' +
+      'pointer-events:none;'
+
+    // --- Build modal card ---
+    const card = document.createElement('div')
+    card.style.cssText =
+      'pointer-events:auto;text-align:center;' +
+      'background:rgba(10,10,30,0.85);border:1px solid rgba(100,100,180,0.3);' +
+      'border-radius:12px;padding:2.5rem 3rem;min-width:380px;'
+
+    // Title
+    const title = document.createElement('h2')
+    title.textContent = 'Settings'
+    title.style.cssText =
+      'color:#f0f0f0;font-size:1.5rem;font-weight:700;margin:0 0 1.5rem 0;'
+    card.appendChild(title)
+
+    // Coming soon notice
+    const notice = document.createElement('p')
+    notice.textContent = 'Full settings coming soon.'
+    notice.style.cssText =
+      'color:#aa8866;font-size:0.9rem;margin:0 0 1.5rem 0;' +
+      'padding:0.75rem;background:rgba(40,40,20,0.5);border-radius:6px;'
+    card.appendChild(notice)
+
+    // --- Audio Volume slider (non-functional stub) ---
+    const volLabel = document.createElement('label')
+    volLabel.htmlFor = 'settings-volume-slider'
+    volLabel.textContent = 'Audio Volume'
+    volLabel.style.cssText =
+      'display:block;color:#aaaacc;font-size:0.9rem;font-weight:600;' +
+      'margin-bottom:0.5rem;text-align:left;'
+    card.appendChild(volLabel)
+
+    const slider = document.createElement('input')
+    slider.type = 'range'
+    slider.id = 'settings-volume-slider'
+    slider.min = '0'
+    slider.max = '100'
+    slider.value = '80'
+    slider.style.cssText =
+      'display:block;width:100%;margin-bottom:1.5rem;' +
+      'accent-color:#4466cc;cursor:pointer;'
+    // NOTE: Volume changes are not persisted — the slider is a visual placeholder.
+    card.appendChild(slider)
+
+    // --- Back button ---
+    const backBtn = document.createElement('button')
+    backBtn.textContent = 'Back'
+    backBtn.style.cssText =
+      'display:block;width:100%;padding:12px 20px;' +
+      'border:1px solid rgba(100,100,180,0.4);border-radius:6px;' +
+      'font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.15s ease;' +
+      'background:linear-gradient(135deg,#334488,#4466cc);color:#e0e0f0;'
+    backBtn.addEventListener('mouseenter', () => {
+      backBtn.style.background = 'linear-gradient(135deg,#4466cc,#5577ee)'
+      backBtn.style.borderColor = 'rgba(120,140,220,0.6)'
+      backBtn.style.boxShadow = '0 0 8px rgba(100,140,220,0.3)'
+    })
+    backBtn.addEventListener('mouseleave', () => {
+      backBtn.style.background = 'linear-gradient(135deg,#334488,#4466cc)'
+      backBtn.style.borderColor = 'rgba(100,100,180,0.4)'
+      backBtn.style.boxShadow = 'none'
+    })
+    backBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      this._closeSettingsPanel()
+      this.showMainMenu()
+    })
+    card.appendChild(backBtn)
+
+    // --- Focus-trap: collect focusable elements ---
+    const focusable = card.querySelectorAll<HTMLElement>(
+      'button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )
+    const firstFocusable = focusable[0]
+    const lastFocusable = focusable[focusable.length - 1]
+
+    // --- Keyboard handler: Escape closes, Tab traps within ---
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        this._closeSettingsPanel()
+        this.showMainMenu()
+        return
+      }
+
+      if (e.key === 'Tab') {
+        // Focus-trap: cycle within the panel
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            e.preventDefault()
+            lastFocusable?.focus()
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            e.preventDefault()
+            firstFocusable?.focus()
+          }
+        }
+      }
+    }
+
+    overlay.addEventListener('keydown', keyHandler)
+    // Store the key handler reference on the overlay for cleanup
+    ;(overlay as any).__settingsKeyHandler = keyHandler
+
+    overlay.appendChild(card)
+    document.body.appendChild(overlay)
+    this._settingsPanelDomRoot = overlay
+
+    // Auto-focus the first focusable element (volume slider)
+    setTimeout(() => firstFocusable?.focus(), 0)
+  }
+
+  /**
+   * Remove the settings panel from the DOM.
+   *
+   * Safe to call even when no settings panel is active (no-op).
+   * Cleans up the keyboard handler before DOM removal.
+   */
+  private _closeSettingsPanel(): void {
+    if (this._settingsPanelDomRoot) {
+      const keyHandler = (this._settingsPanelDomRoot as any).__settingsKeyHandler
+      if (keyHandler) {
+        this._settingsPanelDomRoot.removeEventListener('keydown', keyHandler)
+        ;(this._settingsPanelDomRoot as any).__settingsKeyHandler = null
+      }
+      this._settingsPanelDomRoot.remove()
+      this._settingsPanelDomRoot = null
     }
   }
 
@@ -1980,7 +2187,7 @@ export class Game {
   dispose(): void {
     this.state = GameState.Disposed
 
-    // 0. 清理内容安装器 UI + toast 通知 + 主菜单 DOM（防止残留在 DOM 中）
+    // 0. 清理内容安装器 UI + toast 通知 + 主菜单 DOM + settings panel（防止残留在 DOM 中）
     ContentInstallerUI.hide()
     this._contentInstaller = null
     // Clear any active toast notifications
@@ -1989,6 +2196,7 @@ export class Game {
     }
     this._activeToasts = []
     this.hideMainMenu()
+    this._closeSettingsPanel()
 
     // 1. World
     this._world?.dispose()

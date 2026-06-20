@@ -1485,12 +1485,12 @@ describe('Main Menu DOM (Phase C)', () => {
     expect(document.getElementById('btn-settings')).not.toBeNull()
     expect(document.getElementById('btn-exit')).not.toBeNull()
 
-    // Multiplayer and Settings should be disabled
+    // Multiplayer should be disabled, Settings should be enabled
     const mpBtn = document.getElementById('btn-multiplayer') as HTMLButtonElement
     expect(mpBtn.disabled).toBe(true)
 
     const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
-    expect(settingsBtn.disabled).toBe(true)
+    expect(settingsBtn.disabled).toBe(false)
 
     // Skirmish and Exit should be enabled
     const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
@@ -3383,5 +3383,1055 @@ describe('Ch26 Phase B — _collectSkirmishMaps', () => {
     const maps = game._collectSkirmishMaps()
     expect(maps).toHaveLength(1)
     expect(maps[0].title).toBe('map-no-title') // Fallback to uid
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Chapter 26 Phase D: Settings Panel (TODO-26.D.1)
+// ---------------------------------------------------------------------------
+
+describe('Ch26 Phase D — Settings Panel (TODO-26.D.1)', () => {
+  beforeEach(() => {
+    const ids = [
+      'settings-panel-overlay',
+      'main-menu-overlay',
+      'main-menu-widget-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  afterEach(() => {
+    const ids = [
+      'settings-panel-overlay',
+      'main-menu-overlay',
+      'main-menu-widget-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  it('DOM overlay Settings button opens settings panel', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    expect(settingsBtn).not.toBeNull()
+    expect(settingsBtn.disabled).toBe(false)
+
+    settingsBtn.click()
+
+    // Settings panel should be visible
+    const settingsOverlay = document.getElementById('settings-panel-overlay')
+    expect(settingsOverlay).not.toBeNull()
+    expect(settingsOverlay!.textContent).toContain('Settings')
+    expect(settingsOverlay!.textContent).toContain('Full settings coming soon')
+    expect(settingsOverlay!.textContent).toContain('Audio Volume')
+
+    // Main menu should be hidden
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    game.dispose()
+  })
+
+  it('Widget menu Settings button opens settings panel', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenuWidget()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const settingsBtn = document.getElementById('widget-btn-settings') as HTMLButtonElement
+    expect(settingsBtn).not.toBeNull()
+    expect(settingsBtn.disabled).toBe(false)
+
+    settingsBtn.click()
+
+    // Settings panel should be visible
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+
+    // Widget menu should be hidden
+    expect(document.getElementById('main-menu-widget-overlay')).toBeNull()
+
+    game.dispose()
+  })
+
+  it('Back button returns from settings panel to main menu', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+
+    // Find and click Back button
+    const allButtons = document.querySelectorAll('#settings-panel-overlay button')
+    const backBtn = allButtons[allButtons.length - 1] as HTMLButtonElement
+    expect(backBtn.textContent).toBe('Back')
+    backBtn.click()
+
+    // Settings panel should be gone
+    expect(document.getElementById('settings-panel-overlay')).toBeNull()
+    // Main menu should be restored
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.dispose()
+  })
+
+  it('Escape key closes settings panel and returns to main menu', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+
+    // Simulate Escape key on the settings panel overlay (where the key handler is attached)
+    const overlay = document.getElementById('settings-panel-overlay')!
+    overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+
+    // Settings panel should be gone
+    expect(document.getElementById('settings-panel-overlay')).toBeNull()
+    // Main menu should be restored
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.dispose()
+  })
+
+  it('settings panel has focus-trap (Tab cycles within panel)', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+
+    const slider = document.getElementById('settings-volume-slider') as HTMLInputElement
+    const buttons = document.querySelectorAll('#settings-panel-overlay button')
+    const backBtn = buttons[buttons.length - 1] as HTMLButtonElement
+
+    // Focus should be on the slider (auto-focused)
+    expect(slider).not.toBeNull()
+
+    // Tab forward from last element should go to first
+    backBtn.focus()
+    const tabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    })
+    // Dispatch on the overlay which has the keydown listener
+    const overlay = document.getElementById('settings-panel-overlay')!
+    overlay.dispatchEvent(tabEvent)
+
+    // Shift+Tab from first element should go to last
+    slider.focus()
+    const shiftTabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    overlay.dispatchEvent(shiftTabEvent)
+
+    game.dispose()
+  })
+
+  it('settings panel has volume slider', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+
+    const slider = document.getElementById('settings-volume-slider') as HTMLInputElement
+    expect(slider).not.toBeNull()
+    expect(slider.type).toBe('range')
+    expect(slider.min).toBe('0')
+    expect(slider.max).toBe('100')
+    expect(slider.value).toBe('80')
+    expect(slider.disabled).toBe(false)
+
+    game.dispose()
+  })
+
+  it('hideMainMenu closes settings panel', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+
+    game.hideMainMenu()
+    expect(document.getElementById('settings-panel-overlay')).toBeNull()
+
+    game.dispose()
+  })
+
+  it('dispose cleans up settings panel', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+
+    game.dispose()
+    expect(document.getElementById('settings-panel-overlay')).toBeNull()
+  })
+
+  it('settings panel has role="dialog" for accessibility', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+
+    const overlay = document.getElementById('settings-panel-overlay')!
+    expect(overlay.getAttribute('role')).toBe('dialog')
+    expect(overlay.getAttribute('aria-label')).toBe('Settings')
+
+    game.dispose()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Chapter 26 Phase D: Visual Polish (TODO-26.D.1)
+// ---------------------------------------------------------------------------
+
+describe('Ch26 Phase D — Visual Polish (TODO-26.D.1)', () => {
+  afterEach(() => {
+    const ids = ['main-menu-overlay', 'main-menu-widget-overlay']
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+    const style = document.getElementById('menu-version-pulse-style')
+    if (style) style.remove()
+  })
+
+  it('DOM overlay buttons have border glow on hover', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+
+    // Simulate mouseenter
+    skirmishBtn.dispatchEvent(new MouseEvent('mouseenter'))
+    expect(skirmishBtn.style.boxShadow).toContain('rgba(100,140,220')
+
+    // Simulate mouseleave
+    skirmishBtn.dispatchEvent(new MouseEvent('mouseleave'))
+    expect(skirmishBtn.style.boxShadow).toBe('none')
+
+    game.dispose()
+  })
+
+  it('Widget menu buttons have border glow on hover', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenuWidget()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const skirmishBtn = document.getElementById('widget-btn-skirmish') as HTMLButtonElement
+
+    skirmishBtn.dispatchEvent(new MouseEvent('mouseenter'))
+    expect(skirmishBtn.style.boxShadow).toContain('rgba(100,140,220')
+
+    skirmishBtn.dispatchEvent(new MouseEvent('mouseleave'))
+    expect(skirmishBtn.style.boxShadow).toBe('none')
+
+    game.dispose()
+  })
+
+  it('DOM overlay version text has pulse animation', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+
+    const overlay = document.getElementById('main-menu-overlay')!
+    const versionEl = overlay.querySelector('p:last-child') as HTMLElement
+    // The version element should have animation style
+    expect(versionEl.style.animation).toContain('menu-version-pulse')
+
+    // Pulse keyframes should be injected in document head
+    const style = document.getElementById('menu-version-pulse-style')
+    expect(style).not.toBeNull()
+    expect(style!.textContent).toContain('@keyframes menu-version-pulse')
+
+    game.dispose()
+  })
+
+  it('Widget menu version text has pulse animation', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenuWidget()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const widgetRoot = document.getElementById('main-menu-widget-overlay')!
+    const versionEl = widgetRoot.querySelector('p:last-child') as HTMLElement
+    expect(versionEl.style.animation).toContain('menu-version-pulse')
+
+    game.dispose()
+  })
+
+  it('menu styles are not double-injected', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Show menu twice
+    game.showMainMenu()
+    game.showMainMenu()
+
+    // Only one style element should exist
+    const styles = document.querySelectorAll('#menu-version-pulse-style')
+    expect(styles.length).toBe(1)
+
+    game.dispose()
+  })
+
+  it('focus-visible styles are injected for all menu panels', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+
+    const style = document.getElementById('menu-version-pulse-style')
+    expect(style).not.toBeNull()
+    expect(style!.textContent).toContain('focus-visible')
+    expect(style!.textContent).toContain('main-menu-overlay button:focus-visible')
+    expect(style!.textContent).toContain('main-menu-widget-overlay button:focus-visible')
+    expect(style!.textContent).toContain('skirmish-setup-overlay button:focus-visible')
+    expect(style!.textContent).toContain('settings-panel-overlay button:focus-visible')
+
+    game.dispose()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Chapter 26 Phase D: Integration Tests (TODO-26.D.2)
+// ---------------------------------------------------------------------------
+
+describe('Ch26 Phase D — Map Loading Integration (TODO-26.D.2a)', () => {
+  it('startGame creates GameWorldManager with correct MapStub', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const mapStub = {
+      uid: 'integration-test-map',
+      title: 'Integration Test Map',
+      dispose: vi.fn(),
+    }
+
+    await game.startGame(mapStub, WorldType.Regular)
+
+    expect(game.world).not.toBeNull()
+    const world = game.world! as any
+    // GameWorldManager's map property should match the MapStub
+    expect(world.map).toBeDefined()
+    expect(world.map.uid).toBe('integration-test-map')
+    expect(world.map.title).toBe('Integration Test Map')
+
+    game.dispose()
+  })
+
+  it('WorldActor is created when world loads', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const mapStub = {
+      uid: 'world-actor-test',
+      title: 'World Actor Test',
+      dispose: vi.fn(),
+    }
+
+    await game.startGame(mapStub, WorldType.Regular)
+
+    const world = game.world! as any
+    expect(world.worldActor).toBeDefined()
+    expect(world.worldActor.actorId).toBe(0)
+
+    game.dispose()
+  })
+
+  it('startGame fails gracefully with null modData', async () => {
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game.state = GameState.Shellmap
+    game.modData = null
+    game.orderManager = null
+    game.hideMainMenu = vi.fn()
+
+    const mapStub = {
+      uid: 'test-map',
+      title: 'Test Map',
+      dispose: vi.fn(),
+    }
+
+    await expect(game.startGame(mapStub)).rejects.toThrow(
+      'Cannot start game: mod not loaded',
+    )
+  })
+
+  it('startGame handles WorldType.Shellmap correctly', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const mapStub = {
+      uid: 'shellmap-world',
+      title: 'Shellmap World',
+      dispose: vi.fn(),
+    }
+
+    await game.startGame(mapStub, WorldType.Shellmap)
+
+    expect(game.world).not.toBeNull()
+    const world = game.world! as any
+    expect(world.type).toBe('Shellmap')
+    expect(game.state).toBe(GameState.Playing)
+
+    game.dispose()
+  })
+})
+
+describe('Ch26 Phase D — Skirmish Flow Integration (TODO-26.D.2b)', () => {
+  afterEach(() => {
+    const ids = [
+      'skirmish-setup-overlay',
+      'main-menu-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  it('skirmish setup modal → map selection → startGame flow', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Show main menu and open skirmish setup
+    game.showMainMenu()
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    skirmishBtn.click()
+
+    // Verify setup modal is open
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    // Set up MapCache with available maps
+    const mapCacheIterable: Record<string, unknown> = {
+      [Symbol.iterator]: () => [
+        {
+          uid: 'skirmish-flow-map',
+          title: 'Skirmish Flow Map',
+          status: 0,
+          visibility: 1,
+          spawnPoints: [{ X: 10, Y: 10 }, { X: 20, Y: 20 }],
+        },
+      ][Symbol.iterator](),
+      dispose: vi.fn(),
+    }
+    ;(game as any).modData.mapCache = mapCacheIterable
+
+    // Re-open skirmish setup to pick up the new maps
+    ;(game as any)._openSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    // Verify dropdown has the map
+    const select = document.getElementById('skirmish-map-select') as HTMLSelectElement
+    expect(select).not.toBeNull()
+    expect(select.options.length).toBe(1)
+    expect(select.options[0].textContent).toBe('Skirmish Flow Map')
+
+    // Click Start Game button
+    const buttons = document.querySelectorAll('#skirmish-setup-overlay button')
+    const startBtn = buttons[0] as HTMLButtonElement
+    expect(startBtn.textContent).toBe('Start Game')
+
+    const startGameSpy = vi.spyOn(game, 'startGame').mockResolvedValue(undefined)
+    startBtn.click()
+
+    expect(startGameSpy).toHaveBeenCalledTimes(1)
+    expect(startGameSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ uid: 'skirmish-flow-map' }),
+      WorldType.Regular,
+    )
+
+    // Setup modal should be closed
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+
+    startGameSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('map selection dropdown empty when no lobby-visible maps', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Default empty mapCache → "No maps available"
+    ;(game as any)._openSkirmishSetup()
+
+    const setupOverlay = document.getElementById('skirmish-setup-overlay')!
+    expect(setupOverlay.textContent).toContain('No maps available')
+
+    game.dispose()
+  })
+
+  it('_startSkirmish constructs correct MapStub and calls startGame', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const mapCacheIterable: Record<string, unknown> = {
+      [Symbol.iterator]: () => [
+        {
+          uid: 'constructed-map',
+          title: 'Constructed Map',
+          status: 0,
+          visibility: 1,
+          spawnPoints: [{ X: 1, Y: 1 }],
+        },
+      ][Symbol.iterator](),
+      dispose: vi.fn(),
+    }
+    ;(game as any).modData.mapCache = mapCacheIterable
+
+    const startGameSpy = vi.spyOn(game, 'startGame').mockResolvedValue(undefined)
+
+    await (game as any)._startSkirmish('constructed-map')
+
+    expect(startGameSpy).toHaveBeenCalledTimes(1)
+    const callArgs = startGameSpy.mock.calls[0]
+    expect(callArgs[0]).toMatchObject({
+      uid: 'constructed-map',
+      title: 'Constructed Map',
+    })
+    expect(callArgs[1]).toBe(WorldType.Regular)
+
+    startGameSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('Cancel returns to main menu; modal DOM cleaned up', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    skirmishBtn.click()
+
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    // Click Back button
+    const allButtons = document.querySelectorAll('#skirmish-setup-overlay button')
+    const backBtn = allButtons[allButtons.length - 1] as HTMLButtonElement
+    backBtn.click()
+
+    // Setup should be gone, main menu restored
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.dispose()
+  })
+})
+
+describe('Ch26 Phase D — Shellmap Integration (TODO-26.D.2c)', () => {
+  it('spawnShellmapBots creates AI PlayerActors', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test')
+
+    const mapStub = {
+      uid: 'shellmap-integration',
+      title: 'Shellmap Integration',
+      dispose: vi.fn(),
+    }
+    await game.startGame(mapStub, WorldType.Shellmap)
+
+    const playerCountBefore = game.world!.players.length
+    ;(game as any).spawnShellmapBots()
+
+    // 2 AI players should be added
+    expect(game.world!.players.length).toBe(playerCountBefore + 2)
+
+    // Verify each has a PlayerActor
+    for (let i = 0; i < 2; i++) {
+      const aiPlayer = game.world!.players[playerCountBefore + i] as any
+      expect(aiPlayer.playerName).toContain('Shellmap AI')
+      expect(aiPlayer.isBot).toBe(true)
+      expect(aiPlayer.playerActor).toBeDefined()
+      expect(aiPlayer.playerActor.actorId).toBeGreaterThan(0)
+    }
+
+    game.dispose()
+  })
+
+  it('setupShellmapCamera registers observer when viewport supports centerOnActors', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test')
+
+    const mapStub = {
+      uid: 'camera-integration',
+      title: 'Camera Integration',
+      dispose: vi.fn(),
+    }
+    await game.startGame(mapStub, WorldType.Shellmap)
+
+    // Override WorldRenderer mock to have centerOnActors
+    const wr = game.worldRenderer! as any
+    wr.viewport = {
+      topLeft: { x: 0, y: 0 },
+      bottomRight: { x: 800, y: 600 },
+      centerOnActors: vi.fn(),
+    }
+    // Override scene with observable mock
+    wr.scene = {
+      onBeforeRenderObservable: {
+        add: vi.fn().mockReturnValue({ _isShellmapObserver: true }),
+        remove: vi.fn(),
+      },
+    }
+
+    ;(game as any).setupShellmapCamera()
+
+    // onBeforeRenderObservable.add should be called
+    expect(wr.scene.onBeforeRenderObservable.add).toHaveBeenCalledTimes(1)
+
+    // The observer should be stored on the game instance
+    expect((game as any)._shellmapCameraObserver).not.toBeNull()
+
+    game.dispose()
+  })
+
+  it('camera observer cleaned up on dispose', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test')
+
+    const mapStub = {
+      uid: 'camera-cleanup',
+      title: 'Camera Cleanup',
+      dispose: vi.fn(),
+    }
+    await game.startGame(mapStub, WorldType.Shellmap)
+
+    // Set up camera observer
+    const wr = game.worldRenderer! as any
+    const removeSpy = vi.fn()
+    wr.scene = {
+      onBeforeRenderObservable: {
+        add: vi.fn().mockReturnValue({ _isShellmapObserver: true }),
+        remove: removeSpy,
+      },
+    }
+    wr.viewport = {
+      topLeft: { x: 0, y: 0 },
+      bottomRight: { x: 800, y: 600 },
+      centerOnActors: vi.fn(),
+    }
+
+    ;(game as any).setupShellmapCamera()
+    expect((game as any)._shellmapCameraObserver).not.toBeNull()
+
+    game.dispose()
+
+    // Observer should be cleaned up
+    expect((game as any)._shellmapCameraObserver).toBeNull()
+  })
+
+  it('spawnShellmapBots is no-op when world is null', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // world is null (shellmap without startGame)
+    expect(game.world).toBeNull()
+
+    expect(() => (game as any).spawnShellmapBots()).not.toThrow()
+  })
+
+  it('setupShellmapCamera is no-op when worldRenderer is null', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // worldRenderer is null (shellmap without startGame)
+    expect(game.worldRenderer).toBeNull()
+
+    expect(() => (game as any).setupShellmapCamera()).not.toThrow()
+  })
+})
+
+describe('Ch26 Phase D — Main Menu Integration (TODO-26.D.2d)', () => {
+  afterEach(() => {
+    const ids = [
+      'main-menu-overlay',
+      'main-menu-widget-overlay',
+      'settings-panel-overlay',
+      'skirmish-setup-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  it('all 4 buttons visible in Widget menu', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenuWidget()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const skirmishBtn = document.getElementById('widget-btn-skirmish') as HTMLButtonElement
+    const loadBtn = document.getElementById('widget-btn-load') as HTMLButtonElement
+    const settingsBtn = document.getElementById('widget-btn-settings') as HTMLButtonElement
+    const exitBtn = document.getElementById('widget-btn-exit') as HTMLButtonElement
+
+    expect(skirmishBtn).not.toBeNull()
+    expect(loadBtn).not.toBeNull()
+    expect(settingsBtn).not.toBeNull()
+    expect(exitBtn).not.toBeNull()
+
+    // Skirmish and Exit should be enabled
+    expect(skirmishBtn.disabled).toBe(false)
+    expect(exitBtn.disabled).toBe(false)
+
+    game.dispose()
+  })
+
+  it('Skirmish button calls _openSkirmishSetup (not alert)', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+
+    game.showMainMenu()
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    skirmishBtn.click()
+
+    // Alert should NOT be called
+    expect(alertSpy).not.toHaveBeenCalled()
+    // Skirmish setup should be created
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    alertSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('Settings button opens settings panel', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    game.dispose()
+  })
+
+  it('Exit button navigates to /', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const pushStateSpy = vi.spyOn(history, 'pushState')
+
+    game.showMainMenu()
+    const exitBtn = document.getElementById('btn-exit') as HTMLButtonElement
+    exitBtn.click()
+
+    expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
+    expect(game.state).toBe(GameState.Disposed)
+
+    pushStateSpy.mockRestore()
+    // Already disposed by _exitToModSelector
+  })
+
+  it('Escape key triggers exit to mod selector in Widget menu', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const pushStateSpy = vi.spyOn(history, 'pushState')
+
+    game.showMainMenuWidget()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+
+    expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
+
+    pushStateSpy.mockRestore()
+    game.hideMainMenuWidget()
+    game.dispose()
+  })
+
+  it('Load Game button remains disabled with "Coming Soon" text', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const mpBtn = document.getElementById('btn-multiplayer') as HTMLButtonElement
+    expect(mpBtn.disabled).toBe(true)
+    expect(mpBtn.textContent).toContain('Coming Soon')
+
+    game.dispose()
+  })
+})
+
+describe('Ch26 Phase D — Full Integration Flow (TODO-26.D.2e)', () => {
+  afterEach(() => {
+    const ids = [
+      'main-menu-overlay',
+      'main-menu-widget-overlay',
+      'skirmish-setup-overlay',
+      'settings-panel-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  it('Main menu → Skirmish → Select map → startGame → world created → Playing', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Step 1: Main menu is showing
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    // Step 2: Click Skirmish
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    skirmishBtn.click()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    // Step 3: Set up maps and click Start Game
+    const mapCacheIterable: Record<string, unknown> = {
+      [Symbol.iterator]: () => [
+        {
+          uid: 'full-flow-map',
+          title: 'Full Flow Map',
+          status: 0,
+          visibility: 1,
+          spawnPoints: [{ X: 10, Y: 10 }, { X: 20, Y: 20 }],
+        },
+      ][Symbol.iterator](),
+      dispose: vi.fn(),
+    }
+    ;(game as any).modData.mapCache = mapCacheIterable
+
+    // Re-open setup to pick up maps
+    ;(game as any)._openSkirmishSetup()
+
+    // Step 4: Click Start Game
+    const buttons = document.querySelectorAll('#skirmish-setup-overlay button')
+    const startBtn = buttons[0] as HTMLButtonElement
+    const startGameSpy = vi.spyOn(game, 'startGame').mockResolvedValue(undefined)
+    startBtn.click()
+
+    expect(startGameSpy).toHaveBeenCalledTimes(1)
+    expect(startGameSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ uid: 'full-flow-map' }),
+      WorldType.Regular,
+    )
+
+    startGameSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('startGame hides main menu + skirmish setup', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Open skirmish setup
+    ;(game as any)._openSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    // Start game
+    const mapStub = {
+      uid: 'hide-menus-map',
+      title: 'Hide Menus Map',
+      dispose: vi.fn(),
+    }
+
+    await game.startGame(mapStub, WorldType.Regular)
+
+    // Main menu should be hidden
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+    // Skirmish setup should be hidden
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+    // State should be Playing
+    expect(game.state).toBe(GameState.Playing)
+    // World should exist
+    expect(game.world).not.toBeNull()
+
+    game.dispose()
+  })
+
+  it('dispose cleans up all DOM (menu + setup + settings)', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Create main menu
+    game.showMainMenu()
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    // Create skirmish setup
+    ;(game as any)._openSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    // Create settings panel
+    ;(game as any)._openSettingsPanel()
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+
+    // Dispose
+    game.dispose()
+
+    // All DOM should be cleaned up
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+    expect(document.getElementById('settings-panel-overlay')).toBeNull()
+
+    // State should be Disposed
+    expect(game.state).toBe(GameState.Disposed)
+  })
+
+  it('full flow: exit returns to mod selector with clean state', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+
+    const pushStateSpy = vi.spyOn(history, 'pushState')
+
+    const exitBtn = document.getElementById('btn-exit') as HTMLButtonElement
+    exitBtn.click()
+
+    expect(pushStateSpy).toHaveBeenCalledWith(null, '', '/')
+    expect(game.state).toBe(GameState.Disposed)
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    pushStateSpy.mockRestore()
+  })
+
+  it('settings panel → Back → skirmish setup → Cancel → main menu (cross-panel navigation)', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Start at main menu
+    game.showMainMenu()
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    // Open settings
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    // Back from settings to main menu
+    const settingsButtons = document.querySelectorAll('#settings-panel-overlay button')
+    const backBtn = settingsButtons[settingsButtons.length - 1] as HTMLButtonElement
+    backBtn.click()
+    expect(document.getElementById('settings-panel-overlay')).toBeNull()
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    // Now open skirmish setup
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    skirmishBtn.click()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    // Cancel back to main menu
+    const setupButtons = document.querySelectorAll('#skirmish-setup-overlay button')
+    const cancelBtn = setupButtons[setupButtons.length - 1] as HTMLButtonElement
+    cancelBtn.click()
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.dispose()
+  })
+
+  it('Escape closes settings panel and restores main menu', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenu()
+    const settingsBtn = document.getElementById('btn-settings') as HTMLButtonElement
+    settingsBtn.click()
+    expect(document.getElementById('settings-panel-overlay')).not.toBeNull()
+
+    // Dispatch Escape on the settings panel overlay (key handler is attached there)
+    const overlay = document.getElementById('settings-panel-overlay')!
+    overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+
+    expect(document.getElementById('settings-panel-overlay')).toBeNull()
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.dispose()
   })
 })
