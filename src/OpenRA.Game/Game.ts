@@ -36,6 +36,37 @@ import type { Sound } from './Sound/Sound.js'
 export { WorldType }
 
 // ---------------------------------------------------------------------------
+// SkirmishLobbyInfo — skirmish player configuration (TODO-26.B.2)
+// ---------------------------------------------------------------------------
+
+/** A single player slot in the skirmish lobby configuration.
+ *
+ * OpenRA 对照: Session.Client slot configuration
+ */
+export interface SkirmishPlayerSlot {
+  /** Slot index (0 = human player). */
+  slotIndex: number
+  /** Player type: Human or AI. */
+  playerType: 'Human' | 'AI'
+  /** AI bot difficulty (only for AI players). */
+  botDifficulty?: 'Easy' | 'Medium' | 'Hard'
+}
+
+/** Skirmish lobby configuration — defines player slots for a skirmish game.
+ *
+ * OpenRA 对照: Session.LobbyInfo
+ *
+ * Set by _startSkirmish() before calling startGame(). Contains the human
+ * player slot and AI player slots based on the map's spawn points.
+ */
+export interface SkirmishLobbyInfo {
+  /** Map UID that this lobby was configured for. */
+  mapUid: string
+  /** Player slot configurations. */
+  players: SkirmishPlayerSlot[]
+}
+
+// ---------------------------------------------------------------------------
 // GameState — 生命周期状态
 // ---------------------------------------------------------------------------
 
@@ -171,6 +202,18 @@ export class Game {
    */
   renderFrame = 0
 
+  /**
+   * Skirmish lobby configuration (TODO-26.B.2)。
+   *
+   * OpenRA 对照: Session.LobbyInfo + Session.Client slot configuration
+   *
+   * Set by _startSkirmish() before calling startGame(). The GameWorldManager
+   * currently does not consume this directly (GameWorldManagerOptions lacks
+   * a lobbyInfo field), but it is stored on the Game class for future
+   * integration when the full lobby system is migrated.
+   */
+  lobbyInfo: SkirmishLobbyInfo | null = null
+
   // -----------------------------------------------------------------------
   // 私有字段
   // -----------------------------------------------------------------------
@@ -183,6 +226,9 @@ export class Game {
 
   /** 固定时间步长累加器（毫秒）。switchMod 时重置以防止突发 tick。 */
   private _accumulator = 0
+
+  /** Skirmish setup modal DOM root element (for cleanup on dispose). */
+  private _skirmishSetupDomRoot: HTMLElement | null = null
 
   /**
    * 延迟动作队列 — 下一逻辑 tick 执行的一次性回调。
@@ -1035,7 +1081,7 @@ export class Game {
         id: 'btn-skirmish',
         text: 'Skirmish',
         disabled: false,
-        onClick: () => this._showComingSoon('Skirmish'),
+        onClick: () => this._openSkirmishSetup(),
       },
       {
         id: 'btn-multiplayer',
@@ -1116,6 +1162,8 @@ export class Game {
     }
     // Also hide widget-based menu if active
     this.hideMainMenuWidget()
+    // Also close skirmish setup modal
+    this._closeSkirmishSetup()
   }
 
   // -----------------------------------------------------------------------
@@ -1260,7 +1308,7 @@ export class Game {
         'btn-skirmish',
         'Skirmish',
         false,
-        () => this._showComingSoon('Skirmish'),
+        () => this._openSkirmishSetup(),
       )
 
       // Load button
@@ -1268,7 +1316,7 @@ export class Game {
         'btn-load',
         'Load Game (Coming Soon)',
         true,
-        () => {},
+        () => this._showLoadGameComingSoon(),
       )
 
       // Settings button
@@ -1340,16 +1388,394 @@ export class Game {
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Skirmish Setup Modal (TODO-26.B.1)
+  //
+  // Replaces the "Coming Soon" alert with a proper DOM-based setup modal.
+  // Allows players to select a map from the MapCache and start a skirmish
+  // game with human + AI player slots.
+  //
+  // OpenRA 对照: OpenRA.Mods.Common/Widgets/Logic/SkirmishLogic.cs
+  // -----------------------------------------------------------------------
+
   /**
-   * 显示 "Coming Soon" 提示 — 主菜单按钮的临时 stub。
+   * Open the skirmish setup modal — replaces the alert() stub.
    *
-   * 当前使用浏览器原生 alert 弹窗实现。
-   * 未来 Widget 集成后，将替换为游戏内工具提示 Widget。
+   * TODO-26.B.1: Full skirmish setup modal with map selection, player slot
+   * configuration, and bot difficulty selection.
+   *
+   * Steps:
+   * 1. Hide the main menu (DOM overlay or widget)
+   * 2. Build a setup modal with map dropdown + Start/Cancel buttons
+   * 3. If MapCache is empty, show "No maps available" message
    */
-  private _showComingSoon(feature: string): void {
-    // NOTE: 使用 alert 而非 DOM 工具提示以保证跨浏览器兼容性。
-    // 完整 widgets 集成后（Ch16），将用 Widget 工具提示替换。
-    alert(`${feature} is coming soon!\n\nThis feature will be available in a future update.`)
+  private _openSkirmishSetup(): void {
+    // 1. Hide main menu
+    this.hideMainMenu()
+    // 2. Remove previous setup if any
+    this._closeSkirmishSetup()
+
+    // --- Build overlay ---
+    const overlay = document.createElement('div')
+    overlay.id = 'skirmish-setup-overlay'
+    overlay.style.cssText =
+      'position:fixed;inset:0;display:flex;flex-direction:column;' +
+      'align-items:center;justify-content:center;z-index:99;' +
+      'pointer-events:none;'
+
+    // --- Build modal card ---
+    const card = document.createElement('div')
+    card.style.cssText =
+      'pointer-events:auto;text-align:center;' +
+      'background:rgba(10,10,30,0.85);border:1px solid rgba(100,100,180,0.3);' +
+      'border-radius:12px;padding:2.5rem 3rem;min-width:380px;'
+
+    // Title
+    const title = document.createElement('h2')
+    title.textContent = 'Skirmish Setup'
+    title.style.cssText =
+      'color:#f0f0f0;font-size:1.5rem;font-weight:700;margin:0 0 1.5rem 0;'
+    card.appendChild(title)
+
+    // --- Map selection ---
+    const mapsAvailable = this._collectSkirmishMaps()
+
+    if (mapsAvailable.length === 0) {
+      // No maps — show disabled message
+      const noMapsMsg = document.createElement('p')
+      noMapsMsg.textContent =
+        'No maps available. Download game content first.'
+      noMapsMsg.style.cssText =
+        'color:#aa8866;font-size:0.95rem;margin:0 0 1.5rem 0;padding:1rem;' +
+        'background:rgba(40,40,20,0.5);border-radius:6px;'
+      card.appendChild(noMapsMsg)
+
+      // Disabled Start button
+      const startBtn = document.createElement('button')
+      startBtn.textContent = 'Start Game'
+      startBtn.disabled = true
+      startBtn.style.cssText =
+        'display:block;width:100%;padding:12px 20px;margin-bottom:12px;' +
+        'border:1px solid rgba(100,100,180,0.4);border-radius:6px;' +
+        'font-size:1rem;font-weight:600;' +
+        'background:rgba(40,40,60,0.5);color:#555570;cursor:not-allowed;'
+      card.appendChild(startBtn)
+    } else {
+      // Map dropdown label
+      const label = document.createElement('label')
+      label.htmlFor = 'skirmish-map-select'
+      label.textContent = 'Map:'
+      label.style.cssText =
+        'display:block;color:#aaaacc;font-size:0.9rem;font-weight:600;' +
+        'margin-bottom:0.5rem;text-align:left;'
+      card.appendChild(label)
+
+      // Map dropdown
+      const select = document.createElement('select')
+      select.id = 'skirmish-map-select'
+      select.style.cssText =
+        'display:block;width:100%;padding:10px 12px;margin-bottom:1.5rem;' +
+        'border:1px solid rgba(100,100,180,0.4);border-radius:6px;' +
+        'font-size:0.95rem;background:#1a1a3a;color:#e0e0f0;' +
+        'cursor:pointer;outline:none;'
+      // Focus style via inline event
+      select.addEventListener('focus', () => {
+        select.style.borderColor = 'rgba(120,140,220,0.7)'
+      })
+      select.addEventListener('blur', () => {
+        select.style.borderColor = 'rgba(100,100,180,0.4)'
+      })
+
+      for (const map of mapsAvailable) {
+        const option = document.createElement('option')
+        option.value = map.uid
+        option.textContent = map.title
+        select.appendChild(option)
+      }
+      card.appendChild(select)
+
+      // Store the selected UID
+      let selectedUid = mapsAvailable[0].uid
+
+      select.addEventListener('change', () => {
+        selectedUid = select.value
+      })
+
+      // Start Game button
+      const startBtn = document.createElement('button')
+      startBtn.textContent = 'Start Game'
+      startBtn.style.cssText =
+        'display:block;width:100%;padding:12px 20px;margin-bottom:12px;' +
+        'border:1px solid rgba(100,100,180,0.4);border-radius:6px;' +
+        'font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.15s ease;' +
+        'background:linear-gradient(135deg,#228844,#33cc66);color:#e0f0e0;'
+      startBtn.addEventListener('mouseenter', () => {
+        startBtn.style.background = 'linear-gradient(135deg,#33cc66,#44ee77)'
+        startBtn.style.borderColor = 'rgba(120,220,140,0.6)'
+      })
+      startBtn.addEventListener('mouseleave', () => {
+        startBtn.style.background = 'linear-gradient(135deg,#228844,#33cc66)'
+        startBtn.style.borderColor = 'rgba(100,100,180,0.4)'
+      })
+      startBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this._startSkirmish(selectedUid)
+      })
+      card.appendChild(startBtn)
+    }
+
+    // Cancel (Back) button
+    const cancelBtn = document.createElement('button')
+    cancelBtn.textContent = 'Back'
+    cancelBtn.style.cssText =
+      'display:block;width:100%;padding:12px 20px;margin-bottom:12px;' +
+      'border:1px solid rgba(100,100,180,0.4);border-radius:6px;' +
+      'font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.15s ease;' +
+      'background:linear-gradient(135deg,#334488,#4466cc);color:#e0e0f0;'
+    cancelBtn.addEventListener('mouseenter', () => {
+      cancelBtn.style.background = 'linear-gradient(135deg,#4466cc,#5577ee)'
+      cancelBtn.style.borderColor = 'rgba(120,140,220,0.6)'
+    })
+    cancelBtn.addEventListener('mouseleave', () => {
+      cancelBtn.style.background = 'linear-gradient(135deg,#334488,#4466cc)'
+      cancelBtn.style.borderColor = 'rgba(100,100,180,0.4)'
+    })
+    cancelBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      this._closeSkirmishSetup()
+      this.showMainMenu()
+    })
+    card.appendChild(cancelBtn)
+
+    overlay.appendChild(card)
+    document.body.appendChild(overlay)
+    this._skirmishSetupDomRoot = overlay
+  }
+
+  /**
+   * Remove the skirmish setup modal from the DOM.
+   *
+   * Safe to call even when no setup modal is active (no-op).
+   */
+  private _closeSkirmishSetup(): void {
+    if (this._skirmishSetupDomRoot) {
+      this._skirmishSetupDomRoot.remove()
+      this._skirmishSetupDomRoot = null
+    }
+  }
+
+  /**
+   * Collect available maps from MapCache for the skirmish map dropdown.
+   *
+   * Returns maps that are:
+   * 1. Playable (status === MapStatus.Available)
+   * 2. Visible in lobby (visibility & MapVisibility.Lobby)
+   *
+   * If modData or mapCache is unavailable, returns an empty array.
+   *
+   * @returns Array of { uid, title } for the dropdown
+   */
+  private _collectSkirmishMaps(): Array<{ uid: string; title: string }> {
+    if (!this.modData) return []
+
+    const mapCache = this.modData.mapCache
+    if (!mapCache) return []
+
+    // Must be iterable (real MapCache implements Iterable<MapPreview>)
+    if (
+      typeof (
+        (mapCache as unknown as { [Symbol.iterator]?: unknown })[
+          Symbol.iterator
+        ]
+      ) !== 'function'
+    ) {
+      return []
+    }
+
+    const MAP_STATUS_AVAILABLE = 0
+    const LOBBY_FLAG = 1
+
+    const maps: Array<{ uid: string; title: string }> = []
+    for (const preview of mapCache as Iterable<{
+      uid: string
+      title?: string
+      status?: number
+      visibility?: number
+    }>) {
+      if (
+        preview.status === MAP_STATUS_AVAILABLE &&
+        preview.visibility !== undefined &&
+        (preview.visibility & LOBBY_FLAG) !== 0
+      ) {
+        maps.push({ uid: preview.uid, title: preview.title ?? preview.uid })
+      }
+    }
+
+    return maps
+  }
+
+  // -----------------------------------------------------------------------
+  // _startSkirmish — launch a skirmish game (TODO-26.B.1 + TODO-26.B.2)
+  //
+  // Constructs a MapStub from the selected MapPreview, sets up lobby
+  // player slots, and calls startGame(). After the world loads, attempts
+  // to center the camera on the world.
+  //
+  // OpenRA 对照: OpenRA.Mods.Common/Widgets/Logic/SkirmishLogic.StartSkirmish()
+  // -----------------------------------------------------------------------
+
+  /**
+   * Start a skirmish game with the selected map.
+   *
+   * TODO-26.B.1: Map selection and game start from setup modal.
+   * TODO-26.B.2: Lobby player configuration (human + AI slots).
+   *
+   * Sequence:
+   * 1. Look up MapPreview from MapCache by UID
+   * 2. Build SkirmishLobbyInfo with player slots (slot 0 = Human, rest = AI)
+   * 3. Construct a MapStub from the MapPreview
+   * 4. Call startGame(mapStub, WorldType.Regular)
+   * 5. After start, attempt to center the camera on the world
+   *
+   * @param mapUid — Map UID selected in the skirmish setup dropdown
+   */
+  private async _startSkirmish(mapUid: string): Promise<void> {
+    // Close setup modal immediately (game is starting)
+    this._closeSkirmishSetup()
+
+    if (!this.modData) {
+      console.error('[Game] _startSkirmish: modData is null — cannot start game')
+      return
+    }
+
+    // 1. Find MapPreview from MapCache
+    const mapCache = this.modData.mapCache
+    let previewTitle = mapUid
+    let spawnCount = 2 // Default: human + 1 AI
+
+    if (mapCache && typeof (
+      (mapCache as unknown as { [Symbol.iterator]?: unknown })[Symbol.iterator]
+    ) === 'function') {
+      for (const preview of mapCache as Iterable<{
+        uid: string
+        title?: string
+        spawnPoints?: Array<{ X: number; Y: number }>
+      }>) {
+        if (preview.uid === mapUid) {
+          previewTitle = preview.title ?? mapUid
+          if (preview.spawnPoints && preview.spawnPoints.length > 0) {
+            spawnCount = preview.spawnPoints.length
+          }
+          break
+        }
+      }
+    }
+
+    // 2. Build SkirmishLobbyInfo (TODO-26.B.2)
+    const slots: SkirmishPlayerSlot[] = []
+    for (let i = 0; i < spawnCount; i++) {
+      if (i === 0) {
+        // Slot 0: Human (local player)
+        slots.push({ slotIndex: i, playerType: 'Human' })
+      } else {
+        // Remaining slots: AI players at default difficulty
+        slots.push({ slotIndex: i, playerType: 'AI', botDifficulty: 'Medium' })
+      }
+    }
+
+    this.lobbyInfo = { mapUid, players: slots }
+
+    // 3. Construct MapStub
+    const mapStub: MapStub = {
+      uid: mapUid,
+      title: previewTitle,
+      dispose: () => {
+        // MapPreview manages its own lifecycle via MapCache
+      },
+    }
+
+    // 4. Start the game
+    try {
+      await this.startGame(mapStub, WorldType.Regular)
+    } catch (err) {
+      console.error('[Game] _startSkirmish: startGame failed:', err)
+      // Show error and return to main menu
+      this.showMainMenu()
+      return
+    }
+
+    // 5. Attempt to center camera on the world
+    this._centerSkirmishCamera()
+  }
+
+  /**
+   * Attempt to center the camera on the skirmish world after it loads.
+   *
+   * Uses WorldRenderer.viewport.centerOn if available, otherwise skips
+   * gracefully. The camera is centered on the world origin (0,0) as a
+   * best-effort starting position, equivalent to centering on the map
+   * center for most maps.
+   */
+  private _centerSkirmishCamera(): void {
+    if (!this._worldRenderer) return
+
+    const viewport = this._worldRenderer.viewport
+    const vp = viewport as unknown as { centerOn?: (pos: { x: number; y: number }) => void }
+    if (vp && typeof vp.centerOn === 'function') {
+      try {
+        vp.centerOn({ x: 0, y: 0 })
+      } catch {
+        // Skip gracefully — camera centering is best-effort
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Load Game Coming Soon notification (TODO-26.B.3)
+  //
+  // Shows a styled in-game DOM notification instead of alert().
+  // The notification auto-dismisses after 3 seconds.
+  //
+  // OpenRA 对照: N/A (Load Game is Web-only feature not in original OpenRA)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Show a styled "Load Game is coming soon" notification.
+   *
+   * TODO-26.B.3: Replace alert() with a styled auto-dismiss notification.
+   *
+   * Creates a temporary DOM toast at the center of the viewport that
+   * fades out and self-removes after 3 seconds. Multiple calls queue
+   * independently (previous notifications are not cleared).
+   *
+   * ADR-26.2: Load Game is deferred to a future release. The button
+   * remains disabled with "(Coming Soon)" text.
+   */
+  private _showLoadGameComingSoon(): void {
+    const toast = document.createElement('div')
+    toast.style.cssText =
+      'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
+      'z-index:200;pointer-events:none;' +
+      'background:rgba(20,20,50,0.92);border:1px solid rgba(120,140,220,0.4);' +
+      'border-radius:8px;padding:1.25rem 2rem;' +
+      'color:#ccccee;font-size:1rem;font-weight:600;' +
+      'text-align:center;transition:opacity 0.4s ease;' +
+      'box-shadow:0 4px 24px rgba(0,0,0,0.5);'
+
+    toast.textContent = 'Load Game is coming soon!\nThis feature will be available in a future update.'
+    toast.style.whiteSpace = 'pre-line'
+
+    document.body.appendChild(toast)
+
+    // Auto-dismiss after 3 seconds with fade-out
+    setTimeout(() => {
+      toast.style.opacity = '0'
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.remove()
+        }
+      }, 400) // Wait for CSS transition to finish
+    }, 3000)
   }
 
   /**

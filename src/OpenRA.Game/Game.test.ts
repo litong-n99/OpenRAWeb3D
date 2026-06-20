@@ -1525,7 +1525,7 @@ describe('Main Menu DOM (Phase C)', () => {
     game.hideMainMenu()
   })
 
-  it('Skirmish button triggers alert (stub)', async () => {
+  it('Skirmish button opens skirmish setup modal (TODO-26.B.1)', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
@@ -1537,9 +1537,13 @@ describe('Main Menu DOM (Phase C)', () => {
     const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
     skirmishBtn.click()
 
-    expect(alertSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Skirmish is coming soon'),
-    )
+    // Alert should NOT be called (old "Coming Soon" behavior replaced)
+    expect(alertSpy).not.toHaveBeenCalled()
+
+    // Skirmish setup modal should be created
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+    // Main menu should be hidden
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
 
     alertSpy.mockRestore()
     game.hideMainMenu()
@@ -2511,5 +2515,757 @@ describe('Content Installer Integration (CI-A.11)', () => {
       // ContentInstallerUI.hide should be called during switchMod cleanup
       expect(ContentInstallerUI.hide).toHaveBeenCalled()
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Chapter 26 Phase B: Skirmish Game Flow (TODO-26.B.1, TODO-26.B.2, TODO-26.B.3)
+// ---------------------------------------------------------------------------
+
+describe('Ch26 Phase B — Skirmish Setup Modal (TODO-26.B.1)', () => {
+  beforeEach(() => {
+    // Clean up any leftover DOM
+    const ids = [
+      'skirmish-setup-overlay',
+      'main-menu-overlay',
+      'main-menu-widget-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  afterEach(() => {
+    const ids = [
+      'skirmish-setup-overlay',
+      'main-menu-overlay',
+      'main-menu-widget-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  it('Skirmish button in DOM overlay opens setup modal, not alert', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Show main menu, then click the skirmish button
+    game.showMainMenu()
+
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+
+    const skirmishBtn = document.getElementById('btn-skirmish') as HTMLButtonElement
+    expect(skirmishBtn).not.toBeNull()
+    skirmishBtn.click()
+
+    // Alert should NOT be called (old behavior replaced)
+    expect(alertSpy).not.toHaveBeenCalled()
+
+    // Setup modal should exist
+    const setupOverlay = document.getElementById('skirmish-setup-overlay')
+    expect(setupOverlay).not.toBeNull()
+
+    // Main menu should be hidden
+    expect(document.getElementById('main-menu-overlay')).toBeNull()
+
+    alertSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('setup modal shows "No maps available" when MapCache is empty', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Default mock mapCache has empty iterable → "No maps" fallback
+    ;(game as any)._openSkirmishSetup()
+
+    const setupOverlay = document.getElementById('skirmish-setup-overlay')!
+    expect(setupOverlay).not.toBeNull()
+    expect(setupOverlay.textContent).toContain('No maps available')
+    expect(setupOverlay.textContent).toContain('Download game content first.')
+
+    // Start Game button should be disabled when no maps
+    const startBtn = setupOverlay.querySelector('button')
+    expect(startBtn).not.toBeNull()
+    expect((startBtn as HTMLButtonElement).disabled).toBe(true)
+
+    game.dispose()
+  })
+
+  it('setup modal shows "No maps available" when modData is null', async () => {
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67), dispose: vi.fn() },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 }, dispose: vi.fn() },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 }, dispose: vi.fn() },
+      worldCamera: { dispose: vi.fn() },
+      uiCamera: { dispose: vi.fn() },
+      dispose: vi.fn(),
+    }
+    game._loopStarted = true
+    game.modData = null // No mod loaded
+
+    game._openSkirmishSetup()
+
+    const setupOverlay = document.getElementById('skirmish-setup-overlay')!
+    expect(setupOverlay.textContent).toContain('No maps available')
+
+    game.hideMainMenu()
+    game.dispose?.()
+  })
+
+  it('setup modal shows map dropdown when MapCache has lobby-visible maps', async () => {
+    // Create game with minimal setup and add maps to MapCache
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game.modData = {
+      mapCache: {
+        [Symbol.iterator]: () => [
+          { uid: 'map1', title: 'Desert Storm', status: 0, visibility: 1 },
+          { uid: 'map2', title: 'Jungle War', status: 0, visibility: 1 },
+          { uid: 'map3', title: 'Hidden Map', status: 0, visibility: 2 }, // Shellmap only, not Lobby
+        ][Symbol.iterator](),
+        dispose: vi.fn(),
+      },
+    }
+    game.hideMainMenu = vi.fn()
+    game._closeSkirmishSetup = vi.fn()
+
+    game._openSkirmishSetup()
+
+    const setupOverlay = document.getElementById('skirmish-setup-overlay')!
+    expect(setupOverlay).not.toBeNull()
+
+    // Should have a dropdown
+    const select = document.getElementById('skirmish-map-select') as HTMLSelectElement
+    expect(select).not.toBeNull()
+    expect(select.options.length).toBe(2) // Only Lobby-visible maps
+    expect(select.options[0].textContent).toBe('Desert Storm')
+    expect(select.options[1].textContent).toBe('Jungle War')
+
+    // "Map:" label should exist
+    expect(setupOverlay.textContent).toContain('Map:')
+
+    // Hide map should NOT be included (visibility=2 → no Lobby flag)
+    expect(setupOverlay.textContent).not.toContain('Hidden Map')
+
+    game.hideMainMenu()
+  })
+
+  it('Cancel/Back button returns to main menu', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Open skirmish setup
+    ;(game as any)._openSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    // Find and click the Back button (last button in the card)
+    const allButtons = document.querySelectorAll('#skirmish-setup-overlay button')
+    const backBtn = allButtons[allButtons.length - 1] as HTMLButtonElement
+    expect(backBtn.textContent).toBe('Back')
+
+    backBtn.click()
+
+    // Setup modal should be gone
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+    // Main menu should be shown
+    expect(document.getElementById('main-menu-overlay')).not.toBeNull()
+
+    game.dispose()
+  })
+
+  it('Start Game button is green-styled', async () => {
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game.modData = {
+      mapCache: {
+        [Symbol.iterator]: () => [
+          { uid: 'map1', title: 'Test Map', status: 0, visibility: 1 },
+        ][Symbol.iterator](),
+        dispose: vi.fn(),
+      },
+    }
+    game.hideMainMenu = vi.fn()
+    game._closeSkirmishSetup = vi.fn()
+
+    game._openSkirmishSetup()
+
+    const buttons = document.querySelectorAll('#skirmish-setup-overlay button')
+    const startBtn = buttons[0] as HTMLButtonElement
+    expect(startBtn.textContent).toBe('Start Game')
+    expect(startBtn.style.background).toContain('228844') // Green gradient
+
+    game.hideMainMenu()
+  })
+
+  it('setup modal title is Skirmish Setup', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    ;(game as any)._openSkirmishSetup()
+
+    const setupOverlay = document.getElementById('skirmish-setup-overlay')!
+    expect(setupOverlay.textContent).toContain('Skirmish Setup')
+
+    game.dispose()
+  })
+})
+
+describe('Ch26 Phase B — _startSkirmish (TODO-26.B.1 + TODO-26.B.2)', () => {
+  beforeEach(() => {
+    const ids = [
+      'skirmish-setup-overlay',
+      'main-menu-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  afterEach(() => {
+    const ids = [
+      'skirmish-setup-overlay',
+      'main-menu-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  it('creates lobbyInfo with correct player slots', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Set up MapCache with a map that has 4 spawn points
+    const mapCacheIterable: Record<string, unknown> = {
+      [Symbol.iterator]: () => [
+        {
+          uid: 'test-map-1',
+          title: 'Four Player Map',
+          status: 0,
+          visibility: 1,
+          spawnPoints: [
+            { X: 10, Y: 10 },
+            { X: 20, Y: 20 },
+            { X: 30, Y: 30 },
+            { X: 40, Y: 40 },
+          ],
+        },
+      ][Symbol.iterator](),
+      dispose: vi.fn(),
+    }
+    // Override the mock's mapCache
+    ;(game as any).modData.mapCache = mapCacheIterable
+
+    // Spy on startGame but let it proceed (WorldRenderer is mocked)
+    const startGameSpy = vi.spyOn(game, 'startGame')
+
+    await (game as any)._startSkirmish('test-map-1')
+
+    // Verify lobbyInfo has correct slots
+    expect(game.lobbyInfo).not.toBeNull()
+    expect(game.lobbyInfo!.mapUid).toBe('test-map-1')
+    expect(game.lobbyInfo!.players).toHaveLength(4)
+    expect(game.lobbyInfo!.players[0].slotIndex).toBe(0)
+    expect(game.lobbyInfo!.players[0].playerType).toBe('Human')
+    expect(game.lobbyInfo!.players[1].playerType).toBe('AI')
+    expect(game.lobbyInfo!.players[1].botDifficulty).toBe('Medium')
+
+    // Verify startGame was called
+    expect(startGameSpy).toHaveBeenCalledTimes(1)
+
+    startGameSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('defaults to 2 player slots when no spawnPoints', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const mapCacheIterable: Record<string, unknown> = {
+      [Symbol.iterator]: () => [
+        {
+          uid: 'sparse-map',
+          title: 'Sparse Map',
+          status: 0,
+          visibility: 1,
+          // No spawnPoints property
+        },
+      ][Symbol.iterator](),
+      dispose: vi.fn(),
+    }
+    ;(game as any).modData.mapCache = mapCacheIterable
+
+    const startGameSpy = vi.spyOn(game, 'startGame')
+
+    await (game as any)._startSkirmish('sparse-map')
+
+    expect(game.lobbyInfo!.players).toHaveLength(2) // Default: 1 human + 1 AI
+    expect(game.lobbyInfo!.players[0].playerType).toBe('Human')
+    expect(game.lobbyInfo!.players[1].playerType).toBe('AI')
+
+    startGameSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('constructs MapStub with correct uid and title', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const mapCacheIterable: Record<string, unknown> = {
+      [Symbol.iterator]: () => [
+        {
+          uid: 'desert-valley',
+          title: 'Desert Valley',
+          status: 0,
+          visibility: 1,
+          spawnPoints: [{ X: 5, Y: 5 }],
+        },
+      ][Symbol.iterator](),
+      dispose: vi.fn(),
+    }
+    ;(game as any).modData.mapCache = mapCacheIterable
+
+    const startGameSpy = vi.spyOn(game, 'startGame').mockResolvedValue(undefined)
+
+    await (game as any)._startSkirmish('desert-valley')
+
+    expect(startGameSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uid: 'desert-valley',
+        title: 'Desert Valley',
+      }),
+      WorldType.Regular,
+    )
+
+    startGameSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('closes setup modal before starting game', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Open setup first
+    ;(game as any)._openSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    const mapCacheIterable: Record<string, unknown> = {
+      [Symbol.iterator]: () => [
+        { uid: 'map-1', title: 'Map 1', status: 0, visibility: 1, spawnPoints: [{ X: 1, Y: 1 }] },
+      ][Symbol.iterator](),
+      dispose: vi.fn(),
+    }
+    ;(game as any).modData.mapCache = mapCacheIterable
+
+    // Spy on startGame
+    const startGameSpy = vi.spyOn(game, 'startGame').mockResolvedValue(undefined)
+
+    await (game as any)._startSkirmish('map-1')
+
+    // Setup modal should be removed
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+
+    startGameSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('handles missing modData gracefully', async () => {
+    const game = new (Game as any)()
+    game.renderer = {
+      engine: { runRenderLoop: vi.fn(), getDeltaTime: vi.fn(() => 16.67) },
+      worldScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+      uiScene: { clearColor: { r: 0, g: 0, b: 0, a: 1 } },
+    }
+    game._loopStarted = true
+    game.modData = null
+    game.showMainMenu = vi.fn()
+    game._closeSkirmishSetup = vi.fn()
+
+    // Should not throw — returns early
+    await expect(
+      (game as any)._startSkirmish('any-map'),
+    ).resolves.toBeUndefined()
+  })
+
+  it('shows main menu on startGame failure', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const mapCacheIterable: Record<string, unknown> = {
+      [Symbol.iterator]: () => [
+        { uid: 'bad-map', title: 'Bad Map', status: 0, visibility: 1 },
+      ][Symbol.iterator](),
+      dispose: vi.fn(),
+    }
+    ;(game as any).modData.mapCache = mapCacheIterable
+
+    // Spy on startGame to make it throw
+    const startGameSpy = vi.spyOn(game, 'startGame').mockRejectedValue(new Error('Map load failed'))
+    const showMainMenuSpy = vi.spyOn(game, 'showMainMenu')
+
+    await (game as any)._startSkirmish('bad-map')
+
+    // Should show main menu on error
+    expect(showMainMenuSpy).toHaveBeenCalled()
+
+    startGameSpy.mockRestore()
+    showMainMenuSpy.mockRestore()
+    game.dispose()
+  })
+
+  it('resolves when MapCache is not iterable', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Default mock MapCache has [Symbol.iterator] returning empty iterable
+    const startGameSpy = vi.spyOn(game, 'startGame').mockResolvedValue(undefined)
+
+    await (game as any)._startSkirmish('any-map')
+
+    expect(startGameSpy).toHaveBeenCalledTimes(1)
+
+    startGameSpy.mockRestore()
+    game.dispose()
+  })
+})
+
+describe('Ch26 Phase B — SkirmishLobbyInfo interface (TODO-26.B.2)', () => {
+  it('SkirmishLobbyInfo is exported and constructable', async () => {
+    const { Game: GameClass } = await import('./Game.js')
+    const info: import('./Game.js').SkirmishLobbyInfo = {
+      mapUid: 'test-map',
+      players: [
+        { slotIndex: 0, playerType: 'Human' },
+        { slotIndex: 1, playerType: 'AI', botDifficulty: 'Hard' },
+      ],
+    }
+    expect(info.mapUid).toBe('test-map')
+    expect(info.players).toHaveLength(2)
+    expect(info.players[0].playerType).toBe('Human')
+    expect(info.players[1].botDifficulty).toBe('Hard')
+  })
+
+  it('lobbyInfo property defaults to null', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    expect(game.lobbyInfo).toBeNull()
+
+    game.dispose()
+  })
+})
+
+describe('Ch26 Phase B — _showLoadGameComingSoon (TODO-26.B.3)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    // Clean up any toast elements
+    const toasts = document.querySelectorAll('body > div')
+    for (const toast of toasts) {
+      if (
+        toast instanceof HTMLElement &&
+        toast.style.position === 'fixed' &&
+        toast.textContent?.includes('Load Game is coming soon')
+      ) {
+        toast.remove()
+      }
+    }
+  })
+
+  it('creates a styled DOM toast notification', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    ;(game as any)._showLoadGameComingSoon()
+
+    // Find the toast (fixed position element with the message)
+    const allFixed = document.querySelectorAll('body > div[style*="fixed"]')
+    const toast = Array.from(allFixed).find(
+      (el) => el.textContent?.includes('Load Game is coming soon'),
+    ) as HTMLElement | undefined
+
+    expect(toast).toBeDefined()
+    expect(toast!.textContent).toContain('Load Game is coming soon!')
+    expect(toast!.textContent).toContain('future update')
+    expect(toast!.style.zIndex).toBe('200') // Higher than main menu
+
+    // Auto-dismisses after 3 seconds
+    vi.advanceTimersByTime(3000)
+
+    // Fade-out starts, then removal
+    expect(toast!.style.opacity).toBe('0')
+
+    // 400ms later, toast is removed
+    vi.advanceTimersByTime(400)
+    expect(toast!.parentNode).toBeNull()
+
+    game.dispose()
+  })
+
+  it('does not throw when called multiple times', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // Should not throw — multiple calls queue independently
+    expect(() => {
+      ;(game as any)._showLoadGameComingSoon()
+      ;(game as any)._showLoadGameComingSoon()
+      ;(game as any)._showLoadGameComingSoon()
+    }).not.toThrow()
+
+    // All 3 should be in the DOM
+    const allFixed = document.querySelectorAll('body > div[style*="fixed"]')
+    const toasts = Array.from(allFixed).filter(
+      (el) => el.textContent?.includes('Load Game is coming soon'),
+    )
+    expect(toasts.length).toBe(3)
+
+    game.dispose()
+  })
+})
+
+describe('Ch26 Phase B — Skirmish Setup Cleanup', () => {
+  afterEach(() => {
+    const ids = [
+      'skirmish-setup-overlay',
+      'main-menu-overlay',
+    ]
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.remove()
+    }
+  })
+
+  it('_closeSkirmishSetup removes modal from DOM', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    ;(game as any)._openSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    ;(game as any)._closeSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+
+    game.dispose()
+  })
+
+  it('_closeSkirmishSetup is safe when no modal exists', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    // No modal exists — should not throw
+    expect(() => (game as any)._closeSkirmishSetup()).not.toThrow()
+    expect(() => (game as any)._closeSkirmishSetup()).not.toThrow() // Call twice
+
+    game.dispose()
+  })
+
+  it('hideMainMenu also closes skirmish setup', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    ;(game as any)._openSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    game.hideMainMenu()
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+
+    game.dispose()
+  })
+
+  it('dispose cleans up skirmish setup modal', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    ;(game as any)._openSkirmishSetup()
+    expect(document.getElementById('skirmish-setup-overlay')).not.toBeNull()
+
+    game.dispose()
+    expect(document.getElementById('skirmish-setup-overlay')).toBeNull()
+  })
+
+  it('opening skirmish setup twice replaces previous modal', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    ;(game as any)._openSkirmishSetup()
+    const first = document.getElementById('skirmish-setup-overlay')
+    expect(first).not.toBeNull()
+
+    // Open again — should replace, not create duplicate
+    ;(game as any)._openSkirmishSetup()
+    const second = document.getElementById('skirmish-setup-overlay')
+    expect(second).not.toBeNull()
+    expect(second).not.toBe(first)
+
+    // Only one should exist
+    const all = document.querySelectorAll('#skirmish-setup-overlay')
+    expect(all.length).toBe(1)
+
+    game.dispose()
+  })
+})
+
+describe('Ch26 Phase B — Load Game button stays disabled (TODO-26.B.3)', () => {
+  it('Load Game button in widget menu is disabled', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    game.showMainMenuWidget()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const loadBtn = document.getElementById('widget-btn-load') as HTMLButtonElement
+    expect(loadBtn).not.toBeNull()
+    expect(loadBtn.disabled).toBe(true)
+    expect(loadBtn.textContent).toContain('Coming Soon')
+
+    game.hideMainMenuWidget()
+    game.dispose()
+  })
+
+  it('Widget skirmish button opens setup modal, not coming soon', async () => {
+    mockModJson(200)
+    const canvas = createTestCanvas()
+    const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+
+    game.showMainMenuWidget()
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const skirmishBtn = document.getElementById('widget-btn-skirmish') as HTMLButtonElement
+    expect(skirmishBtn).not.toBeNull()
+    expect(skirmishBtn.disabled).toBe(false)
+
+    skirmishBtn.click()
+
+    // Alert should NOT be called
+    expect(alertSpy).not.toHaveBeenCalled()
+
+    // Setup modal should exist
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const setupOverlay = document.getElementById('skirmish-setup-overlay')
+    expect(setupOverlay).not.toBeNull()
+
+    alertSpy.mockRestore()
+    game.hideMainMenu()
+    game.dispose()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ch26 Phase B — _collectSkirmishMaps helper
+// ---------------------------------------------------------------------------
+
+describe('Ch26 Phase B — _collectSkirmishMaps', () => {
+  it('returns empty array when modData is null', async () => {
+    const game = new (Game as any)()
+    game.modData = null
+
+    const maps = game._collectSkirmishMaps()
+    expect(maps).toEqual([])
+  })
+
+  it('returns empty array when mapCache is not iterable', async () => {
+    const game = new (Game as any)()
+    game.modData = {
+      mapCache: {
+        // No Symbol.iterator
+        getMaps: () => [],
+      },
+    }
+
+    const maps = game._collectSkirmishMaps()
+    expect(maps).toEqual([])
+  })
+
+  it('filters to only Available + Lobby-visible maps', async () => {
+    const game = new (Game as any)()
+    game.modData = {
+      mapCache: {
+        [Symbol.iterator]: () => [
+          { uid: 'a', title: 'Available Lobby', status: 0, visibility: 1 },
+          { uid: 'b', title: 'Available Shellmap', status: 0, visibility: 2 },
+          { uid: 'c', title: 'Unavailable Lobby', status: 1, visibility: 1 },
+          { uid: 'd', title: 'Both Flags', status: 0, visibility: 3 }, // Lobby + Shellmap
+        ][Symbol.iterator](),
+      },
+    }
+
+    const maps = game._collectSkirmishMaps()
+    expect(maps).toHaveLength(2)
+    expect(maps[0].uid).toBe('a')
+    expect(maps[1].uid).toBe('d')
+    // 'b' excluded (no Lobby flag), 'c' excluded (not Available)
+  })
+
+  it('returns empty array when no maps match criteria', async () => {
+    const game = new (Game as any)()
+    game.modData = {
+      mapCache: {
+        [Symbol.iterator]: () => [
+          { uid: 'x', title: 'Only Shellmap', status: 0, visibility: 2 },
+          { uid: 'y', title: 'Not Available', status: 1, visibility: 1 },
+        ][Symbol.iterator](),
+      },
+    }
+
+    const maps = game._collectSkirmishMaps()
+    expect(maps).toEqual([])
+  })
+
+  it('uses uid as title fallback when title is missing', async () => {
+    const game = new (Game as any)()
+    game.modData = {
+      mapCache: {
+        [Symbol.iterator]: () => [
+          { uid: 'map-no-title', status: 0, visibility: 1 },
+          // No title property
+        ][Symbol.iterator](),
+      },
+    }
+
+    const maps = game._collectSkirmishMaps()
+    expect(maps).toHaveLength(1)
+    expect(maps[0].title).toBe('map-no-title') // Fallback to uid
   })
 })
