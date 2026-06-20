@@ -1164,19 +1164,38 @@ export class MixFileRuntime implements IReadOnlyPackage {
     // 1. Extract RSA-encrypted Blowfish keyblock at offset 4
     const keyblockSrc = new Uint8Array(data, OPENRA_KEYBLOCK_OFFSET, OPENRA_KEYBLOCK_SIZE)
 
-    // 2. RSA-decrypt the Blowfish key
-    // Use BlowfishKeyProvider (exact C# port) instead of BigInt-based
-    // _rsaDecryptKey. The BigInt approach has subtle differences in
-    // modular exponentiation that produce wrong keys for some inputs
-    // (e.g., hires1.mix, lores1.mix).
-    const blowfishKey = new BlowfishKeyProvider().decryptKey(keyblockSrc)
+    // 2. RSA-decrypt the Blowfish key — try both methods.
+    // BigInt (JS built-in **) works for most files. BlowfishKeyProvider
+    // (exact C# port) may handle edge cases. Some files (e.g., expand2.mix)
+    // only work with BigInt; others (e.g., hires1.mix) fail with both
+    // (likely require a different RSA key). We try BigInt first, then
+    // BlowfishKeyProvider as a fallback.
+    let blowfishKey: Uint8Array | null = null
+    let pkgEntries: PackageEntry[] | null = null
+    let headerByteLength = 0
 
-    // 3. Create Blowfish cipher
-    const fish = new Blowfish(blowfishKey)
+    for (const candidateKey of [
+      MixFileRuntime._rsaDecryptKey(keyblockSrc),
+      new BlowfishKeyProvider().decryptKey(keyblockSrc),
+    ]) {
+      try {
+        const fish = new Blowfish(candidateKey)
+        const result = MixFileRuntime._decryptHeaderOpenRA(data, fish)
+        pkgEntries = result.entries
+        headerByteLength = result.headerByteLength
+        blowfishKey = candidateKey
+        break // Success — use this key
+      } catch (_err) {
+        // This key produced garbage; try the next one
+      }
+    }
 
-    // 4. Decrypt header at offset 84
-    const { entries: pkgEntries, headerByteLength } =
-      MixFileRuntime._decryptHeaderOpenRA(data, fish)
+    if (!blowfishKey || !pkgEntries) {
+      throw new Error(
+        `MixFileRuntime._parseEncryptedOpenRA: all RSA decryption methods ` +
+        `failed for "${name}". The RSA key may be incorrect for this file.`,
+      )
+    }
 
     // 5. dataStart is after the encrypted header
     const dataStart = OPENRA_HEADER_OFFSET + headerByteLength
@@ -1299,14 +1318,30 @@ export class MixFileRuntime implements IReadOnlyPackage {
     dv.getUint16(0, true) // flags = 0x0002 (already verified)
     dv.getUint32(2, true) // dataSize (not used for offset calculation)
 
-    // Extract and decrypt the Blowfish key
+    // Extract and decrypt the Blowfish key — try-both fallback
     const keyblockSrc = new Uint8Array(data, 4, OPENRA_KEYBLOCK_SIZE)
-    const blowfishKey = new BlowfishKeyProvider().decryptKey(keyblockSrc)
-    const fish = new Blowfish(blowfishKey)
+    let pkgEntries: PackageEntry[] | null = null
+    let headerByteLength = 0
 
-    // Decrypt header — same layout as OpenRA format (header at offset 84)
-    const { entries: pkgEntries, headerByteLength } =
-      MixFileRuntime._decryptHeaderOpenRA(data, fish)
+    for (const candidateKey of [
+      MixFileRuntime._rsaDecryptKey(keyblockSrc),
+      new BlowfishKeyProvider().decryptKey(keyblockSrc),
+    ]) {
+      try {
+        const fish = new Blowfish(candidateKey)
+        const result = MixFileRuntime._decryptHeaderOpenRA(data, fish)
+        pkgEntries = result.entries
+        headerByteLength = result.headerByteLength
+        break
+      } catch (_err) { /* try next key */ }
+    }
+
+    if (!pkgEntries) {
+      throw new Error(
+        `MixFileRuntime._parseEncryptedRsaKey: all RSA decryption methods ` +
+        `failed for "${name}".`,
+      )
+    }
 
     const dataStart = OPENRA_HEADER_OFFSET + headerByteLength
     const entries = MixFileRuntime._buildEntryMap(pkgEntries, dataStart, mixDb)
