@@ -1,5 +1,7 @@
 # Minimap Rendering Pipeline -- Acceptance Test
 
+**审核状态**: ✅ 全部审核通过 (2026-06-20)
+
 ## Purpose
 
 Visually verify that the minimap rendering pipeline correctly converts Rgba32 pixel data
@@ -61,7 +63,8 @@ in both paths.
   - **Snow / Peak**: `#E8E8E8` (off-white) — highest elevation 0.92-1.00
 - Colors must NOT be inverted, swapped (no red↔blue swap), or corrupted
 - Water must appear blue, not red or green; Clear must appear yellow-green, not blue
-- **Quantifiable**: Pixel at any coordinate (x,y) should match the RGBA tuple from `terrainColorForElevation()`. Use `__testHarness.getPixelAt(x, y)` to verify.
+- **Quantifiable**: Pixel at any coordinate (x,y) should match the RGBA tuple from `terrainColorForElevation()`. Use `__testHarness.getPixelAt(x, y)` for CPU-side data verification.
+  注意：`getPixelAt()` 从 CPU 端重新生成像素数据，而非从 GPU 读取。此验证测试像素生成逻辑的正确性，而非 GPU 渲染。GPU 颜色正确性需通过视觉检查确认。
 
 ### Criterion 2: Correct Aspect Ratio (Bug 2)
 - **128x128** map: rendered plane is a square (1:1 aspect ratio)

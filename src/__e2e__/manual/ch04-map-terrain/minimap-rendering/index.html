@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- OpenRA 对照: MapPreview.generatePreviewPixels() -> Rgba32 byte order -> RawTexture pipeline -->
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -130,6 +131,7 @@
         <div class="stat-row"><span class="label">Pixel Format:</span><span class="value" id="stat-format">Rgba32 (4 B/px)</span></div>
         <div class="stat-row"><span class="label">Data Length:</span><span class="value" id="stat-length">-</span></div>
         <div class="stat-row"><span class="label">Bytes / Pixel:</span><span class="value">4 (R,G,B,A)</span></div>
+        <!-- 注: SheetType/Atlas Size 指完整 SheetBuilder 管线 (当前 Scheme B 不直接使用) -->
         <div class="stat-row"><span class="label">SheetType:</span><span class="value">BGRA (value=4)</span></div>
         <div class="stat-row"><span class="label">Atlas Size:</span><span class="value">512x512</span></div>
         <div class="stat-row"><span class="label">Gen Time:</span><span class="value" id="stat-time">-</span></div>

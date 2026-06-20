@@ -259,12 +259,6 @@ function applyTextureToPlane(
   texWidth: number,
   texHeight: number,
 ): RawTexture {
-  // Dispose old texture
-  if (currentTexture) {
-    currentTexture.dispose()
-    currentTexture = null
-  }
-
   // Create RawTexture from RGBA pixel data
   // RawTexture.CreateRGBATexture expects RGBA byte order,
   // which matches our generateMinimapPixels output format.
@@ -287,6 +281,11 @@ function applyTextureToPlane(
     mat.wireframe = true
   }
 
+  // Dispose any existing material on the plane (e.g., CreateGround's default material
+  // on the first cycle, or leaked material from prior cycles) before replacing.
+  // The old material's textures are disposed via Material.dispose() chain (Babylon.js
+  // default: forceDisposeTextures=true), which handles the previous cycle's RawTexture.
+  plane.material?.dispose()
   plane.material = mat
 
   currentTexture = texture
@@ -314,8 +313,10 @@ function generateAndRender(width: number, height: number, seed: number): void {
   const { pixels, terrainMap, width: w, height: h } = generateMinimapPixels(width, height, seed)
   currentTerrainMap = terrainMap
 
-  // Dispose old plane
+  // Dispose old plane — material first (which disposes textures via Material.dispose() chain),
+  // then the mesh geometry. This avoids leaking GPU resources from previous cycles.
   if (currentPlane) {
+    currentPlane.material?.dispose()
     currentPlane.dispose()
     currentPlane = null
   }
