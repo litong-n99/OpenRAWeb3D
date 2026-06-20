@@ -907,15 +907,16 @@ describe('AnimationStub', () => {
       const firstUvCall = uvCalls[0]!
       const uvData = firstUvCall[1] as Float32Array
 
-      // Frame 0: uMin=0, vMin=0, uMax=0.25, vMax=0.5
-      expect(uvData[0]).toBeCloseTo(0)     // uMin
-      expect(uvData[1]).toBeCloseTo(0)     // vMin
-      expect(uvData[2]).toBeCloseTo(0.25)  // uMax
-      expect(uvData[3]).toBeCloseTo(0)     // vMin
-      expect(uvData[4]).toBeCloseTo(0.25)  // uMax
-      expect(uvData[5]).toBeCloseTo(0.5)   // vMax
-      expect(uvData[6]).toBeCloseTo(0)     // uMin
-      expect(uvData[7]).toBeCloseTo(0.5)   // vMax
+      // Frame 0: vertex UVs are full quad [0,0,1,0,1,1,0,1]
+      // because the fragment shader remaps via uFrameUV uniform
+      expect(uvData[0]).toBeCloseTo(0)     // uMin = 0 (full quad)
+      expect(uvData[1]).toBeCloseTo(0)     // vMin = 0
+      expect(uvData[2]).toBeCloseTo(1)     // uMax = 1
+      expect(uvData[3]).toBeCloseTo(0)     // vMin = 0
+      expect(uvData[4]).toBeCloseTo(1)     // uMax = 1
+      expect(uvData[5]).toBeCloseTo(1)     // vMax = 1
+      expect(uvData[6]).toBeCloseTo(0)     // uMin = 0
+      expect(uvData[7]).toBeCloseTo(1)     // vMax = 1
     })
 
     it('uses correct UV rect for mid-sequence frame', () => {
@@ -942,11 +943,12 @@ describe('AnimationStub', () => {
       const lastUvCall = uvCalls[uvCalls.length - 1]!
       const uvData = lastUvCall[1] as Float32Array
 
-      // Frame 2: uMin=0.4, uMax=0.6
-      expect(uvData[0]).toBeCloseTo(0.4)
-      expect(uvData[2]).toBeCloseTo(0.6)
-      expect(uvData[4]).toBeCloseTo(0.6)
-      expect(uvData[6]).toBeCloseTo(0.4)
+      // Frame 2: vertex UVs are still full quad [0,0,1,0,1,1,0,1]
+      // because the fragment shader handles frame selection via uFrameUV
+      expect(uvData[0]).toBeCloseTo(0)
+      expect(uvData[2]).toBeCloseTo(1)
+      expect(uvData[4]).toBeCloseTo(1)
+      expect(uvData[6]).toBeCloseTo(0)
     })
 
     it('falls back to evenly-spaced strip when no frameUVs provided', () => {
@@ -961,9 +963,10 @@ describe('AnimationStub', () => {
       const firstUvCall = uvCalls[0]!
       const uvData = firstUvCall[1] as Float32Array
 
-      // Frame 0 with evenly-spaced strip: u0=0/4=0, u1=1/4=0.25
+      // Vertex UVs are full quad [0,1] — fallback strip mapping is done
+      // by the shader uniform, not vertex UVs
       expect(uvData[0]).toBeCloseTo(0)
-      expect(uvData[2]).toBeCloseTo(0.25)
+      expect(uvData[2]).toBeCloseTo(1)
     })
 
     it('updates UVs when frame changes via tick (with frameUVs)', () => {
@@ -1484,17 +1487,17 @@ describe('AnimationStub', () => {
       const uvCalls = calls.filter((c: unknown[]) => c[0] === 'uv')
       expect(uvCalls.length).toBeGreaterThanOrEqual(1)
 
-      // The first UV call should have frame 0 UVs:
-      //   [0/4, 0, 1/4, 0, 1/4, 1, 0/4, 1] = [0, 0, 0.25, 0, 0.25, 1, 0, 1]
+      // Vertex UVs are full quad [0,0, 1,0, 1,1, 0,1] regardless of frame.
+      // The fragment shader handles frame sub-region via uFrameUV uniform.
       const uvData = uvCalls[0]![1] as Float32Array
-      expect(uvData[0]).toBeCloseTo(0)      // u0
-      expect(uvData[1]).toBeCloseTo(0)      // v0
-      expect(uvData[2]).toBeCloseTo(0.25)   // u1
-      expect(uvData[3]).toBeCloseTo(0)      // v0
-      expect(uvData[4]).toBeCloseTo(0.25)   // u1
-      expect(uvData[5]).toBeCloseTo(1)      // v1
-      expect(uvData[6]).toBeCloseTo(0)      // u0
-      expect(uvData[7]).toBeCloseTo(1)      // v1
+      expect(uvData[0]).toBeCloseTo(0)      // u0 = 0 (full quad)
+      expect(uvData[1]).toBeCloseTo(0)      // v0 = 0
+      expect(uvData[2]).toBeCloseTo(1)      // u1 = 1
+      expect(uvData[3]).toBeCloseTo(0)      // v0 = 0
+      expect(uvData[4]).toBeCloseTo(1)      // u1 = 1
+      expect(uvData[5]).toBeCloseTo(1)      // v1 = 1
+      expect(uvData[6]).toBeCloseTo(0)      // u0 = 0
+      expect(uvData[7]).toBeCloseTo(1)      // v1 = 1
     })
 
     it('computes correct UVs for mid-sequence frame', () => {
@@ -1513,11 +1516,12 @@ describe('AnimationStub', () => {
       const lastUvCall = uvCalls[uvCalls.length - 1]!
       const uvData = lastUvCall[1] as Float32Array
 
-      // Frame 2: u0=2/4=0.5, u1=3/4=0.75
-      expect(uvData[0]).toBeCloseTo(0.5)
-      expect(uvData[2]).toBeCloseTo(0.75)
-      expect(uvData[4]).toBeCloseTo(0.75)
-      expect(uvData[6]).toBeCloseTo(0.5)
+      // Frame 2: vertex UVs are still full quad [0,1] — frame selection
+      // is handled by the fragment shader's uFrameUV uniform, not vertex UVs
+      expect(uvData[0]).toBeCloseTo(0)
+      expect(uvData[2]).toBeCloseTo(1)
+      expect(uvData[4]).toBeCloseTo(1)
+      expect(uvData[6]).toBeCloseTo(0)
     })
   })
 

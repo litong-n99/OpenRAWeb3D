@@ -735,58 +735,40 @@ export class AnimationStub {
 
   /** Update UV coordinates on existing meshes to show the current frame.
    *
-   * Ch24 Phase A: When _frameUVs is available, uses explicit UV rects
-   * from the Sheet/Sprite infrastructure. Otherwise falls back to the
-   * evenly-spaced horizontal strip assumption (with a console warning).
+   * Ch24 Phase A: Vertex UVs are ALWAYS the full quad [0,0,1,0,1,1,0,1].
+   * The fragment shader remaps to the correct frame sub-region via the
+   * uFrameUV uniform. This avoids double-mapping: if vertex UVs were set
+   * to the frame rect AND the fragment shader did mix() within that rect,
+   * the result would be a sub-sub-rect (wrong).
    *
-   * Also updates the ShaderMaterial uFrameUV uniform when applicable.
+   * The uFrameUV uniform is always updated to match the current frame,
+   * whether from explicit frameUVs or the evenly-spaced strip fallback.
    */
   private _updateUVs(): void {
     const frameCount = this._length
     if (frameCount <= 0) return
 
-    const i = this._frame
-    let u0: number, v0: number, u1: number, v1: number
-
-    if (this._frameUVs && i < this._frameUVs.length) {
-      // Ch24 Phase A: Use explicit UV rect from Sheet/Sprite data
-      const rect = this._frameUVs[i]
-      u0 = rect[0] ?? 0
-      v0 = rect[1] ?? 0
-      u1 = rect[2] ?? 1
-      v1 = rect[3] ?? 1
-    } else {
-      // Fallback: evenly-spaced horizontal strip
-      // NOTE: This is the pre-Phase A behavior. Without frameUVs,
-      // the animation assumes all frames are equally spaced in a
-      // horizontal strip. This works for simple debug layouts but
-      // is incorrect for real sprite sheets.
-      if (!this._frameUVs) {
-        // Warn once — use a static flag to avoid spam
-        if (!AnimationStub._fallbackWarningEmitted) {
-          AnimationStub._fallbackWarningEmitted = true
-          console.warn(
-            `AnimationStub("${this.image}"): using fallback strip UVs, ` +
-            `no frameUVs provided. Call setSheet() or provide frameUVs ` +
-            `in the constructor for correct sprite rendering.`,
-          )
-        }
+    // Warn once if no frameUVs provided (fallback strip behavior)
+    if (!this._frameUVs) {
+      if (!AnimationStub._fallbackWarningEmitted) {
+        AnimationStub._fallbackWarningEmitted = true
+        console.warn(
+          `AnimationStub("${this.image}"): using fallback strip UVs, ` +
+          `no frameUVs provided. Call setSheet() or provide frameUVs ` +
+          `in the constructor for correct sprite rendering.`,
+        )
       }
-
-      u0 = i / frameCount
-      u1 = (i + 1) / frameCount
-      v0 = 0
-      v1 = 1
     }
 
     // Plane vertex UV order (4 vertices, counter-clockwise from bottom-left):
-    //   [u0, v0,  u1, v0,  u1, v1,  u0, v1]
+    // Full quad [0,0, 1,0, 1,1, 0,1] — the fragment shader remaps to the
+    // correct frame sub-region via the uFrameUV uniform.
     // PERF: Reuse pre-allocated Float32Array to avoid per-frame allocation
     const uvs = this._uvArray
-    uvs[0] = u0; uvs[1] = v0
-    uvs[2] = u1; uvs[3] = v0
-    uvs[4] = u1; uvs[5] = v1
-    uvs[6] = u0; uvs[7] = v1
+    uvs[0] = 0; uvs[1] = 0
+    uvs[2] = 1; uvs[3] = 0
+    uvs[4] = 1; uvs[5] = 1
+    uvs[6] = 0; uvs[7] = 1
 
     if (this._mesh) {
       this._mesh.updateVerticesData('uv', uvs, false, false)
