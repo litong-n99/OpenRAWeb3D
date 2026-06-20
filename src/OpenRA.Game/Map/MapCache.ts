@@ -378,6 +378,9 @@ export class MapCache implements Iterable<MapPreview> {
     } catch (e) {
       Log.write('mapcache', LogLevel.WARN, `Failed to load map: ${map}`)
       Log.write('mapcache', LogLevel.WARN, `Details: ${String(e)}`)
+    } finally {
+      // 确保在加载成功或失败时都释放打开的包
+      mapPackage?.dispose()
     }
   }
 
@@ -396,6 +399,34 @@ export class MapCache implements Iterable<MapPreview> {
   private computeUid(_package_: IReadOnlyPackage): string {
     // 委托给 MapPreview.computeUid 以获得一致的实现
     return MapPreview.computeUid(_package_)
+  }
+
+  // -----------------------------------------------------------------------
+  // Package type guard
+  // -----------------------------------------------------------------------
+
+  /**
+   * 将只读包安全地转换为 IReadWritePackage。
+   *
+   * 在信任向下转型之前，通过运行时类型守卫检查 update() 和 delete() 方法
+   * 是否存在。如果缺少任一方法，返回 null 以便调用方回退到模拟包。
+   *
+   * OpenRA 对照: implicit cast in EnumerateMapDirPackages()
+   *
+   * @param raw — 来自 openPackage() 的原始包或 null
+   * @param _resolvedName — 解析后的包名（保留供将来使用）
+   * @returns IReadWritePackage 或 null（如果不满足运行时契约）
+   */
+  private tryAsReadWritePackage(
+    raw: IReadOnlyPackage | null | undefined,
+  ): IReadWritePackage | null {
+    if (!raw) return null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec = raw as unknown as Record<string, unknown>
+    if (typeof rec.update === 'function' && typeof rec.delete === 'function') {
+      return raw as IReadWritePackage
+    }
+    return null
   }
 
   // -----------------------------------------------------------------------
@@ -421,19 +452,18 @@ export class MapCache implements Iterable<MapPreview> {
       const resolvedName = optional ? name.slice(1) : name
 
       // 打开包：优先使用真实文件系统；回退到空模拟可写包
-      // NOTE: 真实文件系统返回的包需要转换为 IReadWritePackage；
-      // 对于不支持写入的只读包，我们回退到模拟包
-      const pkg: IReadWritePackage =
-        (this._modFiles?.openPackage(resolvedName) as IReadWritePackage | null) ?? {
-          name: resolvedName,
-          contents: [],
-          contains: () => false,
-          open: async () => null,
-          openPackage: () => null,
-          update: () => {},
-          delete: () => {},
-          dispose: () => {},
-        }
+      // 运行时类型守卫确保返回对象真正实现 update() 和 delete()
+      const raw = this._modFiles?.openPackage(resolvedName)
+      const pkg: IReadWritePackage = this.tryAsReadWritePackage(raw) ?? {
+        name: resolvedName,
+        contents: [],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => null,
+        update: () => {},
+        delete: () => {},
+        dispose: () => {},
+      }
       yield pkg
     }
   }
@@ -463,9 +493,12 @@ export class MapCache implements Iterable<MapPreview> {
   ): Generator<IReadWritePackage> {
     for (const mapDirPackage of this.enumerateMapDirPackages(classification)) {
       for (const map of mapDirPackage.contents) {
-        const mapPackage = mapDirPackage.openPackage?.(map)
-        if (mapPackage) {
-          yield mapPackage as IReadWritePackage
+        const raw = mapDirPackage.openPackage?.(map)
+        // 使用运行时类型守卫确保包支持 update() 和 delete()；
+        // 只读包或无法满足 IReadWritePackage 契约的包被跳过
+        const readWrite = this.tryAsReadWritePackage(raw ?? null)
+        if (readWrite) {
+          yield readWrite
         }
       }
     }

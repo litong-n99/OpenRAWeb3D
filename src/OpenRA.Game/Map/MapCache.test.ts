@@ -14,7 +14,7 @@ import {
   type ModDataStub,
 } from './MapCache.js'
 import { MapPreview, MapStatus, MapClassification } from './MapPreview.js'
-import type { IReadOnlyPackage } from '../FileSystem/IReadOnlyPackage.js'
+import type { IReadOnlyPackage, IReadWritePackage } from '../FileSystem/IReadOnlyPackage.js'
 import type { MersenneTwisterStub } from '../Traits/TraitsInterfaces.js'
 
 // ---------------------------------------------------------------------------
@@ -352,6 +352,262 @@ describe('MapCache', () => {
 
       const packages = Array.from(cache.enumerateMapDirPackages(3 as MapClassification))
       expect(packages.length).toBe(2)
+    })
+
+    it('uses real modFiles package when openPackage returns object with update and delete', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      // 创建真实可写包——同时实现 IReadOnlyPackage 和 IReadWritePackage
+      const realPkg: IReadWritePackage = {
+        name: 'maps/system',
+        contents: ['map1.oramap', 'map2.oramap'],
+        contains: (f: string) => f === 'map1.oramap',
+        open: async () => null,
+        openPackage: () => null,
+        update: vi.fn(),
+        delete: vi.fn(),
+        dispose: vi.fn(),
+      }
+
+      const openPackageSpy = vi.fn().mockReturnValue(realPkg)
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: ['maps/system'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: openPackageSpy,
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+
+      const packages = Array.from(cache.enumerateMapDirPackages(MapClassification.System))
+      expect(packages.length).toBe(1)
+      // 应返回真实的包对象（通过类型守卫）
+      expect(packages[0]).toBe(realPkg)
+      expect(openPackageSpy).toHaveBeenCalledWith('maps/system')
+    })
+
+    it('falls back to mock when openPackage returns object without update', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      // 只读包——缺少 update() 方法
+      const readOnlyPkg: IReadOnlyPackage = {
+        name: 'maps/system',
+        contents: ['map1.oramap'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => null,
+        dispose: () => {},
+      }
+
+      const openPackageSpy = vi.fn().mockReturnValue(readOnlyPkg)
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: ['maps/system'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: openPackageSpy,
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+
+      const packages = Array.from(cache.enumerateMapDirPackages(MapClassification.System))
+      expect(packages.length).toBe(1)
+      // 应回退到模拟包（包含 update/delete 存根）
+      expect(packages[0]).not.toBe(readOnlyPkg)
+      expect(packages[0]!.name).toBe('maps/system')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(typeof (packages[0]! as unknown as Record<string, unknown>).update).toBe('function')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(typeof (packages[0]! as unknown as Record<string, unknown>).delete).toBe('function')
+    })
+
+    it('falls back to mock when openPackage returns object with update but no delete', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      // 部分可写包——有 update() 但缺少 delete() 方法
+      const partialPkg = {
+        name: 'maps/system',
+        contents: ['map1.oramap'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => null,
+        update: () => {},
+        // 缺少 delete
+        dispose: () => {},
+      } as unknown as IReadOnlyPackage
+
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: ['maps/system'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => partialPkg,
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+
+      const packages = Array.from(cache.enumerateMapDirPackages(MapClassification.System))
+      expect(packages.length).toBe(1)
+      // 应回退到模拟包，因为缺少 delete
+      expect(packages[0]).not.toBe(partialPkg)
+    })
+
+    it('falls back to mock when openPackage returns null', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: ['maps/system'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => null, // 返回 null
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+
+      const packages = Array.from(cache.enumerateMapDirPackages(MapClassification.System))
+      expect(packages.length).toBe(1)
+      // 应创建模拟包
+      expect(packages[0]!.name).toBe('maps/system')
+      expect(packages[0]!.contents).toEqual([])
+    })
+
+    it('yields mock packages when no modFiles provided', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+      const cache = new MapCache(manifest) // 无 modFiles
+
+      const packages = Array.from(cache.enumerateMapDirPackages(MapClassification.System))
+      expect(packages.length).toBe(1)
+      expect(packages[0]!.name).toBe('maps/system')
+      // 所有方法都应存在（空存根）
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(typeof (packages[0]! as unknown as Record<string, unknown>).update).toBe('function')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(typeof (packages[0]! as unknown as Record<string, unknown>).delete).toBe('function')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(typeof (packages[0]! as unknown as Record<string, unknown>).dispose).toBe('function')
+    })
+  })
+
+  describe('enumerateMapPackagesWithoutCaching', () => {
+    it('yields packages that pass the type guard', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      // 创建真实可写包——所有方法都存在
+      const innerPkg: IReadWritePackage = {
+        name: 'map1.oramap',
+        contents: ['map.yaml', 'map.bin'],
+        contains: () => true,
+        open: async () => null,
+        openPackage: () => null,
+        update: vi.fn(),
+        delete: vi.fn(),
+        dispose: vi.fn(),
+      }
+
+      const dirPkg: IReadWritePackage = {
+        name: 'maps/system',
+        contents: ['map1.oramap'],
+        contains: () => true,
+        open: async () => null,
+        openPackage: () => innerPkg,
+        update: vi.fn(),
+        delete: vi.fn(),
+        dispose: vi.fn(),
+      }
+
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: ['maps/system'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => dirPkg,
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+
+      const packages = Array.from(cache.enumerateMapPackagesWithoutCaching(MapClassification.System))
+      expect(packages.length).toBe(1)
+      expect(packages[0]).toBe(innerPkg)
+    })
+
+    it('skips sub-packages that fail the type guard', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+
+      // 只读子包——缺少 update/delete
+      const readOnlyInner: IReadOnlyPackage = {
+        name: 'map1.oramap',
+        contents: ['map.yaml'],
+        contains: () => true,
+        open: async () => null,
+        openPackage: () => null,
+        dispose: () => {},
+      }
+
+      const dirPkg: IReadWritePackage = {
+        name: 'maps/system',
+        contents: ['map1.oramap'],
+        contains: () => true,
+        open: async () => null,
+        openPackage: () => readOnlyInner as IReadWritePackage,
+        update: vi.fn(),
+        delete: vi.fn(),
+        dispose: vi.fn(),
+      }
+
+      const modFiles: IReadOnlyPackage = {
+        name: '/mods/ra',
+        contents: ['maps/system'],
+        contains: () => false,
+        open: async () => null,
+        openPackage: () => dirPkg,
+        dispose: () => {},
+      }
+
+      const cache = new MapCache(manifest, modFiles)
+
+      const packages = Array.from(cache.enumerateMapPackagesWithoutCaching(MapClassification.System))
+      // 只读子包应被 tryAsReadWritePackage 跳过
+      expect(packages.length).toBe(0)
+    })
+
+    it('yields nothing when mock packages have no contents', () => {
+      const mapFolders = new Map([
+        ['maps/system', 'System'],
+      ])
+      const manifest = createMockManifest(mapFolders)
+      const cache = new MapCache(manifest)
+
+      const packages = Array.from(cache.enumerateMapPackagesWithoutCaching(MapClassification.System))
+      // 模拟包 contents 为空，因此没有内部包可枚举
+      expect(packages.length).toBe(0)
     })
   })
 
