@@ -3,6 +3,10 @@
  *
  * Tests frame advancement logic, callback timing, looping, and
  * Babylon.js mesh-backed rendering (via mocked @babylonjs/core).
+ *
+ * Ch24 Phase A: Added tests for ShaderMaterial assignment, sheet texture
+ * integration, explicit frameUVs, renderingGroupId, material disposal,
+ * magenta fallback, setSheet/setFrameUVs, and complete lifecycle.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -13,6 +17,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const meshMocks: any[] = []
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const shaderMaterialMocks: any[] = []
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const standardMaterialMocks: any[] = []
 
 function makeMeshMock(name: string): Record<string, unknown> {
   const m = {
@@ -24,6 +32,8 @@ function makeMeshMock(name: string): Record<string, unknown> {
     scaling: { x: 1, y: 1, z: 1 },
     isVisible: true,
     isPickable: true,
+    renderingGroupId: 0,
+    setEnabled: vi.fn(),
     updateVerticesData: vi.fn(),
     getVerticesData: vi.fn(() => new Float32Array(24)),
     _geometry: {
@@ -35,6 +45,34 @@ function makeMeshMock(name: string): Record<string, unknown> {
   return m
 }
 
+function makeShaderMaterialMock(name: string): Record<string, unknown> {
+  const m = {
+    name,
+    setVector4: vi.fn(),
+    setTexture: vi.fn(),
+    setFloat: vi.fn(),
+    setVector3: vi.fn(),
+    dispose: vi.fn(),
+    alphaMode: 0,
+    backFaceCulling: true,
+    needAlphaBlending: false,
+  }
+  shaderMaterialMocks.push(m)
+  return m
+}
+
+function makeStandardMaterialMock(name: string): Record<string, unknown> {
+  const m = {
+    name,
+    dispose: vi.fn(),
+    alphaMode: 0,
+    backFaceCulling: true,
+    emissiveColor: null as unknown,
+  }
+  standardMaterialMocks.push(m)
+  return m
+}
+
 vi.mock('@babylonjs/core', () => ({
   MeshBuilder: {
     CreatePlane: vi.fn((name: string, _options?: unknown) => makeMeshMock(name)),
@@ -42,7 +80,39 @@ vi.mock('@babylonjs/core', () => ({
   Vector3: vi.fn(function (this: Record<string, unknown>, x = 0, y = 0, z = 0) {
     this.x = x; this.y = y; this.z = z
   }),
-  StandardMaterial: vi.fn(),
+  Vector4: vi.fn(function (this: Record<string, unknown>, x = 0, y = 0, z = 0, w = 0) {
+    this.x = x; this.y = y; this.z = z; this.w = w
+  }),
+  ShaderMaterial: vi.fn(function (
+    this: Record<string, unknown>,
+    name: string,
+    _scene: unknown,
+    _shaderPath: unknown,
+    _options?: unknown,
+  ) {
+    const mock = makeShaderMaterialMock(name)
+    Object.assign(this, mock)
+  }),
+  StandardMaterial: vi.fn(function (
+    this: Record<string, unknown>,
+    name: string,
+    _scene: unknown,
+  ) {
+    const mock = makeStandardMaterialMock(name)
+    Object.assign(this, mock)
+  }),
+  Color3: vi.fn(function (this: Record<string, unknown>, r = 0, g = 0, b = 0) {
+    this.r = r; this.g = g; this.b = b
+  }),
+  Color4: vi.fn(function (this: Record<string, unknown>, r = 0, g = 0, b = 0, a = 0) {
+    this.r = r; this.g = g; this.b = b; this.a = a
+  }),
+  Constants: {
+    ALPHA_PREMULTIPLIED: 2,
+    ALPHA_COMBINE: 0,
+    ALPHA_ADD: 1,
+    ALPHA_DISABLE: 3,
+  },
   Texture: vi.fn(),
   RawTexture: {
     NEAREST_SAMPLINGMODE: 1,
@@ -51,8 +121,6 @@ vi.mock('@babylonjs/core', () => ({
   },
   Engine: vi.fn(),
   Scene: vi.fn(),
-  Color3: vi.fn(),
-  Color4: vi.fn(),
 }))
 
 // ---------------------------------------------------------------------------
@@ -62,7 +130,15 @@ vi.mock('@babylonjs/core', () => ({
 
 import { AnimationStub } from './AnimationStub.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
-import { MeshBuilder } from '@babylonjs/core'
+import {
+  MeshBuilder,
+  ShaderMaterial,
+  StandardMaterial,
+  Color3,
+  Constants,
+  type Scene,
+} from '@babylonjs/core'
+import type { Sheet } from '../../OpenRA.Game/Graphics/Sheet.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -72,16 +148,47 @@ function makePos(x = 0, y = 0, z = 0): WPos {
   return new WPos(x, y, z)
 }
 
+function makeFrameUVs(count: number): Float32Array[] {
+  const uvs: Float32Array[] = []
+  for (let i = 0; i < count; i++) {
+    const u0 = i / count
+    const u1 = (i + 1) / count
+    uvs.push(new Float32Array([u0, 0, u1, 1]))
+  }
+  return uvs
+}
+
+function makeMockScene(): Scene {
+  return {} as Scene
+}
+
+function makeMockSheet(): Sheet {
+  return {
+    size: { width: 256, height: 256 },
+    type: 4, // BGRA
+    getTexture: vi.fn(() => ({})),
+    dispose: vi.fn(),
+  } as unknown as Sheet
+}
+
+// ---------------------------------------------------------------------------
+// Reset static state before each test
+// ---------------------------------------------------------------------------
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  meshMocks.length = 0
+  shaderMaterialMocks.length = 0
+  standardMaterialMocks.length = 0
+  // Reset the fallback warning flag so tests get consistent behavior
+  ;(AnimationStub as unknown as { _fallbackWarningEmitted: boolean })._fallbackWarningEmitted = false
+})
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('AnimationStub', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    meshMocks.length = 0
-  })
-
   // -----------------------------------------------------------------------
   // Construction
   // -----------------------------------------------------------------------
@@ -121,6 +228,34 @@ describe('AnimationStub', () => {
       const anim = new AnimationStub(null, 'img')
       expect(anim.mesh).toBeNull()
       expect(anim.uiMesh).toBeNull()
+    })
+
+    // Ch24 Phase A: constructor with optional params
+    it('accepts optional Sheet parameter', () => {
+      const sheet = makeMockSheet()
+      const anim = new AnimationStub(null, 'img', 12, 1, sheet)
+      expect(anim.material).toBeNull() // not created until render
+    })
+
+    it('accepts optional frameUVs parameter', () => {
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, undefined, uvs)
+      expect(anim.length).toBe(4)
+    })
+
+    it('accepts optional Scene parameter', () => {
+      const scene = makeMockScene()
+      const anim = new AnimationStub(null, 'img', 12, 1, undefined, undefined, scene)
+      expect(anim.material).toBeNull() // not created until render
+    })
+
+    it('accepts all optional parameters', () => {
+      const sheet = makeMockSheet()
+      const uvs = makeFrameUVs(4)
+      const scene = makeMockScene()
+      const anim = new AnimationStub(null, 'img', 4, 2, sheet, uvs, scene)
+      expect(anim.length).toBe(4)
+      expect(anim.tickPerFrame).toBe(2)
     })
   })
 
@@ -427,6 +562,7 @@ describe('AnimationStub', () => {
       expect(MeshBuilder.CreatePlane).toHaveBeenCalledWith(
         'anim-ws-testImg',
         { width: 1, height: 1 },
+        undefined,
       )
       expect(anim.mesh).not.toBeNull()
     })
@@ -465,6 +601,22 @@ describe('AnimationStub', () => {
 
       const mesh = anim.mesh!
       expect(mesh.updateVerticesData).toHaveBeenCalled()
+    })
+
+    // Ch24 Phase A: hides mesh when not started
+    it('calls setEnabled(false) on mesh when not started (if mesh exists)', () => {
+      const anim = new AnimationStub(null, 'img', 5)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+      const mesh = anim.mesh!
+      const setEnabledCallsBefore = (mesh.setEnabled as ReturnType<typeof vi.fn>).mock.calls.length
+
+      // Simulate animation being stopped (hack: set _started to false)
+      ;(anim as unknown as { _started: boolean })._started = false
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const setEnabledCallsAfter = (mesh.setEnabled as ReturnType<typeof vi.fn>).mock.calls.length
+      expect(setEnabledCallsAfter).toBeGreaterThan(setEnabledCallsBefore)
     })
   })
 
@@ -510,6 +662,7 @@ describe('AnimationStub', () => {
       expect(MeshBuilder.CreatePlane).toHaveBeenCalledWith(
         'anim-ui-uiImg',
         { width: 1, height: 1 },
+        undefined,
       )
       expect(anim.uiMesh).not.toBeNull()
     })
@@ -558,6 +711,597 @@ describe('AnimationStub', () => {
       expect(anim.mesh).not.toBeNull()
       expect(anim.uiMesh).not.toBeNull()
       expect(anim.mesh).not.toBe(anim.uiMesh)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: Material assignment
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — material assignment', () => {
+    it('assigns ShaderMaterial to mesh when Sheet and Scene are provided', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mesh = anim.mesh!
+      expect(mesh.material).not.toBeNull()
+      expect(mesh.material).toBe(anim.material)
+      expect(ShaderMaterial).toHaveBeenCalled()
+    })
+
+    it('falls back to magenta StandardMaterial when no Sheet but Scene available', () => {
+      const scene = makeMockScene()
+      const anim = new AnimationStub(null, 'img', 4, 1, undefined, undefined, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mesh = anim.mesh!
+      expect(mesh.material).not.toBeNull()
+      expect(StandardMaterial).toHaveBeenCalled()
+      // Verify magenta emissive color (Color3(1, 0, 1))
+      expect(Color3).toHaveBeenCalledWith(1, 0, 1)
+    })
+
+    it('does not create material when no Scene provided', () => {
+      const sheet = makeMockSheet()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      expect(anim.material).toBeNull()
+    })
+
+    it('sets alphaMode to ALPHA_PREMULTIPLIED on ShaderMaterial', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mat = anim.material!
+      expect(mat.alphaMode).toBe(Constants.ALPHA_PREMULTIPLIED)
+    })
+
+    it('sets backFaceCulling to false on ShaderMaterial', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mat = anim.material!
+      expect(mat.backFaceCulling).toBe(false)
+    })
+
+    it('sets alphaMode on fallback StandardMaterial', () => {
+      const scene = makeMockScene()
+      const anim = new AnimationStub(null, 'img', 4, 1, undefined, undefined, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mat = anim.material!
+      expect(mat.alphaMode).toBe(Constants.ALPHA_PREMULTIPLIED)
+    })
+
+    it('material is created lazily (only on first render)', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      // Before render, material should be null
+      expect(anim.material).toBeNull()
+
+      // After render, material should exist
+      anim.render(makePos(0, 0, 0), 'p')
+      expect(anim.material).not.toBeNull()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: renderingGroupId
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — renderingGroupId', () => {
+    it('sets renderingGroupId = 1 (Actor) on world mesh', () => {
+      const anim = new AnimationStub(null, 'img', 5)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mesh = anim.mesh!
+      expect(mesh.renderingGroupId).toBe(1)
+    })
+
+    it('sets renderingGroupId = 1 (Actor) on UI mesh', () => {
+      const anim = new AnimationStub(null, 'img', 5)
+      anim.playThen('fire', () => {})
+
+      anim.renderUI(null, { x: 0, y: 0 }, makePos(0, 0, 0), 1, 'p')
+
+      const mesh = anim.uiMesh!
+      expect(mesh.renderingGroupId).toBe(1)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: UV update with explicit frameUVs
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — UV update with frameUVs', () => {
+    it('uses explicit frameUVs when provided', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      // Create non-uniform UVs to verify they're used
+      const uvs = [
+        new Float32Array([0.0, 0.0, 0.25, 0.5]),   // frame 0
+        new Float32Array([0.25, 0.0, 0.5, 0.5]),    // frame 1
+        new Float32Array([0.5, 0.0, 0.75, 0.5]),    // frame 2
+        new Float32Array([0.75, 0.5, 1.0, 1.0]),    // frame 3
+      ]
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+      const mesh = anim.mesh!
+
+      // Get the UV data from the first updateVerticesData call for 'uv'
+      const uvCalls = (mesh.updateVerticesData as ReturnType<typeof vi.fn>).mock.calls
+        .filter((c: unknown[]) => c[0] === 'uv')
+      const firstUvCall = uvCalls[0]!
+      const uvData = firstUvCall[1] as Float32Array
+
+      // Frame 0: uMin=0, vMin=0, uMax=0.25, vMax=0.5
+      expect(uvData[0]).toBeCloseTo(0)     // uMin
+      expect(uvData[1]).toBeCloseTo(0)     // vMin
+      expect(uvData[2]).toBeCloseTo(0.25)  // uMax
+      expect(uvData[3]).toBeCloseTo(0)     // vMin
+      expect(uvData[4]).toBeCloseTo(0.25)  // uMax
+      expect(uvData[5]).toBeCloseTo(0.5)   // vMax
+      expect(uvData[6]).toBeCloseTo(0)     // uMin
+      expect(uvData[7]).toBeCloseTo(0.5)   // vMax
+    })
+
+    it('uses correct UV rect for mid-sequence frame', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = [
+        new Float32Array([0.0, 0.0, 0.2, 1.0]),
+        new Float32Array([0.2, 0.0, 0.4, 1.0]),
+        new Float32Array([0.4, 0.0, 0.6, 1.0]),
+        new Float32Array([0.6, 0.0, 0.8, 1.0]),
+      ]
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      // Advance to frame 2
+      anim.tick(); anim.tick()
+
+      anim.render(makePos(0, 0, 0), 'p')
+      const mesh = anim.mesh!
+
+      const uvCalls = (mesh.updateVerticesData as ReturnType<typeof vi.fn>).mock.calls
+        .filter((c: unknown[]) => c[0] === 'uv')
+      // Get the last UV call (after frame advance)
+      const lastUvCall = uvCalls[uvCalls.length - 1]!
+      const uvData = lastUvCall[1] as Float32Array
+
+      // Frame 2: uMin=0.4, uMax=0.6
+      expect(uvData[0]).toBeCloseTo(0.4)
+      expect(uvData[2]).toBeCloseTo(0.6)
+      expect(uvData[4]).toBeCloseTo(0.6)
+      expect(uvData[6]).toBeCloseTo(0.4)
+    })
+
+    it('falls back to evenly-spaced strip when no frameUVs provided', () => {
+      const anim = new AnimationStub(null, 'img', 4)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+      const mesh = anim.mesh!
+
+      const uvCalls = (mesh.updateVerticesData as ReturnType<typeof vi.fn>).mock.calls
+        .filter((c: unknown[]) => c[0] === 'uv')
+      const firstUvCall = uvCalls[0]!
+      const uvData = firstUvCall[1] as Float32Array
+
+      // Frame 0 with evenly-spaced strip: u0=0/4=0, u1=1/4=0.25
+      expect(uvData[0]).toBeCloseTo(0)
+      expect(uvData[2]).toBeCloseTo(0.25)
+    })
+
+    it('updates UVs when frame changes via tick (with frameUVs)', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = [
+        new Float32Array([0.0, 0.0, 0.25, 1.0]),
+        new Float32Array([0.25, 0.0, 0.5, 1.0]),
+        new Float32Array([0.5, 0.0, 0.75, 1.0]),
+        new Float32Array([0.75, 0.0, 1.0, 1.0]),
+      ]
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+      const mesh = anim.mesh!
+      const initialCallCount = (mesh.updateVerticesData as ReturnType<typeof vi.fn>).mock.calls.length
+
+      // Tick to advance frame
+      anim.tick() // frame 0→1
+
+      const afterTickCallCount = (mesh.updateVerticesData as ReturnType<typeof vi.fn>).mock.calls.length
+      expect(afterTickCallCount).toBeGreaterThan(initialCallCount)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: ShaderMaterial uniform update
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — ShaderMaterial uniform update', () => {
+    it('calls setVector4 with correct frameUV on frame change', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = [
+        new Float32Array([0.0, 0.0, 0.25, 1.0]),
+        new Float32Array([0.25, 0.0, 0.5, 1.0]),
+        new Float32Array([0.5, 0.0, 0.75, 1.0]),
+      ]
+      const anim = new AnimationStub(null, 'img', 3, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      // Get the ShaderMaterial mock (first one created)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mat = anim.material! as any
+      const setVector4Calls = (mat.setVector4 as ReturnType<typeof vi.fn>).mock.calls
+
+      // First call should be for frame 0: (0, 0, 0.25, 1)
+      const frame0Call = setVector4Calls.find(
+        (c: unknown[]) => c[0] === 'uFrameUV',
+      )
+      expect(frame0Call).toBeDefined()
+      const v4_0 = frame0Call![1] as { x: number; y: number; z: number; w: number }
+      expect(v4_0.x).toBeCloseTo(0)
+      expect(v4_0.y).toBeCloseTo(0)
+      expect(v4_0.z).toBeCloseTo(0.25)
+      expect(v4_0.w).toBeCloseTo(1)
+
+      // Advance frame and re-render
+      anim.tick() // frame 1
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const setVector4CallsAfter = (mat.setVector4 as ReturnType<typeof vi.fn>).mock.calls
+      const frame1Calls = setVector4CallsAfter.filter(
+        (c: unknown[]) => c[0] === 'uFrameUV',
+      )
+      // Should have more calls now (at least 2 for frame 0 and frame 1)
+      expect(frame1Calls.length).toBeGreaterThanOrEqual(2)
+
+      // Last call should be for frame 1: (0.25, 0, 0.5, 1)
+      const lastCall = frame1Calls[frame1Calls.length - 1]!
+      const v4_1 = lastCall[1] as { x: number; y: number; z: number; w: number }
+      expect(v4_1.x).toBeCloseTo(0.25)
+      expect(v4_1.y).toBeCloseTo(0)
+      expect(v4_1.z).toBeCloseTo(0.5)
+      expect(v4_1.w).toBeCloseTo(1)
+    })
+
+    it('calls setTexture with sheet texture', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mat = anim.material! as any
+      expect(mat.setTexture).toHaveBeenCalledWith('uTexture', expect.anything())
+      expect(sheet.getTexture).toHaveBeenCalledWith(scene)
+    })
+
+    it('does not call setVector4 on fallback StandardMaterial', () => {
+      const scene = makeMockScene()
+      const anim = new AnimationStub(null, 'img', 4, 1, undefined, undefined, scene)
+      anim.playThen('fire', () => {})
+
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mat = anim.material!
+      // StandardMaterial mock does not have setVector4
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(typeof (mat as any).setVector4).toBe('undefined')
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: setSheet and setFrameUVs
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — setSheet / setFrameUVs', () => {
+    it('setSheet stores sheet and frameUVs', () => {
+      const anim = new AnimationStub(null, 'img', 4)
+      const sheet = makeMockSheet()
+      const uvs = makeFrameUVs(4)
+
+      anim.setSheet(sheet, uvs)
+
+      // After setSheet, render should use the provided sheet
+      const scene = makeMockScene()
+      anim.setSheet(sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+
+      expect(anim.material).not.toBeNull()
+    })
+
+    it('setSheet replaces existing fallback material with ShaderMaterial', () => {
+      const scene = makeMockScene()
+      const anim = new AnimationStub(null, 'img', 4, 1, undefined, undefined, scene)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+
+      // Should have created fallback StandardMaterial
+      expect(StandardMaterial).toHaveBeenCalled()
+
+      // Now set sheet — should dispose old material and create ShaderMaterial
+      const sheet = makeMockSheet()
+      const uvs = makeFrameUVs(4)
+      const disposeSpy = anim.material!.dispose as ReturnType<typeof vi.fn>
+      expect(disposeSpy).toBeDefined()
+
+      anim.setSheet(sheet, uvs)
+      // Old material should be disposed
+      expect(disposeSpy).toHaveBeenCalled()
+    })
+
+    it('setFrameUVs updates UVs without changing sheet', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs1 = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs1, scene)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mesh = anim.mesh!
+      const callCountBefore = (mesh.updateVerticesData as ReturnType<typeof vi.fn>).mock.calls.length
+
+      // Set different UVs
+      const uvs2 = [
+        new Float32Array([0.5, 0.5, 1.0, 1.0]),
+        new Float32Array([0.0, 0.5, 0.5, 1.0]),
+        new Float32Array([0.5, 0.0, 1.0, 0.5]),
+        new Float32Array([0.0, 0.0, 0.5, 0.5]),
+      ]
+      anim.setFrameUVs(uvs2)
+
+      const callCountAfter = (mesh.updateVerticesData as ReturnType<typeof vi.fn>).mock.calls.length
+      expect(callCountAfter).toBeGreaterThan(callCountBefore)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: dispose cleans up material
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — dispose with material', () => {
+    it('dispose calls material.dispose', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+
+      const mat = anim.material!
+      expect(mat).not.toBeNull()
+
+      anim.dispose()
+      expect(mat.dispose).toHaveBeenCalled()
+      expect(anim.material).toBeNull()
+      expect(anim.mesh).toBeNull()
+      expect(anim.uiMesh).toBeNull()
+    })
+
+    it('dispose works when no material was created (no scene)', () => {
+      const anim = new AnimationStub(null, 'img', 5)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+
+      anim.dispose()
+      expect(anim.mesh).toBeNull()
+    })
+
+    it('dispose is idempotent', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+
+      anim.dispose()
+      anim.dispose() // should not throw
+      anim.dispose() // should not throw
+
+      expect(anim.material).toBeNull()
+      expect(anim.mesh).toBeNull()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: registerWithWorld
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — registerWithWorld', () => {
+    it('subscribes tick to world.onTick', () => {
+      const anim = new AnimationStub(null, 'img', 5)
+      const tickCallbacks: (() => void)[] = []
+      const world = {
+        onTick: vi.fn((cb: () => void) => {
+          tickCallbacks.push(cb)
+        }),
+      }
+
+      anim.registerWithWorld(world)
+      expect(world.onTick).toHaveBeenCalledTimes(1)
+
+      // Simulate world tick
+      anim.playRepeating('idle')
+      tickCallbacks.forEach(cb => cb())
+      expect(anim.currentTick).toBe(1)
+    })
+
+    it('does nothing when world has no onTick', () => {
+      const anim = new AnimationStub(null, 'img', 5)
+      const world = {}
+
+      expect(() => anim.registerWithWorld(world)).not.toThrow()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: complete lifecycle with material
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — complete lifecycle with material', () => {
+    it('create → start → tick → render → onComplete → dispose', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(3)
+      const anim = new AnimationStub(null, 'lifecycle', 3, 1, sheet, uvs, scene)
+
+      // Not started yet
+      expect(anim.isStarted).toBe(false)
+      expect(anim.material).toBeNull()
+
+      // Start
+      const onComplete = vi.fn()
+      anim.playThen('test', onComplete)
+      expect(anim.isStarted).toBe(true)
+
+      // First render — creates mesh + material
+      const result = anim.render(makePos(10, 20, 5), 'palette')
+      expect(result.length).toBe(1)
+      expect(anim.mesh).not.toBeNull()
+      expect(anim.material).not.toBeNull()
+
+      // Tick through frames
+      anim.tick() // frame 0→1
+      expect(anim.currentFrame).toBe(1)
+
+      anim.tick() // frame 1→2
+      expect(anim.currentFrame).toBe(2)
+
+      // Should not have completed yet (frame 2 is the last frame shown, tick=2)
+      expect(onComplete).not.toHaveBeenCalled()
+
+      anim.tick() // frame >= length → fires callback
+      expect(onComplete).toHaveBeenCalledTimes(1)
+
+      // Dispose
+      anim.dispose()
+      expect(anim.material).toBeNull()
+      expect(anim.mesh).toBeNull()
+    })
+
+    it('repeating animation loops with material', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(3)
+      const anim = new AnimationStub(null, 'loop', 3, 1, sheet, uvs, scene)
+      anim.playRepeating('idle')
+
+      anim.render(makePos(0, 0, 0), 'p')
+      expect(anim.material).not.toBeNull()
+
+      // 3 full loops
+      for (let loop = 0; loop < 3; loop++) {
+        expect(anim.currentFrame).toBe(0)
+        anim.tick()
+        expect(anim.currentFrame).toBe(1)
+        anim.tick()
+        expect(anim.currentFrame).toBe(2)
+        anim.tick()
+      }
+      expect(anim.currentFrame).toBe(0)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: material accessor
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — material accessor', () => {
+    it('returns null before render', () => {
+      const sheet = makeMockSheet()
+      const scene = makeMockScene()
+      const uvs = makeFrameUVs(4)
+      const anim = new AnimationStub(null, 'img', 4, 1, sheet, uvs, scene)
+      expect(anim.material).toBeNull()
+    })
+
+    it('returns non-null after render (with scene)', () => {
+      const scene = makeMockScene()
+      const anim = new AnimationStub(null, 'img', 4, 1, undefined, undefined, scene)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+      expect(anim.material).not.toBeNull()
+    })
+
+    it('returns null after render (without scene)', () => {
+      const anim = new AnimationStub(null, 'img', 4)
+      anim.playThen('fire', () => {})
+      anim.render(makePos(0, 0, 0), 'p')
+      expect(anim.material).toBeNull()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase A: backward compatibility with existing constructor
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase A — backward compatibility', () => {
+    it('existing constructor signature works unchanged', () => {
+      const anim = new AnimationStub(null, 'test', 12, 1)
+      anim.playThen('fire', () => {})
+      const result = anim.render(makePos(0, 0, 0), 'p')
+      expect(result.length).toBe(1)
+    })
+
+    it('old two-argument constructor works unchanged', () => {
+      const anim = new AnimationStub(null, 'test')
+      expect(anim.length).toBe(12)
+      expect(anim.tickPerFrame).toBe(1)
+    })
+
+    it('old three-argument constructor works unchanged', () => {
+      const anim = new AnimationStub(null, 'test', 24)
+      expect(anim.length).toBe(24)
+      expect(anim.tickPerFrame).toBe(1)
+    })
+
+    it('old four-argument constructor works unchanged', () => {
+      const anim = new AnimationStub(null, 'test', 12, 3)
+      expect(anim.length).toBe(12)
+      expect(anim.tickPerFrame).toBe(3)
     })
   })
 

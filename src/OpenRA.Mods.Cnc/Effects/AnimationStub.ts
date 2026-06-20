@@ -15,11 +15,72 @@
  *
  * KEYSTONE for Phase B: This single file unblocks ALL C&C effect rendering.
  * Each downstream consumer remains zero-change — the API surface is preserved.
+ *
+ * Ch24 Phase A: Material Integration
+ * - No-material meshes → ShaderMaterial with Sheet texture + per-frame UV uniform
+ * - Evenly-spaced strip UV → explicit frameUVs[] resolution from Sheet/Sprite
+ * - No render pipeline → renderingGroupId + scene attachment
  */
 
-import { MeshBuilder, type Mesh } from '@babylonjs/core'
+import {
+  MeshBuilder,
+  ShaderMaterial,
+  StandardMaterial,
+  Color3,
+  Vector4,
+  Constants,
+  type Mesh,
+  type Scene,
+} from '@babylonjs/core'
 import { WPos } from '../../OpenRA.Game/WPos.js'
 import type { IRenderable } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
+import { RenderGroup } from '../../OpenRA.Game/Graphics/WorldRenderer.js'
+import type { Sheet } from '../../OpenRA.Game/Graphics/Sheet.js'
+
+// ---------------------------------------------------------------------------
+// Shader sources (pre-compiled GLSL for WebGL 2.0 / GLSL ES 3.0)
+// ---------------------------------------------------------------------------
+
+/** Vertex shader: pass-through position + UV with standard worldViewProjection.
+ *
+ * Uses Babylon.js standard attribute names (position, uv) so it works with
+ * any Mesh created by MeshBuilder.
+ */
+const SPRITE_VERTEX_SHADER = /* glsl */`
+precision highp float;
+attribute vec3 position;
+attribute vec2 uv;
+uniform mat4 worldViewProjection;
+varying vec2 vUV;
+
+void main(void) {
+    gl_Position = worldViewProjection * vec4(position, 1.0);
+    vUV = uv;
+}
+`
+
+/** Fragment shader: sample a sub-region of the sprite sheet texture.
+ *
+ * uFrameUV = vec4(uMin, vMin, uMax, vMax) selects the current frame's
+ * UV rectangle within the atlas texture.
+ *
+ * Uses GLSL ES 1.0 built-ins (gl_FragColor, texture2D) for compatibility
+ * with Babylon.js ShaderMaterial which wraps these for WebGL 2.0.
+ */
+const SPRITE_FRAGMENT_SHADER = /* glsl */`
+precision highp float;
+varying vec2 vUV;
+uniform sampler2D uTexture;
+uniform vec4 uFrameUV;
+
+void main(void) {
+    vec2 uv = vec2(
+        mix(uFrameUV.x, uFrameUV.z, vUV.x),
+        mix(uFrameUV.y, uFrameUV.w, vUV.y)
+    );
+    gl_FragColor = texture2D(uTexture, uv);
+}
+`
 
 // ---------------------------------------------------------------------------
 // AnimationStub
@@ -36,6 +97,14 @@ import type { IRenderable } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
  *
  * API surface is identical to the original stub — downstream consumers
  * require zero changes.
+ *
+ * Ch24 Phase A: Assigns a ShaderMaterial with sheet texture on first
+ * render, integrates with Sheet/Sprite UV resolution, and registers
+ * meshes in the WorldRenderer render pipeline via renderingGroupId.
+ *
+ * Consumers must call `tick()` in their own `ITick.tick()` method each
+ * game tick. The optional `registerWithWorld()` convenience method
+ * subscribes tick to a world tick callback.
  */
 export class AnimationStub {
   /** The image/collection name this animation uses.
@@ -76,6 +145,38 @@ export class AnimationStub {
   private _completed: boolean = false
 
   // -----------------------------------------------------------------------
+  // Ch24 Phase A: Material + texture resources
+  // -----------------------------------------------------------------------
+
+  /** Optional Sheet providing the GPU texture atlas.
+   *
+   * When set, the ShaderMaterial samples this sheet's texture. When null,
+   * a magenta debug StandardMaterial is used as fallback.
+   */
+  private _sheet: Sheet | null = null
+
+  /** Per-frame UV rectangles [uMin, vMin, uMax, vMax] in 0..1 texture space.
+   *
+   * Array length should match `_length`. Each element is a Float32Array(4).
+   * When null, evenly-spaced horizontal strip UVs are used as fallback.
+   */
+  private _frameUVs: Float32Array[] | null = null
+
+  /** Babylon.js Scene for material creation and mesh attachment.
+   *
+   * Required for creating ShaderMaterial / StandardMaterial. If not
+   * provided, meshes are created without materials (invisible).
+   */
+  private _scene: Scene | null = null
+
+  /** ShaderMaterial with sheet texture (created lazily on first render).
+   *
+   * Created when both _sheet and _scene are available. If _sheet is null
+   * but _scene is available, a magenta StandardMaterial is created instead.
+   */
+  private _shaderMaterial: ShaderMaterial | StandardMaterial | null = null
+
+  // -----------------------------------------------------------------------
   // Babylon.js resources
   // -----------------------------------------------------------------------
 
@@ -104,16 +205,25 @@ export class AnimationStub {
    * @param image    — the image/collection name for this animation
    * @param frameCount — total number of frames in the sequence (default 12)
    * @param tickPerFrame — game ticks per animation frame (default 1, i.e. one frame per tick)
+   * @param sheet   — (Ch24 Phase A) optional Sheet providing the GPU texture atlas
+   * @param frameUVs — (Ch24 Phase A) optional per-frame UV rectangles
+   * @param scene   — (Ch24 Phase A) optional Babylon.js Scene for material creation
    */
   constructor(
     _world: unknown,
     image: string,
     frameCount: number = 12,
     tickPerFrame: number = 1,
+    sheet?: Sheet,
+    frameUVs?: Float32Array[],
+    scene?: Scene,
   ) {
     this.image = image
     this._length = frameCount
     this._tickPerFrame = tickPerFrame
+    this._sheet = sheet ?? null
+    this._frameUVs = frameUVs ?? null
+    this._scene = scene ?? null
   }
 
   // -----------------------------------------------------------------------
@@ -220,6 +330,8 @@ export class AnimationStub {
    *
    * Creates (or reuses) a Babylon.js Mesh plane positioned at `pos`.
    * UVs are set to the current frame's subsection of the sprite sheet.
+   * The mesh is assigned a ShaderMaterial with the sheet texture,
+   * or a magenta StandardMaterial as fallback when no sheet is available.
    *
    * Returns an empty array if the animation has not been started.
    *
@@ -228,21 +340,36 @@ export class AnimationStub {
    * @returns array with one IRenderable (the mesh)
    */
   render(pos: WPos, _palette: unknown): readonly IRenderable[] {
-    if (!this._started) return []
+    if (!this._started) {
+      // Hide mesh if it was previously visible
+      if (this._mesh) this._mesh.setEnabled(false)
+      return []
+    }
 
     // Lazy-create mesh on first render
     if (!this._mesh) {
       this._mesh = MeshBuilder.CreatePlane(
         `anim-ws-${this.image}`,
         { width: 1, height: 1 },
+        this._scene ?? undefined,
       )
+
+      // Register in render pipeline
+      this._mesh.renderingGroupId = RenderGroup.Actor
+
       this._updateUVs()
     }
+
+    // Ensure material is assigned (Ch24 Phase A)
+    this._ensureMaterial()
 
     // Update world-space position
     this._mesh.position.x = pos.X
     this._mesh.position.y = pos.Y
     this._mesh.position.z = pos.Z
+
+    // Ensure mesh is visible
+    this._mesh.setEnabled(true)
 
     return [this._mesh as unknown as IRenderable]
   }
@@ -274,16 +401,27 @@ export class AnimationStub {
     _scale: number,
     _palette: unknown,
   ): readonly IRenderable[] {
-    if (!this._started) return []
+    if (!this._started) {
+      if (this._uiMesh) this._uiMesh.setEnabled(false)
+      return []
+    }
 
     // Lazy-create UI mesh on first renderUI call
     if (!this._uiMesh) {
       this._uiMesh = MeshBuilder.CreatePlane(
         `anim-ui-${this.image}`,
         { width: 1, height: 1 },
+        this._scene ?? undefined,
       )
+      // NOTE: UI mesh uses same renderingGroupId as world mesh for now.
+      // Future UI overlay rendering may use a separate layer.
+      this._uiMesh.renderingGroupId = RenderGroup.Actor
+
       this._updateUVs()
     }
+
+    // Assign material to UI mesh as well (Ch24 Phase A)
+    this._ensureMaterial()
 
     // Position in screen space
     const sp = _screenPos as { x?: number; y?: number }
@@ -299,7 +437,69 @@ export class AnimationStub {
       this._uiMesh.scaling.y = _scale
     }
 
+    this._uiMesh.setEnabled(true)
+
     return [this._uiMesh as unknown as IRenderable]
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ch24 Phase A: Sheet / frameUVs configuration
+  // ---------------------------------------------------------------------------
+
+  /** Set the sprite sheet and frame UVs for this animation.
+   *
+   * Allows the animation to be created before asset loading, then
+   * configured with the sheet and UV data when assets arrive.
+   *
+   * If a material was already created (e.g. magenta fallback), it is
+   * disposed and replaced with a new ShaderMaterial using the sheet.
+   *
+   * @param sheet    — the Sheet providing the GPU RawTexture
+   * @param frameUVs — per-frame UV rectangles [uMin, vMin, uMax, vMax]
+   * @param scene    — optional Babylon.js Scene (if not set in constructor)
+   */
+  setSheet(sheet: Sheet, frameUVs: Float32Array[], scene?: Scene): void {
+    this._sheet = sheet
+    this._frameUVs = frameUVs
+    if (scene) this._scene = scene
+
+    // If we already created a fallback material, dispose it so a proper
+    // ShaderMaterial can be created on next render.
+    if (this._shaderMaterial) {
+      this._shaderMaterial.dispose()
+      this._shaderMaterial = null
+    }
+
+    // Update UVs on existing meshes
+    this._updateUVs()
+  }
+
+  /** Update the per-frame UV rectangles without changing the sheet.
+   *
+   * Useful when the same sheet has different frame layouts for
+   * different sequences.
+   *
+   * @param frameUVs — per-frame UV rectangles [uMin, vMin, uMax, vMax]
+   */
+  setFrameUVs(frameUVs: Float32Array[]): void {
+    this._frameUVs = frameUVs
+    this._updateUVs()
+  }
+
+  /** Convenience method to subscribe tick() to a world tick callback.
+   *
+   * When the consumer has access to a world object with an `onTick`
+   * callback, this wires up automatic frame advancement. Consumers
+   * that implement ITick directly should call `this.tick()` in their
+   * own `ITick.tick()` method instead.
+   *
+   * The world parameter uses a minimal interface — no dependency on
+   * the full World / GameWorldManager type.
+   *
+   * @param world — object with optional onTick callback
+   */
+  registerWithWorld(world: { onTick?: (cb: () => void) => void }): void {
+    if (world.onTick) world.onTick(() => this.tick())
   }
 
   // ---------------------------------------------------------------------------
@@ -382,29 +582,153 @@ export class AnimationStub {
     return this._uiMesh
   }
 
+  /** The current material (ShaderMaterial or StandardMaterial).
+   *
+   * Returns null if no render() call has triggered material creation,
+   * or if no Scene was provided.
+   */
+  get material(): ShaderMaterial | StandardMaterial | null {
+    return this._shaderMaterial
+  }
+
   // ---------------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------------
 
+  /** Ensure a material is assigned to all existing meshes.
+   *
+   * Ch24 Phase A: Created lazily on first render call.
+   *
+   * Priority:
+   * 1. If _sheet is available → ShaderMaterial with sheet texture
+   * 2. If _sheet is null but _scene is available → magenta StandardMaterial
+   * 3. If _scene is null → no material (mesh remains invisible)
+   */
+  private _ensureMaterial(): void {
+    if (this._shaderMaterial) return
+    if (!this._scene) return // Cannot create material without a scene
+
+    if (this._sheet) {
+      // Create ShaderMaterial with the sprite sheet texture
+      this._shaderMaterial = new ShaderMaterial(
+        `anim-shader-${this.image}`,
+        this._scene,
+        {
+          vertex: SPRITE_VERTEX_SHADER,
+          fragment: SPRITE_FRAGMENT_SHADER,
+        },
+        {
+          attributes: ['position', 'uv'],
+          uniforms: ['worldViewProjection', 'uFrameUV'],
+          samplers: ['uTexture'],
+          needAlphaBlending: true,
+        },
+      )
+
+      // Configure material properties
+      this._shaderMaterial.alphaMode = Constants.ALPHA_PREMULTIPLIED
+      this._shaderMaterial.backFaceCulling = false
+
+      // Bind the sheet texture
+      const texture = this._sheet.getTexture(this._scene)
+      this._shaderMaterial.setTexture('uTexture', texture)
+
+      // Set initial frame UV uniform
+      this._updateShaderUniform()
+    } else {
+      // NOTE: Fallback magenta debug material — makes missing-texture
+      // animations visibly distinguishable rather than invisible.
+      this._shaderMaterial = new StandardMaterial(
+        `anim-fallback-${this.image}`,
+        this._scene,
+      )
+      this._shaderMaterial.emissiveColor = new Color3(1, 0, 1)
+      this._shaderMaterial.alphaMode = Constants.ALPHA_PREMULTIPLIED
+      this._shaderMaterial.backFaceCulling = false
+    }
+
+    // Assign material to all existing meshes
+    if (this._mesh) {
+      this._mesh.material = this._shaderMaterial
+    }
+    if (this._uiMesh) {
+      this._uiMesh.material = this._shaderMaterial
+    }
+  }
+
+  /** Update the uFrameUV uniform on the ShaderMaterial.
+   *
+   * Only applies when the material is a ShaderMaterial (not the
+   * magenta StandardMaterial fallback).
+   */
+  private _updateShaderUniform(): void {
+    if (!this._shaderMaterial) return
+    // Duck-type check: ShaderMaterial has setVector4, StandardMaterial does not.
+    // Using duck-typing instead of instanceof so the check works in both
+    // production (real Babylon.js) and test (mocked modules) environments.
+    const mat = this._shaderMaterial as ShaderMaterial
+    if (typeof mat.setVector4 !== 'function') return
+    if (!this._frameUVs || this._frame >= this._frameUVs.length) {
+      return
+    }
+
+    const rect = this._frameUVs[this._frame]
+    const uMin = rect[0] ?? 0
+    const vMin = rect[1] ?? 0
+    const uMax = rect[2] ?? 1
+    const vMax = rect[3] ?? 1
+
+    mat.setVector4(
+      'uFrameUV',
+      new Vector4(uMin, vMin, uMax, vMax),
+    )
+  }
+
   /** Update UV coordinates on existing meshes to show the current frame.
    *
-   * Assumes the sprite sheet is laid out as a horizontal strip with
-   * `_length` equally-spaced frames. Frame `i` occupies the UV range:
-   *   left = i / _length,  right = (i + 1) / _length
+   * Ch24 Phase A: When _frameUVs is available, uses explicit UV rects
+   * from the Sheet/Sprite infrastructure. Otherwise falls back to the
+   * evenly-spaced horizontal strip assumption (with a console warning).
    *
-   * TODO: Integrate with Ch2 Sheet/Sprite infrastructure for actual sprite
-   * sheet UV resolution when sprite sequences are available from mod assets.
-   * Currently uses an evenly-spaced horizontal strip assumption.
+   * Also updates the ShaderMaterial uFrameUV uniform when applicable.
    */
   private _updateUVs(): void {
     const frameCount = this._length
     if (frameCount <= 0) return
 
     const i = this._frame
-    const u0 = i / frameCount
-    const u1 = (i + 1) / frameCount
-    const v0 = 0
-    const v1 = 1
+    let u0: number, v0: number, u1: number, v1: number
+
+    if (this._frameUVs && i < this._frameUVs.length) {
+      // Ch24 Phase A: Use explicit UV rect from Sheet/Sprite data
+      const rect = this._frameUVs[i]
+      u0 = rect[0] ?? 0
+      v0 = rect[1] ?? 0
+      u1 = rect[2] ?? 1
+      v1 = rect[3] ?? 1
+    } else {
+      // Fallback: evenly-spaced horizontal strip
+      // NOTE: This is the pre-Phase A behavior. Without frameUVs,
+      // the animation assumes all frames are equally spaced in a
+      // horizontal strip. This works for simple debug layouts but
+      // is incorrect for real sprite sheets.
+      if (!this._frameUVs) {
+        // Warn once — use a static flag to avoid spam
+        if (!AnimationStub._fallbackWarningEmitted) {
+          AnimationStub._fallbackWarningEmitted = true
+          console.warn(
+            `AnimationStub("${this.image}"): using fallback strip UVs, ` +
+            `no frameUVs provided. Call setSheet() or provide frameUVs ` +
+            `in the constructor for correct sprite rendering.`,
+          )
+        }
+      }
+
+      u0 = i / frameCount
+      u1 = (i + 1) / frameCount
+      v0 = 0
+      v1 = 1
+    }
 
     // Plane vertex UV order (4 vertices, counter-clockwise from bottom-left):
     //   [u0, v0,  u1, v0,  u1, v1,  u0, v1]
@@ -421,14 +745,27 @@ export class AnimationStub {
     if (this._uiMesh) {
       this._uiMesh.updateVerticesData('uv', uvs, false, false)
     }
+
+    // Also update the ShaderMaterial uniform
+    this._updateShaderUniform()
   }
 
-  /** Dispose GPU resources (mesh planes).
+  /** Static flag to avoid spamming the fallback console warning. */
+  private static _fallbackWarningEmitted: boolean = false
+
+  /** Dispose GPU resources (mesh planes + material).
    *
-   * Cleans up the world-space and UI-space backing meshes.
+   * Cleans up the world-space and UI-space backing meshes,
+   * and the ShaderMaterial or StandardMaterial.
    * Idempotent — safe to call multiple times.
    */
   dispose(): void {
+    // Dispose material first (Ch24 Phase A)
+    if (this._shaderMaterial) {
+      this._shaderMaterial.dispose()
+      this._shaderMaterial = null
+    }
+
     if (this._mesh) {
       this._mesh.dispose()
       this._mesh = null
