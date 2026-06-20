@@ -245,6 +245,8 @@ _tickPulse(): void {
 - 没有导入 `HiddenUnderShroud`、`Cloak`、`FrozenActor` 等实际模块
 - 这允许在 trait 实现完成前就建立验收基线
 
+**注意**：测试页面使用手动按钮触发脉冲，每次点击无条件重置脉冲计时器。实际 `Cloak._applyDetectionPulse()` 仅在检测丢失后重新获取的上升沿触发重新计时（通过 `_wasDetected` 状态守卫实现）。这意味着在 OpenRA 源码中，持续被检测的单位不会重置脉冲计时器，而测试页面中每次点击都会重置。此为测试页面简化设计，不影响脉冲视觉效果验证。
+
 ### 颜色值参考
 
 | 元素 | 颜色 | RGBA / Emissive |

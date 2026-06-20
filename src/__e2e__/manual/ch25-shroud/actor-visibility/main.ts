@@ -117,10 +117,6 @@ groundPlane.material = groundMat
 groundPlane.receiveShadows = false
 
 // Grid lines on the ground for spatial reference
-const gridLineMat = new StandardMaterial('gridLineMat', scene)
-gridLineMat.emissiveColor = new Color3(0.18, 0.20, 0.24)
-gridLineMat.disableLighting = true
-
 for (let i = -10; i <= 10; i += 2) {
   const lineX = MeshBuilder.CreateLines(
     `gridX_${i}`,
@@ -245,6 +241,13 @@ pillarC.material = pillarMatC
 // Labels above each actor
 // ---------------------------------------------------------------------------
 
+/**
+ * Create a billboard label plane above an actor.
+ * @param text — label identifier (used for material name)
+ * @param position — world position for the label
+ * @param color — emissive color of the label plane
+ * @param scene — Babylon.js scene
+ */
 function createLabel(text: string, position: Vector3, color: Color3, scene: Scene): void {
   // Use a small plane as a billboard label — for simplicity we use thin box
   const labelMat = new StandardMaterial(`labelMat_${text}`, scene)
@@ -282,11 +285,14 @@ let pulseTimerId: ReturnType<typeof setInterval> | null = null
 
 function startPulse(): void {
   // If already pulsing, restart the counter (re-trigger behavior)
+  const wasIdle = pulseTicksRemaining === 0
   pulseTicksRemaining = PULSE_DURATION_TICKS
   totalPulsesTriggered++
 
-  // Apply white emissive immediately
-  matC.emissiveColor = PULSE_EMISSIVE.clone()
+  // Apply white emissive immediately (only if not already pulsing)
+  if (wasIdle) {
+    matC.emissiveColor = PULSE_EMISSIVE.clone()
+  }
 
   // Ensure pulse tick interval is running
   if (pulseTimerId === null) {
@@ -302,6 +308,7 @@ function pulseTick(): void {
   if (pulseTicksRemaining <= 0) {
     // Pulse ended — revert emissive to idle
     matC.emissiveColor = IDLE_EMISSIVE.clone()
+    document.getElementById('btn-pulse-c')!.classList.remove('active')
     if (pulseTimerId !== null) {
       clearInterval(pulseTimerId)
       pulseTimerId = null
