@@ -213,21 +213,22 @@ export class PackageExtractor {
               `PackageExtractor: encrypted MIX parse failed for "${destPath}": ` +
               `${encryptedErr instanceof Error ? encryptedErr.message : String(encryptedErr)}`,
             )
-            // Fallthrough: try Westwood classic as a fallback.
-            // Some CDN files (e.g., scores.mix) have the encrypted flag set
-            // spuriously (secondUint16 bit 1) but are actually unencrypted
-            // Westwood classic format.
-            if (MixFileRuntime.isWestwoodClassicFormat(data)) {
-              try {
-                pkg = MixFileRuntime.parseWestwoodClassic(destPath, data, mixDb)
-                console.warn(
-                  `PackageExtractor: "${destPath}" fell through from encrypted ` +
-                  `to Westwood classic MIX parse`,
-                )
-              } catch (_fallbackErr) {
-                // Both parseEncrypted and parseWestwoodClassic failed;
-                // pkg stays null and we continue to the next format check.
-              }
+            // Fallthrough: try Westwood classic as BLIND fallback.
+            // Some CDN files (e.g., scores.mix, hires1.mix) have the encrypted
+            // flag set spuriously (secondUint16 bit 1) but are actually
+            // unencrypted Westwood classic format. Since parseEncrypted already
+            // failed, we skip the isWestwoodClassicFormat guard and try
+            // parseWestwoodClassic unconditionally — the guard would reject
+            // these files because of the spurious encrypted flag bit.
+            try {
+              pkg = MixFileRuntime.parseWestwoodClassic(destPath, data, mixDb)
+              console.warn(
+                `PackageExtractor: "${destPath}" fell through from encrypted ` +
+                `to Westwood classic MIX parse`,
+              )
+            } catch (_fallbackErr) {
+              // Both parseEncrypted and parseWestwoodClassic failed;
+              // pkg stays null and we continue to the next format check.
             }
           }
         }
