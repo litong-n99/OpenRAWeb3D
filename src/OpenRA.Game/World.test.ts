@@ -25,6 +25,7 @@ import {
   type INotifyActorDisposing,
 } from './Traits/TraitsInterfaces.js'
 import type { PlayerStub, WorldRendererStub } from './Traits/TraitsInterfaces.js'
+import { ActorInitializer, OwnerNameInit, OwnerInit } from './Traits/ActorInitializer.js'
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -1048,7 +1049,7 @@ describe('GameWorldManager createActor (Ch26 Phase A)', () => {
     }
     const world = new GameWorldManager({
       modData: {
-        getSettings: () => ({}),
+        getSettings: <T>(_type: new () => T): T => ({}) as T,
         ruleset: ruleset as any,
       },
     })
@@ -1214,6 +1215,216 @@ describe('GameWorldManager loadComplete (Ch26 Phase A)', () => {
     const wr = {} as WorldRendererStub
     expect(() => world.loadComplete(wr)).not.toThrow()
     expect(world.players).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ch26 Phase A: Owner resolution (_spawnSingleMapActor → createActor)
+// ---------------------------------------------------------------------------
+
+describe('GameWorldManager owner resolution (Ch26 Phase A)', () => {
+  it('_spawnSingleMapActor resolves OwnerNameInit → OwnerInit → sets actor.owner', () => {
+    const world = new GameWorldManager({
+      modData: {
+        getSettings: <T>(_type: new () => T): T => ({}) as T,
+        ruleset: {
+          actors: new Map([
+            ['e1', {
+              name: 'e1',
+              isAbstract: false,
+              traitConfigs: [],
+              hasTraitInfo: () => false,
+            }],
+            ['player', {
+              name: 'player',
+              isAbstract: false,
+              traitConfigs: [],
+              hasTraitInfo: () => false,
+            }],
+          ]),
+        } as any,
+        traitFactory: {
+          createAllTraits: () => [],
+          has: () => false,
+          create: () => null,
+        } as any,
+      },
+    })
+
+    // First, set up players via _createPlayers
+    const mapPlayers = {
+      players: [
+        {
+          internalName: 'Multi0',
+          name: 'Player 1',
+          isHuman: true,
+          isBot: false,
+        },
+        {
+          internalName: 'Neutral',
+          name: 'Neutral',
+          isHuman: false,
+          isBot: false,
+        },
+      ],
+      playableCount: 1,
+    }
+    ;(world as any)._createPlayers(mapPlayers)
+
+    // Now spawn a map actor with OwnerNameInit pointing to 'Multi0'
+    const entry = {
+      type: 'E1',
+      location: { x: 10, y: 20 },
+      owner: 'Multi0',
+    }
+    ;(world as any)._spawnSingleMapActor(entry)
+
+    // Verify the actor was created and has the correct owner
+    const actors = Array.from(world.actors)
+    const spawnedActor = actors.find(a => a.actorId > 0) // skip WorldActor
+    expect(spawnedActor).toBeDefined()
+    expect(spawnedActor!.owner).toBeDefined()
+    expect(spawnedActor!.owner!.playerName).toBe('Player 1')
+    expect(spawnedActor!.owner!.internalName).toBe('Multi0')
+  })
+
+  it('_spawnSingleMapActor handles unknown owner (Neutral/gaia not in players)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const world = new GameWorldManager({
+      modData: {
+        getSettings: <T>(_type: new () => T): T => ({}) as T,
+        ruleset: {
+          actors: new Map([
+            ['e1', {
+              name: 'e1',
+              isAbstract: false,
+              traitConfigs: [],
+              hasTraitInfo: () => false,
+            }],
+            ['player', {
+              name: 'player',
+              isAbstract: false,
+              traitConfigs: [],
+              hasTraitInfo: () => false,
+            }],
+          ]),
+        } as any,
+        traitFactory: {
+          createAllTraits: () => [],
+          has: () => false,
+          create: () => null,
+        } as any,
+      },
+    })
+
+    // Set up players — only Multi0, no Neutral
+    ;(world as any)._createPlayers({
+      players: [
+        {
+          internalName: 'Multi0',
+          name: 'Player 1',
+          isHuman: true,
+          isBot: false,
+        },
+      ],
+      playableCount: 1,
+    })
+
+    // Spawn an actor with an owner name that doesn't match any player
+    const entry = {
+      type: 'E1',
+      location: { x: 5, y: 5 },
+      owner: 'Neutral', // Neutral not in players array
+    }
+    ;(world as any)._spawnSingleMapActor(entry)
+
+    // Actor should still be created (not crash), but with no owner
+    const actors = Array.from(world.actors)
+    const spawnedActor = actors.find(a => a.actorId > 0)
+    expect(spawnedActor).toBeDefined()
+    expect(spawnedActor!.owner).toBeUndefined()
+
+    // Should have warned about unknown owner
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("owner 'Neutral' not found"),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it('createActor applies OwnerInit to set actor.owner (B1 fix)', () => {
+    const world = new GameWorldManager({
+      modData: {
+        getSettings: <T>(_type: new () => T): T => ({}) as T,
+        ruleset: {
+          actors: new Map([
+            ['e1', {
+              name: 'e1',
+              isAbstract: false,
+              traitConfigs: [],
+              hasTraitInfo: () => false,
+            }],
+          ]),
+        } as any,
+        traitFactory: {
+          createAllTraits: () => [],
+        } as any,
+      },
+    })
+
+    // Create a player stub
+    const ownerPlayer = {
+      playerName: 'TestOwner',
+      internalName: 'testowner',
+      color: 0,
+    }
+
+    // Create an initializer with both OwnerNameInit and OwnerInit
+    const initializer = new ActorInitializer([
+      new OwnerNameInit('testowner'),
+      new OwnerInit(ownerPlayer),
+    ])
+
+    const actor = world.createActor('e1', false, initializer)
+    expect(actor).not.toBeNull()
+    expect(actor!.owner).toBeDefined()
+    expect(actor!.owner).toBe(ownerPlayer)
+    expect(actor!.owner!.playerName).toBe('TestOwner')
+  })
+
+  it('_spawnSingleMapActor handles entries with no owner field', () => {
+    const world = new GameWorldManager({
+      modData: {
+        getSettings: <T>(_type: new () => T): T => ({}) as T,
+        ruleset: {
+          actors: new Map([
+            ['e1', {
+              name: 'e1',
+              isAbstract: false,
+              traitConfigs: [],
+              hasTraitInfo: () => false,
+            }],
+          ]),
+        } as any,
+        traitFactory: {
+          createAllTraits: () => [],
+          has: () => false,
+          create: () => null,
+        } as any,
+      },
+    })
+
+    // Spawn an actor with no owner specified (e.g., world-owned decorations)
+    const entry = {
+      type: 'E1',
+      location: { x: 15, y: 25 },
+      // No owner field
+    }
+    expect(() => (world as any)._spawnSingleMapActor(entry)).not.toThrow()
+
+    const actors = Array.from(world.actors)
+    const spawnedActor = actors.find(a => a.actorId > 0)
+    expect(spawnedActor).toBeDefined()
+    // Actor without owner init should have undefined owner (unless a default is set)
   })
 })
 

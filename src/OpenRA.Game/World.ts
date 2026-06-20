@@ -817,6 +817,13 @@ export class GameWorldManager {
    */
   players: PlayerStub[] = []
 
+  /** O(1) player lookup by internal name.
+   *
+   * NOTE: Non-OpenRA — optimization for _spawnSingleMapActor owner resolution.
+   * Populated by _createPlayers() and invalidated when players are changed.
+   */
+  private _playerByName = new Map<string, PlayerStub>()
+
   /** The local player (this client's player).
    *
    * OpenRA 对照: World.LocalPlayer
@@ -1509,9 +1516,25 @@ export class GameWorldManager {
         playerName: slot.name,
         internalName: slot.internalName,
         color: slot.color,
+        // Wire team and spawnPoint from MapPlayerSlot
+        team: slot.team,
+        spawnPoint: slot.spawnPoint,
+        // Deferred: Phase C BotController integration
+        // botType and botDifficulty will be consumed when BotController trait
+        // is attached to the PlayerActor below.
+        botType: slot.botType,
+        botDifficulty: slot.botDifficulty,
+      } as PlayerStub & {
+        team?: number
+        spawnPoint?: number
+        botType?: string
+        botDifficulty?: string
       }
 
       players.push(player)
+
+      // Populate O(1) lookup by internal name
+      this._playerByName.set(slot.internalName, player)
 
       // Create PlayerActor (the 'player' actor type must exist in the ruleset)
       const playerActor = this.createActor(SystemActors.Player, false)
@@ -1526,9 +1549,46 @@ export class GameWorldManager {
         ;(playerActor as { world?: WorldStub }).world = this as unknown as WorldStub
       }
 
+      // ---- BotController for AI players (Ch26 Phase A) ----
+      // OpenRA 对照: BotController creation in CreatePlayers
+      if (slot.isBot && playerActor) {
+        const tf = this.modData?.traitFactory
+        if (tf?.has('BotController')) {
+          // BotController is registered — create and attach it
+          const bcComponent = tf.create(playerActor, {
+            name: 'BotController',
+            properties: {},
+            instanceName: '',
+            implements: [],
+            dependsOn: [],
+            notBefore: [],
+          })
+          if (bcComponent) {
+            bcComponent.attach(playerActor as unknown as IGameActor)
+            this.traitDict.addTrait(playerActor as unknown as IGameActor, bcComponent)
+            ;(playerActor as StubActor)._addTraitLocal(bcComponent)
+          }
+        } else {
+          // BotController not yet registered — log warning and skip
+          console.warn(
+            `[GameWorldManager] _createPlayers: player '${slot.name}' ` +
+            `is a bot (type='${slot.botType ?? 'unknown'}') but BotController ` +
+            `is not registered in TraitFactory. AI behavior will be inactive.`,
+          )
+        }
+      }
+
       // Track the first human player as local player
       if (slot.isHuman && !localPlayer) {
         localPlayer = player
+      }
+
+      // ---- Populate gameInfo player metadata (M3) ----
+      if (this.gameInfo) {
+        this.gameInfo.players.push({
+          playerName: slot.name,
+          // Deferred: outcome, outcomeTimestampUtc, disconnectFrame
+        })
       }
     }
 
@@ -1627,12 +1687,12 @@ export class GameWorldManager {
     }
 
     // Resolve OwnerNameInit → PlayerStub (two-phase lookup)
+    // NOTE: Uses _playerByName Map for O(1) lookup instead of
+    // O(n) players.find() — populated by _createPlayers().
     const ownerNameInit = initializer.getOrDefault<OwnerNameInit>('OwnerNameInit')
     if (ownerNameInit) {
       const ownerName = ownerNameInit.value
-      const ownerPlayer = this.players.find(
-        p => (p as PlayerStub & { internalName?: string }).internalName === ownerName,
-      )
+      const ownerPlayer = this._playerByName.get(ownerName)
 
       if (ownerPlayer) {
         // Create resolved OwnerInit and add alongside existing inits
@@ -1695,6 +1755,10 @@ export class GameWorldManager {
       return actor
     }
 
+    // NOTE: Actor names are case-insensitive — normalized to lowercase.
+    // OpenRA's YAML loader preserves original case but comparison is
+    // case-insensitive due to file-system conventions. We normalize at
+    // lookup time rather than mutating the ruleset's keys.
     const actorName = name.toLowerCase()
     const config: ActorConfig | undefined = ruleset.actors.get(actorName)
 
@@ -1738,10 +1802,21 @@ export class GameWorldManager {
 
       // ---- Step 4: Build cached trait refs ----
       // Resolve owner from initializer if available
+      // NOTE: Two ownership paths exist:
+      //   Path A (map spawn): _spawnSingleMapActor resolves OwnerNameInit →
+      //     OwnerInit before calling createActor; we look for OwnerInit below.
+      //   Path B (direct create): OwnerNameInit is stored as _ownerName for
+      //     later resolution by the caller (e.g., Game.ts or _createPlayers).
       if (initializer) {
+        // Path A: Pre-resolved OwnerInit (from _spawnSingleMapActor)
+        const ownerInit = initializer.getOrDefault<OwnerInit>('OwnerInit')
+        if (ownerInit) {
+          ;(actor as StubActor & { owner?: PlayerStub }).owner = ownerInit.value
+        }
+
+        // Path B: Unresolved OwnerNameInit (stored for caller-side resolution)
         const ownerNameInit = initializer.getOrDefault<OwnerNameInit>('OwnerNameInit')
         if (ownerNameInit) {
-          // Store owner name on actor for later resolution during _spawnMapActors
           ;(actor as StubActor & { _ownerName?: string })._ownerName = ownerNameInit.value
         }
       }
@@ -1905,6 +1980,14 @@ export class GameWorldManager {
     }
 
     this.players = [...players]
+    // Populate O(1) lookup map (also populated by _createPlayers, but
+    // setPlayers may be called directly without _createPlayers)
+    for (const p of players) {
+      const name = (p as PlayerStub & { internalName?: string }).internalName
+      if (name) {
+        this._playerByName.set(name, p)
+      }
+    }
     this.setLocalPlayer(localPlayer)
   }
 
@@ -2035,6 +2118,18 @@ export class GameWorldManager {
    * @param wr — the world renderer
    */
   loadComplete(wr: WorldRendererStub): void {
+    // ---- Game save loading: notify all actors before ScreenMap init ----
+    // OpenRA 对照: World.LoadComplete → if (wasLoadingGameSave) ...
+    if (this.wasLoadingGameSave) {
+      const loadingTraits = this.traitDict.traitsImplementing<INotifyGameLoading & Component>(
+        this.worldActor,
+        'INotifyGameLoading',
+      )
+      for (const t of loadingTraits) {
+        t.gameLoading(this as unknown as GameWorldManager & WorldStub)
+      }
+    }
+
     // ---- Step 1: Initialize ScreenMap first (before anything else) ----
     this.screenMap.worldLoaded(this, wr)
 
@@ -2416,7 +2511,8 @@ export class GameWorldManager {
     // Dispose map
     this.map?.dispose()
 
-    // Clear the actors map
+    // Clear the actors map and player lookup
     this._actors.clear()
+    this._playerByName.clear()
   }
 }
