@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch27 Main Menu - Widget 渲染 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+    #main-area { display: flex; flex: 1; min-height: 0; }
+
+    /* --- Sandbox --- */
+    #sandbox { flex: 1; position: relative; background: #0d1117; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    #sandbox-label { position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 10px; color: #888; }
+
+    /* --- Panel --- */
+    #panel { width: 360px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #panel h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-section { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .panel-section ol { margin: 4px 0; padding-left: 18px; font-size: 11px; line-height: 1.7; }
+    .panel-section li { margin: 2px 0; }
+    .metric { color: #aad; font-family: 'Consolas', monospace; font-size: 11px; }
+    .check-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+    .check-indicator { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; transition: background 0.2s; }
+    .check-indicator.pass { background: #4caf50; }
+    .check-indicator.fail { background: #e94560; }
+    .check-indicator.pending { background: #cc8800; }
+
+    /* --- Tree view --- */
+    #tree-view { max-height: 220px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 10px; line-height: 1.8; }
+    #tree-view .tw-node { padding-left: 0; white-space: nowrap; }
+    #tree-view .tw-type { color: #6688ee; }
+    #tree-view .tw-id { color: #4caf50; }
+    #tree-view .tw-bounds { color: #666; }
+
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s, border-color 0.15s; }
+    button:hover { background: #0f3460; }
+    button.primary { border-color: #4466cc; color: #88aaff; }
+    button.primary:hover { background: #4466cc; color: #fff; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    select { padding: 6px 10px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; width: 100%; margin-top: 4px; cursor: pointer; }
+
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', monospace; }
+
+    /* --- Loading overlay within sandbox --- */
+    #loading-overlay { position: absolute; inset: 0; background: rgba(13,17,23,0.9); display: flex; align-items: center; justify-content: center; z-index: 5; transition: opacity 0.4s ease; }
+    #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    #loading-text { color: #aaaaee; font-size: 1rem; }
+    #loading-error { color: #e94560; font-size: 0.9rem; display: none; }
+
+    /* --- Widget render area --- */
+    #widget-root { position: relative; width: 1280px; height: 720px; transform-origin: top left; overflow: hidden; background: transparent; }
+    #widget-viewport { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Ch27 Main Menu - Widget 树渲染</h1>
+    <div class="subtitle">ID: ch27-mainmenu/widget-menu-rendering | WidgetLoader 加载 mainmenu.json → 完整 Widget 树 DOM 渲染</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div id="loading-overlay">
+        <div><span id="loading-text">正在加载 Widget 树...</span><br><span id="loading-error"></span></div>
+      </div>
+      <div id="widget-viewport">
+        <div id="widget-root"></div>
+      </div>
+      <div id="sandbox-label">Widget 渲染区域 (1280×720 逻辑像素，自动缩放适配)</div>
+    </div>
+    <div id="panel">
+      <div class="panel-section">
+        <h3>B. 期望结果</h3>
+        <ol>
+          <li>至少 <span class="metric">3</span> 个按钮 widget 可见（Skirmish, Settings, Exit）</li>
+          <li>根元素 ID 为 <span class="metric">main-menu-widget-overlay</span></li>
+          <li>DOM 包含 <span class="metric">data-widget-id</span> 属性的元素（Widget 系统渲染，非纯 DOM）</li>
+          <li>标题 Label widget 存在（<span class="metric">MAINMENU_LABEL_TITLE</span>）</li>
+          <li>版本 Label widget 存在（<span class="metric">VERSION_LABEL</span>）</li>
+          <li>Logo Image widget 存在（<span class="metric">LOGO</span>）</li>
+          <li>Widget 树结构正确：<span class="metric">Container</span> → Children → Background + Button + Label + Image</li>
+        </ol>
+      </div>
+      <div class="panel-section">
+        <h3>C. 交互控件</h3>
+        <button class="primary" id="btn-load">▶ 加载 Widget 菜单</button>
+        <button id="btn-reload">↺ 重新加载</button>
+        <button id="btn-unload">⊗ 卸载</button>
+        <select id="sel-scale">
+          <option value="1">缩放: 100%</option>
+          <option value="0.75">缩放: 75%</option>
+          <option value="0.5">缩放: 50%</option>
+          <option value="0.35">缩放: 35%</option>
+        </select>
+      </div>
+      <div class="panel-section">
+        <h3>自动检查</h3>
+        <div class="check-row"><span class="check-indicator" id="chk-root-overlay"></span> 根 overlay 元素存在</div>
+        <div class="check-row"><span class="check-indicator" id="chk-widget-ids"></span> data-widget-id 属性存在 (Widget 系统)</div>
+        <div class="check-row"><span class="check-indicator" id="chk-buttons"></span> 至少 3 个可见按钮</div>
+        <div class="check-row"><span class="check-indicator" id="chk-title"></span> 标题 Label 存在</div>
+        <div class="check-row"><span class="check-indicator" id="chk-version"></span> 版本 Label 存在</div>
+        <div class="check-row"><span class="check-indicator" id="chk-logo"></span> Logo Image 存在</div>
+        <div class="check-row"><span class="check-indicator" id="chk-tree-ok"></span> Widget 树结构正确</div>
+      </div>
+      <div class="panel-section">
+        <h3>Widget 树结构</h3>
+        <div id="tree-view"><span style="color:#666">点击"加载 Widget 菜单"以查看...</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">WidgetLoader + DOM</span></span>
+    <span>Widget: <span id="info-widget-count">0</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

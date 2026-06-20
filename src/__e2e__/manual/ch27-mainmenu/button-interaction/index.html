@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch27 Main Menu - 按钮交互 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+
+    #main-area { display: flex; flex: 1; min-height: 0; }
+
+    /* --- Sandbox with interactive buttons --- */
+    #sandbox { flex: 1; position: relative; background: #0d0d1a; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #sandbox-label { position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 10px; color: #888; z-index: 2; }
+
+    /* --- Button interaction area --- */
+    #menu-card { pointer-events: auto; text-align: center; background: rgba(10,10,30,0.75); border: 1px solid rgba(100,100,180,0.3); border-radius: 12px; padding: 3rem 4rem; min-width: 360px; z-index: 1; }
+    #menu-card h2 { color: #f0f0f0; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    #menu-card .sub { color: #8888aa; font-size: 0.85rem; margin-bottom: 2rem; }
+
+    /* --- Panel --- */
+    #panel { width: 400px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #panel h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-section { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .panel-section ol { margin: 4px 0; padding-left: 18px; font-size: 11px; line-height: 1.7; }
+    .panel-section li { margin: 2px 0; }
+    .metric { color: #aad; font-family: 'Consolas', monospace; font-size: 11px; }
+    .check-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+    .check-indicator { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; transition: background 0.2s; }
+    .check-indicator.pass { background: #4caf50; }
+    .check-indicator.fail { background: #e94560; }
+    .check-indicator.pending { background: #cc8800; }
+
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s, border-color 0.15s; }
+    button:hover { background: #0f3460; }
+    button.primary { border-color: #4466cc; color: #88aaff; }
+    button.primary:hover { background: #4466cc; color: #fff; }
+    button.danger { border-color: #e94560; color: #e94560; }
+    button.danger:hover { background: #e94560; color: #fff; }
+
+    /* --- Event log --- */
+    #event-log { font-family: 'Consolas', monospace; font-size: 10px; line-height: 1.6; max-height: 200px; overflow-y: auto; color: #888; }
+    #event-log .log-entry { display: flex; gap: 6px; padding: 1px 0; }
+    #event-log .log-ts { color: #444; flex-shrink: 0; }
+    #event-log .log-type { flex-shrink: 0; min-width: 50px; }
+    #event-log .log-type.click { color: #4caf50; }
+    #event-log .log-type.hover { color: #88aaff; }
+    #event-log .log-type.action { color: #ffd966; }
+    #event-log .log-type.error { color: #e94560; }
+
+    /* --- Click counter badge --- */
+    .click-badge { display: inline-block; background: rgba(68,102,204,0.3); color: #88aaff; border-radius: 50%; min-width: 20px; height: 20px; text-align: center; line-height: 20px; font-size: 10px; margin-left: 6px; font-family: 'Consolas', monospace; }
+
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', monospace; }
+
+    /* --- Animation highlight for click feedback --- */
+    @keyframes click-pulse { 0% { box-shadow: 0 0 0 0 rgba(68,238,68,0.6); } 100% { box-shadow: 0 0 0 12px rgba(68,238,68,0); } }
+
+    /* --- Menu button styles (same as Game.ts) --- */
+    .menu-btn { display: block; width: 100%; padding: 12px 20px; margin-bottom: 12px; border: 1px solid rgba(100,100,180,0.4); border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; background: linear-gradient(135deg,#334488,#4466cc); color: #e0e0f0; }
+    .menu-btn:hover { background: linear-gradient(135deg,#4466cc,#5577ee); border-color: rgba(120,140,220,0.6); box-shadow: 0 0 8px rgba(100,140,220,0.3); }
+    .menu-btn:active { background: linear-gradient(135deg,#223366,#334488); transform: scale(0.98); }
+    .menu-btn.disabled { background: rgba(40,40,60,0.5); color: #555570; cursor: not-allowed; pointer-events: none; }
+    .menu-btn.disabled:hover { background: rgba(40,40,60,0.5); border-color: rgba(100,100,180,0.4); box-shadow: none; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Ch27 Main Menu - 按钮交互行为</h1>
+    <div class="subtitle">ID: ch27-mainmenu/button-interaction | 主菜单按钮 hover / click / disabled 交互验证</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div id="menu-card">
+        <h2>OpenRAWeb3D</h2>
+        <div class="sub">Button Interaction Test</div>
+        <button class="menu-btn" id="btn-skirmish-test" data-action="skirmish">
+          Skirmish <span class="click-badge" id="badge-skirmish">0</span>
+        </button>
+        <button class="menu-btn disabled" id="btn-multiplayer-test" data-action="multiplayer">
+          Multiplayer (Coming Soon)
+        </button>
+        <button class="menu-btn" id="btn-settings-test" data-action="settings">
+          Settings <span class="click-badge" id="badge-settings">0</span>
+        </button>
+        <button class="menu-btn" id="btn-exit-test" data-action="exit">
+          Exit to Desktop <span class="click-badge" id="badge-exit">0</span>
+        </button>
+      </div>
+      <div id="sandbox-label">按钮交互测试区域</div>
+    </div>
+    <div id="panel">
+      <div class="panel-section">
+        <h3>B. 期望结果</h3>
+        <ol>
+          <li><b>hover 视觉反馈</b>: hover 状态在 <span class="metric">150ms</span> 内完成过渡（transition: all 0.15s ease）</li>
+          <li><b>hover 样式变化</b>: 背景从 <span class="metric">#334488→#4466cc</span> 变为 <span class="metric">#4466cc→#5577ee</span>，同时出现辉光 <span class="metric">box-shadow: 0 0 8px rgba(100,140,220,0.3)</span></li>
+          <li><b>active 反馈</b>: 点击时按钮缩小至 <span class="metric">scale(0.98)</span>，背景变暗为 <span class="metric">#223366→#334488</span></li>
+          <li><b>disabled 状态</b>: Multiplayer 按钮 <span class="metric">pointer-events: none; cursor: not-allowed</span>，hover 无效果</li>
+          <li><b>点击计数</b>: 每个按钮点击时右侧徽章数字 <span class="metric">+1</span>，颜色亮度变化可感知</li>
+          <li><b>事件日志</b>: 所有 hover/click 事件在右侧日志面板实时记录，时间戳精确到 <span class="metric">毫秒</span></li>
+          <li><b>Escape 键</b>: 按下 Escape 键触发 <span class="metric">返回 Mod 选择器</span> 日志（模拟 _exitToModSelector）</li>
+        </ol>
+      </div>
+      <div class="panel-section">
+        <h3>C. 交互控件</h3>
+        <button class="primary" id="btn-reset-counters">↺ 重置计数器</button>
+        <button id="btn-clear-log">🗑 清空日志</button>
+        <button id="btn-auto-test">▶ 自动测试（模拟 hover + click 序列）</button>
+        <button class="danger" id="btn-simulate-escape">⊗ 模拟 Escape 键</button>
+      </div>
+      <div class="panel-section">
+        <h3>自动检查</h3>
+        <div class="check-row"><span class="check-indicator" id="chk-hover-transition"></span> hover transition = 0.15s ease</div>
+        <div class="check-row"><span class="check-indicator" id="chk-hover-bg"></span> hover 背景渐变变化</div>
+        <div class="check-row"><span class="check-indicator" id="chk-active-scale"></span> active: transform scale(0.98)</div>
+        <div class="check-row"><span class="check-indicator" id="chk-disabled"></span> disabled: 无 pointer-events + not-allowed</div>
+        <div class="check-row"><span class="check-indicator" id="chk-click-logged"></span> 点击事件已记录</div>
+        <div class="check-row"><span class="check-indicator" id="chk-hover-logged"></span> hover 事件已记录</div>
+      </div>
+      <div class="panel-section">
+        <h3>事件日志</h3>
+        <div id="event-log"><span style="color:#666">等待用户操作... (hover 或点击上方按钮)</span></div>
+      </div>
+      <div class="panel-section">
+        <h3>点击统计</h3>
+        <div id="click-stats" style="font-family:'Consolas',monospace;font-size:10px;line-height:1.6;color:#888;">
+          <div>Skirmish: <span id="stat-skirmish" style="color:#aad">0</span></div>
+          <div>Settings: <span id="stat-settings" style="color:#aad">0</span></div>
+          <div>Exit: <span id="stat-exit" style="color:#aad">0</span></div>
+          <div>Total: <span id="stat-total" style="color:#aad">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">纯 DOM + CSS</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

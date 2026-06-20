@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch27 Main Menu - DOM 覆盖层回退 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    #header { padding: 14px 24px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+    #header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    #header .subtitle { color: #a0a0b0; font-size: 12px; margin-top: 4px; }
+
+    #main-area { display: flex; flex: 1; min-height: 0; }
+
+    /* --- Sandbox — mimics the canvas area where DOM overlay sits --- */
+    #sandbox { flex: 1; position: relative; background: #0d0d1a; /* Shellmap fallback color: Color4(0.05, 0.05, 0.1, 1.0) */ overflow: hidden; }
+    #sandbox-label { position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 10px; color: #888; z-index: 1; }
+    #sandbox-bg-info { position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 10px; color: #aad; z-index: 1; }
+
+    /* --- Panel --- */
+    #panel { width: 360px; flex-shrink: 0; background: #16213e; border-left: 1px solid #0f3460; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    #panel h3 { font-size: 13px; font-weight: 600; color: #ccc; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-section { background: #1a1a2e; border-radius: 6px; padding: 10px 12px; border: 1px solid #0f3460; }
+    .panel-section ol { margin: 4px 0; padding-left: 18px; font-size: 11px; line-height: 1.7; }
+    .panel-section li { margin: 2px 0; }
+    .metric { color: #aad; font-family: 'Consolas', monospace; font-size: 11px; }
+    .check-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+    .check-indicator { width: 12px; height: 12px; border-radius: 50%; background: #333; flex-shrink: 0; transition: background 0.2s; }
+    .check-indicator.pass { background: #4caf50; }
+    .check-indicator.fail { background: #e94560; }
+    .check-indicator.pending { background: #cc8800; }
+
+    /* --- Color swatch --- */
+    .swatch-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+    .swatch { width: 32px; height: 16px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0; }
+    .swatch-val { font-family: 'Consolas', monospace; color: #aad; font-size: 10px; }
+
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #0f3460; background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer; width: 100%; margin-top: 4px; transition: background 0.15s, border-color 0.15s; }
+    button:hover { background: #0f3460; }
+    button.primary { border-color: #4466cc; color: #88aaff; }
+    button.primary:hover { background: #4466cc; color: #fff; }
+    button.danger { border-color: #e94560; color: #e94560; }
+    button.danger:hover { background: #e94560; color: #fff; }
+
+    #info-bar { padding: 8px 24px; background: #0f0f1a; font-size: 11px; color: #666; display: flex; gap: 24px; flex-shrink: 0; border-top: 1px solid #0f3460; }
+    #info-bar span { white-space: nowrap; font-family: 'Consolas', monospace; }
+
+    /* --- Info overlay on sandbox for color info --- */
+    #color-overlay { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: 0; }
+    #color-overlay span { font-family: 'Consolas', monospace; font-size: 14px; color: rgba(255,255,255,0.15); }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>A. Ch27 Main Menu - DOM 覆盖层回退</h1>
+    <div class="subtitle">ID: ch27-mainmenu/dom-fallback | Widget 加载失败时的纯 DOM 覆盖层（ADR-27.1 回退方案）</div>
+  </div>
+  <div id="main-area">
+    <div id="sandbox">
+      <div id="color-overlay"><span>Shellmap 回退背景</span></div>
+      <div id="sandbox-label">DOM 覆盖层渲染区域 (sandbox)</div>
+      <div id="sandbox-bg-info">bg: <span id="bg-color-val">rgb(13,13,26)</span></div>
+    </div>
+    <div id="panel">
+      <div class="panel-section">
+        <h3>B. 期望结果</h3>
+        <ol>
+          <li>DOM 覆盖层标题为 <span class="metric">"OpenRAWeb3D"</span></li>
+          <li>副标题为 <span class="metric">"Web-based RTS Engine"</span></li>
+          <li>至少 <span class="metric">3</span> 个可交互按钮（Skirmish, Settings, Exit）</li>
+          <li>按钮渐变背景色: <span class="metric">linear-gradient(135deg, #334488, #4466cc)</span></li>
+          <li>hover 时按钮背景变为 <span class="metric">linear-gradient(135deg, #4466cc, #5577ee)</span></li>
+          <li>Multiplayer 按钮为 <span class="metric">disabled</span> 状态（灰色，cursor: not-allowed）</li>
+          <li>背景卡片为半透明深色: <span class="metric">rgba(10,10,30,0.75)</span></li>
+          <li>版本文字为 <span class="metric">"Prototype — Phase C"</span>，带 pulse 动画</li>
+        </ol>
+      </div>
+      <div class="panel-section">
+        <h3>C. 交互控件</h3>
+        <button class="primary" id="btn-show-overlay">▶ 显示 DOM 覆盖层</button>
+        <button class="danger" id="btn-remove-overlay">⊗ 移除覆盖层</button>
+        <button id="btn-simulate-fallback">↻ 模拟 Widget 失败 → 回退</button>
+      </div>
+      <div class="panel-section">
+        <h3>自动检查</h3>
+        <div class="check-row"><span class="check-indicator" id="chk-overlay-exists"></span> overlay 元素存在 (#main-menu-overlay)</div>
+        <div class="check-row"><span class="check-indicator" id="chk-title"></span> 标题 = "OpenRAWeb3D"</div>
+        <div class="check-row"><span class="check-indicator" id="chk-subtitle"></span> 副标题 = "Web-based RTS Engine"</div>
+        <div class="check-row"><span class="check-indicator" id="chk-buttons-count"></span> 至少 3 个按钮</div>
+        <div class="check-row"><span class="check-indicator" id="chk-btn-skirmish"></span> Skirmish 按钮存在 + 可交互</div>
+        <div class="check-row"><span class="check-indicator" id="chk-btn-multiplayer"></span> Multiplayer 按钮 disabled</div>
+        <div class="check-row"><span class="check-indicator" id="chk-btn-settings"></span> Settings 按钮存在</div>
+        <div class="check-row"><span class="check-indicator" id="chk-btn-exit"></span> Exit 按钮存在</div>
+        <div class="check-row"><span class="check-indicator" id="chk-version"></span> 版本文字存在</div>
+      </div>
+      <div class="panel-section">
+        <h3>颜色信息</h3>
+        <div class="swatch-row"><span class="swatch" style="background:rgba(10,10,30,0.75)"></span> 卡片背景 <span class="swatch-val">rgba(10,10,30,0.75)</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:linear-gradient(135deg,#334488,#4466cc)"></span> 按钮常态 <span class="swatch-val">#334488 → #4466cc</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:linear-gradient(135deg,#4466cc,#5577ee)"></span> 按钮 hover <span class="swatch-val">#4466cc → #5577ee</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:rgb(13,13,26)"></span> Shellmap 回退 <span class="swatch-val">rgb(13,13,26) #0d0d1a</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:#f0f0f0"></span> 标题颜色 <span class="swatch-val">#f0f0f0</span></div>
+        <div class="swatch-row"><span class="swatch" style="background:#8888aa"></span> 副标题颜色 <span class="swatch-val">#8888aa</span></div>
+      </div>
+      <div class="panel-section">
+        <h3>交互日志</h3>
+        <div id="interaction-log" style="font-family:'Consolas',monospace;font-size:10px;color:#888;line-height:1.6;max-height:120px;overflow-y:auto;">
+          等待用户操作...
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <span>UA: <span id="info-ua">-</span></span>
+    <span>视口: <span id="info-viewport">-</span></span>
+    <span>引擎: <span id="info-engine">纯 DOM</span></span>
+    <span>时间: <span id="info-time">-</span></span>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
