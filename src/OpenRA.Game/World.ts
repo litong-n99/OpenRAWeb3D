@@ -1549,30 +1549,30 @@ export class GameWorldManager {
         ;(playerActor as { world?: WorldStub }).world = this as unknown as WorldStub
       }
 
-      // ---- BotController for AI players (Ch26 Phase A) ----
-      // OpenRA 对照: BotController creation in CreatePlayers
+      // ---- ModularBot for AI players (Ch26 Phase C) ----
+      // OpenRA 对照: ModularBot creation in CreatePlayers
       if (slot.isBot && playerActor) {
         const tf = this.modData?.traitFactory
-        if (tf?.has('BotController')) {
-          // BotController is registered — create and attach it
-          const bcComponent = tf.create(playerActor, {
-            name: 'BotController',
+        if (tf?.has('ModularBot')) {
+          // ModularBot is registered — create and attach it
+          const mbComponent = tf.create(playerActor, {
+            name: 'ModularBot',
             properties: {},
             instanceName: '',
             implements: [],
             dependsOn: [],
             notBefore: [],
           })
-          if (bcComponent) {
-            bcComponent.attach(playerActor as unknown as IGameActor)
-            this.traitDict.addTrait(playerActor as unknown as IGameActor, bcComponent)
-            ;(playerActor as StubActor)._addTraitLocal(bcComponent)
+          if (mbComponent) {
+            mbComponent.attach(playerActor as unknown as IGameActor)
+            this.traitDict.addTrait(playerActor as unknown as IGameActor, mbComponent)
+            ;(playerActor as StubActor)._addTraitLocal(mbComponent)
           }
         } else {
-          // BotController not yet registered — log warning and skip
+          // ModularBot not yet registered — log warning and skip
           console.warn(
             `[GameWorldManager] _createPlayers: player '${slot.name}' ` +
-            `is a bot (type='${slot.botType ?? 'unknown'}') but BotController ` +
+            `is a bot (type='${slot.botType ?? 'unknown'}') but ModularBot ` +
             `is not registered in TraitFactory. AI behavior will be inactive.`,
           )
         }

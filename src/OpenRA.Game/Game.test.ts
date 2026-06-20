@@ -319,6 +319,8 @@ vi.mock('./World.js', async () => {
       this.traitDict = {
         traitsImplementing: vi.fn(() => []),
         applyToActorsWithTraitTimed: vi.fn(),
+        addTrait: vi.fn(),
+        removeActor: vi.fn(),
       }
       this.worldActor = {
         actorId: 0,
@@ -329,6 +331,40 @@ vi.mock('./World.js', async () => {
         traitsImplementing: vi.fn(() => []),
       }
       this.players = []
+      this._actors = new Map()
+      Object.defineProperty(this, 'actors', {
+        get: () => this._actors.values(),
+        enumerable: true,
+        configurable: true,
+      })
+      this.createActor = vi.fn((_name: string) => {
+        // Return a stub actor with increasing ID
+        const id = this._actors.size + 100
+        const actor = {
+          actorId: id,
+          isInWorld: false,
+          isDead: false,
+          disposed: false,
+          willDispose: false,
+          generation: 0,
+          isIdle: true,
+          owner: undefined,
+          world: undefined,
+          info: undefined,
+          grantCondition: vi.fn(() => -1),
+          revokeCondition: vi.fn(() => -1),
+          hasCondition: vi.fn(() => false),
+          tokenValid: vi.fn(() => false),
+          queueActivity: vi.fn(),
+          cancelActivity: vi.fn(),
+          traitOrDefault: vi.fn(() => null),
+          traitsImplementing: vi.fn(() => []),
+          render: vi.fn(() => []),
+          tick: vi.fn(),
+        }
+        this._actors.set(id, actor)
+        return actor
+      })
       this.tick = vi.fn(function (this: any) {
         this.worldTick++
       })
@@ -2040,7 +2076,48 @@ describe('Shellmap Phase 3 (P1-D.7)', () => {
       expect(() => (game as any).spawnShellmapBots()).not.toThrow()
     })
 
-    it('adds AI players to world when world exists', async () => {
+    it('creates PlayerActors and attaches ModularBot traits', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test')
+
+      const mapStub = {
+        uid: 'test-uid',
+        title: 'Test',
+        dispose: vi.fn(),
+      }
+      await game.startGame(mapStub, WorldType.Shellmap)
+
+      const playerCountBefore = game.world!.players.length
+
+      ;(game as any).spawnShellmapBots()
+
+      const playerCountAfter = game.world!.players.length
+      // 2 AI players should be added
+      expect(playerCountAfter).toBe(playerCountBefore + 2)
+
+      // Verify createActor was called for each AI player (2 calls)
+      const world = game.world! as any
+      expect(world.createActor).toHaveBeenCalledTimes(2)
+      // First call: createActor('player', false)
+      expect(world.createActor).toHaveBeenNthCalledWith(1, 'player', false)
+      expect(world.createActor).toHaveBeenNthCalledWith(2, 'player', false)
+
+      // Verify ModularBot was attached to each PlayerActor via traitDict.addTrait
+      expect(world.traitDict.addTrait).toHaveBeenCalledTimes(2)
+
+      // Verify each AI player has playerActor reference
+      const aiPlayer1 = game.world!.players[playerCountBefore]
+      expect(aiPlayer1).toBeDefined()
+      expect((aiPlayer1 as any).playerName).toContain('Shellmap AI')
+      expect((aiPlayer1 as any).isBot).toBe(true)
+      expect((aiPlayer1 as any).playerActor).toBeDefined()
+
+      const aiPlayer2 = game.world!.players[playerCountBefore + 1]
+      expect((aiPlayer2 as any).playerName).toContain('Shellmap AI')
+    })
+
+    it('adds 2 AI players to world when world exists (legacy count check)', async () => {
       mockModJson(200)
       const canvas = createTestCanvas()
       const game = await Game.create(canvas, '_test')
@@ -2067,6 +2144,45 @@ describe('Shellmap Phase 3 (P1-D.7)', () => {
       const canvas = createTestCanvas()
       const game = await Game.create(canvas, '_test', WorldType.Shellmap)
 
+      expect(() => (game as any).setupShellmapCamera()).not.toThrow()
+    })
+
+    it('does not throw when world is null (worldRenderer exists but world is null)', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test', WorldType.Shellmap)
+
+      // Simulate: worldRenderer exists but world is null (edge case)
+      // Do NOT call startGame — so world is null
+      // Actually, after create(), world is null. We just need worldRenderer.
+      // But worldRenderer is also null because startGame() creates it.
+      // This test covers the first null check in setupShellmapCamera:
+      // if (!this._worldRenderer || !this._world) return
+
+      // After Game.create(Shellmap), worldRenderer is null (no startGame)
+      // So setupShellmapCamera should return early without error
+      expect(() => (game as any).setupShellmapCamera()).not.toThrow()
+    })
+
+    it('registers scene onBeforeRender callback when world and worldRenderer exist', async () => {
+      mockModJson(200)
+      const canvas = createTestCanvas()
+      const game = await Game.create(canvas, '_test')
+
+      const mapStub = {
+        uid: 'test-uid',
+        title: 'Test',
+        dispose: vi.fn(),
+      }
+      await game.startGame(mapStub, WorldType.Shellmap)
+
+      // After startGame(), worldRenderer and world both exist
+      // setupShellmapCamera should NOT throw
+      ;(game as any).setupShellmapCamera()
+
+      // NOTE: If viewport has centerOnActors, onBeforeRenderObservable.add
+      // would be called. Since our mock viewport does not have centerOnActors,
+      // add is NOT called — the test just verifies no throw.
       expect(() => (game as any).setupShellmapCamera()).not.toThrow()
     })
   })

@@ -28,6 +28,7 @@ import { OrderManager } from './Network/OrderManager.js'
 import { ContentInstallerService } from './ContentInstaller/ContentInstallerService.js'
 import { ContentInstallerUI } from './ContentInstaller/ContentInstallerUI.js'
 import type { Sound } from './Sound/Sound.js'
+import { ModularBot, type ModularBotInfo } from '../OpenRA.Mods.Common/Traits/Player/ModularBot.js'
 
 // ---------------------------------------------------------------------------
 // Re-export WorldType for convenience (used by main.ts and ModSelector)
@@ -937,67 +938,140 @@ export class Game {
   /**
    * Configure shellmap camera for cinematic AI-following mode.
    *
-   * P1-D.7: When shellmap is running, the camera automatically follows
+   * TODO-26.C.2: When shellmap is running, the camera automatically follows
    * AI units with smooth panning. User camera control is disabled.
    *
    * OpenRA 对照: Viewport.Center() + smooth scroll to AI actor positions
    *
-   * TODO-P1-D.7: Full cinematic camera with smooth AI-following panning.
-   * Current implementation sets the Viewport to observe the world center.
-   * Full implementation requires Viewport scrollTo/centerOn API.
+   * Registers a per-frame callback on the render scene that periodically
+   * selects a random actor from the world and centers the camera on it.
+   * The target actor switches every SWITCH_INTERVAL frames (~8 sec at 60fps).
+   *
+   * If viewport.centerOnActors is not available, the callback logs a warning
+   * once and skips further attempts.
    */
   private setupShellmapCamera(): void {
-    if (!this._worldRenderer) return
+    if (!this._worldRenderer || !this._world) return
 
-    // Configure Viewport for cinematic (non-interactive) mode
-    // The Viewport is already initialized by WorldRenderer constructor.
-    // Shellmap camera: disable user scroll/zoom, auto-follow AI units.
-    //
-    // Full implementation (P1-D.7 follow-up):
-    // - Viewport.setInteractive(false) — disable user camera control
-    // - On each render tick, smoothly pan camera toward a randomly selected
-    //   AI unit's position using Viewport.scrollTo(wpos, smooth=true)
-    // - Switch target AI unit every 8-15 seconds for visual variety
-    console.log('[Game] Shellmap camera: cinematic mode (follow AI units)')
+    const world = this._world
+    const viewport = this._worldRenderer.viewport
+    let switchTimer = 0
+    const SWITCH_INTERVAL = 500 // ~8 sec at 60fps
+
+    // Check if viewport supports centerOnActors once
+    const vp = viewport as unknown as {
+      centerOnActors?: (actors: unknown[]) => void
+    }
+    if (typeof vp.centerOnActors !== 'function') {
+      // NOTE: Viewport centerOnActors not yet available.
+      // The camera will remain at its default position until
+      // Viewport gains the centerOnActors API.
+      console.log('[Game] Shellmap camera: Viewport.centerOnActors not available — camera at default position.')
+      return
+    }
+
+    // Register per-frame cinematic camera update
+    this._worldRenderer.scene.onBeforeRenderObservable.add(() => {
+      switchTimer++
+      if (switchTimer >= SWITCH_INTERVAL) {
+        switchTimer = 0
+        // Pick a random actor from the world (prefer actors in-world)
+        const actors = Array.from(world.actors).filter(a => a.isInWorld)
+        if (actors.length > 0) {
+          const randomActor = actors[Math.floor(Math.random() * actors.length)]
+          vp.centerOnActors!([randomActor])
+        }
+      }
+    })
   }
 
   /**
    * Spawn AI players in the shellmap world for dynamic skirmish background.
    *
-   * P1-D.7: Creates 2+ AI players with BotModule traits (HarvesterBotModule,
-   * BaseBuilderBotModule, UnitBuilderBotModule) so the shellmap shows live
-   * gameplay rather than a static image.
+   * TODO-26.C.1: Creates AI player entries with ModularBot traits attached
+   * to PlayerActors. Each AI gets a PlayerActor + ModularBot middleware that
+   * bridges to the Ch6 BotModule system (IBotTick, IBotEnabled, etc.).
    *
    * OpenRA 对照: BotController creation in OpenRA.Mods.Common/Traits/
    *
-   * TODO-P1-D.7: Full AI bot creation using the Ch6 BotModule system.
-   * Current implementation adds AI player entries to the world.
-   * Full implementation requires:
-   * - Player/PlayerActor creation for each AI
-   * - BotModule trait registration (HarvesterBotModule, etc.)
-   * - Initial unit spawning (MCV + starting units)
+   * ## Flow
+   *
+   * 1. For each AI player:
+   *    a. Create a PlayerActor via world.createActor('player', false)
+   *    b. Build a PlayerStub with AI metadata (name, faction, isBot)
+   *    c. Create and attach ModularBot trait to the PlayerActor
+   *    d. Register the player in the world's player list
+   *    e. Activate the ModularBot to start AI decision loop
+   *
+   * ## TraitFactory note
+   *
+   * ModularBot is constructed directly here (not via TraitFactory) to avoid
+   * circular import issues at module load time. When TraitFactory is more
+   * fully integrated (TODO-26.C.1 follow-up), ModularBot registration will
+   * happen during ModData.loadRuleSet() and use the standard pipeline.
+   *
+   * NOTE: Starting unit spawning (MCV) is deferred — requires ruleset with
+   * 'mcv' ActorConfig loaded. See TODO-26.C.DEFER.
    */
   private spawnShellmapBots(): void {
     if (!this._world) return
 
-    // Create AI player stubs and add them to the world
-    // In full implementation, each AI player gets a full PlayerActor
-    // with BotModule traits registered via TraitDictionary.
-    const aiPlayerCount = 2
+    const world = this._world
+    const aiPlayerCount = 2 // TODO-26.C.1: make configurable
+
+    const factions = ['allies', 'soviet'] // Default RA factions for shellmap
 
     for (let i = 0; i < aiPlayerCount; i++) {
+      // ---- Step 1: Create PlayerActor ----
+      // Use 'player' as the actor type (SystemActors.Player = 'player')
+      const playerActor = world.createActor('player', false)
+      if (!playerActor) {
+        console.warn(`[Game] spawnShellmapBots: failed to create PlayerActor for AI ${i + 1}`)
+        continue
+      }
+
+      // Set world reference on the PlayerActor (needed by ModularBot.activate)
+      ;(playerActor as unknown as Record<string, unknown>).world = world as unknown as Record<string, unknown>
+
+      // Set owner reference on the PlayerActor (will be updated when player is registered)
+      ;(playerActor as unknown as Record<string, unknown>).owner = null
+
+      // ---- Step 2: Build PlayerStub with AI metadata ----
       const aiPlayer = {
         playerName: `Shellmap AI ${i + 1}`,
         internalName: `shellmap_ai_${i + 1}`,
-        playerIndex: i + 1, // Player 0 is usually the human spectator
-        // Bot traits will be attached when full BotModule integration is done
+        playerIndex: i + 1,
+        faction: factions[i % factions.length],
+        isHuman: false,
+        isBot: true,
+        playerActor: playerActor,
       }
 
-      // Register AI player in the world's player list
-      this._world.players.push(aiPlayer as unknown as (typeof this._world.players)[0])
+      // Set the player as owner of the PlayerActor
+      ;(playerActor as unknown as Record<string, unknown>).owner = aiPlayer
+
+      // ---- Step 3: Create and attach ModularBot ----
+      const botInfo: ModularBotInfo = {
+        type: 'shellmap',
+        name: `Shellmap AI ${i + 1}`,
+        minOrderQuotientPerTick: 5,
+      }
+      const bot = new ModularBot(botInfo)
+      bot.attach(playerActor)
+      world.traitDict.addTrait(playerActor, bot)
+
+      // ---- Step 4: Register player in world ----
+      world.players.push(aiPlayer as unknown as (typeof world.players)[0])
+
+      // ---- Step 5: Activate the bot ----
+      bot.activate(aiPlayer as unknown as import('./Traits/TraitsInterfaces.js').PlayerStub)
+
+      // TODO-26.C.DEFER: spawn MCV starting unit for each AI
+      // Requires 'mcv' ActorConfig in the ruleset. Example:
+      //   world.createActor('mcv', true, initializerWithOwnerAndLocation)
     }
 
-    console.log(`[Game] Shellmap: spawned ${aiPlayerCount} AI players for dynamic skirmish`)
+    console.log(`[Game] Shellmap: spawned ${aiPlayerCount} AI players with ModularBot traits`)
   }
 
   /**
