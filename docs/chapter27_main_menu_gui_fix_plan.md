@@ -1,7 +1,8 @@
 # OpenRAWeb3D Main Menu GUI Fix Plan: Chapter 27
 
 > **Source Reference**: OpenRA Red Alert main menu (`OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`) + chrome YAML definitions (`OpenRA/mods/common/chrome/mainmenu.yaml`, etc.)
-> **Chapter Status**: PLANNING (0/15 tasks across 5 phases)
+> **Chapter Status**: Phase A COMPLETE (3/15 tasks, 20%); Phases B-E PLANNING
+> **Phase A Commits**: `58995dd` (feat: chrome asset pipeline), `152890b` (fix: review findings)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: ALL Chapters 2-26 COMPLETE (782+ files, 100%). Post-migration completion plan ALL PHASES A-E COMPLETE (52/52, 100%).
 
@@ -142,16 +143,17 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
 
 ### 3.1 Phase A: Chrome Asset Pipeline
 
-**Status**: PLANNING
+**Status**: COMPLETE (2026-06-20)
 **Complexity**: MEDIUM (build-chrome.ts), LOW (rest)
 **Blocked by**: Nothing (all infrastructure available)
 **Blocks**: Phase B, Phase C
+**Commits**: `58995dd` (feat: implement Ch27 Phase A chrome asset pipeline), `152890b` (fix: address Ch27 Phase A review findings)
 
 **Description**: Builds the chrome asset pipeline. A new build script (`build-chrome.ts`) converts OpenRA's chrome YAML definitions from `OpenRA/mods/{mod}/chrome/*.yaml` to `public/mods/{mod}/chrome/*.json`. The existing `build-mods.ts` is extended to invoke this script. This fills the critical gap: `public/mods/common/` and `public/mods/ra/chrome/` directories currently don't exist.
 
 #### TODO Items
 
-- [ ] **TODO-27.A.1** `scripts/build-chrome.ts` (NEW, est. 150 lines) -- Chrome YAML to JSON build script:
+- [x] **TODO-27.A.1** `scripts/build-chrome.ts` (NEW, est. 150 lines -> actual 236 lines) -- Chrome YAML to JSON build script:
   - Iterate `OpenRA/mods/common/chrome/` and `OpenRA/mods/ra/chrome/` directories
   - For each `*.yaml` file, parse with existing `MiniYamlParser`
   - Convert to JSON and write to `public/mods/{mod}/chrome/{name}.json`
@@ -160,7 +162,7 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
   - Create all necessary output directories before writing (recursive mkdir)
   - Run via `npx tsx scripts/build-chrome.ts` (or integrated into build-mods.ts)
 
-- [ ] **TODO-27.A.2** `scripts/build-mods.ts` (MODIFY, est. 30 lines) -- Integrate chrome conversion:
+- [x] **TODO-27.A.2** `scripts/build-mods.ts` (MODIFY, est. 30 lines -> actual +69 lines) -- Integrate chrome conversion:
   - After rules/weapons/sequences conversion, invoke `buildChromeAssets()` for the mod
   - Extract `Chrome` and `ChromeLayout` paths from parsed mod.yaml
   - For each path (e.g., `common|chrome/mainmenu.yaml`), call `buildChromeYaml()`
@@ -168,7 +170,7 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
   - Ensure `public/mods/common/chrome/` directory is populated with chrome JSON files
   - Add `chrome` and `chromeLayout` entries to the output mod.json so ChromeProvider can find them
 
-- [ ] **TODO-27.A.3** `public/mods/common/chrome/*.json` (GENERATED) -- Verify generated chrome JSON:
+- [x] **TODO-27.A.3** `public/mods/common/chrome/*.json` (GENERATED) -- Verify generated chrome JSON:
   - `mainmenu.json` -- Main menu widget tree definition
   - `settings.json` -- Settings panel layout
   - `ingame.json` -- In-game HUD chrome
