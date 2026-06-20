@@ -659,6 +659,14 @@
     "WithDecoration": {
       "id": "UNDERGROUND",
       "RequiresCondition": "inside-tunnel || submerged"
+    },
+    "DamagedByTerrain": {
+      "id": "VEINS",
+      "RequiresCondition": "!inside-tunnel && !submerged"
+    },
+    "LeavesTrails": {
+      "id": "VEINS",
+      "RequiresCondition": "!inside-tunnel && !submerged"
     }
   },
   "SUBTANK": {
@@ -741,6 +749,14 @@
     "WithDecoration": {
       "id": "UNDERGROUND",
       "RequiresCondition": "inside-tunnel || submerged"
+    },
+    "DamagedByTerrain": {
+      "id": "VEINS",
+      "RequiresCondition": "!inside-tunnel && !submerged"
+    },
+    "LeavesTrails": {
+      "id": "VEINS",
+      "RequiresCondition": "!inside-tunnel && !submerged"
     }
   },
   "STNK": {

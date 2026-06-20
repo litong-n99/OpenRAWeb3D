@@ -119,11 +119,19 @@ export class WidgetLoader {
     for (const [key, node] of Object.entries(layoutJson)) {
       // OpenRA checks uniqueness by suffix (Id after '@'), not full Type@Id.
       // e.g., "Container@MENU" conflicts with "ScrollPanel@MENU".
-      const suffix = key.includes('@') ? key.slice(key.indexOf('@') + 1) : key
-      for (const [existingKey] of this._widgetDefinitions) {
+      //
+      // MiniYamlParser strips @Name from keys (e.g. "Container@MAINMENU" →
+      // key="Container", node.id="MAINMENU"). When the key has no @, use
+      // node.id as the suffix for uniqueness; otherwise multiple layout
+      // files each with their own Container would falsely collide.
+      const suffix = key.includes('@')
+        ? key.slice(key.indexOf('@') + 1)
+        : (typeof node['id'] === 'string' ? node['id'] : key)
+
+      for (const [existingKey, existingNode] of this._widgetDefinitions) {
         const existingSuffix = existingKey.includes('@')
           ? existingKey.slice(existingKey.indexOf('@') + 1)
-          : existingKey
+          : (typeof existingNode['id'] === 'string' ? existingNode['id'] : existingKey)
         if (existingSuffix === suffix) {
           throw new Error(`Widget has duplicate Key '${key}'`)
         }
@@ -278,11 +286,26 @@ export class WidgetLoader {
    * @returns 实例化的 widget
    */
   loadWidgetById(args: WidgetArgs, parent: Widget | null, id: string): Widget {
-    const node = this._widgetDefinitions.get(id)
+    // Direct lookup first (key may match exactly)
+    let node = this._widgetDefinitions.get(id)
+    let lookupKey = id
+
+    // Fallback: MiniYamlParser strips @Name from keys, so search by node.id.
+    // e.g., "Container@MAINMENU" → key="Container", node.id="MAINMENU"
+    if (!node) {
+      for (const [key, def] of this._widgetDefinitions) {
+        const nodeId = (def as Record<string, unknown>)['id']
+        if (typeof nodeId === 'string' && nodeId === id) {
+          node = def
+          lookupKey = key
+          break
+        }
+      }
+    }
     if (!node) {
       throw new Error(`Cannot find widget with Id '${id}'`)
     }
-    return this.loadWidget(args, parent, id, node)
+    return this.loadWidget(args, parent, lookupKey, node)
   }
 
   // ---------------------------------------------------------------------------
