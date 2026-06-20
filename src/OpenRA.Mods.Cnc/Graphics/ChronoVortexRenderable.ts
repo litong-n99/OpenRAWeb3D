@@ -9,6 +9,11 @@
  * - C# RenderDebugGeometry → TS debug overlay (development only)
  * - C# 48-frame animation + .lut files → TS spiral UV animation in fragment shader
  *
+ * Phase C 变更 (Chapter 24 Phase C):
+ * - 添加 renderingGroupId 支持: billboard.renderingGroupId = RenderGroup.Actor (1)
+ * - 添加 tickUpdate(tickCount) 方法: 基于游戏 tick 的动画计时（替代硬编码 1/60 帧增量）
+ * - renderingGroupId 通过构造函数参数可配置（默认 1）
+ *
  * 时空涡旋使用自定义 ShaderMaterial 在 Billboard 上渲染旋转涡旋效果。
  * 片段着色器执行 atan2 + 半径扭曲，生成随时间旋转的螺旋图案。
  */
@@ -23,6 +28,7 @@ import {
   Effect,
   Color3,
 } from '@babylonjs/core'
+import { RenderGroup } from '../../OpenRA.Game/Graphics/WorldRenderer.js'
 
 // ---------------------------------------------------------------------------
 // ChronoVortexShaderMaterial
@@ -291,6 +297,13 @@ export class ChronoVortexRenderable {
   /** Elapsed time tracker for shader animation. */
   private _elapsedTime: number = 0
 
+  /** Rendering group ID for the billboard mesh.
+   *
+   * Phase C: defaults to RenderGroup.Actor (1) for the effects layer.
+   * Configurable via constructor for shared material pooling scenarios.
+   */
+  private readonly _renderingGroupId: number
+
   /** Create a ChronoVortexRenderable.
    *
    * OpenRA 对照: ChronoVortexRenderable constructor
@@ -300,6 +313,7 @@ export class ChronoVortexRenderable {
    * @param frame — animation frame (0-47)
    * @param scene — optional Babylon.js scene for 3D rendering
    * @param sharedMaterial — optional shared ChronoVortexShaderMaterial (pooled)
+   * @param renderingGroupId — rendering group ID for the billboard (default: RenderGroup.Actor = 1)
    * @throws if frame is out of range [0, 47]
    */
   constructor(
@@ -308,6 +322,7 @@ export class ChronoVortexRenderable {
     frame: number,
     scene?: Scene,
     sharedMaterial?: ChronoVortexShaderMaterial,
+    renderingGroupId: number = RenderGroup.Actor,
   ) {
     if (frame < 0 || frame >= 48) {
       throw new RangeError(
@@ -320,6 +335,7 @@ export class ChronoVortexRenderable {
     this._frame = frame
     this._scene = scene ?? null
     this._sharedMaterial = sharedMaterial ?? null
+    this._renderingGroupId = renderingGroupId
   }
 
   // -------------------------------------------------------------------------
@@ -424,15 +440,38 @@ export class ChronoVortexRenderable {
       this._billboard.material = this._shaderMaterial.material
       this._billboard.billboardMode = Mesh.BILLBOARDMODE_ALL
       this._billboard.isPickable = false
+      this._billboard.renderingGroupId = this._renderingGroupId
     }
 
     // Position at world-space coordinates (not screen pixels)
     this._billboard.position.set(this.pos.X, this.pos.Y, this.pos.Z)
 
-    // Update shader uniforms
-    this._elapsedTime += 1 / 60 // assume ~60fps per render call
+    // Update shader uniforms (backward-compatible frame-based time)
+    this._elapsedTime += 1 / 60 // assume ~60fps per render call when tickUpdate() not used
     this._shaderMaterial!.setTime(this._elapsedTime)
     this._shaderMaterial!.setProgress(this._frame / 47) // frame-based progress
+  }
+
+  // -------------------------------------------------------------------------
+  // tickUpdate (Phase C — 游戏 tick 驱动的动画计时)
+  // -------------------------------------------------------------------------
+
+  /** Update vortex animation using game tick count.
+   *
+   * Phase C 变更: 替代硬编码 1/60 帧增量的游戏 tick 驱动计时。
+   * 每游戏 tick = 40ms (25 ticks/s)，用绝对时间替代逐帧累加。
+   *
+   * If tickUpdate() is not called, render3D() falls back to frame-based
+   * time increment (1/60 per render call) for backward compatibility.
+   *
+   * @param tickCount — cumulative game tick count
+   */
+  tickUpdate(tickCount: number): void {
+    this._elapsedTime = tickCount * 0.04 // 40ms per game tick at 25 ticks/s
+    if (this._shaderMaterial) {
+      this._shaderMaterial.setTime(this._elapsedTime)
+      this._shaderMaterial.setProgress(this._frame / 47)
+    }
   }
 
   // -------------------------------------------------------------------------

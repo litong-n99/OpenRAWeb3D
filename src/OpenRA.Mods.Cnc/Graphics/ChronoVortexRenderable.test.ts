@@ -51,6 +51,7 @@ const {
     this.billboardMode = 0
     this.isPickable = true
     this.isVisible = true
+    this.renderingGroupId = 0
     this.dispose = meshDispose
     this.scaling = { x: 1, y: 1, z: 1 }
     meshInstances.push(this)
@@ -352,6 +353,105 @@ describe('ChronoVortexRenderable', () => {
     renderable.render(wr)
 
     expect(renderable.billboard!.billboardMode).toBe(Mesh.BILLBOARDMODE_ALL)
+  })
+
+  it('should set Billboard isPickable = false (Phase C)', () => {
+    const renderer = makeRenderer()
+    const pos = new WPos(100, 200, 0)
+    const scene = makeMockScene()
+    const renderable = new ChronoVortexRenderable(renderer, pos, 0, scene)
+    const wr = makeWorldRenderer()
+
+    renderable.render(wr)
+
+    expect(renderable.billboard!.isPickable).toBe(false)
+  })
+
+  it('should set renderingGroupId on Billboard after render (Phase C)', () => {
+    const renderer = makeRenderer()
+    const pos = new WPos(100, 200, 0)
+    const scene = makeMockScene()
+    const renderable = new ChronoVortexRenderable(renderer, pos, 0, scene)
+    const wr = makeWorldRenderer()
+
+    renderable.render(wr)
+
+    expect(renderable.billboard!.renderingGroupId).toBe(1)
+  })
+
+  it('should accept custom renderingGroupId in constructor (Phase C)', () => {
+    const renderer = makeRenderer()
+    const pos = new WPos(100, 200, 0)
+    const scene = makeMockScene()
+    const renderable = new ChronoVortexRenderable(renderer, pos, 0, scene, undefined, 2)
+    const wr = makeWorldRenderer()
+
+    renderable.render(wr)
+
+    expect(renderable.billboard!.renderingGroupId).toBe(2)
+  })
+
+  it('should default renderingGroupId to 1 when not specified (Phase C)', () => {
+    const renderer = makeRenderer()
+    const pos = new WPos(100, 200, 0)
+    const scene = makeMockScene()
+    // Backward compatible: no renderingGroupId argument
+    const renderable = new ChronoVortexRenderable(renderer, pos, 0, scene)
+    const wr = makeWorldRenderer()
+
+    renderable.render(wr)
+
+    expect(renderable.billboard!.renderingGroupId).toBe(1)
+  })
+
+  it('tickUpdate should set time from tick count (Phase C)', () => {
+    const renderer = makeRenderer()
+    const pos = new WPos(100, 200, 0)
+    const scene = makeMockScene()
+    const renderable = new ChronoVortexRenderable(renderer, pos, 0, scene)
+    const wr = makeWorldRenderer()
+
+    renderable.render(wr)
+
+    const sm = renderable.shaderMaterial!
+    const setFloatSpy = sm.material.setFloat as ReturnType<typeof vi.fn>
+
+    // Reset call history after render() which also calls setFloat
+    setFloatSpy.mockClear()
+
+    renderable.tickUpdate(50) // 50 ticks * 0.04 = 2.0 seconds
+
+    expect(sm.time).toBe(2.0)
+    expect(setFloatSpy).toHaveBeenCalledWith('u_time', 2.0)
+  })
+
+  it('tickUpdate should set progress = frame / 47 (Phase C)', () => {
+    const renderer = makeRenderer()
+    const pos = new WPos(100, 200, 0)
+    const scene = makeMockScene()
+    const renderable = new ChronoVortexRenderable(renderer, pos, 24, scene)
+    const wr = makeWorldRenderer()
+
+    renderable.render(wr)
+
+    const sm = renderable.shaderMaterial!
+    const setFloatSpy = sm.material.setFloat as ReturnType<typeof vi.fn>
+    setFloatSpy.mockClear()
+
+    renderable.tickUpdate(10)
+
+    expect(sm.progress).toBeCloseTo(24 / 47, 2)
+    expect(setFloatSpy).toHaveBeenCalledWith('u_progress', 24 / 47)
+  })
+
+  it('tickUpdate should be no-op when not in 3D mode (Phase C)', () => {
+    const renderer = makeRenderer()
+    const pos = WPos.Zero
+    const renderable = new ChronoVortexRenderable(renderer, pos, 0)
+
+    // Should not throw when no billboard or shader material exists
+    expect(() => renderable.tickUpdate(100)).not.toThrow()
+    expect(renderable.shaderMaterial).toBeNull()
   })
 
   it('should update progress uniform on each render in 3D mode', () => {
