@@ -14,11 +14,27 @@
  * Phase B.8: Implement actual rendering via Billboard IRenderable instead of
  * returning empty arrays. The visibility logic (tick/ShouldRender) was already
  * fully migrated in Phase A.
+ *
+ * Ch24 Phase D: Add actual Babylon.js Billboard mesh with StandardMaterial.
+ * When a Scene is provided, a small colored Billboard plane is created at the
+ * actor's world position and toggled based on dot visibility. Without a Scene,
+ * the existing plain-data GpsDotRenderable behavior is preserved (backward
+ * compatible).
  */
 
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
+
+import {
+  MeshBuilder,
+  StandardMaterial,
+  Color3,
+  Constants,
+  Mesh,
+  type Scene,
+} from '@babylonjs/core'
+import { RenderGroup } from '../../OpenRA.Game/Graphics/WorldRenderer.js'
 
 import type { GameWorldManager } from '../../OpenRA.Game/World.js'
 import type { WorldRendererStub, IRenderable, IGameActor, PlayerStub } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
@@ -170,6 +186,10 @@ interface VisibilityModifierLike {
  * Renders a small colored dot on the minimap/radar for enemy actors
  * when GPS is active. Visibility depends on player alliance, shroud
  * state, watcher grants, and visibility modifiers.
+ *
+ * Ch24 Phase D: When a Babylon.js Scene is provided, a Billboard mesh
+ * is created for GPU rendering. Without a Scene, the original plain-data
+ * GpsDotRenderable behavior is preserved.
  */
 export class GpsDotEffect implements IEffect, IEffectAnnotation {
   private readonly _actor: IGameActor
@@ -178,9 +198,26 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
   private readonly _visibilityModifiers: VisibilityModifierLike[]
   private _playerCount: number = 0
 
-  constructor(actor: IGameActor, info: GpsDotInfo) {
+  // ---------------------------------------------------------------------------
+  // Ch24 Phase D: Babylon.js Billboard resources
+  // ---------------------------------------------------------------------------
+
+  /** Optional Babylon.js Scene for GPU resource creation.
+   *
+   * When null, the effect operates in plain-data mode (backward compatible).
+   */
+  private readonly _scene: Scene | null = null
+
+  /** Billboard mesh for the GPS dot (created lazily on first visible render). */
+  private _billboard: Mesh | null = null
+
+  /** Material for the Billboard mesh (created together with the mesh). */
+  private _billboardMaterial: StandardMaterial | null = null
+
+  constructor(actor: IGameActor, info: GpsDotInfo, scene?: Scene) {
     this._actor = actor
     this._info = info
+    this._scene = scene ?? null
 
     // Collect visibility modifiers
     const actorAny = actor as unknown as {
@@ -289,6 +326,11 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
    * In the 3D paradigm, the GPS dot is rendered as a Billboard at the actor's
    * world position so it appears above the terrain through fog of war.
    *
+   * Ch24 Phase D: When a Scene was provided at construction, a Babylon.js
+   * Billboard mesh is created/updated at the actor position and toggled
+   * based on visibility. The returned array still contains a GpsDotRenderable
+   * for backward compatibility.
+   *
    * @param worldRenderer — the world renderer (unused, render player resolved from actor)
    * @returns array with the GPS dot renderable, or empty if not visible
    */
@@ -311,6 +353,9 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
    * Returns the same Billboard renderable as render() since annotation
    * rendering shares the GPS dot visual in the 3D paradigm.
    *
+   * Ch24 Phase D: Billboard mesh is managed as a side effect (same mesh
+   * shared with render()), so this method returns the plain-data renderable.
+   *
    * @param worldRenderer — the world renderer (unused, render player resolved from actor)
    * @returns array with the GPS dot renderable, or empty if not visible
    */
@@ -320,12 +365,137 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
   }
 
   // ---------------------------------------------------------------------------
-  // _createRenderable — creates the GPS dot Billboard renderable
+  // _resolveOwnerName — extract the effective owner name for the actor
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Resolve the effective owner name for palette color selection.
+   *
+   * Prefers effectiveOwner.owner over owner for disguised actors.
+   *
+   * @returns the owner's InternalName, or "Neutral" if none found
+   */
+  private _resolveOwnerName(): string {
+    const effectiveOwner =
+      (this._actor as unknown as {
+        effectiveOwner?: { owner?: PlayerStub & { internalName?: string } }
+      }).effectiveOwner?.owner ??
+      (this._actor as unknown as { owner?: PlayerStub & { internalName?: string } }).owner
+
+    return (effectiveOwner as unknown as { internalName?: string })?.internalName ?? 'Neutral'
+  }
+
+  // ---------------------------------------------------------------------------
+  // _ensureBillboard — lazy-create the Babylon.js Billboard mesh
+  // Ch24 Phase D
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Create the Billboard mesh and material if not yet created.
+   *
+   * Requires a Scene to be available at construction time. Idempotent —
+   * subsequent calls are no-ops once the Billboard exists.
+   *
+   * The Billbard is a small plane (0.3 x 0.3 world units) that always
+   * faces the camera, rendered in the Actor render group.
+   */
+  private _ensureBillboard(): void {
+    if (!this._scene || this._billboard) return
+
+    const actorId = this._actor.actorId
+
+    // Create the Billboard plane
+    this._billboard = MeshBuilder.CreatePlane(
+      `gpsDot_${actorId}`,
+      { width: 0.3, height: 0.3 },
+      this._scene,
+    )
+    this._billboard.billboardMode = Mesh.BILLBOARDMODE_ALL
+    this._billboard.renderingGroupId = RenderGroup.Actor
+
+    // Create material with color derived from palette prefix
+    this._billboardMaterial = new StandardMaterial(
+      `gpsDot_mat_${actorId}`,
+      this._scene,
+    )
+    this._billboardMaterial.emissiveColor = this._resolveColor()
+    this._billboardMaterial.alphaMode = Constants.ALPHA_PREMULTIPLIED
+    this._billboardMaterial.backFaceCulling = false
+
+    // Assign material to mesh
+    this._billboard.material = this._billboardMaterial
+  }
+
+  // ---------------------------------------------------------------------------
+  // _resolveColor — map palette prefix to a Color3
+  // Ch24 Phase D
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Resolve the dot color from the indicator palette prefix.
+   *
+   * - "player" prefix → player-specific deterministic color from owner name
+   * - Default → orange GPS dot (Color3(1, 0.5, 0))
+   *
+   * @returns the Babylon.js Color3 for the dot material emissive color
+   */
+  private _resolveColor(): Color3 {
+    if (this._info.indicatorPalettePrefix === 'player') {
+      const ownerName = this._resolveOwnerName()
+      return this._playerColorFromName(ownerName)
+    }
+    // Default: orange GPS dot
+    return new Color3(1, 0.5, 0)
+  }
+
+  // ---------------------------------------------------------------------------
+  // _playerColorFromName — deterministic color from player name
+  // Ch24 Phase D
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Derive a deterministic Color3 from a player name using a simple hash.
+   *
+   * Uses a small palette of 8 distinct colors to ensure different players
+   * get visually distinguishable dot colors.
+   *
+   * @param name — player internal name (e.g. "Multi0", "Multi1")
+   * @returns a Color3 from the deterministic palette
+   */
+  private _playerColorFromName(name: string): Color3 {
+    // djb2-like hash for deterministic color selection
+    let hash = 0
+    for (let i = 0; i < name.length; i++) {
+      hash = ((hash << 5) - hash) + name.charCodeAt(i)
+      hash |= 0 // Convert to 32-bit integer
+    }
+
+    // Small palette of distinct, vibrant colors
+    const palette: Color3[] = [
+      new Color3(1, 0.2, 0.2),   // red
+      new Color3(0.2, 0.6, 1),   // blue
+      new Color3(0.2, 1, 0.2),   // green
+      new Color3(1, 1, 0.2),     // yellow
+      new Color3(1, 0.2, 1),     // magenta
+      new Color3(0.2, 1, 1),     // cyan
+      new Color3(1, 0.5, 0),     // orange
+      new Color3(0.8, 0.8, 0.8), // white
+    ]
+
+    return palette[Math.abs(hash) % palette.length]!
+  }
+
+  // ---------------------------------------------------------------------------
+  // _createRenderable — creates the GPS dot renderable + syncs Billboard
   // ---------------------------------------------------------------------------
 
   /**
    * Create a GpsDotRenderable for the current render player if the dot is
    * visible to them.
+   *
+   * Ch24 Phase D: When a Scene is available, manages a Babylon.js Billboard
+   * mesh as a side effect — creating it on first visibility, updating its
+   * world position each frame, and toggling enabled state.
    *
    * @returns the renderable, or null if the dot should not be visible
    */
@@ -338,25 +508,39 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
       centerPosition?: { X: number; Y: number; Z: number }
     }
     const renderPlayer = actorAny.world?.renderPlayer
-    if (!renderPlayer) return null
+    if (!renderPlayer) {
+      // No render player — hide Billboard
+      if (this._billboard) this._billboard.setEnabled(false)
+      return null
+    }
 
     const key = (renderPlayer as unknown as { internalName: string }).internalName
-    if (!key) return null
+    if (!key) {
+      if (this._billboard) this._billboard.setEnabled(false)
+      return null
+    }
 
     const state = this._dotStates.get(key)
-    if (!state?.visible) return null
-
     const centerPos = actorAny.centerPosition
-    if (!centerPos) return null
+
+    if (!state?.visible || !centerPos) {
+      // Dot not visible or no position — hide Billboard
+      if (this._billboard) this._billboard.setEnabled(false)
+      return null
+    }
+
+    // -----------------------------------------------------------------------
+    // Ch24 Phase D: Sync the Billboard mesh
+    // -----------------------------------------------------------------------
+
+    this._ensureBillboard()
+    if (this._billboard) {
+      this._billboard.position.set(centerPos.X, centerPos.Y, centerPos.Z)
+      this._billboard.setEnabled(true)
+    }
 
     // Resolve owner for palette color
-    const effectiveOwner =
-      (this._actor as unknown as {
-        effectiveOwner?: { owner?: PlayerStub & { internalName?: string } }
-      }).effectiveOwner?.owner ??
-      (this._actor as unknown as { owner?: PlayerStub & { internalName?: string } }).owner
-
-    const ownerName = (effectiveOwner as unknown as { internalName?: string })?.internalName ?? 'Neutral'
+    const ownerName = this._resolveOwnerName()
 
     return new GpsDotRenderable(
       centerPos,
@@ -371,13 +555,23 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
   // ---------------------------------------------------------------------------
 
   /**
-   * Dispose the effect, cleaning up any GPU resources.
+   * Dispose the effect, cleaning up GPU resources and state.
    *
-   * In the full Babylon.js integration, this would dispose the Billboard
-   * mesh. For now, we clear the dot state map.
+   * Ch24 Phase D: Disposes the Billboard mesh and its material. Idempotent —
+   * safe to call multiple times.
    */
   dispose(): void {
     this._dotStates.clear()
+
+    // Ch24 Phase D: Dispose GPU resources
+    if (this._billboardMaterial) {
+      this._billboardMaterial.dispose()
+      this._billboardMaterial = null
+    }
+    if (this._billboard) {
+      this._billboard.dispose()
+      this._billboard = null
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -402,6 +596,25 @@ export class GpsDotEffect implements IEffect, IEffectAnnotation {
   /** Configuration info. */
   get info(): GpsDotInfo {
     return this._info
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ch24 Phase D: Billboard accessors (for testing)
+  // ---------------------------------------------------------------------------
+
+  /** The Billboard mesh (for testing). Null until first visible render. */
+  get billboard(): Mesh | null {
+    return this._billboard
+  }
+
+  /** The Billboard material (for testing). Null until first visible render. */
+  get billboardMaterial(): StandardMaterial | null {
+    return this._billboardMaterial
+  }
+
+  /** The Babylon.js Scene (for testing). Null if no scene was provided. */
+  get scene(): Scene | null {
+    return this._scene
   }
 }
 

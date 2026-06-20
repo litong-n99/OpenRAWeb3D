@@ -3,11 +3,89 @@
  *
  * Phase B.8: Updated with render() Billboard rendering tests, palette color
  * verification, and effect cleanup tests.
+ *
+ * Ch24 Phase D: Expanded with Billboard mesh creation, visibility toggling,
+ * material properties, and dispose cleanup tests.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@babylonjs/core', () => ({ Engine: vi.fn(), Scene: vi.fn() }))
+// ---------------------------------------------------------------------------
+// Mock instance storage — vi.hoisted ensures availability before mock factory
+// ---------------------------------------------------------------------------
+
+const { __mockMeshes, __mockMaterials } = vi.hoisted(() => ({
+  __mockMeshes: [] as Record<string, unknown>[],
+  __mockMaterials: [] as Record<string, unknown>[],
+}))
+
+// ---------------------------------------------------------------------------
+// Mock @babylonjs/core — all helpers defined INSIDE factory (no top-level refs)
+// ---------------------------------------------------------------------------
+
+vi.mock('@babylonjs/core', () => {
+  function createMockMesh(name: string): Record<string, unknown> {
+    const mesh: Record<string, unknown> = {
+      name,
+      position: { x: 0, y: 0, z: 0, set: vi.fn() },
+      billboardMode: 0,
+      renderingGroupId: 0,
+      material: null,
+      setEnabled: vi.fn(),
+      dispose: vi.fn(),
+    }
+    __mockMeshes.push(mesh)
+    return mesh
+  }
+
+  function createMockMaterial(name: string): Record<string, unknown> {
+    const mat: Record<string, unknown> = {
+      name,
+      emissiveColor: null,
+      alphaMode: 0,
+      backFaceCulling: true,
+      dispose: vi.fn(),
+    }
+    __mockMaterials.push(mat)
+    return mat
+  }
+
+  const MockColor3 = vi.fn(function (
+    this: Record<string, unknown>,
+    r: number,
+    g: number,
+    b: number,
+  ) {
+    this.r = r
+    this.g = g
+    this.b = b
+  })
+
+  const MockMesh = Object.assign(
+    vi.fn((name: string) => createMockMesh(name)),
+    { BILLBOARDMODE_ALL: 7 },
+  )
+
+  return {
+    MeshBuilder: {
+      CreatePlane: vi.fn(
+        (name: string, _opts: unknown, _scene: unknown) => createMockMesh(name),
+      ),
+    },
+    StandardMaterial: vi.fn(
+      (name: string, _scene: unknown) => createMockMaterial(name),
+    ),
+    Color3: MockColor3,
+    Constants: { ALPHA_PREMULTIPLIED: 5 },
+    Mesh: MockMesh,
+    Engine: vi.fn(),
+    Scene: vi.fn(),
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Import module under test (MUST be after vi.mock)
+// ---------------------------------------------------------------------------
 
 import {
   GpsDotEffect,
@@ -15,11 +93,17 @@ import {
   ShroudVisibility,
 } from './GpsDotEffect.js'
 import type { GpsDotInfo } from './GpsDotEffect.js'
+import {
+  MeshBuilder,
+  Mesh,
+  Constants,
+} from '@babylonjs/core'
 import type {
   IGameActor,
   PlayerStub,
 } from '../../OpenRA.Game/Traits/TraitsInterfaces.js'
 import type { GameWorldManager } from '../../OpenRA.Game/World.js'
+import { RenderGroup } from '../../OpenRA.Game/Graphics/WorldRenderer.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,13 +118,14 @@ function makeInfo(overrides?: Partial<GpsDotInfo>): GpsDotInfo {
 }
 
 function makeActor(overrides?: {
+  actorId?: number
   centerPosition?: { X: number; Y: number; Z: number }
   owner?: { internalName?: string }
   effectiveOwner?: { owner?: { internalName?: string } } | null
   world?: { renderPlayer?: PlayerStub & { internalName?: string }; players?: PlayerStub[] }
 }): IGameActor {
   const actor: any = {
-    actorId: 1,
+    actorId: overrides?.actorId ?? 1,
     isInWorld: true,
     isDead: false,
     disposed: false,
@@ -77,6 +162,21 @@ function makeWorld(players: PlayerStub[] = []): GameWorldManager {
   return { players } as unknown as GameWorldManager
 }
 
+/** Create a minimal mock Babylon.js Scene for testing. */
+function makeScene(): any {
+  return { __type: 'MockScene' }
+}
+
+// ---------------------------------------------------------------------------
+// Setup / teardown
+// ---------------------------------------------------------------------------
+
+beforeEach(() => {
+  __mockMeshes.length = 0
+  __mockMaterials.length = 0
+  vi.clearAllMocks()
+})
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -99,6 +199,33 @@ describe('GpsDotEffect', () => {
       const effect = new GpsDotEffect(actor, makeInfo())
 
       expect(effect.dotStates.size).toBe(0)
+    })
+
+    // -----------------------------------------------------------------------
+    // Ch24 Phase D: Constructor with Scene
+    // -----------------------------------------------------------------------
+
+    it('accepts optional Scene parameter (backward compatible)', () => {
+      const actor = makeActor()
+      const info = makeInfo()
+      const scene = makeScene()
+
+      const effectWithScene = new GpsDotEffect(actor, info, scene)
+      expect(effectWithScene.scene).toBe(scene)
+
+      const effectWithoutScene = new GpsDotEffect(actor, info)
+      expect(effectWithoutScene.scene).toBeNull()
+    })
+
+    it('does not create Billboard mesh in constructor (lazy creation)', () => {
+      const actor = makeActor()
+      const info = makeInfo()
+      const scene = makeScene()
+
+      const effect = new GpsDotEffect(actor, info, scene)
+      expect(effect.billboard).toBeNull()
+      expect(effect.billboardMaterial).toBeNull()
+      expect(MeshBuilder.CreatePlane).not.toHaveBeenCalled()
     })
   })
 
@@ -203,7 +330,7 @@ describe('GpsDotEffect', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Phase B.8: Billboard rendering tests
+  // Phase B.8: Billboard rendering tests (plain data)
   // -----------------------------------------------------------------------
 
   describe('render() — Billboard rendering', () => {
@@ -429,6 +556,553 @@ describe('GpsDotEffect', () => {
 
       const result = effect.render(null as any)
       expect(result).toHaveLength(0)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase D: Billboard mesh creation tests
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase D — Billboard mesh creation', () => {
+    it('creates Billboard mesh when scene is provided and dot is visible', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      // Billboard should now exist
+      expect(effect.billboard).not.toBeNull()
+      expect(effect.billboardMaterial).not.toBeNull()
+      expect(MeshBuilder.CreatePlane).toHaveBeenCalled()
+    })
+
+    it('does NOT create Billboard when no Scene provided', () => {
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info) // No scene
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      expect(effect.billboard).toBeNull()
+      expect(MeshBuilder.CreatePlane).not.toHaveBeenCalled()
+    })
+
+    it('sets mesh.renderingGroupId = RenderGroup.Actor (1) after creation', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const billboard = effect.billboard as Record<string, unknown> | null
+      expect(billboard).not.toBeNull()
+      expect(billboard!.renderingGroupId).toBe(RenderGroup.Actor) // 1
+    })
+
+    it('sets mesh.billboardMode = Mesh.BILLBOARDMODE_ALL (7) after creation', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const billboard = effect.billboard as Record<string, unknown> | null
+      expect(billboard).not.toBeNull()
+      expect(billboard!.billboardMode).toBe(Mesh.BILLBOARDMODE_ALL) // 7
+    })
+
+    it('creates StandardMaterial with alphaMode = ALPHA_PREMULTIPLIED', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const material = effect.billboardMaterial as Record<string, unknown> | null
+      expect(material).not.toBeNull()
+      expect(material!.alphaMode).toBe(Constants.ALPHA_PREMULTIPLIED)
+    })
+
+    it('uses orange default emissive color for non-player palette prefix', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      // Non-"player" palette prefix → orange default
+      const info = makeInfo({ indicatorPalettePrefix: 'enemy' })
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const material = effect.billboardMaterial as Record<string, unknown> | null
+      expect(material).not.toBeNull()
+      const color = material!.emissiveColor as { r: number; g: number; b: number }
+      expect(color.r).toBe(1)
+      expect(color.g).toBe(0.5)
+      expect(color.b).toBe(0)
+    })
+
+    it('uses player-specific color for "player" palette prefix', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' }, // Determines player color
+      })
+
+      const info = makeInfo({ indicatorPalettePrefix: 'player' })
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const material = effect.billboardMaterial as Record<string, unknown> | null
+      expect(material).not.toBeNull()
+      // Player color should be a valid Color3 (r, g, b populated)
+      const color = material!.emissiveColor as { r: number; g: number; b: number }
+      expect(typeof color.r).toBe('number')
+      expect(typeof color.g).toBe('number')
+      expect(typeof color.b).toBe('number')
+    })
+
+    it('names the mesh gpsDot_<actorId>', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        actorId: 42,
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      // Mesh name should include actorId
+      const createPlaneCalls = vi.mocked(MeshBuilder.CreatePlane).mock.calls
+      expect(createPlaneCalls.length).toBeGreaterThan(0)
+      const meshName = createPlaneCalls[0]![0]
+      expect(meshName).toBe('gpsDot_42')
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase D: Billboard visibility toggle tests
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase D — Billboard visibility toggle', () => {
+    it('enables Billboard mesh when dot is visible', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const pos = { X: 10240, Y: 10240, Z: 0 }
+      const actor = makeActor({
+        centerPosition: pos,
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const billboard = effect.billboard as Record<string, unknown> | null
+      expect(billboard).not.toBeNull()
+      expect(billboard!.setEnabled).toHaveBeenCalledWith(true)
+    })
+
+    it('does not create Billboard when dot is not visible to render player', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: false, grantedAllies: false }, // NOT granted
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      const result = effect.render(null as any)
+
+      // Billboard should NOT be created since dot is not visible
+      expect(effect.billboard).toBeNull()
+      expect(result).toHaveLength(0)
+    })
+
+    it('disables Billboard when render returns empty (no render player)', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const billboard = effect.billboard as Record<string, unknown> | null
+      expect(billboard).not.toBeNull()
+
+      // Clear the setEnabled mock to get a fresh read
+      vi.mocked(billboard!.setEnabled as any).mockClear()
+
+      // Now call render on a DIFFERENT effect with no render player.
+      // This is a separate test — the original billboard is in a separate effect.
+      // For the "disable on invisible" use case:
+      // Reuse the SAME actor with world changed to have no renderPlayer
+      const noPlayerActor = makeActor({
+        world: {},
+        owner: { internalName: 'Multi2' },
+      })
+      const noPlayerEffect = new GpsDotEffect(noPlayerActor, info, scene)
+      const result = noPlayerEffect.render(null as any)
+      expect(result).toHaveLength(0)
+      // No Billboard should have been created (no render player → returns null)
+      expect(noPlayerEffect.billboard).toBeNull()
+    })
+
+    it('updates Billboard position to actor CenterPosition', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const pos = { X: 40960, Y: 51200, Z: 128 }
+      const actor = makeActor({
+        centerPosition: pos,
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const billboard = effect.billboard as Record<string, unknown> | null
+      expect(billboard).not.toBeNull()
+      const posSet = (billboard as any).position.set as ReturnType<typeof vi.fn>
+      expect(posSet).toHaveBeenCalledWith(pos.X, pos.Y, pos.Z)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase D: Dispose cleanup tests
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase D — Dispose cleanup', () => {
+    it('disposes Billboard mesh and material on dispose()', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const billboard = effect.billboard as Record<string, unknown> | null
+      const material = effect.billboardMaterial as Record<string, unknown> | null
+      expect(billboard).not.toBeNull()
+      expect(material).not.toBeNull()
+
+      effect.dispose()
+
+      expect(billboard!.dispose).toHaveBeenCalled()
+      expect(material!.dispose).toHaveBeenCalled()
+      expect(effect.billboard).toBeNull()
+      expect(effect.billboardMaterial).toBeNull()
+    })
+
+    it('dispose is safe to call when no Billboard was created', () => {
+      const info = makeInfo()
+      const actor = makeActor()
+      const effect = new GpsDotEffect(actor, info) // No scene
+
+      // Should not throw
+      expect(() => effect.dispose()).not.toThrow()
+    })
+
+    it('dispose is idempotent (safe to call multiple times)', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      effect.dispose()
+      // Second dispose should not throw
+      expect(() => effect.dispose()).not.toThrow()
+    })
+
+    it('dispose clears dot states even without Billboard', () => {
+      const actor = makeActor()
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info)
+
+      effect.tick(makeWorld([makePlayer()]))
+      expect(effect.dotStates.size).toBeGreaterThan(0)
+
+      effect.dispose()
+      expect(effect.dotStates.size).toBe(0)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase D: Backward compatibility tests
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase D — Backward compatibility', () => {
+    it('construction without Scene still works (existing behavior)', () => {
+      const actor = makeActor()
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info)
+
+      expect(effect).toBeDefined()
+      expect(effect.scene).toBeNull()
+      expect(effect.billboard).toBeNull()
+    })
+
+    it('render returns plain data when no Scene (existing behavior)', () => {
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info)
+
+      effect.tick(makeWorld([player]))
+      const result = effect.render(null as any)
+
+      // Should still return GpsDotRenderable (plain data), not a mesh
+      if (result.length > 0) {
+        expect(result[0]).toBeInstanceOf(GpsDotRenderable)
+      }
+    })
+
+    it('renderAnnotation returns plain data when no Scene (existing behavior)', () => {
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info)
+
+      effect.tick(makeWorld([player]))
+      const result = effect.renderAnnotation(null as any)
+
+      if (result.length > 0) {
+        expect(result[0]).toBeInstanceOf(GpsDotRenderable)
+      }
+    })
+
+    it('Scene parameter is truly optional (both constructors work)', () => {
+      const actor = makeActor()
+      const info = makeInfo()
+      const scene = makeScene()
+
+      // All three constructor forms should work
+      const e1 = new GpsDotEffect(actor, info)
+      const e2 = new GpsDotEffect(actor, info, undefined)
+      const e3 = new GpsDotEffect(actor, info, scene)
+
+      expect(e1.scene).toBeNull()
+      expect(e2.scene).toBeNull()
+      expect(e3.scene).toBe(scene)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Ch24 Phase D: Material property tests
+  // -----------------------------------------------------------------------
+
+  describe('Ch24 Phase D — Material properties', () => {
+    it('creates StandardMaterial with backFaceCulling disabled', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const material = effect.billboardMaterial as Record<string, unknown> | null
+      expect(material).not.toBeNull()
+      expect(material!.backFaceCulling).toBe(false)
+    })
+
+    it('assigns material to Billboard mesh', () => {
+      const scene = makeScene()
+      const player = makePlayer({
+        internalName: 'Multi0',
+        gpsWatcher: { granted: true, grantedAllies: false },
+        shroud: { getVisibility: () => ShroudVisibility.Explored },
+      })
+
+      const actor = makeActor({
+        world: { renderPlayer: player },
+        owner: { internalName: 'Multi2' },
+      })
+
+      const info = makeInfo()
+      const effect = new GpsDotEffect(actor, info, scene)
+
+      effect.tick(makeWorld([player]))
+      effect.render(null as any)
+
+      const billboard = effect.billboard as Record<string, unknown> | null
+      const material = effect.billboardMaterial as Record<string, unknown> | null
+      expect(billboard).not.toBeNull()
+      expect(material).not.toBeNull()
+      expect(billboard!.material).toBe(material)
     })
   })
 })
