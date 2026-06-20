@@ -536,13 +536,17 @@ export class ContentInstallerService {
       : localSignal
 
     try {
-      // Phase 1: Resolve mirrors
+      // ----- Local content: check public/content/ before any network access -----
+      let zipBuffer = await this._tryLoadLocalContent(download, packageId)
+
+      // Phase 1+2: CDN download (skip entirely if local content was loaded)
+      let primaryUrl = ''
+      if (!zipBuffer) {
       let mirrors: string[]
       if (download.mirrorList) {
         try {
           mirrors = await MirrorResolver.fetchMirrors(download.mirrorList)
         } catch (err) {
-          // If mirror list fetch fails and direct URL exists, use that
           if (download.url) {
             mirrors = [download.url]
           } else {
@@ -558,40 +562,10 @@ export class ContentInstallerService {
           `No download URL or mirror list for package '${packageName}'`,
         )
       }
+      primaryUrl = mirrors[0]!
 
-      // ----- Local content: check public/content/ before hitting CDN -----
-      // When ZIP files are placed in public/content/ (e.g. ra-quickinstall.zip),
-      // fetch them directly without going through the CDN proxy. This avoids
-      // all network issues (502, CORS, rate-limiting) during development.
-      let zipBuffer: ArrayBuffer | null = null
-      const localUrl = this._tryLocalContentUrl(mirrors)
-      if (localUrl) {
-        this._notifyListeners({
-          state: 'downloading',
-          packageId,
-          statusText: 'Loading from local content...',
-          progressPercent: 0,
-          bytesReceived: 0,
-          bytesTotal: -1,
-        })
-
-        const localResponse = await fetch(localUrl)
-        if (localResponse.ok) {
-          zipBuffer = await localResponse.arrayBuffer()
-          this._notifyListeners({
-            state: 'downloading',
-            packageId,
-            statusText: 'Loaded from local content',
-            progressPercent: 100,
-            bytesReceived: zipBuffer.byteLength,
-            bytesTotal: zipBuffer.byteLength,
-          })
-        }
-      }
-
-      // Phase 2: Download (skip if local file was loaded)
-      // CI-B.7: Check online status before attempting download
-      if (!this.isOnline && !zipBuffer) {
+      // Phase 2: Download
+      if (!this.isOnline) {
         throw new Error(
           'Cannot download content while offline. ' +
           'Please connect to the internet to download required game assets.',
@@ -609,8 +583,6 @@ export class ContentInstallerService {
       })
 
       // ----- CI-B.8: Cache API warm — check browser cache first -----
-      const primaryUrl = mirrors[0]!
-      if (!zipBuffer) {
       const cachedData = await this._warmContentCache(
         primaryUrl,
         download.sha1,
@@ -693,7 +665,7 @@ export class ContentInstallerService {
           this._cacheContentUrl(mirrors[0]!, zipBuffer).catch(() => {})
         }
       }
-      } // if (!zipBuffer) — outer guard for cache-warm + download block
+      } // if (!zipBuffer) — CDN download block
 
       // Phase 3: Verify (SHA1 already verified by download step)
       this._setState('verifying')
@@ -1019,31 +991,56 @@ export class ContentInstallerService {
    * @param data — The downloaded content to store.
    */
   /**
-   * Try to resolve a list of CDN mirror URLs to a local file in public/content/.
+   * Try to load a package from public/content/ instead of the CDN.
    *
-   * Extracts the filename from each URL (e.g. "ra-quickinstall.zip") and
-   * checks if it exists at `/content/<filename>`. Returns the first match,
-   * or null if no local file is available.
+   * Derives the expected filename from the mirror list URL or direct
+   * download URL, then fetches the file from /content/<filename>.
+   * When successful, returns the full ArrayBuffer — the entire CDN
+   * pipeline (mirror fetch, proxy, download, retry) is skipped.
    *
-   * This enables offline development: place the ZIP files in public/content/
-   * and the content installer loads them directly without CDN access.
-   *
-   * @param urls — CDN mirror URLs to check for local equivalents.
-   * @returns A same-origin URL like "/content/ra-quickinstall.zip", or null.
+   * @param download — The content download definition.
+   * @param packageId — Package identifier for progress notifications.
+   * @returns The ZIP file contents, or null if no local file exists.
    */
-  private _tryLocalContentUrl(urls: string[]): string | null {
-    for (const url of urls) {
+  private async _tryLoadLocalContent(
+    download: import('./ContentInstallerTypes.js').ContentDownload,
+    packageId: string,
+  ): Promise<ArrayBuffer | null> {
+    const candidates: string[] = []
+
+    // Derive from mirror list URL: "...ra-quickinstall-mirrors.txt" → "ra-quickinstall.zip"
+    if (download.mirrorList) {
+      const name = download.mirrorList.split('/').pop() ?? ''
+      const zipName = name.replace(/-mirrors\.txt$/, '.zip')
+      if (zipName !== name) candidates.push(`/content/${zipName}`)
+    }
+    if (download.url) {
+      const name = download.url.split('/').pop()
+      if (name) candidates.push(`/content/${name}`)
+    }
+
+    for (const url of candidates) {
       try {
-        const filename = url.split('/').pop()
-        if (filename && filename.endsWith('.zip')) {
-          // Return the local path — the caller will fetch() it to verify
-          // existence. We don't do a HEAD request here because we want the
-          // data anyway.
-          return `/content/${filename}`
-        }
-      } catch {
-        // URL parsing failed — skip this URL
-      }
+        const res = await fetch(url)
+        if (!res.ok) continue
+
+        this._notifyListeners({
+          state: 'downloading', packageId,
+          statusText: 'Loading from local content...',
+          progressPercent: 0, bytesReceived: 0, bytesTotal: -1,
+        })
+
+        const buffer = await res.arrayBuffer()
+
+        this._notifyListeners({
+          state: 'downloading', packageId,
+          statusText: 'Loaded from local content',
+          progressPercent: 100,
+          bytesReceived: buffer.byteLength, bytesTotal: buffer.byteLength,
+        })
+
+        return buffer
+      } catch { /* file not found or fetch error — try next candidate */ }
     }
     return null
   }
