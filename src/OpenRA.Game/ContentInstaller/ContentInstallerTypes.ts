@@ -375,4 +375,18 @@ export interface ContentPackageRecord {
    * Example: ["Content/ra/v2/allies.mix", "Content/ra/v2/conquer.mix"]
    */
   files: string[]
+
+  /**
+   * The primary download URL used to cache this package in the Cache API.
+   *
+   * Set during installPackage() after a successful download. Used by
+   * rehydrateFiles() to look up cached ZIP data in the Cache API after
+   * a page refresh, so extracted files can be re-mounted into the in-memory
+   * FileSystem without re-downloading.
+   *
+   * If absent (legacy records created before this field was added), the
+   * package cannot be rehydrated and will need a fresh download if the
+   * game attempts to access its files.
+   */
+  primaryUrl?: string
 }

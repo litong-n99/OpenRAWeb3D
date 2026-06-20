@@ -483,6 +483,7 @@ vi.mock('./ContentInstaller/ContentInstallerService.js', () => ({
     this.onProgress = vi.fn(() => () => {})
     this.getContentManifest = vi.fn().mockResolvedValue(null)
     this.checkContent = vi.fn().mockResolvedValue([])
+    this.rehydrateFiles = vi.fn().mockResolvedValue(undefined)
     this.installPackage = vi.fn().mockResolvedValue(undefined)
     this.installAll = vi.fn().mockResolvedValue(undefined)
     this.cancel = vi.fn()

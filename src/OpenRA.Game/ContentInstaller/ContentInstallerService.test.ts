@@ -711,6 +711,360 @@ describe('ContentInstallerService', () => {
   })
 
   // -------------------------------------------------------------------------
+  // rehydrateFiles
+  // -------------------------------------------------------------------------
+
+  describe('rehydrateFiles()', () => {
+    /** Set up a manifest in the service cache so rehydrateFiles can find it. */
+    async function cacheManifest(manifest?: ModContentManifest) {
+      const m = manifest ?? makeManifest()
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(m),
+      })
+      await service.getContentManifest('ra')
+    }
+
+    /**
+     * Mock the full rehydration pipeline for a package so it can be
+     * verified end-to-end. Returns mocks for inspection.
+     */
+    function mockSuccessfulRehydration(
+      recordOverrides?: Partial<ContentPackageRecord>,
+      cacheData?: ArrayBuffer,
+    ) {
+      const zipData = cacheData ?? new ArrayBuffer(16)
+
+      // Mock IndexedDB record with primaryUrl
+      ;(service as any)._getPackageRecord = vi.fn().mockResolvedValue({
+        packageId: 'ra:quickinstall',
+        version: 'abc123',
+        sha1: 'abc123',
+        manifestSha1: 'abc123',
+        installedAt: Date.now(),
+        files: ['Content/ra/v2/allies.mix'],
+        primaryUrl: 'https://example.com/quickinstall.zip',
+        ...recordOverrides,
+      } satisfies ContentPackageRecord)
+
+      // Mock Cache API warm
+      ;(service as any)._warmContentCache = vi.fn().mockResolvedValue(zipData)
+
+      // Mock extractor
+      const extractedFiles = new Map<string, ArrayBuffer>()
+      extractedFiles.set('Content/ra/v2/allies.mix', new ArrayBuffer(32))
+      ;(service as any)._extractor = {
+        extract: vi.fn().mockResolvedValue(extractedFiles),
+      }
+
+      // Mock loadMixDb
+      ;(service as any)._mixDb = new Map()
+
+      return { zipData, extractedFiles }
+    }
+
+    it('returns immediately when no manifest exists (404)', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn(),
+      })
+
+      // Should return without error
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+    })
+
+    it('returns immediately when manifest has no packages', async () => {
+      await cacheManifest(makeManifest({ packages: {} }))
+
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+    })
+
+    it('skips packages with no IndexedDB record', async () => {
+      await cacheManifest()
+
+      // No DB record for any package
+      ;(service as any)._getPackageRecord = vi.fn().mockResolvedValue(null)
+
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+      // Should have been called for each package
+      expect((service as any)._getPackageRecord).toHaveBeenCalledWith(
+        'ra:quickinstall',
+      )
+      expect((service as any)._getPackageRecord).toHaveBeenCalledWith(
+        'ra:movies',
+      )
+    })
+
+    it('skips packages with no primaryUrl in the record', async () => {
+      await cacheManifest()
+
+      // Record exists but has no primaryUrl (legacy install)
+      ;(service as any)._getPackageRecord = vi.fn().mockResolvedValue({
+        packageId: 'ra:quickinstall',
+        version: 'abc123',
+        sha1: 'abc123',
+        installedAt: Date.now(),
+        files: ['Content/ra/v2/allies.mix'],
+        // primaryUrl intentionally omitted
+      } satisfies ContentPackageRecord)
+
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+    })
+
+    it('successfully rehydrates files from Cache API', async () => {
+      await cacheManifest()
+      mockSuccessfulRehydration()
+
+      // Reset mockFs counter before test
+      mockFs.mountFromBuffer.mockClear()
+
+      // Only return the record for quickinstall, skip movies
+      ;(service as any)._getPackageRecord = vi.fn(
+        async (packageId: string) => {
+          if (packageId === 'ra:quickinstall') {
+            return {
+              packageId: 'ra:quickinstall',
+              version: 'abc123',
+              sha1: 'abc123',
+              manifestSha1: 'abc123',
+              installedAt: Date.now(),
+              files: ['Content/ra/v2/allies.mix'],
+              primaryUrl: 'https://example.com/quickinstall.zip',
+            } satisfies ContentPackageRecord
+          }
+          return null // skip movies
+        },
+      )
+
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+
+      // Should have warmed cache with the stored primaryUrl
+      expect((service as any)._warmContentCache).toHaveBeenCalledWith(
+        'https://example.com/quickinstall.zip',
+        'abc123',
+      )
+
+      // Should have called extractor
+      expect((service as any)._extractor.extract).toHaveBeenCalled()
+
+      // Should have mounted the extracted files
+      expect(mockFs.mountFromBuffer).toHaveBeenCalledTimes(1)
+      const mountCall = mockFs.mountFromBuffer.mock.calls[0] as any[]
+      expect(mountCall[0]).toBe(
+        '@content:ra/quickinstall/Content/ra/v2/allies.mix',
+      )
+      expect(mountCall[1]).toBeInstanceOf(ArrayBuffer)
+      // explicitName = `${modId}|Content/${modId}/v2/${filename}`
+      // where filename is the extract map key: 'Content/ra/v2/allies.mix'
+      expect(mountCall[2]).toBe(
+        'ra|Content/ra/v2/Content/ra/v2/allies.mix',
+      )
+    })
+
+    it('skips package when Cache API has no matching entry', async () => {
+      await cacheManifest()
+
+      // Record exists with primaryUrl but Cache API returns null (evicted)
+      ;(service as any)._getPackageRecord = vi.fn().mockResolvedValue({
+        packageId: 'ra:quickinstall',
+        version: 'abc123',
+        sha1: 'abc123',
+        manifestSha1: 'abc123',
+        installedAt: Date.now(),
+        files: ['Content/ra/v2/allies.mix'],
+        primaryUrl: 'https://example.com/quickinstall.zip',
+      } satisfies ContentPackageRecord)
+
+      // Cache miss
+      ;(service as any)._warmContentCache = vi.fn().mockResolvedValue(null)
+
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+
+      // Should NOT have called extractor
+      expect(mockFs.mountFromBuffer).not.toHaveBeenCalled()
+    })
+
+    it('handles Cache API errors gracefully', async () => {
+      await cacheManifest()
+
+      ;(service as any)._getPackageRecord = vi.fn().mockResolvedValue({
+        packageId: 'ra:quickinstall',
+        version: 'abc123',
+        sha1: 'abc123',
+        installedAt: Date.now(),
+        files: ['Content/ra/v2/allies.mix'],
+        primaryUrl: 'https://example.com/quickinstall.zip',
+      } satisfies ContentPackageRecord)
+
+      // Cache API throws
+      ;(service as any)._warmContentCache = vi
+        .fn()
+        .mockRejectedValue(new Error('Cache API quota exceeded'))
+
+      // Should not throw — just log warning and continue
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+      expect(mockFs.mountFromBuffer).not.toHaveBeenCalled()
+    })
+
+    it('handles extraction errors gracefully', async () => {
+      await cacheManifest()
+
+      ;(service as any)._getPackageRecord = vi.fn().mockResolvedValue({
+        packageId: 'ra:quickinstall',
+        version: 'abc123',
+        sha1: 'abc123',
+        installedAt: Date.now(),
+        files: ['Content/ra/v2/allies.mix'],
+        primaryUrl: 'https://example.com/quickinstall.zip',
+      } satisfies ContentPackageRecord)
+
+      // Cache hit
+      ;(service as any)._warmContentCache = vi
+        .fn()
+        .mockResolvedValue(new ArrayBuffer(16))
+
+      // Extraction fails
+      ;(service as any)._mixDb = new Map()
+      ;(service as any)._extractor = {
+        extract: vi
+          .fn()
+          .mockRejectedValue(new Error('Corrupt ZIP archive')),
+      }
+
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+      expect(mockFs.mountFromBuffer).not.toHaveBeenCalled()
+    })
+
+    it('continues to next package when one fails', async () => {
+      // Manifest with two packages
+      // First package fails, second succeeds
+      await cacheManifest()
+      mockSuccessfulRehydration()
+
+      // Override: first package getRecord returns record without download key
+      ;(service as any)._getPackageRecord = vi.fn(
+        async (packageId: string) => {
+          if (packageId === 'ra:quickinstall') {
+            return {
+              packageId: 'ra:quickinstall',
+              version: 'abc123',
+              sha1: 'abc123',
+              installedAt: Date.now(),
+              files: ['Content/ra/v2/allies.mix'],
+              primaryUrl: 'https://example.com/broken.zip',
+            } satisfies ContentPackageRecord
+          }
+          // movies package also has record but no primaryUrl — skip
+          return {
+            packageId: 'ra:movies',
+            version: 'def456',
+            sha1: 'def456',
+            installedAt: Date.now(),
+            files: ['Content/ra/v2/movies.mix'],
+            // no primaryUrl
+          } satisfies ContentPackageRecord
+        },
+      )
+
+      // warm cache fails for first package
+      ;(service as any)._warmContentCache = vi
+        .fn()
+        .mockRejectedValue(new Error('Cache API error'))
+
+      // Should not throw
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+    })
+
+    it('handles IndexedDB read errors gracefully', async () => {
+      await cacheManifest()
+
+      ;(service as any)._getPackageRecord = vi
+        .fn()
+        .mockRejectedValue(new Error('IndexedDB transaction failed'))
+
+      // Should not throw
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+    })
+
+    it('handles mount errors gracefully and continues mounting other files', async () => {
+      await cacheManifest()
+
+      // Only return the record for quickinstall
+      ;(service as any)._getPackageRecord = vi.fn(
+        async (packageId: string) => {
+          if (packageId === 'ra:quickinstall') {
+            return {
+              packageId: 'ra:quickinstall',
+              version: 'abc123',
+              sha1: 'abc123',
+              installedAt: Date.now(),
+              files: ['Content/ra/v2/allies.mix', 'Content/ra/v2/conquer.mix'],
+              primaryUrl: 'https://example.com/quickinstall.zip',
+            } satisfies ContentPackageRecord
+          }
+          return null
+        },
+      )
+
+      ;(service as any)._warmContentCache = vi
+        .fn()
+        .mockResolvedValue(new ArrayBuffer(16))
+
+      // Extractor returns 2 files
+      const extractedFiles = new Map<string, ArrayBuffer>()
+      extractedFiles.set('allies.mix', new ArrayBuffer(32))
+      extractedFiles.set('conquer.mix', new ArrayBuffer(32))
+      ;(service as any)._mixDb = new Map()
+      ;(service as any)._extractor = {
+        extract: vi.fn().mockResolvedValue(extractedFiles),
+      }
+
+      // First mount succeeds, second fails
+      mockFs.mountFromBuffer = vi
+        .fn()
+        .mockImplementationOnce(() => {}) // first call succeeds
+        .mockImplementationOnce(() => {
+          throw new Error('Mount quota exceeded')
+        })
+
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+      // Both files should have been attempted
+      expect(mockFs.mountFromBuffer).toHaveBeenCalledTimes(2)
+    })
+
+    it('skips packages with no download key', async () => {
+      // Manifest with a package that has no download key (source-only)
+      const manifest = makeManifest({
+        packages: {
+          sourceonly: {
+            title: 'Source Only',
+            identifier: 'sourceonly',
+            testFiles: [],
+            sources: ['cd'],
+            required: false,
+            download: '', // empty string = no download
+          },
+        },
+      })
+      await cacheManifest(manifest)
+
+      ;(service as any)._getPackageRecord = vi.fn().mockResolvedValue({
+        packageId: 'ra:sourceonly',
+        version: 'v1',
+        sha1: 'abc',
+        installedAt: Date.now(),
+        files: [],
+        primaryUrl: 'https://example.com/pkg.zip',
+      } satisfies ContentPackageRecord)
+
+      // Should not attempt extraction (no download key)
+      await expect(service.rehydrateFiles('ra')).resolves.toBeUndefined()
+    })
+  })
+
+  // -------------------------------------------------------------------------
   // dispose
   // -------------------------------------------------------------------------
 

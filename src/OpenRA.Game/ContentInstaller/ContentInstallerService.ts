@@ -735,6 +735,7 @@ export class ContentInstallerService {
 
       // Store in IndexedDB
       // CI-B.5: Include manifestSha1 for update detection
+      // Include primaryUrl for Cache API rehydration on page refresh
       const record: ContentPackageRecord = {
         packageId,
         version: download.sha1,
@@ -742,6 +743,7 @@ export class ContentInstallerService {
         manifestSha1: download.sha1,
         installedAt: Date.now(),
         files: fileList,
+        primaryUrl: primaryUrl,
       }
       await this._putPackageRecord(record)
 
@@ -1235,6 +1237,144 @@ export class ContentInstallerService {
         resolve(null)
       }
     })
+  }
+
+  /**
+   * Rehydrate previously installed content files into the in-memory FileSystem.
+   *
+   * After a page refresh, the FileSystem's in-memory cache is empty even though
+   * the content was previously installed. IndexedDB has the metadata record,
+   * and the Cache API has the raw downloaded ZIPs. This method:
+   *
+   * 1. Loads the content manifest
+   * 2. For each package with an IndexedDB record, checks Cache API for the ZIP
+   *    using the `primaryUrl` stored in the record
+   * 3. If cached ZIP found: re-extracts and re-mounts files via mountFromBuffer()
+   *
+   * Runs silently — no UI, no progress events — since content is already
+   * "installed" from the user's perspective. Failures are logged as warnings
+   * and skipped; the game can continue with static mod data (rules/weapons JSON).
+   *
+   * OpenRA 对照: No direct C# equivalent. Desktop OpenRA writes files to disk
+   *             (SupportDir) which persist across launches. This is a web-specific
+   *             adaptation for Cache API + IndexedDB persistence.
+   *
+   * @param modId — The game mod identifier.
+   */
+  async rehydrateFiles(modId: string): Promise<void> {
+    // Load the manifest
+    const manifest = await this.getContentManifest(modId)
+    if (!manifest) return // No content for this mod
+
+    for (const [packageName, pkg] of Object.entries(manifest.packages)) {
+      const packageId = `${modId}:${packageName}`
+
+      // Check IndexedDB for the package record
+      let record: ContentPackageRecord | null = null
+      try {
+        record = await this._getPackageRecord(packageId)
+      } catch (err) {
+        console.warn(
+          `[ContentInstaller] rehydrateFiles: IndexedDB read failed for '${packageId}':`,
+          err instanceof Error ? err.message : String(err),
+        )
+        continue
+      }
+
+      if (!record) {
+        // Not installed — nothing to rehydrate
+        continue
+      }
+
+      if (!record.primaryUrl) {
+        // Legacy record without primaryUrl — cannot rehydrate from Cache API
+        console.warn(
+          `[ContentInstaller] rehydrateFiles: No primaryUrl in record for '${packageId}' — cannot rehydrate (legacy install)`,
+        )
+        continue
+      }
+
+      // Try to load the cached ZIP from Cache API
+      let zipBuffer: ArrayBuffer | null = null
+      try {
+        zipBuffer = await this._warmContentCache(
+          record.primaryUrl,
+          record.sha1,
+        )
+      } catch (err) {
+        console.warn(
+          `[ContentInstaller] rehydrateFiles: Cache API read failed for '${packageId}':`,
+          err instanceof Error ? err.message : String(err),
+        )
+        continue
+      }
+
+      if (!zipBuffer) {
+        // Cache miss — the ZIP may have been evicted by the browser
+        console.warn(
+          `[ContentInstaller] rehydrateFiles: Cache API miss for '${packageId}' — ZIP may have been evicted`,
+        )
+        continue
+      }
+
+      // Get the download definition for extraction instructions
+      const downloadKey = pkg.download
+      if (!downloadKey) {
+        console.warn(
+          `[ContentInstaller] rehydrateFiles: No download key for package '${packageId}'`,
+        )
+        continue
+      }
+
+      const download = manifest.downloads[downloadKey]
+      if (!download) {
+        console.warn(
+          `[ContentInstaller] rehydrateFiles: Download definition '${downloadKey}' not found for '${packageId}'`,
+        )
+        continue
+      }
+
+      // Extract the ZIP
+      let extractedFiles: Map<string, ArrayBuffer>
+      try {
+        const mixDb = await this._loadMixDb()
+        extractedFiles = await this._extractor.extract(
+          zipBuffer,
+          download.extract,
+          mixDb ?? undefined,
+        )
+      } catch (err) {
+        console.warn(
+          `[ContentInstaller] rehydrateFiles: Extraction failed for '${packageId}':`,
+          err instanceof Error ? err.message : String(err),
+        )
+        continue
+      }
+
+      // Mount extracted files into FileSystem
+      for (const [filename, data] of extractedFiles) {
+        const contentName = `@content:${modId}/${packageName}/${filename}`
+        const explicitName = `${modId}|Content/${modId}/v2/${filename}`
+        try {
+          this._fileSystem.mountFromBuffer(contentName, data, explicitName)
+        } catch (err) {
+          console.warn(
+            `[ContentInstaller] rehydrateFiles: Mount failed for '${filename}' in '${packageId}':`,
+            err instanceof Error ? err.message : String(err),
+          )
+          // Continue mounting other files
+        }
+      }
+
+      // Update the record timestamp to reflect successful rehydration
+      // (Don't overwrite primaryUrl or sha1 since the content hasn't changed)
+      try {
+        record.installedAt = Date.now()
+        await this._putPackageRecord(record)
+      } catch {
+        // Best-effort timestamp update
+      }
+    }
   }
 
   /**

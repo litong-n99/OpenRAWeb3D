@@ -571,6 +571,19 @@ export class Game {
     this._contentInstaller = new ContentInstallerService(fileSystem)
     const missingPackages = await this._contentInstaller.checkContent(modId)
 
+    // 5.6. Rehydrate content files into memory on page refresh.
+    // ContentInstaller stores extracted file metadata in IndexedDB and
+    // the raw ZIP in Cache API. On refresh, the in-memory FileSystem is
+    // empty — we need to reload cached ZIPs and re-mount extracted files.
+    if (missingPackages.length === 0) {
+      try {
+        await this._contentInstaller.rehydrateFiles(modId)
+      } catch (e) {
+        console.warn('[Game] Content rehydration failed:', e instanceof Error ? e.message : String(e))
+        // Non-fatal: game can continue with rules/weapons from mod data folders
+      }
+    }
+
     if (missingPackages.length > 0) {
       console.log(
         `[Game] Content packages missing: ${missingPackages.join(', ')}`,
