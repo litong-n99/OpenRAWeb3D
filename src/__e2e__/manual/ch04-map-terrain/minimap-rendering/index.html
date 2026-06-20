@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小地图渲染管线 - Rgba32 像素格式验证 | 人工验收</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui; background: #1a1a2e; color: #eee; overflow: hidden; }
+    #app { display: flex; height: 100vh; }
+
+    #left-panel {
+      width: 360px; min-width: 360px;
+      background: #16213e; border-right: 1px solid #0f3460;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
+    }
+    #left-panel h2 { margin: 0; font-size: 16px; color: #8af; }
+    #left-panel .subtitle { color: #a0a0b0; font-size: 12px; margin-bottom: 4px; }
+    #left-panel h3 { margin: 8px 0 4px; font-size: 13px; color: #a0b0d0; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+
+    .control-group { margin: 4px 0; }
+    .control-group label { display: block; font-size: 12px; color: #aab; margin-bottom: 4px; }
+    .size-row { display: flex; gap: 8px; align-items: center; }
+    .size-row input[type="number"] {
+      width: 72px; padding: 4px 8px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 13px; font-family: 'Consolas', monospace;
+    }
+    .size-row span { color: #667; font-size: 12px; }
+
+    #left-panel button {
+      padding: 6px 12px; border-radius: 4px; border: 1px solid #0f3460;
+      background: #1a1a2e; color: #eee; font-size: 12px; cursor: pointer;
+    }
+    #left-panel button:hover { background: #0f3460; }
+    #left-panel button.primary {
+      background: #0f3460; border-color: #4a9; color: #8f8;
+    }
+    #left-panel button.primary:hover { background: #1a4a3a; }
+
+    .preset-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .preset-row button { flex: 1; font-size: 11px; min-width: 60px; }
+
+    .stats-box {
+      padding: 10px; background: rgba(13,17,23,0.6); border-radius: 6px; border: 1px solid #0f3460;
+      font-size: 11px;
+    }
+    .stat-row { display: flex; justify-content: space-between; padding: 2px 0; }
+    .stat-row .label { color: #889; }
+    .stat-row .value { color: #eee; font-family: 'Consolas', monospace; }
+
+    .status-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600;
+    }
+    .status-badge.ok { background: #1a3a1a; color: #4a4; }
+    .status-badge.warn { background: #3a3a1a; color: #aa4; }
+    .status-badge.err { background: #3a1a1a; color: #a44; }
+
+    #main-area { display: flex; flex-direction: column; flex: 1; }
+    #viewport { flex: 1; position: relative; background: #0d1117; }
+    #viewport canvas { display: block; width: 100%; height: 100%; }
+
+    #expected-overlay {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(22, 33, 62, 0.92); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 12px 16px; font-size: 12px; line-height: 1.6;
+      max-width: 390px; pointer-events: none; user-select: none;
+    }
+    #expected-overlay h4 { margin: 0 0 6px; color: #8f8; font-size: 13px; }
+    #expected-overlay ul { margin: 4px 0; padding-left: 18px; }
+    #expected-overlay li { margin: 3px 0; }
+    #expected-overlay .metric { color: #aad; font-family: monospace; }
+
+    #pipeline-overlay {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(22, 33, 62, 0.92); border: 1px solid #0f3460;
+      border-radius: 6px; padding: 10px 14px; font-size: 11px;
+      pointer-events: none; user-select: none;
+      max-width: 360px;
+    }
+    #pipeline-overlay h4 { margin: 0 0 4px; color: #fa8; font-size: 12px; }
+    #pipeline-overlay code { color: #8af; font-family: 'Consolas', monospace; }
+
+    #info-bar {
+      height: 28px; background: #0f0f1a; font-size: 10px; color: #555;
+      display: flex; gap: 20px; align-items: center; padding: 0 16px;
+      border-top: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #info-bar span { white-space: nowrap; }
+
+    #benchmark-result {
+      padding: 2px 8px; border-radius: 3px; font-family: 'Consolas', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="left-panel">
+      <h2>A. Minimap Rendering Pipeline</h2>
+      <div class="subtitle">ID: ch04-map-terrain/minimap-rendering</div>
+
+      <h3>Map Dimensions</h3>
+      <div class="control-group">
+        <label>Width x Height (pixels)</label>
+        <div class="size-row">
+          <input type="number" id="input-width" value="128" min="16" max="512" step="16">
+          <span>x</span>
+          <input type="number" id="input-height" value="128" min="16" max="512" step="16">
+        </div>
+      </div>
+
+      <h3>Preset Sizes</h3>
+      <div class="preset-row">
+        <button id="preset-64">64x64</button>
+        <button id="preset-128">128x128</button>
+        <button id="preset-200">200x100</button>
+        <button id="preset-256">256x256</button>
+        <button id="preset-512">512x512</button>
+      </div>
+
+      <button id="btn-generate" class="primary">Generate Random Minimap</button>
+
+      <h3>Display Options</h3>
+      <button id="btn-wireframe">Toggle Wireframe</button>
+
+      <h3>Texture Statistics</h3>
+      <div class="stats-box">
+        <div class="stat-row"><span class="label">Texture Size:</span><span class="value" id="stat-size">-</span></div>
+        <div class="stat-row"><span class="label">Aspect Ratio:</span><span class="value" id="stat-aspect">-</span></div>
+        <div class="stat-row"><span class="label">Pixel Format:</span><span class="value" id="stat-format">Rgba32 (4 B/px)</span></div>
+        <div class="stat-row"><span class="label">Data Length:</span><span class="value" id="stat-length">-</span></div>
+        <div class="stat-row"><span class="label">Bytes / Pixel:</span><span class="value">4 (R,G,B,A)</span></div>
+        <div class="stat-row"><span class="label">SheetType:</span><span class="value">BGRA (value=4)</span></div>
+        <div class="stat-row"><span class="label">Atlas Size:</span><span class="value">512x512</span></div>
+        <div class="stat-row"><span class="label">Gen Time:</span><span class="value" id="stat-time">-</span></div>
+      </div>
+
+      <h3>Phase B Bug Verification</h3>
+      <div class="stats-box">
+        <div class="stat-row">
+          <span class="label">Bug 1: SpriteFrameType</span>
+          <span class="status-badge ok" id="bug1-status">Rgba32(3)</span>
+        </div>
+        <div class="stat-row">
+          <span class="label">Bug 2: Size</span>
+          <span class="status-badge ok" id="bug2-status">actual WxH</span>
+        </div>
+        <div class="stat-row">
+          <span class="label">Bug 3: releaseBuffer()</span>
+          <span class="status-badge ok" id="bug3-status">called</span>
+        </div>
+      </div>
+
+      <p style="font-size:10px;color:#667;margin:2px 0;">Left-drag rotate | Right-drag pan | Scroll zoom</p>
+      <button id="btn-benchmark">Run Benchmark (100 gens)</button>
+      <div id="benchmark-result"></div>
+    </div>
+
+    <div id="main-area">
+      <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="expected-overlay">
+          <h4>Expected Results (期望结果)</h4>
+          <ul>
+            <li><b>Color Accuracy:</b> Terrain regions show distinct colors (Clear=<span class="metric">#C0B080</span>, Water=<span class="metric">#4040C0</span>, Rock=<span class="metric">#606060</span>, Tree=<span class="metric">#408040</span>, Beach=<span class="metric">#D0C090</span>)</li>
+            <li><b>No Channel Swap:</b> Colors NOT inverted or swapped (Rgba32 R,G,B,A channel order correct — red regions appear red, not blue)</li>
+            <li><b>Aspect Ratio:</b> 128x128 = square, 200x100 = <span class="metric">2:1</span> rectangle (verifying size fix from {1,1} to actual dims)</li>
+            <li><b>No Artifacts:</b> No tearing, misalignment, or color banding at edges; texture is crisp at <span class="metric">NEAREST</span> sampling</li>
+            <li><b>Dynamic Update:</b> Clicking "Generate" updates texture <span class="metric">within 50ms</span>; no memory leaks on repeated generation</li>
+            <li><b>Channel Count:</b> BGRA format = <span class="metric">4 bytes/pixel</span> (not 1 byte/pixel Indexed8)</li>
+          </ul>
+        </div>
+        <div id="pipeline-overlay">
+          <h4>Pipeline: terrainData → generatePreviewPixels() → SheetBuilder.addSimple(Rgba32) → RawTexture → Plane Mesh</h4>
+          <code>fastCopyIntoChannel(dest, stride, x, y, w, h, src, Rgba32, RGBA, premultiplied)</code><br>
+          <span style="color:#888">Copies R,G,B,A bytes in order to BGRA-atlas (R↔B swap on upload)</span>
+        </div>
+      </div>
+      <div id="info-bar">
+        <span>UA: <span id="info-ua">-</span></span>
+        <span>视口: <span id="info-viewport">-</span></span>
+        <span>引擎: <span id="info-engine">-</span></span>
+        <span>FPS: <span id="info-fps">-</span></span>
+        <span>时间: <span id="info-time">-</span></span>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
