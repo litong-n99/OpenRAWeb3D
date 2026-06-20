@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 24 -- Animation & 3D Visual Effects
 
 > **Source Reference**: OpenRA C# rendering effects + C&C projectile/effect animations
-> **Chapter Status**: IN PROGRESS (4/10 migrated — Phase A COMPLETE)
+> **Chapter Status**: IN PROGRESS (6/10 migrated — Phases A+B COMPLETE)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: Chapters 2-22 COMPLETE, Chapter 23 (MIX assets accessible)
 
@@ -117,7 +117,7 @@ The TeslaZap and ChronoVortex have their own renderers (`TeslaZapRenderable`, `C
 | Phase | Operations | Impl Lines | Test Lines | Status |
 |:---|:---:|:---:|:---:|:---|
 | A: AnimationStub | 4 | ~280 | -- | COMPLETE |
-| B: TeslaZap | 2 | ~170 | -- | PLANNING |
+| B: TeslaZap | 2 | ~170 | -- | COMPLETE |
 | C: ChronoVortex | 1 | ~100 | -- | PLANNING |
 | D: GpsDot + Tests | 3 | ~80 | ~500 | PLANNING |
 
