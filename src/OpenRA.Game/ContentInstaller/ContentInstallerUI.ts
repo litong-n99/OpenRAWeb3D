@@ -65,6 +65,8 @@ export class ContentInstallerUI {
 
   /** Current mod ID. */
   private static _modId: string | null = null
+  /** Cached content manifest for auto-play detection. */
+  private static _manifest: ModContentManifest | null = null
 
   /** Reference to the service instance. */
   private static _service: ContentInstallerService | null = null
@@ -225,6 +227,7 @@ export class ContentInstallerUI {
 
     // Load manifest and render package list
     const manifest = await service.getContentManifest(modId)
+    ContentInstallerUI._manifest = manifest
     if (manifest) {
       ContentInstallerUI._renderPackageList(pkgList, manifest, modId)
     }
@@ -284,6 +287,30 @@ export class ContentInstallerUI {
    * Removes all DOM elements, unsubscribes from progress,
    * and resets internal state.
    */
+  /**
+   * Show a brief "Starting game..." banner after installation completes.
+   * Gives the user visual feedback before auto-transitioning to the game.
+   */
+  private static _showAutoPlayBanner(): void {
+    const panel = document.getElementById(PANEL_ID)
+    if (!panel) return
+
+    // Remove install buttons
+    const installAllBtn = document.getElementById(INSTALL_ALL_BTN_ID)
+    if (installAllBtn) installAllBtn.remove()
+    const playBtn = document.getElementById(PLAY_BTN_ID)
+    if (playBtn) playBtn.remove()
+
+    // Show completion banner
+    const banner = document.createElement('div')
+    banner.style.cssText =
+      'margin-top:16px;padding:14px 20px;border-radius:8px;' +
+      'background:linear-gradient(135deg,#225533,#338844);' +
+      'text-align:center;color:#c0f0c0;font-size:0.95rem;font-weight:600;'
+    banner.textContent = '✅ All content installed. Starting game…'
+    panel.appendChild(banner)
+  }
+
   static hide(): void {
     ContentInstallerUI._visible = false
 
@@ -301,6 +328,7 @@ export class ContentInstallerUI {
 
     ContentInstallerUI._service = null
     ContentInstallerUI._modId = null
+    ContentInstallerUI._manifest = null
     ContentInstallerUI._onComplete = null
     ContentInstallerUI._onBack = undefined
     ContentInstallerUI._installedPackages.clear()
@@ -561,18 +589,14 @@ export class ContentInstallerUI {
         try {
           // CI-B.3: Use parallel install for better throughput
           await ContentInstallerUI._service!.installAllParallel(modId, 2)
-          // Re-check and refresh
-          const m = await ContentInstallerUI._service!.getContentManifest(
-            modId,
-          )
-          const listEl = document.getElementById(PACKAGE_LIST_ID)
-          if (listEl && m) {
-            ContentInstallerUI._installedPackages = new Set(
-              Object.keys(m.packages),
-            )
-            ContentInstallerUI._renderPackageList(listEl, m, modId)
-          }
-          ContentInstallerUI._updatePlayButton()
+          // Auto-start after install — no extra Play click needed
+          installAllBtn.textContent = 'Starting game...'
+          ContentInstallerUI._showAutoPlayBanner()
+          setTimeout(() => {
+            const onComplete = ContentInstallerUI._onComplete
+            ContentInstallerUI.hide()
+            onComplete?.()
+          }, 1500)
         } catch {
           installAllBtn.disabled = false
           installAllBtn.textContent = 'Retry All'
@@ -615,6 +639,21 @@ export class ContentInstallerUI {
   /**
    * Check if all required packages are installed and show the Play button.
    */
+  /**
+   * Check whether all REQUIRED packages have been installed.
+   * Only looks at packages with `required: true` in the manifest.
+   */
+  private static _allRequiredInstalled(): boolean {
+    const manifest = ContentInstallerUI._manifest
+    if (!manifest) return false
+    for (const [key, pkg] of Object.entries(manifest.packages)) {
+      if ((pkg as ContentPackage).required && !ContentInstallerUI._installedPackages.has(key)) {
+        return false
+      }
+    }
+    return true
+  }
+
   private static _updatePlayButton(): void {
     const playBtn = document.getElementById(PLAY_BTN_ID) as HTMLButtonElement
     const installAllBtn = document.getElementById(
@@ -1148,7 +1187,17 @@ export class ContentInstallerUI {
       }
     } else if (state === 'complete') {
       ContentInstallerUI._hideProgressView()
-      ContentInstallerUI._updatePlayButton()
+      // Auto-play if all required packages are now installed
+      if (ContentInstallerUI._allRequiredInstalled()) {
+        ContentInstallerUI._showAutoPlayBanner()
+        setTimeout(() => {
+          const onComplete = ContentInstallerUI._onComplete
+          ContentInstallerUI.hide()
+          onComplete?.()
+        }, 1500)
+      } else {
+        ContentInstallerUI._updatePlayButton()
+      }
     }
   }
 
