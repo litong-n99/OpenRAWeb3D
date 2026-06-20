@@ -1592,25 +1592,38 @@ export class Game {
     const mapsAvailable = this._collectSkirmishMaps()
 
     if (mapsAvailable.length === 0) {
-      // No maps — show disabled message
+      // No maps — show message + Quick Start test map option
       const noMapsMsg = document.createElement('p')
       noMapsMsg.textContent =
-        'No maps available. Download game content first.'
+        'No maps available. Download game content first, or use the test map below.'
       noMapsMsg.style.cssText =
-        'color:#aa8866;font-size:0.95rem;margin:0 0 1.5rem 0;padding:1rem;' +
+        'color:#aa8866;font-size:0.95rem;margin:0 0 1rem 0;padding:1rem;' +
         'background:rgba(40,40,20,0.5);border-radius:6px;'
       card.appendChild(noMapsMsg)
 
-      // Disabled Start button
-      const startBtn = document.createElement('button')
-      startBtn.textContent = 'Start Game'
-      startBtn.disabled = true
-      startBtn.style.cssText =
+      // Quick Start with procedural test map
+      const testMapBtn = document.createElement('button')
+      testMapBtn.textContent = 'Quick Start (Test Map)'
+      testMapBtn.style.cssText =
         'display:block;width:100%;padding:12px 20px;margin-bottom:12px;' +
-        'border:1px solid rgba(100,100,180,0.4);border-radius:6px;' +
-        'font-size:1rem;font-weight:600;' +
-        'background:rgba(40,40,60,0.5);color:#555570;cursor:not-allowed;'
-      card.appendChild(startBtn)
+        'border:1px solid rgba(46,204,113,0.5);border-radius:6px;' +
+        'font-size:1rem;font-weight:600;cursor:pointer;' +
+        'background:linear-gradient(135deg,#1a4a2a,#2a6a3a);color:#e0f0e0;' +
+        'transition:all 0.15s ease;'
+      testMapBtn.addEventListener('mouseenter', () => {
+        testMapBtn.style.background = 'linear-gradient(135deg,#2a6a3a,#3a8a4a)'
+        testMapBtn.style.borderColor = 'rgba(46,204,113,0.7)'
+      })
+      testMapBtn.addEventListener('mouseleave', () => {
+        testMapBtn.style.background = 'linear-gradient(135deg,#1a4a2a,#2a6a3a)'
+        testMapBtn.style.borderColor = 'rgba(46,204,113,0.5)'
+      })
+      testMapBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this._closeSkirmishSetup()
+        this._startSkirmishTestMap()
+      })
+      card.appendChild(testMapBtn)
     } else {
       // Map dropdown label
       const label = document.createElement('label')
@@ -2039,6 +2052,44 @@ export class Game {
       } catch {
         // Skip gracefully — camera centering is best-effort
       }
+    }
+  }
+
+  /**
+   * Start a skirmish with a procedural test map when no real maps are available.
+   *
+   * Constructs a minimal MapStub that allows the game world to initialize
+   * and render terrain + actors without downloaded content. This is a
+   * development fallback — real maps from the content installer are preferred.
+   */
+  private async _startSkirmishTestMap(): Promise<void> {
+    if (!this.modData) return
+
+    const testMapStub: MapStub = {
+      uid: 'test-map',
+      title: 'Test Map (Procedural)',
+      dispose: () => {},
+    }
+
+    // Set up simple lobby info: 1 human + 1 AI
+    this.skirmishLobbyInfo = {
+      slots: [
+        { playerName: 'You', faction: 'allies', team: 0, isHuman: true, botDifficulty: undefined },
+        { playerName: 'AI 1', faction: 'soviet', team: 1, isHuman: false, botDifficulty: 'medium' },
+      ],
+    }
+
+    try {
+      await this.startGame(testMapStub, WorldType.Regular)
+      // Best-effort camera centering
+      const vp = this._worldRenderer?.viewport as unknown as { centerOn?: (pos: { x: number; y: number }) => void }
+      if (vp && typeof vp.centerOn === 'function') {
+        try { vp.centerOn({ x: 0, y: 0 }) } catch { /* best-effort */ }
+      }
+    } catch (err) {
+      console.error('[Game] _startSkirmishTestMap: startGame failed:', err)
+      // Show main menu again on failure
+      this.showMainMenu()
     }
   }
 

@@ -2692,7 +2692,7 @@ describe('Ch26 Phase B — Skirmish Setup Modal (TODO-26.B.1)', () => {
     game.dispose()
   })
 
-  it('setup modal shows "No maps available" when MapCache is empty', async () => {
+  it('setup modal shows "No maps available" with Quick Start test map when MapCache is empty', async () => {
     mockModJson(200)
     const canvas = createTestCanvas()
     const game = await Game.create(canvas, '_test', WorldType.Shellmap)
@@ -2703,12 +2703,13 @@ describe('Ch26 Phase B — Skirmish Setup Modal (TODO-26.B.1)', () => {
     const setupOverlay = document.getElementById('skirmish-setup-overlay')!
     expect(setupOverlay).not.toBeNull()
     expect(setupOverlay.textContent).toContain('No maps available')
-    expect(setupOverlay.textContent).toContain('Download game content first.')
+    expect(setupOverlay.textContent).toContain('Download game content')
 
-    // Start Game button should be disabled when no maps
-    const startBtn = setupOverlay.querySelector('button')
-    expect(startBtn).not.toBeNull()
-    expect((startBtn as HTMLButtonElement).disabled).toBe(true)
+    // Quick Start (Test Map) button should be present and enabled
+    const testMapBtn = Array.from(setupOverlay.querySelectorAll('button'))
+      .find(b => b.textContent?.includes('Quick Start'))
+    expect(testMapBtn).not.toBeUndefined()
+    expect((testMapBtn as HTMLButtonElement).disabled).toBe(false)
 
     game.dispose()
   })
