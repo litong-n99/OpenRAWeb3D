@@ -1,7 +1,7 @@
 # OpenRA to Babylon.js Migration Plan: Chapter 26 -- Game World & Shellmap Integration
 
 > **Source Reference**: `OpenRA.Game/Game.cs`, `OpenRA.Game/World.cs`, `OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`
-> **Chapter Status**: PHASES A-B COMPLETE (6/10 migrated, 60%), Phases C-D PLANNING
+> **Chapter Status**: PHASES A-C COMPLETE (8/10 migrated, 80%), Phase D PLANNING
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: Chapters 2-25 COMPLETE (all subsystems ready for end-to-end integration)
 
@@ -117,7 +117,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 |:---|:---:|:---:|:---:|:---|
 | A: Map Loading | 3 | ~520 | -- | COMPLETE |
 | B: Skirmish Flow | 3 | ~370 | -- | COMPLETE |
-| C: Shellmap | 2 | ~280 | -- | PLANNING |
+| C: Shellmap | 2 | ~280 | -- | COMPLETE |
 | D: Widgets + Tests | 2 | ~150 | ~500 | PLANNING |
 
 ---
@@ -263,7 +263,7 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 ### 3.3 Phase C: Shellmap Phase 3 Full Integration
 
-**Status**: PLANNING
+**Status**: COMPLETE
 **Complexity**: HIGH
 **Blocked by**: Phase A (map actor spawning needed for shellmap world)
 **Blocks**: Nothing (shellmap is a cosmetic background, not gameplay-critical)
@@ -276,35 +276,44 @@ Individual subsystems are 100% migrated (rendering, actors, traits, map, combat,
 
 #### 3.3.1 Complete Shellmap AI Bot Spawning
 
-- [ ] **TODO-26.C.1** `src/OpenRA.Game/Game.ts` (est. 180 lines) -- Full AI player creation with trait attachment:
-  - **Current `spawnShellmapBots()`**: Creates `{ playerName, internalName, playerIndex }` stubs pushed to `world.players`.
-  - **Full implementation**:
-    1. For each AI player, create a `Player` instance with color, faction, and team assignment.
-    2. Create a `PlayerActor` via `world.createActor('player', false)`.
-    3. Attach `BotController` trait to the PlayerActor with `BotModules: [HarvesterBotModule, BaseBuilderBotModule, UnitBuilderBotModule]`.
-    4. Attach `Shroud` trait (AI players need their own shroud for exploration).
-    5. Attach `PlayerResources` trait with starting resources (configured per AI difficulty: Easy=3000, Medium=5000, Hard=10000).
-    6. Spawn starting units for each AI: `world.createActorFromMapEntry('mcv', [{ type: 'LocationInit', value: spawnCell }, { type: 'OwnerInit', value: aiPlayer }])`.
-    7. Call `botController.activate(player)` to start the AI decision loop.
-  - **AI faction selection**: Randomly assign factions to AI players from the mod's available factions (`manifest.factions`). Ensure all AIs on the same team have compatible factions.
-  - **Difficulty scaling**: Easy AIs build slower (production speed 0.5x), Hard AIs build faster (production speed 2.0x). This is configured via `BotControllerInfo` multipliers.
-  - **Reference**: `OpenRA.Mods.Common/Traits/BotController.cs` -- the C# BotController trait setup
+- [x] **TODO-26.C.1** `src/OpenRA.Game/Game.ts` (est. 180 lines) ✅ COMPLETE -- Full AI player creation with trait attachment:
+  - **Actual implementation**: `src/OpenRA.Game/AI/ModularBot.ts` (426 lines, new file) -- thin middleware that bridges 17+ BotModule files to the tick system. Previously all BotModules were inert (migrated but never called).
+  - **Key design**: `ModularBot` is a World trait (`IBot`) registered on the WorldActor. It creates `ModularBotPlayer` wrappers for each AI player, which patch into the Game's tick loop via `ITick.tick()`. On each tick, delegates to all active BotModules for decision-making.
+  - **BotModule static interface fix**: Added `static GetInfo(owner: Player): BotModuleInfo | undefined` to 3 BotModule files (`HarvesterBotModule.ts`, `BaseBuilderBotModule.ts`, `UnitBuilderBotModule.ts`) so ModularBot can query which modules each AI player has without instantiation.
+  - **AI faction assignment**: Each AI player gets a random faction from the mod's available factions. BotModules are attached based on the player's PlayerActor traits.
+  - **Difficulty scaling**: Implemented via `BotControllerInfo` multipliers (Easy=0.5x, Medium=1.0x, Hard=2.0x production speed). Configured during `spawnShellmapBots()`.
+  - **Shellmap integration**: In `spawnShellmapBots()`, ModularBot is created as a World trait, and `ModularBotPlayer` instances are created for each AI player with their configured BotModules.
+  - **Game.ts changes**: +140 lines in `Game.ts` for ModularBot creation + lifecycle integration.
+  - **World.ts changes**: +24 lines for ModularBot registration as World trait.
+  - **Tests**: `ModularBot.test.ts` (620 lines, 20 tests) -- tick dispatch, BotModule delegation, player lifecycle (activate/deactivate), multi-player AI, difficulty scaling, shutdown on world end.
 
 #### 3.3.2 Shellmap Cinematic Camera
 
-- [ ] **TODO-26.C.2** `src/OpenRA.Game/Game.ts` (est. 100 lines) -- AI-following cinematic camera:
-  - **Current `setupShellmapCamera()`**: Logs a message, configures Viewport stub.
-  - **Full implementation**:
-    1. Disable user camera control (`viewport.setInteractive(false)` or equivalent).
-    2. On each render tick (or every N ticks), select a random AI unit (prefer combat units like tanks for visual interest).
-    3. Smoothly pan the camera toward the unit's position using `viewport.smoothScrollTo(wpos, duration)` or direct position lerp.
-    4. Switch target AI unit every 8-15 seconds for variety.
-    5. If the shellmap has combat, prefer units that are currently firing or moving (more visually interesting).
-    6. On user input (`registerShellmapInputHandler` already registers click/keydown), the camera stops cinematic mode and the main menu appears.
-  - **Smooth panning**: Use `Vector3.Lerp(camera.position, targetPosition, smoothFactor * deltaTime)` each frame. `smoothFactor = 0.05` for gentle movement.
-  - **Camera height**: Keep the camera at a fixed height above terrain (e.g., 30 world units) for an overview perspective.
+- [x] **TODO-26.C.2** `src/OpenRA.Game/Game.ts` (est. 100 lines) ✅ COMPLETE -- AI-following cinematic camera:
+  - **Actual implementation**: Integrated into `Game.ts` within the Phase C changes (+140 lines). Shellmap camera now actively follows AI units:
+    1. Disabled user camera control during shellmap mode (`viewport.setInteractive(false)` equivalent).
+    2. On each render tick, selects a random AI unit (prefers combat units -- tanks, aircraft -- for visual interest).
+    3. Smoothly pans camera toward the unit's position using `viewport.smoothScrollTo(wpos, duration)`.
+    4. Switches target AI unit every 8-15 seconds for variety.
+    5. On user input (click/keydown registered via `registerShellmapInputHandler`), the camera exits cinematic mode and the main menu appears.
+  - **Smooth panning**: Uses `Vector3.Lerp` with `smoothFactor = 0.05` for gentle camera movement.
+  - **Camera height**: Fixed at 30 world units above terrain for overview perspective.
+  - **Covered in unit tests**: `Game.test.ts` +118 lines validate camera lifecycle, target switching, and input handler interaction.
 
-**Phase C Summary**: 2 operations, ~280 lines TS. After Phase C, the main menu background shows a live AI skirmish with camera following the action. User input instantly transitions to the main menu overlay.
+**Phase C Summary**: 2 operations, ~280 lines TS + 620 lines tests (20 tests). After Phase C, the main menu background shows a live AI skirmish with camera following the action. User input instantly transitions to the main menu overlay.
+
+**Phase C Implementation Details** (completed 2026-06-20):
+
+- **7 files changed**: 1 new file + 5 modified files + 1 new test file
+  - **New**: `src/OpenRA.Game/AI/ModularBot.ts` (426 lines) -- thin middleware bridging 17+ BotModule files to the tick system
+  - **New test**: `src/OpenRA.Game/AI/ModularBot.test.ts` (620 lines, 20 tests)
+  - **Modified**: `src/OpenRA.Game/Game.ts` (+140 lines: ModularBot creation, lifecycle, shellmap camera AI-following), `src/OpenRA.Game/Game.test.ts` (+118 lines: camera lifecycle, input handler interaction), `src/OpenRA.Game/World.ts` (+24 lines: ModularBot World trait registration)
+  - **Modified BotModule files** (3 files, +static interfaces): `HarvesterBotModule.ts`, `BaseBuilderBotModule.ts`, `UnitBuilderBotModule.ts` -- added `static GetInfo(owner)` so ModularBot can query which modules each AI player has without instantiation
+- **20 tests**: tick dispatch, BotModule delegation, player lifecycle (activate/deactivate), multi-player AI, difficulty scaling, shutdown
+- **Key architecture**: `ModularBot` is a World trait (`IBot`) registered on the WorldActor. It creates `ModularBotPlayer` wrappers for each AI player, patching into the Game's tick loop via `ITick.tick()`. On each tick, delegates to all active BotModules. Previous state: all 17+ BotModules were migrated but never called -- ModularBot is the first code that makes them active.
+- **Review**: R1 NEEDS FIXES (1 BLOCKER: missing error boundary for BotModule tick exceptions, 4 MAJOR: ModularBotPlayer deactivate cleanup, faction assignment dedup, difficulty multiplier type safety, camera target null guard, 2 MINOR) -> R2 APPROVED (all fixed)
+- **E2E**: Not needed -- AI middleware + camera logic, all unit-testable (20 tests cover tick dispatch, lifecycle, delegation, scaling, shutdown)
+- **Commits**: `978d220` (initial implementation), `db5052d` (review fixes R1)
 
 ---
 
