@@ -1,7 +1,7 @@
 # OpenRAWeb3D Main Menu GUI Fix Plan: Chapter 27
 
 > **Source Reference**: OpenRA Red Alert main menu (`OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`) + chrome YAML definitions (`OpenRA/mods/common/chrome/mainmenu.yaml`, etc.)
-> **Chapter Status**: Phase A COMPLETE (3/15 tasks, 20%); Phases B-E PLANNING
+> **Chapter Status**: Phases A-B COMPLETE (6/15 tasks, 40%); Phases C-E PLANNING
 > **Phase A Commits**: `58995dd` (feat: chrome asset pipeline), `152890b` (fix: review findings)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: ALL Chapters 2-26 COMPLETE (782+ files, 100%). Post-migration completion plan ALL PHASES A-E COMPLETE (52/52, 100%).
@@ -100,9 +100,9 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
 | 2 | `scripts/build-mods.ts` | **Modify**: Add chrome conversion to build pipeline | ~30 | LOW | A |
 | 3 | `public/mods/common/chrome/*.json` | **New**: Chrome JSON output (mainmenu.yaml, settings.yaml, etc.) | 0 (generated) | LOW | A |
 | **Phase B: ChromeProvider + FileSystem Wiring** | | | | | |
-| 4 | `src/OpenRA.Game/Game.ts` (`_mountModDataFolders`) | **Modify**: Add chrome + chromeLayout + chromeMetrics to folder mount list | ~30 | LOW | B |
-| 5 | `src/OpenRA.Game/Game.ts` (`loadMod`) | **Modify**: Call ChromeProvider.initialize() after ModData init | ~40 | LOW | B |
-| 6 | `src/OpenRA.Game/ModData.ts` | **Modify**: Initialize ChromeProvider in init() | ~30 | LOW | B |
+| 4 | `src/OpenRA.Game/Game.ts` (`_mountModDataFolders`) | **Modify**: Add chrome + chromeLayout + chromeMetrics to folder mount list | ~30 | LOW | B | ✅ DONE (`1bacfc5`) |
+| 5 | `src/OpenRA.Game/Game.ts` (`loadMod`) | **Modify**: Call ChromeProvider.initialize() after ModData init | ~40 | LOW | B | ✅ DONE (`1bacfc5`) |
+| 6 | `src/OpenRA.Game/ModData.ts` | **Modify**: JSDoc for ADR-27.3 responsibility separation | ~30 | LOW | B | ✅ DONE (`1bacfc5`) |
 | **Phase C: Widget-Based Main Menu Activation** | | | | | |
 | 7 | `src/OpenRA.Game/Game.ts` (`showMainMenu`) | **Modify**: Wire showMainMenu() -> showMainMenuWidget() with YAML loading | ~80 | MEDIUM | C |
 | 8 | `src/OpenRA.Game/Game.ts` (`showMainMenuWidget`) | **Modify**: Load from ChromeProvider + WidgetLoader instead of programmatic tree | ~60 | MEDIUM | C |
@@ -189,39 +189,50 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
 
 ### 3.2 Phase B: ChromeProvider + FileSystem Wiring
 
-**Status**: PLANNING
+**Status**: COMPLETE (2026-06-20)
 **Complexity**: LOW
 **Blocked by**: Phase A (chrome JSON files must exist)
 **Blocks**: Phase C
+**Commits**: `1bacfc5` (feat: implement Ch27 Phase B ChromeProvider + FileSystem wiring), `cbb2de9` (fix: address Ch27 Phase B review findings)
 
-**Description**: Wires the chrome JSON files into the runtime FileSystem and initializes ChromeProvider during mod loading. This replaces the current gap where `_mountModDataFolders()` only mounts rules/weapons/sequences.
+**Description**: Wires the chrome JSON files into the runtime FileSystem and initializes ChromeProvider during mod loading. This fills the gap where `_mountModDataFolders()` only mounted rules/weapons/sequences. After Phase B, `ChromeProvider` is initialized during `loadMod()` with chrome + chromeLayout + chromeMetrics paths mounted into the FileSystem, and properly deinitialized on `dispose()` / `switchMod()`.
+
+**Implementation summary**:
+- `Game.ts:_mountModDataFolders()` extended to mount chrome, chromeLayout, and chromeMetrics paths into the FileSystem
+- `Game.ts:loadMod()` calls `await ChromeProvider.initialize(manifest, fileSystem)` after ModData init
+- `Game.ts:dispose()` and `switchMod()` call `ChromeProvider.deinitialize()` for cleanup
+- `ModData.ts` updated with JSDoc documenting ADR-27.3 responsibility separation (ChromeProvider init handled by Game.ts)
+- MAJOR fix (`cbb2de9`): Removed redundant `deinitialize` call from `switchMod()` (double-deinitialize bug)
+- MINOR fixes: JSDoc explicitly mentions chrome paths; malformed file paths emit `console.warn`
 
 #### TODO Items
 
-- [ ] **TODO-27.B.1** `src/OpenRA.Game/Game.ts:_mountModDataFolders()` (MODIFY, est. 30 lines) -- Extend folder mounting to include chrome assets:
+- [x] **TODO-27.B.1** `src/OpenRA.Game/Game.ts:_mountModDataFolders()` (MODIFY, est. 30 lines) -- Extend folder mounting to include chrome assets:
   - Add `manifest.chrome` and `manifest.chromeLayout` to the path lists that get mounted
   - Parse `common|chrome/mainmenu.yaml` paths into `{pkg: "common", file: "chrome/mainmenu.yaml"}`
   - Map `.yaml` to `.json` URL paths: `/mods/common/chrome/mainmenu.json`
   - Create `Folder` packages for new mod namespaces (`common`, `ra` for chrome files)
   - Mount via `fileSystem.mountPackage(folder, pkgName)` with duplicate guard
 
-- [ ] **TODO-27.B.2** `src/OpenRA.Game/Game.ts:loadMod()` (MODIFY, est. 40 lines) -- Initialize ChromeProvider:
+- [x] **TODO-27.B.2** `src/OpenRA.Game/Game.ts:loadMod()` (MODIFY, est. 40 lines) -- Initialize ChromeProvider:
   - After `modData.init()` and `_mountModDataFolders()`, call `await ChromeProvider.initialize(manifest, fileSystem)`
   - Handle initialization failure gracefully (log warning, continue without chrome)
   - Pass manifest.chrome and manifest.chromeLayout entries to ChromeProvider
   - Ensure deinitialize is called in `dispose()` / `switchMod()`
 
-- [ ] **TODO-27.B.3** `src/OpenRA.Game/ModData.ts:init()` (MODIFY, est. 30 lines) -- Optional: Auto-initialize ChromeProvider:
-  - Add `ChromeProvider.initialize()` call inside `ModData.init()` (alternative to B.2)
-  - OR keep initialization in Game.ts (preferred: Game.ts orchestrates all initialization)
-  - Decision: Keep in Game.ts for explicit control. ModData remains Chrome-unaware.
-  - If keeping in Game.ts, add JSDoc comment in ModData.ts noting ChromeProvider init is handled by Game.ts
+- [x] **TODO-27.B.3** `src/OpenRA.Game/ModData.ts` (MODIFY, est. 30 lines) -- ModData.ts JSDoc update:
+  - Decision (ADR-27.3): ChromeProvider initialization is kept in Game.ts for explicit control. ModData remains Chrome-unaware.
+  - Added JSDoc comment in ModData.ts documenting ChromeProvider init is handled by Game.ts
+  - Added JSDoc comment noting the responsibility separation between Game.ts (UI orchestration) and ModData.ts (game data)
 
-**Phase B Verification**:
-- Load `_test` mod in browser -- no console errors related to chrome
-- `ChromeProvider.collections` is non-empty (contains at least "background" collection from mainmenu.json)
-- `ChromeProvider.resolveImage()` returns valid URLs for chrome definitions
-- FileSystem can resolve `common|chrome/mainmenu.yaml` via `fileSystem.openAsync()`
+**Phase B Verification** (all verified 2026-06-20):
+- [x] Load `_test` mod in browser -- no console errors related to chrome
+- [x] `ChromeProvider.collections` is non-empty (contains at least "background" collection from mainmenu.json)
+- [x] `ChromeProvider.resolveImage()` returns valid URLs for chrome definitions
+- [x] FileSystem can resolve `common|chrome/mainmenu.yaml` via `fileSystem.openAsync()`
+- [x] `ChromeProvider.deinitialize()` called in `dispose()` and `switchMod()` (no double-deinitialize)
+- [x] All existing unit tests pass (`npm test`)
+- [x] `npx tsc --noEmit` passes (zero type errors)
 
 ---
 
@@ -500,7 +511,7 @@ npm run dev
 ### ADR-27.1: Widget-Based Main Menu as Primary Path
 
 **Date**: 2026-06-20
-**Status**: PROPOSED
+**Status**: ACCEPTED (implemented in Phase A, commit `58995dd`)
 **Supersedes**: ADR-22.3 (DOM overlay as temporary solution)
 
 **Decision**: The Widget-based main menu (`showMainMenuWidget`) becomes the primary rendering path. The raw DOM overlay (`showMainMenu`) is demoted to a fallback invoked only when WidgetLoader or ChromeProvider fails.
@@ -519,7 +530,7 @@ npm run dev
 ### ADR-27.2: Chrome JSON at Build Time
 
 **Date**: 2026-06-20
-**Status**: PROPOSED
+**Status**: ACCEPTED (implemented in Phase A, commit `58995dd`)
 
 **Decision**: Chrome YAML files are converted to JSON at build time by `build-mods.ts` (extended), stored in `public/mods/`, and loaded at runtime by `ChromeProvider.initialize()` via `FileSystem.openAsync()`.
 
@@ -541,7 +552,7 @@ npm run dev
 ### ADR-27.3: ChromeProvider Initialization in Game.ts
 
 **Date**: 2026-06-20
-**Status**: PROPOSED
+**Status**: ACCEPTED (implemented in Phase B, commit `1bacfc5`)
 
 **Decision**: `ChromeProvider.initialize()` is called from `Game.loadMod()`, not from `ModData.init()`. ModData remains unaware of ChromeProvider.
 
@@ -554,3 +565,4 @@ npm run dev
 **Consequences**:
 - `ChromeProvider.initialize(manifest, fileSystem)` must be called after `_mountModDataFolders()` (so chrome files are mounted)
 - `ChromeProvider.deinitialize()` must be called in `Game.dispose()` and `Game.switchMod()`
+- ModData.ts carries a JSDoc comment documenting that ChromeProvider init is handled externally by Game.ts
