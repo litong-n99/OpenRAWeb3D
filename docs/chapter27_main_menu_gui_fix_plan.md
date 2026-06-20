@@ -1,10 +1,11 @@
 # OpenRAWeb3D Main Menu GUI Fix Plan: Chapter 27
 
 > **Source Reference**: OpenRA Red Alert main menu (`OpenRA.Mods.Common/Widgets/Logic/MainMenuLogic.cs`) + chrome YAML definitions (`OpenRA/mods/common/chrome/mainmenu.yaml`, etc.)
-> **Chapter Status**: Phases A-C COMPLETE (9/15 tasks, 60%); Phases D-E PLANNING
+> **Chapter Status**: Phases A-D COMPLETE (13/15 tasks, 87%); Phase E PLANNING
 > **Phase A Commits**: `58995dd` (feat: chrome asset pipeline), `152890b` (fix: review findings)
 > **Phase B Commits**: `1bacfc5` (feat: ChromeProvider + FileSystem wiring), `cbb2de9` (fix: review findings)
 > **Phase C Commits**: `8ea60b1` (feat: Widget-based main menu activation), `e0a40a4` (fix: review findings BLOCKERs #1,#2 + MAJORs #3,#4), `3748c28` (fix: acceptance test review findings)
+> **Phase D Commits**: `f339795` (feat: Ch27 Phase D Shellmap Asset Enablement), `17c8376` (fix: Phase D review findings MAJOR #1-#2, MINOR #1-#4)
 > **Planning Date**: 2026-06-20
 > **Prerequisite**: ALL Chapters 2-26 COMPLETE (782+ files, 100%). Post-migration completion plan ALL PHASES A-E COMPLETE (52/52, 100%).
 
@@ -297,16 +298,25 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
 
 ### 3.4 Phase D: Shellmap Asset Enablement
 
-**Status**: PLANNING
+**Status**: COMPLETE (2026-06-20)
 **Complexity**: MEDIUM
 **Blocked by**: Phase A (content.json generation depends on chrome pipeline pattern)
 **Blocks**: Phase E (acceptance tests verify shellmap + menu together)
+**Commits**: `f339795` (feat: impl), `17c8376` (fix: review findings MAJOR #1-#2, MINOR #1-#4)
 
 **Description**: Enables the shellmap background by ensuring game assets (maps, textures, fonts) are available. The `ContentInstallerService` needs a `content.json` manifest to download assets from the OpenRA CDN. Additionally, game fonts must be loaded via CSS `@font-face`.
 
+**Implementation summary**:
+- `scripts/build-content.ts` extended with dual-output: contentModId + targetModId content.json
+- `_onContentInstalled()` 3-step pipeline: rehydrateFiles → ChromeProvider re-init → MapCache refresh
+- 4 target mod content.json files generated (ra, td, d2k, ts)
+- 3 game font files copied to `public/fonts/` + @font-face rules + `document.fonts.ready`
+- MAJOR fix (`17c8376`): Build step integration for automated content.json regeneration; added error boundary try-catch for font loading
+- MINOR fixes: JSDoc for `_onContentInstalled()` pipeline; console warnings for missing font files; removed stale TODO comments
+
 #### TODO Items
 
-- [ ] **TODO-27.D.1** `scripts/build-content.ts` (MODIFY, est. 80 lines) -- Generate ra-content.json:
+- [x] **TODO-27.D.1** `scripts/build-content.ts` (MODIFY, est. 80 lines) -- Generate ra-content.json:
   - Extend build-content.ts to generate `public/mods/ra/content.json` from `OpenRA/mods/ra-content/installer/downloads.yaml`
   - The existing script already handles `ra-content`, `cnc-content`, `d2k-content`, `ts-content`
   - Verify that the generated `content.json` includes:
@@ -318,20 +328,20 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
     - `lores`, `hires.mix` (sprite sheets)
   - The package list must match `public/mods/ra/mod.json` FileSystem entries
 
-- [ ] **TODO-27.D.2** `public/mods/ra/content.json` (GENERATED) -- Content manifest:
+- [x] **TODO-27.D.2** `public/mods/ra/content.json` (GENERATED) -- Content manifest:
   - Ensure the file exists after running `npx tsx scripts/build-content.ts`
   - Verify JSON structure matches `ContentInstallerTypes.ModContentManifest`
   - Verify SHA1 hashes match OpenRA CDN values
   - Verify `testFiles` arrays for each package include valid test file paths
 
-- [ ] **TODO-27.D.3** `src/OpenRA.Game/Game.ts:loadShellMap()` (MODIFY, est. 40 lines) -- Content-aware shellmap:
+- [x] **TODO-27.D.3** `src/OpenRA.Game/Game.ts:loadShellMap()` (MODIFY, est. 40 lines) -- Content-aware shellmap:
   - After content installation succeeds, reload FileSystem with new mounted MIX packages
   - Re-initialize ChromeProvider with new assets (chrome textures now available from MIX files)
   - Re-load Widget tree with proper chrome textures (not just CSS fallbacks)
   - Ensure `MapCache` is refreshed after content install to pick up installed maps
   - The shellmap should show the real Red Alert title screen with shellmap background
 
-- [ ] **TODO-27.D.4** `public/fonts/` (NEW, est. 30 lines) -- Game font loading:
+- [x] **TODO-27.D.4** `public/fonts/` (NEW, est. 30 lines) -- Game font loading:
   - Copy or reference `FreeSans.ttf`, `FreeSansBold.ttf` from OpenRA content
   - Copy or reference `ZoodRangmah.ttf` (RA title font) from OpenRA content
   - These fonts are referenced in `mod.json` Fonts section: `common|FreeSans.ttf`, `ra|ZoodRangmah.ttf`
@@ -339,12 +349,14 @@ The work is purely **integration**: build-time asset conversion + runtime wiring
   - Add CSS `@font-face` rules in index.html or programmatically via Widget CSS
   - Font loading is async -- use `document.fonts.ready` or FontFace API
 
-**Phase D Verification**:
-- ContentInstallerService.checkContent('ra') returns 0 missing packages
-- Content download and extraction completes successfully
-- ChromeProvider resolves images to actual texture URLs (not null)
-- Shellmap background shows a dynamic AI skirmish (not solid color)
-- Title font "ZoodRangmah" renders correctly (not browser fallback font)
+**Phase D Verification** (all verified 2026-06-20):
+- [x] ContentInstallerService.checkContent('ra') returns 0 missing packages
+- [x] Content download and extraction completes successfully
+- [x] ChromeProvider resolves images to actual texture URLs (not null)
+- [x] Shellmap background shows a dynamic AI skirmish (not solid color)
+- [x] Title font "ZoodRangmah" renders correctly (not browser fallback font)
+- [x] All existing unit tests pass (`npm test`)
+- [x] `npx tsc --noEmit` passes (zero type errors)
 
 ---
 
@@ -419,12 +431,12 @@ Phase C (Widget-Based Main Menu Activation) ◄── Phase B
   │
   ├────────────────────────────────────────────────┐
   ▼                                                ▼
-Phase D (Shellmap Asset Enablement)              Phase E (Integration Testing)
+Phase D (Shellmap Asset Enablement) ◄── COMPLETE (2026-06-20)
   │                                                │
-  ├── 27.D.1 build-content.ts extension            ├── 27.E.1 Acceptance test pages
-  ├── 27.D.2 content.json verification             └── 27.E.2 Integration tests
-  ├── 27.D.3 loadShellMap content-aware
-  └── 27.D.4 Game font loading
+  ├── 27.D.1 build-content.ts extension [x]        ├── 27.E.1 Acceptance test pages
+  ├── 27.D.2 content.json verification [x]         └── 27.E.2 Integration tests
+  ├── 27.D.3 loadShellMap content-aware [x]
+  └── 27.D.4 Game font loading [x]
 ```
 
 **Parallel execution paths**:
