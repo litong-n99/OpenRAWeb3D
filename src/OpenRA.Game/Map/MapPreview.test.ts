@@ -150,6 +150,7 @@ describe('MapPreview constructor', () => {
     expect(preview.spawnPoints).toEqual([])
     expect(preview.gridType).toBe(MapGridType.Rectangular)
     expect(preview.preview).toBeNull()
+    expect(preview.previewSize).toBeNull()
     expect(preview.downloadBytes).toBe(0)
     expect(preview.downloadPercentage).toBe(0)
     expect(preview.generationArgs).toBeNull()
@@ -911,6 +912,92 @@ describe('minimap', () => {
       // So it generates a 1x1 preview even from empty data
       expect(pixels).not.toBeNull()
       expect(pixels!.length).toBe(4)
+    })
+  })
+
+  describe('previewSize', () => {
+    it('constructor initializes previewSize to null', () => {
+      const p = new MapPreview(null, 'uid', MapGridType.Rectangular, null)
+      expect(p.previewSize).toBeNull()
+    })
+
+    it('generatePreviewPixels sets previewSize', () => {
+      const terrainData = new Array(100 * 100).fill(0)
+      preview.generatePreviewPixels(terrainData, 100, 100)
+      expect(preview.previewSize).not.toBeNull()
+      expect(preview.previewSize!.width).toBe(100)
+      expect(preview.previewSize!.height).toBe(100)
+    })
+
+    it('previewSize width clamped to max 256', () => {
+      const terrainData = new Array(512 * 256).fill(0)
+      preview.generatePreviewPixels(terrainData, 512, 256)
+      expect(preview.previewSize!.width).toBe(256)
+    })
+
+    it('previewSize height clamped to max 256', () => {
+      const terrainData = new Array(256 * 512).fill(0)
+      preview.generatePreviewPixels(terrainData, 256, 512)
+      expect(preview.previewSize!.height).toBe(256)
+    })
+
+    it('previewSize minimum is 1', () => {
+      const terrainData = [0]
+      preview.generatePreviewPixels(terrainData, 0, 0)
+      expect(preview.previewSize!.width).toBe(1)
+      expect(preview.previewSize!.height).toBe(1)
+    })
+
+    it('generatePreviewPixels produces correct pixel count', () => {
+      const terrainData = new Array(64 * 48).fill(0)
+      const pixels = preview.generatePreviewPixels(terrainData, 64, 48)
+      expect(pixels).not.toBeNull()
+      expect(pixels!.length).toBe(64 * 48 * 4)
+      expect(preview.previewSize!.width * preview.previewSize!.height * 4).toBe(
+        pixels!.length,
+      )
+    })
+
+    it('setMinimap with size stores previewSize', () => {
+      const pixels = new Uint8Array([255, 0, 0, 255])
+      preview.setMinimap(pixels, { width: 128, height: 128 })
+      expect(preview.previewSize).toEqual({ width: 128, height: 128 })
+      expect(preview.preview).toBe(pixels)
+    })
+
+    it('setMinimap without size preserves existing previewSize', () => {
+      // First set size
+      preview.setMinimap(new Uint8Array(4), { width: 64, height: 64 })
+      expect(preview.previewSize).toEqual({ width: 64, height: 64 })
+      // Then call without size
+      const newPixels = new Uint8Array([1, 2, 3, 4])
+      preview.setMinimap(newPixels)
+      // Size should be preserved
+      expect(preview.previewSize).toEqual({ width: 64, height: 64 })
+      expect(preview.preview).toBe(newPixels)
+    })
+
+    it('previewSize reset when preview cleared via dispose', () => {
+      const terrainData = new Array(10 * 10).fill(0)
+      preview.generatePreviewPixels(terrainData, 10, 10)
+      expect(preview.previewSize).not.toBeNull()
+      preview.dispose()
+      expect(preview.preview).toBeNull()
+      expect(preview.previewSize).toBeNull()
+    })
+
+    it('generatePreviewPixels handles non-square map', () => {
+      const terrainData = new Array(200 * 100).fill(0)
+      preview.generatePreviewPixels(terrainData, 200, 100)
+      expect(preview.previewSize).toEqual({ width: 200, height: 100 })
+    })
+
+    it('setMinimap with non-Uint8Array does not change previewSize', () => {
+      preview.previewSize = { width: 50, height: 50 }
+      preview.setMinimap('not-a-uint8array', { width: 99, height: 99 })
+      // Even though minimap was rejected, size parameter should still update
+      expect(preview.previewSize).toEqual({ width: 99, height: 99 })
+      expect(preview.preview).toBeNull()
     })
   })
 })

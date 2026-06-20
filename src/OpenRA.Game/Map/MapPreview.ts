@@ -20,6 +20,7 @@ import type { MapGridType } from './MapGridType.js'
 import { MapPlayers } from './MapPlayers.js'
 import type { MapGenerationArgs } from './MapGenerationArgs.js'
 import { MapVisibility } from './Map.js'
+import { parsePngDimensions } from '../Utils/PngHeader.js'
 
 // ---------------------------------------------------------------------------
 // Bounds type (avoids importing Rectangle as a value for plain data)
@@ -271,6 +272,9 @@ export class MapPreview {
   /** 小地图 PNG 原始像素数据。OpenRA 对照: InnerData.Preview (Png) */
   preview: Uint8Array | null
 
+  /** 小地图图像尺寸。OpenRA 对照: Png.Width / Png.Height */
+  previewSize: { width: number; height: number } | null
+
   /** 小地图是否正在生成中。OpenRA 对照: MapPreview.generatingMinimap */
   private _generatingMinimap: boolean
 
@@ -334,6 +338,7 @@ export class MapPreview {
     this.downloadBytes = 0
     this.downloadPercentage = 0
     this.preview = null
+    this.previewSize = null
     this._generatingMinimap = false
     this._package = null
     this._parentPackage = null
@@ -566,13 +571,20 @@ export class MapPreview {
         // 解码 base64 小地图图像
         if (remoteData.minimap) {
           try {
-            this.preview = this.base64ToUint8Array(remoteData.minimap)
+            const decoded = this.base64ToUint8Array(remoteData.minimap)
+            this.preview = decoded
+            // 从解码后的 PNG 头中提取小地图尺寸
+            const dims = parsePngDimensions(decoded)
+            if (dims) {
+              this.previewSize = dims
+            }
             if (this._cache?.cacheMinimap) {
               this._cache.cacheMinimap(this)
             }
           } catch {
             // 小地图解码失败 -- 将预览保留为 null
             this.preview = null
+            this.previewSize = null
           }
         }
       } catch {
@@ -644,11 +656,22 @@ export class MapPreview {
    *
    * @param minimap -- 小地图精灵数据
    */
-  setMinimap(minimap: unknown): void {
+  /**
+   * 设置小地图精灵（供 MapCache 缓存回调使用）。
+   *
+   * OpenRA 对照: MapPreview.SetMinimap()
+   *
+   * @param minimap — 小地图精灵数据
+   * @param size — 可选的小地图尺寸（如果调用方已知图像尺寸）
+   */
+  setMinimap(minimap: unknown, size?: { width: number; height: number }): void {
     // NOTE: TypeScript 中，小地图存储为预览像素数据。
     // 当完整的 Sprite 基础设施集成后，此方法将存储实际的 Sprite 引用。
     if (minimap instanceof Uint8Array) {
       this.preview = minimap
+    }
+    if (size) {
+      this.previewSize = size
     }
     this._generatingMinimap = false
   }
@@ -697,6 +720,7 @@ export class MapPreview {
     }
 
     this.preview = pixels
+    this.previewSize = { width: previewWidth, height: previewHeight }
     return pixels
   }
 
@@ -840,6 +864,7 @@ export class MapPreview {
     this._package = null
     this._parentPackage = null
     this.preview = null
+    this.previewSize = null
   }
 
   /**

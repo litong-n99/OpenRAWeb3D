@@ -18,6 +18,7 @@
 import { Cache } from '../Primitives/Cache.js'
 import { SheetBuilder } from '../Graphics/SheetBuilder.js'
 import { SheetType } from '../Graphics/Sheet.js'
+import { SpriteFrameType } from '../Graphics/Util.js'
 import type { IReadOnlyPackage, IReadWritePackage } from '../FileSystem/IReadOnlyPackage.js'
 import type { MapGridType } from './MapGridType.js'
 import { MapGridType as MapGridTypeConst } from './MapGridType.js'
@@ -665,23 +666,42 @@ export class MapCache implements Iterable<MapPreview> {
         // 如果已取消，尽早退出
         if (this._previewLoaderCancelled) break
 
-        if (p.preview !== null) {
-          try {
-            // TODO-4.E.4: 实际的小地图渲染 (SheetBuilder.Add)
-            // 目前，仅将预览数据存储为小地图
-            const sprite = this._sheetBuilder.addSimple(
-              p.preview,
-              0, // SpriteFrameType — 需要正确的类型
-              { width: 1, height: 1 },
+        if (p.preview !== null && p.previewSize !== null) {
+          // 验证像素数据长度与尺寸一致
+          const expectedSize = p.previewSize.width * p.previewSize.height * 4
+          if (p.preview.byteLength !== expectedSize) {
+            Log.write(
+              'mapcache',
+              LogLevel.WARN,
+              `Minimap size mismatch for ${p.uid}: expected ${expectedSize} bytes, got ${p.preview.byteLength}`,
             )
-            p.setMinimap(sprite)
-          } catch (e) {
-            Log.write('mapcache', LogLevel.WARN, `Failed to load minimap: ${String(e)}`)
+            // 跳过此预览 — 像素数据和声明尺寸不一致
+          } else {
+            try {
+              // OpenRA 对照: p.SetMinimap(sheetBuilder.Add(p.Preview))
+              // Preview data is RGBA32 pixel data (from generatePreviewPixels or PNG decode).
+              // SheetBuilder is BGRA type, and fastCopyIntoChannel handles Rgba32→BGRA conversion.
+              const sprite = this._sheetBuilder.addSimple(
+                p.preview,
+                SpriteFrameType.Rgba32,
+                p.previewSize,
+              )
+              p.setMinimap(sprite, p.previewSize)
+            } catch (e) {
+              Log.write('mapcache', LogLevel.WARN, `Failed to load minimap: ${String(e)}`)
+            }
           }
         }
 
         // 在处理每个项目之间让出控制权以防止 UI 卡顿
         await new Promise((resolve) => setTimeout(resolve, 5))
+      }
+
+      // Release the buffer by forcing changes to be written out to the texture,
+      // allowing the buffer to be reclaimed by GC.
+      // OpenRA 对照: Game.RunAfterTick(sheetBuilder.Current.ReleaseBuffer)
+      if (this._sheetBuilder.current) {
+        this._sheetBuilder.current.releaseBuffer()
       }
     }
 

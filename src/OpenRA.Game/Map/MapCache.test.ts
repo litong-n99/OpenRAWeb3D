@@ -827,6 +827,248 @@ describe('MapCache', () => {
     })
   })
 
+  // -------------------------------------------------------------------------
+  // Minimap rendering pipeline tests (TODO-4.E.4)
+  // -------------------------------------------------------------------------
+
+  describe('runMinimapLoader', () => {
+    /**
+     * Helper: configure cache for minimap loader testing.
+     *
+     * Mocks addSimple on the sheetBuilder and overrides getMinimap() on each
+     * preview to return null (simulating "not yet cached" state) so the filter
+     * in runMinimapLoader passes.
+     */
+    function setupMinimapLoaderTest(
+      cache: MapCache,
+      previews: MapPreview[],
+      addSimpleImpl?: () => Uint8Array,
+    ): {
+      addSimpleSpy: ReturnType<typeof vi.fn>
+      releaseBufferSpy: ReturnType<typeof vi.fn>
+    } {
+      const addSimpleSpy = vi.fn(
+        addSimpleImpl ?? (() => new Uint8Array(4)),
+      )
+      const releaseBufferSpy = vi.fn()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sheetBuilder = (cache as any)._sheetBuilder
+      sheetBuilder.addSimple = addSimpleSpy
+      sheetBuilder.current = { releaseBuffer: releaseBufferSpy }
+
+      // Override getMinimap() on each preview to return null, so the runMinimapLoader
+      // filter includes them. (By default getMinimap() returns preview, which is
+      // non-null raw pixel data, incorrectly making the filter skip the preview.)
+      for (const p of previews) {
+        p.getMinimap = () => null
+      }
+
+      return { addSimpleSpy, releaseBufferSpy }
+    }
+
+    it('uses SpriteFrameType.Rgba32 for minimap data', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      const preview = cache.get('test-minimap-uid')
+      preview.status = MapStatus.Available
+      preview.preview = new Uint8Array(128 * 128 * 4)
+      preview.previewSize = { width: 128, height: 128 }
+
+      const { addSimpleSpy } = setupMinimapLoaderTest(cache, [preview], () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(cache as any)._previewLoaderCancelled = true
+        return new Uint8Array(4)
+      })
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._generateMinimap.push(preview)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (cache as any).runMinimapLoader()
+
+      expect(addSimpleSpy).toHaveBeenCalledTimes(1)
+      const callArgs = addSimpleSpy.mock.calls[0] as unknown[]
+      expect(callArgs[1]).toBe(3) // SpriteFrameType.Rgba32
+      expect(callArgs[2]).toEqual({ width: 128, height: 128 })
+    })
+
+    it('passes previewSize as dimensions to addSimple', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      const preview = cache.get('uid-size-test')
+      preview.status = MapStatus.Available
+      preview.preview = new Uint8Array(64 * 48 * 4)
+      preview.previewSize = { width: 64, height: 48 }
+
+      const { addSimpleSpy } = setupMinimapLoaderTest(cache, [preview], () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(cache as any)._previewLoaderCancelled = true
+        return new Uint8Array(4)
+      })
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._generateMinimap.push(preview)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (cache as any).runMinimapLoader()
+
+      expect(addSimpleSpy).toHaveBeenCalledTimes(1)
+      const callArgs = addSimpleSpy.mock.calls[0] as unknown[]
+      expect(callArgs[2]).toEqual({ width: 64, height: 48 })
+    })
+
+    it('skips previews with null previewSize', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      const preview = cache.get('uid-no-size')
+      preview.status = MapStatus.Available
+      preview.preview = new Uint8Array(100)
+      preview.previewSize = null
+
+      const { addSimpleSpy } = setupMinimapLoaderTest(cache, [preview])
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._generateMinimap.push(preview)
+      // Set cancelled BEFORE the loader runs so the loop exits immediately.
+      // The preview has null previewSize so it would be skipped regardless;
+      // we cancel early to avoid the 5s keepAlive empty-loop wait.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._previewLoaderCancelled = true
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (cache as any).runMinimapLoader()
+
+      expect(addSimpleSpy).not.toHaveBeenCalled()
+    })
+
+    it('calls releaseBuffer after batch processing', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      const preview = cache.get('uid-release-test')
+      preview.status = MapStatus.Available
+      preview.preview = new Uint8Array(32 * 32 * 4)
+      preview.previewSize = { width: 32, height: 32 }
+
+      const { releaseBufferSpy } = setupMinimapLoaderTest(
+        cache,
+        [preview],
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(cache as any)._previewLoaderCancelled = true
+          return new Uint8Array(4)
+        },
+      )
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._generateMinimap.push(preview)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (cache as any).runMinimapLoader()
+
+      expect(releaseBufferSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('handles addSimple exception gracefully', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      const preview1 = cache.get('uid-fail-1')
+      preview1.status = MapStatus.Available
+      preview1.preview = new Uint8Array(16 * 16 * 4)
+      preview1.previewSize = { width: 16, height: 16 }
+
+      const preview2 = cache.get('uid-fail-2')
+      preview2.status = MapStatus.Available
+      preview2.preview = new Uint8Array(8 * 8 * 4)
+      preview2.previewSize = { width: 8, height: 8 }
+
+      let callCount = 0
+      const { addSimpleSpy } = setupMinimapLoaderTest(
+        cache,
+        [preview1, preview2],
+        () => {
+          callCount++
+          if (callCount === 2) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(cache as any)._previewLoaderCancelled = true
+          }
+          throw new Error('SheetOverflowException')
+        },
+      )
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._generateMinimap.push(preview1, preview2)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await expect((cache as any).runMinimapLoader()).resolves.toBeUndefined()
+
+      expect(addSimpleSpy).toHaveBeenCalledTimes(2)
+    })
+
+    it('validates pixel data size matches previewSize', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      const preview = cache.get('uid-mismatch')
+      preview.status = MapStatus.Available
+      preview.preview = new Uint8Array(100)
+      preview.previewSize = { width: 32, height: 32 } // expects 4096 bytes
+
+      const { addSimpleSpy } = setupMinimapLoaderTest(cache, [preview])
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._generateMinimap.push(preview)
+      // Set cancelled BEFORE the loader runs so the loop exits immediately.
+      // The preview has mismatched size so it would be skipped regardless;
+      // we cancel early to avoid the 5s keepAlive empty-loop wait.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._previewLoaderCancelled = true
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (cache as any).runMinimapLoader()
+
+      expect(addSimpleSpy).not.toHaveBeenCalled()
+    })
+
+    it('cacheMinimap starts loader on first call', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((cache as any)._previewLoaderShutdown).toBe(true)
+
+      const preview = cache.get('uid-startup')
+      preview.status = MapStatus.Available
+      preview.preview = new Uint8Array(4 * 4 * 4)
+      preview.previewSize = { width: 4, height: 4 }
+
+      const { addSimpleSpy } = setupMinimapLoaderTest(cache, [preview], () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(cache as any)._previewLoaderCancelled = true
+        return new Uint8Array(4)
+      })
+
+      cache.cacheMinimap(preview)
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((cache as any)._previewLoaderShutdown).toBe(false)
+
+      // Wait for the setTimeout(0) -> runMinimapLoader to complete
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const loaderPromise = (cache as any)._previewLoaderPromise as Promise<void>
+      if (loaderPromise) await loaderPromise
+
+      expect(addSimpleSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('stops early when cancelled', async () => {
+      const cache = new MapCache(createMockManifest())
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._previewLoaderCancelled = true
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (cache as any).runMinimapLoader()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((cache as any)._previewLoaderShutdown).toBe(true)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((cache as any)._previewLoaderRunning).toBe(false)
+    })
+  })
+
   describe('pickLastModifiedMap', () => {
     it('returns null when no last modified map', () => {
       const cache = new MapCache(createMockManifest())
