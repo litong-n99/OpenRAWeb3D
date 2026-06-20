@@ -58,8 +58,6 @@ interface FlashState {
    * null when not flashing, or after flash expiry.
    */
   savedEmissive: { r: number; g: number; b: number } | null
-  /** Original alpha captured on first ON cycle. */
-  savedAlpha: number
 }
 
 /** Reference to the mesh and its material. */
@@ -67,6 +65,7 @@ interface MeshBinding {
   mesh: Mesh
   material: StandardMaterial
   /** The original emissiveColor (set at construction, never changes). */
+  // Stored for test harness inspection — not used in flash logic (savedEmissive serves the operational role)
   originalEmissive: { r: number; g: number; b: number }
   /** Flash state for this mesh. */
   flash: FlashState
@@ -79,7 +78,6 @@ function createFlashState(): FlashState {
     flashAlpha: null,
     flashModifiers: 0,
     savedEmissive: null,
-    savedAlpha: 1.0,
   }
 }
 
@@ -104,7 +102,6 @@ function triggerFlash(
   const state = binding.flash
   // Reset saved emissive so the next ON cycle re-captures from current state
   state.savedEmissive = null
-  state.savedAlpha = 1.0
   state.flashTicks = 5
   state.flashModifiers = modifiers
 
@@ -140,7 +137,6 @@ function applyFlashTint(binding: MeshBinding): void {
   if (isInitialApply) {
     const emissive = mat.emissiveColor
     state.savedEmissive = { r: emissive.r, g: emissive.g, b: emissive.b }
-    state.savedAlpha = mat.alpha
   }
 
   if (isReplaceColor) {
@@ -178,7 +174,7 @@ function revertFlashTint(binding: MeshBinding): void {
   // Unconditionally setting alpha=1 would corrupt a mesh's custom alpha
   // when Flash(float3) (no alpha) was used.
   if (state.flashAlpha !== null) {
-    mat.alpha = state.savedAlpha
+    mat.alpha = 1.0
   }
 }
 

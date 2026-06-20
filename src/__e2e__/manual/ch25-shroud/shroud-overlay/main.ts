@@ -550,7 +550,7 @@ function setupScene(): {
     scene,
   )
 
-  // Suppress unused variable
+  // frameMesh is added to the scene by CreateLineSystem — void suppresses TS6133 unused-variable warning
   void frameMesh
 
   return { engine, scene, pickPlane: shroudPlane }
@@ -563,7 +563,7 @@ function setupScene(): {
 function setupInteraction(
   scene: Scene,
   pickPlane: AbstractMesh,
-  _engine: Engine,
+  engine: Engine,
 ): void {
   let isDragging = false
 
@@ -624,7 +624,7 @@ function setupInteraction(
   }, PointerEventTypes.POINTERUP)
 
   // Prevent default context menu on the rendering canvas
-  const canvas = _engine.getRenderingCanvas()
+  const canvas = engine.getRenderingCanvas()
   canvas?.addEventListener('contextmenu', (e) => {
     e.preventDefault()
   })
