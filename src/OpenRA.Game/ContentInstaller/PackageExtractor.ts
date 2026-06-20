@@ -54,6 +54,16 @@ const _megLoader = new MegV3Loader()
  * key is `"Content/ra/v2/allies.mix/e1.shp"`.
  */
 export class PackageExtractor {
+  /** Tracks paths we've already warned about to suppress duplicate logs. */
+  private _warnedPaths = new Set<string>()
+
+  private _warnOnce(path: string, message: string): void {
+    if (!this._warnedPaths.has(path)) {
+      this._warnedPaths.add(path)
+      console.warn(message)
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Public API
   // -------------------------------------------------------------------------
@@ -221,7 +231,8 @@ export class PackageExtractor {
                 const fallbackPkg = MixFileRuntime.parseWestwoodClassic(destPath, data, mixDb, true)
                 if (fallbackPkg.contents.length > 0) {
                   pkg = fallbackPkg
-                  console.warn(
+                  this._warnOnce(
+                    destPath,
                     `PackageExtractor: "${destPath}" fell through from encrypted ` +
                     `to Westwood classic MIX parse (spurious encrypted flag suspected)`,
                   )
@@ -235,7 +246,8 @@ export class PackageExtractor {
               }
             }
             if (!pkg) {
-              console.warn(
+              this._warnOnce(
+                destPath,
                 `PackageExtractor: "${destPath}" encrypted MIX parse failed: ` +
                 `${encryptedErr instanceof Error ? encryptedErr.message : String(encryptedErr)}`,
               )
@@ -327,7 +339,8 @@ export class PackageExtractor {
       return result
     } catch (err) {
       // If sub-package parsing fails, dispose and pass through as raw bytes
-      console.warn(
+      this._warnOnce(
+        destPath,
         `PackageExtractor: error extracting "${destPath}" as ${format}: ` +
         `${String(err)}, passing through as raw bytes`,
       )
