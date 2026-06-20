@@ -517,7 +517,8 @@ export class MapCache implements Iterable<MapPreview> {
    *
    * 使用 fetch() API 查询远程地图元数据。将 UID 批量处理为每组 50 个。
    *
-   * TODO-4.E.3: 完整的 HTTP 客户端实现，包括重试逻辑和 YAML 解析。
+   * TODO-4.E.3: 完整的 HTTP 客户端实现，包括重试逻辑和性能跟踪（PerfTimer）。
+   * 根据 ADR-4.E.3.1，远程 API 返回 JSON，不进行运行时 YAML 解析。
    *
    * @param repositoryUrl — 地图仓库 URL
    * @param uids — 要查询的地图 UID
@@ -554,6 +555,8 @@ export class MapCache implements Iterable<MapPreview> {
           ? AbortSignal.abort()
           : undefined
         const response = await fetchWithRetry(url, undefined, undefined, signal)
+        // 防御性检查：fetchWithRetry 保证返回 ok（非 ok 的可重试状态码会
+        // 重试，不可重试状态码会 throw）。保留此检查以防未来行为变更。
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`)
         }

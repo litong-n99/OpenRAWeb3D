@@ -6,6 +6,16 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
+
+// ---------------------------------------------------------------------------
+// Mock @openra/HttpClient — replace fetchWithRetry for integration tests
+// ---------------------------------------------------------------------------
+
+vi.mock('../Net/HttpClient.js', () => ({
+  fetchWithRetry: vi.fn(),
+}))
+
+import { fetchWithRetry } from '../Net/HttpClient.js'
 import {
   MapCache,
   randomOrDefault,
@@ -45,6 +55,31 @@ function createMockMersenneTwister(seed = 12345): MersenneTwisterStub {
       return s / 2147483647
     },
   }
+}
+
+/** 创建一个 mock Response 对象，用于 fetchWithRetry 集成测试。 */
+function createMockResponse(
+  ok: boolean,
+  status: number,
+  textBody: string,
+): Response {
+  return {
+    ok,
+    status,
+    statusText: ok ? 'OK' : 'Error',
+    text: async () => textBody,
+    json: async () => JSON.parse(textBody),
+    headers: new Headers(),
+    redirected: false,
+    type: 'basic' as ResponseType,
+    url: '',
+    clone: () => createMockResponse(ok, status, textBody),
+    body: null,
+    bodyUsed: false,
+    arrayBuffer: async () => new ArrayBuffer(0),
+    blob: async () => new Blob(),
+    formData: async () => new FormData(),
+  } as Response
 }
 
 // ---------------------------------------------------------------------------
@@ -612,9 +647,173 @@ describe('MapCache', () => {
   })
 
   describe('queryRemoteMapDetails', () => {
+    let cache: MapCache
+    let mockFetchWithRetry: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      vi.clearAllMocks()
+      mockFetchWithRetry = fetchWithRetry as ReturnType<typeof vi.fn>
+      cache = new MapCache(createMockManifest())
+    })
+
+    // -----------------------------------------------------------------------
+    // Helper: register N unseen UIDs for batch testing
+    // -----------------------------------------------------------------------
+
+    function registerUnseenUids(count: number): string[] {
+      const uids: string[] = []
+      for (let i = 0; i < count; i++) {
+        const uid = `uid-${i.toString().padStart(8, '0')}`
+        const preview = cache.get(uid)
+        preview.status = MapStatus.Unavailable
+        uids.push(uid)
+      }
+      return uids
+    }
+
+    // -----------------------------------------------------------------------
+    // Tests
+    // -----------------------------------------------------------------------
+
     it('is an async function', () => {
-      const cache = new MapCache(createMockManifest())
       expect(typeof cache.queryRemoteMapDetails).toBe('function')
+    })
+
+    it('batches >50 UIDs into multiple requests', async () => {
+      mockFetchWithRetry.mockResolvedValue(
+        createMockResponse(true, 200, '{}'),
+      )
+
+      const uids = registerUnseenUids(120)
+
+      await cache.queryRemoteMapDetails('https://example.com/', uids)
+
+      // 120 UIDs / 50 per batch = 3 batches
+      expect(mockFetchWithRetry).toHaveBeenCalledTimes(3)
+    })
+
+    it('batches exactly 50 UIDs into a single request', async () => {
+      mockFetchWithRetry.mockResolvedValue(
+        createMockResponse(true, 200, '{}'),
+      )
+
+      const uids = registerUnseenUids(50)
+
+      await cache.queryRemoteMapDetails('https://example.com/', uids)
+
+      expect(mockFetchWithRetry).toHaveBeenCalledTimes(1)
+    })
+
+    it('invokes mapDetailsReceived callback on successful remote data', async () => {
+      const uid = 'uid-00000001'
+      const preview = cache.get(uid)
+      preview.status = MapStatus.Unavailable
+
+      const responseData = {
+        [uid]: {
+          title: 'Test Map',
+          author: 'Test Author',
+          categories: ['Conquest'],
+          players: 4,
+          bounds: { X: 0, Y: 0, Width: 64, Height: 64 },
+          spawnpoints: [0, 0],
+          minimap: '',
+          tileset: 'desert',
+          mapformat: 12,
+          downloading: true,
+          map_grid_type: 0, // Rectangular
+          rules: '',
+          players_block: '',
+          game_mod: 'ra',
+        },
+      }
+
+      mockFetchWithRetry.mockResolvedValue(
+        createMockResponse(true, 200, JSON.stringify(responseData)),
+      )
+
+      const callback = vi.fn()
+
+      await cache.queryRemoteMapDetails(
+        'https://example.com/',
+        [uid],
+        callback,
+      )
+
+      expect(callback).toHaveBeenCalledTimes(1)
+      expect(callback).toHaveBeenCalledWith(preview)
+      expect(preview.status).toBe(MapStatus.DownloadAvailable)
+      expect(preview.title).toBe('Test Map')
+    })
+
+    it('invokes mapQueryFailed for maps still in Searching after batch failure', async () => {
+      mockFetchWithRetry.mockRejectedValue(new Error('Network error'))
+
+      const uid = 'uid-failed'
+      const preview = cache.get(uid)
+      preview.status = MapStatus.Unavailable
+      const failureCallback = vi.fn()
+
+      await cache.queryRemoteMapDetails(
+        'https://example.com/',
+        [uid],
+        undefined,
+        failureCallback,
+      )
+
+      // After batch failure, maps still in Searching should have
+      // completeRemoteSearch(null, mapQueryFailed) called, which sets
+      // status to Unavailable and invokes the callback (matching C#)
+      expect(failureCallback).toHaveBeenCalledWith(preview)
+      expect(preview.status).toBe(MapStatus.Unavailable)
+    })
+
+    it('propagates _previewLoaderCancelled as aborted signal', async () => {
+      mockFetchWithRetry.mockResolvedValue(
+        createMockResponse(true, 200, '{}'),
+      )
+
+      const uid = 'uid-signal'
+      const preview = cache.get(uid)
+      preview.status = MapStatus.Unavailable
+
+      // Set cancellation flag via private field access for testing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(cache as any)._previewLoaderCancelled = true
+
+      await cache.queryRemoteMapDetails('https://example.com/', [uid])
+
+      // fetchWithRetry should have been called with an aborted signal (4th arg)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const callArgs = mockFetchWithRetry.mock.calls[0] as any[]
+      const signalArg = callArgs[3]
+      expect(signalArg).toBeDefined()
+      expect(signalArg.aborted).toBe(true)
+    })
+
+    it('filters null and undefined UIDs', async () => {
+      mockFetchWithRetry.mockResolvedValue(
+        createMockResponse(true, 200, '{}'),
+      )
+
+      const validUid = 'uid-valid'
+      const preview = cache.get(validUid)
+      preview.status = MapStatus.Unavailable
+
+      await cache.queryRemoteMapDetails('https://example.com/', [
+        validUid,
+        null as unknown as string,
+        undefined as unknown as string,
+      ])
+
+      // Should only query valid UIDs
+      expect(mockFetchWithRetry).toHaveBeenCalledTimes(1)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const callArgs = mockFetchWithRetry.mock.calls[0] as any[]
+      const url = callArgs[0] as string
+      expect(url).toContain(validUid)
+      expect(url).not.toContain('null')
+      expect(url).not.toContain('undefined')
     })
   })
 

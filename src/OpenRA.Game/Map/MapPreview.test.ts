@@ -643,10 +643,13 @@ describe('completeRemoteSearch', () => {
     expect(callback).toHaveBeenCalledWith(preview)
   })
 
-  it('does not call callback when data is null', () => {
+  it('calls callback even when data is null (matching C# parseMetadata?.Invoke)', () => {
     const callback = vi.fn()
     preview.completeRemoteSearch(null, callback)
-    expect(callback).not.toHaveBeenCalled()
+    // C# CompleteRemoteSearch 在 MapClassification.Remote 时无条件调用
+    // parseMetadata?.Invoke(this)
+    expect(callback).toHaveBeenCalledWith(preview)
+    expect(preview.status).toBe(MapStatus.Unavailable)
   })
 
   it('handles malformed spawn points (odd count)', () => {

@@ -575,14 +575,16 @@ export class MapPreview {
             this.preview = null
           }
         }
-
-        callback?.(this)
       } catch {
         this.status = MapStatus.Unavailable
       }
     } else {
       this.status = MapStatus.Unavailable
     }
+
+    // 始终调用回调（匹配 C#: parseMetadata?.Invoke(this) 在
+    // MapClassification.Remote 时无条件调用）
+    callback?.(this)
   }
 
   /**
@@ -927,6 +929,14 @@ export function validateRemoteMapData(data: unknown): RemoteMapData | null {
   if (!Array.isArray(d.categories)) return null
   if (typeof d.players !== 'number') return null
   if (!d.bounds || typeof d.bounds !== 'object') return null
+  const bounds = d.bounds as Record<string, unknown>
+  if (
+    typeof bounds.X !== 'number' ||
+    typeof bounds.Y !== 'number' ||
+    typeof bounds.Width !== 'number' ||
+    typeof bounds.Height !== 'number'
+  )
+    return null
   if (!Array.isArray(d.spawnpoints)) return null
   if (typeof d.minimap !== 'string') return null
   if (typeof d.tileset !== 'string') return null
@@ -966,11 +976,14 @@ export function parseMapQueryResponse(
     }
   } catch {
     // 非 JSON，回退至 YAML（延后至 TODO-4.E.3-YAML）
+    // NOTE: YAML 回退路径是故意的未来增强功能，不属于本任务范围。
+    // 根据 ADR-4.E.3.1，当前所有远程 API 端点均返回 JSON。
+    // 运行时 YAML 解析需要 MiniYaml 基础设施集成（延后评估）。
   }
 
   // 回退：YAML 解析（延后）
-  // NOTE: 运行时 YAML 解析需要 MiniYaml 基础设施集成。
-  // 如果服务器仅返回 JSON，此回退可以是存根。
+  // NOTE: 如果未来引入返回 YAML 的 API 端点，需实现 MiniYaml 运行时解析。
+  // 对于仅返回 JSON 的 API，此回退是存根。
   throw new Error(
     `Unable to parse response from ${url}: response is not valid JSON`,
   )

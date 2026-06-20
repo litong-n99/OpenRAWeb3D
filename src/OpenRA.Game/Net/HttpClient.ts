@@ -83,6 +83,8 @@ function mergeConfig(partial?: Partial<RetryConfig>): RetryConfig {
     maxDelayMs: partial.maxDelayMs ?? DEFAULT_RETRY_CONFIG.maxDelayMs,
     jitter: partial.jitter ?? DEFAULT_RETRY_CONFIG.jitter,
     timeoutMs: partial.timeoutMs ?? DEFAULT_RETRY_CONFIG.timeoutMs,
+    // `??` 确保仅在 partial.retryableStatuses 为 null/undefined
+    // 时才创建新 Set（DEFAULT 与 partial 是独立引用，必须深拷贝）
     retryableStatuses:
       partial.retryableStatuses ??
       new Set(DEFAULT_RETRY_CONFIG.retryableStatuses),
@@ -292,8 +294,9 @@ export async function fetchWithRetry(
   }
 
   // 所有重试已耗尽
+  // `||` 而非 `??`：防御性处理 error.message 可能为 '' 的情况
   const message =
-    lastError?.message ?? `All retries exhausted for ${url}`
+    lastError?.message || `All retries exhausted for ${url}`
   throw new Error(
     `Fetch to ${url} failed after ${mergedConfig.maxRetries + 1} attempt(s): ${message}`,
   )
