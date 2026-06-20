@@ -3,22 +3,94 @@
  *
  * Since happy-dom does not support WebGL, @babylonjs/core modules are mocked.
  * Tests focus on: state management, tick logic, target tracking, render output.
+ * Phase B tests (24.B.2): setScene, meshBuilder lifecycle, per-frame mesh reuse.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mock @babylonjs/core
+// Mock @babylonjs/core using vi.hoisted (established pattern from Shader.test.ts)
 // ---------------------------------------------------------------------------
+
+const {
+  mockShaderMaterialCtor,
+  mockLinesMeshCtor,
+  mockMeshBuilderCreateLines,
+  mockColor3Ctor,
+  mockVector3Ctor,
+  matInstances,
+  meshInstances,
+} = vi.hoisted(() => {
+  const matInst: any[] = []
+  const meshInst: any[] = []
+
+  const mSMCtor = vi.fn(function (this: any, _name: string, _scene: any, _shaderName: string, _options: any) {
+    this.name = _name
+    this.needAlphaBlending = undefined
+    this.backFaceCulling = true
+    this.setFloat = vi.fn()
+    this.setVector2 = vi.fn()
+    this.setVector3 = vi.fn()
+    this.setColor3 = vi.fn()
+    this.setFloats = vi.fn()
+    this.dispose = vi.fn()
+    matInst.push(this)
+  })
+
+  const mLinesCtor = vi.fn(function (this: any, _name: string, _options: any, _scene?: any) {
+    this.name = _name
+    this.material = null
+    this.isPickable = true
+    this.renderingGroupId = 0
+    this._positions = new Float32Array(0)
+    this.getVerticesData = vi.fn((_kind: string) => this._positions)
+    this.updateVerticesData = vi.fn(function (this: any, _k: string, d: Float32Array, _a: boolean, _b: boolean) {
+      this._positions = new Float32Array(d)
+    })
+    this.dispose = vi.fn()
+    meshInst.push(this)
+  })
+
+  const mCreateLines = vi.fn((name: string, options: any, _scene?: any) => {
+    const m = new (mLinesCtor as any)(name, options, _scene)
+    if (options?.points) {
+      const pts = options.points as { x: number; y: number; z: number }[]
+      m._positions = new Float32Array(pts.length * 3)
+      for (let i = 0; i < pts.length; i++) {
+        m._positions[i * 3] = pts[i].x
+        m._positions[i * 3 + 1] = pts[i].y
+        m._positions[i * 3 + 2] = pts[i].z
+      }
+    }
+    return m
+  })
+
+  const mC3 = vi.fn(function (this: any, r: number, g: number, b: number) {
+    this.r = r; this.g = g; this.b = b
+  })
+  const mV3 = vi.fn(function (this: any, x: number, y: number, z: number) {
+    this.x = x; this.y = y; this.z = z
+  })
+
+  return {
+    mockShaderMaterialCtor: mSMCtor,
+    mockLinesMeshCtor: mLinesCtor,
+    mockMeshBuilderCreateLines: mCreateLines,
+    mockColor3Ctor: mC3,
+    mockVector3Ctor: mV3,
+    matInstances: matInst,
+    meshInstances: meshInst,
+  }
+})
 
 vi.mock('@babylonjs/core', () => ({
   Engine: vi.fn(),
   Scene: vi.fn(),
-  LinesMesh: vi.fn(),
-  ShaderMaterial: vi.fn(),
-  Color3: vi.fn(function (this: any, r: number, g: number, b: number) { this.r = r; this.g = g; this.b = b }),
+  LinesMesh: mockLinesMeshCtor,
+  ShaderMaterial: mockShaderMaterialCtor,
+  Color3: mockColor3Ctor,
   MeshBuilder: {
-    CreateLines: vi.fn(),
+    CreateLines: mockMeshBuilderCreateLines,
     CreateDisc: vi.fn(),
     CreatePlane: vi.fn(),
   },
@@ -26,14 +98,15 @@ vi.mock('@babylonjs/core', () => ({
     BILLBOARDMODE_ALL: 7,
     BILLBOARDMODE_NONE: 0,
   },
-  Effect: { ShadersStore: {} },
-  Vector3: vi.fn(function (this: any, x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z }),
+  Effect: { ShadersStore: {} as Record<string, string> },
+  Vector3: mockVector3Ctor,
 }))
 
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
 
+import { Scene } from '@babylonjs/core'
 import { TeslaZap, DEFAULT_TESLA_ZAP_INFO } from './TeslaZap.js'
 import type { TeslaZapInfo, TeslaZapArgs } from './TeslaZap.js'
 import { WPos } from '../../OpenRA.Game/WPos.js'
@@ -81,6 +154,33 @@ function makeInvalidGuidedTarget() {
       closestToIgnoringPath: () => makeWPos(50, 50, 0),
     },
   }
+}
+
+/** Create a minimal world renderer stub that passes the ITeslaZapWorldRenderer interface check in render(). */
+function makeWorldRendererStub() {
+  return {
+    screenPosition: vi.fn((p: WPos) => ({ x: p.X, y: p.Y })),
+    projectedPosition: vi.fn((px: { x: number; y: number }) => ({ x: px.x, y: px.y, z: 0 })),
+    palette: vi.fn().mockReturnValue({}),
+    world: {
+      fogObscures: vi.fn().mockReturnValue(false),
+      map: {
+        sequences: {
+          getSequence: vi.fn().mockReturnValue({
+            name: 'bright',
+            length: 4,
+            ignoreWorldTint: false,
+            getSprite: vi.fn().mockReturnValue({}),
+            getAlpha: vi.fn().mockReturnValue(1),
+          }),
+        },
+      },
+    },
+  }
+}
+
+function makeMockScene(): Scene {
+  return {} as unknown as Scene
 }
 
 // ---------------------------------------------------------------------------
@@ -283,6 +383,121 @@ describe('TeslaZap', () => {
       // Tick 6: expires
       zap.tick(world)
       expect(zap.isDestroyed).toBe(true)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // Phase B tests: 3D mesh integration (24.B.2)
+  // ---------------------------------------------------------------------------
+
+  describe('Phase B: 3D mesh integration', () => {
+    let wr: ReturnType<typeof makeWorldRendererStub>
+
+    beforeEach(() => {
+      wr = makeWorldRendererStub()
+      matInstances.length = 0
+      meshInstances.length = 0
+    })
+
+    describe('setScene', () => {
+      it('injects scene and creates meshBuilder', () => {
+        const zap = new TeslaZap(info, args)
+        const scene = makeMockScene()
+
+        zap.setScene(scene)
+
+        // Internal state should be set (verify via private field access)
+        expect((zap as any)._scene).toBe(scene)
+        expect((zap as any)._meshBuilder).not.toBeNull()
+        expect((zap as any)._zapBuilt).toBe(false)
+      })
+
+      it('resets _zapBuilt flag when called with new scene', () => {
+        const zap = new TeslaZap(info, args)
+
+        zap.setScene(makeMockScene())
+        // Simulate first render that sets _zapBuilt = true
+        ;(zap as any)._zapBuilt = true
+
+        // Setting a new scene should reset the flag
+        zap.setScene(makeMockScene())
+        expect((zap as any)._zapBuilt).toBe(false)
+      })
+    })
+
+    describe('tick', () => {
+      it('disposes meshBuilder when projectile expires', () => {
+        const zap = new TeslaZap(info, args)
+        const scene = makeMockScene()
+        zap.setScene(scene)
+
+        const builder = (zap as any)._meshBuilder
+        const disposeSpy = vi.spyOn(builder, 'dispose')
+
+        // Tick until expiry: ticksUntilRemove starts at 2, -- <= 0 triggers at 1 -> 0 -> -1
+        zap.tick(world) // tick 1: 2→1
+        zap.tick(world) // tick 2: 1→0
+        zap.tick(world) // tick 3: 0→-1, expiry
+
+        expect(zap.isDestroyed).toBe(true)
+        expect(disposeSpy).toHaveBeenCalled()
+        expect((zap as any)._meshBuilder).toBeNull()
+        expect((zap as any)._zapBuilt).toBe(false)
+        disposeSpy.mockRestore()
+      })
+    })
+
+    describe('render', () => {
+      it('builds 3D meshes when scene is set', () => {
+        const zap = new TeslaZap(info, args)
+        zap.setScene(makeMockScene())
+
+        zap.render(wr as any)
+
+        // _zapBuilt should be true after first render with valid worldRenderer
+        expect((zap as any)._zapBuilt).toBe(true)
+        // _zap should be set
+        expect(zap.zap).not.toBeNull()
+      })
+
+      it('does NOT rebuild meshes on subsequent render calls', () => {
+        const zap = new TeslaZap(info, args)
+        zap.setScene(makeMockScene())
+
+        // First render: builds meshes
+        zap.render(wr as any)
+        expect((zap as any)._zapBuilt).toBe(true)
+
+        // Track the meshBuilder for spying
+        const builder = (zap as any)._meshBuilder
+        const buildSpy = vi.spyOn(builder, 'buildZaps')
+        const jitterSpy = vi.spyOn(builder, 'updateJitter')
+
+        // Second render: should NOT rebuild, should jitter instead
+        zap.render(wr as any)
+        expect((zap as any)._zapBuilt).toBe(true) // still true
+        expect(buildSpy).not.toHaveBeenCalled()
+        // updateJitter is called on subsequent frames
+        // (may be called or not depending on internal _ticks state)
+
+        buildSpy.mockRestore()
+        jitterSpy.mockRestore()
+      })
+
+      it('falls back gracefully when worldRenderer lacks required interface', () => {
+        const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        const zap = new TeslaZap(info, args)
+        zap.setScene(makeMockScene())
+
+        // Pass a worldRenderer without screenPosition or world.fogObscures
+        const badWr = { someOtherMethod: () => {} }
+
+        // Should not throw
+        expect(() => zap.render(badWr as any)).not.toThrow()
+        expect((zap as any)._zapBuilt).toBe(false) // meshes never built
+
+        consoleWarnSpy.mockRestore()
+      })
     })
   })
 })

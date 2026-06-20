@@ -197,6 +197,17 @@ export class TeslaZap implements IProjectile {
    */
   private _meshBuilder: TeslaZapMeshBuilder | null = null
 
+  /** Whether 3D meshes have been built for the current zap geometry (Phase B fix).
+   *
+   * On first render() call after setScene(): build meshes via buildZaps().
+   * On subsequent calls: only updateJitter() on existing meshes.
+   * Reset to false when setScene() is called with a new scene.
+   */
+  private _zapBuilt: boolean = false
+
+  /** Running tick counter for jitter seed computation (incremented each tick()). */
+  private _ticks: number = 0
+
   constructor(info: TeslaZapInfo, args: TeslaZapArgs) {
     this._args = args
     this._info = info
@@ -213,11 +224,15 @@ export class TeslaZap implements IProjectile {
    * Backward compatible: omitting this call preserves the original 2D
    * renderable-only behavior.
    *
+   * // TODO-Ch24.B: Material pooling — share one TeslaZapMeshBuilder across all
+   * // TeslaZap instances to reduce GPU state changes (same shader, different uniforms)
+   *
    * @param scene — the Babylon.js scene to add LinesMesh instances to
    */
   setScene(scene: Scene): void {
     this._scene = scene
     this._meshBuilder = TeslaZapMeshBuilder.createWithDefaults(scene)
+    this._zapBuilt = false
   }
 
   // ---------------------------------------------------------------------------
@@ -234,6 +249,7 @@ export class TeslaZap implements IProjectile {
    * and applies weapon impact while damageDuration is active.
    */
   tick(world: GameWorldManager): void {
+    this._ticks++
     if (this._ticksUntilRemove-- <= 0) {
       // OpenRA: world.AddFrameEndTask(w => w.Remove(this))
       world.addFrameEndTask?.(() => {
@@ -243,6 +259,7 @@ export class TeslaZap implements IProjectile {
       if (this._meshBuilder) {
         this._meshBuilder.dispose()
         this._meshBuilder = null
+        this._zapBuilt = false
       }
     }
 
@@ -310,11 +327,21 @@ export class TeslaZap implements IProjectile {
         typeof wr.world.fogObscures === 'function'
       ) {
         try {
-          this._zap.render(wr)
-          this._zap.build3DMeshes(this._meshBuilder)
-        } catch {
-          // Gracefully ignore if worldRenderer doesn't fully implement
-          // ITeslaZapWorldRenderer (e.g., in unit test environments)
+          if (!this._zapBuilt) {
+            // First frame or zap geometry changed: build new LinesMesh instances
+            this._zap.render(wr)
+            this._zap.build3DMeshes(this._meshBuilder)
+            this._zapBuilt = true
+          } else {
+            // Subsequent frames: only update jitter on existing meshes
+            // (avoids per-frame mesh disposal/recreation per MAJOR #1 fix)
+            this._meshBuilder.updateJitter(this._ticks)
+          }
+        } catch (err) {
+          console.warn(
+            'TeslaZap: 3D mesh build failed, falling back to renderable-only mode',
+            err,
+          )
         }
       }
     }

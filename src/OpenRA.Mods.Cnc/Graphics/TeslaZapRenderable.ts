@@ -207,6 +207,9 @@ export class TeslaZapMeshBuilder {
       )
       linesMesh.material = material
       linesMesh.isPickable = false
+      // NOTE: Plan says renderingGroupId=2 for effects, but WorldRenderer.ts:67-76
+      // defines RenderGroup.Actor=1 as "普通对象层（Actor、特效）". Using group 1
+      // is correct per the actual enum. Group 2 = Overlay/UI.
       linesMesh.renderingGroupId = 1 // RenderGroup.Actor (effects layer per WorldRenderer.ts)
 
       this._meshes.push(linesMesh)
@@ -602,9 +605,11 @@ export class TeslaZapRenderable {
     const pathPoints: { x: number; y: number; z: number }[] = []
     let z = { x: from.x, y: from.y }
 
+    // NOTE: Math.abs() is always >= 0, so `Math.abs(...) < -5` is dead code.
+    // Fixed to only check `> 5` for both axes (matching OpenRA intent).
     while (
-      Math.abs(to.x - z.x) > 5 || Math.abs(to.x - z.x) < -5 ||
-      Math.abs(to.y - z.y) > 5 || Math.abs(to.y - z.y) < -5
+      Math.abs(to.x - z.x) > 5 ||
+      Math.abs(to.y - z.y) > 5
     ) {
       let bestStep: (readonly [number, number, number, number, number]) | null = null
       let bestDot = Infinity
