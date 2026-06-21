@@ -613,6 +613,7 @@ The agent responsible for creating these test pages is defined in `.claude/agent
 | [docs/acceptance_test_completion_plan.md](docs/acceptance_test_completion_plan.md) | Acceptance test completion plan: 31 new test pages across 10 phases P0-P3, covering Ch08/21/07/11/05/09/16/03/20 |
 | [docs/content_installer_design.md](docs/content_installer_design.md) | Web Content Installer pipeline design — download from OpenRA mirrors, SHA1 verify, MIX extraction |
 | [docs/content_installer_execution_plan.md](docs/content_installer_execution_plan.md) | Content Installer execution plan — 25 tasks across 3 phases (A-C), ALL PHASES COMPLETE (100%) |
+| [docs/blender_modeling_standards.md](docs/blender_modeling_standards.md) | Blender 3D modeling standards — coordinate system, PBR materials, node hierarchy, animation specs, and complete model catalog (288 models across RA/TD/D2K/TS mods) |
 | [docs/migration_progress.md](docs/migration_progress.md) | Overall migration progress tracker with file statuses, dependency graph, and recommended next tasks |
 | [CLAUDE.md](CLAUDE.md) | This file — project overview, agent team structure, and development workflow |
 
