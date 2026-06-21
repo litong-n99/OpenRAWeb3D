@@ -299,7 +299,6 @@ src/                        ← TypeScript migration target (mirrors OpenRA/ str
       ITextureInternal.ts   ← migrated (49 lines)
       Sdl2*.ts (4 files)    ← NOP stubs (browser API replacement)
   glsl/                     ← Migrated GLSL shaders (WebGL 2.0 / GLSL ES 3.0)
-                              ← model.vert/frag NOP stubs (StandardMaterial/PBRMaterial)
   assets/                   ← Static assets
   utils/                    ← Shared utilities
     miniyaml-to-json.ts      ← migrated (762 lines, 962 test lines) -- Phase H MiniYAML pipeline

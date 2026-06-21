@@ -119,16 +119,14 @@ These files are retained to preserve directory structure parity with OpenRA but 
 | N5 | `src/OpenRA.Platforms.Default/DefaultPlatform.ts` | 4 | Browser platform detection |
 | N6 | `src/OpenRA.Platforms.Default/ThreadAffine.ts` | 19 | Web Worker model (no shared memory) |
 | N7 | `src/OpenRA.Platforms.Default/OpenGL.ts` | 26 | Babylon.js thin abstraction layer |
-| N8 | `src/glsl/model.vert` | 32 | Babylon.js StandardMaterial handles vertex transforms internally |
-| N9 | `src/glsl/model.frag` | 38 | Babylon.js PBRMaterial provides built-in PBR lighting pipeline |
 
-> **Note**: N1-N7 replace SDL2 and OpenGL-specific platform code. N1 is item #22 in the 27-item plan. N2-N7 are beyond the 27-item plan. N8-N9 are model shaders with full @nop documentation, replacing custom GLSL with Babylon.js StandardMaterial/PBRMaterial.
+> **Note**: N1-N7 replace SDL2 and OpenGL-specific platform code. N1 is item #22 in the 27-item plan. N2-N7 are beyond the 27-item plan.
 
 #### Remaining Pending Stubs (Post-Chapter 2 Deferred)
 
 No remaining stubs in the original 27-item migration plan. All 27 items are resolved.
 
-> Note: Stub files in `OpenRA.Game/Graphics/` (~16 files: AnimationWithOffset, ChromeProvider, CursorSequence, etc.) and `OpenRA.Platforms.Default/` (~5 files: audio, font stubs) are beyond Chapter 2 scope and will be addressed in subsequent chapters. Model shaders (model.vert: 32 lines, model.frag: 38 lines) are now documented NOP stubs with full @nop annotations — see NOP stubs table below.
+> Note: Stub files in `OpenRA.Game/Graphics/` (~16 files: AnimationWithOffset, ChromeProvider, CursorSequence, etc.) and `OpenRA.Platforms.Default/` (~5 files: audio, font stubs) are beyond Chapter 2 scope and will be addressed in subsequent chapters.
 
 ---
 
@@ -500,11 +498,10 @@ Chapter 2 (Rendering Engine) is now complete at 27/27 (100%):
 
 - **Migration plan accuracy**: All 8 sections (3.1–3.8) completed. All 27 mapping table items resolved: 24 completed with tests, 2 completed without tests, 1 NOP stub.
 - **RgbaSpriteRenderer.ts**: Fully implemented (161 lines implementation + 462 lines test). Thin validation wrapper around SpriteRenderer; validates RGBA texture channel before delegating.
-- **Model shaders**: model.vert (32 lines) and model.frag (38 lines) converted to fully-documented NOP stubs with @nop annotations, explaining StandardMaterial/PBRMaterial replacement.
 - **Section 3.8 completion**: Platform abstraction layer fully migrated. 3 core wrapper files with 61 shared tests. 1 interface file (ITextureInternal.ts: 49 lines). 7 SDL2/platform files converted to NOP stubs.
 - **RenderPostProcessPassVertex.ts**: Implemented (142 lines), no test file.
 - **Additional files**: 4 extra files beyond the 27-item plan — Util (558 lines), Palette (477 lines), PaletteReference (91 lines), Color (272 lines). Total: ~1,398 extra implementation lines.
-- **NOP stubs**: 9 total — 7 SDL2/platform files + 2 model shaders (model.vert, model.frag), all with full documentation explaining browser/Babylon.js API alternatives.
+- **NOP stubs**: 7 total — 7 SDL2/platform files, all with full documentation explaining browser/Babylon.js API alternatives.
 - **Stub files**: ~16 files in `OpenRA.Game/Graphics/` and ~5 in `OpenRA.Platforms.Default/` remain as 4-line placeholder stubs (beyond Chapter 2 scope).
 - **Empty directories**: `Activities/`, `FileSystem/`, `Map/`, `Network/`, `Orders/`, `Scripting/`, `Sound/`, `Traits/`, `Widgets/` — future chapters.
 - **Test coverage**: 27 test files exist. 3 test files with known issues (Sheet.test.ts: 3, TerrainSpriteLayer.test.ts: 4, Util.test.ts: 2). No E2E test infrastructure.

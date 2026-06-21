@@ -261,7 +261,7 @@
 
 ## 4. GLSL 着色器迁移
 
-**OpenRA 对照**: `glsl/combined.vert`, `glsl/combined.frag`, `glsl/model.vert`, `glsl/model.frag`, `glsl/postprocess.vert`, `glsl/postprocess_chronoshift.frag`, `glsl/postprocess_flash.frag`, `glsl/postprocess_menufade.frag`, `glsl/postprocess_textured.vert`, `glsl/postprocess_textured_sonic.frag`, `glsl/postprocess_textured_vortex.frag`, `glsl/postprocess_tint.frag`  
+**OpenRA 对照**: `glsl/combined.vert`, `glsl/combined.frag`, `glsl/postprocess.vert`, `glsl/postprocess_chronoshift.frag`, `glsl/postprocess_flash.frag`, `glsl/postprocess_menufade.frag`, `glsl/postprocess_textured.vert`, `glsl/postprocess_textured_sonic.frag`, `glsl/postprocess_textured_vortex.frag`, `glsl/postprocess_tint.frag`  
 **迁移目标**: `src/glsl/` 下同名文件
 
 > 注意：着色器源码先保留在 `src/glsl/` 中，通过 `Effect.ShadersStore` 注册到 Babylon.js。
@@ -269,7 +269,6 @@
 - [x] **TODO-2.S1** `combined.vert`：保留精灵顶点变换逻辑，将 `p1/p2` 投影参数替换为 Babylon.js 自动注入的 `worldViewProjection`。
 - [x] **TODO-2.S2** `combined.frag`：保留调色板纹理查找、ColorShift HSV 偏移、Alpha 测试核心逻辑。
 - [x] **TODO-2.S3** `postprocess.vert` / `postprocess_*.frag`：后处理效果迁移为 `PostProcess` 类或 `DefaultRenderingPipeline` 配置（8 个着色器文件，共 269 行，已适配 GLSL ES 3.0）。
-- [x] **TODO-2.S4** `model.vert` / `model.frag`：模型着色器已转为 NOP 存根 (详细 @nop 文档) — 直接使用 Babylon.js `StandardMaterial` / `PBRMaterial`，无需自定义迁移。(NOP: 2026-06-03)
 - [x] **TODO-2.S5** GLSL 版本适配：确保 `attribute`/`varying`/`texture2D` 等语法与 WebGL 2.0 `in`/`out`/`texture()` 兼容。
 
 **复杂度**: 高（combined 着色器对）/ 低（model、postprocess 顶点）
@@ -475,13 +474,6 @@
 | `SpriteRenderer.ts` | 实现完成 | 55 个测试用例全部通过，代码审核待排期 |
 | `RenderPostProcessPassVertex.ts` | 实现完成 | 142 行，无测试文件，审核待排期 |
 | `RgbaSpriteRenderer.ts` | 实现完成 | 161 行实现 + 462 行测试，审核待排期 |
-
-#### 新增 NOP 存根 (模型着色器)
-
-| 文件 | 行数 | 说明 |
-|:---|:---:|:---|
-| `model.vert` | 32 | 含完整 @nop 文档；顶点变换由 StandardMaterial 内部管理 |
-| `model.frag` | 38 | 含完整 @nop 文档；片段着色由 PBRMaterial 内置管线替代 |
 
 ---
 

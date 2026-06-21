@@ -17,7 +17,6 @@ Migrate the [OpenRA](https://github.com/OpenRA/OpenRA) 2D RTS game engine (C# / 
 | FrameBuffer & Post-Processing (10 files) | Completed |
 | Sprite & Texture System (8 core + 4 extra files) | Completed |
 | Platform Abstraction (11 files) | Completed |
-| Model shaders (model.vert/frag) | NOP stubs |
 | **Chapter 3: Actor System** | **Complete (36/36)** |
 | Coordinate System & Primitives (17 files) | Completed |
 | Trait System Core (2 files) | Completed |

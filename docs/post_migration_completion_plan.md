@@ -185,8 +185,6 @@ These files are **intentionally empty** because browser APIs replace their funct
 | `src/OpenRA.Platforms.Default/OpenGL.ts` | OpenGL bindings | WebGL 2.0 (built-in) | NOP |
 | `src/OpenRA.Platforms.Default/ThreadedGraphicsContext.ts` | Threaded GL context | OffscreenCanvas (future PWA) | NOP |
 | `src/OpenRA.Platforms.Default/ThreadAffine.ts` | Thread affinity check | N/A (JS single-threaded) | NOP |
-| `src/glsl/model.vert` | Model vertex shader (GLSL 1.50) | Babylon.js `StandardMaterial` | NOP |
-| `src/glsl/model.frag` | Model fragment shader (GLSL 1.50) | Babylon.js `PBRMaterial` | NOP |
 
 ---
 
@@ -952,9 +950,8 @@ Rendering-heavy Phase B items require manual visual verification:
 
 - **Decision**: The following items are intentionally left as permanent deferrals:
   1. **NOP platform stubs** (7 files, Category F): Browser APIs replace SDL2/OpenGL; no implementation ever needed
-  2. **Model shader stubs** (model.vert, model.frag): Babylon.js StandardMaterial/PBRMaterial replaces OpenGL shaders
-  3. **ConyardChronoReturn full integration** (TODO-19.C.3, ~8 deferred sub-items): This is an alpha/beta-only C&C feature used in a single mission; the trait already functions correctly at the logic level; rendering integration depends on ChronoVortex (P1-B.6)
-  4. **Disguise 3D mesh swap** (TODO-19.C.3): The disguise system works correctly at the logic level; 3D mesh swapping is a visual enhancement that does not affect gameplay
+  2. **ConyardChronoReturn full integration** (TODO-19.C.3, ~8 deferred sub-items): This is an alpha/beta-only C&C feature used in a single mission; the trait already functions correctly at the logic level; rendering integration depends on ChronoVortex (P1-B.6)
+  3. **Disguise 3D mesh swap** (TODO-19.C.3): The disguise system works correctly at the logic level; 3D mesh swapping is a visual enhancement that does not affect gameplay
   5. **AttackWander full integration** (TODO-8.D.10): The stub is sufficient; full Wanders trait integration is done via P1-E.11 for Sandworm
   6. **AttackGarrisoned full integration** (TODO-8.D.11): Requires Chapter 11 Production/Building full integration; garrisoning logic works at stub level
 - **Rationale**: These items have zero gameplay impact, are replaced by browser/Babylon.js equivalents, or are edge-case features not needed for a functional game. Explicitly documenting them as permanently deferred avoids ambiguity in the future.
