@@ -227,3 +227,5 @@
 | **ACCEPTED (with caveat)** | 期望 1-3,5-7 全部通过。期望 4 (Multiply) 默认 alpha=1.0 通过，全局透明度不生效为已知限制 (TODO-KNOWN-LIMITATION-001) |
 | **REJECTED** | 任一核心期望未通过（尤其是 Additive/Subtractive/Multiply 区分度） |
 
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 9/9 通过, 100%)
+
