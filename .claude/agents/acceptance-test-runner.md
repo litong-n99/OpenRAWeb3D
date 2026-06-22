@@ -66,17 +66,22 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/
 ```
 
 ### 测试结果位置 (test-results/manual/)
-测试结果统一放在项目根目录的 `test-results/manual/` 下：
+
+测试结果**必须且只能**放在项目根目录的 `test-results/manual/` 下。
+
+**绝对禁止**将证据写入 `src/__e2e__/manual/` 或其任何子目录（包括 `script/evidence/`）。证据与源码严格分离：`src/__e2e__/manual/` 只存放测试页面源码和测试脚本（`script/*.spec.ts`），不存放任何运行时产物。
 
 ```
 test-results/manual/ch{num}-{title}/{test-case-id}/
-├── reproduce.md              ← 复现文档 (必须)
-├── evidence/                 ← 证据文件夹 (必须)
+├── reproduce.md              ← 复现文档 (必须，与 report.md 两者都必须生成)
+├── evidence/                 ← 证据文件夹 (必须，至少 1 张截图)
 │   ├── screenshot-1.png      ← 截图（每步关键验证点）
 │   ├── screenshot-2.png
 │   └── video.webm            ← 视频（仅在必要时录制，尽量不录）
-└── report.md                 ← 最终检验报告
+└── report.md                 ← 最终检验报告 (必须，与 report.md 两者都必须生成)
 ```
+
+`test-results/` 目录已加入 `.gitignore`，不纳入版本控制。
 
 ---
 
@@ -232,19 +237,17 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
 🟢 ACCEPTED / 🟡 NEEDS FIXES / 🔴 INCOMPLETE
 ```
 
-### STEP 6.5: 交付物检查清单（必须）
+### STEP 6.5: 交付物检查清单（必须在判定前完成）
 
-> ⚠️ 进入 STEP 7 之前，必须逐项确认以下所有文件已生成。如有缺失，回到对应步骤补全。
+在进入 STEP 7 判定之前，**必须逐一确认**以下所有交付物已生成完毕。任何一项缺失即为未完成，不得进入判定步骤。
 
-| # | 检查项 | 路径 | 状态 |
-|---|--------|------|------|
-| 1 | 测试脚本 | `src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/*.spec.ts` | ☐ |
-| 2 | 复现文档 | `test-results/manual/ch{num}-{title}/{test-case-id}/reproduce.md` | ☐ |
-| 3 | 检验报告 | `test-results/manual/ch{num}-{title}/{test-case-id}/report.md` | ☐ |
-| 4 | 截图证据 | `test-results/manual/ch{num}-{title}/{test-case-id}/evidence/` (至少 1 张) | ☐ |
-| 5 | 审核状态 | `src/__e2e__/manual/.../README.md` 审核状态行已更新 | ☐ |
+- [ ] `script/` 目录：至少 1 个 `.spec.ts` 测试脚本文件
+- [ ] `test-results/manual/ch{num}-{title}/{test-case-id}/reproduce.md`：复现文档存在
+- [ ] `test-results/manual/ch{num}-{title}/{test-case-id}/report.md`：检验报告存在
+- [ ] `test-results/manual/ch{num}-{title}/{test-case-id}/evidence/`：至少 1 张截图
+- [ ] `src/__e2e__/manual/ch{num}-{title}/{test-case-id}/README.md`：审核状态行已更新（仅路径 A）
 
-**全部 ☐ 变为 ✅ 后方可进入 STEP 7。**
+**以上 5 项全部满足后**，方可进入 STEP 7 判定。
 
 ### STEP 7: 判定路径
 
