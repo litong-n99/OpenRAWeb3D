@@ -125,6 +125,12 @@
 
 ### 验收状态
 
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 6/6 通过, 100%)
+
 - **状态**: ACCEPTED
-- **日期**: 2026-06-10
-- **测试环境**: Chromium / 1920x1080 / WebGL 2.0
+- **日期**: 2026-06-22
+- **测试环境**: Chromium / 1920x1080 / WebGL 2.0 (headless)
+- **测试脚本**: `tests-e2e/ch04-map-terrain/map-data-viewer/test-1.spec.ts`
+- **测试报告**: `test-results/manual/ch04-map-terrain/map-data-viewer/report.md`
+- **复现文档**: `test-results/manual/ch04-map-terrain/map-data-viewer/reproduce.md`
+- **证据**: `test-results/manual/ch04-map-terrain/map-data-viewer/evidence/`
