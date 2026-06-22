@@ -6,6 +6,7 @@
 > OpenRA 对照: `TerrainSpriteLayer.ts` — 4*W*H 顶点布局, 脏行跟踪, 最多 8 Sheet 绑定
 > 创建日期: 2026-06-08
 > 最后更新: 2026-06-08
+> **审核状态**: 全部审核通过 (自动化验收测试, Playwright + Kimi MCP, 2026-06-22)
 
 ---
 
