@@ -139,19 +139,29 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-1.spec.ts
 src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
 ```
 
-### STEP 4: 运行测试并收集证据
+### STEP 4: 运行测试并收集证据（必须）
+
+**证据必须且只能写入 `test-results/manual/`**。绝对禁止将证据写入 `src/__e2e__/manual/` 或 `script/` 子目录。
 
 **执行方式灵活选择**：
-- **批量回归（b0e1）**：`npx playwright test <script-dir>/ --project=chromium` — 一次性运行全部用例，自动截图
+- **批量回归（首选）**：`npx playwright test <script-dir>/ --project=chromium` — 一次性运行全部用例，自动截图
 - **交互式调试**：Playwright MCP (`browser_navigate`/`browser_snapshot`/`browser_take_screenshot`/`browser_evaluate`/`browser_click`) — 失败后单步排查，或验证特定修复
 
 1. 确认 Dev Server 运行中（`curl localhost:5173` 或等价检查）
-2. 创建结果目录 `test-results/manual/ch{num}-{title}/{test-case-id}/evidence/`
+2. 创建结果目录结构：
+   ```
+   test-results/manual/ch{num}-{title}/{test-case-id}/
+   ├── evidence/          ← 截图/视频证据（必须）
+   ├── reproduce.md       ← 复现文档（必须，见 STEP 5）
+   └── report.md          ← 检验报告（必须，见 STEP 6）
+   ```
 3. 执行测试（选择上述方式之一）
-4. 收集截图到 `evidence/` 目录
+4. 收集截图到 `test-results/manual/.../evidence/` 目录（至少 1 张）
 5. 必要时录制视频（仅在视觉异常无法用截图表达时录视频，尽量不录）
 
-### STEP 5: 生成 reproduce.md
+### STEP 5: 生成 reproduce.md（必须）
+
+> ⚠️ 此步骤不可跳过。必须在 test-results/manual/ 下生成。
 
 在 `test-results/manual/ch{num}-{title}/{test-case-id}/reproduce.md` 写入复现文档：
 
@@ -187,7 +197,9 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
 - [headless 模式限制等]
 ```
 
-### STEP 6: 生成 report.md
+### STEP 6: 生成 report.md（必须）
+
+> ⚠️ 此步骤不可跳过。必须在 test-results/manual/ 下生成。
 
 在 `test-results/manual/ch{num}-{title}/{test-case-id}/report.md` 写入最终检验报告：
 
@@ -220,16 +232,31 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
 🟢 ACCEPTED / 🟡 NEEDS FIXES / 🔴 INCOMPLETE
 ```
 
+### STEP 6.5: 交付物检查清单（必须）
+
+> ⚠️ 进入 STEP 7 之前，必须逐项确认以下所有文件已生成。如有缺失，回到对应步骤补全。
+
+| # | 检查项 | 路径 | 状态 |
+|---|--------|------|------|
+| 1 | 测试脚本 | `src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/*.spec.ts` | ☐ |
+| 2 | 复现文档 | `test-results/manual/ch{num}-{title}/{test-case-id}/reproduce.md` | ☐ |
+| 3 | 检验报告 | `test-results/manual/ch{num}-{title}/{test-case-id}/report.md` | ☐ |
+| 4 | 截图证据 | `test-results/manual/ch{num}-{title}/{test-case-id}/evidence/` (至少 1 张) | ☐ |
+| 5 | 审核状态 | `src/__e2e__/manual/.../README.md` 审核状态行已更新 | ☐ |
+
+**全部 ☐ 变为 ✅ 后方可进入 STEP 7。**
+
 ### STEP 7: 判定路径
 
 #### 路径 A: 全部通过 (ACCEPTED)
 
 所有测试用例通过（100% 通过率），无 BLOCKER 或 MAJOR 问题：
 
-1. 更新验收页面 README.md 的审核状态行为：
+1. 更新验收页面 README.md 的审核状态行（必须使用此精确格式）：
    ```
-   **审核状态**: ✅ 全部审核通过 (自动化验收测试, YYYY-MM-DD)
+   **审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, YYYY-MM-DD, N/N 通过, 100%)
    ```
+   示例：`**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 7/7 通过, 100%)`
 2. 向 Team Lead 报告：验收通过，全部 N 项指标通过，Commit Gate 解锁。
 3. 流程结束。
 
