@@ -28,6 +28,25 @@ function resolveKimiSpawn() {
 }
 
 // ---------------------------------------------------------------------------
+// ACP content extraction
+// ---------------------------------------------------------------------------
+
+/** Extract readable text from ACP content blocks (may be string, object, or array). */
+function extractAcpText(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content.map((c) => {
+      if (typeof c === "string") return c;
+      if (c?.type === "text") return c.text || "";
+      return JSON.stringify(c);
+    }).join("");
+  }
+  if (content?.type === "text") return content.text || "";
+  if (content?.text) return content.text;
+  return typeof content === "object" ? JSON.stringify(content) : "";
+}
+
+// ---------------------------------------------------------------------------
 // ACP Client — persistent `kimi acp` process
 // ---------------------------------------------------------------------------
 
@@ -140,8 +159,8 @@ class AcpClient {
     await this.start();
     timeout = timeout || 300;
 
-    // Create session
-    const { sessionId } = await this._send("session/new", { cwd: cwd || process.cwd() });
+    // Create session (mcpServers required even if empty)
+    const { sessionId } = await this._send("session/new", { cwd: cwd || process.cwd(), mcpServers: [] });
 
     // Set auto mode
     await this._send("session/set_config_option", {
@@ -169,15 +188,13 @@ class AcpClient {
     let done = false;
 
     const onUpdate = (msg) => {
-      const params = msg.params || {};
-      const events = params.events || [];
-      for (const evt of events) {
-        if (evt.type === "agent_message_chunk") {
-          chunks.push(evt.content || "");
-          lastChunkTime = Date.now();
-        }
+      const update = (msg.params && msg.params.update) || {};
+      const suType = update.sessionUpdate || "";
+      if (suType === "agent_message_chunk") {
+        const text = extractAcpText(update.content);
+        if (text) { chunks.push(text); lastChunkTime = Date.now(); }
       }
-      if (params.done) done = true;
+      if (update.done) done = true;
     };
 
     const onPermission = (msg) => {
