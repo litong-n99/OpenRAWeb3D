@@ -17,6 +17,16 @@ import { z } from "zod";
 
 const KIMI_BIN = process.env.KIMI_BIN || "kimi";
 
+/** Resolve the actual kimi spawn command (kimi wrapper may not work with Node spawn on Windows). */
+function resolveKimiSpawn() {
+  // If KIMI_BIN is a .mjs file path → spawn via node
+  if (KIMI_BIN.endsWith(".mjs")) {
+    return { command: "node", args: [KIMI_BIN] };
+  }
+  // Otherwise try as a direct command
+  return { command: KIMI_BIN, args: [] };
+}
+
 // ---------------------------------------------------------------------------
 // ACP Client — persistent `kimi acp` process
 // ---------------------------------------------------------------------------
@@ -39,7 +49,8 @@ class AcpClient {
   }
 
   async _doStart() {
-    this.proc = spawn(KIMI_BIN, ["acp"], {
+    const { command, args } = resolveKimiSpawn();
+    this.proc = spawn(command, [...args, "acp"], {
       stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env },
     });
@@ -50,6 +61,7 @@ class AcpClient {
 
     // Initialize handshake
     const initResp = await this._send("initialize", {
+      protocolVersion: 1,
       clientInfo: { name: "kimi-mcp", version: "2.0.0" },
     });
     this.capabilities = initResp.capabilities || {};
@@ -234,9 +246,10 @@ async function getAcp() {
 function runKimiText(prompt, opts) {
   return new Promise((resolve, reject) => {
     const args = ["-p", prompt, "--output-format", "text"];
-    if (opts?.model) args.unshift("-m", opts.model);
 
-    const child = spawn(KIMI_BIN, args, {
+    const { command, args: baseArgs } = resolveKimiSpawn();
+    if (opts?.model) { baseArgs.push("-m", opts.model); }
+    const child = spawn(command, [...baseArgs, ...args], {
       cwd: opts?.cwd || process.cwd(),
       timeout: (opts?.timeout || 300) * 1000,
       stdio: ["ignore", "pipe", "pipe"],
