@@ -109,6 +109,7 @@
 
 ### 验收状态
 
-- **状态**: ACCEPTED
-- **日期**: 2026-06-10
-- **测试环境**: Chromium / 1920x1080 / WebGL 2.0
+- **状态**: ACCEPTED (re-verified)
+- **审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 7/7 通过, 100%)
+- **首次验收日期**: 2026-06-10
+- **测试环境**: Chromium headless / 1920x1080 / WebGL 2.0 / Playwright + Kimi MCP 视觉验证

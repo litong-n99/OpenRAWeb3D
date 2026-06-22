@@ -370,3 +370,9 @@ window.addEventListener('resize', () => {
 // Expose key classes to global window for console debugging (step 4.4 in README)
 ;(window as any).TileSet = TileSet
 ;(window as any).TerrainTile = TerrainTile
+;(window as any).__scene = scene
+;(window as any).__engine = engine
+
+// Expose the Babylon scene/engine so acceptance tests can inspect rendered state.
+;(window as any).__terrainScene = scene
+;(window as any).__terrainEngine = engine
