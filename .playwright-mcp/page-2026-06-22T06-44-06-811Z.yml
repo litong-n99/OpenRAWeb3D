@@ -1,0 +1,66 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - heading "A. 渲染系统 - SpriteRenderer Billboard 模式验证" [level=1] [ref=e3]
+    - generic [ref=e4]: "ID: sprite-renderer/sprite-billboarding | 期望结果见 README.md | OpenRA 对照: SpriteRenderer.cs (BILLBOARDMODE_Y)"
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - heading "C. 摄像机控制" [level=3] [ref=e10]
+      - generic [ref=e11]:
+        - text: "水平旋转 (Alpha):"
+        - generic [ref=e12]: "-90°"
+      - slider [ref=e13]: "-90"
+      - generic [ref=e14]:
+        - text: "俯仰角 (Beta):"
+        - generic [ref=e15]: 72°
+      - slider [ref=e16]: "72"
+      - generic [ref=e17]:
+        - text: "距离:"
+        - generic [ref=e18]: "12.0"
+      - slider [ref=e19]: "12"
+      - button "重置摄像机 (RTS 默认视角)" [active] [ref=e20] [cursor=pointer]
+    - generic [ref=e21]:
+      - heading "Billboard 模式" [level=3] [ref=e22]
+      - generic [ref=e23]: Billboard 模式
+      - combobox "Billboard 模式" [ref=e24] [cursor=pointer]:
+        - option "BILLBOARDMODE_Y (RTS 推荐)" [selected]
+        - option "BILLBOARDMODE_ALL"
+        - option "无 (标准几何体)"
+    - generic [ref=e25]:
+      - heading "观察辅助" [level=3] [ref=e26]
+      - generic [ref=e27]:
+        - checkbox "显示坐标轴参考" [checked] [ref=e28]
+        - text: 显示坐标轴参考
+      - generic [ref=e29]:
+        - checkbox "显示地面网格" [checked] [ref=e30]
+        - text: 显示地面网格
+      - generic [ref=e31]:
+        - checkbox "显示精灵标签" [checked] [ref=e32]
+        - text: 显示精灵标签
+      - generic [ref=e33]:
+        - checkbox "自动旋转摄像机" [ref=e34]
+        - text: 自动旋转摄像机
+    - generic [ref=e35]:
+      - heading "当前状态" [level=3] [ref=e36]
+      - generic [ref=e37]:
+        - generic [ref=e38]: 活跃精灵数
+        - generic [ref=e39]: "25"
+      - generic [ref=e40]:
+        - generic [ref=e41]: 摄像机 Alpha
+        - generic [ref=e42]: "-90°"
+      - generic [ref=e43]:
+        - generic [ref=e44]: 摄像机 Beta
+        - generic [ref=e45]: 72°
+      - generic [ref=e46]:
+        - generic [ref=e47]: 精灵朝向 (Z rot)
+        - generic [ref=e48]: 0.0°
+  - generic [ref=e49]:
+    - generic [ref=e50]: "UA:"
+    - generic [ref=e51]: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)
+    - generic [ref=e52]: "视口:"
+    - generic [ref=e53]: 1280x987 @ 1x
+    - generic [ref=e54]: "引擎:"
+    - generic [ref=e55]: Babylon.js v9.10.1 / WebGL 2.0
+    - generic [ref=e56]: "FPS:"
+    - generic [ref=e57]: "144"
+    - generic [ref=e58]: "时间:"
+    - generic [ref=e59]: 2026-06-22T06:44:06.803Z

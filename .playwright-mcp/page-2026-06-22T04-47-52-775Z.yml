@@ -1,0 +1,50 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "A. RGBA 颜色渲染器 - 预乘 Alpha 混合验证" [level=1] [ref=e3]
+    - generic [ref=e4]: "ID: rgba-color-renderer/rgba-alpha-blending | 期望结果见 README.md | OpenRA 对照: premultiplyAlpha(), ALPHA_PREMULTIPLIED"
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - heading "C. 透明度调节" [level=3] [ref=e10]
+      - generic [ref=e11]:
+        - text: "全局透明度:"
+        - generic [ref=e12]: "0.60"
+      - slider [ref=e13]: "0.6"
+      - generic [ref=e14]:
+        - text: "渐变方向:"
+        - generic [ref=e15]: 垂直
+      - slider [ref=e16]: "0"
+    - generic [ref=e17]:
+      - heading "着色器颜色控制" [level=3] [ref=e18]
+      - generic [ref=e19]:
+        - text: "左侧条颜色:"
+        - textbox "左侧条颜色:" [ref=e20] [cursor=pointer]: "#e94560"
+      - generic [ref=e21]:
+        - text: "中间条颜色:"
+        - textbox "中间条颜色:" [ref=e22] [cursor=pointer]: "#2ecc71"
+      - generic [ref=e23]:
+        - text: "右侧条颜色:"
+        - textbox "右侧条颜色:" [ref=e24] [cursor=pointer]: "#3498db"
+      - button "应用颜色" [ref=e25] [cursor=pointer]
+    - generic [ref=e26]:
+      - heading "观察参考" [level=3] [ref=e27]
+      - generic [ref=e28]: "重叠区域颜色:"
+      - generic [ref=e29]:
+        - generic [ref=e30]: 红-绿重叠
+        - generic [ref=e31]: rgba(158,123,103,255)
+      - generic [ref=e32]:
+        - generic [ref=e33]: 绿-蓝重叠
+        - generic [ref=e34]: rgba(49,183,156,255)
+      - generic [ref=e35]:
+        - generic [ref=e36]: 三色重叠
+        - generic [ref=e37]: "-"
+  - generic [ref=e38]:
+    - generic [ref=e39]: "UA:"
+    - generic [ref=e40]: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)
+    - generic [ref=e41]: "视口:"
+    - generic [ref=e42]: 1280x987 @ 1x
+    - generic [ref=e43]: "引擎:"
+    - generic [ref=e44]: Babylon.js v9.10.1 / WebGL 2.0
+    - generic [ref=e45]: "FPS:"
+    - generic [ref=e46]: "0"
+    - generic [ref=e47]: "时间:"
+    - generic [ref=e48]: 2026-06-22T04:47:52.764Z
