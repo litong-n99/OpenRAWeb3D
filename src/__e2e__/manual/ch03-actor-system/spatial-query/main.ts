@@ -923,6 +923,96 @@ async function main(): Promise<void> {
     drawGridLines()
   })
 
+  // ---- 测试钩子 (E2E 自动化使用) ----
+  ;(window as any).__screenMapTest = {
+    getUnits: () => units.map((u, i) => ({
+      id: i,
+      name: u.node.name,
+      x: u.node.position.x,
+      z: u.node.position.z,
+      halfWidth: u.halfWidth,
+      halfHeight: u.halfHeight,
+      selected: u.selected,
+      hovered: u.hovered,
+    })),
+    getSelectedCount: () => units.filter(u => u.selected).length,
+    getHoveredUnit: () => {
+      const u = units.find(u => u.hovered)
+      return u
+        ? { id: units.indexOf(u), name: u.node.name, x: u.node.position.x, z: u.node.position.z }
+        : null
+    },
+    screenToWorld: (sx: number, sy: number) => {
+      const rect = canvas.getBoundingClientRect()
+      return screenToWorld(rect, sx - rect.left, sy - rect.top)
+    },
+    worldToScreen: (x: number, z: number) => {
+      const rect = canvas.getBoundingClientRect()
+      const renderW = engine.getRenderWidth()
+      const renderH = engine.getRenderHeight()
+      const scaleX = renderW / rect.width
+      const scaleY = renderH / rect.height
+      const p = Vector3.Project(
+        new Vector3(x, 0, z),
+        Matrix.Identity(),
+        scene.getTransformMatrix(),
+        camera.viewport.toGlobal(renderW, renderH),
+      )
+      return { x: p.x / scaleX + rect.left, y: p.y / scaleY + rect.top }
+    },
+    setUnitPosition: (id: number, x: number, z: number) => {
+      const u = units[id]
+      if (!u) return false
+      u.node.position.x = x
+      u.node.position.z = z
+      rebuildGrid()
+      drawBoundsLines()
+      return true
+    },
+    randomize: () => {
+      document.getElementById('btn-randomize')!.click()
+    },
+    toggleBounds: () => {
+      document.getElementById('btn-bounds')!.click()
+    },
+    toggleMouseBounds: () => {
+      document.getElementById('btn-mouse-bounds')!.click()
+    },
+    toggleGrid: () => {
+      document.getElementById('btn-grid')!.click()
+    },
+    setHoverEnabled: (enabled: boolean) => {
+      const btn = document.getElementById('btn-hover-test')!
+      const active = btn.classList.contains('active')
+      if (active !== enabled) btn.click()
+    },
+    setBinSize: (val: number) => {
+      const sel = document.getElementById('sel-bin-size') as HTMLSelectElement
+      sel.value = String(val)
+      sel.dispatchEvent(new Event('change', { bubbles: true }))
+    },
+    getGridInfo: () => ({ binSize: grid.binSize, cols: grid.cols, rows: grid.rows }),
+    getBoundsLineCount: () => boundsLines.length,
+    getBoundsColors: () => boundsLines.map(l => {
+      const lineColor = (l as any).color as { r: number; g: number; b: number }
+      return {
+        r: Math.round(lineColor.r * 255),
+        g: Math.round(lineColor.g * 255),
+        b: Math.round(lineColor.b * 255),
+      }
+    }),
+    queryRect: (x1: number, z1: number, x2: number, z2: number) =>
+      grid.queryRect(x1, z1, x2, z2).map(u => u.node.name),
+    queryPoint: (x: number, z: number) =>
+      grid.queryPoint(x, z).map(u => u.node.name),
+    getCameraState: () => ({
+      alpha: camera.alpha,
+      beta: camera.beta,
+      radius: camera.radius,
+      target: { x: camera.target.x, y: camera.target.y, z: camera.target.z },
+    }),
+  }
+
   // ---- 渲染循环 ----
   let fpsFrames = 0
   let fpsAccum = 0

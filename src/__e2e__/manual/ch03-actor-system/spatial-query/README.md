@@ -7,6 +7,8 @@
 > 创建日期: 2026-06-09
 > 状态: **ACCEPTED (2026-06-09)**
 >
+> **审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 12/12 通过, 100%)
+>
 > **调试轮次**:
 > - Round 1 (504758a): 修复 unit mesh 遮挡 scene.pick()
 > - Round 2 (c6fe9ac): 替换 scene.pick() 为 createPickingRay() + XZ plane intersection
