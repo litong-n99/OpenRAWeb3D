@@ -246,6 +246,56 @@ server.tool(
   }
 );
 
+// --- kimi_read_media ---
+function getPngInfo(buf) {
+  if (buf.length < 24 || buf.toString("ascii", 1, 4) !== "PNG") return null;
+  const w = buf.readUInt32BE(16);
+  const h = buf.readUInt32BE(20);
+  return { width: w, height: h, format: "PNG" };
+}
+
+function getMediaMeta(buf, ext) {
+  const sizeKB = (buf.length / 1024).toFixed(1);
+  const pngInfo = ext === "png" ? getPngInfo(buf) : null;
+  return { sizeBytes: buf.length, sizeKB, ...pngInfo };
+}
+
+server.tool(
+  "kimi_read_media",
+  "Analyze images and videos using Kimi. Reads the media file, extracts metadata (dimensions, format, size), and asks Kimi to perform visual analysis based on the expected behavior described in the prompt.",
+  {
+    path: z.string().describe("Absolute path to the image/screenshot file (PNG, JPG, etc.)"),
+    question: z.string().optional().describe("Specific question about the image (default: comprehensive visual analysis)"),
+    expectedBehavior: z.string().optional().describe("Expected visual behavior from README for Kimi to compare against"),
+  },
+  async ({ path, question, expectedBehavior }) => {
+    const ext = path.split(".").pop()?.toLowerCase() || "png";
+    const buf = readFileSync(path);
+    const meta = getMediaMeta(buf, ext);
+    const b64 = buf.toString("base64");
+    const mimeMap = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp" };
+    const mime = mimeMap[ext] || "image/png";
+    const dataUri = `data:${mime};base64,${b64}`;
+
+    const prompt = [
+      "You are performing a CANVAS VISUAL VERIFICATION for an acceptance test.",
+      question ? `Question: ${question}` : "Analyze this screenshot and describe what you see.",
+      `Image metadata: ${meta.width ? `${meta.width}x${meta.height} ${meta.format}, ` : ""}${meta.sizeKB} KB`,
+      expectedBehavior ? `Expected behavior (from README): ${expectedBehavior}` : "",
+      expectedBehavior ? "Compare the actual rendered output against the expected behavior. Report any discrepancies (color mismatch, missing elements, layout issues, rendering artifacts, blank/black canvas)." : "",
+      "",
+      `File path: ${path}`,
+      "",
+      "CRITICAL: Analyze the image data URI below using your multimodal vision capabilities.",
+      "If you CANNOT see the image, explicitly state 'UNABLE_TO_VIEW_IMAGE' and reason about what might be happening based on the metadata.",
+      `Image: ${dataUri}`,
+    ].filter(Boolean).join("\n");
+
+    const result = await runKimi(prompt, { timeout: 180 });
+    return { content: [{ type: "text", text: result }] };
+  }
+);
+
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
