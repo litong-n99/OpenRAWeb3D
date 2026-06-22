@@ -1,6 +1,6 @@
 # Minimap Rendering Pipeline -- Acceptance Test
 
-**审核状态**: ✅ 全部审核通过 (2026-06-20)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 9/9 通过, 100%)
 
 ## Purpose
 
