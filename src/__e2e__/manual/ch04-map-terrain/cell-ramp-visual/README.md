@@ -136,7 +136,10 @@
 
 ### 验收状态
 
-- **状态**: ✅ ACCEPTED
-- **日期**: 2026-06-10
-- **验收人**: litong
-- **测试环境**: Chromium / 1920x1080 / WebGL 2.0
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 12/12 通过, 100%)
+
+- **日期**: 2026-06-22
+- **验收人**: acceptance-test-runner (Playwright + Kimi MCP)
+- **测试环境**: Chromium (headless) / 1920x1080 / WebGL 2.0 (SwiftShader)
+- **测试脚本**: `tests-e2e/ch04-map-terrain/cell-ramp-visual/cell-ramp-visual.spec.ts` (12 tests)
+- **前次验收**: 2026-06-10 (litong, 手动)
