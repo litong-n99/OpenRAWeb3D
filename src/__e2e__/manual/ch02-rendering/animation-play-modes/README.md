@@ -1,6 +1,7 @@
 # Animation - 高级播放模式: PlayFetchIndex、ReplaceAnim 验证
 
 > **人工验收测试页** | **状态: ACCEPTED** (验收日期: 2026-06-09)
+> **审核状态**: ✅ 全部审核通过 (自动化验收测试, 2026-06-22) | Playwright, 39/39 通过, 100%
 > 模块: Animation (PlayFetchIndex, ReplaceAnim, GetRandomExistingSequence)
 > 测试ID: `animation/animation-play-modes`
 > OpenRA 对照: `Animation.ts` — PlayFetchIndex (tickAlways), ReplaceAnim (mod), GetRandomExistingSequence
