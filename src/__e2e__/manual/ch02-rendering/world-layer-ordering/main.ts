@@ -20,6 +20,13 @@ import { Mesh } from '@babylonjs/core'
 import { StandardMaterial } from '@babylonjs/core'
 import { DynamicTexture } from '@babylonjs/core'
 
+declare global {
+  interface Window {
+    __scene__?: Scene
+    __engine__?: Engine
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 图层信息
 // ---------------------------------------------------------------------------
@@ -134,6 +141,8 @@ async function main(): Promise<void> {
 
   // ---- 场景 ----
   const scene = new Scene(engine)
+  window.__scene__ = scene
+  window.__engine__ = engine
   scene.clearColor = new Color4(0.08, 0.09, 0.12, 1)
 
   // ---- 正交摄像机 ----
