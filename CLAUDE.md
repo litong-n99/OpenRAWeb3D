@@ -399,7 +399,7 @@ The project uses six specialized agents defined in `.claude/agents/`, plus a ded
 | **migration-develop** | `migration-develop.md` | TypeScript/Babylon.js implementation with unit tests |
 | **migration-review** | `migration-review.md` | Code review across 5 dimensions: docs compliance, feature completeness, efficiency, bugs, format |
 | **acceptance-test-assistant** | `acceptance-test-assistant.md` | Manual visual acceptance test pages for non-unit-testable modules |
-| **acceptance-test-runner** | `acceptance-test-runner.md` | Playwright automated verification of acceptance test pages (pure orchestrator, delegates to Kimi MCP) |
+| **acceptance-test-runner** | `acceptance-test-runner.md` | Playwright automated verification of acceptance test pages (pure orchestrator, delegates to Kimi MCP; mandatory Kimi visual verification for canvas rendering via `kimi_read_media`) |
 | **migration-docs** | `migration-docs.md` | Documentation maintenance, progress tracking, task coordination, commit |
 
 ### Team Configurations
@@ -429,16 +429,16 @@ Architect → Developer → Reviewer ─┬─→ Acceptance Tester → Team Lea
 User / Team Lead dispatches acceptance-test team
   │
   ▼
-test-runner (writes Playwright scripts, executes tests, collects evidence)
+test-runner (writes Playwright scripts, executes tests, collects evidence, performs mandatory Kimi visual verification via kimi_read_media)
   │
-  ├── Path A (all pass): update README status → done
+  ├── Path A (all pass): Kimi visual verification passed → update README status → done
   │
   └── Path B (failures): escalates to acceptance-tester
         │
         ├── Path B1 (test page bug):
         │     fix → reviewer → back to test-runner (max 3 rounds)
         │       │
-        │       └── test-runner re-verify passes
+        │       └── test-runner re-verify passes (incl. Kimi visual re-verification)
         │             │
         │             ▼
         │           REDUNDANCY CHECK (acceptance-tester):
@@ -446,10 +446,10 @@ test-runner (writes Playwright scripts, executes tests, collects evidence)
         │           (e.g., workarounds made obsolete by root-cause fix)
         │             │
         │             ├── Redundant changes found → revert them
-        │             │     └── test-runner FINAL re-verification
+        │             │     └── test-runner FINAL re-verification (incl. Kimi visual)
         │             │
         │             └── No redundancy
-        │                   └── test-runner FINAL re-verification
+        │                   └── test-runner FINAL re-verification (incl. Kimi visual)
         │                         │
         │                         └── PASS → COMMIT (gate unlocked)
         │
@@ -457,7 +457,7 @@ test-runner (writes Playwright scripts, executes tests, collects evidence)
               ├── B2a (minor, <=2 files):
               │     developer fixes + negative tests → reviewer → back to test-runner (max 3 rounds)
               │       │
-              │       └── test-runner re-verify passes
+              │       └── test-runner re-verify passes (incl. Kimi visual re-verification)
               │             │
               │             ▼
               │           REDUNDANCY CHECK (developer):
@@ -465,10 +465,10 @@ test-runner (writes Playwright scripts, executes tests, collects evidence)
               │           (e.g., workarounds made obsolete by root-cause fix)
               │             │
               │             ├── Redundant changes found → revert them
-              │             │     └── test-runner FINAL re-verification
+              │             │     └── test-runner FINAL re-verification (incl. Kimi visual)
               │             │
               │             └── No redundancy
-              │                   └── test-runner FINAL re-verification
+              │                   └── test-runner FINAL re-verification (incl. Kimi visual)
               │                         │
               │                         └── PASS → COMMIT (gate unlocked)
               │
@@ -546,6 +546,8 @@ npx tsc --noEmit
 ## Acceptance Testing (Manual Visual Verification)
 
 The project includes a framework for manual visual acceptance testing of modules that cannot be verified through automated unit tests (animation, shader effects, visual layout, interaction feel, etc.). This is a **dev-only** infrastructure -- test pages are excluded from production builds.
+
+**Kimi Visual Verification**: For canvas-rendered content (WebGL scenes, shader effects, animations), the acceptance-test-runner performs mandatory visual verification via `kimi_read_media` (STEP 4.5). This multi-modal analysis compares screenshots against expected behavior (colors, shapes, layout, rendering artifacts). Canvas rendering cannot be fully validated by DOM-level assertions alone — visual verification is mandatory for all pages with canvas content.
 
 ### URL Scheme
 

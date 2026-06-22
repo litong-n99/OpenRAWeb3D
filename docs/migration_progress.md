@@ -167,7 +167,7 @@ No remaining stubs in the original 27-item migration plan. All 27 items are reso
 | Test Type | Framework | Files | Status |
 |-----------|-----------|:-----:|--------|
 | Unit tests | Vitest + happy-dom | 27 test files | 23 pass, 3 with failures, 1 pending |
-| E2E tests | Playwright | 0 | Not yet configured |
+| E2E tests | Playwright + Kimi MCP (visual) | 107 test pages | Acceptance tests configured; mandatory Kimi visual verification (`kimi_read_media`) for canvas rendering |
 
 ### Existing Test Files
 

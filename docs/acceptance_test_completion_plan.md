@@ -5,7 +5,7 @@
 > **Current Coverage**: 107 test pages across 20 chapter directories (Ch02-Ch22). ALL PHASES P0-P3 COMPLETE ✅
 > **Target**: Comprehensive manual visual acceptance test coverage for all rendering-dependent modules
 >
-> **Important Statement**: Test pages reside under `src/__e2e__/manual/`. The `acceptance-test-assistant` agent owns this directory exclusively. The `acceptance-test-runner` agent executes Playwright automated verification. All test page creation must follow the agent workflow defined in [CLAUDE.md](../CLAUDE.md) and `.claude/agents/acceptance-test-assistant.md`.
+> **Important Statement**: Test pages reside under `src/__e2e__/manual/`. The `acceptance-test-assistant` agent owns this directory exclusively. The `acceptance-test-runner` agent executes Playwright automated verification, including mandatory **Kimi visual verification** (`kimi_read_media`) for all canvas-rendered content (STEP 4.5 in the test-runner spec). All test page creation must follow the agent workflow defined in [CLAUDE.md](../CLAUDE.md) and `.claude/agents/acceptance-test-assistant.md`.
 
 ---
 
@@ -49,7 +49,7 @@ Test pages are prioritized by three factors:
 
 1. **One page, one observable behavior**: Each test page verifies a specific visual/behavioral aspect. Avoid "kitchen sink" pages.
 2. **Quantifiable expectations**: Every README.md must contain at least 3 measurable criteria (color hex values, pixel thresholds, frame counts, time ranges).
-3. **`__testHarness` API exposure**: Each `main.ts` exposes a `window.__testHarness` object for Playwright programmatic verification, following the acceptance-test-runner spec.
+3. **`__testHarness` API exposure**: Each `main.ts` exposes a `window.__testHarness` object for Playwright programmatic verification, following the acceptance-test-runner spec. For canvas-rendered content, this is complemented by mandatory Kimi visual verification (`kimi_read_media`) of screenshots to validate colors, shapes, layout, and detect rendering artifacts.
 4. **Self-contained**: Test pages must run independently without depending on main application state.
 5. **Coordinate system fidelity**: All directional/angular tests must reference OpenRA's WAngle convention (0=North, counter-clockwise increasing).
 
@@ -695,20 +695,26 @@ src/__e2e__/manual/ch08-weapons-combat/missile-trajectory/
     └── test-3-arcing.spec.ts
 ```
 
+**Kimi Visual Verification (Mandatory)**: After executing Playwright scripts, the test-runner performs mandatory visual verification via `kimi_read_media` for all pages with canvas/WebGL content. Screenshots of key rendering states are analyzed by Kimi's multi-modal model, comparing against README expected behavior. This step is mandatory (STEP 4.5 in the test-runner spec) and cannot be skipped — DOM-level assertions alone are insufficient for validating canvas rendering correctness.
+
+Test results (including Kimi visual analysis conclusions) are written to `test-results/manual/` (not `src/__e2e__/manual/`), with `reproduce.md` and `report.md` documenting visual verification findings alongside DOM-level test results.
+
 ### 6.4 Verification Checklist Per Phase
+
+All phases with canvas/WebGL rendering require mandatory Kimi visual verification (`kimi_read_media`) of screenshots, in addition to DOM-level Playwright assertions.
 
 | Phase | Verify |
 |:---|:---|
-| P0-A | All 7 projectile types render correctly; trajectory timing matches C# reference |
-| P0-B | Explosion sprite cycles, muzzle overlays, attack animations, warhead gallery all functional |
-| P1-A | Editor actor placement, brush, resource paint, and UI shell visually correct |
-| P1-B | Particle effects, selection visuals, idle overlays all functional |
-| P2-A | Building ghost preview, rally point lines, production queue UI correct |
-| P2-B | Bomber run trajectory, turret rotation tracking correct |
-| P3-A | Widget layout nesting, chrome theme rendering correct |
-| P3-B | Path following, turn animation correct |
-| P3-C | Button, slider, dropdown widget states correct |
-| P3-D | Script-driven camera, animation, dialogue correct |
+| P0-A | All 7 projectile types render correctly; trajectory timing matches C# reference; Kimi visual: verify projectile mesh, trail, impact position |
+| P0-B | Explosion sprite cycles, muzzle overlays, attack animations, warhead gallery all functional; Kimi visual: verify explosion billboards, muzzle flash, warhead AOE |
+| P1-A | Editor actor placement, brush, resource paint, and UI shell visually correct; Kimi visual: verify ghost preview, grid snap, resource density colors |
+| P1-B | Particle effects, selection visuals, idle overlays all functional; Kimi visual: verify billboard particles, selection box, overlay animation |
+| P2-A | Building ghost preview, rally point lines, production queue UI correct; Kimi visual: verify ghost opacity, footprint cells, progress bar fill |
+| P2-B | Bomber run trajectory, turret rotation tracking correct; Kimi visual: verify flight path, bomb drop, turret facing |
+| P3-A | Widget layout nesting, chrome theme rendering correct (DOM-dominant, canvas optional) |
+| P3-B | Path following, turn animation correct; Kimi visual: verify unit position on path, facing direction |
+| P3-C | Button, slider, dropdown widget states correct (DOM-dominant, canvas optional) |
+| P3-D | Script-driven camera, animation, dialogue correct; Kimi visual: verify camera position, actor animation, dialogue text |
 
 ---
 
@@ -755,7 +761,7 @@ src/__e2e__/manual/ch08-weapons-combat/missile-trajectory/
 2. **acceptance-test-assistant** creates `index.html` + `main.ts` + `README.md` under the specified directory
 3. **acceptance-test-assistant** verifies `npx tsc --noEmit` passes
 4. **migration-review** reviews the test page (5 dimensions adapted for e2e)
-5. **acceptance-test-runner** writes Playwright scripts + executes + generates `reproduce.md` + `report.md`
+5. **acceptance-test-runner** writes Playwright scripts + executes + performs mandatory Kimi visual verification (`kimi_read_media`) for canvas content + generates `reproduce.md` + `report.md`
 6. If failures: follow the redundancy check + commit gate workflow in `.claude/teams/openra-acceptance-test/config.json`
 
 ### Naming Conventions
