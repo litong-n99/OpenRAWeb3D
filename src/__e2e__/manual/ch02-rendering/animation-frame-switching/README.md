@@ -5,6 +5,7 @@
 > 测试ID: `animation/animation-frame-switching`
 > OpenRA 对照: `Animation.ts` — PlayRepeating, PlayThen, PlayBackwardsThen, PlayFetchDirection
 > 创建日期: 2026-06-06
+> **审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 23/23 通过, 100%)
 
 ---
 
