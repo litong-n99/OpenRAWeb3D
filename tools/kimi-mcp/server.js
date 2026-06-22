@@ -211,10 +211,13 @@ class AcpClient {
       // Send prompt
       await this._send("session/prompt", { sessionId, prompt: blocks });
 
-      // Wait for completion: done flag OR idle timeout (5s without new chunks)
+      // Wait for completion: done flag OR idle timeout.
+      // Visual analysis can have long pauses between chunks (model "thinking" about images).
+      // Use 30s idle timeout to avoid premature exit on multimodal requests.
+      const idleTimeout = (images && images.length > 0) ? 30000 : 10000;
       const deadline = Date.now() + timeout * 1000;
       while (!done && Date.now() < deadline) {
-        if (Date.now() - lastChunkTime > 5000) break; // idle timeout
+        if (Date.now() - lastChunkTime > idleTimeout) break;
         await sleep(200);
       }
     } finally {
