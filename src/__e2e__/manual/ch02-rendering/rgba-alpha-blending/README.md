@@ -6,6 +6,8 @@
 > OpenRA 对照: `RgbaColorRenderer.ts` — `premultiplyAlpha()`, `vertexWithColor()`, `ALPHA_PREMULTIPLIED`
 > 创建日期: 2026-06-06
 
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 4/4 通过, 100%)
+
 ---
 
 ## B. 期望结果
