@@ -1,8 +1,11 @@
 {
   "mcpServers": {
     "kimi": {
-      "command": "npx",
-      "args": ["-y", "kimi-code-mcp@latest"]
+      "command": "node",
+      "args": ["tools/kimi-mcp/server.js"],
+      "env": {
+        "KIMI_BIN": "kimi"
+      }
     },
     "playwright": {
       "command": "npx",

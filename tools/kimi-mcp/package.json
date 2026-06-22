@@ -1,0 +1,10 @@
+{
+  "name": "kimi-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Custom MCP server wrapping Kimi Code CLI v0.6+ (kimi -p / --output-format)",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
