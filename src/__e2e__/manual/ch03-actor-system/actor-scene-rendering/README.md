@@ -5,7 +5,7 @@
 > 测试ID: `actor/actor-scene-rendering`
 > OpenRA 对照: `Actor.ts` — GameActor in Babylon.js Scene Graph
 > 创建日期: 2026-06-09
-> 状态: **ACCEPTED** (2026-06-09)
+> 状态: **ACCEPTED** (2026-06-09) | **审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 8/8 通过, 100%)
 
 ---
 
@@ -168,7 +168,8 @@
 - [x] 期望 5 通过（颜色切换）
 - [x] 期望 6 通过（FPS 稳定性）
 
-**最终判定: ACCEPTED (2026-06-09)**
+**最终判定: ACCEPTED (2026-06-09, re-verified 2026-06-22)**
+**自动化验收测试**: Playwright 8/8 通过 (100%), Kimi 视觉验证通过
 
 **设备信息**:
 - GPU: __________

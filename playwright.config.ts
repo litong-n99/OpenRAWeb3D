@@ -27,6 +27,12 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
   reporter: [
     ['list'],
     ['json', { outputFile: `${outputDir}/results.json` }],

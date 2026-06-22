@@ -282,7 +282,8 @@ async function main(): Promise<void> {
     }
   })
 
-  let scaleIndex = 0
+  // Start at the last preset so the first click applies the 0.5x preset.
+  let scaleIndex = 3
   const scalePresets = [0.5, 1.0, 2.0, 3.0]
   document.getElementById('btn-scale')!.addEventListener('click', () => {
     scaleIndex = (scaleIndex + 1) % scalePresets.length
