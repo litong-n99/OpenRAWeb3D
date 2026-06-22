@@ -83,7 +83,7 @@ class AcpClient {
       protocolVersion: 1,
       clientInfo: { name: "kimi-mcp", version: "2.0.0" },
     });
-    this.capabilities = initResp.capabilities || {};
+    this.capabilities = initResp.agentCapabilities || initResp.capabilities || {};
 
     // Authenticate (may fail silently if already logged in)
     try {
