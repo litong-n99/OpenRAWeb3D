@@ -160,9 +160,13 @@ src/__e2e__/manual/ch{num}-{title}/{test-case-id}/script/test-2.spec.ts
    ├── reproduce.md       ← 复现文档（必须，见 STEP 5）
    └── report.md          ← 检验报告（必须，见 STEP 6）
    ```
-3. 执行测试（选择上述方式之一）
-4. 收集截图到 `test-results/manual/.../evidence/` 目录（至少 1 张）
-5. 必要时录制视频（仅在视觉异常无法用截图表达时录视频，尽量不录）
+3. **设置输出隔离环境变量**（防止覆盖其他测试页面的结果）：
+   ```bash
+   export PLAYWRIGHT_OUTPUT_DIR=test-results/manual/ch{num}-{title}/{test-case-id}
+   ```
+4. 执行测试（选择上述方式之一）
+5. 收集截图到 `test-results/manual/.../evidence/` 目录（至少 1 张）
+6. 必要时录制视频（仅在视觉异常无法用截图表达时录视频，尽量不录）
 
 ### STEP 5: 生成 reproduce.md（必须）
 
