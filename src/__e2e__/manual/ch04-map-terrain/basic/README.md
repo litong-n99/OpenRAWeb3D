@@ -1,7 +1,6 @@
 # Terrain Mesh — Basic Visual Test
 
-**审核状态**: ✅ 全部审核通过 (2026-06-11)  
-**审核轮次**: 已通过 (Phase F 审查期间验证)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 8/8 通过, 100%)
 
 ## 期望结果 (Expected Results)
 
