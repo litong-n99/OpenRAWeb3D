@@ -137,13 +137,14 @@ class AcpClient {
     this.proc.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, result }) + "\n");
   }
 
-  _send(method, params) {
+  _send(method, params, timeoutMs) {
+    timeoutMs = timeoutMs || 30000;
     return new Promise((resolve, reject) => {
       const id = this.nextId++;
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`ACP ${method} timeout`));
-      }, 30000);
+      }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer });
 
       const req = JSON.stringify({ jsonrpc: "2.0", id, method, params });
@@ -158,21 +159,27 @@ class AcpClient {
   async prompt({ text, images, cwd, timeout }) {
     await this.start();
     timeout = timeout || 300;
+    const hasImages = images && images.length > 0;
+
+    // For visual analysis, use longer per-request timeouts — Kimi's backend may
+    // take >30s to begin streaming the first chunk when processing large images.
+    const reqTimeout = hasImages ? 120000 : 60000;
+    const idleTimeout = hasImages ? 60000 : 15000;
 
     // Create session (mcpServers required even if empty)
-    const { sessionId } = await this._send("session/new", { cwd: cwd || process.cwd(), mcpServers: [] });
+    const { sessionId } = await this._send("session/new",
+      { cwd: cwd || process.cwd(), mcpServers: [] }, reqTimeout);
 
     // Set auto mode
-    await this._send("session/set_config_option", {
-      sessionId, configId: "mode", value: "auto",
-    });
+    await this._send("session/set_config_option",
+      { sessionId, configId: "mode", value: "auto" }, reqTimeout);
 
     // Build content blocks
     const blocks = [];
     if (text) {
       blocks.push({ type: "text", text });
     }
-    if (images && images.length > 0) {
+    if (hasImages) {
       for (const img of images) {
         blocks.push({
           type: "image",
@@ -191,14 +198,13 @@ class AcpClient {
       const update = (msg.params && msg.params.update) || {};
       const suType = update.sessionUpdate || "";
       if (suType === "agent_message_chunk") {
-        const text = extractAcpText(update.content);
-        if (text) { chunks.push(text); lastChunkTime = Date.now(); }
+        const chunkText = extractAcpText(update.content);
+        if (chunkText) { chunks.push(chunkText); lastChunkTime = Date.now(); }
       }
       if (update.done) done = true;
     };
 
     const onPermission = (msg) => {
-      // Auto-approve tool calls
       if (msg.id != null) {
         this._respond(msg.id, { approved: true });
       }
@@ -208,13 +214,10 @@ class AcpClient {
     this.agentHandlers.set("session/request_permission", onPermission);
 
     try {
-      // Send prompt
-      await this._send("session/prompt", { sessionId, prompt: blocks });
+      // Send prompt — use extended timeout for multimodal requests
+      await this._send("session/prompt", { sessionId, prompt: blocks }, reqTimeout);
 
       // Wait for completion: done flag OR idle timeout.
-      // Visual analysis can have long pauses between chunks (model "thinking" about images).
-      // Use 30s idle timeout to avoid premature exit on multimodal requests.
-      const idleTimeout = (images && images.length > 0) ? 30000 : 10000;
       const deadline = Date.now() + timeout * 1000;
       while (!done && Date.now() < deadline) {
         if (Date.now() - lastChunkTime > idleTimeout) break;
@@ -244,7 +247,8 @@ class AcpClient {
 }
 
 let acpInstance = null;
-let acpFailed = false;   // Set true if ACP is unavailable — skip retries
+let acpFailed = false;   // Set true if ACP is permanently unavailable
+let acpFailCount = 0;    // Consecutive failures for adaptive backoff
 
 async function getAcp() {
   if (acpFailed) throw new Error("ACP unavailable (previously failed)");
@@ -259,17 +263,29 @@ async function getAcp() {
   return acpInstance;
 }
 
+/**
+ * Discard the current ACP instance so the next call starts a fresh process.
+ * Call this after a prompt-level timeout or error to avoid reusing a stale
+ * connection on the next request.
+ */
+function resetAcp() {
+  if (acpInstance) {
+    try { acpInstance.close(); } catch (_) {}
+    acpInstance = null;
+  }
+  acpFailCount = 0;
+}
+
 // ---------------------------------------------------------------------------
 // Fallback: `kimi -p` for text-only queries when ACP is unavailable
 // ---------------------------------------------------------------------------
 
 function runKimiText(prompt, opts) {
   return new Promise((resolve, reject) => {
-    const args = ["-p", prompt, "--output-format", "text"];
-
     const { command, args: baseArgs } = resolveKimiSpawn();
+    const extraArgs = ["-p", prompt, "--output-format", "text"];
     if (opts?.model) { baseArgs.push("-m", opts.model); }
-    const child = spawn(command, [...baseArgs, ...args], {
+    const child = spawn(command, [...baseArgs, ...extraArgs], {
       cwd: opts?.cwd || process.cwd(),
       timeout: (opts?.timeout || 300) * 1000,
       stdio: ["ignore", "pipe", "pipe"],
@@ -298,40 +314,91 @@ function sleep(ms) {
 }
 
 // ---------------------------------------------------------------------------
-// Unified runner: ACP preferred, CLI fallback
+// Unified runner: ACP preferred, CLI fallback.  Resets ACP on transient
+// timeout errors so subsequent calls get a fresh process.
 // ---------------------------------------------------------------------------
 
 async function runKimi(text, opts) {
-  // Try ACP first
   try {
     const acp = await getAcp();
-    return await acp.prompt({
+    const result = await acp.prompt({
       text,
       images: opts?.images || [],
       cwd: opts?.cwd,
       timeout: opts?.timeout,
     });
+    acpFailCount = 0;
+    return result;
   } catch (e) {
-    // ACP failed — fall back to text-only CLI
+    acpFailCount++;
+    const msg = e.message || String(e);
+
+    // Transient timeout → reset ACP process so next call gets a fresh one
+    if (msg.includes("timeout") && acpFailCount < 3) {
+      resetAcp();
+      if (opts?.images?.length) {
+        // Retry once with fresh process for vision calls
+        try {
+          const acp = await getAcp();
+          const result = await acp.prompt({
+            text,
+            images: opts?.images || [],
+            cwd: opts?.cwd,
+            timeout: Math.max((opts?.timeout || 180) + 60, 240),
+          });
+          acpFailCount = 0;
+          return result;
+        } catch (e2) {
+          resetAcp();
+          throw new Error(`ACP vision retry failed: ${e2.message}. Original: ${msg}`);
+        }
+      }
+      // Text-only fallback
+      return runKimiText(text, opts);
+    }
+
     if (opts?.images?.length) {
       throw new Error(
-        `ACP unavailable and images require multimodal input. ACP error: ${e.message}. ` +
+        `ACP unavailable and images require multimodal input. ACP error: ${msg}. ` +
         "Falling back to text-only CLI which cannot process images. " +
         "Ensure kimi acp mode is accessible."
       );
     }
-    // Text-only fallback
     return runKimiText(text, opts);
   }
 }
 
 async function runKimiVision({ text, images, cwd, timeout }) {
-  // Vision REQUIRES ACP
-  const acp = await getAcp();
-  if (!acp.supportsImages) {
-    throw new Error("ACP connected but promptCapabilities.image is false. Cannot analyze images.");
+  // Vision REQUIRES ACP.  Retry once with fresh ACP process on timeout.
+  timeout = timeout || 180;
+  try {
+    const acp = await getAcp();
+    if (!acp.supportsImages) {
+      throw new Error("ACP connected but promptCapabilities.image is false. Cannot analyze images.");
+    }
+    const result = await acp.prompt({ text, images, cwd, timeout });
+    acpFailCount = 0;
+    return result;
+  } catch (e) {
+    const msg = e.message || String(e);
+    if (msg.includes("timeout")) {
+      resetAcp();
+      // One retry with fresh process + extended timeout
+      try {
+        const acp = await getAcp();
+        if (!acp.supportsImages) {
+          throw new Error("ACP retry: promptCapabilities.image is false.");
+        }
+        const result = await acp.prompt({ text, images, cwd, timeout: timeout + 60 });
+        acpFailCount = 0;
+        return result;
+      } catch (e2) {
+        resetAcp();
+        throw new Error(`ACP vision retry failed: ${e2.message}. Original: ${msg}`);
+      }
+    }
+    throw e;
   }
-  return acp.prompt({ text, images, cwd, timeout: timeout || 180 });
 }
 
 // ---------------------------------------------------------------------------
