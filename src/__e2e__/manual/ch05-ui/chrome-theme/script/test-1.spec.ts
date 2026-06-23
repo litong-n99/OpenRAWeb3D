@@ -18,7 +18,9 @@ import { fileURLToPath } from 'url';
 const TEST_URL = '/test/ch05-ui/chrome-theme/';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const EVIDENCE_DIR = path.join(__dirname, 'evidence', 'chrome-theme');
+const EVIDENCE_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR
+  ? path.join(process.env.PLAYWRIGHT_OUTPUT_DIR, 'evidence')
+  : path.join(__dirname, 'evidence', 'chrome-theme');
 
 interface PanelStyle {
   bg: string;

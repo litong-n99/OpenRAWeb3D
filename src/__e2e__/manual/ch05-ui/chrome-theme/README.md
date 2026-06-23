@@ -3,7 +3,7 @@
 **Module**: ChromeProvider + ChromeMetrics (Chapter 5 Phase D)
 **Test Case ID**: `ch05-ui/chrome-theme`
 **OpenRA Source**: `OpenRA.Game/Graphics/ChromeProvider.ts`, `OpenRA.Game/Widgets/ChromeMetrics.ts`
-**审核状态**: ✅ 全部审核通过 (自动化验收测试, 2026-06-19)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 12/12 通过, 100%)
 
 ---
 
