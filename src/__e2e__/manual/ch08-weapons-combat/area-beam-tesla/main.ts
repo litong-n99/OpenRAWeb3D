@@ -413,6 +413,7 @@ function disposeBeamVisual(): void {
 // ---------------------------------------------------------------------------
 
 interface TestWeapon extends WeaponStub {
+  range?: { length: number }
   impactCount: number
   hitActorIds: number[]
 }
@@ -552,7 +553,7 @@ function fireBeam(source?: WPos, target?: WPos): void {
   beamWorld = beamWorldData
   const stubSource = createStubActor(src)
 
-  const weapon: TestWeapon = { impactCount: 0, hitActorIds: [], impact(): void { this.impactCount++ } }
+  const weapon: TestWeapon = { impactCount: 0, hitActorIds: [], range: { length: 100000 }, impact(): void { this.impactCount++ } }
   activeWeapon = weapon
 
   const args: ProjectileArgs = {
