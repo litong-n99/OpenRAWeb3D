@@ -4,7 +4,7 @@
 **Test Case ID**: `ch08-weapons-combat/attack-animation`
 **OpenRA Source**: `OpenRA.Mods.Common/Traits/Render/WithAttackAnimation.ts`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Traits/Render/WithAttackAnimation.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 9/9 通过, 100%)
 
 ---
 
