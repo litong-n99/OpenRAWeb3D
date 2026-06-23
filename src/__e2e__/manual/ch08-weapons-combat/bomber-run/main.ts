@@ -14,7 +14,7 @@ const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement
 const engine = new Engine(canvas, true, { preserveDrawingBuffer: true })
 const scene = new Scene(engine)
 scene.clearColor = new Color4(0.05, 0.08, 0.14, 1)
-const camera = new ArcRotateCamera('cam', -Math.PI/2.5, Math.PI/3.5, 20, new Vector3(8,2,5), scene)
+const camera = new ArcRotateCamera('cam', -Math.PI/2.5, Math.PI/3.5, 20, new Vector3(8,5,5), scene)
 camera.lowerRadiusLimit=5; camera.upperRadiusLimit=50; camera.attachControl(canvas, true)
 new HemisphericLight('hemi', new Vector3(0.5,1,0.3), scene).intensity = 0.85
 
@@ -56,8 +56,8 @@ function getBombMat(): StandardMaterial {
 let runActive = false; let runComplete = false; let runCount = 0
 let acPos = new Vector3(); let acSpeed = 400; let bombInterval = 12; let bombCount = 4;
 let tickCount = 0; let dropCount = 0; let detCount = 0
-const GRAVITY = 15 // su/t²
-const FLIGHT_ALTITUDE = 0.5 // Babylon Y
+const GRAVITY = 1.0 // su/t²
+const FLIGHT_ALTITUDE = 5.0 // Babylon Y
 const AIRCRAFT_START = new Vector3(-2, FLIGHT_ALTITUDE, 5)
 const AIRCRAFT_END = new Vector3(18, FLIGHT_ALTITUDE, 5)
 
