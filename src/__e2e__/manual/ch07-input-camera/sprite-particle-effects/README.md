@@ -276,4 +276,4 @@ console.log('Leak check:', count <= expectedMax)     // 应为 true
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-19 | 初始创建 | acceptance-test-assistant |
-|  | **审核状态**: ⏳ 待审核 | |
+|  | **审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 28/28 通过, 100%) | |

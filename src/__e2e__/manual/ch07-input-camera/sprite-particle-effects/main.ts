@@ -392,13 +392,14 @@ function colorToHex(c: Color3): string {
 
 const _hexColorCache = new Map<string, Color3>()
 function hexToColor3(hex: string): Color3 {
-  let c = _hexColorCache.get(hex)
+  const normalized = hex.startsWith('#') ? hex.slice(1) : hex
+  let c = _hexColorCache.get(normalized)
   if (!c) {
-    const r = parseInt(hex.slice(0, 2), 16) / 255
-    const g = parseInt(hex.slice(2, 4), 16) / 255
-    const b = parseInt(hex.slice(4, 6), 16) / 255
+    const r = parseInt(normalized.slice(0, 2), 16) / 255
+    const g = parseInt(normalized.slice(2, 4), 16) / 255
+    const b = parseInt(normalized.slice(4, 6), 16) / 255
     c = new Color3(r, g, b)
-    _hexColorCache.set(hex, c)
+    _hexColorCache.set(normalized, c)
   }
   return c
 }
@@ -512,8 +513,8 @@ function updateParticles(dt: number): void {
   for (let i = activeParticles.length - 1; i >= 0; i--) {
     const p = activeParticles[i]!
 
-    // Apply gravity
-    p.velocity.y += cfg.gravity * dt
+    // Apply gravity (positive cfg.gravity is a downward magnitude)
+    p.velocity.y -= cfg.gravity * dt
 
     // Update position
     if (p.mesh) {
