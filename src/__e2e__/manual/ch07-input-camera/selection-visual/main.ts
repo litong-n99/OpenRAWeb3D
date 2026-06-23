@@ -527,10 +527,19 @@ function getCanvasRelative(event: PointerEvent | MouseEvent): { x: number; y: nu
   return { x: event.clientX - rect.left, y: event.clientY - rect.top }
 }
 
+function clampToCanvas(relX: number, relY: number): { x: number; y: number } {
+  const rect = canvas.getBoundingClientRect()
+  return {
+    x: Math.max(0, Math.min(rect.width, relX)),
+    y: Math.max(0, Math.min(rect.height, relY)),
+  }
+}
+
 canvas.addEventListener('pointerdown', (event: PointerEvent) => {
   if (event.button !== 0) return // only left button
 
-  const { x, y } = getCanvasRelative(event)
+  const rel = getCanvasRelative(event)
+  const { x, y } = clampToCanvas(rel.x, rel.y)
 
   // Right-click passthrough (context menu handled separately)
   isDragging = true
@@ -545,7 +554,8 @@ canvas.addEventListener('pointerdown', (event: PointerEvent) => {
 canvas.addEventListener('pointermove', (event: PointerEvent) => {
   if (!isDragging) return
 
-  const { x, y } = getCanvasRelative(event)
+  const rel = getCanvasRelative(event)
+  const { x, y } = clampToCanvas(rel.x, rel.y)
   dragCurrentX = x
   dragCurrentY = y
 

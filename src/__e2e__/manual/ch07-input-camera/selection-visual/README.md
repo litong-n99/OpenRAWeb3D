@@ -4,7 +4,7 @@
 **Test Case ID**: `ch07-input-camera/selection-visual`
 **OpenRA Source**: `OpenRA.Mods.Common/Widgets/SelectionUtils.cs` + `WorldInteractionControllerWidget.cs`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Widgets/SelectionUtils.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 28/28 通过, 100%)
 
 ---
 
