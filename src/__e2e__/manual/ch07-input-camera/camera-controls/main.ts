@@ -329,25 +329,46 @@ let _isPanning = false
 let _panLastX = 0
 let _panLastY = 0
 
-/** Pick the terrain plane (y=0) at the given screen position */
+/** Pick the terrain plane (y=0) at the given screen position.
+ *  Uses Vector3.Unproject instead of scene.createPickingRay to avoid
+ *  internal matrix caching issues that cause stale picking results
+ *  after camera parameter changes. */
 function pickTerrainAt(screenX: number, screenY: number): Vector3 | null {
-  const ray = scene.createPickingRay(
-    screenX,
-    screenY,
-    Matrix.Identity(),
-    camera,
+  const width = engine.getRenderWidth()
+  const height = engine.getRenderHeight()
+
+  // Force-recompute matrices to avoid any cached stale state.
+  // projection(true) is critical: after setZoom changes orthoTop/Bottom/Left/Right,
+  // the projection matrix must be rebuilt before unproject.
+  const viewMatrix = camera.getViewMatrix()
+  const projMatrix = camera.getProjectionMatrix(true)
+
+  // Source vectors in viewport pixel space, z=0 (near) and z=1 (far)
+  const nearSource = new Vector3(screenX, screenY, 0)
+  const farSource = new Vector3(screenX, screenY, 1)
+
+  // Unproject to world space through the current camera matrices
+  const nearWorld = Vector3.Unproject(
+    nearSource, width, height,
+    Matrix.Identity(), viewMatrix, projMatrix,
+  )
+  const farWorld = Vector3.Unproject(
+    farSource, width, height,
+    Matrix.Identity(), viewMatrix, projMatrix,
   )
 
-  // Intersect with Y=0 plane (terrain surface)
-  if (Math.abs(ray.direction.y) < 1e-10) return null
+  // Form a world-space ray from near to far
+  const dir = farWorld.subtract(nearWorld)
+  if (Math.abs(dir.y) < 1e-10) return null
 
-  const t = -ray.origin.y / ray.direction.y
+  // Intersect with Y=0 plane (terrain surface)
+  const t = -nearWorld.y / dir.y
   if (t < 0) return null
 
   return new Vector3(
-    ray.origin.x + t * ray.direction.x,
+    nearWorld.x + t * dir.x,
     0,
-    ray.origin.z + t * ray.direction.z,
+    nearWorld.z + t * dir.z,
   )
 }
 
@@ -495,23 +516,40 @@ function setZoom(factor: number): void {
 }
 
 function zoomAtCursor(factor: number, screenX: number, screenY: number): void {
-  // Record world position under cursor before zoom
+  // Step 1: Record world position BEFORE zoom (uses fresh matrices via Unproject)
   const beforeHit = pickTerrainAt(screenX, screenY)
-  const oldZoom = currentZoom
-  const targetBefore = camera.target.clone()
 
-  // Apply zoom
+  // Step 2: Apply zoom (projection matrix rebuilt inside setZoom)
   setZoom(factor)
 
-  // If we have a "before" position, adjust camera target to keep it under cursor.
-  // Use analytic correction: delta = (1 - oldZoom/newZoom) * (beforeHit - target)
-  // This is EXACT for orthographic cameras centered on the target (ArcRotateCamera
-  // always centers its ortho frustum on the look-at target). Avoids the fragile
-  // second pickTerrainAt which depends on camera matrix synchronization timing.
-  if (beforeHit) {
-    const scale = 1 - oldZoom / factor
-    const delta = beforeHit.subtract(targetBefore).scale(scale)
-    camera.target = clampToMapBounds(targetBefore.add(delta))
+  // Step 3: If no terrain under cursor before zoom, nothing to converge against
+  if (!beforeHit) {
+    updateCameraStateDisplay()
+    updateCursorReadout()
+    return
+  }
+
+  // Step 4: Iterate correction until drift is below threshold.
+  // For orthographic projection the mapping is affine, so each round of
+  // target adjustment shrinks the residual drift geometrically.  5 rounds
+  // guarantees convergence for any starting drift that the single-round
+  // two-pick method handles.
+  const DRIFT_THRESHOLD = 0.002   // ~2 su (0.002 Babylon units)
+  const MAX_ITERATIONS = 5
+
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const afterHit = pickTerrainAt(screenX, screenY)
+    if (!afterHit) break
+
+    const drift = beforeHit.subtract(afterHit)
+
+    // Check convergence in the XZ plane (terrain surface)
+    if (Math.abs(drift.x) < DRIFT_THRESHOLD && Math.abs(drift.z) < DRIFT_THRESHOLD) {
+      break // Converged!
+    }
+
+    // Apply correction and clamp to map bounds
+    camera.target = clampToMapBounds(camera.target.add(drift))
   }
 
   updateCameraStateDisplay()

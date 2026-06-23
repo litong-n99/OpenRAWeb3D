@@ -4,6 +4,7 @@
 **Test Case ID**: `camera/camera-controls`
 **OpenRA Source**: `OpenRA.Game/Graphics/Viewport.cs` + `OpenRA.Mods.Common/Widgets/ViewportControllerWidget.cs`
 **TypeScript Target**: `src/OpenRA.Game/Graphics/Viewport.ts` + `src/OpenRA.Mods.Common/Widgets/ViewportControllerWidget.ts`
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 15/15 通过, 100%)
 
 ---
 
@@ -55,7 +56,7 @@
 
 ### 准备工作
 
-1. 打开测试页面：`http://localhost:5173/test/camera/camera-controls/`
+1. 打开测试页面：`http://localhost:5173/test/ch07-input-camera/camera-controls/`
 2. 确认环境信息栏显示 "WebGL 2.0" 引擎
 3. 设置屏幕分辨率为 1920x1080（1x 缩放）
 4. 确认左面板显示 "相机模式: 正射 (Ortho)"，"Alpha: -PI/2"
