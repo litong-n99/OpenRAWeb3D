@@ -25,9 +25,11 @@ import {
   DynamicTexture,
   Color3,
   PointerEventTypes,
+  Material,
   type AbstractMesh,
 } from '@babylonjs/core'
-
+import * as BABYLON from '@babylonjs/core'
+;(window as any).BABYLON = BABYLON
 // ---------------------------------------------------------------------------
 // Grid Configuration
 // ---------------------------------------------------------------------------
@@ -501,6 +503,7 @@ function setupScene(): {
     scene,
     false,
   )
+  dynamicTexture.hasAlpha = true
   const sctx = dynamicTexture.getContext() as CanvasRenderingContext2D
   drawShroudOverlay(sctx)
   dynamicTexture.update(false)
@@ -510,6 +513,7 @@ function setupScene(): {
   shroudMat.specularColor = new Color3(0, 0, 0)
   shroudMat.useAlphaFromDiffuseTexture = true
   shroudMat.backFaceCulling = false
+  shroudMat.transparencyMode = Material.MATERIAL_ALPHABLEND
 
   const shroudPlane = MeshBuilder.CreateGround(
     'shroudPlane',
@@ -536,9 +540,10 @@ function setupScene(): {
     new Vector3(baseX, y, baseZ + hVal),
     new Vector3(baseX, y, baseZ),
   ])
+  const frameColor = new Color4(0.3, 0.5, 0.3, 1)
   const frameMesh = MeshBuilder.CreateLineSystem(
     'frameLines',
-    { lines: frameLines, colors: [[new Color4(0.3, 0.5, 0.3, 1)]] },
+    { lines: frameLines, colors: [[frameColor, frameColor, frameColor, frameColor, frameColor]] },
     scene,
   )
 

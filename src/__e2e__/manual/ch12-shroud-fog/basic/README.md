@@ -1,6 +1,6 @@
 # Shroud — Basic Fog of War Visual Test
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 12/12 通过, 100%)
 **创建日期**: 2026-06-15
 **对应模块**: `src/OpenRA.Mods.Common/Traits/World/ShroudRenderer.ts` (TODO-12.A.2)
 
@@ -38,7 +38,7 @@
 
 ### 1. 准备工作
 
-- 打开测试页面: `http://localhost:5173/test/shroud/basic/`
+- 打开测试页面: `http://localhost:5173/test/ch12-shroud-fog/basic/`
 - 确认环境信息栏显示 **"引擎: WebGL 2.0"**
 - 设置屏幕分辨率为 1920x1080 (1x 缩放)
 - 确认页面加载后网格全部为黑色 (Hidden 状态)，右上角面板显示期望结果
