@@ -64,7 +64,17 @@ function updateDiag(): void {
 // UI
 document.getElementById('btnTree3')!.addEventListener('click', buildTree3)
 document.getElementById('btnTree5')!.addEventListener('click', buildTree5)
-document.getElementById('btnAlign')!.addEventListener('click', function(){const w=widgets.get('childB');if(w){w.el.style.left='300px';w.el.style.top='35px';this.textContent='Align: Done'}})
+document.getElementById('btnAlign')!.addEventListener('click', function(){
+  const w = widgets.get('childB');
+  const root = widgets.get('root');
+  if (w && root) {
+    const centerLeft = (root.def.width - w.def.width) / 2;
+    const centerTop = (root.def.height - w.def.height) / 2;
+    w.el.style.left = centerLeft + 'px';
+    w.el.style.top = centerTop + 'px';
+    this.textContent = 'Align: Done';
+  }
+})
 document.getElementById('btnZOrder')!.addEventListener('click', bringChild2ToTop)
 document.getElementById('btnReset')!.addEventListener('click', ()=>{clearAll();updateDiag()})
 

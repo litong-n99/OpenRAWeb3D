@@ -3,7 +3,7 @@
 **Module**: Widget + WidgetLoader (Chapter 5 Phase D)
 **Test Case ID**: `ch05-ui/widget-layout`
 **OpenRA Source**: `OpenRA.Game/Widgets/Widget.ts`, `OpenRA.Game/Widgets/WidgetLoader.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 6/6 通过, 100%)
 
 ---
 
