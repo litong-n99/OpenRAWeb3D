@@ -35,3 +35,6 @@ public/content/
 # Claude Code internal working files
 .claude/tasks/
 .claude/work-requirements/
+
+# Playwright MCP temp files
+.playwright-mcp/
