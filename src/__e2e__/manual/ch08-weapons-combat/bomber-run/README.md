@@ -3,7 +3,7 @@
 **Module**: AttackBomber + Aircraft (Chapter 8 Phase E)
 **Test Case ID**: `ch08-weapons-combat/bomber-run`
 **OpenRA Source**: `OpenRA.Mods.Common/Traits/Air/AttackBomber.ts`, `OpenRA.Mods.Common/Traits/Air/Aircraft.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 15/15 通过, 100%)
 
 ---
 
