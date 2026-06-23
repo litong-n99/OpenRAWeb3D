@@ -1,8 +1,8 @@
 # CoordinateTransformer — WPos ↔ Vector3 转换可视化验证
 
-**审核状态**: ✅ 全部审核通过 (2026-06-11)  
-**审核轮次**: 1 轮 (初始审查 + 修复确认)  
-**修复项**: 5 项 (相机动画 / 网格范围 / 键盘冲突 / README 准确性 / 缓存预期)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-23, 16/16 通过, 100%)  
+**审核轮次**: 2 轮 (初始审查 + Playwright 自动化验收)  
+**修复项**: 5 项 (相机动画 / 网格范围 / 键盘冲突 / README 准确性 / 缓存预期) — 全部已修复
 
 **OpenRA 对照**: `src/OpenRA.Game/CoordinateTransformer.ts` (新文件, 无直接 C# 对照)  
 **测试重点**: WPos → Vector3 坐标映射正确性、缓存命中率、实时交互、往返精度  
@@ -60,7 +60,7 @@ CoordinateTransformer 使用 LRU 缓存（最大 1000 条目）加速重复坐�
 
 ### 1. 准备工作
 
-- 打开测试页面: `http://localhost:5173/test/coordinate-transformer/transform-visual/`
+- 打开测试页面: `http://localhost:5173/test/ch04-map-terrain/transform-visual/`
 - 确认环境信息栏显示 **"WebGL 2.0"** 引擎
 - 设置屏幕分辨率 1920x1080 (1x 缩放)
 - 确认球体初始位于地图中心 (Vector3 ≈ 5.0, 1.0, 5.0)
