@@ -312,6 +312,7 @@ export class AreaBeam implements IProjectile {
     }
 
     if (this.isBeamComplete) {
+      this.isDestroyed = true
       world.addFrameEndTask(() => { world.removeEffect(this) })
     }
   }
