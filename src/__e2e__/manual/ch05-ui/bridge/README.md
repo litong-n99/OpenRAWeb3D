@@ -1,6 +1,6 @@
 # WorldInteractionControllerWidget -- Pointer Event Bridge Test
 
-**审核状态**: ✅ 全部审核通过 (2026-06-12)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-22, 28/28 通过, 100%)
 
 ## 期望结果 (Expected Results)
 
