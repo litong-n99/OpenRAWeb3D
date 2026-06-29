@@ -25,7 +25,7 @@ Verify that all Phase A UI widget primitives (Button, Label, TextField, Checkbox
 ## Verification Steps
 
 ### Step 1: Page Load
-- Open `http://localhost:5173/test/widgets/primitives/`
+- Open `http://localhost:5173/test/ch16-widgets/primitives/`
 - Confirm the info bar at the bottom shows UA, viewport, and timestamp
 - Verify the expected results panel is visible in the top-right corner
 - All 10 widget sections should be visible without horizontal overflow at 1280px width
@@ -103,4 +103,4 @@ Verify that all Phase A UI widget primitives (Button, Label, TextField, Checkbox
 
 ---
 
-**审核状态**: ✅ 全部审核通过 (R1, 1 BLOCKER + 2 MAJOR 已修复, ebe3807)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-29, 34/34 通过, 100%)

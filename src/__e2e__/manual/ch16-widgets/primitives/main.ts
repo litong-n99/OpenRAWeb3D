@@ -103,6 +103,12 @@ function mountWidget(widget: Widget, container: HTMLElement): void {
       }
     })
   }
+
+  // Mouse-enter/leave lifecycle events are not routed through handleEventOuter;
+  // call the widget hooks directly so hover visual states (e.g. data-state="hover")
+  // are applied during manual acceptance tests.
+  el.addEventListener('mouseenter', () => widget.mouseEntered())
+  el.addEventListener('mouseleave', () => widget.mouseExited())
 }
 
 // ---------------------------------------------------------------------------
@@ -586,7 +592,7 @@ function mountWidget(widget: Widget, container: HTMLElement): void {
   const row = createSandboxRow(container, 50)
   const dd = new DropDownButtonWidget()
   dd.id = 'dd-demo'
-  dd.text = 'Select Option ▼'
+  dd.text = 'Select Option'
   dd.bounds = { x: 8, y: 8, width: 180, height: 32 }
   dd.onClick = () => {
     if (dd.isOpen) {
