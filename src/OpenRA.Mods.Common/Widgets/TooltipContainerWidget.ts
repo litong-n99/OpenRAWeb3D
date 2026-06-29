@@ -320,13 +320,8 @@ export class TooltipContainerWidget extends Widget implements ITooltipContainer 
     el.style.position = 'absolute'
     el.style.pointerEvents = 'none' // tooltip 不消费鼠标事件
 
-    // 重新挂载子 widget
-    while (el.lastChild) el.removeChild(el.lastChild)
-    for (const child of this.children) {
-      if (child.visible) {
-        el.appendChild(child.renderOuter())
-      }
-    }
+    // NOTE: Widget 子元素的挂载已由 Widget.renderOuter() 统一处理，
+    // 不再在此处重复清理和挂载，避免产生重复 DOM 元素。
 
     return el
   }

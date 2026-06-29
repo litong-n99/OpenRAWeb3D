@@ -1126,9 +1126,10 @@ export class ButtonWidget extends InputWidget {
   }
 
   /**
-   * 重新挂载子 widget DOM 元素。
+   * 清理陈旧的非文本子元素（保留 data-button-text span）。
    *
-   * 保持 data-button-text span，替换其余 widget 子元素。
+   * NOTE: Widget 子元素的挂载已由 Widget.renderOuter() 统一处理，
+   * 此方法仅负责移除上一帧遗留的非文本 DOM 节点。
    */
   private _remountChildren(el: HTMLElement): void {
     // 移除旧的 widget 子元素（保留 data-button-text span）
@@ -1136,7 +1137,8 @@ export class ButtonWidget extends InputWidget {
     for (const child of Array.from(el.childNodes)) {
       if (child.nodeType === 1) {
         const htmlEl = child as HTMLElement
-        if (!htmlEl.hasAttribute('data-button-text')) {
+        if (!htmlEl.hasAttribute('data-button-text')
+            && !htmlEl.hasAttribute('data-widget-child')) {
           toRemove.push(child)
         }
       }
@@ -1145,12 +1147,8 @@ export class ButtonWidget extends InputWidget {
       el.removeChild(child)
     }
 
-    // 挂载子 widget
-    for (const child of this.children) {
-      if (child.visible) {
-        el.appendChild(child.renderOuter())
-      }
-    }
+    // NOTE: Widget 子元素的挂载由 Widget.renderOuter() 统一处理，
+    // 不再在此处重复挂载，避免产生重复 DOM 元素。
   }
 
   // ---------------------------------------------------------------------------

@@ -1343,7 +1343,9 @@ describe('ScrollPanelWidget', () => {
       const child = createItem(30, 'child-1')
       panel.addChild(child)
 
-      const el = panel.render()
+      // NOTE: Child widget rendering moved from render() to renderOuter()
+      // to avoid duplicate DOM elements after the renderOuter() BLOCKER fix.
+      const el = panel.renderOuter()
       const content = el.querySelector('.scroll-panel-content')
       expect(content).toBeTruthy()
       const childEl = content!.querySelector('[data-widget-id="child-1"]')

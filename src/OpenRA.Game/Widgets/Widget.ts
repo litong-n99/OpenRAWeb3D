@@ -522,13 +522,18 @@ export abstract class Widget {
       el.setAttribute('data-widget-id', this.id)
     }
 
-    // 清除并重新挂载子 widget
-    while (el.lastChild) {
-      el.removeChild(el.lastChild)
-    }
+    // NOTE: 仅移除上一帧的陈旧 widget 子元素（带有 data-widget-child 标记），
+    // 保留 render() 创建的内部 DOM 内容（如按钮文字、输入框、滑块轨道等）。
+    // 之前的 while (el.lastChild) 会销毁所有子元素，包括 render() 刚创建的内容。
+    const staleChildren = el.querySelectorAll(':scope > [data-widget-child]')
+    staleChildren.forEach(c => c.remove())
+
+    // 挂载当前子 widget，并标记为 data-widget-child 以便下一帧清理
     for (const child of this.children) {
       if (child.visible) {
-        el.appendChild(child.renderOuter())
+        const childEl = child.renderOuter()
+        childEl.setAttribute('data-widget-child', child.id || 'anonymous')
+        el.appendChild(childEl)
       }
     }
 

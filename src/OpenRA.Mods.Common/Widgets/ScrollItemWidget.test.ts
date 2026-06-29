@@ -365,7 +365,9 @@ describe('ScrollItemWidget', () => {
       const child = new ScrollItemWidget()
       child.id = 'inner'
       widget.addChild(child)
-      const el = widget.render()
+      // NOTE: Child widget rendering is handled by renderOuter(),
+      // not render(), after the renderOuter() BLOCKER fix.
+      const el = widget.renderOuter()
       const innerEl = el.querySelector('[data-widget-id="inner"]')
       expect(innerEl).toBeTruthy()
     })

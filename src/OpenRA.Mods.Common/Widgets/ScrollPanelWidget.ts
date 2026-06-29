@@ -1081,15 +1081,9 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
     // 保留 scrollbar 元素，回收内容元素
     this._ensureContentElement(el, contentX, contentW)
 
-    // 重建子 widget
-    while (this._contentEl!.firstChild) {
-      this._contentEl!.removeChild(this._contentEl!.firstChild)
-    }
-    for (const child of this.children) {
-      if (child.visible) {
-        this._contentEl!.appendChild(child.renderOuter())
-      }
-    }
+    // NOTE: Widget 子元素的挂载已移至 renderOuter() 统一处理，
+    // 以确保子 widget 放入 _contentEl 而非 el 根元素。
+    // 不再在此处重复清理和挂载，避免产生重复 DOM 元素。
 
     // 滚动条（如果不是 Hidden）
     if (this.scrollBar !== ScrollBar.Hidden) {
@@ -1103,6 +1097,60 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
     // 同步滑块
     this._updateRects()
     this._syncThumbToDOM()
+
+    return el
+  }
+
+  /**
+   * 递归渲染自己 + 子 widget 的 DOM 树，将子 widget 挂载到 _contentEl 中。
+   *
+   * NOTE: 重写父类 renderOuter()，因为 ScrollPanelWidget 的子 widget
+   * 必须放入 _contentEl（内容区域），而非 el 根元素。
+   *
+   * OpenRA 对照: ScrollPanelWidget.DrawOuter()
+   */
+  override renderOuter(): HTMLElement {
+    if (!this.visible) {
+      const hidden = document.createElement('div')
+      hidden.style.display = 'none'
+      hidden.setAttribute('data-widget-hidden', this.id || 'anonymous')
+      return hidden
+    }
+
+    const el = this.render()
+
+    // 应用 bounds 为 CSS 定位
+    el.style.position = 'absolute'
+    el.style.left = `${this.bounds.x}px`
+    el.style.top = `${this.bounds.y}px`
+    el.style.width = `${this.bounds.width}px`
+    el.style.height = `${this.bounds.height}px`
+
+    // 设置 widget ID 为 data 属性
+    if (this.id) {
+      el.setAttribute('data-widget-id', this.id)
+    }
+
+    // 清理 el 直接子元素中的陈旧 widget 子元素
+    const staleElChildren = el.querySelectorAll(':scope > [data-widget-child]')
+    staleElChildren.forEach(c => c.remove())
+
+    // 清理 _contentEl 中的陈旧 widget 子元素
+    if (this._contentEl) {
+      const staleContentChildren = this._contentEl.querySelectorAll(':scope > [data-widget-child]')
+      staleContentChildren.forEach(c => c.remove())
+    }
+
+    // 挂载当前子 widget 到 _contentEl（而非 el 根元素）
+    for (const child of this.children) {
+      if (child.visible) {
+        const childEl = child.renderOuter()
+        childEl.setAttribute('data-widget-child', child.id || 'anonymous')
+        if (this._contentEl) {
+          this._contentEl.appendChild(childEl)
+        }
+      }
+    }
 
     return el
   }
