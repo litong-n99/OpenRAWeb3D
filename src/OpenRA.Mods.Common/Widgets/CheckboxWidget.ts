@@ -114,6 +114,16 @@ export class CheckboxWidget extends ButtonWidget {
         this.toggle()
       }
     }
+
+    // NOTE: 覆写 onMouseUp 以直接调用 toggle() 而非通过 onClick 间接调用。
+    // ButtonWidget 构造函数将 onMouseUp 设为 (_) => this.onClick()，
+    // 但 onClick 可能在构造后被外部替换为不调用 toggle() 的自定义回调。
+    // 直接在此处切换可确保 onCheckboxChange 始终在鼠标点击时触发。
+    this.onMouseUp = () => {
+      if (this.toggleOnClick) {
+        this.toggle()
+      }
+    }
   }
 
   /**

@@ -13,7 +13,7 @@
  */
 
 import { ButtonWidget } from './ButtonWidget.js'
-import { Widget } from '../../OpenRA.Game/Widgets/Widget.js'
+import { Widget, boundsContains } from '../../OpenRA.Game/Widgets/Widget.js'
 import type { WidgetEvent } from '../../OpenRA.Game/Widgets/Widget.js'
 import { TextAlign } from './TextAlign.js'
 
@@ -161,6 +161,40 @@ export class DropDownButtonWidget extends ButtonWidget {
     this.separators = other.separators
     this.separatorImage = other.separatorImage
     this.panelAlign = other.panelAlign
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event handling (outer) — 面板打开时按钮自身的点击优先于遮罩
+  // OpenRA 对照: HandleMouseInputOuter (遮罩事件拦截)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * 外部事件分发 — 当面板打开时，如果点击落在按钮自身区域内，则
+   * 首先交由按钮处理，避免全屏遮罩（MaskWidget）拦截按钮的点击事件。
+   *
+   * OpenRA 对照: 在 C# 中，全屏遮罩通过 HandleMouseInput 返回 true
+   * 来消费所有鼠标事件，但按钮的事件由 SDL2 事件循环单独分派。
+   * 基于 widget 树的事件模型中，我们需要确保按钮在遮罩之前处理
+   * 自身区域内的点击。
+   */
+  override handleEventOuter(event: WidgetEvent): boolean {
+    if (this.isOpen) {
+      const eventType = event.type
+      if (
+        eventType === 'mousedown' || eventType === 'pointerdown' ||
+        eventType === 'mouseup' || eventType === 'pointerup' ||
+        eventType === 'click'
+      ) {
+        const posX = (event.clientX ?? 0) as number
+        const posY = (event.clientY ?? 0) as number
+        // 仅检查按钮自身的渲染边界（不包含子 widget，尤其是全屏遮罩）
+        if (boundsContains(this.bounds, posX, posY)) {
+          // 直接交由按钮处理，跳过子 widget 迭代（遮罩+面板）
+          return this.handleEvent(event)
+        }
+      }
+    }
+    return super.handleEventOuter(event)
   }
 
   // ---------------------------------------------------------------------------
