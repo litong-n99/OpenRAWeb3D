@@ -83,10 +83,21 @@ export interface WidgetEvent {
   /** 鼠标/触摸事件的坐标 */
   clientX?: number
   clientY?: number
+  /** 鼠标按钮编号 (0=左键, 1=中键, 2=右键, -1=无变化) */
+  button?: number
   /** 键盘事件的按键 */
   key?: string
   /** 文本输入事件的内容 */
   text?: string
+  /** 鼠标滚轮增量 */
+  deltaY?: number
+  /** 修饰键 */
+  ctrlKey?: boolean
+  altKey?: boolean
+  shiftKey?: boolean
+  metaKey?: boolean
+  /** 按键重复标志 */
+  repeat?: boolean
   /** 其它扩展字段 */
   [key: string]: unknown
 }

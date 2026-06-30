@@ -75,7 +75,7 @@ function mountWidget(widget: Widget, container: HTMLElement): void {
 
   // Route DOM events directly to the widget (NOT via Ui.handleInput, which
   // dispatches through Ui.root — a 0×0 bounds widget with no children).
-  const eventTypes = ['mousedown', 'mouseup', 'mousemove', 'click', 'dblclick', 'wheel', 'keydown', 'keyup']
+  const eventTypes = ['mousedown', 'mouseup', 'mousemove', 'pointerdown', 'pointerup', 'pointermove', 'click', 'dblclick', 'wheel', 'keydown', 'keyup']
   for (const type of eventTypes) {
     container.addEventListener(type, (e: Event) => {
       const me = e as MouseEvent
@@ -499,7 +499,8 @@ function mountWidget(widget: Widget, container: HTMLElement): void {
     lbl.text = 'ImageWidget (no image set) — shows empty bounds area'
     lbl.textColor = '#888'
     lbl.font = '12px Arial'
-    lbl.bounds = { x: 64, y: 14, width: 260, height: 32 }
+    lbl.wordWrap = true
+    lbl.bounds = { x: 64, y: 4, width: 260, height: 48 }
     mountWidget(lbl, row)
   }
 }

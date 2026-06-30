@@ -258,9 +258,9 @@ export class SliderWidget extends InputWidget {
     const x = (event.clientX ?? 0) as number
     const y = (event.clientY ?? 0) as number
 
-    // Left button only check
-    const button = (event['button'] as number) ?? 0
-    if (button !== 0) return false
+    // Left button only check (button 0 = left; -1 = pointermove no-change, acceptable during drag)
+    const button = event.button ?? 0
+    if (button !== 0 && button !== -1) return false
 
     // Disabled check
     if (this.isDisabled()) return false
@@ -277,6 +277,9 @@ export class SliderWidget extends InputWidget {
       const localX = x - this.bounds.x
       this.updateValue(this.valueFromPx(localX))
 
+      // Capture pointer to receive drag events even outside widget bounds
+      this._capturePointer(event)
+
       return this._thumbRectContains(x, y)
     }
 
@@ -285,6 +288,7 @@ export class SliderWidget extends InputWidget {
       if (!this.hasMouseFocus) return false
 
       this._isMoving = false
+      this._releasePointerCapture()
       this.yieldMouseFocus()
 
       return this._thumbRectContains(x, y)
@@ -339,6 +343,35 @@ export class SliderWidget extends InputWidget {
   /** 检查点是否在拇指矩形内。 */
   private _thumbRectContains(px: number, py: number): boolean {
     return boundsContains(this.thumbRect, px, py)
+  }
+
+  /** 捕获指针以支持拖拽离开 widget 边界。
+   * OpenRA 对照: TakeMouseFocus 隐式捕获 (SDL2 全局鼠标状态) */
+  private _capturePointer(event: WidgetEvent): void {
+    const el = (event.target as HTMLElement | null)
+    if (el && typeof (el as any).setPointerCapture === 'function') {
+      try {
+        const pid = (event as any).pointerId ?? 1
+        ;(el as any).setPointerCapture(pid)
+      } catch {
+        // setPointerCapture may fail; ignore
+      }
+    }
+  }
+
+  /** 释放 pointer capture。 */
+  private _releasePointerCapture(): void {
+    if (typeof document === 'undefined') return
+    const el = document.querySelector(
+      `[data-widget-id="${this.id}"]`
+    ) as HTMLElement | null
+    if (el && typeof (el as any).releasePointerCapture === 'function') {
+      try {
+        ;(el as any).releasePointerCapture(1)
+      } catch {
+        // ignore
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -585,6 +618,75 @@ export class SliderWidget extends InputWidget {
    */
   override mouseExited(): void {
     this._thumbHovered = false
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tick — 每帧增量更新 thumb 位置和 track 填充
+  // ---------------------------------------------------------------------------
+
+  /** 每帧调用 — 增量更新 thumb DOM 位置和 track 填充比例。
+   *
+   * 不调用 render()（避免全量 DOM 重建），仅更新样式属性。
+   * 这确保拖拽、键盘调整时 thumb 实时跟随，而无需每帧重建整个 widget。
+   */
+  override tick(): void {
+    this._syncThumbToDOM()
+    this._syncTrackToDOM()
+  }
+
+  /** 增量更新拇指手柄的 DOM 位置和 data-state。 */
+  private _syncThumbToDOM(): void {
+    const el = this.getOrCreateElement('div', 'slider-widget')
+    if (!el || el.style.display === 'none') return
+
+    const thumbEl = el.querySelector('[data-slider-thumb-element]') as HTMLElement | null
+    if (!thumbEl) return
+
+    // 更新位置
+    const tr = this.thumbRect
+    const localX = tr.x - this.bounds.x
+    thumbEl.style.left = `${localX}px`
+
+    // 更新状态感知样式
+    if (this.isDisabled()) {
+      thumbEl.style.backgroundColor = '#555555'
+      thumbEl.style.border = '2px solid #333333'
+      thumbEl.style.boxShadow = ''
+      thumbEl.setAttribute('data-state', 'disabled')
+    } else if (this._isMoving) {
+      thumbEl.style.backgroundColor = '#1a3a5c'
+      thumbEl.style.border = '2px solid #0d1f33'
+      thumbEl.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.4)'
+      thumbEl.setAttribute('data-state', 'pressed')
+    } else if (this._thumbHovered) {
+      thumbEl.style.backgroundColor = '#2a5a8c'
+      thumbEl.style.border = '2px solid #1a3a5c'
+      thumbEl.style.boxShadow = '0 0 6px rgba(100,180,255,0.3)'
+      thumbEl.setAttribute('data-state', 'hover')
+    } else {
+      thumbEl.style.backgroundColor = '#1e4d7a'
+      thumbEl.style.border = '2px solid #0d2a4a'
+      thumbEl.setAttribute('data-state', 'normal')
+    }
+  }
+
+  /** 增量更新轨道填充部分的宽度。 */
+  private _syncTrackToDOM(): void {
+    const el = this.getOrCreateElement('div', 'slider-widget')
+    if (!el || el.style.display === 'none') return
+
+    const trackEl = el.querySelector('[data-slider-track-element]') as HTMLElement | null
+    if (!trackEl) return
+
+    const fillEl = trackEl.firstElementChild as HTMLElement | null
+    if (!fillEl) return
+
+    const h = this.bounds.height
+    const trackOriginX = h / 2
+    const thumbPx = this.pxFromValue(this.value)
+    const filledWidth = thumbPx - trackOriginX
+
+    fillEl.style.width = `${Math.max(0, filledWidth)}px`
   }
 
   // ---------------------------------------------------------------------------

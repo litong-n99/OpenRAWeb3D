@@ -1172,23 +1172,18 @@ describe('ScrollPanelWidget', () => {
       expect(panel.scrollPosition).toBeLessThanOrEqual(beforeRender)
     })
 
-    it('smooth scroll is applied during render (not tick)', () => {
-      // Verify the fix for MAJOR #1: _updateSmoothScrolling runs in render(),
-      // ensuring smooth scroll position is computed right before DOM updates.
+    it('smooth scroll advances during tick (every frame)', () => {
+      // _updateSmoothScrolling now runs in tick() (every frame) instead of
+      // only in render() (once on mount). This fix ensures smooth scrolling
+      // actually continues advancing after the initial mount.
       panel.contentHeight = 1000
       panel.smoothScrollSpeed = 1.0
       panel.scrollTo(-300, true)
       expect(panel.scrollPosition).toBe(0)
 
-      // Calling tick() should NOT advance smooth scroll position
+      // tick() must advance smooth scroll position (was broken before fix)
       panel['_lastSmoothScrollTime'] = performance.now() - 100
       panel.tick()
-      // scrollPosition still 0 because smooth scroll moved to render()
-      expect(panel.scrollPosition).toBe(0)
-
-      // Calling render() should advance smooth scroll
-      panel['_lastSmoothScrollTime'] = performance.now() - 100
-      panel.render()
       expect(panel.scrollPosition).toBeLessThan(0)
     })
   })

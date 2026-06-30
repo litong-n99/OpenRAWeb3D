@@ -702,6 +702,9 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
    *
    * OpenRA 对照: ScrollPanelWidget.Tick() */
   override tick(): void {
+    // 每帧驱动平滑滚动（原仅在 render() 中调用，render() 仅挂载时执行一次）
+    this._updateSmoothScrolling()
+
     // 持续按下上/下按钮时滚动
     if (this._upPressed) {
       this.scroll(1)
@@ -818,7 +821,9 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
       const th = this._thumbHeight
       if (th > 0) {
         this._thumbEl.style.display = ''
-        this._thumbEl.style.top = `${this._thumbRect.y - this.bounds.y}px`
+        // thumb 是 track 的子元素（track 已有 top:sw），
+        // 因此只需 _thumbOrigin（相对于 track 顶部的偏移）
+        this._thumbEl.style.top = `${this._thumbOrigin}px`
         this._thumbEl.style.height = `${th}px`
       } else {
         this._thumbEl.style.display = 'none'
@@ -1210,6 +1215,15 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
       this._upArrowEl.style.left = '0px'
       this._upArrowEl.style.width = `${sw}px`
       this._upArrowEl.style.height = `${sw}px`
+      this._upArrowEl.style.backgroundColor = '#333'
+      this._upArrowEl.style.display = 'flex'
+      this._upArrowEl.style.alignItems = 'center'
+      this._upArrowEl.style.justifyContent = 'center'
+      this._upArrowEl.style.color = '#aaa'
+      this._upArrowEl.style.fontSize = '12px'
+      this._upArrowEl.style.cursor = 'pointer'
+      this._upArrowEl.style.userSelect = 'none'
+      this._upArrowEl.textContent = '▲' // ▲
       this._scrollbarEl.appendChild(this._upArrowEl)
 
       // 轨道（上下箭头之间）
@@ -1220,6 +1234,7 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
       trackEl.style.left = '0px'
       trackEl.style.width = `${sw}px`
       trackEl.style.height = `${this.bounds.height - 2 * sw}px`
+      trackEl.style.backgroundColor = '#1a1a1a'
 
       // 滑块
       this._thumbEl = document.createElement('div')
@@ -1227,6 +1242,9 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
       this._thumbEl.style.position = 'absolute'
       this._thumbEl.style.left = '0px'
       this._thumbEl.style.width = `${sw}px`
+      this._thumbEl.style.backgroundColor = '#555'
+      this._thumbEl.style.borderRadius = '3px'
+      this._thumbEl.style.cursor = 'pointer'
       trackEl.appendChild(this._thumbEl)
 
       this._scrollbarEl.appendChild(trackEl)
@@ -1240,6 +1258,15 @@ export class ScrollPanelWidget extends Widget implements ILayoutHost {
       this._downArrowEl.style.left = '0px'
       this._downArrowEl.style.width = `${sw}px`
       this._downArrowEl.style.height = `${sw}px`
+      this._downArrowEl.style.backgroundColor = '#333'
+      this._downArrowEl.style.display = 'flex'
+      this._downArrowEl.style.alignItems = 'center'
+      this._downArrowEl.style.justifyContent = 'center'
+      this._downArrowEl.style.color = '#aaa'
+      this._downArrowEl.style.fontSize = '12px'
+      this._downArrowEl.style.cursor = 'pointer'
+      this._downArrowEl.style.userSelect = 'none'
+      this._downArrowEl.textContent = '▼' // ▼
       this._scrollbarEl.appendChild(this._downArrowEl)
 
       parent.appendChild(this._scrollbarEl)

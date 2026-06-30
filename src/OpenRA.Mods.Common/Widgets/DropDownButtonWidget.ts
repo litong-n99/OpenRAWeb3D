@@ -124,6 +124,12 @@ export class DropDownButtonWidget extends ButtonWidget {
   /** 面板的父 widget。OpenRA 对照: panelRoot field */
   private _panelRoot: Widget | null = null
 
+  /** 遮罩 DOM 元素引用（用于手动 DOM 清理）。 */
+  private _maskDom: HTMLElement | null = null
+
+  /** 面板 DOM 元素引用（用于手动 DOM 清理）。 */
+  private _panelDom: HTMLElement | null = null
+
   /** 下拉面板是否打开。 */
   get isOpen(): boolean {
     return this._panel !== null
@@ -288,6 +294,18 @@ export class DropDownButtonWidget extends ButtonWidget {
       this._panelRoot.removeChild(this._panel)
     }
 
+    // 从 DOM 移除渲染的遮罩和面板元素
+    if (typeof document !== 'undefined') {
+      if (this._maskDom && this._maskDom.parentNode) {
+        this._maskDom.parentNode.removeChild(this._maskDom)
+      }
+      if (this._panelDom && this._panelDom.parentNode) {
+        this._panelDom.parentNode.removeChild(this._panelDom)
+      }
+    }
+    this._maskDom = null
+    this._panelDom = null
+
     this._panel = null
     this._fullscreenMask = null
 
@@ -328,7 +346,7 @@ export class DropDownButtonWidget extends ButtonWidget {
     // OpenRA: panelRoot = PanelRoot == null ? Ui.Root : Ui.Root.Get(PanelRoot)
     this._panelRoot = this._resolvePanelRoot()
 
-    // 添加遮罩
+    // 添加遮罩到 widget 树
     this._panelRoot.addChild(this._fullscreenMask)
 
     // 定位面板
@@ -337,6 +355,57 @@ export class DropDownButtonWidget extends ButtonWidget {
 
     // 添加面板到 widget 树
     this._panelRoot.addChild(panel)
+
+    // DOM rendering: 手动将遮罩和面板渲染到 document.body，
+    // 以确保它们出现在所有其他内容之上（独立于 container widget 树）。
+    if (typeof document !== 'undefined') {
+      // 渲染遮罩 DOM 并附加到 body
+      this._maskDom = this._fullscreenMask.renderOuter()
+      this._maskDom.style.position = 'fixed'
+      this._maskDom.style.top = '0'
+      this._maskDom.style.left = '0'
+      this._maskDom.style.width = '100vw'
+      this._maskDom.style.height = '100vh'
+      this._maskDom.style.zIndex = '9998'
+      this._maskDom.style.backgroundColor = 'rgba(0,0,0,0.3)'
+      document.body.appendChild(this._maskDom)
+
+      // 找到按钮在视口中的实际位置（panel.bounds 在 widget 树坐标空间中）
+      let viewportX = panel.bounds.x
+      let viewportY = panel.bounds.y
+      if (typeof window !== 'undefined') {
+        // 尝试通过按钮的 DOM 元素获取视口坐标
+        const btnEl = document.querySelector(`[data-widget-id="${this.id}"]`)
+        if (btnEl) {
+          const btnRect = btnEl.getBoundingClientRect()
+          viewportX = btnRect.left
+          viewportY = btnRect.bottom
+          // 检查屏幕高度约束
+          const screenHeight = window.innerHeight
+          if (viewportY + panel.bounds.height > screenHeight) {
+            viewportY = btnRect.top - panel.bounds.height
+          }
+          // 检查屏幕右侧约束
+          const screenWidth = window.innerWidth
+          if (viewportX + panel.bounds.width > screenWidth) {
+            viewportX = btnRect.right - panel.bounds.width
+          }
+          // 确保面板不超出左边界
+          if (viewportX < 0) viewportX = 0
+          if (viewportY < 0) viewportY = 0
+        }
+      }
+
+      // 渲染面板 DOM 并附加到 body
+      this._panelDom = panel.renderOuter()
+      this._panelDom.style.position = 'fixed'
+      this._panelDom.style.left = `${viewportX}px`
+      this._panelDom.style.top = `${viewportY}px`
+      this._panelDom.style.width = `${panel.bounds.width}px`
+      this._panelDom.style.height = `${panel.bounds.height}px`
+      this._panelDom.style.zIndex = '9999'
+      document.body.appendChild(this._panelDom)
+    }
   }
 
   /**

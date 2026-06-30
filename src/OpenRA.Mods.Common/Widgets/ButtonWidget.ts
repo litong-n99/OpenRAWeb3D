@@ -833,6 +833,26 @@ export class ButtonWidget extends InputWidget {
   }
 
   // ---------------------------------------------------------------------------
+  // Tick — 每帧同步文字到 DOM
+  // ---------------------------------------------------------------------------
+
+  /** 每帧调用 — 增量同步按钮文字到 DOM。
+   *
+   * 不调用 render()（避免全量 DOM 重建），仅检测并更新 textContent。
+   * 修复 DropDownButtonWidget 选中后 dd.text = opt 不更新 DOM 的问题。
+   */
+  override tick(): void {
+    const el = this.getOrCreateElement('div', 'button-widget')
+    if (!el || !el.querySelector('[data-button-text]')) return
+
+    const textSpan = el.querySelector('[data-button-text]') as HTMLElement
+    const expectedText = this.getText()
+    if (textSpan.textContent !== expectedText) {
+      textSpan.textContent = expectedText
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Cursor / ChildOrigin
   // OpenRA 对照: GetCursor / ChildOrigin
   // ---------------------------------------------------------------------------
