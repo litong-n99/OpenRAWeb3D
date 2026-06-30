@@ -3,7 +3,7 @@
 **Module**: Turreted + AttackTurreted (Chapter 8 Phase D/E)
 **Test Case ID**: `ch08-weapons-combat/turret-rotation`
 **OpenRA Source**: `OpenRA.Mods.Common/Traits/Turreted.ts`, `OpenRA.Mods.Common/Traits/Attack/AttackTurreted.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-01, 11/11 通过, 100%)
 
 ---
 
