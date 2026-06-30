@@ -641,6 +641,7 @@ function simulateTick(): void {
 
     const detPos = wPosToVector3(activeNuke.pos.X, activeNuke.pos.Y, activeNuke.pos.Z)
     triggerFlash(detPos)
+    currentFlashIntensity = 1  // BLOCKER: sync JS variable with CSS overlay opacity
     hideMissileVisual()
     rebuildTrailLine()
     updateDiagnostics()

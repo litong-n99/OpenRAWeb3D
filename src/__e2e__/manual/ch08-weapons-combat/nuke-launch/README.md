@@ -4,7 +4,7 @@
 **Test Case ID**: `ch08-weapons-combat/nuke-launch`
 **OpenRA Source**: `OpenRA.Mods.Common/Projectiles/NukeLaunch.ts`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Projectiles/NukeLaunch.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-30, 17/17 通过, 100%)
 
 ---
 
