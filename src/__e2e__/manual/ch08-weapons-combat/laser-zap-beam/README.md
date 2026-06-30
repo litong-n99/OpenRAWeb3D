@@ -4,7 +4,7 @@
 **Test Case ID**: `ch08-weapons-combat/laser-zap-beam`
 **OpenRA Source**: `OpenRA.Mods.Common/Projectiles/LaserZap.cs`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Projectiles/LaserZap.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-30, 25/25 通过, 100%)
 
 ---
 
