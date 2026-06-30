@@ -429,6 +429,11 @@ async function main(): Promise<void> {
         shotComplete = true
         flushFrameEnd()
 
+        // Set wasBlocked BEFORE updateShotLine and updateMarkers
+        // so shot line color (red/green) and blocker highlight are correct
+        wasBlocked = blockedByPos !== null
+        updateMarkers() // refresh blocker cube highlight
+
         if (impactTargetPos) {
           updateShotLine(impactTargetPos)
 
@@ -448,7 +453,6 @@ async function main(): Promise<void> {
           }, 50)
         }
 
-        wasBlocked = blockedByPos !== null
         addLog('impact', wasBlocked
           ? `BLOCKED — shot redirected to blocker at (${impactTargetPos!.X}, ${impactTargetPos!.Y})`
           : `HIT — target impacted at (${impactTargetPos!.X}, ${impactTargetPos!.Y})`)

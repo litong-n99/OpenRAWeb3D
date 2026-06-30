@@ -1,6 +1,6 @@
 # Instant Hit (Hitscan) — 零飞行时间即时命中
 
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-30, 22/22 通过, 100%)
 
 **ID**: `ch08-weapons-combat/instant-hit-hitscan`
 **URL**: `http://localhost:5173/test/ch08-weapons-combat/instant-hit-hitscan/`
