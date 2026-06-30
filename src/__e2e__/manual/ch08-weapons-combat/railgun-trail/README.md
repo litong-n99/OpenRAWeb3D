@@ -4,7 +4,7 @@
 **Test Case ID**: `ch08-weapons-combat/railgun-trail`
 **OpenRA Source**: `OpenRA.Mods.Common/Projectiles/Railgun.ts`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Projectiles/Railgun.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-01, 22/22 通过, 100%)
 
 ---
 

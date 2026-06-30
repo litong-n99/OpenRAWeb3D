@@ -99,6 +99,12 @@ function createStubWorld(): {
     addFrameEndTask(a: () => void): void { frameEndActions.push(a) },
     removeEffect(e: unknown): void {
       effects = effects.filter(x => x !== e)
+      // B1 FIX: call dispose() on the effect so isDestroyed is set to true.
+      // Without this, Railgun.isDestroyed stays false forever and the sim
+      // never exits (ticks run indefinitely past duration).
+      if (typeof (e as { dispose?: () => void }).dispose === 'function') {
+        (e as { dispose: () => void }).dispose()
+      }
       events.push(`removeEffect:${(e as { constructor?: { name?: string } })?.constructor?.name ?? 'unknown'}`)
     },
     add(e: unknown): void { effects.push(e) },
