@@ -4,7 +4,7 @@
 **Test Case ID**: `ch08-weapons-combat/explosion-effects`
 **OpenRA Source**: `OpenRA.Mods.Common/Warheads/CreateEffectWarhead.cs`, `OpenRA.Mods.Common/Effects/SpriteEffect.cs`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Warheads/CreateEffectWarhead.ts`, `src/OpenRA.Mods.Common/Effects/SpriteEffect.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-30, 24/24 通过, 100%)
 
 ---
 
