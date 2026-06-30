@@ -521,6 +521,8 @@ function fireStraight(): void {
     gravity: 0,
     speed: new WDist(300),
     acceleration: new WDist(0),
+    minimumLaunchAngle: new WAngle(0),
+    maximumLaunchAngle: new WAngle(0),
     contrailLength: 30,
     contrailDelay: 1,
     contrailStartWidth: new WDist(48),

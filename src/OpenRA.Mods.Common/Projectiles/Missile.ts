@@ -368,7 +368,11 @@ export class Missile implements IProjectile {
     this._checkBlocking = checkBlocking ?? null
 
     this.pos = args.source
-    this.hFacing = args.facing.facing
+    // BLOCKER 3 FIX: C# Missile.cs line 526 uses `var facing = new WAngle(0) - args.Facing`
+    // which NEGATES the facing angle. Without this, missiles fly 180° opposite to
+    // the intended direction (e.g., West instead of East for facing=64).
+    // OpenRA 对照: OpenRA.Mods.Common/Projectiles/Missile.cs constructor, line 526
+    this.hFacing = WAngle.negate(args.facing).facing
     this.gravity = new WVec(0, 0, -info.gravity)
     this.targetPosition = args.passiveTarget
 
@@ -519,10 +523,13 @@ export class Missile implements IProjectile {
         .rotate(this._preRotHFacing)
     }
 
-    const verticalAngle = getVerticalAngle(this.pos, WPos.add(this.pos, this.velocity))
-    this.velocity = this.velocity
-      .rotate(new WRot(verticalAngle, WAngle.Zero, WAngle.Zero))
-      .rotate(new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing)))
+    // BLOCKER 2 FIX: velocity hFacing rotation only applies in Homing state.
+    // In Freefall, velocity is already a world-space vector set by the constructor;
+    // re-rotating by hFacing each tick causes the direction to cycle (E→N→W→S→E)
+    // every 4 ticks. In Homing, _homingTick() recalculates velocity from scratch
+    // via tickFacing anyway, so this pre-rotation is only needed for the vertical
+    // angle computation used by the homing path.
+    // OpenRA 对照: C# Missile.cs HomingTick — velocity rotation only in homing path
 
     // BLOCKER 1 FIX: Do NOT add airburst altitude to target position.
     // In C# Missile.cs, airburstAltitude is an EXPLOSION TRIGGER THRESHOLD,
@@ -560,6 +567,15 @@ export class Missile implements IProjectile {
     if (this.state === MissileState.Freefall) {
       move = this._freefallTick()
     } else {
+      // BLOCKER 2 FIX: velocity hFacing rotation only in Homing path.
+      // In Freefall, velocity is already a world-space vector — re-rotating
+      // by hFacing each tick causes direction cycling (E→N→W→S). In Homing,
+      // _homingTick recalculates velocity via tickFacing, so this pre-rotation
+      // maintains the correct vertical angle reference for the homing logic.
+      const verticalAngle = getVerticalAngle(this.pos, WPos.add(this.pos, this.velocity))
+      this.velocity = this.velocity
+        .rotate(new WRot(verticalAngle, WAngle.Zero, WAngle.Zero))
+        .rotate(new WRot(WAngle.Zero, WAngle.Zero, WAngle.fromFacing(this.hFacing)))
       move = this._homingTick(tarDistVec, relTarHorDist)
     }
 
