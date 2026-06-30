@@ -276,7 +276,7 @@ let flashFadeTicksRemaining = 0
     targetZ: 0,                        // target terrain height
     sourcePos: new WPos(0, 0, 2048),
     targetPos: new WPos(8192, 0, 0),   // target XY
-    facing: WAngle.fromDegrees(90),     // east
+    facing: WAngle.fromDegrees(270),    // east (270° CCW from North = +X)
   }
 
   function updateMarkers(): void {

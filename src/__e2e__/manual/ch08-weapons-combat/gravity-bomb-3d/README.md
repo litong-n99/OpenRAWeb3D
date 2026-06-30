@@ -1,6 +1,6 @@
 # Gravity Bomb — 重力炸弹弹道（Euler 积分 + 抛物轨迹）
 
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-06-30, 16/16 通过, 100%)
 
 **ID**: `ch08-weapons-combat/gravity-bomb-3d`
 **URL**: `http://localhost:5173/test/ch08-weapons-combat/gravity-bomb-3d/`
