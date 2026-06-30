@@ -114,11 +114,21 @@ function resetAll(): void {
   fireCount = 0; nextSlot = 0
 }
 
-// Render loop at 20 TPS
+// Render loop at 20 TPS — with capped catch-up to prevent tick burst
+// When the tab loses focus or there's a long gap between frames, the while
+// loop can burst-process dozens of ticks at once, instantly expiring all
+// active flash meshes. Cap at 3 ticks/frame and reset on large gaps.
 const TICK_MS = 50; let lastTick = performance.now()
+const MAX_CATCHUP_TICKS = 3
 engine.runRenderLoop(() => {
   const n = performance.now()
-  while (n - lastTick >= TICK_MS) { lastTick += TICK_MS; tickFlashes() }
+  let tickCount = 0
+  while (n - lastTick >= TICK_MS && tickCount < MAX_CATCHUP_TICKS) {
+    lastTick += TICK_MS; tickFlashes(); tickCount++
+  }
+  if (n - lastTick >= TICK_MS * MAX_CATCHUP_TICKS) {
+    lastTick = n  // reset to prevent infinite backlog
+  }
   scene.render(); updateDiag()
 })
 
