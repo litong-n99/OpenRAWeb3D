@@ -5,6 +5,7 @@
 > 测试ID: `resource/rendering`
 > OpenRA 对照: `ResourceRenderer.ts` (1,106 行) — lerpFrame 密度帧选择, cellVariantIndex 变体选择, TerrainSpriteLayer 管理
 > 创建日期: 2026-06-14
+> **审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-01, 5/5 通过, 100%)
 
 ---
 
