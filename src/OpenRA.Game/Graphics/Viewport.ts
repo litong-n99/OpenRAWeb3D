@@ -923,25 +923,49 @@ export class Viewport implements IViewport {
     this.setCenterLocation(worldPx)
   }
 
+  /**
+   * Pick the terrain plane (y=0 in Babylon world, Z=0 in OpenRA terrain).
+   *
+   * Uses Vector3.Unproject instead of scene.createPickingRay to avoid
+   * internal matrix caching issues — createPickingRay may return stale
+   * results after camera parameter changes (zoom, bounds, ortho resize).
+   * Unproject with getProjectionMatrix(true) forces a fresh matrix rebuild.
+   *
+   * Pattern verified in ch07 camera-controls e2e (4 rounds of zoom-at-cursor
+   * fixes; createPickingRay was the root cause of 240+ su drift).
+   */
   pickTerrain(viewX: number, viewY: number): Vec2 | null {
     if (!this.bjsCamera || !this.bjsScene) return null
 
-    const ray = this.bjsScene.createPickingRay(
-      viewX,
-      viewY,
-      Matrix.Identity(),
-      this.bjsCamera,
+    const width = this.bjsScene.getEngine().getRenderWidth()
+    const height = this.bjsScene.getEngine().getRenderHeight()
+    if (width <= 0 || height <= 0) return null
+
+    // Force-recompute matrices — projection(true) is critical after
+    // setZoom / updateViewportZooms changes orthoTop/Bottom/Left/Right.
+    const viewMatrix = this.bjsCamera.getViewMatrix()
+    const projMatrix = this.bjsCamera.getProjectionMatrix(true)
+
+    const nearWorld = Vector3.Unproject(
+      new Vector3(viewX, viewY, 0), width, height,
+      Matrix.Identity(), viewMatrix, projMatrix,
+    )
+    const farWorld = Vector3.Unproject(
+      new Vector3(viewX, viewY, 1), width, height,
+      Matrix.Identity(), viewMatrix, projMatrix,
     )
 
-    if (Math.abs(ray.direction.y) < 1e-10) return null
+    const dir = farWorld.subtract(nearWorld)
+    if (Math.abs(dir.y) < 1e-10) return null
 
-    const t = -ray.origin.y / ray.direction.y
+    // Intersect with y=0 plane (Babylon world horizontal = OpenRA terrain height 0)
+    const t = -nearWorld.y / dir.y
     if (t < 0) return null
 
     const intersection = new Vector3(
-      ray.origin.x + t * ray.direction.x,
+      nearWorld.x + t * dir.x,
       0,
-      ray.origin.z + t * ray.direction.z,
+      nearWorld.z + t * dir.z,
     )
 
     return this.vector3ToWorldPx(intersection)

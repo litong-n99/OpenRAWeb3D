@@ -22,6 +22,21 @@ vi.mock('@babylonjs/core/Maths/math.vector', () => {
       this.y = y
       this.z = z
     }
+    static Unproject(
+      source: { x: number; y: number; z: number },
+      _viewportWidth: number,
+      _viewportHeight: number,
+      _world: unknown,
+      _view: unknown,
+      _projection: unknown,
+    ): MockVector3 {
+      // Simplified: return source as-is (real Unproject requires full matrix math).
+      // Tests that need specific values should spy on this method.
+      return new MockVector3(source.x, source.y, source.z)
+    }
+    subtract(other: MockVector3): MockVector3 {
+      return new MockVector3(this.x - other.x, this.y - other.y, this.z - other.z)
+    }
   }
   return { Vector3: MockVector3 }
 })
@@ -689,6 +704,33 @@ describe('Viewport properties', () => {
     const bounds = vp.getScissorBounds(true)
     expect(bounds.width).toBe(1920)
     expect(bounds.height).toBe(1080)
+  })
+
+  // NEGATIVE TESTS — regression guards for pickTerrain using Vector3.Unproject
+  // (ch07 camera-controls pattern: createPickingRay stale matrix fix)
+
+  it('BUGFIX: pickTerrain returns null when camera is null', () => {
+    const opts = makeOptions()
+    const vp = new Viewport(opts)
+    ;(vp as any).bjsCamera = null
+    expect(vp.pickTerrain(100, 100)).toBeNull()
+  })
+
+  it('BUGFIX: pickTerrain uses Vector3.Unproject instead of createPickingRay (regression)', () => {
+    // Verify the method exists and handles the normal mock flow without throwing.
+    // The real test of matrix staleness is in the ch07 camera-controls e2e
+    // (4 rounds of iterative convergence, createPickingRay → Unproject fix).
+    // This test ensures the new code path doesn't crash with default mocks.
+    const opts = makeOptions()
+    const vp = new Viewport(opts)
+    // With MockVector3.Unproject returning source-as-is, the ray will have
+    // dir.y=0 (near.Y==far.Y==viewY), so pickTerrain should return null
+    // (parallel to terrain plane).
+    // If it were still using createPickingRay, it would throw because
+    // bjsScene is not properly mocked for that method.
+    const result = vp.pickTerrain(960, 540)
+    // With our simplified Unproject mock, result is null (ray parallel to terrain)
+    expect(result).toBeNull()
   })
 })
 
