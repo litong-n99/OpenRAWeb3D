@@ -233,7 +233,7 @@ function createCompassRose(scene: Scene, radius: number): Mesh {
     createLabelPlane(
       d.label,
       new Vector3(x, 0.01, z),
-      0.6, 0.25, '#334466', 28, scene,
+      0.6, 0.25, '#AABBCC', 28, scene,
     )
   }
 
@@ -452,14 +452,16 @@ async function main(): Promise<void> {
     // WAngle 0 = North = direction of +Z axis in Babylon.js
     // rendererRadians() gives the angle in radians.
     // Babylon.js: rotation.y = 0 means facing +Z (which is North for us)
-    // WAngle 0 → rendererRadians = 0 → unit faces +Z
-    // WAngle 256 (East) → rendererRadians = π/2 → unit faces +X
-
-    // To convert WAngle to Babylon Y-rotation (clockwise from +Z):
-    // - WAngle increases counterclockwise from North
-    // - Babylon Y-rotation increases clockwise from +Z (when viewed from above)
-    // So we negate the rendererRadians.
-    unit.body.rotation.y = -state.currentFacing.rendererRadians()
+    //
+    // Both WAngle and Babylon.js rotation.y use the same angular direction:
+    // - WAngle increases counterclockwise from North (0→256=East, 512=South, 768=West)
+    // - Babylon.js rotation.y increases counterclockwise from +Z (0→+Z, π/2→+X, π→-Z, 3π/2→-X)
+    // Therefore rendererRadians() maps directly to rotation.y without negation:
+    //   WAngle 0 → 0 rad → faces +Z (North) ✓
+    //   WAngle 256 → π/2 → faces +X (East) ✓
+    //   WAngle 512 → π → faces -Z (South) ✓
+    //   WAngle 768 → 3π/2 → faces -X (West) ✓
+    unit.body.rotation.y = state.currentFacing.rendererRadians()
   }
 
   // ---- Perform a turn toward a target direction ----
