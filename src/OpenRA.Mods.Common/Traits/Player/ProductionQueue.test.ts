@@ -1020,3 +1020,103 @@ describe('ProductionQueue', () => {
     expect(queue.isProducing(item)).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// NEGATIVE TESTS — regression guards for ch11 B1 (tick progress tracking)
+// ---------------------------------------------------------------------------
+// ch11 e2e BUG-1/BUG-2: UI update functions only called on discrete events
+// (anyChanged), missing continuous progress updates (timers, progress bars).
+// These tests guard the data-model layer to ensure remainingTime and done
+// state stay correct under edge cases — the foundation UI depends on.
+
+describe('ProductionItem — tick progress edge cases (ch11 guard)', () => {
+  let queue: ProductionQueue
+  let pr: PlayerResources
+  let bi: BuildableInfo
+  let ai: ActorInfoStub
+
+  beforeEach(() => {
+    const queueInfo = createQueueInfo({ type: 'Vehicle', buildDurationModifier: 100 })
+    const actor = createActor()
+    pr = new PlayerResources(new PlayerResourcesInfo({ defaultCash: 10000 }))
+    pr.cash = 10000
+    bi = new BuildableInfo({ queue: new Set(['Vehicle']), buildDuration: 10, buildDurationModifier: 100 })
+    ai = createActorInfo('tank', bi, 500)
+    queue = createTestQueue(queueInfo, actor, { playerResources: pr })
+  })
+
+  it('BUGFIX: remainingTime is monotonic decreasing (never increases — UI contract)', () => {
+    // The UI (timers, progress bars) assumes remainingTime only goes down.
+    // If remainingTime ever increases, the UI would show regression.
+    const item = new ProductionItem(queue, 'tank', 500, null, null, ai, bi)
+    item.tick(pr) // initialize
+
+    let prev = item.remainingTime
+    for (let i = 0; i < 20; i++) {
+      item.tick(pr)
+      if (!item.done) {
+        expect(item.remainingTime).toBeLessThanOrEqual(prev)
+        prev = item.remainingTime
+      }
+    }
+    expect(item.done).toBe(true)
+  })
+
+  it('BUGFIX: remainingTimeActual is monotonic (never increases under constant power)', () => {
+    const item = new ProductionItem(queue, 'tank', 500, null, null, ai, bi)
+    item.tick(pr)
+
+    let prevActual = item.remainingTimeActual
+    for (let i = 0; i < 20; i++) {
+      item.tick(pr)
+      if (!item.done) {
+        expect(item.remainingTimeActual).toBeLessThanOrEqual(prevActual)
+        prevActual = item.remainingTimeActual
+      }
+    }
+  })
+
+  it('BUGFIX: tick after done is safe (no negative remainingTime)', () => {
+    const item = new ProductionItem(queue, 'tank', 500, null, null, ai, bi)
+    item.tick(pr) // initialize
+    for (let i = 0; i < 20; i++) item.tick(pr) // Finish + extra ticks
+    expect(item.done).toBe(true)
+    expect(item.remainingTime).toBeGreaterThanOrEqual(0) // never negative
+    // Extra tick should be no-op
+    const remBefore = item.remainingTime
+    item.tick(pr)
+    expect(item.remainingTime).toBe(remBefore)
+  })
+
+  it('BUGFIX: remainingTimeActual never negative after completion', () => {
+    const item = new ProductionItem(queue, 'tank', 500, null, null, ai, bi)
+    item.tick(pr) // initialize
+    for (let i = 0; i < 20; i++) item.tick(pr)
+    expect(item.done).toBe(true)
+    expect(item.remainingTimeActual).toBeGreaterThanOrEqual(0)
+  })
+
+  it('BUGFIX: started flag prevents re-initialization on subsequent ticks', () => {
+    const item = new ProductionItem(queue, 'tank', 500, null, null, ai, bi)
+    item.tick(pr) // init + first decrement
+    const timeAfterFirst = item.remainingTime
+    expect(item.started).toBe(true)
+
+    // Call tick again — should not re-initialize
+    item.tick(pr)
+    expect(item.remainingTime).toBe(timeAfterFirst - 1)
+  })
+
+  it('BUGFIX: remainingTime and remainingTimeActual stay in sync at normal power', () => {
+    const item = new ProductionItem(queue, 'tank', 500, null, null, ai, bi)
+    item.tick(pr) // initialize
+
+    for (let i = 0; i < 12; i++) {
+      item.tick(pr)
+      if (!item.done) {
+        // At normal power, actual should equal raw
+        expect(item.remainingTimeActual).toBe(item.remainingTime)
+      }
+    }
+  })
+})
