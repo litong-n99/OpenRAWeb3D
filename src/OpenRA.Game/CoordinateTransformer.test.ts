@@ -469,6 +469,40 @@ describe('cache behavior', () => {
     clearCoordinateCaches()
     expect(getCacheSize()).toBe(0)
   })
+
+  // NEGATIVE TESTS — regression guard for ch04 cache immutability pattern
+  // CoordinateTransformer.wPosToVector3 returns a SHARED cached reference.
+  // Callers MUST NOT mutate the returned object (it corrupts the cache).
+
+  it('BUGFIX: mutating a cached Vector3 reference pollutes the shared cache', () => {
+    const wpos = new WPos(1024, 2048, 512)
+    const v1 = wPosToVector3(wpos)
+    // Simulate caller bug: directly mutate the shared cached reference
+    v1.x = 999
+    // The cache now returns the corrupted object
+    const v2 = wPosToVector3(wpos)
+    expect(v2.x).toBe(999) // POLLUTED — caller must never mutate cached references
+    // Cleanup: restore original value to avoid cross-test pollution
+    v1.x = 1024 / 1024
+    clearCoordinateCaches()
+  })
+
+  it('BUGFIX: wPosToVector3 contract — JSDoc requires callers to NOT mutate return value', () => {
+    // This test documents the contract: the function returns a SHARED cached
+    // Vector3. If this contract is violated (see test above), all callers
+    // using the same WPos will receive corrupted data.
+    // The fix from ch04 pathfinder review (2d93991) added JSDoc to make this
+    // contract explicit.
+    const wpos = new WPos(2048, 4096, 0)
+    const v1 = wPosToVector3(wpos)
+    const v2 = wPosToVector3(wpos)
+    // Same reference proves cache sharing
+    expect(v1).toBe(v2)
+    // Values should match the coordinate mapping
+    expect(v1.x).toBeCloseTo(2048 / 1024, 5)  // WPos.X → Vector3.x
+    expect(v1.y).toBeCloseTo(0 / 512, 5)      // WPos.Z → Vector3.y (height)
+    expect(v1.z).toBeCloseTo(4096 / 1024, 5)  // WPos.Y → Vector3.z
+  })
 })
 
 // ---------------------------------------------------------------------------
