@@ -4,7 +4,7 @@
 **Test Case ID**: `ch11-production/building-placement`
 **OpenRA Source**: `OpenRA.Mods.Common/Traits/Player/PlaceBuilding.cs`, `OpenRA.Mods.Common/Traits/Buildings/BuildingUtils.cs`, `OpenRA.Mods.Common/Traits/Buildings/Building.cs`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Traits/Player/PlaceBuilding.ts`, `src/OpenRA.Mods.Common/Traits/Buildings/BuildingUtils.ts`, `src/OpenRA.Mods.Common/Traits/Buildings/Building.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-01, 25/25 通过, 100%)
 
 ---
 
