@@ -439,6 +439,34 @@ describe('Widget lifecycle', () => {
     expect(spy).toHaveBeenCalledOnce()
   })
 
+  it('BUGFIX: addChild to same parent is idempotent (no duplicate children)', () => {
+    // Regression guard: ch05 widget-layout pattern — double creation causes
+    // duplicate entries if addChild isn't guarded. The method guards by
+    // removing from old parent first: child.parent.removeChild(child).
+    const parent = new TestWidget()
+    const w = new TestWidget()
+    parent.addChild(w)
+    expect(parent.children.length).toBe(1)
+    // Add to same parent again — should remove first, then re-add (no duplicate)
+    parent.addChild(w)
+    expect(parent.children.length).toBe(1)
+    expect(parent.children[0]).toBe(w)
+    expect(w.parent).toBe(parent)
+  })
+
+  it('BUGFIX: addChild transfers from old parent correctly (no orphaned references)', () => {
+    const parent1 = new TestWidget()
+    const parent2 = new TestWidget()
+    const w = new TestWidget()
+    parent1.addChild(w)
+    expect(parent1.children).toContain(w)
+    // Transfer to new parent
+    parent2.addChild(w)
+    expect(parent1.children).not.toContain(w)
+    expect(parent2.children).toContain(w)
+    expect(w.parent).toBe(parent2)
+  })
+
   it('dispose calls removed and detaches from parent', () => {
     const parent = new TestWidget()
     const w = new TestWidget()
