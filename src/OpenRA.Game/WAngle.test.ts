@@ -373,3 +373,67 @@ describe('WAngle standard methods', () => {
     expect(new WAngle(1024).toString()).toBe('0') // normalized
   })
 })
+
+// ---------------------------------------------------------------------------
+// NEGATIVE TESTS — regression guards for ch09 B1 (coordinate system contract)
+// ---------------------------------------------------------------------------
+
+describe('WAngle rendererRadians() — Babylon.js rotation.y contract (ch09 V1 guard)', () => {
+  // Both WAngle and Babylon.js rotation.y increase COUNTERCLOCKWISE when
+  // viewed from above. Therefore rendererRadians() maps DIRECTLY to
+  // rotation.y — NO negation needed.
+  //
+  // Bug pattern (ch09 turn-animation V1): -rendererRadians() was used
+  // instead of rendererRadians(), causing arrow to face opposite direction.
+  //
+  // Direction mapping:
+  //   WAngle   0 (North, +Z) → rotation.y = 0
+  //   WAngle 256 (East,  +X) → rotation.y = +π/2
+  //   WAngle 512 (South, -Z) → rotation.y = +π
+  //   WAngle 768 (West,  -X) → rotation.y = +3π/2
+
+  it('BUGFIX: rendererRadians() maps directly to Babylon rotation.y (NO negation)', () => {
+    // North (WAngle 0) → rotation.y = 0 → faces +Z
+    expect(new WAngle(0).rendererRadians()).toBe(0)
+
+    // East (WAngle 256) → rotation.y = +π/2 → faces +X
+    expect(new WAngle(256).rendererRadians()).toBeCloseTo(Math.PI / 2, 5)
+
+    // South (WAngle 512) → rotation.y = +π → faces -Z
+    expect(new WAngle(512).rendererRadians()).toBeCloseTo(Math.PI, 5)
+
+    // West (WAngle 768) → rotation.y = +3π/2 → faces -X
+    expect(new WAngle(768).rendererRadians()).toBeCloseTo(3 * Math.PI / 2, 5)
+  })
+
+  it('BUGFIX: negating rendererRadians() produces WRONG Babylon rotation.y (negative)', () => {
+    // If someone negates: WAngle 256 (East) → -π/2 → rotation.y = -π/2 = faces West (WRONG!)
+    const eastRad = new WAngle(256).rendererRadians() // +π/2 (East)
+    const negated = -eastRad // -π/2 (would face West!)
+
+    // Correct: East should be +π/2
+    expect(eastRad).toBeCloseTo(Math.PI / 2, 5)
+    // Negated: would point to -π/2 which is West (clockwise 90° from +Z), WRONG for East
+    expect(negated).toBeCloseTo(-Math.PI / 2, 5)
+    // The negated value should NOT equal the correct East facing
+    expect(negated).not.toBeCloseTo(Math.PI / 2, 5)
+  })
+
+  it('BUGFIX: WAngle 0 normalizes correctly (no false 1024 leak)', () => {
+    // Guard against angle 1024 leaking through normalization gaps
+    // new WAngle(1024) normalizes to angle 0 internally
+    expect(new WAngle(1024).rendererRadians()).toBe(0)
+    // Explicitly: the normalized angle should be 0, not 1024
+    expect(new WAngle(1024).angle).toBe(0)
+  })
+
+  it('BUGFIX: tickFacing direction preserves CCW orientation (negative)', () => {
+    // tickFacing from 0 toward 256 (East) should INCREASE angle (CCW)
+    const result = WAngle.tickFacing(new WAngle(0), new WAngle(256), new WAngle(64))
+    // Moving CCW from 0 toward 256: angle should be positive (64 after 1 step of 64)
+    expect(result.angle).toBeGreaterThan(0)
+    expect(result.angle).toBeLessThan(256) // Not overshooting
+    // The radians should also increase (confirming CCW direction)
+    expect(result.rendererRadians()).toBeGreaterThan(0)
+  })
+})
