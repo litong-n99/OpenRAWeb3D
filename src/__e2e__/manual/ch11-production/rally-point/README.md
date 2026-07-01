@@ -4,7 +4,7 @@
 **Test Case ID**: `ch11-production/rally-point`
 **OpenRA Source**: `OpenRA.Mods.Common/Traits/Buildings/RallyPoint.ts`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Traits/Buildings/RallyPoint.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-02, 13/13 通过, 100%)
 
 ---
 
@@ -59,7 +59,7 @@
 5. **步骤四**: 移动 rally point → 线即时更新 (R5)
 6. **边界**: 快速连续点击 5 次 → 无闪烁
 
-- [ ] R1-R5 通过 → **ACCEPTED**
+- [x] R1-R5 通过 → **ACCEPTED**
 
 ## Test Harness API
 
