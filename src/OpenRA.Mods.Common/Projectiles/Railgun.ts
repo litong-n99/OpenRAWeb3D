@@ -291,6 +291,10 @@ export class Railgun implements IProjectile {
 
     this.ticks++
     if (this.ticks > this.info.duration && this.animationComplete) {
+      // Set isDestroyed BEFORE scheduling disposal so tick()'s early-return
+      // guard works immediately (prevents double-tick window).
+      // Same bug pattern as AreaBeam.ts (fixed in 7043f8f).
+      this.isDestroyed = true
       world.addFrameEndTask(() => { world.removeEffect(this) })
     }
   }

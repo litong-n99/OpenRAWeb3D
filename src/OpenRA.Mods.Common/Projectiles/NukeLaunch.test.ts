@@ -148,4 +148,33 @@ describe('NukeLaunch', () => {
     world.drainFrameEndTasks()
     expect(world.effects).not.toContain(nuke)
   })
+
+  // NEGATIVE TESTS — regression guards for B1 (isDestroyed before frame-end task)
+
+  it('BUGFIX: sets isDestroyed=true on detonation before frame-end task', () => {
+    const config = createConfig({ impactDelay: 3, velocity: new WDist(10), removeOnDetonation: true })
+    const nuke = new NukeLaunch(config)
+    const world = createMockWorld()
+    // Tick to detonation
+    for (let i = 0; i < 6; i++) nuke.tick(world)
+    // BEFORE frame-end task executes, isDestroyed should already be true
+    expect(nuke.isDestroyed).toBe(true)
+    // Subsequent tick should be no-op
+    const posBefore = nuke.pos
+    nuke.tick(world)
+    expect(nuke.pos).toEqual(posBefore)
+  })
+
+  it('BUGFIX: NukeLaunch stops ticking after detonation without frame-end drain (negative)', () => {
+    const config = createConfig({ impactDelay: 3, velocity: new WDist(10), removeOnDetonation: true })
+    const nuke = new NukeLaunch(config)
+    const world = createMockWorld()
+    // Tick to detonation
+    for (let i = 0; i < 6; i++) nuke.tick(world)
+    expect(nuke.isDestroyed).toBe(true)
+    // Further ticks should be no-ops
+    const ticksBefore = nuke.ticks
+    for (let i = 0; i < 10; i++) nuke.tick(world)
+    expect(nuke.ticks).toBe(ticksBefore) // no further ticks
+  })
 })

@@ -147,4 +147,20 @@ describe('AreaBeam', () => {
     const beam = new AreaBeam(DEFAULT_AREA_BEAM_INFO, createProjArgs())
     expect(beam).toBeDefined()
   })
+
+  // NEGATIVE TEST — regression guard for B1 fix (7043f8f: isDestroyed before frame-end)
+
+  it('BUGFIX: sets isDestroyed=true when beam completes, before frame-end task runs', () => {
+    // Use very high speed + short duration so beam completes in 1 tick
+    const info = { ...DEFAULT_AREA_BEAM_INFO, speed: [new WDist(100000)], duration: 1, beyondTargetRange: WDist.Zero }
+    const beam = new AreaBeam(info, createProjArgs())
+    const world = createMockWorld()
+    beam.tick(world) // head travels, tail follows, beam completes
+    // BEFORE frame-end task executes, isDestroyed should already be true
+    expect(beam.isDestroyed).toBe(true)
+    // Subsequent ticks should be no-ops
+    const ticksBefore = beam.headTicks
+    beam.tick(world)
+    expect(beam.headTicks).toBe(ticksBefore)
+  })
 })

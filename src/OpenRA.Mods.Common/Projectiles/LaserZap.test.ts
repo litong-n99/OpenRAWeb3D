@@ -147,4 +147,34 @@ describe('LaserZap', () => {
     const zap = new LaserZap(DEFAULT_LASER_ZAP_INFO, createProjectileArgs())
     expect(zap.color).toEqual([255, 0, 0, 255])
   })
+
+  // NEGATIVE TESTS — regression guards for B1 (isDestroyed before frame-end task)
+
+  it('BUGFIX: sets isDestroyed=true immediately when duration expires, before frame-end task', () => {
+    const info = { ...DEFAULT_LASER_ZAP_INFO, duration: 3, damageDuration: 0, hitAnim: null }
+    const zap = new LaserZap(info, createProjectileArgs())
+    const world = createMockWorld()
+    // Tick to duration — disposal condition triggers at ticks >= duration
+    for (let i = 0; i < 3; i++) zap.tick(world)
+    // BEFORE frame-end task executes, isDestroyed should already be true
+    // (prevents double-tick window between tick() return and frame-end)
+    expect(zap.isDestroyed).toBe(true)
+    // Subsequent tick() should be no-op
+    zap.tick(world)
+    expect(zap.ticks).toBe(3) // didn't increment
+  })
+
+  it('BUGFIX: LaserZap stops ticking after isDestroyed without frame-end drain (negative)', () => {
+    const info = { ...DEFAULT_LASER_ZAP_INFO, duration: 2, damageDuration: 0, hitAnim: null }
+    const zap = new LaserZap(info, createProjectileArgs())
+    const world = createMockWorld()
+    zap.tick(world) // tick 1
+    zap.tick(world) // tick 2, should trigger disposal
+    expect(zap.isDestroyed).toBe(true)
+    // tick 3+ should be no-ops (regression: was silently re-entering before fix)
+    zap.tick(world)
+    zap.tick(world)
+    zap.tick(world)
+    expect(zap.ticks).toBe(2) // no further ticks
+  })
 })

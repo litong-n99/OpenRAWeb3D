@@ -176,4 +176,39 @@ describe('Railgun', () => {
     expect(rail.forwardStep.X).toBe(0)
     expect(rail.forwardStep.Y).toBe(0)
   })
+
+  // NEGATIVE TESTS — regression guards for B1 (isDestroyed before frame-end task)
+
+  it('BUGFIX: sets isDestroyed=true when duration expires, before frame-end task', () => {
+    const info = { ...DEFAULT_RAILGUN_INFO, duration: 1 }
+    const rail = new Railgun(createProjArgs(), info)
+    const world = createMockWorld()
+    rail.tick(world) // tick 0: damage
+    rail.tick(world) // tick 1: should trigger disposal (ticks > duration && animationComplete)
+    // BEFORE frame-end task executes, isDestroyed should already be true
+    expect(rail.isDestroyed).toBe(true)
+    // Subsequent tick() should be no-op
+    const mockImpact = vi.fn()
+    const rail2 = new Railgun(createProjArgs({ weapon: { impact: mockImpact } as unknown as WeaponStub }), { ...DEFAULT_RAILGUN_INFO, duration: 1 })
+    rail2.tick(world) // tick 0: damage
+    const impactCount0 = mockImpact.mock.calls.length
+    rail2.tick(world) // tick 1: disposal, isDestroyed=true
+    rail2.tick(world) // tick 2: should be no-op (isDestroyed prevents damage)
+    expect(mockImpact.mock.calls.length).toBe(impactCount0 + 0) // no additional damage
+  })
+
+  it('BUGFIX: Railgun stops ticking after disposal without frame-end drain (negative)', () => {
+    const info = { ...DEFAULT_RAILGUN_INFO, duration: 1 }
+    const rail = new Railgun(createProjArgs(), info)
+    const world = createMockWorld()
+    rail.tick(world) // tick 0
+    rail.tick(world) // tick 1: disposal triggered
+    expect(rail.isDestroyed).toBe(true)
+    // Further ticks should be no-ops
+    const ticksBefore = rail.ticks
+    rail.tick(world)
+    rail.tick(world)
+    rail.tick(world)
+    expect(rail.ticks).toBe(ticksBefore) // no increments
+  })
 })

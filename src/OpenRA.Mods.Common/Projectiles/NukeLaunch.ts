@@ -201,6 +201,11 @@ export class NukeLaunch implements IProjectile, ISpatiallyPartitionable {
 
   private _explode(world: GameWorldManager, removeProjectile: boolean): void {
     if (removeProjectile) {
+      // Set isDestroyed BEFORE scheduling disposal so tick()'s early-return
+      // guard works immediately. NukeLaunch has a separate 'detonated' flag
+      // for explosion dedup, but isDestroyed is still needed for tick() check.
+      // Same bug pattern as AreaBeam.ts (fixed in 7043f8f).
+      this.isDestroyed = true
       world.addFrameEndTask(() => { world.removeEffect(this) })
     }
 
