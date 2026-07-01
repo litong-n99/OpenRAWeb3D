@@ -531,6 +531,7 @@ function startMovement(
   obstacleMode: boolean,
 ): void {
   resetSimulation()
+  updateSpeedFromSlider() // BUG-1 fix: apply slider speed AFTER reset, so it overrides default 1024
   unitState.obstacleMode = obstacleMode
 
   const waypoints = findPathBFS(src, dst)
@@ -854,28 +855,24 @@ updateSpeedFromSlider() // initial
 // Scenario: Straight (clean grid, direct path)
 document.getElementById('btn-straight')!.addEventListener('click', () => {
   setActiveScenario('straight')
-  updateSpeedFromSlider()
   startMovement({ col: 2, row: 2 }, { col: 17, row: 2 }, false)
 })
 
 // Scenario: Diagonal (clean grid)
 document.getElementById('btn-diagonal')!.addEventListener('click', () => {
   setActiveScenario('diagonal')
-  updateSpeedFromSlider()
   startMovement({ col: 2, row: 2 }, { col: 17, row: 17 }, false)
 })
 
 // Scenario: Obstacle (wall in the middle, path must go around)
 document.getElementById('btn-obstacle')!.addEventListener('click', () => {
   setActiveScenario('obstacle')
-  updateSpeedFromSlider()
   startMovement({ col: 2, row: 5 }, { col: 17, row: 14 }, true)
 })
 
 // Scenario: Long (far corners)
 document.getElementById('btn-long')!.addEventListener('click', () => {
   setActiveScenario('long')
-  updateSpeedFromSlider()
   startMovement({ col: 1, row: 1 }, { col: 18, row: 18 }, false)
 })
 

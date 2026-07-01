@@ -4,7 +4,7 @@
 **Test Case ID**: `ch09-movement/path-follow-visual`
 **OpenRA Source**: `OpenRA.Mods.Common/Traits/Mobile.cs`, `OpenRA.Mods.Common/Traits/World/Locomotor.cs`, `OpenRA.Mods.Common/Pathfinder/HierarchicalPathFinder.cs`
 **TypeScript Target**: `src/OpenRA.Mods.Common/Traits/Mobile.ts`, `src/OpenRA.Mods.Common/Traits/World/Locomotor.ts`, `src/OpenRA.Mods.Common/Pathfinder/HierarchicalPathFinder.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-01, 23/23 通过, 100%)
 
 ---
 
