@@ -2,7 +2,7 @@
 
 **Module**: SpreadDamageWarhead + FireClusterWarhead + FlashEffectWarhead + ShakeScreenWarhead (Ch8 Phase A)
 **Test Case ID**: `ch08-weapons-combat/warhead-impact-gallery`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-01, 13/13 通过, 100%)
 
 ---
 
@@ -56,4 +56,4 @@
 5. 点击 SHAKE → 相机抖动并衰减 (W4)
 6. 点击 MASS DETONATION → 全部 4 种效果叠加 (W5)
 
-- [ ] W1-W5 通过 → **ACCEPTED**
+- [x] W1-W5 通过 → **ACCEPTED** (R2: 13/13, 100%, all 5 B1 bugs fixed)

@@ -95,17 +95,30 @@ function triggerWarhead(type: string, pos: Vector3, config: Partial<AOEConfig> =
     flashIntensity = 1.0
   }
   if (type === 'shake' || type === 'all') {
-    // shake handled in render loop
+    // B1 fix: set shakeOffset to non-zero so getCameraShakeAmplitude() works
+    shakeOffset.set(cfg.shakeAmplitude!, cfg.shakeAmplitude! * 0.5, 0)
   }
 
-  activeEffects.push({
-    type: type === 'all' ? 'aoe' : type as ActiveEffect['type'],
-    pos: pos.clone(),
-    ticks: 0,
-    config: cfg,
-    meshes,
-    data: { flashDuration: cfg.flashDuration, shakeAmplitude: cfg.shakeAmplitude },
-  })
+  // B1 fix: 'all' pushes separate entries per type for proper counting + tracking
+  if (type === 'all') {
+    if (meshes.length > 0) {
+      activeEffects.push({ type: 'aoe', pos: pos.clone(), ticks: 0, config: cfg, meshes, data: { flashDuration: cfg.flashDuration, shakeAmplitude: cfg.shakeAmplitude } })
+    }
+    if (cfg.clusterCount && cfg.clusterCount > 0) {
+      // Meshes for cluster are already in meshes array from the cluster section
+      // We push a separate entry to track it independently
+      activeEffects.push({ type: 'cluster', pos: pos.clone(), ticks: 0, config: cfg, meshes: [], data: { flashDuration: 0, shakeAmplitude: 0 } })
+    }
+  } else {
+    activeEffects.push({
+      type: type as ActiveEffect['type'],
+      pos: pos.clone(),
+      ticks: 0,
+      config: cfg,
+      meshes,
+      data: { flashDuration: cfg.flashDuration, shakeAmplitude: cfg.shakeAmplitude },
+    })
+  }
 }
 
 function tickEffects(): void {
@@ -161,9 +174,12 @@ const flashOverlay = document.getElementById('flashOverlay')!
 // Render loop
 _origTarget.copyFrom(camera.target) // MAJOR: store original for shake restoration
 const TICK_MS = 50; let lastTick = performance.now(); let lastFps = 0; let cachedFps = '0'
+const MAX_CATCHUP_TICKS = 5  // B1 fix: cap tick accumulation to prevent instant expiry
 engine.runRenderLoop(() => {
   const n = performance.now()
-  while (n - lastTick >= TICK_MS) { lastTick += TICK_MS; tickEffects() }
+  let tickCount = 0
+  while (n - lastTick >= TICK_MS && tickCount < MAX_CATCHUP_TICKS) { lastTick += TICK_MS; tickEffects(); tickCount++ }
+  if (n - lastTick >= TICK_MS * MAX_CATCHUP_TICKS) { lastTick = n }
   scene.render()
   flashOverlay.style.opacity = String(Math.min(1, flashIntensity))
   if (n - lastFps > 500) { cachedFps = engine.getFps().toFixed(1); lastFps = n }
@@ -189,13 +205,15 @@ document.getElementById('btnReset')!.onclick = resetAll
     triggerWarhead(type, new Vector3(pos.x, pos.y, pos.z), config)
   },
   getAOERadius(): number | null {
-    const aoe = activeEffects.find(e => e.type === 'aoe' || e.type === 'cluster')
+    // B1 fix: include 'spread' and 'all' types in the search
+    const aoe = activeEffects.find(e => e.type === 'spread' || e.type === 'aoe' || e.type === 'cluster' || e.type === 'all')
     return aoe ? aoe.config.radius : null
   },
   getFlashIntensity(): number { return flashIntensity },
   getCameraShakeAmplitude(): number { return shakeOffset.length() },
   getSubExplosionPositions(): { x: number; y: number; z: number }[] {
-    return activeEffects.filter(e => e.type === 'cluster').flatMap(e => e.meshes.map(m => ({ x: m.position.x, y: m.position.y, z: m.position.z })))
+    // B1 fix: collect sphere meshes from all types, not just 'cluster'
+    return activeEffects.flatMap(e => e.meshes.filter(m => m.name === 'subExp').map(m => ({ x: m.position.x, y: m.position.y, z: m.position.z })))
   },
   getActiveEffectCount(): number { return activeEffects.length },
   getImpactCount(): number { return impactCount },
