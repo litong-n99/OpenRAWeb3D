@@ -216,8 +216,12 @@ function tick(now: number): void {
     }
   }
 
+  // BUG-1 fix: updateQueueUI() called every frame to keep timers and progress bars live
+  updateQueueUI()
+
   if (anyChanged) {
-    updateQueueUI()
+    // BUG-2 fix: update item count statistics when items complete in this tick
+    updateItemCounts()
   }
 
   // Update pulse animation

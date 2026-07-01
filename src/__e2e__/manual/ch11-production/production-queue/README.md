@@ -4,7 +4,7 @@
 **Test Case ID**: `ch11-production/production-queue`
 **OpenRA Source**: `OpenRA.Mods.Common/Traits/Player/ProductionQueue.cs` (813 lines), `ClassicProductionQueue.cs` (161 lines)
 **TypeScript Target**: `src/OpenRA.Mods.Common/Traits/Player/ProductionQueue.ts`, `ClassicProductionQueue.ts`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-01, 10/10 通过, 100%)
 
 ---
 
