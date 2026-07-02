@@ -1,7 +1,7 @@
 # Script-Driven Effects — Acceptance Test
 **Module**: Lua Scripting API (Chapter 20 Scripting System)
 **Test Case ID**: `ch20-scripting/script-driven-effects`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-02, 9/9 通过, 100%)
 
 ---
 
