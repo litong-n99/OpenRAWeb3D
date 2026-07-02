@@ -194,8 +194,8 @@ function wAngleToRadians(angle: number): number {
   // WAngle 0 = North (negative Z). In Babylon standard: 0 = positive X.
   // We need: WAngle 0 -> -Z direction -> Babylon rotation = -PI/2 (or 3*PI/2)
   // WAngle increases CCW. Babylon Y-up rotation is CCW when looking down.
-  // So: rad = -PI/2 - (angle * 2 * PI / 1024)
-  return -Math.PI / 2 - (angle * 2 * Math.PI / 1024)
+  // So: rad = -PI/2 + (angle * 2 * PI / 1024)
+  return -Math.PI / 2 + (angle * 2 * Math.PI / 1024)
 }
 
 /** Tick facing toward desired facing (mirrors WAngle.tickFacing). */

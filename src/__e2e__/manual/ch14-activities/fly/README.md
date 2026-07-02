@@ -1,6 +1,6 @@
 # 飞行活动 - Fly + FlyForward 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-03, 9/9 通过, 100%)
 **创建日期**: 2026-06-16
 **对应模块**: `src/OpenRA.Mods.Common/Activities/Air/Fly.ts`, `src/OpenRA.Mods.Common/Activities/Air/FlyForward.ts`
 
