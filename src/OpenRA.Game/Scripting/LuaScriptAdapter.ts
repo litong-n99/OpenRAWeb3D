@@ -100,9 +100,22 @@ export async function createLuaRuntime(
 ): Promise<ILuaRuntime> {
   // Dynamic import of fengari and fengari-interop (avoid static bundling)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fengari: any = await import('fengari')
+  let fengari: any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const interop: any = await import('fengari-interop')
+  let interop: any
+
+  try {
+    fengari = await import('fengari')
+    interop = await import('fengari-interop')
+  } catch (err) {
+    // BUGFIX ch20 guard: provide context when dynamic import fails
+    // (e.g., browser missing process.env polyfill — see vite.config.ts).
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(
+      `Failed to load Lua runtime (fengari). Ensure fengari and fengari-interop ` +
+      `are installed and the browser environment is configured: ${msg}`,
+    )
+  }
 
   return createLuaRuntimeSync(options, fengari, interop)
 }

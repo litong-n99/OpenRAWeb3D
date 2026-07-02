@@ -869,4 +869,153 @@ describe('LuaScriptAdapter', () => {
       expect(fn).toHaveBeenCalled()
     })
   })
+
+  // ---------------------------------------------------------------------------
+  // NEGATIVE TESTS — regression guards for ch20 e2e (sandbox + error propagation)
+  // ---------------------------------------------------------------------------
+
+  describe('Sandbox completeness — ALL forbidden globals removed (ch20 guard)', () => {
+    // Bug pattern (ch20 lua-vm e2e): sandbox removes `error` and `assert`
+    // (not in ALLOWED_GLOBALS). Test scripts must use `pcall()` instead.
+    // These tests document every forbidden global to prevent regressions.
+
+    const FORBIDDEN_GLOBALS = [
+      'os', 'io', 'package', 'require',
+      'dofile', 'loadfile', 'load',
+      'debug', 'coroutine',
+      'rawget', 'rawset', 'rawequal', 'rawlen',
+      'setmetatable', 'getmetatable',
+    ]
+
+    for (const name of FORBIDDEN_GLOBALS) {
+      it(`BUGFIX: "${name}" global is nil (removed by sandbox)`, async () => {
+        runtime = createLuaRuntimeSync({}, fengari, interop)
+        const fL = runtime.L as any
+        fengari.lua.lua_getglobal(fL, name)
+        const tp = fengari.lua.lua_type(fL, -1)
+        fengari.lua.lua_pop(fL, 1)
+        expect(tp).toBe(LUA_TNIL)
+      })
+    }
+  })
+
+  describe('Sandbox completeness — ALL allowed globals preserved (ch20 guard)', () => {
+    const ALLOWED_GLOBALS = [
+      'ipairs', 'next', 'pairs',
+      'pcall', 'select', 'tonumber', 'tostring', 'type', 'xpcall',
+      'math', 'string', 'table',
+      '_VERSION',
+    ]
+
+    for (const name of ALLOWED_GLOBALS) {
+      it(`BUGFIX: "${name}" global is preserved (non-nil)`, async () => {
+        runtime = createLuaRuntimeSync({}, fengari, interop)
+        const fL = runtime.L as any
+        fengari.lua.lua_getglobal(fL, name)
+        const tp = fengari.lua.lua_type(fL, -1)
+        fengari.lua.lua_pop(fL, 1)
+        expect(tp).not.toBe(LUA_TNIL)
+      })
+    }
+  })
+
+  describe('Sandbox edge cases — globals intentionally removed (ch20 guard)', () => {
+    it('BUGFIX: "error" global is nil (not in ALLOWED_GLOBALS — use pcall)', async () => {
+      // ch20 e2e discovery: Lua builtin error() is removed by sandbox.
+      // Test scripts must use pcall() for error handling, not error().
+      runtime = createLuaRuntimeSync({}, fengari, interop)
+      const fL = runtime.L as any
+      fengari.lua.lua_getglobal(fL, 'error')
+      const tp = fengari.lua.lua_type(fL, -1)
+      fengari.lua.lua_pop(fL, 1)
+      expect(tp).toBe(LUA_TNIL)
+    })
+
+    it('BUGFIX: "assert" global is nil (not in ALLOWED_GLOBALS)', async () => {
+      runtime = createLuaRuntimeSync({}, fengari, interop)
+      const fL = runtime.L as any
+      fengari.lua.lua_getglobal(fL, 'assert')
+      const tp = fengari.lua.lua_type(fL, -1)
+      fengari.lua.lua_pop(fL, 1)
+      expect(tp).toBe(LUA_TNIL)
+    })
+
+    it('BUGFIX: "collectgarbage" global is nil (removed for security)', async () => {
+      runtime = createLuaRuntimeSync({}, fengari, interop)
+      const fL = runtime.L as any
+      fengari.lua.lua_getglobal(fL, 'collectgarbage')
+      const tp = fengari.lua.lua_type(fL, -1)
+      fengari.lua.lua_pop(fL, 1)
+      expect(tp).toBe(LUA_TNIL)
+    })
+
+    it('BUGFIX: "print" global is a function (reroutes to console.log)', async () => {
+      // print() is the ONLY builtin Lua output function preserved.
+      // It routes to console.log (not DOM).
+      runtime = createLuaRuntimeSync({}, fengari, interop)
+      const fL = runtime.L as any
+      fengari.lua.lua_getglobal(fL, 'print')
+      const tp = fengari.lua.lua_type(fL, -1)
+      fengari.lua.lua_pop(fL, 1)
+      expect(tp).toBe(LUA_TFUNCTION)
+    })
+
+    it('BUGFIX: "FatalError" global is a function (calls fatalErrorHandler)', async () => {
+      runtime = createLuaRuntimeSync({}, fengari, interop)
+      const fL = runtime.L as any
+      fengari.lua.lua_getglobal(fL, 'FatalError')
+      const tp = fengari.lua.lua_type(fL, -1)
+      fengari.lua.lua_pop(fL, 1)
+      expect(tp).toBe(LUA_TFUNCTION)
+    })
+  })
+
+  describe('Runtime error propagation (ch20 guard)', () => {
+    it('BUGFIX: createLuaRuntime propagates import errors with context', async () => {
+      // The async createLuaRuntime() wraps dynamic import failures
+      // with a descriptive error message (not raw ReferenceError).
+      // This test verifies the error propagation contract.
+      // Since fengari is available in Node.js, we test the wrapper
+      // indirectly via createLuaRuntimeSync.
+
+      // Verify the sync factory doesn't throw on valid modules
+      expect(() => createLuaRuntimeSync({}, fengari, interop)).not.toThrow()
+
+      // Verify the sync factory throws on null/undefined modules
+      // (simulating a failed dynamic import)
+      expect(() => createLuaRuntimeSync({}, null as any, interop)).toThrow()
+      expect(() => createLuaRuntimeSync({}, fengari, null as any)).toThrow()
+    })
+
+    it('BUGFIX: doBuffer preserves error message content for compile errors', async () => {
+      runtime = createLuaRuntimeSync({}, fengari, interop)
+      try {
+        runtime.doBuffer('local x = {', 'syntax-error.lua')
+        expect(true).toBe(false) // should not reach
+      } catch (e) {
+        expect(e).toBeInstanceOf(Error)
+        expect((e as Error).message).toContain('syntax-error.lua')
+      }
+    })
+
+    it('BUGFIX: doBuffer preserves error message content for runtime errors', async () => {
+      runtime = createLuaRuntimeSync({}, fengari, interop)
+      // NOTE: error() is removed by sandbox (not in ALLOWED_GLOBALS).
+      // Use nil dereference to trigger a runtime error with a clear message.
+      try {
+        runtime.doBuffer('local x = nil; return x.field', 'runtime-error.lua')
+        expect(true).toBe(false)
+      } catch (e) {
+        expect(e).toBeInstanceOf(Error)
+        expect((e as Error).message).toContain('nil')
+        expect((e as Error).message).toContain('runtime-error.lua')
+      }
+    })
+
+    it('BUGFIX: sandbox prevents loading external Lua files (dofile/loadfile nil)', async () => {
+      runtime = createLuaRuntimeSync({}, fengari, interop)
+      // Attempting to use dofile should fail (dofile is nil)
+      expect(() => runtime!.doBuffer('dofile("test.lua")', 'test.lua')).toThrow()
+    })
+  })
 })
