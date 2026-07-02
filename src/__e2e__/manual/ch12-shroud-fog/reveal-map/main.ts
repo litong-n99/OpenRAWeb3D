@@ -251,6 +251,7 @@ function exploreCorners(): void {
   }
   updateShroudTexture()
   updateUnitVisibility()
+  updateUIState()
 }
 
 function exploreCenter(): void {
@@ -267,6 +268,7 @@ function exploreCenter(): void {
   }
   updateShroudTexture()
   updateUnitVisibility()
+  updateUIState()
 }
 
 function exploreStrip(): void {
@@ -280,6 +282,7 @@ function exploreStrip(): void {
   }
   updateShroudTexture()
   updateUnitVisibility()
+  updateUIState()
 }
 
 function resetAllHidden(): void {
@@ -290,6 +293,7 @@ function resetAllHidden(): void {
   }
   updateShroudTexture()
   updateUnitVisibility()
+  updateUIState()
 }
 
 // ---------------------------------------------------------------------------
