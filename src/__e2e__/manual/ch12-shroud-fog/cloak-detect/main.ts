@@ -83,10 +83,10 @@ function updateVisuals(): void {
 
   if (detected) {
     cloakedUnitMat.alpha = 1.0
-    cloakedUnit.isVisible = true
+    cloakedUnit.setEnabled(true)
   } else {
     cloakedUnitMat.alpha = CLOAKED_ALPHA
-    cloakedUnit.isVisible = false
+    cloakedUnit.setEnabled(false)
   }
 
   // Move detector
@@ -212,8 +212,9 @@ function setupScene(): { engine: Engine; scene: Scene } {
   const infantryGroup = new Mesh('cloakedUnit', scene)
   body.parent = infantryGroup
   head.parent = infantryGroup
+  body.material = cloakedUnitMat
+  head.material = cloakedUnitMat
   infantryGroup.position.copyFrom(CLOAKED_POS)
-  infantryGroup.material = cloakedUnitMat
   cloakedUnit = infantryGroup
 
   // -------------------------------------------------------------------------
@@ -232,8 +233,9 @@ function setupScene(): { engine: Engine; scene: Scene } {
   const detectorGroup = new Mesh('detectorUnit', scene)
   dbody.parent = detectorGroup
   dant.parent = detectorGroup
+  dbody.material = detectorMat
+  dant.material = detectorMat
   detectorGroup.position.set(detectorX, 0, detectorZ)
-  detectorGroup.material = detectorMat
   detectorUnit = detectorGroup
 
   // -------------------------------------------------------------------------
@@ -260,7 +262,7 @@ function setupScene(): { engine: Engine; scene: Scene } {
     const angle = (2 * Math.PI * i) / n
     ringPoints[0].push(new Vector3(Math.cos(angle), 0.015, Math.sin(angle)))
   }
-  const ring = MeshBuilder.CreateLineSystem('rangeRing', { lines: ringPoints, colors: [[new Color4(0.3, 0.7, 1.0, 0.6)]] }, scene)
+  const ring = MeshBuilder.CreateLineSystem('rangeRing', { lines: ringPoints, colors: [Array.from({ length: n + 1 }, () => new Color4(0.3, 0.7, 1.0, 0.6))] }, scene)
   ring.parent = disc
 
   return { engine, scene }

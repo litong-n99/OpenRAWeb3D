@@ -1,6 +1,6 @@
 # Shroud — Cloak Detection Visual Test
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-02, 5/5 通过, 100%)
 **创建日期**: 2026-06-15
 **对应模块**: `src/OpenRA.Mods.Common/Traits/DetectCloaked.ts` (TODO-12.DEFERRED.16)
 
@@ -99,6 +99,6 @@
 
 ### 8. 结果判定
 
-- [ ] 所有期望结果通过 → **ACCEPTED**
+- [x] 所有期望结果通过 → **ACCEPTED** (2026-07-02, 5/5 期望, 6/6 Playwright, 3/3 Kimi 视觉)
 - [ ] 部分未通过 → 记录具体差异（附截图和环境信息栏数据），提交 issue
 - [ ] 测试环境异常 → 记录 UA/视口/引擎信息，检查 WebGL 支持
