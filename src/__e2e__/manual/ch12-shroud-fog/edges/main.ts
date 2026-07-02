@@ -472,7 +472,13 @@ function expandVisible(): void {
   updateShroudTexture()
 }
 
-/** Shrink visible area by degrading outermost VISIBLE cells to EXPLORED, and EXPLORED to HIDDEN. */
+/**
+ * Shrink visible area by degrading outermost VISIBLE cells to EXPLORED, and EXPLORED to HIDDEN.
+ *
+ * Degradation rules:
+ * - VISIBLE(2): if any neighbor has state < 2 (EXPLORED or HIDDEN) → degrade to EXPLORED(1)
+ * - EXPLORED(1): if any neighbor has state > 1 (VISIBLE) → degrade to HIDDEN(0)
+ */
 function shrinkVisible(): void {
   const newData = new Uint8Array(visibilityData)
   for (let row = 0; row < GRID_HEIGHT; row++) {
@@ -481,18 +487,31 @@ function shrinkVisible(): void {
       if (visibilityData[idx] === HIDDEN) continue
 
       const neighbors = getNeighbors(col, row)
-      let allNeighborsSameOrHigher = true
-      for (let i = 0; i < 8; i++) {
-        if (neighbors[i] > visibilityData[idx]) {
-          allNeighborsSameOrHigher = false
-          break
-        }
-      }
 
-      if (!allNeighborsSameOrHigher) {
-        // Degrade
-        if (visibilityData[idx] === VISIBLE) newData[idx] = EXPLORED
-        else if (visibilityData[idx] === EXPLORED) newData[idx] = HIDDEN
+      if (visibilityData[idx] === VISIBLE) {
+        // VISIBLE → EXPLORED: check if any neighbor has lower state (< 2)
+        let hasLowerNeighbor = false
+        for (let i = 0; i < 8; i++) {
+          if (neighbors[i] < VISIBLE) {
+            hasLowerNeighbor = true
+            break
+          }
+        }
+        if (hasLowerNeighbor) {
+          newData[idx] = EXPLORED
+        }
+      } else if (visibilityData[idx] === EXPLORED) {
+        // EXPLORED → HIDDEN: keep existing logic (check for higher neighbor)
+        let allNeighborsSameOrHigher = true
+        for (let i = 0; i < 8; i++) {
+          if (neighbors[i] > EXPLORED) {
+            allNeighborsSameOrHigher = false
+            break
+          }
+        }
+        if (!allNeighborsSameOrHigher) {
+          newData[idx] = HIDDEN
+        }
       }
     }
   }
