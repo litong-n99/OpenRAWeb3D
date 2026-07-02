@@ -69,13 +69,17 @@ function updateVisuals(): void {
     ownerUnit.isVisible = true
 
     // Enemy: completely invisible
+    // Babylon.js does NOT propagate isVisible from parent to children.
+    // Each child mesh must be set explicitly.
     enemyUnit.isVisible = false
+    enemyUnit.getChildMeshes().forEach(c => { c.isVisible = false })
   } else {
     // Both: fully opaque
     ownerUnitMat.alpha = 1.0
     ownerUnit.isVisible = true
     enemyUnitMat.alpha = 1.0
     enemyUnit.isVisible = true
+    enemyUnit.getChildMeshes().forEach(c => { c.isVisible = true })
   }
 
   updateStatusPanel()
@@ -171,11 +175,13 @@ function setupOwnerScene(canvas: HTMLCanvasElement): { engine: Engine; scene: Sc
   camera.lowerRadiusLimit = 2
   camera.upperRadiusLimit = 15
 
-  new HemisphericLight('hemi', new Vector3(0.5, 1, 0.3), scene)
+  const hemi = new HemisphericLight('hemi', new Vector3(0.5, 1, 0.3), scene)
+  hemi.intensity = 0.6
 
   // Ground
   const groundMat = new StandardMaterial('groundMat', scene)
   groundMat.diffuseColor = new Color3(0.15, 0.25, 0.15)
+  groundMat.specularColor = Color3.Black()
   const ground = MeshBuilder.CreateGround('ground', { width: 4, height: 4 }, scene)
   ground.material = groundMat
 
@@ -190,14 +196,19 @@ function setupOwnerScene(canvas: HTMLCanvasElement): { engine: Engine; scene: Sc
 
   ownerUnitMat = new StandardMaterial('ownerUnitMat', scene)
   ownerUnitMat.diffuseColor = new Color3(0.8, 0.7, 0.3) // gold/yellow tank
+  ownerUnitMat.ambientColor = new Color3(0.3, 0.25, 0.1) // warm dark gold ambient
+  ownerUnitMat.specularColor = Color3.Black()
   ownerUnitMat.alpha = DEFAULT_ALPHA
-  ownerUnitMat.specularColor = new Color3(0.1, 0.1, 0.1)
 
   const unitGroup = new Mesh('ownerUnit', scene)
   body.parent = unitGroup
   turret.parent = unitGroup
   barrel.parent = unitGroup
-  unitGroup.material = ownerUnitMat
+  // Babylon.js does NOT propagate material from parent to children;
+  // each child mesh must receive the material explicitly.
+  body.material = ownerUnitMat
+  turret.material = ownerUnitMat
+  barrel.material = ownerUnitMat
   ownerUnit = unitGroup
 
   return { engine, scene }
@@ -220,11 +231,13 @@ function setupEnemyScene(canvas: HTMLCanvasElement): { engine: Engine; scene: Sc
   camera.lowerRadiusLimit = 2
   camera.upperRadiusLimit = 15
 
-  new HemisphericLight('hemi', new Vector3(0.5, 1, 0.3), scene)
+  const hemi = new HemisphericLight('hemi', new Vector3(0.5, 1, 0.3), scene)
+  hemi.intensity = 0.6
 
   // Ground
   const groundMat = new StandardMaterial('groundMat', scene)
   groundMat.diffuseColor = new Color3(0.18, 0.15, 0.15)
+  groundMat.specularColor = Color3.Black()
   const ground = MeshBuilder.CreateGround('ground', { width: 4, height: 4 }, scene)
   ground.material = groundMat
 
@@ -239,18 +252,26 @@ function setupEnemyScene(canvas: HTMLCanvasElement): { engine: Engine; scene: Sc
 
   enemyUnitMat = new StandardMaterial('enemyUnitMat', scene)
   enemyUnitMat.diffuseColor = new Color3(0.8, 0.7, 0.3)
+  enemyUnitMat.ambientColor = new Color3(0.3, 0.25, 0.1) // warm dark gold ambient
+  enemyUnitMat.specularColor = Color3.Black()
   enemyUnitMat.alpha = 1.0
-  enemyUnitMat.specularColor = new Color3(0.1, 0.1, 0.1)
 
   const unitGroup = new Mesh('enemyUnit', scene)
   body.parent = unitGroup
   turret.parent = unitGroup
   barrel.parent = unitGroup
-  unitGroup.material = enemyUnitMat
+  // Babylon.js does NOT propagate material from parent to children;
+  // each child mesh must receive the material explicitly.
+  body.material = enemyUnitMat
+  turret.material = enemyUnitMat
+  barrel.material = enemyUnitMat
   enemyUnit = unitGroup
 
-  // Initially invisible (cloaked from enemy perspective)
+  // Initially invisible (cloaked from enemy perspective).
+  // Babylon.js does NOT propagate isVisible from parent to children.
+  // Each child mesh must be set explicitly.
   enemyUnit.isVisible = false
+  enemyUnit.getChildMeshes().forEach(c => { c.isVisible = false })
 
   return { engine, scene }
 }

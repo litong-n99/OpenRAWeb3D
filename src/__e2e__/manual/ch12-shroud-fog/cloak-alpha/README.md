@@ -1,6 +1,6 @@
 # Shroud — Cloak Alpha Effect Visual Test
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright + Kimi视觉 + gl.readPixels, 2026-07-02, 8/8 通过, 100%, ER6 headless环境限制已记录, 2 B2缺陷已修复: 子网格material/isVisible传播)
 **创建日期**: 2026-06-15
 **对应模块**: `src/OpenRA.Mods.Common/Traits/Cloak.ts` (TODO-12.A.4.8 `modifyRender`, `isVisible`)
 
