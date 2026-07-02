@@ -125,7 +125,11 @@ export class SupportPowerChargeBar
     const totalTicks = power.totalTicks
     if (totalTicks <= 0) return 0
 
-    return 1 - remainingTicks / totalTicks
+    // Clamp to [0, 1] — guards against:
+    // - remainingTicks > totalTicks (init race → negative)
+    // - remainingTicks < 0 (over-decrement → > 1.0)
+    // BUGFIX ch13 guard: missing clamp could produce out-of-range bar values
+    return Math.max(0, Math.min(1, 1 - remainingTicks / totalTicks))
   }
 
   // -----------------------------------------------------------------------

@@ -256,4 +256,103 @@ describe('SupportPowerChargeBar', () => {
       expect(bar._testSpm).toBe(manager)
     })
   })
+
+  // ---------------------------------------------------------------------------
+  // NEGATIVE TESTS — regression guards for ch13 e2e (getValue clamping)
+  // ---------------------------------------------------------------------------
+
+  describe('getValue clamping — [0, 1] contract (ch13 guard)', () => {
+    // Bug pattern: all 5 ISelectionBar.getValue() implementations in the
+    // project lack [0, 1] clamping. If remainingTicks exceeds totalTicks
+    // (initialization race) or goes negative (over-decrement), getValue()
+    // returns out-of-range values that could break UI rendering.
+    //
+    // Fix: SupportPowerChargeBar.getValue() now clamps via
+    //   Math.max(0, Math.min(1, 1 - remainingTicks / totalTicks))
+
+    it('BUGFIX: clamps to 0 when remainingTicks > totalTicks (negative guard)', () => {
+      const info = makeInfo()
+      const bar = new SupportPowerChargeBar(actor, info)
+      // Simulate init race: remaining > total
+      const power = makeMockPower({ totalTicks: 1000, remainingTicks: 1500 })
+      bar._testSpm = makeMockManager([power])
+
+      // Without clamping: 1 - 1500/1000 = -0.5 (NEGATIVE — breaks UI!)
+      // With clamping: max(0, -0.5) = 0
+      const val = bar.getValue()
+      expect(val).toBeGreaterThanOrEqual(0)
+      expect(val).toBeLessThanOrEqual(1)
+      expect(val).toBe(0) // clamped to 0
+    })
+
+    it('BUGFIX: clamps to 1 when remainingTicks < 0 (over-decrement guard)', () => {
+      const info = makeInfo()
+      const bar = new SupportPowerChargeBar(actor, info)
+      // Simulate over-decrement: remaining negative
+      const power = makeMockPower({ totalTicks: 1000, remainingTicks: -100 })
+      bar._testSpm = makeMockManager([power])
+
+      // Without clamping: 1 - (-100)/1000 = 1.1 (EXCEEDS 1 — breaks UI!)
+      // With clamping: min(1, 1.1) = 1
+      const val = bar.getValue()
+      expect(val).toBeGreaterThanOrEqual(0)
+      expect(val).toBeLessThanOrEqual(1)
+      expect(val).toBe(1) // clamped to 1
+    })
+
+    it('BUGFIX: stays monotonic across normal range (no over-correction)', () => {
+      const info = makeInfo()
+      const bar = new SupportPowerChargeBar(actor, info)
+
+      // Normal range 0-1000: should produce monotonic increasing values
+      const values: number[] = []
+      for (let rem = 1000; rem >= 0; rem -= 50) {
+        const power = makeMockPower({ totalTicks: 1000, remainingTicks: rem, disabled: false })
+        bar._testSpm = makeMockManager([power])
+        values.push(bar.getValue())
+      }
+
+      // Monotonic increasing (as remaining decreases, charge increases)
+      for (let i = 1; i < values.length; i++) {
+        expect(values[i]).toBeGreaterThanOrEqual(values[i - 1])
+      }
+      // First is 0 (remaining=1000), last is 1 (remaining=0)
+      expect(values[0]).toBe(0)
+      expect(values[values.length - 1]).toBe(1)
+    })
+
+    it('BUGFIX: handles extreme remainingTicks (2x total — init race)', () => {
+      const info = makeInfo()
+      const bar = new SupportPowerChargeBar(actor, info)
+      const power = makeMockPower({ totalTicks: 1000, remainingTicks: 2000 })
+      bar._testSpm = makeMockManager([power])
+
+      // 1 - 2000/1000 = -1.0 → clamped to 0
+      expect(bar.getValue()).toBe(0)
+    })
+
+    it('BUGFIX: handles extreme negative remainingTicks (-2x total)', () => {
+      const info = makeInfo()
+      const bar = new SupportPowerChargeBar(actor, info)
+      const power = makeMockPower({ totalTicks: 1000, remainingTicks: -1000 })
+      bar._testSpm = makeMockManager([power])
+
+      // 1 - (-1000)/1000 = 2.0 → clamped to 1
+      expect(bar.getValue()).toBe(1)
+    })
+
+    it('BUGFIX: all outputs are in [0, 1] for wide range of inputs', () => {
+      const info = makeInfo()
+      const bar = new SupportPowerChargeBar(actor, info)
+
+      // Sweep from -500 to 1500 remaining ticks
+      for (let rem = -500; rem <= 1500; rem += 50) {
+        const power = makeMockPower({ totalTicks: 1000, remainingTicks: rem, disabled: false })
+        bar._testSpm = makeMockManager([power])
+        const val = bar.getValue()
+        expect(val).toBeGreaterThanOrEqual(0)
+        expect(val).toBeLessThanOrEqual(1)
+      }
+    })
+  })
 })
