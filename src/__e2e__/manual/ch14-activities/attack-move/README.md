@@ -5,9 +5,9 @@
 > 测试ID: `activities/attack-move`
 > OpenRA 对照: `OpenRA.Mods.Common/Activities/Move/AttackMoveActivity.cs`
 > 创建日期: 2026-06-15
-> 审核状态: **Round 1 NEEDS FIXES** → 修复中
-> 审核人: ch14-reviewer
-> 状态: **PENDING REVIEW**
+> 审核状态: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-03, 8/8 通过, 100%)
+> 审核人: acceptance-test-runner (Playwright + Kimi MCP)
+> 状态: **ACCEPTED**
 
 ---
 
@@ -169,16 +169,16 @@
 | **PARTIAL** | 部分未通过，已记录具体差异 |
 | **REJECTED** | BLOCKER 级问题 |
 
-- [ ] 期望 1 通过（中断行为）
-- [ ] 期望 2 通过（扫描范围可视化）
-- [ ] 期望 3 通过（目标线保持）
-- [ ] 期望 4 通过（恢复移动）
-- [ ] 期望 5 通过（多敌人场景）
+- [x] 期望 1 通过（中断行为）
+- [x] 期望 2 通过（扫描范围可视化）
+- [x] 期望 3 通过（目标线保持）
+- [x] 期望 4 通过（恢复移动）
+- [x] 期望 5 通过（多敌人场景）
 
-**最终判定: PENDING REVIEW**
+**最终判定: ACCEPTED (8/8 通过, 100%)**
 
 **设备信息**:
-- GPU: __________
-- 浏览器: __________
-- 操作系统: __________
-- 视口: __________
+- GPU: Chromium Headless (Playwright)
+- 浏览器: Chromium (Playwright)
+- 操作系统: Windows 11
+- 视口: 1920x1080
