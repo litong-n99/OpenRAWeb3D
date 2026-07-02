@@ -449,6 +449,7 @@ function onPointerDown(e: PointerEvent): void {
 
 function onPointerMove(e: PointerEvent): void {
   updateTerrainFromPosition(getCanvasPosition(e))
+  updateCursor()
 
   if (!dragState.activated) {
     updateDragStats()

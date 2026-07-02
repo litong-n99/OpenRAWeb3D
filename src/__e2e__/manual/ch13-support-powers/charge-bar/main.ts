@@ -334,13 +334,18 @@ function setupControls(): void {
     displayWhenEmpty = false
     updateEmptyButtons()
     updateBar()
+    updateStatusPanel()
   })
 
   btnShowAlways.addEventListener('click', () => {
     displayWhenEmpty = true
     updateEmptyButtons()
     updateBar()
+    updateStatusPanel()
   })
+
+  // Expose scene for Playwright test access
+  ;(window as unknown as Record<string, unknown>).__chargeBarScene = scene
 
   // Expose to dev tools
   ;(window as unknown as Record<string, unknown>).__chargeBarTest = {
@@ -403,6 +408,8 @@ function updateInfoBar(eng: Engine): void {
 // ---------------------------------------------------------------------------
 
 const { engine, scene } = setupScene()
+;(window as any).__chargeBarScene = scene
+;(window as any).__chargeBarEngine = engine
 setupControls()
 updateStatusPanel()
 

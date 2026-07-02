@@ -1,6 +1,6 @@
 # Support Powers -- Nuke Power Range Circles Test
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-02, 15/15 通过, 100%)
 **创建日期**: 2026-06-15
 **对应模块**: `src/OpenRA.Mods.Common/Traits/SupportPowers/NukePower.ts` (SelectNukePowerTarget)
 
