@@ -1678,3 +1678,95 @@ describe('FrozenUnderFog interface compliance', () => {
     expect(fuf).toHaveProperty('VisibilityHash')
   })
 })
+
+// ---------------------------------------------------------------------------
+// NEGATIVE TESTS — regression guards for ch12 e2e patterns
+// ---------------------------------------------------------------------------
+// ch12 e2e found 2 recurring patterns across 6 test pages:
+//   Pattern A: State transitions with wrong comparison direction
+//     (shrinkVisible: VISIBLE never degraded because comparison probed
+//      for HIGHER neighbor, but VISIBLE is max. Fix: use LOWER comparison.)
+//   Pattern B: UI/state update functions not called after mutation
+//     (reveal-map: 4 functions missing updateUIState() after state change)
+// These tests guard FrozenUnderFog state transitions against similar bugs.
+
+describe('FrozenUnderFog — state transition monotonicity (ch12 guard)', () => {
+  // ch12 e2e Pattern A (shrinkVisible): state transitions with wrong
+  // comparison direction — VISIBLE(2) checked for HIGHER neighbors
+  // instead of LOWER, so VISIBLE never degraded.
+  //
+  // ch12 e2e Pattern B (reveal-map): updateUIState() not called after
+  // state mutation — 4 functions missed the refresh call.
+  //
+  // These tests guard FrozenUnderFog visibility state transitions.
+
+  beforeEach(() => {
+    resetMockFrozenActors()
+    actorIdCounter = 0
+  })
+
+  it('BUGFIX: isVisible returns false when fog-enabled player not in frozen states (no false positive)', () => {
+    // Pattern A guard: visibility state must use correct comparison.
+    // If a player is NOT in _frozenStates, isVisible must return false,
+    // not default to true (wrong comparison direction).
+    const { players, world } = setupPlayersWorld(2, { fogEnabled: true })
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // Player 1 should NOT be visible (no frozen state for them yet)
+    expect(fuf.isVisible(self, players[1] as unknown as PlayerStub)).toBe(false)
+  })
+
+  it('BUGFIX: VisibilityHash monotonic — hash reflects accumulated visibility (no regression)', () => {
+    // Pattern A: VisibilityHash must only accumulate (bits set), never
+    // spuriously clear. Equivalent to ch12 shrinkVisible degradation
+    // direction correctness.
+    const { players, world } = setupPlayersWorld(2)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+    ;(world._executeFrameEndTasks as () => void)()
+
+    // Player 1 becomes visible → bit set
+    const mockRef1 = createMockFrozenRef({ viewer: players[1], visible: false })
+    fuf.onVisibilityChanged(mockRef1 as any)
+    const hashAfterP1 = fuf.VisibilityHash
+
+    // Player 1 bit should be set (index 1 → bit 1 = 2)
+    expect(hashAfterP1 & (1 << 1)).not.toBe(0)
+
+    // Player 0 also becomes visible → another bit set
+    const mockRef0 = createMockFrozenRef({ viewer: players[0], visible: false })
+    fuf.onVisibilityChanged(mockRef0 as any)
+    const hashAfterBoth = fuf.VisibilityHash
+
+    // Both bits set, hash increased
+    expect(hashAfterBoth & (1 << 0)).not.toBe(0)
+    expect(hashAfterBoth & (1 << 1)).not.toBe(0)
+    // Hash is superset (monotonic accumulation)
+    expect((hashAfterP1 | hashAfterBoth)).toBe(hashAfterBoth)
+  })
+
+  it('BUGFIX: frameEndTask executes after created — state update not skipped (Pattern B)', () => {
+    // Pattern B guard: equivalent to reveal-map missing updateUIState().
+    // frameEndTask must execute after created(); otherwise FrozenState
+    // remains stale and visibility checks return wrong results.
+    const { players, world } = setupPlayersWorld(1)
+    addFrozenLayerToPlayer(players[0])
+    const self = createMockBuildingActor({ owner: players[0] as unknown as PlayerStub, world })
+
+    const fuf = new FrozenUnderFog(new FrozenUnderFogInfo(), self)
+    fuf.created(self)
+
+    // frameEndTask should have been registered
+    expect(world.addFrameEndTask).toHaveBeenCalled()
+    // Execute it — must not throw
+    expect(() => (world._executeFrameEndTasks as () => void)()).not.toThrow()
+  })
+})
