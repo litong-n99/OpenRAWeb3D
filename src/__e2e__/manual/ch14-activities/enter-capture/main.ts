@@ -308,7 +308,8 @@ function createDashedLine(name: string, from: Vector3, to: Vector3, color: Color
 function updateTargetLine(): void {
   if (targetLineMesh) { targetLineMesh.dispose(); targetLineMesh = null }
   if (!engineer.isAlive || !building.isAlive) return
-  if (engineer.captureComplete) return
+  // BUGFIX E6: also hide target line when enter state is Finished (cancel / invalid target)
+  if (engineer.captureComplete || engineer.enterState === EnterState.Finished) return
 
   const from = new Vector3(engineer.posX, 0.3, engineer.posZ)
   const to = new Vector3(building.posX, 0.3, building.posZ)
