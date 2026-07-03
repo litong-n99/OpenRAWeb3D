@@ -1,7 +1,7 @@
 # Dropdown Menu — Acceptance Test
 **Module**: DropDownWidget (Chapter 16 UI Widget Extensions)
 **Test Case ID**: `ch16-widgets/dropdown-menu`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-03, 12/12 通过, 100%)
 
 ---
 
