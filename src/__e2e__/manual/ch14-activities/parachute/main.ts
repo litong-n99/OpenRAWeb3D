@@ -393,4 +393,25 @@ window.addEventListener('resize', () => engine.resize())
   parachute,
   startParachute,
   resetParachute,
+  getMeshByName: (name: string) => {
+    const mesh = scene.getMeshByName(name)
+    if (!mesh) return null
+    return {
+      name: mesh.name,
+      isVisible: mesh.isVisible,
+      position: { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z },
+      scaling: { x: mesh.scaling.x, y: mesh.scaling.y, z: mesh.scaling.z },
+      alpha: (mesh.material as StandardMaterial | null)?.alpha ?? 1,
+    }
+  },
+  getLandingEffectInfo: () => {
+    if (!landingEffect) return null
+    const mat = landingEffect.material as StandardMaterial
+    return {
+      exists: true,
+      timer: landingEffectTimer,
+      alpha: mat.alpha,
+      scale: landingEffect.scaling.x,
+    }
+  },
 }
