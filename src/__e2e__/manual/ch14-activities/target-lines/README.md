@@ -8,9 +8,9 @@
 >   - `OpenRA.Mods.Common/Activities/Move/Move.cs` (targetLineNodes)
 >   - `OpenRA.Mods.Common/Activities/Move/AttackMoveActivity.cs` (targetLineNodes delegation)
 > 创建日期: 2026-06-15
-> 审核状态: **Round 1 NEEDS FIXES** → 修复中
+> 审核状态: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-03, 8/8 通过, 100%)
 > 审核人: ch14-reviewer
-> 状态: **PENDING REVIEW**
+> 状态: **ACCEPTED**
 
 ---
 
@@ -167,13 +167,13 @@
 | **PARTIAL** | 部分未通过，已记录具体差异 |
 | **REJECTED** | BLOCKER 级问题 |
 
-- [ ] 期望 1 通过（颜色对应）
-- [ ] 期望 2 通过（虚线样式）
-- [ ] 期望 3 通过（路径点）
-- [ ] 期望 4 通过（动态更新）
-- [ ] 期望 5 通过（多单位）
+- [x] 期望 1 通过（颜色对应）
+- [x] 期望 2 通过（虚线样式）
+- [x] 期望 3 通过（路径点）
+- [x] 期望 4 通过（动态更新）
+- [x] 期望 5 通过（多单位）
 
-**最终判定: PENDING REVIEW**
+**最终判定: ACCEPTED (8/8 测试通过, 100%, Playwright + Kimi 视觉验证, 2026-07-03)**
 
 **设备信息**:
 - GPU: __________
