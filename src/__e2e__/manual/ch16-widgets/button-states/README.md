@@ -1,7 +1,7 @@
 # Button States — Acceptance Test
 **Module**: ButtonWidget (Chapter 16 UI Widget Extensions)
 **Test Case ID**: `ch16-widgets/button-states`
-**审核状态**: ⏳ 待审核
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-03, 27/27 通过, 100%)
 
 ---
 
