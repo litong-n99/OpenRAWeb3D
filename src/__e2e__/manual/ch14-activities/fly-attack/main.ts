@@ -203,7 +203,8 @@ function setupScene(): void {
 // ---------------------------------------------------------------------------
 
 function wAngleToRadians(angle: number): number {
-  return -Math.PI / 2 - (angle * 2 * Math.PI / 1024)
+  // BUGFIX: use + sign — WAngle 0=North(-Z), 256=East(+X), both CCW
+  return (angle * 2 * Math.PI / 1024) - Math.PI / 2
 }
 
 function tickFacing(current: number, desired: number, turnSpeed: number): number {
@@ -270,7 +271,7 @@ function tickAttackRun(): boolean {
   const dist = getDistanceToTarget()
   if (dist < ATTACK_RANGE * 0.5) {
     showFireEffect()
-    attacker.ammoPercent = Math.max(0, attacker.ammoPercent - 0.5)
+    attacker.ammoPercent = Math.max(0, attacker.ammoPercent - 0.15)
   }
 
   // Exit when past target (distance starts increasing)
@@ -288,9 +289,9 @@ function tickStrafe(): boolean {
 
   // Continuous fire while in range
   const dist = getDistanceToTarget()
-  if (dist < ATTACK_RANGE) {
+  if (dist <= ATTACK_RANGE) {
     showFireEffect()
-    attacker.ammoPercent = Math.max(0, attacker.ammoPercent - 1)
+    attacker.ammoPercent = Math.max(0, attacker.ammoPercent - 0.25)
   }
 
   // Exit after passing through
@@ -306,18 +307,19 @@ function tickHover(): boolean {
   const desiredFacing = getFacingToTarget()
   attacker.facing = tickFacing(attacker.facing, desiredFacing, attacker.turnSpeed)
 
-  // Stay in position (small drift allowed)
-  const dist = getDistanceToTarget()
-  if (dist > ATTACK_RANGE * 0.3) {
-    // Move closer
-    flyTick(desiredFacing, attacker.speed * 0.3)
+  // BUGFIX: hover aircraft stay in place — only move if not hovering
+  if (!attacker.canHover) {
+    const dist = getDistanceToTarget()
+    if (dist > ATTACK_RANGE * 0.3) {
+      flyTick(desiredFacing, attacker.speed * 0.3)
+    }
   }
 
   // Fire when facing target
   const facingDiff = Math.abs(((desiredFacing - attacker.facing + 1024) % 1024 + 512) % 1024 - 512)
   if (facingDiff < 64) {
     showFireEffect()
-    attacker.ammoPercent = Math.max(0, attacker.ammoPercent - 0.3)
+    attacker.ammoPercent = Math.max(0, attacker.ammoPercent - 0.1)
   }
 
   // Attack for a while then exit
@@ -376,7 +378,7 @@ function showFireEffect(): void {
 
   const flashMat = new StandardMaterial('flashMat', scene)
   flashMat.emissiveColor = new Color3(1, 0.8, 0.2)
-  fireEffect = MeshBuilder.CreateSphere('flash', { diameter: 0.3 }, scene)
+  fireEffect = MeshBuilder.CreateSphere('flash', { diameter: 1.0 }, scene)
   fireEffect.position = flashPos
   fireEffect.material = flashMat
 }
@@ -610,6 +612,7 @@ engine.runRenderLoop(() => {
               currentPhase = 'return_to_base'
             } else {
               currentPhase = 'approach'
+              attackRunCount = 0 // BUGFIX: reset count when re-entering approach from exit
             }
             phaseTimer = 0
           }
