@@ -5,7 +5,7 @@
 > 测试ID: `ch14-activities/turn`
 > OpenRA 对照: `OpenRA.Mods.Common/Activities/Turn.cs`
 > 创建日期: 2026-06-15
-> 审核状态: PENDING REVIEW
+> 审核状态: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-03, 8/8 通过, 100%)
 
 ---
 
