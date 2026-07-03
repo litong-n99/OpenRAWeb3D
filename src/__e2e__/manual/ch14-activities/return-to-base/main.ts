@@ -194,7 +194,7 @@ function setupScene(): void {
 // ---------------------------------------------------------------------------
 
 function wAngleToRadians(angle: number): number {
-  return -Math.PI / 2 - (angle * 2 * Math.PI / 1024)
+  return -Math.PI / 2 + (angle * 2 * Math.PI / 1024)
 }
 
 function tickFacing(current: number, desired: number, turnSpeed: number): number {
@@ -400,7 +400,7 @@ function updateAircraftVisuals(): void {
   if (!aircraftMesh) return
   aircraftMesh.position = aircraft.position.clone()
   const facingRad = wAngleToRadians(aircraft.facing)
-  aircraftMesh.rotation.y = -facingRad - Math.PI / 2
+  aircraftMesh.rotation.y = facingRad + Math.PI / 2
   aircraftMesh.rotation.z = (aircraft.roll * 2 * Math.PI / 1024)
 
   // Trail
@@ -612,9 +612,9 @@ window.addEventListener('resize', () => engine.resize())
 
 // Expose
 ;(window as unknown as Record<string, unknown>).__returnToBaseTest = {
-  aircraft,
-  currentPhase,
-  targetBaseIndex,
-  bases,
-  noBaseMode,
+  get aircraft() { return aircraft },
+  get currentPhase() { return currentPhase },
+  get targetBaseIndex() { return targetBaseIndex },
+  get bases() { return bases },
+  get noBaseMode() { return noBaseMode },
 }
