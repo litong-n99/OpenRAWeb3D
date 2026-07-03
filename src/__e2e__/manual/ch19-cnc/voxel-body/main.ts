@@ -36,9 +36,9 @@ const WANGLE_MAX = 1024
 function wangleToRadians(wangle: number): number {
   // WAngle 0 = North = negative Z direction
   // Angle increases counterclockwise from top-down view
-  // Standard: angle = 2*PI * wangle / 1024
-  // But North is -Z, so we need offset: rotate by -PI/2 to map 0 → -Z
-  return (wangle / WANGLE_MAX) * Math.PI * 2
+  // Standard angle = 2*PI * wangle / 1024 (0=+X/East)
+  // BUGFIX ch14 guard: add -PI/2 offset so WAngle 0 maps to -Z (North)
+  return (wangle / WANGLE_MAX) * Math.PI * 2 - Math.PI / 2
 }
 
 function wangleToDirectionName(wangle: number): string {

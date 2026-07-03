@@ -91,7 +91,9 @@ let groundRipple: Mesh | null = null
 
 function wAngleToRadians(angle: number): number {
   // WAngle 0 = North (-Z), CCW
-  return -Math.PI / 2 - (angle * 2 * Math.PI / 1024)
+  // BUGFIX ch14 guard: use + sign — same pattern as ch14/fly, fly-attack,
+  // land-takeoff, return-to-base. Negative sign caused reverse direction.
+  return -Math.PI / 2 + (angle * 2 * Math.PI / 1024)
 }
 
 function wAngleFromVector(dx: number, dz: number): number {

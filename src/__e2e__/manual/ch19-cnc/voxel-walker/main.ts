@@ -41,7 +41,8 @@ const WalkerState = {
 type WalkerState = (typeof WalkerState)[keyof typeof WalkerState]
 
 function wangleToRadians(wangle: number): number {
-  return (wangle / WANGLE_MAX) * Math.PI * 2
+  // BUGFIX ch14 guard: add -PI/2 offset so WAngle 0 (North=-Z) maps correctly
+  return (wangle / WANGLE_MAX) * Math.PI * 2 - Math.PI / 2
 }
 
 function wangleToDir(wangle: number): string {

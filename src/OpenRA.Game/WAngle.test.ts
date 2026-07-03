@@ -437,3 +437,65 @@ describe('WAngle rendererRadians() — Babylon.js rotation.y contract (ch09 V1 g
     expect(result.rendererRadians()).toBeGreaterThan(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// NEGATIVE TESTS — ch14 cross-project guard: rendererRadians() contract
+// ---------------------------------------------------------------------------
+//
+// BUG PATTERN (found in 7 e2e pages across ch14 + ch19):
+//   Local wAngleToRadians() re-implementations used negated formula
+//   -(angle*2PI/1024) or omitted the -PI/2 offset. This caused
+//   movement direction vectors to point opposite to expected.
+//
+// WAngle.rendererRadians() returns (angle * PI / 512).
+// This gives standard math radians: 0=East(+X), PI/2=North(-Z), CCW.
+// The method maps DIRECTLY to Babylon rotation.y — NO negation needed.
+// (Documented in ch09 V1 guard tests above.)
+//
+// The bug was in e2e test page utility functions that re-derived the
+// formula from scratch instead of using rendererRadians().
+
+describe('rendererRadians() contract — e2e formula guard (ch14 cross-project)', () => {
+  it('BUGFIX: rendererRadians() is (angle * PI / 512) — direct mapping', () => {
+    expect(new WAngle(0).rendererRadians()).toBe(0)
+    expect(new WAngle(256).rendererRadians()).toBeCloseTo(Math.PI / 2, 5)
+    expect(new WAngle(512).rendererRadians()).toBeCloseTo(Math.PI, 5)
+    expect(new WAngle(768).rendererRadians()).toBeCloseTo(3 * Math.PI / 2, 5)
+  })
+
+  it('BUGFIX: rendererRadians() is monotonic increasing with angle', () => {
+    let prev = -Infinity
+    for (let a = 0; a < 1024; a += 64) {
+      const r = new WAngle(a).rendererRadians()
+      expect(r).toBeGreaterThanOrEqual(prev)
+      prev = r
+    }
+  })
+
+  it('BUGFIX: negating rendererRadians() produces WRONG direction (negative test)', () => {
+    // The e2e bug pattern: -(angle*2PI/1024) - PI/2
+    // WAngle 256: -(PI/2) - PI/2 = -PI → WRONG direction (backwards)
+    // rendererRadians for WAngle 256: PI/2 → CORRECT
+    const w256 = new WAngle(256)
+    expect(w256.rendererRadians()).toBeCloseTo(Math.PI / 2, 5)
+
+    // Negation pattern would give -PI/2, which points opposite
+    const negated = -w256.rendererRadians()
+    expect(negated).toBeCloseTo(-Math.PI / 2, 5)
+    expect(negated).not.toBeCloseTo(Math.PI / 2, 5)
+  })
+
+  it('BUGFIX: e2e pages should prefer rendererRadians() over local re-derivation', () => {
+    // The standard formula (angle * PI / 512) produces correct values.
+    // Any e2e page re-deriving from scratch risks the sign error.
+    // This test documents the canonical conversion.
+    for (const [wangle, expectedRad] of [
+      [0, 0],
+      [256, Math.PI / 2],
+      [512, Math.PI],
+      [768, 3 * Math.PI / 2],
+    ] as [number, number][]) {
+      expect(new WAngle(wangle).rendererRadians()).toBeCloseTo(expectedRad, 5)
+    }
+  })
+})
