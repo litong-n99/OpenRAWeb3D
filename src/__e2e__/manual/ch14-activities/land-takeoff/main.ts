@@ -182,7 +182,8 @@ function setupScene(): void {
 // ---------------------------------------------------------------------------
 
 function wAngleToRadians(angle: number): number {
-  return -Math.PI / 2 - (angle * 2 * Math.PI / 1024)
+  // BUGFIX: WAngle 0=North(-Z), 256=East(+X) — use + for CCW mapping
+  return -Math.PI / 2 + (angle * 2 * Math.PI / 1024)
 }
 
 function tickFacing(current: number, desired: number, turnSpeed: number): number {
@@ -592,10 +593,10 @@ engine.runRenderLoop(() => {
 
 window.addEventListener('resize', () => engine.resize())
 
-// Expose
+// Expose test API (use getters so values stay in sync with live state)
 ;(window as unknown as Record<string, unknown>).__landTakeoffTest = {
   aircraft,
-  currentPhase,
-  landingPadPosition,
-  approachWaypoints,
+  get currentPhase() { return currentPhase },
+  get landingPadPosition() { return landingPadPosition },
+  get approachWaypoints() { return approachWaypoints },
 }
