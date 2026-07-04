@@ -25,6 +25,7 @@ import type {
   ClientOrder,
 } from '../../../../OpenRA.Game/Network/SyncReport.js'
 import type { ISync } from '../../../../OpenRA.Game/Sync.js'
+import { registerSyncHash } from '../../../../OpenRA.Game/Sync.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,6 +62,25 @@ class MockPositionTrait implements ISync {
   y = 2048
   z = 0
 }
+
+// BUGFIX ch17: mock ISync traits must register hash functions before
+// SyncReport.updateSyncReport() calls Sync.hash() which requires them.
+registerSyncHash('MockHealthTrait', (obj: ISync) => {
+  const mh = obj as MockHealthTrait
+  let hash = 0
+  hash = ((hash << 5) + hash) ^ (mh.hp | 0)
+  hash = ((hash << 5) + hash) ^ (mh.maxHp | 0)
+  hash = ((hash << 5) + hash) ^ (mh.armor | 0)
+  return hash >>> 0
+})
+registerSyncHash('MockPositionTrait', (obj: ISync) => {
+  const mp = obj as MockPositionTrait
+  let hash = 0
+  hash = ((hash << 5) + hash) ^ (mp.x | 0)
+  hash = ((hash << 5) + hash) ^ (mp.y | 0)
+  hash = ((hash << 5) + hash) ^ (mp.z | 0)
+  return hash >>> 0
+})
 
 // ---------------------------------------------------------------------------
 // Mock World with ISync actors and effects
