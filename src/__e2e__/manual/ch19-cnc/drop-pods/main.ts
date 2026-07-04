@@ -261,20 +261,23 @@ function clearAllPods(): void {
 function updateStatus(): void {
   const descending = activePods.filter(p => p.phase === 'DESCENDING').length
   const impacting = activePods.filter(p => p.phase === 'IMPACTING').length
-  const deployed = activePods.filter(p => p.phase === 'DEPLOYED' || p.phase === 'COMPLETE').length
+  const deployed = activePods.filter(p => p.phase === 'DEPLOYED').length
+  const complete = activePods.filter(p => p.phase === 'COMPLETE').length
 
   let phaseStr = 'IDLE'
   if (activePods.length > 0) {
     if (descending > 0) phaseStr = 'DESCENDING'
     else if (impacting > 0) phaseStr = 'IMPACTING'
-    else if (deployed === activePods.length) phaseStr = 'COMPLETE'
+    else if (deployed > 0) phaseStr = 'DEPLOYED'
+    else if (complete === activePods.length) phaseStr = 'COMPLETE'
     else phaseStr = 'MIXED'
   }
 
   document.getElementById('st-phase')!.textContent = phaseStr
   document.getElementById('st-pods')!.textContent = String(activePods.length)
   document.getElementById('st-impacted')!.textContent = String(activePods.filter(p => p.phase !== 'DESCENDING').length)
-  document.getElementById('st-deployed')!.textContent = String(deployed)
+  // "已部署" counts pods whose blue unit cube has actually appeared (COMPLETE).
+  document.getElementById('st-deployed')!.textContent = String(complete)
   document.getElementById('st-target')!.textContent = `${targetBaseX.toFixed(0)}, ${targetBaseZ.toFixed(0)}`
 }
 

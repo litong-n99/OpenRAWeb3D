@@ -1,6 +1,6 @@
 # 空投降落舱 — DropPodImpact 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-05, 17/17 通过, 100%)
 **创建日期**: 2026-06-17
 **对应模块**: `src/OpenRA.Mods.Cnc/Projectiles/DropPodImpact.ts` (187 lines)
 **OpenRA 对照**: `OpenRA.Mods.Cnc/Projectiles/DropPodImpact.cs` (77 lines)
