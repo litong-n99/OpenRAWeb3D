@@ -13,12 +13,11 @@
  *   - OpenRA.Game/Network/ReplayConnection.cs
  */
 
-import { encode } from '@msgpack/msgpack'
 import { ReplayRecorder } from '../../../../OpenRA.Game/Network/ReplayRecorder.js'
 import { ReplayConnection } from '../../../../OpenRA.Game/Network/ReplayConnection.js'
 import { ReplayMetadata } from '../../../../OpenRA.Game/FileFormats/ReplayMetadata.js'
 import { GameInformation } from '../../../../OpenRA.Game/GameInformation.js'
-import type { Order, OrderPacket } from '../../../../OpenRA.Game/Network/Order.js'
+import { Order, OrderPacket } from '../../../../OpenRA.Game/Network/Order.js'
 import type { OrderManagerStub, LobbyInfoStub, ClientStub, GlobalSettingsStub, SlotStub } from '../../../../OpenRA.Game/Network/UnitOrders.js'
 
 // ---------------------------------------------------------------------------
@@ -32,25 +31,18 @@ function resultLine(pass: boolean, label: string, detail?: string): string {
   return `<div class="test-result"><span class="${cls}">${icon}</span> ${label}${detailStr}</div>`
 }
 
-/** Helper: create a simple StartGame order packet (frame 0) using MessagePack */
+/** Helper: create a StartGame order packet (frame 0) using proper Order serialization.
+ *  BUGFIX ch17: raw MessagePack encode() produces wrong format for Order.deserialize().
+ *  Must use Order.fromTargetString() + OrderPacket.serialize() for correct binary layout. */
 function makeStartGamePacket(): Uint8Array {
-  // Order format: MessagePack-encoded [orderString, targetString, isImmediate]
-  // StartGame: ['StartGame', null, false]
-  const msgpackBytes = encode(['StartGame', null, false])
-  const buf = new Uint8Array(4 + msgpackBytes.length)
-  new DataView(buf.buffer).setInt32(0, 0, false) // frame=0 BE
-  buf.set(msgpackBytes, 4)
-  return buf
+  const order = Order.fromTargetString('StartGame', '', false)
+  return new OrderPacket([order]).serialize(0)
 }
 
-/** Helper: create a simple chat-like order packet (frame > 0, not special) using MessagePack */
+/** Helper: create a chat-like order packet using proper Order serialization. */
 function makeChatPacket(frame: number, text: string): Uint8Array {
-  // Chat order: ['Chat', text, false]
-  const msgpackBytes = encode(['Chat', text, false])
-  const buf = new Uint8Array(4 + msgpackBytes.length)
-  new DataView(buf.buffer).setInt32(0, frame, false) // frame BE
-  buf.set(msgpackBytes, 4)
-  return buf
+  const order = Order.fromTargetString(text, '', false)
+  return new OrderPacket([order]).serialize(frame)
 }
 
 /** Create a disconnect packet (matching OrderType.Disconnect = 0xBF) */
