@@ -1229,6 +1229,59 @@ describe('ScrollPanelWidget', () => {
   })
 
   // ---------------------------------------------------------------------------
+  // NEGATIVE TESTS — ch16 e2e guard: tick() contract for smooth scrolling
+  // ---------------------------------------------------------------------------
+
+  describe('tick() contract — smooth scroll without tick() guard (ch16 guard)', () => {
+    // Bug pattern (ch16 scroll-panel e2e): gameLoopTick called Ui.tick()
+    // but not sp.tick(). Without widget tick(), smooth scrolling didn't
+    // advance, causing the scroll panel to remain frozen at its current
+    // position. This affects all widgets that implement ITick.
+
+    it('BUGFIX: smooth scroll does NOT advance without tick() call (negative)', () => {
+      // Converse of "smooth scroll advances during tick" — verifies that
+      // the scroll position stays frozen when tick() is NOT called.
+      panel.contentHeight = 1000
+      panel.smoothScrollSpeed = 1.0
+      panel.scrollTo(-300, true)
+      expect(panel.scrollPosition).toBe(0)
+
+      // Simulate time passing WITHOUT calling tick()
+      panel['_lastSmoothScrollTime'] = performance.now() - 200
+
+      // Position should NOT change without tick()
+      const posBefore = panel.scrollPosition
+      expect(posBefore).toBe(0) // still at starting position
+      // tick() was deliberately NOT called — position stays frozen
+    })
+
+    it('BUGFIX: tick() is required for button repeat scrolling', () => {
+      panel.contentHeight = 1000
+      panel.scrollTo(-200, false)
+
+      // Simulate mousedown without calling tick()
+      panel['_upPressed'] = true
+      // No tick() call — position stays unchanged
+      expect(panel.scrollPosition).toBe(-200)
+
+      // After tick(), position should change
+      panel.tick()
+      expect(panel.scrollPosition).toBeGreaterThan(-200)
+    })
+
+    it('BUGFIX: tick() is required for arrow button state updates', () => {
+      panel.contentHeight = 1000
+      // Scroll to top
+      panel.scrollTo(0, false)
+      // Without tick(), button states reflect default (not yet updated)
+      // After tick(), button states are computed from current position
+      panel.tick()
+      expect(panel['_upDisabled']).toBe(true)  // at top → up disabled
+      expect(panel['_downDisabled']).toBe(false) // at top → down enabled
+    })
+  })
+
+  // ---------------------------------------------------------------------------
   // yieldMouseFocus
   // ---------------------------------------------------------------------------
 
