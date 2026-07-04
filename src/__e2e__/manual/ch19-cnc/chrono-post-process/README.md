@@ -1,6 +1,6 @@
 # 超时空后处理特效 - ChronoshiftPostProcessEffect 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-04, 7/7 测试通过, 14/14 指标通过, 100%)
 **创建日期**: 2026-06-17
 **对应模块**: `src/OpenRA.Mods.Cnc/Traits/PaletteEffects/ChronoshiftPostProcessEffect.ts`
 **OpenRA 对照**: `OpenRA.Mods.Cnc/Traits/PaletteEffects/ChronoshiftPostProcessEffect.cs` (56 lines)

@@ -142,6 +142,20 @@ function setupScene(): void {
   // Setup the chrono post-process (simulated via scene-level color overlay)
   // In real implementation, this would be a custom PostProcess with chroma-shift shader.
   // For visual testing, we apply a semi-transparent overlay color via a PostProcess.
+
+  // BUGFIX ch19: PostProcess requires BOTH vertex + fragment shaders.
+  // Babylon.js v9 throws 'Cannot read properties of undefined' when only
+  // the fragment shader is registered (DrawWrapper needs the pair).
+  Effect.ShadersStore['chromaShiftVertexShader'] = `
+    precision highp float;
+    attribute vec2 position;
+    varying vec2 vUV;
+    void main(void) {
+      vUV = position * 0.5 + 0.5;
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  `;
+
   Effect.ShadersStore['chromaShiftPixelShader'] = `
     varying vec2 vUV;
     uniform sampler2D textureSampler;
@@ -160,7 +174,7 @@ function setupScene(): void {
     ['chromaColor', 'blendFactor'],
     null,
     1.0,
-    null,
+    camera, // BUGFIX ch19: Babylon v9 PostProcess requires camera (not null) for engine ref
   )
   chromaPostProcess.onApply = (effect) => {
     const color = chromaColor
