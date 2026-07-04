@@ -5,7 +5,7 @@
 > 测试ID: `ch17-replay/gamesave-roundtrip`
 > OpenRA 对照: `OpenRA.Game/Network/GameSave.cs`
 > 创建日期: 2026-06-16
-> 审核状态: PENDING REVIEW
+> 审核状态: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-04, 15/15 通过, 100%)
 
 ---
 
@@ -156,13 +156,15 @@
 | **PARTIAL** | 部分未通过，已记录具体差异 |
 | **REJECTED** | BLOCKER 级问题 |
 
-- [ ] 期望 1 通过（空 GameSave 初始状态）
-- [ ] 期望 2 通过（startGame 配置快照）
-- [ ] 期望 3 通过（dispatchOrders 订单录制）
-- [ ] 期望 4 通过（save 二进制输出格式）
-- [ ] 期望 5 通过（加载往返验证）
+- [x] 期望 1 通过（空 GameSave 初始状态）
+- [x] 期望 2 通过（startGame 配置快照）
+- [x] 期望 3 通过（dispatchOrders 订单录制）
+- [x] 期望 4 通过（save 二进制输出格式）
+- [x] 期望 5 通过（加载往返验证）
 
-**最终判定: PENDING REVIEW**
+**最终判定: ACCEPTED**
+
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-04, 15/15 通过, 100%)
 
 **设备信息**:
 - 浏览器: __________

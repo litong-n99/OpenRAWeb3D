@@ -1411,9 +1411,35 @@ describe('GameSave', () => {
 
       // Sync packets update LastSyncFrame AND get recorded as orders
       // (matching C#: valid-length sync packets fall through to order recording)
+      // C# GameSave.cs line 210-212: LastSyncFrame=frame; lastSyncPacket=data;
+      // No `return` after — intentionally falls through to order recording.
       expect(gs.LastSyncFrame).toBe(50)
       expect(gs.LastOrdersFrame).toBe(50)
       expect(gs.ordersChunkCount).toBe(1) // Also recorded as an order
+    })
+
+    it('BUGFIX ch17 guard: sync packet fall-through is intentional (C# parity)', () => {
+      // This test documents that the sync packet being recorded as an order
+      // is INTENTIONAL behavior matching C# GameSave.cs. If you're tempted
+      // to add `return` after _lastSyncPacket assignment — DON'T.
+      const gs = new GameSave()
+      const client0 = makeSessionClient({ index: 0, slot: 'Multi0' })
+      const globalSettings = makeSessionGlobal()
+      const slot0 = makeSessionSlot({ playerReference: 'Multi0' })
+      const lobbyInfo = makeLobbyInfo(globalSettings, [client0], [['Multi0', slot0]])
+      gs.startGame(lobbyInfo, makeMapPreview())
+
+      // Dispatch a regular order first
+      gs.dispatchOrders(makeConnection(0), 10, makeOrderPacket(8))
+      expect(gs.ordersChunkCount).toBe(1)
+
+      // Dispatch a sync packet — should increment ordersChunkCount
+      const syncData = makeSyncPacket()
+      gs.dispatchOrders(makeConnection(0), 50, syncData)
+      expect(gs.LastSyncFrame).toBe(50)
+      expect(gs.LastOrdersFrame).toBe(50)
+      // Sync packet IS recorded: ordersChunkCount increments
+      expect(gs.ordersChunkCount).toBe(2)
     })
   })
 

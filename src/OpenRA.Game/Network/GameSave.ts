@@ -866,6 +866,9 @@ export class GameSave {
 
       this.LastSyncFrame = frame
       this._lastSyncPacket = new Uint8Array(data)
+      // NOTE: C# GameSave.cs line 210-212 intentionally falls through to
+      // order recording after sync packet handling (no `return`).
+      // Sync packets are recorded as orders in the replay stream.
     }
 
     if (frame <= this.LastOrdersFrame) return

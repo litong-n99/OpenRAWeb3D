@@ -204,7 +204,7 @@ function testStartGame(): { html: string; gs: GameSave } {
   const gs = new GameSave()
 
   const client0 = makeSessionClient({ index: 0, name: 'Player1', color: '#0000FF', faction: 'allies', team: 1 })
-  const client1 = makeSessionClient({ index: 1, name: 'Bot1', color: '#FF0000', faction: 'soviet', team: 1, bot: 'EasyBot', isBot: true })
+  const client1 = makeSessionClient({ index: 1, name: 'Bot1', color: '#FF0000', faction: 'soviet', team: 1, bot: 'EasyBot', isBot: true, slot: 'Multi1' })
   const clients = [client0, client1]
   const slots: Array<[string, SessionSlot]> = [
     ['Multi0', makeSessionSlot('Multi0')],
@@ -301,12 +301,13 @@ function testDispatchOrders(gs: GameSave): string {
   const syncPkt = makeSyncPacket()
   const chunksBeforeSync = gs.ordersChunkCount
   gs.dispatchOrders(conn, 5, syncPkt)
-  // Sync packets: updated LastSyncFrame but NOT added to ordersChunks
+  // NOTE: C# GameSave.cs line 210-212 intentionally falls through to order
+  // recording after sync packet handling. Sync packets ARE recorded as orders.
   lines.push(resultLine(gs.LastSyncFrame === 5,
     `dispatchOrders(sync frame=5): LastSyncFrame = 5`, `got ${gs.LastSyncFrame}`))
-  lines.push(resultLine(gs.ordersChunkCount === chunksBeforeSync,
-    '同步包不写入订单流: ordersChunkCount 不变',
-    `期望 ${chunksBeforeSync}, 得到 ${gs.ordersChunkCount}`))
+  lines.push(resultLine(gs.ordersChunkCount === chunksBeforeSync + 1,
+    '同步包写入订单流 (匹配 C# 行为): ordersChunkCount +1',
+    `期望 ${chunksBeforeSync + 1}, 得到 ${gs.ordersChunkCount}`))
 
   return lines.join('\n')
 }
@@ -400,7 +401,8 @@ function testRoundTrip(original: GameSave, buffer: Uint8Array): string {
     ['LastOrdersFrame', original.LastOrdersFrame, loaded.LastOrdersFrame],
     ['LastSyncFrame', original.LastSyncFrame, loaded.LastSyncFrame],
     ['ordersStreamLength', original.ordersStreamLength, loaded.ordersStreamLength],
-    ['ordersChunkCount', original.ordersChunkCount, loaded.ordersChunkCount],
+    // ordersChunkCount is NOT a round-trip invariant — _loadFromBuffer merges
+    // all order bytes into a single chunk. Boundary info is not in the binary format.
     ['Slots.size', original.Slots.size, loaded.Slots.size],
     ['SlotClients.size', original.SlotClients.size, loaded.SlotClients.size],
     ['TraitData.size', original.TraitData.size, loaded.TraitData.size],
@@ -556,13 +558,10 @@ document.getElementById('btn-test-startgame')!.addEventListener('click', () => {
   setSection('section-startgame', html)
 })
 document.getElementById('btn-test-dispatch')!.addEventListener('click', () => {
-  if (sharedGS) {
-    setSection('section-dispatch', testDispatchOrders(sharedGS))
-  } else {
-    const { gs } = testStartGame()
-    sharedGS = gs
-    setSection('section-dispatch', testDispatchOrders(gs))
-  }
+  // BUGFIX: always create fresh GameSave — sharedGS may already have dispatched orders
+  const { gs } = testStartGame()
+  sharedGS = gs
+  setSection('section-dispatch', testDispatchOrders(gs))
 })
 document.getElementById('btn-test-serialize')!.addEventListener('click', () => {
   if (sharedGS) {
