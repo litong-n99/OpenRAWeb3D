@@ -1534,6 +1534,48 @@ describe('GameSave', () => {
   self.LastOrdersFrame = frame
 }
 
+  // ---------------------------------------------------------------------------
+  // NEGATIVE TESTS — ch17 e2e guard: duplicate SlotClient detection
+  // ---------------------------------------------------------------------------
+
+  describe('SlotClient slot uniqueness (ch17 guard)', () => {
+    // Bug pattern (ch17 gamesave-roundtrip): client0 and client1 both
+    // defaulted to slot 'Multi0', causing SlotClients.size=1 instead of 2.
+    // The makeSessionClient helper's default slot should be unique per client.
+
+    it('BUGFIX: two clients with different slots produce 2 SlotClients', () => {
+      const gs = new GameSave()
+      const client0 = makeSessionClient({ index: 0, slot: 'Multi0' })
+      const client1 = makeSessionClient({ index: 1, slot: 'Multi1' })
+      const globalSettings = makeSessionGlobal()
+      const slot0 = makeSessionSlot({ playerReference: 'Multi0' })
+      const slot1 = makeSessionSlot({ playerReference: 'Multi1' })
+      const lobbyInfo = makeLobbyInfo(globalSettings,
+        [client0, client1],
+        [['Multi0', slot0], ['Multi1', slot1]]
+      )
+      gs.startGame(lobbyInfo, makeMapPreview())
+      expect(gs.SlotClients.size).toBe(2)
+    })
+
+    it('BUGFIX: duplicate slot (same slot) produces only 1 SlotClient (overwrites)', () => {
+      // This documents the default behavior: same slot = overwrite.
+      // Test pages must ensure unique slots per client in test setup.
+      const gs = new GameSave()
+      const client0 = makeSessionClient({ index: 0, slot: 'Multi0' })
+      const client1 = makeSessionClient({ index: 1, slot: 'Multi0' }) // SAME slot — BUG!
+      const globalSettings = makeSessionGlobal()
+      const slot0 = makeSessionSlot({ playerReference: 'Multi0' })
+      const lobbyInfo = makeLobbyInfo(globalSettings,
+        [client0, client1],
+        [['Multi0', slot0]]
+      )
+      gs.startGame(lobbyInfo, makeMapPreview())
+      // Only 1 SlotClient because both clients share the same slot
+      expect(gs.SlotClients.size).toBe(1)
+    })
+  })
+
 // Augment the GameSave interface so TypeScript knows about the test helper
 declare module './GameSave' {
   interface GameSave {
