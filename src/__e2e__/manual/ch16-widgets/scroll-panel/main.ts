@@ -253,6 +253,7 @@ container.focus()
 
 function gameLoopTick(): void {
   Ui.tick()
+  sp.tick()
   requestAnimationFrame(gameLoopTick)
 }
 requestAnimationFrame(gameLoopTick)
