@@ -499,3 +499,30 @@ describe('rendererRadians() contract — e2e formula guard (ch14 cross-project)'
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// NEGATIVE TESTS — ch19 guard: movement vector formula contract
+// ---------------------------------------------------------------------------
+//
+// BUG PATTERN (ch19 voxel-walker): after wangleToRadians was fixed to
+// include -PI/2 offset (ch14 guard), the walking movement formula was
+// NOT updated. WAngle 0→North caused Westward movement.
+//
+// rendererRadians() = angle * PI / 512 (standard math, 0=East).
+// Pages deriving movement from radians must verify all 4 directions.
+
+describe('Movement vector formula contract (ch19 guard)', () => {
+  it('BUGFIX: rendererRadians() returns pure angle*PI/512 (0=East, CCW)', () => {
+    expect(new WAngle(0).rendererRadians()).toBe(0)
+    expect(new WAngle(256).rendererRadians()).toBeCloseTo(Math.PI / 2, 5)
+    expect(new WAngle(512).rendererRadians()).toBeCloseTo(Math.PI, 5)
+    expect(new WAngle(768).rendererRadians()).toBeCloseTo(3 * Math.PI / 2, 5)
+  })
+
+  it('BUGFIX: negating gives opposite direction (ch14+ch19 guard)', () => {
+    const east = new WAngle(768).rendererRadians()
+    const negated = -east
+    expect(negated).toBeCloseTo(-3 * Math.PI / 2, 5)
+    expect(negated).not.toBeCloseTo(3 * Math.PI / 2, 5)
+  })
+})
