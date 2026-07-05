@@ -1,6 +1,6 @@
 # 离子炮轨道打击 — IonCannon Beam + Ground Splash 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-05, 14/14 通过, 100%)
 **创建日期**: 2026-06-17
 **对应模块**: `src/OpenRA.Mods.Cnc/Projectiles/IonCannon.ts` (176 lines)
 **OpenRA 对照**: `OpenRA.Mods.Cnc/Projectiles/IonCannon.cs` (73 lines)
