@@ -1,6 +1,6 @@
 # 多部件Voxel模型层级 — Body+Turret+Barrel 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-05, 8/8 通过, 100%)
 **创建日期**: 2026-06-17
 **对应模块**: `src/OpenRA.Mods.Cnc/Traits/Render/{RenderVoxels,WithVoxelBody,WithVoxelTurret,WithVoxelBarrel}.ts`
 **OpenRA 对照**: `OpenRA.Mods.Cnc/Traits/Render/RenderVoxels.cs` (189 lines), `WithVoxelBody.cs` (68 lines), `WithVoxelTurret.cs` (67 lines), `WithVoxelBarrel.cs` (105 lines)
