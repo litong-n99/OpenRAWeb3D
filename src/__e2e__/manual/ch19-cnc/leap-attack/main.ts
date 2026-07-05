@@ -229,6 +229,7 @@ function setupScene(): void {
   const tMat = new StandardMaterial('tMat2', scene)
   tMat.diffuseColor = new Color3(0.8, 0.7, 0.1)
   targetMesh = new Mesh('target', scene)
+  targetMesh.material = tMat // BUGFIX: parent Mesh needs material too (Babylon doesn't inherit)
   const tBody = MeshBuilder.CreateBox('tBody', { width: 0.5, height: 0.3, depth: 0.7 }, scene)
   tBody.material = tMat
   tBody.parent = targetMesh

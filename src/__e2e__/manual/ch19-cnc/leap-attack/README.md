@@ -1,6 +1,6 @@
 # 跳跃攻击抛物线 — Leap + LeapAttack 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-05, 23/23 通过, 100%)
 **创建日期**: 2026-06-17
 **对应模块**: `src/OpenRA.Mods.Cnc/Activities/Leap.ts` (319 lines), `src/OpenRA.Mods.Cnc/Activities/LeapAttack.ts` (448 lines)
 **OpenRA 对照**: `OpenRA.Mods.Cnc/Activities/Leap.cs` (126 lines), `OpenRA.Mods.Cnc/Activities/LeapAttack.cs` (176 lines)
