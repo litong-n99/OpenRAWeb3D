@@ -228,8 +228,9 @@ class WalkerModel {
     // Move the walker forward slightly each tick
     const moveSpeed = 0.02
     const headingRad = wangleToRadians(this.heading)
-    this.bodyNode.position.x += Math.sin(headingRad) * moveSpeed
-    this.bodyNode.position.z -= Math.cos(headingRad) * moveSpeed
+    // BUGFIX: match wangleToRadians -PI/2 offset — cos for X, sin for Z
+    this.bodyNode.position.x += Math.cos(headingRad) * moveSpeed
+    this.bodyNode.position.z += Math.sin(headingRad) * moveSpeed
   }
 
   private tickTurning(t: number): void {
@@ -411,6 +412,7 @@ function setupControls(): void {
 
   document.getElementById('btn-reset')!.addEventListener('click', () => {
     currentState = WalkerState.Idle
+    targetHeading = 0 // BUGFIX: reset heading to North
     walker.dispose()
     walker = new WalkerModel(scene)
     walker.bodyNode.position = Vector3.Zero()
@@ -418,6 +420,7 @@ function setupControls(): void {
     document.getElementById('lbl-speed')!.textContent = '12 tick/周期'
     ;(rngSpeed as HTMLInputElement).value = '12'
     walker.cycleLength = 12
+    ;(selDir as HTMLSelectElement).value = '0' // BUGFIX: reset dropdown
   })
 }
 

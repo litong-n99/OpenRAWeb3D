@@ -1,6 +1,6 @@
 # Voxel步行机甲动画 — Walker Body Animation 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-05, 14/14 通过, 100%)
 **创建日期**: 2026-06-17
 **对应模块**: `src/OpenRA.Mods.Cnc/Traits/Render/WithVoxelWalkerBody.ts` (106 lines C#, TS deferred)
 **OpenRA 对照**: `OpenRA.Mods.Cnc/Traits/Render/WithVoxelWalkerBody.cs` (106 lines)
