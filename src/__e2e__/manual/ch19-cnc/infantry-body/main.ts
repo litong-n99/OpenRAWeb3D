@@ -223,33 +223,40 @@ function applyDisplayMode(mode: string): void {
   switch (mode) {
     case 'all':
       bodyMesh.position.x = 0
+      bodyMesh.position.z = 0
       bodyMesh.isVisible = true
+      bodyMesh.getChildMeshes().forEach(m => m.isVisible = true)
       disguiseOverlay.position.z = -0.01
       disguiseOverlay.isVisible = true
       attackOverlay.position.z = 0.02
       attackOverlay.isVisible = isAttacking
       idleOverlay.position.z = 0.01
-      idleOverlay.isVisible = true  // force-visible in 'all' mode, regardless of toggle state
+      idleOverlay.isVisible = true
       idleVisible = true
       break
     case 'body-only':
+      bodyMesh.isVisible = true
+      bodyMesh.getChildMeshes().forEach(m => m.isVisible = true)
       disguiseOverlay.isVisible = false
       attackOverlay.isVisible = false
       idleOverlay.isVisible = false
       break
     case 'overlay-only':
+      // BUGFIX: Babylon parent isVisible does NOT propagate to child meshes
       bodyMesh.isVisible = false
+      bodyMesh.getChildMeshes().forEach(m => m.isVisible = false)
       disguiseOverlay.isVisible = true
       attackOverlay.isVisible = isAttacking
       idleOverlay.isVisible = idleVisible
       break
     case 'exploded':
-      // Offset each layer to the side
-      bodyMesh.position.x = -0.8
-      disguiseOverlay.position = new Vector3(-0.2, 0.6, -0.01)
-      attackOverlay.position = new Vector3(0.3, 0.9, 0.02)
-      idleOverlay.position = new Vector3(-0.5, 0.6, 0.01)
+      // BUGFIX: use Z offset — ArcRotateCamera alpha=0 makes X the depth axis
+      bodyMesh.position.z = -0.8
+      disguiseOverlay.position = new Vector3(0, 0.6, -0.5)
+      attackOverlay.position = new Vector3(0, 0.9, -0.2)
+      idleOverlay.position = new Vector3(0, 0.6, 0.2)
       bodyMesh.isVisible = true
+      bodyMesh.getChildMeshes().forEach(m => m.isVisible = true)
       disguiseOverlay.isVisible = true
       attackOverlay.isVisible = isAttacking
       idleOverlay.isVisible = idleVisible

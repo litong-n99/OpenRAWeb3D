@@ -1,6 +1,6 @@
 # 多层步兵精灵渲染 — Infantry Body Layers 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-05, 12/12 通过, 100%)
 **创建日期**: 2026-06-17
 **对应模块**:
 - `src/OpenRA.Mods.Cnc/Traits/Render/WithDisguisingInfantryBody.ts` (262 lines)
