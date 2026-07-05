@@ -1,6 +1,6 @@
 # MAD坦克自爆序列 - MadTank DetonationSequence 验收测试
 
-**审核状态**: 待审核 (Pending Review)
+**审核状态**: ✅ 全部审核通过 (自动化验收测试 Playwright, 2026-07-05, 9/9 通过, 100%)
 **创建日期**: 2026-06-17
 **对应模块**: `src/OpenRA.Mods.Cnc/Traits/MadTank.ts`
 **OpenRA 对照**: `OpenRA.Mods.Cnc/Traits/MadTank.cs` (255 lines)
