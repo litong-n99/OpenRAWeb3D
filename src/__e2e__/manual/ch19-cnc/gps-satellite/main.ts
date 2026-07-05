@@ -231,6 +231,9 @@ function initializeSatellite(): void {
   if (satTrail) { satTrail.dispose(); satTrail = null }
   satMesh.position = new Vector3(0, 1.6, 0)
   satMesh.scaling = new Vector3(0.01, 0.01, 0.01)
+
+  // Ensure the DOM reflects the reset state immediately (useful for tests).
+  updateStatus()
 }
 
 // ---------------------------------------------------------------------------
@@ -268,8 +271,10 @@ function updateInfoBar(): void {
 function setupControls(): void {
   document.getElementById('btn-launch')!.addEventListener('click', () => {
     initializeSatellite()
-    // Scale up satellite
+    // Scale up satellite and start ticking from a clean accumulator.
     satMesh.scaling = new Vector3(1, 1, 1)
+    isLaunched = true
+    tickAccumulator = 0
   })
 
   document.getElementById('rng-delay')!.addEventListener('input', (e) => {
@@ -281,6 +286,8 @@ function setupControls(): void {
   document.getElementById('btn-reset')!.addEventListener('click', () => {
     initializeSatellite()
     satMesh.scaling = new Vector3(0.01, 0.01, 0.01)
+    isLaunched = false
+    tickAccumulator = 0
   })
 }
 
@@ -293,6 +300,7 @@ setupControls()
 
 let tickAccumulator = 0
 let rawTicks = 0
+let isLaunched = false
 
 engine.runRenderLoop(() => {
   const dt = engine.getDeltaTime()
@@ -306,7 +314,7 @@ engine.runRenderLoop(() => {
     tickAccumulator -= TICK_RATE
     rawTicks++
 
-    if (!satellite.reachedOrbit) {
+    if (isLaunched && !satellite.reachedOrbit) {
       satellite.tick()
     }
   }
